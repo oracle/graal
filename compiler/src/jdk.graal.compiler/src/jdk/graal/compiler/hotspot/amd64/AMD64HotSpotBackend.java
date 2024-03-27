@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,14 @@
  */
 package jdk.graal.compiler.hotspot.amd64;
 
+import static jdk.graal.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
+import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
@@ -39,6 +40,7 @@ import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
@@ -70,7 +72,6 @@ import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -291,6 +292,13 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
     @Override
     public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
+        emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
+        if (GraalOptions.OptimizeLongJumps.getValue(crb.getOptions())) {
+            optimizeLongJumps(crb, installedCodeOwner, entryPointDecorator);
+        }
+    }
+
+    private void emitCodeHelper(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
@@ -352,6 +360,13 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
                 // Size of IC check sequence checked with a guarantee below.
                 int inlineCacheCheckSize = 14;
+                if (asm.force4ByteNonZeroDisplacements()) {
+                    /*
+                     * The mov and cmp below each contain a 1-byte displacement that is emitted as 4
+                     * bytes instead, thus we have 3 extra bytes for each of these instructions.
+                     */
+                    inlineCacheCheckSize += 3 + 3;
+                }
                 asm.align(config.codeEntryAlignment, asm.position() + inlineCacheCheckSize);
 
                 int startICCheck = asm.position();
@@ -423,17 +438,46 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     crb.recordImplicitException(pendingImplicitException.codeOffset, pos, pendingImplicitException.state);
                 }
             }
-            crb.recordMark(AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null), HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);
-            crb.recordMark(AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), null, false, null), HotSpotMarkId.DEOPT_HANDLER_ENTRY);
+            trampolineCall(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);
+            trampolineCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_HANDLER_ENTRY);
             if (config.supportsMethodHandleDeoptimizationEntry() && crb.needsMHDeoptHandler()) {
-                crb.recordMark(AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), null, false, null), HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY);
+                trampolineCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY);
             }
         }
+    }
+
+    private static void trampolineCall(CompilationResultBuilder crb, AMD64MacroAssembler asm, ForeignCallLinkage callTarget, HotSpotMarkId exceptionHandlerEntry) {
+        crb.recordMark(AMD64Call.directCall(crb, asm, callTarget, null, false, null), exceptionHandlerEntry);
+        // Ensure the return location is a unique pc and that control flow doesn't return here
+        asm.halt();
     }
 
     @Override
     public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         return new AMD64HotSpotRegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo, config.preserveFramePointer);
+    }
+
+    /**
+     * Performs a code emit from LIR and replaces jumps with 4byte displacement by equivalent
+     * instructions with single byte displacement, where possible. If any of these optimizations
+     * unexpectedly results in a {@link BranchTargetOutOfBoundsException}, code without any
+     * optimized jumps will be emitted.
+     */
+    private void optimizeLongJumps(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
+        // triggers a reset of the assembler during which replaceable jumps are identified
+        crb.resetForEmittingCode();
+        try {
+            emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
+        } catch (BranchTargetOutOfBoundsException e) {
+            /*
+             * Alignments have invalidated the assumptions regarding short jumps. Trigger fail-safe
+             * mode and emit unoptimized code.
+             */
+            AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            masm.disableOptimizeLongJumpsAfterException();
+            crb.resetForEmittingCode();
+            emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
+        }
     }
 }

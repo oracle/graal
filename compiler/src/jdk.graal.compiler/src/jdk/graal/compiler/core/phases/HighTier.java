@@ -56,7 +56,8 @@ public class HighTier extends BaseTier<HighTierContext> {
     public static class Options {
 
         // @formatter:off
-        @Option(help = "Enable inlining", type = OptionType.Expert)
+        @Option(help = "Performs inlining optimization. " +
+                       "This can improve performance because callees are specialized to the types and values of callers.", type = OptionType.Expert)
         public static final OptionKey<Boolean> Inline = new OptionKey<>(true);
         // @formatter:on
     }

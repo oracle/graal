@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * Regroups all custom espresso modules that we may inject on the boot class loader.
  */
 public final class ModuleExtension {
-    private static final ModuleExtension[] ESPRESSO_EXTENSION_MODULES = new ModuleExtension[]{
+    private static final ModuleExtension[] ESPRESSO_EXTENSION_MODULES = {
                     new ModuleExtension("espresso.hotswap", "hotswap.jar", (context) -> context.getEspressoEnv().JDWPOptions != null),
                     new ModuleExtension("espresso.polyglot", "espresso-polyglot.jar", (context) -> context.getEspressoEnv().Polyglot),
     };
@@ -43,18 +43,36 @@ public final class ModuleExtension {
     private final String moduleName;
     private final String jarName;
     private final Function<EspressoContext, Boolean> isEnabled;
+    private final boolean platform;
 
     private ModuleExtension(String moduleName, String jarName, Function<EspressoContext, Boolean> isEnabled) {
+        this(moduleName, jarName, isEnabled, false);
+    }
+
+    private ModuleExtension(String moduleName, String jarName, Function<EspressoContext, Boolean> isEnabled, boolean platform) {
         this.moduleName = moduleName;
         this.jarName = jarName;
         this.isEnabled = isEnabled;
+        this.platform = platform;
+    }
+
+    public static ModuleExtension[] getAllExtensions(EspressoContext context) {
+        return getExtensions(null, context);
+    }
+
+    public static ModuleExtension[] getBootExtensions(EspressoContext context) {
+        return getExtensions(false, context);
+    }
+
+    public static ModuleExtension[] getPlatformExtensions(EspressoContext context) {
+        return getExtensions(true, context);
     }
 
     @TruffleBoundary
-    public static ModuleExtension[] get(EspressoContext context) {
+    private static ModuleExtension[] getExtensions(Boolean platform, EspressoContext context) {
         List<ModuleExtension> modules = new ArrayList<>(ESPRESSO_EXTENSION_MODULES.length);
         for (ModuleExtension me : ESPRESSO_EXTENSION_MODULES) {
-            if (me.isEnabled.apply(context)) {
+            if (me.isEnabled.apply(context) && (platform == null || platform == me.platform)) {
                 modules.add(me);
             }
         }
@@ -67,5 +85,9 @@ public final class ModuleExtension {
 
     public String jarName() {
         return jarName;
+    }
+
+    public boolean isPlatform() {
+        return platform;
     }
 }

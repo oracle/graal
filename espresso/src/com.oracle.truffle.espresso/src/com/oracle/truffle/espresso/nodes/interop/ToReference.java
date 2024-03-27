@@ -45,6 +45,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -52,7 +53,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -224,7 +224,8 @@ public abstract class ToReference extends ToEspressoNode {
             return ToReferenceFactory.ToByteArrayNodeGen.getUncached();
         }
         if (targetType.isArray()) {
-            throw new IllegalStateException("Generic arrays type mappings must be handled separately!");
+            // Generic arrays type mappings must be handled separately!
+            return null;
         }
         if (targetType.isJavaLangObject()) {
             return ToReferenceFactory.ToJavaLangObjectNodeGen.getUncached();
@@ -256,11 +257,8 @@ public abstract class ToReference extends ToEspressoNode {
                     return ToReferenceFactory.ToMapNodeGen.getUncached();
                 }
             }
-            if (isTypeMappingEnabled(targetType)) {
-                throw new IllegalStateException("Interface type mappings must be handled separately!");
-            } else {
-                throw new IllegalStateException("unknown types must be handled separately!");
-            }
+            // Interface type mappings & unknown interface types must be handled separately!
+            return null;
         }
         if (isForeignException(targetType, meta)) {
             return ToReferenceFactory.ToForeignExceptionNodeGen.getUncached();
@@ -301,7 +299,7 @@ public abstract class ToReference extends ToEspressoNode {
         if (targetType == meta.java_math_BigInteger) {
             return ToReferenceFactory.ToBigIntegerNodeGen.getUncached();
         }
-        throw new IllegalStateException("unknown types must be handled separately!");
+        return null;
     }
 
     @NodeInfo(shortName = "Dynamic toEspresso node")
@@ -455,21 +453,23 @@ public abstract class ToReference extends ToEspressoNode {
         })
         public StaticObject doGeneric(Object value, Klass targetType,
                         @Bind("getMeta()") Meta meta,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
-            try {
-                return getUncachedToReference(targetType, meta).execute(value);
-            } catch (IllegalStateException ex) {
-                // hit the unknown type case, so inline generic handling for that here
-                if (targetType instanceof ObjectKlass) {
-                    try {
-                        checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, getMeta());
-                        return StaticObject.createForeign(getLanguage(), targetType, value, interop);
-                    } catch (ClassCastException e) {
-                        throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
-                    }
-                }
-                throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InlinedBranchProfile unknownProfile) throws UnsupportedTypeException {
+            ToReference uncachedToReference = getUncachedToReference(targetType, meta);
+            if (uncachedToReference != null) {
+                return uncachedToReference.execute(value);
             }
+            unknownProfile.enter(this);
+            // hit the unknown type case, so inline generic handling for that here
+            if (targetType instanceof ObjectKlass) {
+                try {
+                    checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, getMeta());
+                    return StaticObject.createForeign(getLanguage(), targetType, value, interop);
+                } catch (ClassCastException e) {
+                    throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
+                }
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
         }
     }
 
@@ -1423,14 +1423,12 @@ public abstract class ToReference extends ToEspressoNode {
         })
         StaticObject doForeignInterface(Object value,
                         @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached InitCheck initCheck,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @Cached BranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = getMetaObjectOrThrow(value, interop);
                 WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
                 if (proxyKlass != null) {
-                    initCheck.execute(targetType);
                     return proxyKlass.createProxyInstance(value, getLanguage(), interop);
                 }
                 throw new ClassCastException();

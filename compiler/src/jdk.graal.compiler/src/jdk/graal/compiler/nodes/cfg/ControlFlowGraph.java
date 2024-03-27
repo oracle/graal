@@ -44,6 +44,7 @@ import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MemUseTrackerKey;
+import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
@@ -85,9 +86,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         //@formatter:off
         @Option(help = "Derive loop frequencies only from backedge frequencies instead of from loop exit frequencies.", type = OptionType.Debug)
         public static final OptionKey<Boolean> UseLoopEndFrequencies = new OptionKey<>(false);
-        @Option(help = "Debug flag to dump loop frequency differences computed based on loop end or exit nodes."
-                        + "If the frequencies diverge a lot, this may indicate missing profiles on control flow"
-                        + "inside the loop body.", type = OptionType.Debug)
+        @Option(help = "Debug flag to dump loop frequency differences computed based on loop end or exit nodes." +
+                       "If the frequencies diverge a lot, this may indicate missing profiles on control flow" +
+                       "inside the loop body.", type = OptionType.Debug)
         public static final OptionKey<Boolean> DumpEndVersusExitLoopFrequencies = new OptionKey<>(false);
         @Option(help = "Scaling factor of frequency difference computed based on loop ends or exits", type = OptionType.Debug)
         public static final OptionKey<Double> LoopExitVsLoopEndFrequencyDiff = new OptionKey<>(1000D);
@@ -217,6 +218,44 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      */
     public void updateCachedLocalLoopFrequency(LoopBeginNode lb, Function<LoopFrequencyData, LoopFrequencyData> updater) {
         localLoopFrequencyData.put(lb, updater.apply(localLoopFrequencyData.get(lb)));
+    }
+
+    /**
+     * Debug only decorator for {@link RecursiveVisitor} to log all basic blocks how they are
+     * visited one by one.
+     */
+    public static class LoggingCFGDecorator implements ControlFlowGraph.RecursiveVisitor<HIRBlock> {
+        private final ControlFlowGraph.RecursiveVisitor<HIRBlock> visitor;
+        private String indent = "";
+
+        public LoggingCFGDecorator(ControlFlowGraph.RecursiveVisitor<HIRBlock> visitor, ControlFlowGraph cfg) {
+            this.visitor = visitor;
+            TTY.printf("DomTree for %s%n", cfg.graph);
+            printDomTree(cfg.getStartBlock(), "");
+        }
+
+        private static void printDomTree(HIRBlock cur, String indent) {
+            TTY.printf("%s%s [dom %s, post dom %s]%n", indent, cur, cur.getDominator(), cur.getPostdominator());
+            HIRBlock dominated = cur.getFirstDominated();
+            while (dominated != null) {
+                printDomTree(dominated, indent + "\t");
+                dominated = dominated.getDominatedSibling();
+            }
+        }
+
+        @Override
+        public HIRBlock enter(HIRBlock b) {
+            TTY.printf("%sEnter block %s for %s%n", indent, b, visitor);
+            indent += "\t";
+            return visitor.enter(b);
+        }
+
+        @Override
+        public void exit(HIRBlock b, HIRBlock value) {
+            indent = indent.substring(0, indent.length() - 1);
+            TTY.printf("%sExit block %s with value %s for %s%n", indent, b, value, visitor);
+            visitor.exit(b, value);
+        }
     }
 
     @SuppressWarnings("unchecked")

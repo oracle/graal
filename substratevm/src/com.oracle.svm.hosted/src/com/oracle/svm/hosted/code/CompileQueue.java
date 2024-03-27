@@ -630,7 +630,7 @@ public class CompileQueue {
                     continue;
                 }
                 if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
-                                hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isImplementationInvoked()) {
+                                hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isSimplyImplementationInvoked()) {
                     ensureParsed(hMethod, null, new EntryPointReason());
                 }
                 if (hMethod.wrapped.isVirtualRootMethod()) {
@@ -645,7 +645,7 @@ public class CompileQueue {
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
         for (SubstrateForeignCallLinkage linkage : foreignCallsProvider.getForeignCalls().values()) {
             HostedMethod method = (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess());
-            if (method.wrapped.isDirectRootMethod() && method.wrapped.isImplementationInvoked()) {
+            if (method.wrapped.isDirectRootMethod() && method.wrapped.isSimplyImplementationInvoked()) {
                 ensureParsed(method, null, new EntryPointReason());
             }
             if (method.wrapped.isVirtualRootMethod()) {
@@ -910,7 +910,7 @@ public class CompileQueue {
                 }
 
                 if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
-                                hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isImplementationInvoked()) {
+                                hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isSimplyImplementationInvoked()) {
                     ensureCompiled(hMethod, new EntryPointReason());
                 }
                 if (hMethod.wrapped.isVirtualRootMethod()) {

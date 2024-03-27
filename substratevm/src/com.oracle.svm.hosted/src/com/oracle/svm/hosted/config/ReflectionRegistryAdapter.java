@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,8 +43,8 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives) {
-        TypeResult<Class<?>> result = super.resolveType(condition, typeName, allowPrimitives);
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives, boolean includeAllElements) {
+        TypeResult<Class<?>> result = super.resolveType(condition, typeName, allowPrimitives, includeAllElements);
         if (!result.isPresent()) {
             Throwable classLookupException = result.getException();
             if (classLookupException instanceof LinkageError) {

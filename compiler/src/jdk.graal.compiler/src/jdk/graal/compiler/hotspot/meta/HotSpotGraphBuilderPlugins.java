@@ -89,6 +89,7 @@ import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
@@ -169,6 +170,8 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -183,7 +186,7 @@ import jdk.vm.ci.services.Services;
 public class HotSpotGraphBuilderPlugins {
 
     public static class Options {
-        @Option(help = "Force an explicit compiler node for Reference.reachabilityFence, instead of relying on FrameState liveness", type = OptionType.Expert) //
+        @Option(help = "Force an explicit compiler node for Reference.reachabilityFence, instead of relying on FrameState liveness", type = OptionType.Debug) //
         public static final OptionKey<Boolean> ForceExplicitReachabilityFence = new OptionKey<>(false);
     }
 
@@ -244,7 +247,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
                 registerSHAPlugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
-                registerUnsafePlugins(invocationPlugins, replacements);
+                registerUnsafePlugins(invocationPlugins, replacements, config);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
@@ -479,7 +482,7 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
         r.register(new InvocationPlugin("copyMemory0", Receiver.class, Object.class, long.class, Object.class, long.class, long.class) {
             @Override
@@ -492,6 +495,19 @@ public class HotSpotGraphBuilderPlugins {
         r.register(new InvocationPlugin("allocateInstance", Receiver.class, Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
+                if (b.getGraph().getProfilingInfo() != null && b.getGraph().getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.RuntimeConstraint) > 20) {
+                    // Heuristic to prevent deoptimization loops.
+                    return false;
+                }
+                if (config.shouldNotifyObjectAllocAddress != 0) {
+                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                        OffsetAddressNode address = OffsetAddressNode.create(helper.asWord(config.shouldNotifyObjectAllocAddress));
+                        ValueNode shouldPostVMObjectAlloc = b.add(new JavaReadNode(JavaKind.Int, address, LocationIdentity.ANY_LOCATION, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
+                        LogicNode testShouldPostVMObjectAlloc = IntegerEqualsNode.create(shouldPostVMObjectAlloc, ConstantNode.forInt(0), NodeView.DEFAULT);
+                        FixedGuardNode guard = new FixedGuardNode(testShouldPostVMObjectAlloc, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateRecompile);
+                        b.add(guard);
+                    }
+                }
                 /* Emits a null-check for the otherwise unused receiver. */
                 unsafe.get(true);
                 /*
@@ -673,7 +689,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/c5e72450966ad50d57a8d22e9d634bfcb319aee9/src/hotspot/share/opto/library_call.cpp#L2877-L2932",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/be2b92bd8b43841cc2b9c22ed4fde29be30d47bb/src/hotspot/share/opto/library_call.cpp#L2876-L2931",
               sha1 = "5c117a305e90a48f0a6fe86ace2c15942393c0ab")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,

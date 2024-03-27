@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import java.security.AccessControlContext;
@@ -42,6 +43,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -143,18 +145,40 @@ public class StackTraceUtils {
         return visitor.result;
     }
 
+    /**
+     * Indicates whether the frame should be displayed in the context of Java backtracing. Returns
+     * true if so, and false otherwise. Backtracing means that there are no lambda or hidden frames
+     * present. To learn more about backtracing, refer to {@link BacktraceDecoder}. For more
+     * fine-grained control over what is displayed, see
+     * {@link #shouldShowFrame(Class, String, boolean, boolean, boolean)}.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean shouldShowFrame(Class<?> clazz, String method) {
+        return shouldShowFrame(clazz, method, false, true, false);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean shouldShowFrame(FrameInfoQueryResult frameInfo) {
+        return shouldShowFrame(frameInfo.getSourceClass(), frameInfo.getSourceMethodName());
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean shouldShowFrame(FrameInfoQueryResult frameInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
+        return shouldShowFrame(frameInfo.getSourceClass(), frameInfo.getSourceMethodName(), showLambdaFrames, showReflectFrames, showHiddenFrames);
+    }
+
     /*
      * Note that this method is duplicated below to work on compiler metadata. Make sure to always
      * keep both versions in sync, otherwise intrinsifications by the compiler will return different
      * results than stack walking at run time.
      */
-    public static boolean shouldShowFrame(FrameInfoQueryResult frameInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean shouldShowFrame(Class<?> clazz, String methodName, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
         if (showHiddenFrames) {
             /* No filtering, all frames including internal frames are shown. */
             return true;
         }
 
-        Class<?> clazz = frameInfo.getSourceClass();
         if (clazz == null) {
             /*
              * We don't have a Java class. This must be an internal frame. This path mostly exists
@@ -172,20 +196,22 @@ public class StackTraceUtils {
             return false;
         }
 
-        if (!showReflectFrames && ((clazz == java.lang.reflect.Method.class && "invoke".equals(frameInfo.getSourceMethodName())) ||
-                        (clazz == java.lang.reflect.Constructor.class && "newInstance".equals(frameInfo.getSourceMethodName())) ||
-                        (clazz == java.lang.Class.class && "newInstance".equals(frameInfo.getSourceMethodName())))) {
-            /*
-             * Ignore a reflective method / constructor invocation frame. Note that the classes
-             * cannot be annotated with @InternalFrame because 1) they are JDK classes and 2) only
-             * one method of each class is affected.
-             */
-            return false;
+        if (!showReflectFrames) {
+            if (clazz == java.lang.reflect.Method.class && UninterruptibleUtils.String.equals("invoke", methodName)) {
+                /*
+                 * Ignore a reflective method invocation frame. Note that the classes cannot be
+                 * annotated with @InternalFrame because 1) they are JDK classes and 2) only one
+                 * method of each class is affected.
+                 */
+                return false;
+            } else if ((clazz == java.lang.reflect.Constructor.class || clazz == java.lang.Class.class) && UninterruptibleUtils.String.equals("newInstance", methodName)) {
+                /* Ignore a constructor invocation frame (see the comment above). */
+                return false;
+            }
         }
 
         if (clazz == Target_jdk_internal_vm_Continuation.class) {
-            String name = frameInfo.getSourceMethodName();
-            if (name.startsWith("enter") || name.startsWith("yield")) {
+            if (UninterruptibleUtils.String.startsWith(methodName, "enter") || UninterruptibleUtils.String.startsWith(methodName, "yield")) {
                 return false;
             }
         }
@@ -392,7 +418,7 @@ final class BacktraceVisitor extends StackFrameVisitor {
     }
 
     private boolean visitFrameInfo(FrameInfoQueryResult frameInfo) {
-        if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {
+        if (!StackTraceUtils.shouldShowFrame(frameInfo)) {
             /* Always ignore the frame. It is an internal frame of the VM. */
             return true;
 
@@ -615,7 +641,7 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
 
     @Override
     public boolean visitFrame(FrameInfoQueryResult frameInfo) {
-        if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {
+        if (!StackTraceUtils.shouldShowFrame(frameInfo)) {
             /* Always ignore the frame. It is an internal frame of the VM. */
             return true;
 

@@ -24,8 +24,10 @@
  */
 package jdk.graal.compiler.util.json;
 
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -86,9 +88,17 @@ public class JSONFormatter {
         return formatJSON(map, false);
     }
 
+    public static void printJSON(EconomicMap<String, Object> map, PrintWriter printWriter) {
+        printJSON(map, printWriter, false);
+    }
+
+    public static void printJSON(EconomicMap<String, Object> map, PrintWriter printWriter, boolean indent) {
+        appendTo(printWriter::print, map, indent ? DEFAULT_INDENT : null, EMPTY_STRING);
+    }
+
     public static String formatJSON(EconomicMap<String, Object> map, boolean indent) {
         StringBuilder sb = new StringBuilder();
-        appendTo(sb, map, indent ? DEFAULT_INDENT : null, EMPTY_STRING);
+        appendTo(sb::append, map, indent ? DEFAULT_INDENT : null, EMPTY_STRING);
         return sb.toString();
     }
 
@@ -98,7 +108,7 @@ public class JSONFormatter {
 
     public static String formatJSON(List<?> elements, boolean indent) {
         StringBuilder sb = new StringBuilder();
-        appendTo(sb, elements, indent ? DEFAULT_INDENT : null, EMPTY_STRING);
+        appendTo(sb::append, elements, indent ? DEFAULT_INDENT : null, EMPTY_STRING);
         return sb.toString();
     }
 
@@ -144,80 +154,80 @@ public class JSONFormatter {
         return builder.toString();
     }
 
-    static void appendValue(StringBuilder sb, Object value, String indent, String currentIndent) {
+    static void appendValue(Consumer<Object> writer, Object value, String indent, String currentIndent) {
         if (value instanceof EconomicMap<?, ?>) {
-            appendTo(sb, (EconomicMap<?, ?>) value, indent, currentIndent);
+            appendTo(writer, (EconomicMap<?, ?>) value, indent, currentIndent);
         } else if (value instanceof List<?>) {
-            appendTo(sb, (List<?>) value, indent, currentIndent);
+            appendTo(writer, (List<?>) value, indent, currentIndent);
         } else if (value instanceof Number || value instanceof Boolean || value == null) {
-            sb.append(value);
+            writer.accept(value);
         } else {
             if (value instanceof Map<?, ?>) {
                 throw new IllegalArgumentException(value + " must use EconomicMap");
             }
-            sb.append(quote(String.valueOf(value)));
+            writer.accept(quote(String.valueOf(value)));
         }
     }
 
-    static void appendTo(StringBuilder sb, List<?> contents, String indent, String currentIndent) {
+    static void appendTo(Consumer<Object> writer, List<?> contents, String indent, String currentIndent) {
         String newIndent = indent + currentIndent;
-        sb.append(LEFT_SQUARE_BRACKET);
+        writer.accept(LEFT_SQUARE_BRACKET);
         if (indent != null) {
-            sb.append(NEWLINE);
+            writer.accept(NEWLINE);
         }
         boolean comma = false;
         for (Object value : contents) {
             if (comma) {
                 if (indent != null) {
-                    sb.append(COMMA_NEWLINE);
+                    writer.accept(COMMA_NEWLINE);
                 } else {
-                    sb.append(COMMA_SPACE);
+                    writer.accept(COMMA_SPACE);
                 }
             }
             if (indent != null) {
-                sb.append(newIndent);
+                writer.accept(newIndent);
             }
-            appendValue(sb, value, indent, newIndent);
+            appendValue(writer, value, indent, newIndent);
             comma = true;
         }
         if (indent != null) {
-            sb.append(NEWLINE);
-            sb.append(currentIndent);
+            writer.accept(NEWLINE);
+            writer.accept(currentIndent);
         }
-        sb.append(RIGHT_SQUARE_BRACKET);
+        writer.accept(RIGHT_SQUARE_BRACKET);
     }
 
-    static void appendTo(StringBuilder sb, EconomicMap<?, ?> contents, String indent, String currentIndent) {
+    static void appendTo(Consumer<Object> writer, EconomicMap<?, ?> contents, String indent, String currentIndent) {
         String newIndent = indent + currentIndent;
         if (indent != null) {
-            sb.append(currentIndent);
+            writer.accept(currentIndent);
         }
-        sb.append(LEFT_CURLY_BRACKET);
+        writer.accept(LEFT_CURLY_BRACKET);
         if (indent != null) {
-            sb.append(NEWLINE);
+            writer.accept(NEWLINE);
         }
         boolean comma = false;
         MapCursor<?, ?> cursor = contents.getEntries();
         while (cursor.advance()) {
             if (comma) {
                 if (indent != null) {
-                    sb.append(COMMA_NEWLINE);
+                    writer.accept(COMMA_NEWLINE);
                 } else {
-                    sb.append(COMMA_SPACE);
+                    writer.accept(COMMA_SPACE);
                 }
             }
             if (indent != null) {
-                sb.append(newIndent);
+                writer.accept(newIndent);
             }
-            sb.append(quote((String) cursor.getKey()));
-            sb.append(COLON_SPACE);
-            appendValue(sb, cursor.getValue(), indent, newIndent);
+            writer.accept(quote((String) cursor.getKey()));
+            writer.accept(COLON_SPACE);
+            appendValue(writer, cursor.getValue(), indent, newIndent);
             comma = true;
         }
         if (indent != null) {
-            sb.append(NEWLINE);
-            sb.append(currentIndent);
+            writer.accept(NEWLINE);
+            writer.accept(currentIndent);
         }
-        sb.append(RIGHT_CURLY_BRACKET);
+        writer.accept(RIGHT_CURLY_BRACKET);
     }
 }

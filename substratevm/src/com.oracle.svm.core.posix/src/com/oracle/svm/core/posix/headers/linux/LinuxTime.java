@@ -28,8 +28,13 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
+import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 
 // Checkstyle: stop
@@ -39,6 +44,25 @@ import com.oracle.svm.core.posix.headers.Time;
  */
 @CContext(PosixDirectives.class)
 public class LinuxTime extends Time {
+
+    @CStruct
+    public interface timer_t extends PointerBase {
+    }
+
+    @CPointerTo(timer_t.class)
+    public interface timer_tPointer extends PointerBase {
+        timer_t read();
+    }
+
+    @CStruct(addStructKeyword = true)
+    public interface itimerspec extends PointerBase {
+        @CFieldAddress
+        Time.timespec it_interval();
+
+        @CFieldAddress
+        Time.timespec it_value();
+    }
+
     @CConstant
     public static native int CLOCK_MONOTONIC();
 
@@ -50,5 +74,14 @@ public class LinuxTime extends Time {
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
         @CLibrary("rt")
         public static native int clock_gettime(int clock_id, timespec tp);
+
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int timer_create(int clockid, Signal.sigevent sevp, timer_tPointer timerid);
+
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int timer_settime(timer_t timerid, int flags, itimerspec newValue, itimerspec oldValue);
+
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int timer_delete(timer_t timerid);
     }
 }

@@ -26,6 +26,7 @@ package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.ARRAY_KLASS_COMPONENT_MIRROR;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
@@ -124,7 +125,9 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         KLASS_SUPER_KLASS_OFFSET(config -> config.klassSuperKlassOffset, KLASS_SUPER_KLASS_LOCATION, KlassPointerStamp.klass()),
         CLASS_ARRAY_KLASS_OFFSET(config -> config.arrayKlassOffset, CLASS_ARRAY_KLASS_LOCATION, KlassPointerStamp.klassNonNull()),
         JAVA_THREAD_OSTHREAD_OFFSET(config -> config.osThreadOffset, JAVA_THREAD_OSTHREAD_LOCATION),
+        /** JavaThread::_vthread. */
         JAVA_THREAD_THREAD_OBJECT(config -> config.threadCurrentThreadObjectOffset, JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION, null),
+        /** JavaThread::_threadObj. */
         JAVA_THREAD_CARRIER_THREAD_OBJECT(config -> config.threadCarrierThreadObjectOffset, JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION, null),
         JAVA_THREAD_SCOPED_VALUE_CACHE_OFFSET(config -> config.threadScopedValueCacheOffset, JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION, null),
         KLASS_ACCESS_FLAGS_OFFSET(config -> config.klassAccessFlagsOffset, KLASS_ACCESS_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
@@ -218,20 +221,20 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
      */
     public ValueNode readCurrentThreadObject(boolean readVirtualThread) {
         CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(getWordKind()));
-        // JavaThread::_threadObj is never compressed
+        // JavaThread::_vthread and JavaThread::_threadObj are never compressed
         ObjectStamp threadStamp = StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Thread.class)));
         Stamp fieldStamp = StampFactory.forKind(getWordKind());
         ValueNode value = readLocation(thread, readVirtualThread ? HotSpotVMConfigField.JAVA_THREAD_THREAD_OBJECT : HotSpotVMConfigField.JAVA_THREAD_CARRIER_THREAD_OBJECT, fieldStamp);
 
         // Read the Object from the OopHandle
         AddressNode handleAddress = b.add(OffsetAddressNode.create(value));
-        LocationIdentity location = readVirtualThread ? HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION : HOTSPOT_OOP_HANDLE_LOCATION;
+        LocationIdentity location = readVirtualThread ? HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION : HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION;
         value = b.add(new ReadNode(handleAddress, location, threadStamp, barrierSet.readBarrierType(location, handleAddress, threadStamp), MemoryOrderMode.PLAIN));
         return value;
     }
 
     /**
-     * Sets {@code thread} into {@code JavaThread::_threadObj}.
+     * Sets {@code thread} into {@code JavaThread::_vthread}.
      */
     public void setCurrentThread(ValueNode thread) {
         CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(getWordKind()));

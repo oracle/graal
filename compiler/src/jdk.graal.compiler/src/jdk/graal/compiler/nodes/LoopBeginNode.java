@@ -33,6 +33,7 @@ import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -150,6 +151,18 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public static final SpeculationReasonGroup LOOP_OVERFLOW_DEOPT = new SpeculationReasonGroup("LoopOverflowDeopt", ResolvedJavaMethod.class, int.class);
 
+    /**
+     * A number based on the {@link Node#getId()} of the original {@link LoopBeginNode} this node
+     * was cloned from. It may additionally encode information about the compressions of a graph. Do
+     * not assume anything about the actual value of this number. The only important data it
+     * preserves is that it encodes information about the original loop begin. This can be used when
+     * comparing two different loop begin nodes if they are both result of a clone operation of the
+     * same loop in the same graph. Only used for debugging and verification purposes. This number
+     * is highly implementation dependent and can change over the course of a graph because of
+     * {@link Graph#maybeCompress()} compression.
+     */
+    @SuppressWarnings("javadoc") private long cloneFromNodeId = -1;
+
     public LoopBeginNode() {
         super(TYPE);
         loopOrigFrequency = 1;
@@ -159,6 +172,22 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.canEndsGuestSafepoint = true;
         loopType = LoopType.SIMPLE_LOOP;
         unrollFactor = 1;
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected void afterClone(Node other) {
+        super.afterClone(other);
+        assert other instanceof LoopBeginNode : Assertions.errorMessage("Must be cloned from a previous loop begin", this, other);
+        // ideally we would want to verify that cloneFrom==-1 but when we copy a node manually with
+        // (addDuplicates) and call afterClone on it we have to override this value
+
+        final int otherNodeId = other.getId();
+        this.cloneFromNodeId = other.graph() != null ? ((long) other.graph().getCompressions() << 32L | otherNodeId) : otherNodeId;
+    }
+
+    public long getClonedFromNodeId() {
+        return cloneFromNodeId;
     }
 
     public void checkDisableCountedBySpeculation(int bci, StructuredGraph graph) {

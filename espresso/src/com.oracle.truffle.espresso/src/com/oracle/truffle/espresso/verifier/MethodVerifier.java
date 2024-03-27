@@ -277,6 +277,7 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Member;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -296,7 +297,7 @@ public final class MethodVerifier implements ContextAccess {
     public static final DebugTimer VERIFIER_TIMER = DebugTimer.create("verifier");
 
     // Class info
-    private final Klass thisKlass;
+    private final ObjectKlass thisKlass;
     private final RuntimeConstantPool pool;
     private final boolean useStackMaps;
     private final int majorVersion;

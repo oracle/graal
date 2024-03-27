@@ -362,33 +362,23 @@ public final class DebuggerController implements ContextsListener {
         return visibleThreads.toArray(new Object[visibleThreads.size()]);
     }
 
-    public void resumeAll(boolean sessionClosed) {
-        Object eventThread = null;
-
-        // The order of which to resume threads is not specified, however when RESUME_ALL command is
-        // sent while performing a stepping request, some debuggers (IntelliJ is a known case) will
-        // expect all other threads but the current stepping thread to be resumed first.
+    void forceResumeAll() {
         for (Object thread : getVisibleGuestThreads()) {
             boolean resumed = false;
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
                 while (!resumed) {
-                    if (isStepping(thread)) {
-                        eventThread = thread;
-                        break;
-                    } else {
-                        resumed = resume(thread, sessionClosed);
-                    }
+                    resumed = resume(thread, true);
                 }
             }
         }
-        if (eventThread != null) {
-            boolean resumed = false;
-            SimpleLock suspendLock = getSuspendLock(eventThread);
+    }
+
+    public void resumeAll() {
+        for (Object thread : getVisibleGuestThreads()) {
+            SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
-                while (!resumed) {
-                    resumed = resume(eventThread, sessionClosed);
-                }
+                resume(thread, false);
             }
         }
     }
@@ -473,10 +463,6 @@ public final class DebuggerController implements ContextsListener {
 
     private String getThreadName(Object thread) {
         return getContext().getThreadName(thread);
-    }
-
-    private boolean isStepping(Object thread) {
-        return commandRequestIds.get(thread) != null;
     }
 
     public void disposeDebugger(boolean prepareReconnect) {
@@ -809,7 +795,7 @@ public final class DebuggerController implements ContextsListener {
                 }
                 CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1, steppingInfo);
                 // get the top frame for checking instance filters
-                if (callFrames.length > 0 && checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
+                if (checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
                     fine(() -> "not suspending here: " + event.getSourceSection());
                     // continue stepping until completed
                     commandRequestIds.put(currentThread, steppingInfo);
@@ -977,6 +963,13 @@ public final class DebuggerController implements ContextsListener {
 
         private boolean checkExclusionFilters(SteppingInfo info, SuspendedEvent event, Object thread, CallFrame frame) {
             if (info != null) {
+                if (isSingleSteppingSuspended()) {
+                    continueStepping(event, info, thread);
+                    return true;
+                }
+                if (frame == null) {
+                    return false;
+                }
                 RequestFilter requestFilter = eventFilters.getRequestFilter(info.getRequestId());
 
                 if (requestFilter != null && requestFilter.getStepInfo() != null) {
@@ -1072,6 +1065,10 @@ public final class DebuggerController implements ContextsListener {
             }
             return list.toArray(new CallFrame[list.size()]);
         }
+    }
+
+    private boolean isSingleSteppingSuspended() {
+        return context.isSingleSteppingDisabled();
     }
 
     // Truffle logging

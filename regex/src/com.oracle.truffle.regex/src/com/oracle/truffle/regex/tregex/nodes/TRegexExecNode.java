@@ -428,7 +428,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 return;
             }
             if (backwardNode == null) {
-                assert singlePreCalcResult() || getForwardExecutor().isAnchored() || getForwardExecutor().isSimpleCG();
+                assert singlePreCalcResult() || getForwardExecutor().isAnchored() || getForwardExecutor().isSimpleCG() || booleanMatch;
                 backwardCallTarget = null;
             } else {
                 final RegexBodyNode bodyNode;

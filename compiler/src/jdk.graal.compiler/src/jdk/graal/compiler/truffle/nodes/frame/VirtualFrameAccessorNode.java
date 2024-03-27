@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -96,6 +97,14 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
 
     public final int getAccessTag() {
         return accessTag;
+    }
+
+    /**
+     * Ensures that static-ness of slots is consistent. That means that static slots should only be
+     * accessed statically, and non-static slots accessed non-statically.
+     */
+    protected final void ensureStaticSlotAccessConsistency() {
+        GraalError.guarantee(getFrame().isStatic(getFrameSlotIndex()) == accessFlags.isStatic(), "Inconsistent Static slot usage.");
     }
 
     protected final void insertDeoptimization(VirtualizerTool tool) {

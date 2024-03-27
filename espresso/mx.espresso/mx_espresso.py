@@ -149,11 +149,11 @@ The registration of the Espresso library ('lib:javavm') is skipped. Please run t
 
             for header in ['libjavavm_dynamic.h', 'graal_isolate_dynamic.h']:
                 committed_header = join(mokapot_dir, header)
-                if not mx.exists(committed_header):
+                if not os.path.exists(committed_header):
                     mx.abort("Cannot locate '{}'. Was the file moved or renamed?".format(committed_header))
 
                 generated_header = join(libjavavm_dir, header)
-                if not mx.exists(generated_header):
+                if not os.path.exists(generated_header):
                     mx.abort("Cannot locate '{}'. Did you forget to build? Example:\n'mx --dynamicimports=/substratevm --native-images=lib:javavm build'".format(generated_header))
 
                 committed_header_copyright = []
@@ -272,6 +272,20 @@ def _jdk_license(home):
         return "GPLv2-CPE"
 
 
+_espresso_input_jdk_value = None
+
+
+def _espresso_input_jdk():
+    global _espresso_input_jdk_value
+    if not _espresso_input_jdk_value:
+        espresso_java_home = mx.get_env('ESPRESSO_JAVA_HOME')
+        if espresso_java_home:
+            _espresso_input_jdk_value = mx.JDKConfig(espresso_java_home)
+        else:
+            _espresso_input_jdk_value = mx_sdk_vm.base_jdk()
+    return _espresso_input_jdk_value
+
+
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     """
     :type register_project: (mx.Project) -> None
@@ -297,8 +311,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     else:
         llvm_runtime_dir = []
 
-    espresso_java_home = mx.get_env('ESPRESSO_JAVA_HOME') or mx_sdk_vm.base_jdk().home
-    register_project(JavaHomeDependency(_suite, "JAVA_HOME", espresso_java_home))
+    register_project(JavaHomeDependency(_suite, "JAVA_HOME", _espresso_input_jdk().home))
     if mx.is_windows():
         platform_specific_excludes = [
             "bin/<exe:*>",

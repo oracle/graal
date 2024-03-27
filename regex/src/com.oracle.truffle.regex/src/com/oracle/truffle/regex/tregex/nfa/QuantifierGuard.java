@@ -44,6 +44,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.ConditionalBackReferenceGroup;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Objects;
 
@@ -98,13 +100,6 @@ public final class QuantifierGuard {
          * capture groups tested by {@link #exitZeroWidth}).
          */
         escapeZeroWidth,
-        /**
-         * Transition would go through an entire quantified expression without matching anything.
-         * Check if quantifier count is less than {@link Quantifier#getMin()}, then increase the
-         * quantifier count. This guard is added to all transitions to the special
-         * {@link PureNFAState#isEmptyMatch() empty-match} state.
-         */
-        checkEmptyMatch,
         /**
          * Transition is passing a capture group boundary. We need this information in order to
          * implement the empty check test in {@link #exitZeroWidth}, which, in the case of flavors
@@ -181,10 +176,6 @@ public final class QuantifierGuard {
         return new QuantifierGuard(Kind.escapeZeroWidth, quantifier);
     }
 
-    public static QuantifierGuard createCheckEmptyMatch(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.checkEmptyMatch, quantifier);
-    }
-
     public static QuantifierGuard createUpdateCG(int index) {
         return new QuantifierGuard(Kind.updateCG, index);
     }
@@ -238,5 +229,10 @@ public final class QuantifierGuard {
         } else {
             return kind + " " + index;
         }
+    }
+
+    @TruffleBoundary
+    public JsonValue toJson() {
+        return Json.val(toString());
     }
 }

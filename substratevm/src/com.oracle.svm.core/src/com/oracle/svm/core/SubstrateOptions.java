@@ -54,6 +54,7 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -150,7 +151,8 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Builds a statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    @APIOption(name = "static-nolibc")//
+    @Option(help = "Build statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false);
 
     @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
@@ -262,6 +264,7 @@ public class SubstrateOptions {
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.SourceLevelDebug.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.AOTTrivialInline.update(values, newLevel != OptimizationLevel.O0);
+            GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
             }
@@ -335,7 +338,8 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-    @Option(help = {"Directory of the image file to be generated", "Use the '-o' option instead."}, type = OptionType.User)//
+    @OptionMigrationMessage("Use the '-o' option instead.")//
+    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
     public static final class GCGroup implements APIOptionGroup {
@@ -501,7 +505,7 @@ public class SubstrateOptions {
     @Option(help = "Silence build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputSilent = new HostedOptionKey<>(false);
 
-    @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
+    @Option(help = "Deprecated, option no longer has any effect.", type = OptionType.User, deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
     @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use '--color' instead.")//
@@ -525,7 +529,7 @@ public class SubstrateOptions {
     @BundleMember(role = BundleMember.Role.Output)//
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output conforms to the JSON schema located at: " +
-                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json", type = OptionType.User)//
+                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json", type = OptionType.User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
     public static final String NATIVE_IMAGE_OPTIONS_ENV_VAR = "NATIVE_IMAGE_OPTIONS";
@@ -747,8 +751,12 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            if (OS.WINDOWS.isCurrent()) {
-                /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
+            if (!OS.DARWIN.isCurrent()) {
+                /*
+                 * Keep the symbol table, as it may be used by debugging or profiling tools (e.g.,
+                 * perf). On Windows, the symbol table is included in the pdb-file, while on Linux,
+                 * it is part of the .debug file.
+                 */
                 DeleteLocalSymbols.update(values, newValue == 0);
             }
         }
@@ -1036,7 +1044,7 @@ public class SubstrateOptions {
                     "\"Throw\" (default): Throw a MissingReflectionRegistrationError;",
                     "\"Exit\": Call System.exit() to avoid accidentally catching the error;",
                     "\"Warn\": Print a message to stdout, including a stack trace to see what caused the issue."})//
-    public static final HostedOptionKey<ReportingMode> MissingRegistrationReportingMode = new HostedOptionKey<>(
+    public static final RuntimeOptionKey<ReportingMode> MissingRegistrationReportingMode = new RuntimeOptionKey<>(
                     ReportingMode.Throw);
 
     @Option(help = "Instead of warning, throw IOExceptions for link-at-build-time resources at build time")//
@@ -1048,7 +1056,7 @@ public class SubstrateOptions {
     @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
     public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
 
-    @Option(help = "Force using legacy method handle intrinsics.", type = Expert, deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.1 and will be removed in a future release") //
+    @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 
     @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
@@ -1058,7 +1066,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     public static boolean includeAll() {
-        return IncludeAllFromPath.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
+        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
     }
 
     @Option(help = "Run layered image base layer open-world analysis. Includes all public types and methods that can be reached using normal Java access rules.")//

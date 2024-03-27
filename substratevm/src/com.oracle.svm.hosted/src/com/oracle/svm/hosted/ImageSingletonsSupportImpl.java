@@ -72,7 +72,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
          */
         private static HostedManagement singletonDuringImageBuild;
 
-        public static HostedManagement getAndAssertExists() {
+        private static HostedManagement getAndAssertExists() {
             HostedManagement result = get();
             assert result != null;
             return result;

@@ -29,11 +29,13 @@ import static com.oracle.svm.util.StringUtil.toDotSeparated;
 import static com.oracle.svm.util.StringUtil.toSlashSeparated;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IllformedLocaleException;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -43,6 +45,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -55,8 +58,11 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
+import sun.util.locale.provider.LocaleProviderAdapter;
+import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.Bundles;
 
 /**
@@ -77,7 +83,11 @@ public class LocalizationSupport {
 
     public final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
+    private final Bundles.Strategy strategy = getLocaleDataStrategy();
+
     public final Charset defaultCharset;
+
+    private final EconomicSet<String> registeredBundles = EconomicSet.create();
 
     public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
         this.defaultLocale = defaultLocale;
@@ -107,13 +117,23 @@ public class LocalizationSupport {
         throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundle.getClass());
     }
 
+    private static Bundles.Strategy getLocaleDataStrategy() {
+        try {
+            Class<?> localeDataStrategy = ReflectionUtil.lookupClass(false, "sun.util.resources.LocaleData$LocaleDataStrategy");
+            Field strategyInstance = ReflectionUtil.lookupField(localeDataStrategy, "INSTANCE");
+            return (Bundles.Strategy) strategyInstance.get(null);
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale) {
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale, boolean jdkBundle) {
         /*
          * Class-based bundle lookup happens on every query, but we don't need to register the
          * constructor for a property resource bundle since the class lookup will fail.
          */
-        registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
+        registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale), jdkBundle);
         if (!(bundle instanceof PropertyResourceBundle)) {
             registerNullaryConstructor(bundle.getClass());
         }
@@ -171,31 +191,57 @@ public class LocalizationSupport {
         }
     }
 
-    public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales) {
-        int i = baseName.lastIndexOf('.');
-        if (i > 0) {
-            String name = baseName.substring(i + 1) + "Provider";
-            String providerName = baseName.substring(0, i) + ".spi." + name;
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), providerName);
+    public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales, boolean jdkBundle) {
+        if (!jdkBundle) {
+            int i = baseName.lastIndexOf('.');
+            if (i > 0) {
+                String name = baseName.substring(i + 1) + "Provider";
+                String providerName = baseName.substring(0, i) + ".spi." + name;
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), providerName);
+            }
         }
 
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), baseName);
-
         for (Locale locale : wantedLocales) {
-            registerRequiredReflectionAndResourcesForBundleAndLocale(baseName, locale);
+            registerRequiredReflectionAndResourcesForBundleAndLocale(baseName, locale, jdkBundle);
         }
     }
 
-    private void registerRequiredReflectionAndResourcesForBundleAndLocale(String baseName, Locale baseLocale) {
-        for (Locale locale : control.getCandidateLocales(baseName, baseLocale)) {
-            String bundleWithLocale = control.toBundleName(baseName, locale);
+    public void registerRequiredReflectionAndResourcesForBundleAndLocale(String baseName, Locale baseLocale, boolean jdkBundle) {
+        /*
+         * Bundles in the sun.(text|util).resources.cldr packages are loaded with an alternative
+         * strategy which tries parent aliases defined in CLDRBaseLocaleDataMetaInfo.parentLocales.
+         */
+        List<Locale> candidateLocales = jdkBundle
+                        ? getJDKBundleCandidateLocales(baseName, baseLocale)
+                        : control.getCandidateLocales(baseName, baseLocale);
+
+        for (Locale locale : candidateLocales) {
+            String bundleWithLocale = jdkBundle ? strategy.toBundleName(baseName, locale) : control.toBundleName(baseName, locale);
             RuntimeReflection.registerClassLookup(bundleWithLocale);
+            Class<?> bundleClass = ReflectionUtil.lookupClass(true, bundleWithLocale);
+            if (bundleClass != null) {
+                registerNullaryConstructor(bundleClass);
+            }
             Resources.singleton().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
-            String otherBundleName = Bundles.toOtherBundleName(baseName, bundleWithLocale, locale);
-            if (!otherBundleName.equals(bundleWithLocale)) {
-                RuntimeReflection.registerClassLookup(otherBundleName);
+
+            if (jdkBundle) {
+                String otherBundleName = Bundles.toOtherBundleName(baseName, bundleWithLocale, locale);
+                if (!otherBundleName.equals(bundleWithLocale)) {
+                    RuntimeReflection.registerClassLookup(otherBundleName);
+                }
             }
         }
+    }
+
+    private static List<Locale> getJDKBundleCandidateLocales(String baseName, Locale baseLocale) {
+        /*
+         * LocaleDataStrategy.getCandidateLocale does some filtering of locales it knows do not have
+         * a bundle for the requested base name. We still want to see those locales to be able to
+         * register negative queries for them.
+         */
+        LocaleProviderAdapter.Type adapterType = baseName.contains(".cldr") ? LocaleProviderAdapter.Type.CLDR : LocaleProviderAdapter.Type.JRE;
+        ResourceBundleBasedAdapter adapter = ((ResourceBundleBasedAdapter) LocaleProviderAdapter.forType(adapterType));
+        return adapter.getCandidateLocales(baseName, baseLocale);
     }
 
     /**
@@ -272,5 +318,18 @@ public class LocalizationSupport {
             return;
         }
         RuntimeReflection.register(nullaryConstructor);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerBundleLookup(String baseName) {
+        registeredBundles.add(baseName);
+    }
+
+    public boolean isRegisteredBundleLookup(String baseName, Locale locale, Object controlOrStrategy) {
+        if (baseName == null || locale == null || controlOrStrategy == null) {
+            /* Those cases will throw a NullPointerException before any lookup */
+            return true;
+        }
+        return registeredBundles.contains(baseName);
     }
 }

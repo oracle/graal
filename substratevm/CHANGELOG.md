@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
+* (GR-51520) The old class initialization strategy, which was deprecated in GraalVM for JDK 22, is removed. The option `StrictImageHeap` no longer has any effect.
 * (GR-51106) Fields that are accessed via a `VarHandle` or `MethodHandle` are no longer marked as "unsafe accessed" when the `VarHandle`/`MethodHandle` can be fully intrinsified.
 * (GR-49996) Ensure explicitly set image name (e.g., via `-o imagename`) is not accidentally overwritten by `-jar jarfile` option.
 * (GR-48683) Together with Red Hat, we added partial support for the JFR event `OldObjectSample`.
@@ -10,6 +11,11 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-47109) Together with Red Hat, we added support for JFR event throttling and the event `ObjectAllocationSample`.
 * (GR-52030) Add a stable name for `Proxy` types in Native Image. The name `$Proxy[id]` is replaced by `$Proxy.s[hashCode]` where `hashCode` is computed using the names of the `Proxy` interfaces, the name of the class loader and the name of the module if it is not a dynamic module.
 * (GR-47712) Using the `--static` option without the `--libc=musl` option causes the build process to fail (and reports the appropriate error). Static linking is currently only supported with musl.
+* (GR-50434) Introduce a `"type"` field in reflection and JNI configuration files to support more than simple named types.
+* (GR-51053) Use [`vswhere`](https://github.com/microsoft/vswhere) to find Visual Studio installations more reliably and in non-standard installation locations.
+* (GR-47832) Experimental support for upcalls from foreign code and other improvements to our implementation of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 454](https://openjdk.org/jeps/454)) on AMD64. Must be enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
+* (GR-52314) `-XX:MissingRegistrationReportingMode` can now be used on program invocation instead of as a build option, to avoid a rebuild when debugging missing registration errors.
+* (GR-51086) Introduce a new `--static-nolibc` API option as a replacement for the experimental `-H:±StaticExecutableWithDynamicLibC` option.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
@@ -28,6 +34,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-49655) Experimental support for parts of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 454](https://openjdk.org/jeps/454)) on AMD64. Must be enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
 * (GR-46407) Correctly rethrow build-time linkage errors at run-time for registered reflection queries.
 * (GR-51002) Improve intrinsification of method handles. This especially improves the performance of `equals` and `hashCode` methods for records, which use method handles that are now intrinsified.
+* (GR-50529) Native Image now throws a specific error when trying to access unregistered resource bundles instead of failing on a subsequent reflection or resource query.
 
 ## GraalVM for JDK 21 (Internal Version 23.1.0)
 * (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.

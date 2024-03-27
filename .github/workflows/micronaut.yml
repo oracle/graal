@@ -52,16 +52,10 @@ on:
   workflow_dispatch:
 
 env:
-  GRAALVM_HOME: ${{ github.workspace }}/graalvm
-  JAVA_HOME: ${{ github.workspace }}/labsjdk
-  LANG: en_US.UTF-8
   MICRONAUT_CORE_PATH: ${{ github.workspace }}/micronaut-core
-  MICRONAUT_JDK_VERSION: 21
-  MX_GIT_CACHE: refcache
-  MX_PATH: ${{ github.workspace }}/mx
-  MX_PYTHON: python3.8
+  MICRONAUT_JAVA_VERSION: 21
   # Enforce experimental option checking in CI (GR-47922)
-  NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL: "true"
+  NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL: 'true'
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -74,45 +68,13 @@ jobs:
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-    - name: Determine mx version
-      run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
-    - name: Checkout graalvm/mx
-      uses: actions/checkout@v4
-      with:
-        repository: graalvm/mx
-        fetch-depth: 1
-        ref: ${{ env.MX_VERSION }}
-        path: ${{ env.MX_PATH }}
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.8'
-    - name: Update mx cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.mx
-        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
-        restore-keys: ${{ runner.os }}-mx-
-    - name: Fetch LabsJDK
-      run: |
-        mkdir jdk-dl
-        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-latest --to jdk-dl --alias ${JAVA_HOME}
     - name: Build GraalVM JDK
-      run: |
-        cd substratevm
-        ${MX_PATH}/mx --native=native-image --components="Native Image" build
-        mv $(${MX_PATH}/mx --native=native-image --components="Native Image" graalvm-home) ${GRAALVM_HOME}
-        ${GRAALVM_HOME}/bin/native-image --version
-    - name: Reconfigure JAVA_HOME for Micronaut
-      uses: actions/setup-java@v4
+      uses: ./.github/actions/build-graalvm
       with:
-        distribution: 'oracle'
-        java-version: '${{ env.MICRONAUT_JDK_VERSION }}'
+        java-version: ${{ env.MICRONAUT_JAVA_VERSION }}
     - name: Run nativeTest in Micronaut launch project
       run: |
-        curl --fail --silent --location --retry 3 --max-time 10 --output demo.zip --request GET 'https://launch.micronaut.io/create/default/com.example.demo?lang=JAVA&build=GRADLE&test=JUNIT&javaVersion=JDK_${{ env.MICRONAUT_JDK_VERSION }}'
+        curl --fail --silent --location --retry 3 --max-time 10 --output demo.zip --request GET 'https://launch.micronaut.io/create/default/com.example.demo?lang=JAVA&build=GRADLE&test=JUNIT&javaVersion=JDK_${{ env.MICRONAUT_JAVA_VERSION }}'
         unzip demo.zip
         cd demo
         ./gradlew nativeTest
@@ -120,7 +82,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: micronaut-projects/micronaut-core
-        fetch-depth: 1
         path: ${{ env.MICRONAUT_CORE_PATH }}
     - name: Run nativeTest in micronaut-core
       run: |

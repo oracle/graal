@@ -97,6 +97,10 @@ final class PolyglotEngineOptions {
                     "This option significantly slows down execution and is therefore intended for testing purposes only.")//
     static final OptionKey<Boolean> SafepointALot = new OptionKey<>(false);
 
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Show Java stacktraces for missing polls longer than the supplied number of milliseconds. Implies SafepointALot.", usageSyntax = "[0, inf)")//
+    static final OptionKey<Integer> TraceMissingSafepointPollInterval = new OptionKey<>(0);
+
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Prints the stack trace for all threads for a time interval. By default 0, which disables the output.", usageSyntax = "[1, inf)")//
     static final OptionKey<Long> TraceStackTraceInterval = new OptionKey<>(0L);

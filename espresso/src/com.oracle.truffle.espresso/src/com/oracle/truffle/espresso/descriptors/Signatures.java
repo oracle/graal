@@ -276,7 +276,7 @@ public final class Signatures {
     public final Symbol<Signature> makeRaw(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         if (parameterTypes == null || parameterTypes.length == 0) {
             final byte[] bytes = new byte[2 + returnType.length()];
-            Symbol.copyBytes(returnType, 0, bytes, 2, returnType.length());
+            returnType.writeTo(bytes, 2);
             bytes[0] = '(';
             bytes[1] = ')';
             return symbols.symbolify(ByteSequence.wrap(bytes));
@@ -292,11 +292,11 @@ public final class Signatures {
         int pos = 0;
         bytes[pos++] = '(';
         for (Symbol<Type> param : parameterTypes) {
-            Symbol.copyBytes(param, 0, bytes, pos, param.length());
+            param.writeTo(bytes, pos);
             pos += param.length();
         }
         bytes[pos++] = ')';
-        Symbol.copyBytes(returnType, 0, bytes, pos, returnType.length());
+        returnType.writeTo(bytes, pos);
         pos += returnType.length();
         assert pos == totalLength + 2;
         return symbols.symbolify(ByteSequence.wrap(bytes));
@@ -317,7 +317,7 @@ public final class Signatures {
             byte[] bytes = new byte[/* () */ 2 + returnType.length()];
             bytes[0] = '(';
             bytes[1] = ')';
-            Symbol.copyBytes(returnType, 0, bytes, 2, returnType.length());
+            returnType.writeTo(bytes, 2);
             return bytes;
         }
 
@@ -331,11 +331,11 @@ public final class Signatures {
         int pos = 0;
         bytes[pos++] = '(';
         for (Symbol<Type> param : parameterTypes) {
-            Symbol.copyBytes(param, 0, bytes, pos, param.length());
+            param.writeTo(bytes, pos);
             pos += param.length();
         }
         bytes[pos++] = ')';
-        Symbol.copyBytes(returnType, 0, bytes, pos, returnType.length());
+        returnType.writeTo(bytes, pos);
         pos += returnType.length();
         assert pos == totalLength + 2;
         return bytes;

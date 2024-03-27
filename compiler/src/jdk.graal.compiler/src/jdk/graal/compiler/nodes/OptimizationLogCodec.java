@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,7 @@ public class OptimizationLogCodec extends CompanionObjectEncoder<OptimizationLog
 
     @Override
     protected boolean shouldBeEncoded(OptimizationLog optimizationLog) {
-        return optimizationLog.isOptimizationLogEnabled();
+        return optimizationLog.isStructuredOptimizationLogEnabled();
     }
 
     @Override
@@ -90,7 +90,7 @@ public class OptimizationLogCodec extends CompanionObjectEncoder<OptimizationLog
      * @return an encoded optimization log or {@code null}
      */
     public static OptimizationLog maybeDecode(StructuredGraph graph, Object encodedObject) {
-        if (!graph.getOptimizationLog().isOptimizationLogEnabled()) {
+        if (!graph.getOptimizationLog().isStructuredOptimizationLogEnabled()) {
             return null;
         }
         OptimizationLogImpl optimizationLog = new OptimizationLogImpl(graph);
@@ -113,7 +113,7 @@ public class OptimizationLogCodec extends CompanionObjectEncoder<OptimizationLog
     public boolean verify(StructuredGraph originalGraph, StructuredGraph decodedGraph) {
         OptimizationLog original = originalGraph.getOptimizationLog();
         OptimizationLog decoded = decodedGraph.getOptimizationLog();
-        if (!original.isOptimizationLogEnabled() || !decoded.isOptimizationLogEnabled()) {
+        if (!original.isStructuredOptimizationLogEnabled() || !decoded.isStructuredOptimizationLogEnabled()) {
             return true;
         }
         assert original instanceof OptimizationLogImpl && decoded instanceof OptimizationLogImpl : "enabled optimization log implies instanceof OptimizationLogImpl";

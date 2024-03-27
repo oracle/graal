@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -601,14 +601,26 @@ public final class LLVMContext {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
 
-        // Ensure that thread destructors are run before global memory blocks
-        // have been deallocated by cleanUpNoGuestCode. Otherwise disposeThread
-        // will be called after finalizeContext when it is too late. [GR-39952]
-        language.disposeThread(this, Thread.currentThread());
+        boolean cancelling = env.getContext().isCancelling();
+
+        /*
+         * If the context is being cancelled, we must not run any guest code.
+         * 'LLVMLanguage.disposeThread' may call e.g. pthread destructors which can be arbitrary
+         * guest code.
+         */
+        if (!cancelling) {
+            // Ensure that thread destructors are run before global memory blocks
+            // have been deallocated by cleanUpNoGuestCode. Otherwise disposeThread
+            // will be called after finalizeContext when it is too late. [GR-39952]
+            language.disposeThread(this, Thread.currentThread());
+        }
 
         TruffleSafepoint sp = TruffleSafepoint.getCurrent();
         boolean prev = sp.setAllowActions(false);
         try {
+            if (cancelling) {
+                language.disposeThreadNoGuestCode(this, Thread.currentThread());
+            }
             cleanUpNoGuestCode();
         } finally {
             sp.setAllowActions(prev);

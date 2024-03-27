@@ -38,10 +38,8 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.VMConstant;
 
 /**
@@ -190,11 +188,6 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     }
 
     @Override
-    @Deprecated
-    public AnalysisType getType(MetaAccessProvider provider) {
-        return constantData.type;
-    }
-
     public AnalysisType getType() {
         return constantData.type;
     }

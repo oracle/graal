@@ -27,6 +27,13 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
@@ -35,14 +42,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.options.OptionValues;
-
-import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.code.FrameInfoEncoder;
-import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
-import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -209,7 +208,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
         }
 
         DeoptExceptionDispatchBlock(ExceptionDispatchBlock dispatch, int bci, boolean isDeoptEntry, boolean isInvokeProxy) {
-            super(dispatch.handler, bci);
+            super(dispatch.handler, dispatch.handlerID, bci);
             this.isDeoptEntry = isDeoptEntry;
             this.isInvokeProxy = isInvokeProxy;
         }

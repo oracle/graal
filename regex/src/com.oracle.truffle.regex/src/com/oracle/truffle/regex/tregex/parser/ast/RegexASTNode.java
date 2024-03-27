@@ -63,16 +63,18 @@ public abstract class RegexASTNode implements JsonConvertible {
     static final int FLAG_BACK_REFERENCE_IS_IGNORE_CASE = 1 << 9;
     static final int FLAG_GROUP_LOOP = 1 << 10;
     static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 11;
-    static final int FLAG_GROUP_LOCAL_FLAGS = 1 << 12;
-    static final int FLAG_EMPTY_GUARD = 1 << 13;
-    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 14;
-    static final int FLAG_HAS_LOOPS = 1 << 15;
-    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 16;
-    static final int FLAG_HAS_QUANTIFIERS = 1 << 17;
-    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 18;
-    static final int FLAG_HAS_LOOK_AHEADS = 1 << 19;
-    static final int FLAG_HAS_BACK_REFERENCES = 1 << 20;
-    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 21;
+    static final int FLAG_GROUP_MANDATORY_UNROLLED_QUANTIFIER = 1 << 12;
+    static final int FLAG_GROUP_QUANTIFIER_PASS_THROUGH_SEQUENCE = 1 << 13;
+    static final int FLAG_GROUP_LOCAL_FLAGS = 1 << 14;
+    static final int FLAG_EMPTY_GUARD = 1 << 15;
+    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 16;
+    static final int FLAG_HAS_LOOPS = 1 << 17;
+    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 18;
+    static final int FLAG_HAS_QUANTIFIERS = 1 << 19;
+    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 20;
+    static final int FLAG_HAS_LOOK_AHEADS = 1 << 21;
+    static final int FLAG_HAS_BACK_REFERENCES = 1 << 22;
+    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 23;
 
     private int id = -1;
     private RegexASTNode parent;
@@ -364,8 +366,8 @@ public abstract class RegexASTNode implements JsonConvertible {
      * <li>A+? is expanded as A(|A)*
      * <li>A? is expanded as (A|)
      * <li>A?? is expanded as (|A)
-     * <li>A{2,4} is expanded as AA(A|)(A|)
-     * <li>A{2,4}? is expanded as AA(|A)(|A)
+     * <li>A{2,4} is expanded as AA(A(A|)|)
+     * <li>A{2,4}? is expanded as AA(|A(|A))
      * </ul>
      * where (X|Y) is a group with alternatives X and Y and (X|Y)* is a looping group with
      * alternatives X and Y. In the examples above, all of the occurrences of A in the expansions as
@@ -383,6 +385,48 @@ public abstract class RegexASTNode implements JsonConvertible {
      */
     public void setExpandedQuantifier(boolean expandedQuantifier) {
         setFlag(FLAG_GROUP_EXPANDED_QUANTIFIER, expandedQuantifier);
+    }
+
+    /**
+     * Indicates whether this {@link RegexASTNode} represents a mandatory copy of a quantified term
+     * after unrolling.
+     *
+     * E.g., in the expansion of A{2,4}, which is AA(A(A|)|), the first two occurrences of A are
+     * marked with this flag.
+     */
+    public boolean isMandatoryUnrolledQuantifier() {
+        return isFlagSet(FLAG_GROUP_MANDATORY_UNROLLED_QUANTIFIER);
+    }
+
+    /**
+     * Marks this {@link RegexASTNode} as being inserted into the AST as part of unrolling the
+     * mandatory part of a quantified term.
+     *
+     * @see #isMandatoryUnrolledQuantifier()
+     */
+    public void setMandatoryUnrolledQuantifier(boolean mandatoryUnrolledQuantifier) {
+        setFlag(FLAG_GROUP_MANDATORY_UNROLLED_QUANTIFIER, mandatoryUnrolledQuantifier);
+    }
+
+    /**
+     * Indicates whether this node is an empty {@link Sequence} inserted as an early escape
+     * alternative when unrolling a quantifier expression.
+     *
+     * E.g., in the expansion of A{2,4}, which is AA(A(A|_)|_), the two {@code _} characters show
+     * the two empty sequences marked with this flag.
+     */
+    public boolean isQuantifierPassThroughSequence() {
+        return isFlagSet(FLAG_GROUP_QUANTIFIER_PASS_THROUGH_SEQUENCE);
+    }
+
+    /**
+     * Marks this empty {@link Sequence} as being inserted into the AST as part of unrolling the
+     * optional suffix of a quantified term.
+     *
+     * @see #isQuantifierPassThroughSequence()
+     */
+    public void setQuantifierPassThroughSequence(boolean quantifierPassThroughSequence) {
+        setFlag(FLAG_GROUP_QUANTIFIER_PASS_THROUGH_SEQUENCE, quantifierPassThroughSequence);
     }
 
     public int getMinPath() {
@@ -507,6 +551,10 @@ public abstract class RegexASTNode implements JsonConvertible {
         return this instanceof QuantifiableTerm;
     }
 
+    public boolean isSubexpressionCall() {
+        return this instanceof SubexpressionCall;
+    }
+
     public boolean isRoot() {
         return this instanceof RegexASTRootNode;
     }
@@ -577,6 +625,10 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     public Sequence asSequence() {
         return (Sequence) this;
+    }
+
+    public SubexpressionCall asSubexpressionCall() {
+        return (SubexpressionCall) this;
     }
 
     protected JsonObject toJson(String typeName) {

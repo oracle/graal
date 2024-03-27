@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,7 +74,9 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -99,7 +101,6 @@ import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 
 public class ProgressReporter {
     private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
@@ -119,10 +120,8 @@ public class ProgressReporter {
     private final StagePrinter<?> stagePrinter;
     private final ColorStrategy colorStrategy;
     private final LinkStrategy linkStrategy;
-    private final boolean usePrefix;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-    private String outputPrefix = "";
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
     private GCStats lastGCStats = GCStats.getCurrent();
     private long numRuntimeCompiledMethods = -1;
@@ -130,6 +129,7 @@ public class ProgressReporter {
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
     private int numForeignDowncalls = -1;
+    private int numForeignUpcalls = -1;
     private Timer debugInfoTimer;
     private boolean creationStageEndCompleted = false;
 
@@ -181,7 +181,6 @@ public class ProgressReporter {
             builderIO = NativeImageSystemIOWrappers.singleton();
         }
         jsonHelper = new ProgressReporterJsonHelper();
-        usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
 
         boolean enableColors = SubstrateOptions.hasColorsEnabled(options);
         colorStrategy = enableColors ? new ColorfulStrategy() : new ColorlessStrategy();
@@ -199,16 +198,12 @@ public class ProgressReporter {
         numJNIMethods = numMethods;
     }
 
-    public void setForeignFunctionsInfo(int numDowncalls) {
-        this.numForeignDowncalls = numDowncalls;
+    public void setForeignFunctionsInfo(int numDowncallStubs, int numUpcallStubs) {
+        this.numForeignDowncalls = numDowncallStubs;
+        this.numForeignUpcalls = numUpcallStubs;
     }
 
     public void printStart(String imageName, NativeImageKind imageKind) {
-        if (usePrefix) {
-            // Add the PID to further disambiguate concurrent builds of images with the same name
-            outputPrefix = String.format("[%s:%s] ", imageName, GraalServices.getExecutionID());
-            stagePrinter.progressBarStart += outputPrefix.length();
-        }
         l().printHeadlineSeparator();
         recordJsonMetric(GeneralInfo.IMAGE_NAME, imageName);
         String imageKindName = imageKind.name().toLowerCase(Locale.ROOT).replace('_', ' ');
@@ -354,8 +349,7 @@ public class ProgressReporter {
                 continue;
             }
             String origins = "";
-            /* The first extra help item is used for migration messages of options. */
-            String migrationMessage = descriptor.getExtraHelp().isEmpty() ? "" : descriptor.getExtraHelp().getFirst();
+            String migrationMessage = OptionUtils.getAnnotationsByType(descriptor, OptionMigrationMessage.class).stream().map(a -> a.value()).collect(Collectors.joining(". "));
             String alternatives = "";
 
             if (optionValue instanceof LocatableMultiOptionValue<?> lmov) {
@@ -526,10 +520,12 @@ public class ProgressReporter {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
+        String stubsFormat = "%,9d downcalls and %,d upcalls ";
         recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALLS, (numForeignDowncalls >= 0 ? numForeignDowncalls : UNAVAILABLE_METRIC));
-        if (numForeignDowncalls >= 0) {
-            l().a("%,8d ", numForeignDowncalls)
-                            .doclink("foreign downcalls registered", "#glossary-foreign-downcall-registrations").println();
+        recordJsonMetric(AnalysisResults.FOREIGN_UPCALLS, (numForeignUpcalls >= 0 ? numForeignUpcalls : UNAVAILABLE_METRIC));
+        if (numForeignDowncalls >= 0 || numForeignUpcalls >= 0) {
+            l().a(stubsFormat, numForeignDowncalls, numForeignUpcalls)
+                            .doclink("registered for foreign access", "#glossary-foreign-downcall-and-upcall-registrations").println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
@@ -1064,7 +1060,7 @@ public class ProgressReporter {
      * Start printing a new line.
      */
     public DirectPrinter l() {
-        return linePrinter.a(outputPrefix);
+        return linePrinter;
     }
 
     public CenteredTextPrinter centered() {
@@ -1146,7 +1142,7 @@ public class ProgressReporter {
     }
 
     abstract class StagePrinter<T extends StagePrinter<T>> extends LinePrinter<T> {
-        private int progressBarStart = 30;
+        private static final int PROGRESS_BAR_START = 30;
         private BuildStage activeBuildStage = null;
 
         private ScheduledFuture<?> periodicPrintingTask;
@@ -1184,12 +1180,12 @@ public class ProgressReporter {
         }
 
         private void appendStageStart() {
-            a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
+            blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
                             .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase(Locale.ROOT)).a("...").reset();
         }
 
         final String progressBarStartPadding() {
-            return Utils.stringFilledWith(progressBarStart - getCurrentTextLength(), " ");
+            return Utils.stringFilledWith(PROGRESS_BAR_START - getCurrentTextLength(), " ");
         }
 
         void reportProgress() {
@@ -1336,12 +1332,6 @@ public class ProgressReporter {
             assert getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
             return this;
         }
-
-        @Override
-        void flushln() {
-            print(outputPrefix);
-            super.flushln();
-        }
     }
 
     public final class CenteredTextPrinter extends LinePrinter<CenteredTextPrinter> {
@@ -1352,7 +1342,6 @@ public class ProgressReporter {
 
         @Override
         public void flushln() {
-            print(outputPrefix);
             String padding = Utils.stringFilledWith((Math.max(0, CHARACTERS_PER_LINE - getCurrentTextLength())) / 2, " ");
             print(padding);
             super.flushln();

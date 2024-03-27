@@ -170,6 +170,7 @@ import jdk.graal.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.ConstantFoldUtil;
 import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
@@ -211,6 +212,7 @@ import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
@@ -558,7 +560,12 @@ public class StandardGraphBuilderPlugins {
              * "Object" to "Reference", but kept the "Object" version as deprecated. We want to
              * intrinsify both variants, to avoid problems with Uninterruptible methods in Native
              * Image.
+             *
+             * As of JDK-8327729 (resolved in JDK 23), the "Object" versions have been removed.
              */
+            if (JavaVersionUtil.JAVA_SPEC >= 23) {
+                return new String[]{"Reference"};
+            }
             return new String[]{"Object", "Reference"};
         } else {
             return new String[]{kind.name()};
@@ -683,7 +690,7 @@ public class StandardGraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get(true);
-                        createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndWriteNode(obj, offset, value, kind, loc));
+                        createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndWriteNode(obj, offset, value, kind, loc), AtomicReadAndWriteNode.class);
                         return true;
                     }
                 });
@@ -694,7 +701,7 @@ public class StandardGraphBuilderPlugins {
                         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                             // Emits a null-check for the otherwise unused receiver
                             unsafe.get(true);
-                            createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndAddNode(obj, offset, delta, kind, loc));
+                            createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndAddNode(obj, offset, delta, kind, loc), AtomicReadAndAddNode.class);
                             return true;
                         }
                     });
@@ -1445,9 +1452,9 @@ public class StandardGraphBuilderPlugins {
             }
         }
 
-        protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor) {
+        protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor, Class<? extends TrackedUnsafeAccess> constructorClass) {
             StructuredGraph graph = b.getGraph();
-            graph.markUnsafeAccess();
+            graph.markUnsafeAccess(constructorClass);
             /* For unsafe access object pointers can only be stored in the heap */
             if (unsafeAccessKind == JavaKind.Object) {
                 ValueNode object = value;
@@ -1527,7 +1534,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get(true);
             b.addPush(returnKind, new UnsafeMemoryLoadNode(address, unsafeAccessKind, OFF_HEAP_LOCATION));
-            b.getGraph().markUnsafeAccess();
+            b.getGraph().markUnsafeAccess(UnsafeMemoryLoadNode.class);
             return true;
         }
 
@@ -1543,7 +1550,7 @@ public class StandardGraphBuilderPlugins {
             unsafe.get(true);
             // Note that non-ordered raw accesses can be turned into floatable field accesses.
             UnsafeNodeConstructor unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
-            createUnsafeAccess(object, b, unsafeNodeConstructor);
+            createUnsafeAccess(object, b, unsafeNodeConstructor, RawLoadNode.class);
             return true;
         }
     }
@@ -1567,7 +1574,7 @@ public class StandardGraphBuilderPlugins {
             unsafe.get(true);
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
             b.add(new UnsafeMemoryStoreNode(address, maskedValue, unsafeAccessKind, OFF_HEAP_LOCATION));
-            b.getGraph().markUnsafeAccess();
+            b.getGraph().markUnsafeAccess(UnsafeMemoryStoreNode.class);
             return true;
         }
 
@@ -1582,7 +1589,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get(true);
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
-            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, memoryOrder));
+            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, memoryOrder), RawStoreNode.class);
             return true;
         }
     }
@@ -1603,9 +1610,9 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get(true);
             if (isLogic) {
-                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndSwapNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder));
+                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndSwapNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder), UnsafeCompareAndSwapNode.class);
             } else {
-                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndExchangeNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder));
+                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndExchangeNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder), UnsafeCompareAndExchangeNode.class);
             }
             return true;
         }
@@ -1781,6 +1788,22 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
                 b.addPush(JavaKind.Long, new SideEffectNode(a));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("positivePi", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
+                BeginNode begin = b.add(new BeginNode());
+                b.addPush(JavaKind.Int, PiNode.create(n, StampFactory.positiveInt().improveWith(n.stamp(NodeView.DEFAULT)), begin));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("positivePi", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
+                BeginNode begin = b.add(new BeginNode());
+                b.addPush(JavaKind.Long, PiNode.create(n, IntegerStamp.create(64, 0, Long.MAX_VALUE).improveWith(n.stamp(NodeView.DEFAULT)), begin));
                 return true;
             }
         });

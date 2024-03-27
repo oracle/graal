@@ -25,6 +25,8 @@
 package jdk.graal.compiler.hotspot.aarch64;
 
 import static java.lang.reflect.Modifier.isStatic;
+import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
+import static jdk.graal.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.aarch64.AArch64.rscratch1;
@@ -32,8 +34,6 @@ import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
-import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
-import static jdk.graal.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
@@ -75,7 +75,6 @@ import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CompilationRequest;
@@ -505,6 +504,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 ForeignCallLinkage linkage = foreignCalls.lookupForeignCall(EXCEPTION_HANDLER);
                 Register helper = AArch64Call.isNearCall(linkage) ? null : scratch;
                 AArch64Call.directCall(crb, masm, linkage, helper, null);
+                // Ensure the return location is a unique pc and that control flow doesn't return
+                // here
+                masm.halt();
             }
             crb.recordMark(HotSpotMarkId.DEOPT_HANDLER_ENTRY);
             ForeignCallLinkage linkage = foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK);

@@ -222,7 +222,7 @@ public class SubstrateGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode patternNode) {
                     String pattern = asConstantObject(b, String.class, patternNode);
                     if (pattern != null) {
-                        b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(pattern), reason));
+                        b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(loader, pattern), reason));
                         return true;
                     }
                     return false;
@@ -297,7 +297,7 @@ public class SubstrateGraphBuilderPlugins {
      * serialization/deserialization.</li>
      * </ul>
      */
-    private static void parsePatternAndRegister(String pattern) {
+    private static void parsePatternAndRegister(ImageClassLoader loader, String pattern) {
         String[] patterns = pattern.split(";");
         for (String p : patterns) {
             int nameLen = p.length();
@@ -324,12 +324,9 @@ public class SubstrateGraphBuilderPlugins {
                     final String className = p.substring(poffset, nameLen - 1);
                     if (!negate) {
                         if (className.endsWith(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING)) {
-                            try {
-                                String lambdaHolderName = LambdaUtils.capturingClass(className);
-                                RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));
-                            } catch (ClassNotFoundException e) {
-                                // no class, no registration
-                            }
+                            String lambdaHolderName = LambdaUtils.capturingClass(className);
+                            // If the class cannot be loaded, there will be no registration
+                            loader.findClass(lambdaHolderName).ifPresent(RuntimeSerialization::registerLambdaCapturingClass);
                         }
                     }
                 }
@@ -340,15 +337,12 @@ public class SubstrateGraphBuilderPlugins {
                 }
                 // Pattern is a class name
                 if (!negate) {
-                    try {
-                        /* Support arrays of non-primitive types */
-                        if (name.startsWith("[") && name.contains("[L") && !name.endsWith(";")) {
-                            name += ";";
-                        }
-                        RuntimeSerialization.register(Class.forName(name, false, Thread.currentThread().getContextClassLoader()));
-                    } catch (ClassNotFoundException e) {
-                        // no class, no registration
+                    /* Support arrays of non-primitive types */
+                    if (name.startsWith("[") && name.contains("[L") && !name.endsWith(";")) {
+                        name += ";";
                     }
+                    // If the class cannot be loaded, there will be no registration
+                    loader.findClass(name).ifPresent(RuntimeSerialization::register);
                 }
             }
         }

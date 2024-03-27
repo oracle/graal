@@ -41,6 +41,7 @@ import java.io.PrintStream;
 import java.util.Formatter;
 import java.util.Map;
 
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
@@ -48,7 +49,6 @@ import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-
 import jdk.vm.ci.code.BailoutException;
 
 /**
@@ -255,6 +255,7 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
+    @SuppressWarnings("try")
     protected T handleFailure(DebugContext initialDebug, Throwable cause) {
         OptionValues initialOptions = initialDebug.getOptions();
 
@@ -354,7 +355,8 @@ public abstract class CompilationWrapper<T> {
 
             ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
             PrintStream ps = new PrintStream(logBaos);
-            try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
+            try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps);
+                            DebugCloseable retryScope = retryDebug.openRetryCompilation()) {
                 dumpOnError(retryDebug, cause);
 
                 T res;

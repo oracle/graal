@@ -689,10 +689,11 @@ public abstract class NativeImageCodeCache {
         }
         writer.println("--- vtables:");
         for (HostedType type : imageHeap.hUniverse.getTypes()) {
-            for (int i = 0; i < type.getVTable().length; i++) {
-                HostedMethod method = type.getVTable()[i];
+            HostedMethod[] vtable = type.getVTable();
+            for (int i = 0; i < vtable.length; i++) {
+                HostedMethod method = vtable[i];
                 if (method != null) {
-                    CompilationResult comp = compilationResultFor(type.getVTable()[i]);
+                    CompilationResult comp = compilationResultFor(vtable[i]);
                     if (comp != null) {
                         writer.format("%d %s @ %d: %s = 0x%x%n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
                     }

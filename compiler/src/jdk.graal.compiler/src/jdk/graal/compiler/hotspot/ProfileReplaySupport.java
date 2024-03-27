@@ -81,29 +81,29 @@ public final class ProfileReplaySupport {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Save per compilation profile information.", type = OptionType.User)
+        @Option(help = "Save per compilation profile information.", type = OptionType.Debug)
         public static final OptionKey<Boolean> SaveProfiles = new OptionKey<>(false);
-        @Option(help = "Allow multiple compilations of the same method by overriding existing profiles.", type = OptionType.User)
+        @Option(help = "Allow multiple compilations of the same method by overriding existing profiles.", type = OptionType.Debug)
         public static final OptionKey<Boolean> OverrideProfiles = new OptionKey<>(false);
-        @Option(help = "Path for saving compilation profiles. "
-                        + "If the value is omitted the debug dump path will be used.", type = OptionType.User)
+        @Option(help = "Path for saving compilation profiles. " +
+                       "If the value is omitted the debug dump path will be used.", type = OptionType.Debug)
         public static final OptionKey<String> SaveProfilesPath = new OptionKey<>(null);
-        @Option(help = "Load per compilation profile information.", type = OptionType.User)
+        @Option(help = "Load per compilation profile information.", type = OptionType.Debug)
         public static final OptionKey<String> LoadProfiles = new OptionKey<>(null);
-        @Option(help = "Restrict saving or loading of profiles based on this filter. "
-                        + "See the MethodFilter option for the pattern syntax.", type = OptionType.User)
+        @Option(help = "Restrict saving or loading of profiles based on this filter. " +
+                       "See the MethodFilter option for the pattern syntax.", type = OptionType.Debug)
         public static final OptionKey<String> ProfileMethodFilter = new OptionKey<>(null);
-        @Option(help = "Throw an error if an attempt is made to overwrite/update a profile loaded from disk.", type = OptionType.User)
+        @Option(help = "Throw an error if an attempt is made to overwrite/update a profile loaded from disk.", type = OptionType.Debug)
         public static final OptionKey<Boolean> StrictProfiles = new OptionKey<>(true);
-        @Option(help = "Print to stdout when a profile is loaded.", type = OptionType.User)
+        @Option(help = "Print to stdout when a profile is loaded.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintProfileLoading = new OptionKey<>(false);
-        @Option(help = "Print to stdout when a compilation performed with different profiles generates different "
-                        + "frontend IR.", type = OptionType.User)
+        @Option(help = "Print to stdout when a compilation performed with different profiles generates different " +
+                       "frontend IR.", type = OptionType.Debug)
         public static final OptionKey<Boolean> WarnAboutGraphSignatureMismatch = new OptionKey<>(true);
-        @Option(help = "Print to stdout when a compilation performed with different profiles generates different "
-                        + "backend code.", type = OptionType.User)
+        @Option(help = "Print to stdout when a compilation performed with different profiles generates different " +
+                       "backend code.", type = OptionType.Debug)
         public static final OptionKey<Boolean> WarnAboutCodeSignatureMismatch = new OptionKey<>(true);
-        @Option(help = "Print to stdout when requesting profiling info not present in a loaded profile.", type = OptionType.User)
+        @Option(help = "Print to stdout when requesting profiling info not present in a loaded profile.", type = OptionType.Debug)
         public static final OptionKey<Boolean> WarnAboutNotCachedLoadedAccess = new OptionKey<>(true);
         // @formatter:on
     }
@@ -141,6 +141,19 @@ public final class ProfileReplaySupport {
         return expectedResult;
     }
 
+    /**
+     * Start the profile record/replay process. If {@link Options#SaveProfiles} is set, this method
+     * installs {@link StableProfileProvider}s to record profiling information that can be
+     * subsequently saved with {@link #profileReplayEpilogue}. If {@link Options#LoadProfiles} is
+     * set, the method initializes {@link StableProfileProvider}s with profiles loaded from disk.
+     * <p>
+     * Note that there might be cases where profiles cannot be restored, even if they are present in
+     * the on-disk representation. For example, the profiles of {@code invokedynamic} call sites
+     * (e.g. lambda expressions) cannot be restored due to unpredictable type names of the lambda
+     * objects. Depending on {@link Options#StrictProfiles}, the {@link StableProfileProvider}s will
+     * either throw an exception or emit a warning in this case.
+     * </p>
+     */
     public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, Providers providers, int entryBCI, ResolvedJavaMethod method,
                     StableProfileProvider profileProvider, TypeFilter profileSaveFilter) {
         if (SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) {
@@ -199,6 +212,13 @@ public final class ProfileReplaySupport {
         return null;
     }
 
+    /**
+     * Finishes a previously started profile record/replay (see {@link #profileReplayPrologue}.
+     * Both, for record and replay, the method validates various expectations (see
+     * {@link Options#WarnAboutCodeSignatureMismatch} and
+     * {@link Options#WarnAboutGraphSignatureMismatch}). If {@link Options#SaveProfiles} is set, the
+     * method additionally saves the previously collected profiles to the given profile path.
+     */
     public void profileReplayEpilogue(DebugContext debug, CompilationResult result, StructuredGraph graph, StableProfileProvider profileProvider, CompilationIdentifier compilationId,
                     int entryBCI, ResolvedJavaMethod method) {
         if ((SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) && profileFilter.matches(method)) {

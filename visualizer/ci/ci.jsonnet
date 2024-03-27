@@ -1,5 +1,6 @@
 {
   local common = import '../../ci/ci_common/common.jsonnet',
+  local utils = import '../../ci/ci_common/common-utils.libsonnet',
 
   Gate:: {
     timelimit : "30:00",
@@ -34,8 +35,10 @@
     ]
   },
 
-  builds: [
+  local _builds = [
     common.linux_amd64 + common.oraclejdk11 + self.Gate + { name: "gate-visualizer-linux-amd64-oraclejdk-11" },
     common.linux_amd64 + common.labsjdkLatestCE + self.Integration + { name: "gate-visualizer-integration-linux-amd64-labsjdk-latest" },
-  ]
+  ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

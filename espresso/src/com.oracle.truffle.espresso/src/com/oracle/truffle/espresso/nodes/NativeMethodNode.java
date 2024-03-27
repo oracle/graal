@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * Represents a native Java method.
@@ -93,11 +94,6 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
             }
         }
         return nativeArgs;
-    }
-
-    @Override
-    void beforeInstumentation(VirtualFrame frame) {
-        // no op
     }
 
     @Override
@@ -152,7 +148,7 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     }
 
     @Override
-    public int getBci(@SuppressWarnings("unused") Frame frame) {
-        return -2;
+    public int getBci(Frame frame) {
+        return VM.EspressoStackElement.NATIVE_BCI;
     }
 }

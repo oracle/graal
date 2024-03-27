@@ -44,7 +44,7 @@ import com.oracle.svm.util.ReflectionUtil;
 public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        rerunClassInit(access, "com.sun.management.internal.OperatingSystemImpl");
+        initializeAtRunTime(access, "com.sun.management.internal.OperatingSystemImpl");
 
         access.registerReachabilityHandler(this::linkManagementExt, clazz(access, "com.sun.management.internal.OperatingSystemImpl"));
         PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_management_internal_OperatingSystemImpl");

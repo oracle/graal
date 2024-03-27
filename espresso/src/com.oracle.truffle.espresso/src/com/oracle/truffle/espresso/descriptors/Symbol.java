@@ -90,10 +90,6 @@ public final class Symbol<T> extends ByteSequence {
         return subSequence(from, to - from);
     }
 
-    static void copyBytes(Symbol<?> src, int srcPos, byte[] dest, int destPos, int length) {
-        System.arraycopy(src.value, srcPos, dest, destPos, length);
-    }
-
     @Override
     public byte byteAt(int index) {
         return value[index];
@@ -221,6 +217,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getResourceAsStream = StaticSymbols.putName("getResourceAsStream");
         public static final Symbol<Name> parent = StaticSymbols.putName("parent");
         public static final Symbol<Name> unnamedModule = StaticSymbols.putName("unnamedModule");
+        public static final Symbol<Name> nameAndId = StaticSymbols.putName("nameAndId");
         public static final Symbol<Name> HIDDEN_CLASS_LOADER_REGISTRY = StaticSymbols.putName("0HIDDEN_CLASS_LOADER_REGISTRY");
 
         // j.l.Module
@@ -507,6 +504,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> setValue = StaticSymbols.putName("setValue");
         public static final Symbol<Name> entrySet = StaticSymbols.putName("entrySet");
         public static final Symbol<Name> hasNext = StaticSymbols.putName("hasNext");
+        public static final Symbol<Name> toArray = StaticSymbols.putName("toArray");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal identifiers.
 
@@ -580,6 +578,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Name> platformClassLoader = StaticSymbols.putName("platformClassLoader");
         public static final Symbol<Name> bootModules = StaticSymbols.putName("bootModules");
+        public static final Symbol<Name> platformModules = StaticSymbols.putName("platformModules");
         public static final Symbol<Name> descriptor = StaticSymbols.putName("descriptor");
         public static final Symbol<Name> ofSystem = StaticSymbols.putName("ofSystem");
         public static final Symbol<Name> defineModule = StaticSymbols.putName("defineModule");
@@ -1090,7 +1089,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> java_util_Iterator = StaticSymbols.putSignature(Type.java_util_Iterator);
         public static final Symbol<Signature> java_util_Set = StaticSymbols.putSignature(Type.java_util_Set);
-        public static final Symbol<Signature> java_util_Set_Object_array = StaticSymbols.putSignature(Type.java_util_Set, Type.java_lang_Object_array);
+        public static final Symbol<Signature> Set_Object_array = StaticSymbols.putSignature(Type.java_util_Set, Type.java_lang_Object_array);
 
         public static final Symbol<Signature> java_lang_reflect_Method_init_signature = StaticSymbols.putSignature(Type._void,
                         /* declaringClass */ Type.java_lang_Class,
@@ -1104,6 +1103,35 @@ public final class Symbol<T> extends ByteSequence {
                         /* annotations */ Type._byte_array,
                         /* parameterAnnotations */ Type._byte_array,
                         /* annotationDefault */ Type._byte_array);
+
+        public static final Symbol<Signature> java_lang_reflect_Constructor_init_signature = StaticSymbols.putSignature(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* parameterTypes */ Type.java_lang_Class_array,
+                        /* checkedExceptions */ Type.java_lang_Class_array,
+                        /* modifiers */ Type._int,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array,
+                        /* parameterAnnotations */ Type._byte_array);
+
+        public static final Symbol<Signature> java_lang_reflect_Field_init_signature = StaticSymbols.putSignature(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* name */ Type.java_lang_String,
+                        /* type */ Type.java_lang_Class,
+                        /* modifiers */ Type._int,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array);
+
+        public static final Symbol<Signature> java_lang_reflect_Field_init_signature_15 = StaticSymbols.putSignature(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* name */ Type.java_lang_String,
+                        /* type */ Type.java_lang_Class,
+                        /* modifiers */ Type._int,
+                        /* trustedFinal */ Type._boolean,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array);
 
         public static final Symbol<Signature> MethodType_Class_Class = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_Class, Type.java_lang_Class_array);
         public static final Symbol<Signature> MethodType_String_ClassLoader = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_String, Type.java_lang_ClassLoader);

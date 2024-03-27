@@ -662,6 +662,18 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WhiteBoxAPI = new OptionKey<>(false);
 
+    public enum GuestFieldOffsetStrategyEnum {
+        safety,
+        compact,
+        graal
+    }
+
+    @Option(help = "Guest field offset strategy. The safety strategy will help catch some wrong usages of the unsafe API.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "safety|compact|graal") //
+    public static final OptionKey<GuestFieldOffsetStrategyEnum> GuestFieldOffsetStrategy = new OptionKey<>(GuestFieldOffsetStrategyEnum.safety);
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);

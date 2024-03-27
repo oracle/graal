@@ -65,14 +65,6 @@ mx.update_commands(_suite, {
         lambda args: createBenchmarkShortcut("specjvm2008", args),
         '[<benchmarks>|*] [-- [VM options] [-- [SPECjvm2008 options]]]'
     ],
-    'specjbb2005': [
-        lambda args: mx_benchmark.benchmark(["specjbb2005"] + args),
-        '[-- [VM options] [-- [SPECjbb2005 options]]]'
-    ],
-    'specjbb2013': [
-        lambda args: mx_benchmark.benchmark(["specjbb2013"] + args),
-        '[-- [VM options] [-- [SPECjbb2013 options]]]'
-    ],
     'specjbb2015': [
         lambda args: mx_benchmark.benchmark(["specjbb2015"] + args),
         '[-- [VM options] [-- [SPECjbb2015 options]]]'
@@ -170,9 +162,6 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundle
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
 
-    def extra_image_build_argument(self, _, args):
-        return super(BaseSpringBenchmarkSuite, self).extra_image_build_argument(_, args) + self.create_bundle_image_build_arguments()
-
     def get_application_startup_regex(self):
         # Example of SpringBoot 3 startup log:
         # 2023-05-16T14:08:54.033+02:00  INFO 24381 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 3.774 seconds (process running for 4.1)
@@ -180,6 +169,10 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundle
 
     def get_application_startup_units(self):
         return 's'
+
+    def get_image_env(self):
+        # Disable experimental option checking.
+        return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
 
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
@@ -243,7 +236,6 @@ mx_benchmark.add_bm_suite(SpringHelloWorldWrkBenchmarkSuite())
 
 
 class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
-
     def get_application_startup_regex(self):
         # Example of Quarkus startup log:
         # "2021-03-17 20:03:33,893 INFO  [io.quarkus] (main) tika-quickstart 1.0.0-SNAPSHOT on JVM (powered by Quarkus 1.12.1.Final) started in 1.210s. Listening on: <url>"
@@ -252,45 +244,25 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_units(self):
         return 's'
 
+    def get_image_env(self):
+        # Disable experimental option checking.
+        return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
+
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
-    def extra_image_build_argument(self, benchmark, args):
-        return ['-J-Dsun.nio.ch.maxUpdateArraySize=100',
-                '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
-                '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
-                '-J-Dvertx.disableDnsResolver=true',
-                '-J-Dio.netty.leakDetection.level=DISABLED',
-                '-J-Dio.netty.allocator.maxOrder=3',
-                '-J-Duser.language=en',
-                '-J-Duser.country=US',
-                '-J-Dfile.encoding=UTF-8',
-                '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
-                '-J--add-opens=java.base/java.text=ALL-UNNAMED',
-                '-J-Djava.awt.headless=true',
-                '--no-fallback',
-                '--enable-http',
-                '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk.localization=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED',
-                '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions',
-                '-H:NativeLinkerOption=-no-pie',
-                '-H:+AddAllCharsets',
-                '-H:+ReportExceptionStackTraces',
-        ] + mx_sdk_vm_impl.svm_experimental_options([
-                '-H:+AllowFoldMethods',
-                '-H:-UseServiceLoaderFeature',
-                '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
-        ]) + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
+class BaseQuarkusBundleBenchmarkSuite(BaseQuarkusBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
+    def uses_bundles(self):
+        return True
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
 
 
-class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+class BaseTikaBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
     def version(self):
-        return "1.0.10"
+        return "1.0.11"
 
     def applicationDist(self):
         return mx.library("TIKA_" + self.version(), True).get_path(True)
@@ -306,10 +278,9 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
         expectedJdkVersion = mx.VersionSpec("11.0.13")
         if mx.get_jdk().version < expectedJdkVersion:
             mx.abort(benchmark + " needs at least JDK version " + str(expectedJdkVersion))
-
         return [
                    # Workaround for wrong class initialization configuration in Quarkus Tika
-                   '--initialize-at-build-time=org.apache.pdfbox.rendering.ImageType,org.apache.pdfbox.rendering.ImageType$1,org.apache.pdfbox.rendering.ImageType$2,org.apache.pdfbox.rendering.ImageType$3,org.apache.pdfbox.rendering.ImageType$4',
+                   '--initialize-at-build-time=org.apache.pdfbox.rendering.ImageType,org.apache.pdfbox.rendering.ImageType$1,org.apache.pdfbox.rendering.ImageType$2,org.apache.pdfbox.rendering.ImageType$3,org.apache.pdfbox.rendering.ImageType$4,org.apache.xmlbeans.XmlObject,org.apache.xmlbeans.metadata.system.sXMLCONFIG.TypeSystemHolder,org.apache.xmlbeans.metadata.system.sXMLLANG.TypeSystemHolder,org.apache.xmlbeans.metadata.system.sXMLSCHEMA.TypeSystemHolder',
                ] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
@@ -328,9 +299,9 @@ class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenc
 mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 
-class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
     def version(self):
-        return "1.0.5"
+        return "1.0.6"
 
     def applicationDist(self):
         return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
@@ -364,7 +335,7 @@ class QuarkusHelloWorldWrkBenchmarkSuite(BaseQuarkusHelloWorldBenchmarkSuite, mx
 mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
 
 
-class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
+class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_regex(self):
         # Example of Micronaut startup log (there can be some formatting in between):
         # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
@@ -373,29 +344,25 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBun
     def get_application_startup_units(self):
         return 'ms'
 
+    def get_image_env(self):
+        # Disable experimental option checking.
+        return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
+
     def build_assertions(self, benchmark, is_gate):
         # This method overrides NativeImageMixin.build_assertions
         return []  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
 
-    def extra_image_build_argument(self, benchmark, args):
-        return [
-                   '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-                   # Workaround for wrong class initialization configuration in Micronaut 3.9
-                   '--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder',
-                   '--initialize-at-build-time=org.xml.sax.helpers.AttributesImpl,org.xml.sax.helpers.LocatorImpl',
-               ] + super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
-
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
+
+class BaseMicronautBundleBenchmarkSuite(BaseMicronautBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
     def uses_bundles(self):
         return True
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
 
-    def extra_image_build_argument(self, _, args):
-        return super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(_, args) + self.create_bundle_image_build_arguments()
 
 class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
     """
@@ -516,7 +483,8 @@ class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark
 
 mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
-class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
+
+class BaseShopCartBenchmarkSuite(BaseMicronautBundleBenchmarkSuite):
     def version(self):
         return "0.3.10"
 
@@ -545,7 +513,7 @@ class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Bas
 mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 
-class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
+class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBundleBenchmarkSuite):
     def version(self):
         return "1.0.7"
 
@@ -1433,258 +1401,6 @@ class HeapSettingsMixin(object):
             mx.log("Setting young generation size based on XMN env var to -Xmn{}".format(xmn))
 
         return vmArgs + heap_args
-
-
-class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMixin):
-    """SPECjbb2005 benchmark suite implementation.
-
-    This suite has only a single benchmark, and does not allow setting a specific
-    benchmark in the command line.
-    """
-    def __init__(self, *args, **kwargs):
-        super(SpecJbb2005BenchmarkSuite, self).__init__(*args, **kwargs)
-        self.prop_tmp_file = None
-
-    def name(self):
-        return "specjbb2005"
-
-    def group(self):
-        return "Graal"
-
-    def subgroup(self):
-        return "graal-compiler"
-
-    def vmArgs(self, bmSuiteArgs):
-        vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2005BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
-
-    def specJbbClassPath(self):
-        specjbb2005 = mx.get_env("SPECJBB2005")
-        if specjbb2005 is None:
-            mx.abort("Please set the SPECJBB2005 environment variable to a " +
-                     "SPECjbb2005 directory.")
-        jbbpath = join(specjbb2005, "jbb.jar")
-        if not exists(jbbpath):
-            mx.abort("The SPECJBB2005 environment variable points to a directory " +
-                     "without the jbb.jar file.")
-        checkpath = join(specjbb2005, "check.jar")
-        if not exists(checkpath):
-            mx.abort("The SPECJBB2005 environment variable points to a directory " +
-                     "without the check.jar file.")
-        return jbbpath + ":" + checkpath
-
-    def validateEnvironment(self):
-        if not self.specJbbClassPath():
-            raise RuntimeError(
-                "The SPECJBB2005 environment variable was not specified.")
-
-    def validateReturnCode(self, retcode):
-        return retcode == 0
-
-    def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return mx.get_env("SPECJBB2005")
-
-    def extractSuiteArgs(self, bmSuiteArgs):
-        """Extracts accepted suite args and removes it from bmSuiteArgs"""
-        allowedSuiteArgs = [
-            "input.measurement_seconds",
-            "input.starting_number_warehouses",
-            "input.increment_number_warehouses",
-            "input.expected_peak_warehouse",
-            "input.ending_number_warehouses"
-        ]
-        jbbprops = {}
-        for suiteArg in bmSuiteArgs:
-            for allowedArg in allowedSuiteArgs:
-                if suiteArg.startswith("{}=".format(allowedArg)):
-                    bmSuiteArgs.remove(suiteArg)
-                    key, value = suiteArg.split("=", 1)
-                    jbbprops[key] = value
-        return jbbprops
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if benchmarks is not None:
-            mx.abort("No benchmark should be specified for the selected suite.")
-
-        if self.prop_tmp_file is None:
-            jbbprops = self.getDefaultProperties(benchmarks, bmSuiteArgs)
-            jbbprops.update(self.extractSuiteArgs(bmSuiteArgs))
-            fd, self.prop_tmp_file = mkstemp(prefix="specjbb2005", suffix=".props")
-            with os.fdopen(fd, "w") as f:
-                f.write("\n".join(["{}={}".format(key, value) for key, value in jbbprops.items()]))
-
-        propArgs = ["-propfile", self.prop_tmp_file]
-        vmArgs = self.vmArgs(bmSuiteArgs)
-        runArgs = self.runArgs(bmSuiteArgs)
-        mainClass = "spec.jbb.JBBmain"
-        return (
-                vmArgs + ["-cp"] + [self.specJbbClassPath()] + [mainClass] + propArgs +
-                runArgs)
-
-    def after(self, bmSuiteArgs):
-        if self.prop_tmp_file is not None and os.path.exists(self.prop_tmp_file):
-            os.unlink(self.prop_tmp_file)
-
-    def getDefaultProperties(self, benchmarks, bmSuiteArgs):
-        configfile = join(self.workingDirectory(benchmarks, bmSuiteArgs), "SPECjbb.props")
-        config = StringIO()
-        config.write("[root]\n")
-        with open(configfile, "r") as f:
-            config.write(f.read())
-        config.seek(0, os.SEEK_SET)
-        configp = ConfigParser()
-        _configparser_read_file(configp, config)
-        return dict(configp.items("root"))
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["default"]
-
-    def successPatterns(self):
-        return [
-            re.compile(
-                r"^Valid run, Score is  [0-9]+$", # pylint: disable=line-too-long
-                re.MULTILINE)
-        ]
-
-    def failurePatterns(self):
-        return [
-            re.compile(r"VALIDATION ERROR", re.MULTILINE),
-            re.compile(
-                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
-                re.MULTILINE)
-        ]
-
-    def flakySuccessPatterns(self):
-        return []
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return [
-            mx_benchmark.StdOutRule(
-                r"^Valid run, Score is  (?P<score>[0-9]+)$", # pylint: disable=line-too-long
-                {
-                    "benchmark": "default",
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "metric.name": "throughput",
-                    "metric.value": ("<score>", float),
-                    "metric.unit": "bops",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "higher",
-                    "metric.iteration": 0
-                }
-            )
-        ]
-
-
-mx_benchmark.add_bm_suite(SpecJbb2005BenchmarkSuite())
-
-
-class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMixin):
-    """SPECjbb2013 benchmark suite implementation.
-
-    This suite has only a single benchmark, and does not allow setting a specific
-    benchmark in the command line.
-    """
-    def name(self):
-        return "specjbb2013"
-
-    def group(self):
-        return "Graal"
-
-    def subgroup(self):
-        return "graal-compiler"
-
-    def vmArgs(self, bmSuiteArgs):
-        vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2013BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
-
-    def specJbbClassPath(self):
-        specjbb2013 = mx.get_env("SPECJBB2013")
-        if specjbb2013 is None:
-            mx.abort("Please set the SPECJBB2013 environment variable to a " +
-                     "SPECjbb2013 directory.")
-        jbbpath = join(specjbb2013, "specjbb2013.jar")
-        if not exists(jbbpath):
-            mx.abort("The SPECJBB2013 environment variable points to a directory " +
-                     "without the specjbb2013.jar file.")
-        return jbbpath
-
-    def validateEnvironment(self):
-        if not self.specJbbClassPath():
-            raise RuntimeError(
-                "The SPECJBB2013 environment variable was not specified.")
-
-    def validateReturnCode(self, retcode):
-        return retcode == 0
-
-    def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return mx.get_env("SPECJBB2013")
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if benchmarks is not None:
-            mx.abort("No benchmark should be specified for the selected suite.")
-        vmArgs = self.vmArgs(bmSuiteArgs)
-        runArgs = self.runArgs(bmSuiteArgs)
-        return vmArgs + ["-jar", self.specJbbClassPath(), "-m", "composite"] + runArgs
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["default"]
-
-    def successPatterns(self):
-        return [
-            re.compile(
-                r"org.spec.jbb.controller: Run finished", # pylint: disable=line-too-long
-                re.MULTILINE)
-        ]
-
-    def failurePatterns(self):
-        return [
-            re.compile(
-                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
-                re.MULTILINE)
-        ]
-
-    def flakySuccessPatterns(self):
-        return []
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        result_pattern = r"^RUN RESULT: hbIR \(max attempted\) = [0-9]+, hbIR \(settled\) = [0-9]+, max-jOPS = (?P<max>[0-9]+), critical-jOPS = (?P<critical>[0-9]+)$" # pylint: disable=line-too-long
-        return [
-            mx_benchmark.StdOutRule(
-                result_pattern,
-                {
-                    "benchmark": "default",
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "metric.name": "max",
-                    "metric.value": ("<max>", float),
-                    "metric.unit": "jops",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "higher",
-                    "metric.iteration": 0
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                result_pattern,
-                {
-                    "benchmark": "default",
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "metric.name": "critical",
-                    "metric.value": ("<critical>", float),
-                    "metric.unit": "jops",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "higher",
-                    "metric.iteration": 0
-                }
-            )
-        ]
-
-
-mx_benchmark.add_bm_suite(SpecJbb2013BenchmarkSuite())
 
 
 class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMixin):

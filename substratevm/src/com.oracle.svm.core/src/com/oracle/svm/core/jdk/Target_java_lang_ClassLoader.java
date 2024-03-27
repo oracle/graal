@@ -316,11 +316,11 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings("unused")
     private static Class<?> defineClass0(ClassLoader loader, Class<?> lookup, String name, byte[] b, int off, int len, ProtectionDomain pd, boolean initialize, int flags, Object classData) {
+        String actualName = name;
         if (LambdaUtils.isLambdaClassName(name)) {
-            String newName = name + LambdaUtils.digest(b);
-            return PredefinedClassesSupport.loadClass(loader, newName.replace('/', '.'), b, off, b.length, null);
+            actualName += LambdaUtils.digest(b);
         }
-        throw new UnsupportedOperationException("Defining classes at runtime is not supported by Native Image: Failed to define a hidden class.");
+        return PredefinedClassesSupport.loadClass(loader, actualName.replace('/', '.'), b, off, b.length, null);
     }
 
     // JDK-8265605

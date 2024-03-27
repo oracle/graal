@@ -160,7 +160,7 @@ public final class PointsToAnalyzer {
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
-                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, new HostedValuesProvider(aUniverse));
+                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, new HostedValuesProvider(aMetaAccess, aUniverse));
         aUniverse.setHeapScanner(heapScanner);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);

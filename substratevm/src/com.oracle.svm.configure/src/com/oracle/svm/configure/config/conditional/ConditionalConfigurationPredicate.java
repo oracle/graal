@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,11 @@ package com.oracle.svm.configure.config.conditional;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+
 import com.oracle.svm.configure.config.ConfigurationPredefinedClass;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.configure.config.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
@@ -49,8 +52,8 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
     }
 
     @Override
-    public boolean testIncludedType(ConditionalElement<String> conditionalElement, ConfigurationType type) {
-        return !filter.includes(conditionalElement.condition().getTypeName()) || !filter.includes(type.getQualifiedJavaName());
+    public boolean testIncludedType(ConditionalElement<ConfigurationTypeDescriptor> conditionalElement, ConfigurationType type) {
+        return testTypeDescriptor(conditionalElement.condition(), type.getTypeDescriptor());
     }
 
     @Override
@@ -81,5 +84,17 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
     @Override
     public boolean testPredefinedClass(ConfigurationPredefinedClass clazz) {
         return clazz.getNameInfo() != null && !filter.includes(clazz.getNameInfo());
+    }
+
+    private boolean testTypeDescriptor(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
+        if (!filter.includes(condition.getTypeName())) {
+            return true;
+        }
+        for (String typeName : typeDescriptor.getAllQualifiedJavaNames()) {
+            if (!filter.includes(typeName)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -29,10 +29,12 @@ import static com.oracle.truffle.espresso.jvmti.JvmtiErrorCodes.JVMTI_OK;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
@@ -44,7 +46,7 @@ import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 
 @GenerateNativeEnv(target = JvmtiImpl.class, prependEnv = true)
 public final class JVMTIEnv extends NativeEnv {
-
+    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, JVMTIEnv.class);
     @CompilationFinal //
     private @Pointer TruffleObject jvmtiEnvPtr;
     @CompilationFinal //
@@ -70,6 +72,11 @@ public final class JVMTIEnv extends NativeEnv {
                 throw EspressoError.shouldNotReachHere("Cannot dispose Espresso jvmti (mokapot).");
             }
         }
+    }
+
+    @Override
+    protected TruffleLogger getLogger() {
+        return LOGGER;
     }
 
     public TruffleObject getEnv() {

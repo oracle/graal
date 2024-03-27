@@ -37,7 +37,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -45,6 +44,7 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -631,7 +631,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
     }
 
-    public <T> void registerObjectReachableCallback(BiConsumer<DuringAnalysisAccess, T> callback) {
+    public <T> void registerObjectReachableCallback(ObjectReachableCallback<T> callback) {
         ConcurrentLightHashSet.addElement(this, objectReachableCallbacksUpdater, callback);
         /* Register the callback with already discovered subtypes too. */
         for (AnalysisType subType : subTypes) {
@@ -642,8 +642,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
     }
 
-    public <T> void notifyObjectReachable(DuringAnalysisAccess access, T object) {
-        ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (BiConsumer<DuringAnalysisAccess, T> c) -> c.accept(access, object));
+    public <T> void notifyObjectReachable(DuringAnalysisAccess access, T object, ScanReason reason) {
+        ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (ObjectReachableCallback<T> c) -> c.doCallback(access, object, reason));
     }
 
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
@@ -1040,7 +1040,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         /* Register the object reachability callbacks with the newly discovered subtype. */
         if (!subType.equals(this)) {
             /* Subtypes include this type itself. */
-            ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (BiConsumer<DuringAnalysisAccess, Object> callback) -> subType.registerObjectReachableCallback(callback));
+            ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (ObjectReachableCallback<Object> callback) -> subType.registerObjectReachableCallback(callback));
         }
         assert result : "Tried to add a " + subType + " which is already registered";
     }

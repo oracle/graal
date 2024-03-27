@@ -28,6 +28,7 @@ import static java.util.FormattableFlags.LEFT_JUSTIFY;
 import static java.util.FormattableFlags.UPPERCASE;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -105,6 +106,11 @@ public final class DebugContext implements AutoCloseable {
      * Determines whether debug context was closed.
      */
     boolean closed;
+
+    /**
+     * Set to true during a retry compilation in case of a compilation error.
+     */
+    boolean inRetryCompilation;
 
     DebugConfigImpl currentConfig;
     ScopeImpl currentScope;
@@ -395,8 +401,7 @@ public final class DebugContext implements AutoCloseable {
         }
 
         String getLabel() {
-            if (compilable instanceof JavaMethod) {
-                JavaMethod method = (JavaMethod) compilable;
+            if (compilable instanceof JavaMethod method) {
                 return method.format("%h.%n(%p)%r");
             }
             return String.valueOf(compilable);
@@ -645,7 +650,15 @@ public final class DebugContext implements AutoCloseable {
         try {
             String id = description == null ? null : description.identifier;
             String label = description == null ? null : description.getLabel();
-            String result = PathUtilities.createUnique(immutable.options, DebugOptions.DumpPath, id, label, extension, createMissingDirectory);
+            String prefix;
+            if (id == null) {
+                prefix = DebugOptions.DumpPath.getValue(immutable.options);
+                int slash = prefix.lastIndexOf(File.separatorChar);
+                prefix = prefix.substring(slash + 1);
+            } else {
+                prefix = id;
+            }
+            String result = PathUtilities.createUnique(DebugOptions.getDumpDirectory(immutable.options), prefix, label, extension, createMissingDirectory);
             if (showDumpFiles) {
                 TTY.println(DUMP_FILE_MESSAGE_FORMAT, result);
             }
@@ -760,6 +773,13 @@ public final class DebugContext implements AutoCloseable {
      */
     public boolean methodFilterMatchesCurrentMethod() {
         return currentConfig != null && currentConfig.methodFilterMatchesCurrentMethod(currentScope);
+    }
+
+    /**
+     * Checks if this context is in the scope of a retry compilation.
+     */
+    public boolean inRetryCompilation() {
+        return inRetryCompilation;
     }
 
     /**
@@ -1067,6 +1087,21 @@ public final class DebugContext implements AutoCloseable {
             return currentScope.disableIntercept();
         }
         return null;
+    }
+
+    /**
+     * Opens a scope in which {@link #inRetryCompilation()} returns true. The current retry state is
+     * restored when {@link DebugCloseable#close()} is called on the returned object.
+     */
+    public DebugCloseable openRetryCompilation() {
+        boolean previous = inRetryCompilation;
+        inRetryCompilation = true;
+        return new DebugCloseable() {
+            @Override
+            public void close() {
+                inRetryCompilation = previous;
+            }
+        };
     }
 
     /**
@@ -2321,9 +2356,8 @@ public final class DebugContext implements AutoCloseable {
                 String name = key.getName();
                 long value = metricValues[index];
                 String valueString;
-                if (key instanceof TimerKey) {
+                if (key instanceof TimerKey timer) {
                     // Report timers in ms
-                    TimerKey timer = (TimerKey) key;
                     long ms = timer.getTimeUnit().toMillis(value);
                     if (ms == 0) {
                         continue;
@@ -2343,7 +2377,7 @@ public final class DebugContext implements AutoCloseable {
         out.println(new String(new char[title.length()]).replace('\0', '~'));
 
         for (Map.Entry<String, String> e : res.entrySet()) {
-            out.printf("%-" + String.valueOf(maxKeyWidth) + "s = %20s%n", e.getKey(), e.getValue());
+            out.printf("%-" + maxKeyWidth + "s = %20s%n", e.getKey(), e.getValue());
         }
         out.println();
     }

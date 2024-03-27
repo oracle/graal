@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.driver;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -46,9 +44,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionDescriptors;
-import jdk.graal.compiler.options.OptionStability;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -61,6 +56,7 @@ import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
@@ -71,6 +67,10 @@ import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.util.StringUtil;
+
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionStability;
 
 class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String ENTER_UNLOCK_SCOPE = SubstrateOptionsParser.commandArgument(SubstrateOptions.UnlockExperimentalVMOptions, "+");
@@ -140,7 +140,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor, SortedMap<String, OptionInfo> apiOptions,
                     Map<String, GroupInfo> groupInfos, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances, Set<String> stableOptionNames) {
-        for (APIOption apiAnnotation : getAnnotationsByType(optionDescriptor, APIOption.class)) {
+        for (APIOption apiAnnotation : OptionUtils.getAnnotationsByType(optionDescriptor, APIOption.class)) {
             String builderOption = optionPrefix;
             if (apiAnnotation.name().length <= 0) {
                 VMError.shouldNotReachHere(String.format("APIOption for %s does not provide a name entry", optionDescriptor.getLocation()));
@@ -277,20 +277,11 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 String rawOptionName = optionDescriptor.getName();
                 String builderOption = optionPrefix + rawOptionName;
                 BundleMember.Role role = BundleMember.Role.Ignore;
-                for (BundleMember bundleMember : getAnnotationsByType(optionDescriptor, BundleMember.class)) {
+                for (BundleMember bundleMember : OptionUtils.getAnnotationsByType(optionDescriptor, BundleMember.class)) {
                     role = bundleMember.role();
                 }
                 pathOptions.put(builderOption, new PathsOptionInfo(multiOptionDefaultValue.getDelimiter(), role));
             }
-        }
-    }
-
-    private static <T extends Annotation> List<T> getAnnotationsByType(OptionDescriptor optionDescriptor, Class<T> annotationClass) {
-        try {
-            Field field = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
-            return List.of(field.getAnnotationsByType(annotationClass));
-        } catch (NoSuchFieldException e) {
-            return List.of();
         }
     }
 

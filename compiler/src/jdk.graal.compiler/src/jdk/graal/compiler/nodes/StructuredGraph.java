@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,8 +60,10 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.loop.LoopSafepointVerification;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.ResolvedJavaMethodProfileProvider;
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
@@ -315,9 +317,23 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     private final List<ResolvedJavaMethod> methods;
 
+    /**
+     * See {@link #markUnsafeAccess(Class)} for explanation.
+     */
     private enum UnsafeAccessState {
+        /**
+         * A {@link TrackedUnsafeAccess} node has never been added to this graph.
+         */
         NO_ACCESS,
+
+        /**
+         * A {@link TrackedUnsafeAccess} node was added to this graph at a prior point.
+         */
         HAS_ACCESS,
+
+        /**
+         * In synthetic methods we disable unsafe access tracking.
+         */
         DISABLED
     }
 
@@ -356,7 +372,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.profileProvider = profileProvider;
         this.isSubstitution = isSubstitution;
         this.cancellable = cancellable;
-        this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
+        this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isStructuredOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
     }
@@ -548,7 +564,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         if (inliningLog != null) {
             inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, inlineeMethod, reason, args);
         }
-        if (positive && calleeOptimizationLog != null && optimizationLog.isOptimizationLogEnabled()) {
+        if (positive && calleeOptimizationLog != null && optimizationLog.isStructuredOptimizationLogEnabled()) {
             FixedNode invokeNode = invoke.asFixedNodeOrNull();
             optimizationLog.inline(calleeOptimizationLog, true, invokeNode == null ? null : invokeNode.getNodeSourcePosition());
         }
@@ -1104,7 +1120,31 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return hasUnsafeAccess == UnsafeAccessState.HAS_ACCESS;
     }
 
-    public void markUnsafeAccess() {
+    /**
+     * Records that this graph encodes a memory access via the {@code Unsafe} class.
+     *
+     * HotSpot requires this information to modify the behavior of its signal handling for compiled
+     * code that contains an unsafe memory access.
+     *
+     * @param nodeClass the type of the node encoding the unsafe access
+     */
+    public void markUnsafeAccess(Class<? extends TrackedUnsafeAccess> nodeClass) {
+        markUnsafeAccess();
+    }
+
+    public void maybeMarkUnsafeAccess(EncodedGraph graph) {
+        if (graph.hasUnsafeAccess()) {
+            markUnsafeAccess();
+        }
+    }
+
+    public void maybeMarkUnsafeAccess(StructuredGraph graph) {
+        if (graph.hasUnsafeAccess()) {
+            markUnsafeAccess();
+        }
+    }
+
+    private void markUnsafeAccess() {
         if (hasUnsafeAccess == UnsafeAccessState.DISABLED) {
             return;
         }
@@ -1265,4 +1305,18 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert (inliningLog == null) == (newInliningLog == null) : "the new inlining log must be null iff the previous is null";
         inliningLog = newInliningLog;
     }
+
+    private LoopSafepointVerification safepointVerification;
+
+    @Override
+    public boolean verify(boolean verifyInputs) {
+        if (verifyGraphEdges) {
+            if (safepointVerification == null) {
+                safepointVerification = new LoopSafepointVerification();
+            }
+            assert safepointVerification.verifyLoopSafepoints(this);
+        }
+        return super.verify(verifyInputs);
+    }
+
 }

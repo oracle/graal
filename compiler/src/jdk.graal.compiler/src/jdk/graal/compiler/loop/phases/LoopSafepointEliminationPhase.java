@@ -52,7 +52,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     public static class Options {
         //@formatter:off
-        @Option(help = "Remove safepoints on counted loop ends.", type = OptionType.Expert)
+        @Option(help = "Removes safepoints on counted loop ends.", type = OptionType.Expert)
         public static final OptionKey<Boolean> RemoveLoopSafepoints = new OptionKey<>(true);
         //@formatter:on
     }

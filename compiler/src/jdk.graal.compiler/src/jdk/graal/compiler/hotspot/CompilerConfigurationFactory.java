@@ -68,11 +68,11 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Names the compiler configuration to use. If omitted, the compiler configuration " +
-                       "with the highest auto-selection priority is used. To see the set of available configurations, " +
-                       "supply the value 'help' to this option.", type = OptionType.Expert, stability = OptionStability.STABLE)
+        @Option(help = "Names the compiler configuration to use. " +
+                       "If omitted, uses the compiler configuration with the greatest auto-selection priority. " +
+                       "To see available configurations, use the value 'help'.", type = OptionType.Expert, stability = OptionStability.STABLE)
         public static final OptionKey<String> CompilerConfiguration = new OptionKey<>(null);
-        @Option(help = "Writes to the VM log information about the compiler configuration selected.", type = OptionType.User, stability = OptionStability.STABLE)
+        @Option(help = "Writes the configuration of the selected compiler to the VM log.", type = OptionType.User, stability = OptionStability.STABLE)
         public static final OptionKey<ShowConfigurationLevel> ShowConfiguration = new EnumOptionKey<>(ShowConfigurationLevel.none);
         // @formatter:on
     }

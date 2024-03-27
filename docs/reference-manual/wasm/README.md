@@ -13,22 +13,22 @@ The support for WebAssembly is in the early stages of its development.
 
 ## Getting Started
 
-As of GraalVM for JDK 21, the GraalVM WebAssembly runtime (known as Wasm) is available as a standalone distribution. 
+The GraalVM WebAssembly runtime (known as Wasm) is available as a standalone distribution.
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-1. Download the Wasm 23.1 standalone for your operating system:
+1. Download the Wasm 24.0 standalone for your operating system:
    - Native standalone
-      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01C4D519AE0631718000AA34D/content)
-      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01C5E519AE0631718000AA34D/content)
-      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/069B12298B9149EDE0631718000A11BC/content)
-      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01C7B519AE0631718000AA34D/content)
-      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/069B12298BB049EDE0631718000A11BC/content)
+      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.0-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.0-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.0-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.0-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.0-windows-amd64.zip)
    - JVM standalone
-      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01C98519AE0631718000AA34D/content)
-      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/069B12298BDD49EDE0631718000A11BC/content)
-      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBC6481ADE0631718000AA7AB/content)
-      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01CB9519AE0631718000AA34D/content)
-      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBC7781ADE0631718000AA7AB/content)
+      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.0-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.0-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.0-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.0-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.0-windows-amd64.zip)
 
 2. Unzip the archive:
 

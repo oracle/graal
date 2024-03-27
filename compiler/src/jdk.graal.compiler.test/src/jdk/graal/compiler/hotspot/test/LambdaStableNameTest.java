@@ -75,7 +75,7 @@ public class LambdaStableNameTest {
         assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
 
         String myName = Type.getInternalName(getClass());
-        assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x0a7a1b7da3e20b4eff3f548c6ba3e47a0c3be612;", name);
+        assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0xed5a4b9e70b8402e1deaafe82331c67282b84ba0;", name);
     }
 
     private static void assertLambdaName(String name) {

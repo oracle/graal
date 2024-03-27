@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,7 +88,7 @@ class Debug {
 
             sb.append(property.getKey());
             sb.append('[').append(property.getLocation()).append(']');
-            Object value = property.get(object, false);
+            Object value = property.getLocation().get(object, false);
             if (value instanceof DynamicObject) {
                 if (level < levelStop) {
                     value = dumpObject((DynamicObject) value, level + 1, levelStop);

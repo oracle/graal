@@ -3,6 +3,7 @@
 local sc = (import "ci_common/sulong-common.jsonnet");
 {
   local common = import "../../ci/ci_common/common.jsonnet",
+  local utils = import '../../ci/ci_common/common-utils.libsonnet',
 
   local linux_amd64 = common.linux_amd64,
 
@@ -45,6 +46,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulongStandalone,interop") + { name: "gate-sulong-standalone-interop-jdk-latest-windows-amd64", timelimit: "30:00" },
     sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,nwcc,llvm") + { name: "gate-sulong-nwcc-llvm-jdk-latest-windows-amd64" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk-latest-windows-amd64", timelimit: "45:00" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk-latest-windows-amd64", timelimit: "45:00" },
   ],
 
   standalone_builds::
@@ -96,5 +99,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
       { name: "weekly-sulong-coverage-jdk21-darwin-aarch64", timelimit: "1:00:00" },
     ]),
 
-  builds: [ sc.defBuild(b) for b in self.regular_builds + self.standalone_builds + self.coverage_builds ],
+  local _builds = [ sc.defBuild(b) for b in self.regular_builds + self.standalone_builds + self.coverage_builds ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

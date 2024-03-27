@@ -1,0 +1,2 @@
+# the following test tries to cast a pointer to an unsigned long and then dereference it
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-prof/comp-goto-1.c.dir

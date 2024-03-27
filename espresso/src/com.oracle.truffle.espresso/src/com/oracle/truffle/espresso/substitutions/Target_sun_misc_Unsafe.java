@@ -40,6 +40,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -57,6 +59,7 @@ import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
@@ -81,6 +84,9 @@ public final class Target_sun_misc_Unsafe {
     static {
         Unsafe unsafe = UnsafeAccess.get();
         ADDRESS_SIZE = unsafe.addressSize();
+    }
+
+    private Target_sun_misc_Unsafe() {
     }
 
     @TruffleBoundary
@@ -127,8 +133,8 @@ public final class Target_sun_misc_Unsafe {
      * factor, together with this base offset, to form new offsets to access elements of arrays of
      * the given class.
      *
-     * @see Target_sun_misc_Unsafe.GetInt
-     * @see Target_sun_misc_Unsafe.PutInt
+     * @see GetInt
+     * @see PutInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static int arrayBaseOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
@@ -147,12 +153,11 @@ public final class Target_sun_misc_Unsafe {
     /**
      * Report the scale factor for addressing elements in the storage allocation of a given array
      * class. However, arrays of "narrow" types will generally not work properly with accessors like
-     * {@link Target_sun_misc_Unsafe.GetByte}, so the scale factor for such classes is reported as
-     * zero.
+     * {@link GetByte}, so the scale factor for such classes is reported as zero.
      *
      * @see #arrayBaseOffset
-     * @see Target_sun_misc_Unsafe.GetInt
-     * @see Target_sun_misc_Unsafe.PutInt
+     * @see GetInt
+     * @see PutInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static int arrayIndexScale(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
@@ -194,40 +199,144 @@ public final class Target_sun_misc_Unsafe {
      * than a few bits to encode an offset within a non-array object, However, for consistency with
      * other methods in this class, this method reports its result as a long value.
      *
-     * @see Target_sun_misc_Unsafe.GetInt
+     * @see GetInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long objectFieldOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject field,
-                    @Inject Meta meta) {
+                    @Inject Meta meta, @Inject EspressoLanguage language) {
         Field target = Field.getReflectiveFieldRoot(field, meta);
-        return (target.isStatic() ? SAFETY_STATIC_FIELD_OFFSET : SAFETY_FIELD_OFFSET) + target.getSlot();
+        if (target.isStatic()) {
+            meta.throwIllegalArgumentExceptionBoundary();
+        }
+        return getGuestFieldOffset(target, language);
     }
 
-    static int safetyOffsetToSlot(long safetyOffset) {
-        int offset = Math.toIntExact(safetyOffset);
-        if (offset >= (SAFETY_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS)) {
-            return offset - SAFETY_FIELD_OFFSET;
-        } else {
-            assert offset >= (SAFETY_STATIC_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS) : "offset: " + offset;
-            return offset - SAFETY_STATIC_FIELD_OFFSET;
+    public interface GuestFieldOffsetStrategy {
+        default int getGuestOffset(Field f) {
+            return Math.toIntExact(slotToGuestOffset(f.getSlot(), f.isStatic()));
+        }
+
+        int guestOffsetToSlot(long guestOffset);
+
+        boolean forceStatic(long guestOffset);
+
+        long slotToGuestOffset(int slot, boolean isStatic);
+
+        boolean isAllowed(JavaVersion v);
+
+        String name();
+    }
+
+    public static final class SafetyGuestFieldOffsetStrategy implements GuestFieldOffsetStrategy {
+        @Override
+        public int guestOffsetToSlot(long guestOffset) {
+            int offset = Math.toIntExact(guestOffset);
+            if (forceStatic(offset)) {
+                assert offset >= (SAFETY_STATIC_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS) : "offset: " + offset;
+                return offset - SAFETY_STATIC_FIELD_OFFSET;
+            } else {
+                return offset - SAFETY_FIELD_OFFSET;
+            }
+        }
+
+        @Override
+        public boolean forceStatic(long guestOffset) {
+            return forceStatic(Math.toIntExact(guestOffset));
+        }
+
+        private static boolean forceStatic(int guestOffset) {
+            return guestOffset < (SAFETY_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS);
+        }
+
+        @Override
+        public long slotToGuestOffset(int slot, boolean isStatic) {
+            return ((long) (isStatic ? SAFETY_STATIC_FIELD_OFFSET : SAFETY_FIELD_OFFSET)) + slot;
+        }
+
+        @Override
+        public boolean isAllowed(JavaVersion v) {
+            return true;
+        }
+
+        @Override
+        public String name() {
+            return "safety";
         }
     }
 
-    static long slotToSafetyOffset(int slot, boolean isStatic) {
-        return ((long) (isStatic ? SAFETY_STATIC_FIELD_OFFSET : SAFETY_FIELD_OFFSET)) + slot;
+    public static final class CompactGuestFieldOffsetStrategy implements GuestFieldOffsetStrategy {
+        @Override
+        public int guestOffsetToSlot(long guestOffset) {
+            return Math.toIntExact(guestOffset);
+        }
+
+        @Override
+        public boolean forceStatic(long guestOffset) {
+            return false;
+        }
+
+        @Override
+        public long slotToGuestOffset(int slot, boolean isStatic) {
+            return slot;
+        }
+
+        @Override
+        public boolean isAllowed(JavaVersion v) {
+            // JDK-8294278 & JDK-8297757 require being able to tell if an "offset" is a static or
+            // instance field.
+            return v.java18OrEarlier() || v.java21OrLater();
+        }
+
+        @Override
+        public String name() {
+            return "compact";
+        }
     }
 
-    private static Field resolveUnsafeAccessField(StaticObject holder, long offset, Meta meta) {
-        int slot;
-        int safetyOffset = Math.toIntExact(offset);
-        boolean isStatic = false;
-        if (safetyOffset >= (SAFETY_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS)) {
-            slot = safetyOffset - SAFETY_FIELD_OFFSET;
-        } else {
-            assert safetyOffset >= (SAFETY_STATIC_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS) : "safetyOffset: " + safetyOffset;
-            slot = safetyOffset - SAFETY_STATIC_FIELD_OFFSET;
-            isStatic = true;
+    public static final class GraalGuestFieldOffsetStrategy implements GuestFieldOffsetStrategy {
+        @Override
+        public int guestOffsetToSlot(long guestOffset) {
+            return Math.toIntExact(guestOffset) >> 2;
         }
+
+        @Override
+        public boolean forceStatic(long guestOffset) {
+            return false;
+        }
+
+        @Override
+        public long slotToGuestOffset(int slot, boolean isStatic) {
+            return ((long) slot) << 2;
+        }
+
+        @Override
+        public boolean isAllowed(JavaVersion v) {
+            // see CompactGuestFieldOffsetStrategy.isAllowed
+            return v.java18OrEarlier() || v.java21OrLater();
+        }
+
+        @Override
+        public String name() {
+            return "graal";
+        }
+    }
+
+    public static int getGuestFieldOffset(Field f, EspressoLanguage language) {
+        return language.getGuestFieldOffsetStrategy().getGuestOffset(f);
+    }
+
+    static int guestOffsetToSlot(long guestOffset, EspressoLanguage language) {
+        return language.getGuestFieldOffsetStrategy().guestOffsetToSlot(guestOffset);
+    }
+
+    static long slotToGuestOffset(int slot, boolean isStatic, EspressoLanguage language) {
+        return language.getGuestFieldOffsetStrategy().slotToGuestOffset(slot, isStatic);
+    }
+
+    private static Field resolveUnsafeAccessField(StaticObject holder, long offset, Meta meta, EspressoLanguage language) {
+        GuestFieldOffsetStrategy guestFieldOffsetStrategy = language.getGuestFieldOffsetStrategy();
+        int slot = guestFieldOffsetStrategy.guestOffsetToSlot(offset);
+        boolean forceStatic = guestFieldOffsetStrategy.forceStatic(offset);
 
         assert !StaticObject.isNull(holder);
 
@@ -235,9 +344,9 @@ public final class Target_sun_misc_Unsafe {
             // the field offset is not normalized
             return null;
         }
-        Field field = null;
+        Field field;
         try {
-            if (isStatic) {
+            if (forceStatic) {
                 if (holder.isMirrorKlass()) {
                     // This is needed to support:
                     // > int off = U.objectFieldOffset(SomeClass.class, "staticField")
@@ -249,7 +358,11 @@ public final class Target_sun_misc_Unsafe {
                     field = holder.getKlass().lookupStaticFieldTable(slot);
                 }
             } else {
-                field = holder.getKlass().lookupFieldTable(slot);
+                if (holder.isStaticStorage()) {
+                    field = holder.getKlass().lookupStaticFieldTable(slot);
+                } else {
+                    field = holder.getKlass().lookupFieldTable(slot);
+                }
             }
         } catch (IndexOutOfBoundsException ex) {
             // Invalid field offset
@@ -270,8 +383,15 @@ public final class Target_sun_misc_Unsafe {
         return advertisedHolder;
     }
 
-    static EspressoException throwUnsupported(Meta meta, String message) {
-        throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, message);
+    @TruffleBoundary
+    static EspressoException throwNoField(Meta meta, StaticObject holder, long offset) {
+        if (StaticObject.isNull(holder)) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "No field at offset " + offset + " in null");
+        } else if (holder.isStaticStorage()) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "No field at offset " + offset + " in static storage of " + holder.getKlass().getExternalName());
+        } else {
+            throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "No field at offset " + offset + " in instance of type " + holder.getKlass().getExternalName());
+        }
     }
 
     @TruffleBoundary
@@ -309,8 +429,8 @@ public final class Target_sun_misc_Unsafe {
      *
      * @throws OutOfMemoryError if the allocation is refused by the system
      *
-     * @see Target_sun_misc_Unsafe.GetByte
-     * @see Target_sun_misc_Unsafe.PutByte
+     * @see GetByte
+     * @see PutByte
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
@@ -444,9 +564,8 @@ public final class Target_sun_misc_Unsafe {
      *
      * <p>
      * This method determines a block's base address by means of two parameters, and so it provides
-     * (in effect) a <em>double-register</em> addressing mode, as discussed in
-     * {@link Target_sun_misc_Unsafe.GetInt}. When the object reference is null, the offset supplies
-     * an absolute base address.
+     * (in effect) a <em>double-register</em> addressing mode, as discussed in {@link GetInt}. When
+     * the object reference is null, the offset supplies an absolute base address.
      *
      * <p>
      * The stores are in coherent (atomic) units of a size determined by the address and length
@@ -493,30 +612,37 @@ public final class Target_sun_misc_Unsafe {
      * As of 1.4.1, offsets for fields are represented as long values, although the Sun JVM does not
      * use the most significant 32 bits. However, JVM implementations which store static fields at
      * absolute addresses can use long offsets and null base pointers to express the field locations
-     * in a form usable by {@link Target_sun_misc_Unsafe.GetInt}. Therefore, code which will be
-     * ported to such JVMs on 64-bit platforms must preserve all bits of static field offsets.
+     * in a form usable by {@link GetInt}. Therefore, code which will be ported to such JVMs on
+     * 64-bit platforms must preserve all bits of static field offsets.
      *
-     * @see Target_sun_misc_Unsafe.GetInt
+     * @see GetInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static long staticFieldOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject field,
-                    @Inject Meta meta) {
-        return Field.getReflectiveFieldRoot(field, meta).getSlot() + SAFETY_STATIC_FIELD_OFFSET;
+    public static long staticFieldOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject fieldMirror,
+                    @Inject Meta meta, @Inject EspressoLanguage language) {
+        Field field = Field.getReflectiveFieldRoot(fieldMirror, meta);
+        if (!field.isStatic()) {
+            meta.throwIllegalArgumentExceptionBoundary();
+        }
+        return getGuestFieldOffset(field, language);
     }
 
     /**
      * Report the location of a given static field, in conjunction with {@link #staticFieldOffset}.
      * <p>
      * Fetch the base "Object", if any, with which static fields of the given class can be accessed
-     * via methods like {@link Target_sun_misc_Unsafe.GetInt}. This value may be null. This value
-     * may refer to an object which is a "cookie", not guaranteed to be a real Object, and it should
-     * not be used in any way except as argument to the get and put routines in this class.
+     * via methods like {@link GetInt}. This value may be null. This value may refer to an object
+     * which is a "cookie", not guaranteed to be a real Object, and it should not be used in any way
+     * except as argument to the get and put routines in this class.
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static @JavaType(Object.class) StaticObject staticFieldBase(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                     @JavaType(java.lang.reflect.Field.class) StaticObject field,
                     @Inject Meta meta) {
         Field target = Field.getReflectiveFieldRoot(field, meta);
+        if (!target.isStatic()) {
+            meta.throwIllegalArgumentExceptionBoundary();
+        }
         return target.getDeclaringKlass().getStatics();
     }
 
@@ -750,19 +876,21 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
     @SuppressWarnings("unused")
     public static long objectFieldOffset1(@JavaType(Unsafe.class) StaticObject self, @JavaType(value = Class.class) StaticObject cl, @JavaType(value = String.class) StaticObject guestName,
-                    @Inject Meta meta) {
+                    @Inject Meta meta, @Inject EspressoLanguage language) {
         Klass k = cl.getMirrorKlass(meta);
-        String hostName = meta.toHostString(guestName);
-        if (k instanceof ObjectKlass) {
-            ObjectKlass kl = (ObjectKlass) k;
-            for (Field f : kl.getFieldTable()) {
-                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
-                    return SAFETY_FIELD_OFFSET + f.getSlot();
+        if (k instanceof ObjectKlass kl) {
+            String hostName = meta.toHostString(guestName);
+            Symbol<Name> name = meta.getNames().lookup(hostName);
+            if (name != null) {
+                for (Field f : kl.getFieldTable()) {
+                    if (!f.isRemoved() && f.getName() == name) {
+                        return getGuestFieldOffset(f, language);
+                    }
                 }
-            }
-            for (Field f : kl.getStaticFieldTable()) {
-                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
-                    return SAFETY_STATIC_FIELD_OFFSET + f.getSlot();
+                for (Field f : kl.getStaticFieldTable()) {
+                    if (!f.isRemoved() && f.getName() == name) {
+                        return getGuestFieldOffset(f, language);
+                    }
                 }
             }
         }
@@ -787,7 +915,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(replaces = "doCached")
         protected Field doGeneric(StaticObject holder, long slot) {
-            return resolveUnsafeAccessField(holder, slot, getMeta());
+            return resolveUnsafeAccessField(holder, slot, getMeta(), getLanguage());
         }
 
         public static GetFieldFromIndexNode create() {
@@ -815,7 +943,7 @@ public final class Target_sun_misc_Unsafe {
      * Stores a value into a given memory address. If the address is zero, or does not point into a
      * block obtained from {@link #allocateMemory}, the results are undefined.
      *
-     * @see Target_sun_misc_Unsafe.GetByte
+     * @see GetByte
      */
     @Substitution(hasReceiver = true)
     abstract static class PutByte extends UnsafeAccessNode {
@@ -850,7 +978,7 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
-    /** @see Target_sun_misc_Unsafe.GetByteWithBase */
+    /** @see GetByteWithBase */
     @Substitution(hasReceiver = true)
     abstract static class PutInt extends UnsafeAccessNode {
 
@@ -920,7 +1048,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setByte(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
@@ -943,7 +1071,7 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
@@ -964,7 +1092,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
@@ -985,7 +1113,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setChar(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
@@ -1006,7 +1134,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setShort(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
@@ -1027,7 +1155,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setInt(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
@@ -1048,7 +1176,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
@@ -1069,7 +1197,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
@@ -1090,7 +1218,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setLong(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
@@ -1117,7 +1245,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setInt(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1138,7 +1266,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setLong(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1162,7 +1290,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1193,7 +1321,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Byte) {
                 return f.getByte(resolveUnsafeAccessHolder(f, holder, getMeta()));
@@ -1218,7 +1346,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Object) {
                 return f.getObject(resolveUnsafeAccessHolder(f, holder, getMeta()));
@@ -1242,7 +1370,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Boolean) {
                 return f.getBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()));
@@ -1266,7 +1394,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Char) {
                 return f.getChar(resolveUnsafeAccessHolder(f, holder, getMeta()));
@@ -1290,7 +1418,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Short) {
                 return f.getShort(resolveUnsafeAccessHolder(f, holder, getMeta()));
@@ -1314,7 +1442,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Int) {
                 return f.getInt(resolveUnsafeAccessHolder(f, holder, getMeta()));
@@ -1338,7 +1466,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Float) {
                 return f.getFloat(resolveUnsafeAccessHolder(f, holder, getMeta()));
@@ -1362,7 +1490,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Double) {
                 return f.getDouble(resolveUnsafeAccessHolder(f, holder, getMeta()));
@@ -1386,7 +1514,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Long) {
                 return f.getLong(resolveUnsafeAccessHolder(f, holder, getMeta()));
@@ -1414,7 +1542,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Byte) {
                 return f.getByte(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
@@ -1439,7 +1567,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Object) {
                 return f.getObject(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
@@ -1463,7 +1591,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Boolean) {
                 return f.getBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
@@ -1487,7 +1615,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Char) {
                 return f.getChar(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
@@ -1511,7 +1639,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Short) {
                 return f.getShort(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
@@ -1535,7 +1663,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Int) {
                 return f.getInt(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
@@ -1559,7 +1687,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Float) {
                 return f.getFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
@@ -1583,7 +1711,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Double) {
                 return f.getDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
@@ -1607,7 +1735,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() == JavaKind.Long) {
                 return f.getLong(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
@@ -1653,7 +1781,7 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
-    /** @see Target_sun_misc_Unsafe.GetByteWithBase */
+    /** @see GetByteWithBase */
     @Substitution(hasReceiver = true)
     abstract static class GetInt extends UnsafeAccessNode {
 
@@ -1717,7 +1845,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setByte(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1740,7 +1868,7 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1761,7 +1889,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1782,7 +1910,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setChar(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1803,7 +1931,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setShort(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1824,7 +1952,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setInt(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1845,7 +1973,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1866,7 +1994,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1887,7 +2015,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             f.setLong(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
@@ -1915,7 +2043,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             return f.compareAndSwapObject(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
         }
@@ -1939,7 +2067,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             switch (f.getKind()) {
                 case Int:
@@ -1971,7 +2099,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             switch (f.getKind()) {
                 case Long:
@@ -2020,7 +2148,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             if (f.getKind() != JavaKind.Object) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -2049,7 +2177,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             switch (f.getKind()) {
                 case Int:
@@ -2081,7 +2209,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             switch (f.getKind()) {
                 case Boolean:
@@ -2113,7 +2241,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             switch (f.getKind()) {
                 case Short:
@@ -2145,7 +2273,7 @@ public final class Target_sun_misc_Unsafe {
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             switch (f.getKind()) {
                 case Long:
@@ -2181,7 +2309,7 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
-                throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
+                throw throwNoField(getMeta(), holder, offset);
             }
             return f.getAndSetObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }

@@ -1,5 +1,4 @@
 One or several (comma-separated) paths to JSON files that specify lists of interfaces that define Java proxy classes.
-Use a proxy-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.
 
 The JSON structure is described in the following schema:
 

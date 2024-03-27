@@ -58,7 +58,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -186,10 +185,17 @@ public abstract class ImageHeapScanner {
     }
 
     void markTypeInstantiated(AnalysisType type, ScanReason reason) {
-        if (universe.sealed() && !type.isReachable()) {
-            throw AnalysisError.shouldNotReachHere("Universe is sealed. New type reachable: " + type.toJavaName());
+        if (universe.sealed()) {
+            AnalysisError.guarantee(type.isReachable(), "The type %s should have been reachable during analysis.", type);
+            AnalysisError.guarantee(type.isInstantiated(), "The type %s should have been instantiated during analysis.", type);
+        } else {
+            /*
+             * If the type was registered as allocated, but not registered as in heap,
+             * registerTypeAsInHeap must not be executed after the universe is sealed as the
+             * contextInsensitiveAnalysisObject was cleaned up.
+             */
+            universe.getBigbang().registerTypeAsInHeap(type, reason);
         }
-        universe.getBigbang().registerTypeAsInHeap(type, reason);
     }
 
     public JavaConstant getImageHeapConstant(JavaConstant constant) {
@@ -443,8 +449,6 @@ public abstract class ImageHeapScanner {
     private boolean doNotifyAnalysis(AnalysisField field, JavaConstant receiver, JavaConstant fieldValue, ScanReason reason) {
         boolean analysisModified = false;
         if (fieldValue.getJavaKind() == JavaKind.Object && hostVM.isRelocatedPointer(fieldValue)) {
-            /* Ensure the relocatable pointer type is analysed. */
-            ((AnalysisType) ((TypedConstant) fieldValue).getType(metaAccess)).registerAsReachable(reason);
             analysisModified = scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
         } else if (fieldValue.isNull()) {
             analysisModified = scanningObserver.forNullFieldValue(receiver, field, reason);
@@ -499,7 +503,7 @@ public abstract class ImageHeapScanner {
         return analysisModified;
     }
 
-    private JavaConstant markReachable(JavaConstant constant, ScanReason reason) {
+    protected JavaConstant markReachable(JavaConstant constant, ScanReason reason) {
         return markReachable(constant, reason, null);
     }
 
@@ -513,7 +517,7 @@ public abstract class ImageHeapScanner {
     private ImageHeapConstant markReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         if (imageHeapConstant.markReachable(reason)) {
             /* Follow all the array elements and reachable field values asynchronously. */
-            postTask(() -> onObjectReachable(imageHeapConstant, reason, onAnalysisModified));
+            maybeRunInExecutor(unused -> onObjectReachable(imageHeapConstant, reason, onAnalysisModified));
         }
         return imageHeapConstant;
     }
@@ -527,7 +531,7 @@ public abstract class ImageHeapScanner {
         /* Simulated constants don't have a backing object and don't need to be processed. */
         if (object != null) {
             try {
-                type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object);
+                type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object, reason);
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
                 StringBuilder backtrace = new StringBuilder();
@@ -684,6 +688,18 @@ public abstract class ImageHeapScanner {
         });
         arrayObject.setElementTask(index, task);
         return task;
+    }
+
+    /**
+     * Returns true if the provided {@code object} was seen as reachable by the static analysis.
+     */
+    public boolean isObjectReachable(Object object) {
+        var javaConstant = asConstant(Objects.requireNonNull(object));
+        Object existingTask = imageHeap.getSnapshot(javaConstant);
+        if (existingTask instanceof ImageHeapConstant imageHeapConstant) {
+            return imageHeapConstant.isReachable();
+        }
+        return false;
     }
 
     /**

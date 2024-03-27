@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -127,6 +127,23 @@ public abstract class ConfigurationParser {
             warnOrFailOnSchemaError(message);
             Set<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, key -> new HashSet<>());
             unknownAttributesForType.addAll(unknownAttributes);
+        }
+    }
+
+    protected void checkHasExactlyOneAttribute(EconomicMap<String, Object> map, String type, Collection<String> alternativeAttributes) {
+        boolean attributeFound = false;
+        for (String key : map.getKeys()) {
+            if (alternativeAttributes.contains(key)) {
+                if (attributeFound) {
+                    String message = "Exactly one of [" + String.join(", ", alternativeAttributes) + "] must be set in " + type;
+                    throw new JSONParserException(message);
+                }
+                attributeFound = true;
+            }
+        }
+        if (!attributeFound) {
+            String message = "Exactly one of [" + String.join(", ", alternativeAttributes) + "] must be set in " + type;
+            throw new JSONParserException(message);
         }
     }
 
