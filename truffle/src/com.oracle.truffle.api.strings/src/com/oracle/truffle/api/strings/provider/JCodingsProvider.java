@@ -46,6 +46,16 @@ import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TranscodingErrorHandler;
 import com.oracle.truffle.api.strings.TruffleString;
 
+/**
+ * NOT PUBLIC API.
+ * <p>
+ * Used to register optional {@link TruffleString} encoding support using a service provider.
+ * <p>
+ * This interface is not intended to be implemented directly; rather, it is an internal SPI,
+ * implementation of which is provided by the shadowed jcodings module.
+ *
+ * @since 24.1
+ */
 public interface JCodingsProvider {
 
     int MAX_JCODINGS_INDEX_VALUE = 0x7f;
