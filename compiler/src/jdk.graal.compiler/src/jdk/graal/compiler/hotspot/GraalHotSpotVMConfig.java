@@ -402,6 +402,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      */
     public final int maxOopMapStackOffset = getFieldValue("CompilerToVM::Data::_max_oop_map_stack_offset", Integer.class, "int");
 
+    /**
+     * Address of {@code _should_notify_object_alloc}, which, if non-zero, modifies the intrinsic
+     * for {@code Unsafe.allocateInstance} to deopt when
+     * {@code *shouldNotifyObjectAllocAddress != 0}.
+     */
+    public final long shouldNotifyObjectAllocAddress = getFieldValue("CompilerToVM::Data::_should_notify_object_alloc", Long.class, "int*", 0L, JDK >= 23);
+
     // G1 Collector Related Values.
     public final byte dirtyCardValue = getConstant("CardTable::dirty_card", Byte.class);
     public final byte g1YoungCardValue = getConstant("G1CardTable::g1_young_gen", Byte.class);
