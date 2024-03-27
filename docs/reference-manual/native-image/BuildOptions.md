@@ -120,6 +120,8 @@ The build output in a JSON-based, machine-readable format can be requested using
 The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.3.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json).
 A comprehensive report with additional information can be requested using the `-H:+BuildReport` option.
 
+> Note: The `-H:+BuildReport` option is not available in GraalVM Community Edition.
+
 ### Graph Dumping
 
 Native Image re-used the options for graph dumping, logging, counters, and everything else from the GraalVM debug environment.

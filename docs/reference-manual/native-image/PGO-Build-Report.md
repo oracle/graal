@@ -8,10 +8,11 @@ permalink: /reference-manual/native-image/optimizations-and-performance/PGO/buil
 # Inspecting a Profile in a Build Report
 
 A profile plays an essential part in efficient AOT compilation by Native Image.
-It contains the information about a particular execution of the application, and is used to guide additional optimizations that
-further improve application performance.
+It contains the information about a particular execution of the application, and is used to guide additional optimizations that further improve application performance.
 It is often useful to visualize the information in a profile.
 This section explains how to inspect parts of a profile using the Native Image **Build Report** tool.
+
+> The Native Image Build Report tool is not available in GraalVM Community Edition.
 
 ## Generating a Profile Visualization
 
