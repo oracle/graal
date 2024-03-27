@@ -489,7 +489,10 @@ public abstract class TruffleLanguage<C> {
          * @deprecated To enable all {@code TruffleString} encodings, it is sufficient to add the
          *             {@code org.graalvm.shadowed.jcodings} module to the language's module-info
          *             {@code requires} and ensure it is on the module path when languages are
-         *             loaded. If the module can be found, all encodings are automatically enabled.
+         *             loaded. If the module can be found, and at least one languages requires it,
+         *             all encodings are automatically enabled. When languages are loaded from the
+         *             class path (i.e. as an unnamed module), having jcodings on the class path is
+         *             enough to enable it.
          */
         @Deprecated(since = "24.1")
         boolean needsAllEncodings() default false;
