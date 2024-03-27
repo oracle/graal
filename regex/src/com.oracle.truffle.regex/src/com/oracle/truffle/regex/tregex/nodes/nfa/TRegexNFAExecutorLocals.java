@@ -86,8 +86,8 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     private boolean resultPushed = false;
     private final boolean trackLastGroup;
 
-    public TRegexNFAExecutorLocals(TruffleString input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates, boolean trackLastGroup) {
-        super(input, fromIndex, maxIndex, index);
+    public TRegexNFAExecutorLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index, int nCaptureGroups, int nStates, boolean trackLastGroup) {
+        super(input, fromIndex, maxIndex, regionFrom, regionTo, index);
         this.frameSize = 1 + nCaptureGroups * 2 + (trackLastGroup ? 1 : 0);
         this.nCaptureGroups = nCaptureGroups;
         this.maxSize = nStates * frameSize;

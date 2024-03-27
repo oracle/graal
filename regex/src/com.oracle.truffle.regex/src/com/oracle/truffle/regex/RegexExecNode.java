@@ -46,6 +46,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.nodes.ExpectStringNode;
+import com.oracle.truffle.regex.runtime.nodes.ToLongNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputOps;
 import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -54,6 +55,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
 
     private final boolean mustCheckUTF16Surrogates;
     private @Child ExpectStringNode expectStringNode = ExpectStringNode.create();
+    private @Child ToLongNode toLongNode = ToLongNode.create();
     private @Child InputReadNode charAtNode;
 
     public RegexExecNode(RegexLanguage language, RegexSource source, boolean mustCheckUTF16Surrogates) {
@@ -64,24 +66,65 @@ public abstract class RegexExecNode extends RegexBodyNode {
     @Override
     public final RegexResult execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        assert args.length == 2;
         TruffleString.Encoding encoding = getEncoding().getTStringEncoding();
         CompilerAsserts.partialEvaluationConstant(encoding);
-        return adjustIndexAndRun(frame, expectStringNode.execute(args[0], encoding), (int) args[1]);
+        TruffleString input = expectStringNode.execute(args[0], encoding);
+        int length = InputOps.length(input, getEncoding());
+        long fromIndex = toLongNode.execute(args[1]);
+        if (fromIndex > Integer.MAX_VALUE) {
+            return RegexResult.getNoMatchInstance();
+        }
+        final int toIndex;
+        final int regionFrom;
+        final int regionTo;
+        if (args.length == 5) {
+            long toIndexLong = toLongNode.execute(args[2]);
+            long regionFromLong = toLongNode.execute(args[3]);
+            long regionToLong = toLongNode.execute(args[4]);
+            if (regionFromLong < 0 || regionFromLong > length) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException(String.format("got illegal regionFrom value: %d. regionFrom must be >= 0 and <= input length (%d)", regionFromLong, length));
+            }
+            if (regionToLong < regionFromLong || regionToLong > length) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException(String.format("got illegal regionTo value: %d. regionTo must be >= 0 and <= input length (%d)", regionToLong, length));
+            }
+            if (fromIndex < regionFromLong || fromIndex > regionToLong) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= regionFrom and <= regionTo (%d)", fromIndex, length));
+            }
+            if (toIndexLong < fromIndex || toIndexLong > regionToLong) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException(String.format("got illegal toIndex value: %d. toIndex must be >= fromIndex and <= regionTo (%d)", toIndexLong, length));
+            }
+            if (toIndexLong != regionToLong) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new UnsupportedOperationException(String.format("got non-equal toIndex (%d) and regionTo (%d), support for this is not implemented yet", toIndexLong, regionToLong));
+            }
+            toIndex = (int) toIndexLong;
+            regionFrom = (int) regionFromLong;
+            regionTo = (int) regionToLong;
+        } else {
+            assert args.length == 2;
+            toIndex = length;
+            regionFrom = 0;
+            regionTo = length;
+            if (fromIndex < 0 || fromIndex > length) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, length));
+            }
+        }
+        return execute(frame, input, adjustFromIndex(input, (int) fromIndex, regionFrom, regionTo), toIndex, regionFrom, regionTo);
     }
 
-    private int adjustFromIndex(int fromIndex, TruffleString input) {
-        if (mustCheckUTF16Surrogates && fromIndex > 0 && fromIndex < inputLength(input)) {
+    private int adjustFromIndex(TruffleString input, int fromIndex, int regionFrom, int regionTo) {
+        if (mustCheckUTF16Surrogates && fromIndex > regionFrom && fromIndex < regionTo) {
             assert getEncoding() == Encodings.UTF_16;
             if (Character.isLowSurrogate((char) inputRead(input, fromIndex)) && Character.isHighSurrogate((char) inputRead(input, fromIndex - 1))) {
                 return fromIndex - 1;
             }
         }
         return fromIndex;
-    }
-
-    public final int inputLength(TruffleString input) {
-        return InputOps.length(input, getEncoding());
     }
 
     public final int inputRead(TruffleString input, int i) {
@@ -92,14 +135,6 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return charAtNode.execute(this, input, i, getEncoding());
     }
 
-    private RegexResult adjustIndexAndRun(VirtualFrame frame, TruffleString input, int fromIndex) {
-        if (fromIndex < 0 || fromIndex > inputLength(input)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, inputLength(input)));
-        }
-        return execute(frame, input, adjustFromIndex(fromIndex, input));
-    }
-
     public boolean isBacktracking() {
         return false;
     }
@@ -108,5 +143,5 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return false;
     }
 
-    protected abstract RegexResult execute(VirtualFrame frame, TruffleString input, int fromIndex);
+    protected abstract RegexResult execute(VirtualFrame frame, TruffleString input, int fromIndex, int toIndex, int regionFrom, int regionTo);
 }

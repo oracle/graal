@@ -285,9 +285,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     }
 
     @Override
-    public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int index, int maxIndex) {
-        return TRegexBacktrackingNFAExecutorLocals.create(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        zeroWidthQuantifierCGOffsets, isTransitionMatchesStepByStep(), maxNTransitions, isTrackLastGroup(), returnsFirstGroup(), isRecursiveBackreferences());
+    public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index) {
+        return TRegexBacktrackingNFAExecutorLocals.create(input, fromIndex, maxIndex, regionFrom, regionTo, index, getNumberOfCaptureGroups(),
+                        nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow, zeroWidthQuantifierCGOffsets,
+                        isTransitionMatchesStepByStep(), maxNTransitions, isTrackLastGroup(), returnsFirstGroup(), isRecursiveBackreferences());
     }
 
     private static final int IP_BEGIN = -1;
@@ -729,10 +730,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     boolean atEnd, int c) {
         PureNFAState target = transition.getTarget();
         CompilerAsserts.partialEvaluationConstant(target);
-        if (transition.hasCaretGuard() && index != 0) {
+        if (transition.hasCaretGuard() && index != locals.getRegionFrom()) {
             return false;
         }
-        if (transition.hasDollarGuard() && index < locals.getMaxIndex()) {
+        if (transition.hasDollarGuard() && index < locals.getRegionTo()) {
             return false;
         }
         for (QuantifierGuard guard : transition.getQuantifierGuards()) {
@@ -909,10 +910,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         CompilerAsserts.partialEvaluationConstant(transition);
         PureNFAState target = transition.getTarget();
         CompilerAsserts.partialEvaluationConstant(target);
-        if (transition.hasCaretGuard() && index != 0) {
+        if (transition.hasCaretGuard() && index != locals.getRegionFrom()) {
             return false;
         }
-        if (transition.hasDollarGuard() && index < locals.getMaxIndex()) {
+        if (transition.hasDollarGuard() && index < locals.getRegionTo()) {
             return false;
         }
         switch (target.getKind()) {
@@ -1100,12 +1101,11 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         if (backrefStart < 0 || backrefEnd < 0) {
             return !isBackrefWithNullTargetFails();
         }
-        int inputLength = locals.getMaxIndex();
         int backrefLength = backrefEnd - backrefStart;
         if (backrefLength == 0) {
             return true;
         }
-        if (isForward() ? index + backrefLength > inputLength : index - backrefLength < 0) {
+        if (isForward() ? index + backrefLength > locals.getRegionTo() : index - backrefLength < locals.getRegionFrom()) {
             return false;
         }
         int stride = getEncoding().getStride();
@@ -1123,11 +1123,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             return isBackrefWithNullTargetFails() ? -1 : locals.getIndex();
         }
         int saveNextIndex = locals.getNextIndex();
-        int inputLength = locals.getMaxIndex();
         int iBR = isForward() ? backrefStart : backrefEnd;
         int i = locals.getIndex();
         while (injectBranchProbability(CONTINUE_PROBABILITY, inputBoundsCheck(iBR, backrefStart, backrefEnd))) {
-            if (injectBranchProbability(EXIT_PROBABILITY, !inputBoundsCheck(i, 0, inputLength))) {
+            if (injectBranchProbability(EXIT_PROBABILITY, !inputBoundsCheck(i, locals.getRegionFrom(), locals.getRegionTo()))) {
                 locals.setNextIndex(saveNextIndex);
                 return -1;
             }

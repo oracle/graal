@@ -75,7 +75,7 @@ public final class InputOps {
         CompilerAsserts.partialEvaluationConstant(stride);
         int fromByteIndex = fromIndex << stride;
         int maxByteIndex = maxIndex << stride;
-        if (fromByteIndex >= input.byteLength(tsEncoding)) {
+        if (fromByteIndex >= maxByteIndex) {
             return -1;
         }
         if (hasMask) {
@@ -89,38 +89,15 @@ public final class InputOps {
         }
     }
 
-    public static boolean startsWith(TruffleString input, InnerLiteral literal, Encodings.Encoding encoding, TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
-        int len1 = input.byteLength(encoding.getTStringEncoding());
-        int len2 = literal.getLiteralContent().byteLength(encoding.getTStringEncoding());
-        return len1 >= len2 && regionEqualsInner(input, literal, encoding, 0, regionEqualsNode);
-    }
-
-    public static boolean endsWith(TruffleString input, InnerLiteral literal, Encodings.Encoding encoding, TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
-        int len1 = input.byteLength(encoding.getTStringEncoding());
-        int len2 = literal.getLiteralContent().byteLength(encoding.getTStringEncoding());
-        return len1 >= len2 && regionEqualsInner(input, literal, encoding, len1 - len2, regionEqualsNode);
-    }
-
-    public static boolean equals(TruffleString input, InnerLiteral literal, Encodings.Encoding encoding, TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
-        int len1 = input.byteLength(encoding.getTStringEncoding());
-        int len2 = literal.getLiteralContent().byteLength(encoding.getTStringEncoding());
-        return len1 == len2 && regionEqualsInner(input, literal, encoding, 0, regionEqualsNode);
-    }
-
-    public static boolean regionEquals(TruffleString input, InnerLiteral literal, Encodings.Encoding encoding, int fromIndexInput, int fromIndexLiteral, int length,
+    public static boolean regionEquals(TruffleString input, InnerLiteral literal, int literalLength, Encodings.Encoding encoding, int fromIndex, int toIndex,
                     TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
-        int fromByteIndexInput = fromIndexInput << encoding.getStride();
-        int fromByteIndexLiteral = fromIndexLiteral << encoding.getStride();
-        int byteLength = length << encoding.getStride();
-        return input.byteLength(encoding.getTStringEncoding()) >= fromByteIndexInput + byteLength &&
-                        regionEqualsInner(input, literal, encoding, fromByteIndexInput, fromByteIndexLiteral, byteLength, regionEqualsNode);
+        int fromByteIndex = fromIndex << encoding.getStride();
+        int byteLength = literalLength << encoding.getStride();
+        return toIndex - fromIndex >= literalLength &&
+                        regionEqualsInner(input, literal, encoding, fromByteIndex, byteLength, regionEqualsNode);
     }
 
-    private static boolean regionEqualsInner(TruffleString input, InnerLiteral literal, Encodings.Encoding encoding, int fromByteIndex, TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
-        return regionEqualsInner(input, literal, encoding, fromByteIndex, 0, literal.getLiteralContent().byteLength(encoding.getTStringEncoding()), regionEqualsNode);
-    }
-
-    private static boolean regionEqualsInner(TruffleString input, InnerLiteral literal, Encodings.Encoding encoding, int fromByteIndexInput, int fromByteIndexLiteral, int byteLength,
+    private static boolean regionEqualsInner(TruffleString input, InnerLiteral literal, Encodings.Encoding encoding, int fromByteIndexInput, int byteLength,
                     TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
         TruffleString.Encoding tsEncoding = encoding.getTStringEncoding();
         boolean hasMask = literal.hasMask();
@@ -130,11 +107,11 @@ public final class InputOps {
         if (hasMask) {
             TruffleString.WithMask mask = literal.getMaskContent();
             CompilerAsserts.partialEvaluationConstant(mask);
-            return regionEqualsNode.execute(input, fromByteIndexInput, mask, fromByteIndexLiteral, byteLength, tsEncoding);
+            return regionEqualsNode.execute(input, fromByteIndexInput, mask, 0, byteLength, tsEncoding);
         } else {
             TruffleString string = literal.getLiteralContent();
             CompilerAsserts.partialEvaluationConstant(string);
-            return regionEqualsNode.execute(input, fromByteIndexInput, string, fromByteIndexLiteral, byteLength, tsEncoding);
+            return regionEqualsNode.execute(input, fromByteIndexInput, string, 0, byteLength, tsEncoding);
         }
     }
 }
