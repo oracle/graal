@@ -1992,6 +1992,13 @@ class GraalVmLibrary(GraalVmNativeImage):
         return _skip_libraries(self.native_image_config)
 
 class PolyglotIsolateLibrary(GraalVmLibrary):
+    """
+    A native image project dedicated to constructing a language polyglot isolate library.
+    Despite being built upon the component supertype, it operates independently of the component system
+    and native-image macros. Its configuration relies solely on the module path and META-INF/native-image
+    configuration files. Instances are instantiated by mx_truffle::register_polyglot_isolate_distributions
+    when a language dynamically registers a polyglot isolate distribution.
+    """
     def __init__(self, target_suite, language, deps, build_args, **kw_args):
         library_config = mx_sdk.LanguageLibraryConfig(
             jar_distributions=deps,
@@ -2475,8 +2482,15 @@ class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
 
 
 class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
+    """
+    A PolyglotIsolateLibrary build task building a language polyglot isolate library.
+    Despite being built upon the component supertype, it operates independently of the component system
+    and native-image macros. Its configuration relies solely on the module path and META-INF/native-image
+    configuration files.
+    """
     def get_build_args(self):
-        target = self.subject.native_image_name[:-len(_lib_suffix)]
+        project = self.subject
+        target = project.native_image_name[:-len(_lib_suffix)]
         build_args = [
             '-EJVMCI_VERSION_CHECK',  # Propagate this env var when running native image from mx
             '--parallelism=' + str(self.parallelism),
@@ -2488,7 +2502,8 @@ class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
         ] + svm_experimental_options([
             '-H:+BuildOutputPrefix',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
-        ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions)
+        ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions) + \
+        project.native_image_config.build_args + project.native_image_config.build_args_enterprise
         return build_args
 
 

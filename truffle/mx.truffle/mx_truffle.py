@@ -1206,6 +1206,13 @@ def validate_parser(grammar_project, grammar_path, create_command, args=None, ou
 
 
 class _PolyglotIsolateResourceProject(mx.JavaProject):
+    """
+    A Java project creating an internal resource implementation unpacking the polyglot isolate library.
+    The Java source code for internal resources is generated into the project's `source_gen_dir` before compilation,
+    using the `mx.truffle/polyglot_isolate_resource.template`. Configuration of the project follows these conventions:
+    The target package name is `com.oracle.truffle.isolate.resource.<language_id>.<os>.<arch>`,
+    and the resource ID is `<language_id>-isolate-<os>-<arch>`.
+    """
 
     def __init__(self, language_suite, subDir, language_id, resource_id, os_name, cpu_architecture, placeholder):
         name = f'com.oracle.truffle.isolate.resource.{language_id}.{os_name}.{cpu_architecture}'
@@ -1233,6 +1240,10 @@ class _PolyglotIsolateResourceProject(mx.JavaProject):
 
 
 class _PolyglotIsolateResourceBuildTask(mx.JavaBuildTask):
+    """
+    A _PolyglotIsolateResourceProject build task generating and building the internal resource unpacking
+    the polyglot isolate library. Refer to `_PolyglotIsolateResourceProject` documentation for more details.
+    """
 
     def __str__(self):
         return f'Generating {self.subject.name} internal resource and compiling it with {self._getCompiler().name()}'
