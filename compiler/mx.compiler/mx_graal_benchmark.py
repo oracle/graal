@@ -34,7 +34,7 @@ import mx_sdk_benchmark
 import mx_compiler
 from mx_java_benchmarks import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
 from mx_benchmark import DataPoints
-from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, Stage
 
 _suite = mx.suite('compiler')
 
@@ -428,7 +428,7 @@ class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_be
             else:
                 current_stage = self.stages_info.requested_stage
 
-            if current_stage not in ["agent", "instrument-run", "run"]:
+            if current_stage not in [Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN]:
                 return None
 
         return super().get_jmh_result_file(bm_suite_args)
