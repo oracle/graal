@@ -71,6 +71,8 @@ public final class JfrEvent {
     public static final JfrEvent AllocationRequiringGC = create("jdk.AllocationRequiringGC");
     public static final JfrEvent OldObjectSample = create("jdk.OldObjectSample");
     public static final JfrEvent ObjectAllocationSample = create("jdk.ObjectAllocationSample", JfrEventFlags.SupportsThrottling);
+    public static final JfrEvent NativeMemoryUsage = create("jdk.NativeMemoryUsage");
+    public static final JfrEvent NativeMemoryUsageTotal = create("jdk.NativeMemoryUsageTotal");
 
     private final long id;
     private final String name;
