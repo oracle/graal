@@ -148,6 +148,9 @@ public class DebugOptions {
     @Option(help = "Specify the dump level if CompilationFailureAction=Diagnose is used. " +
                     "See CompilationFailureAction for details.", type = OptionType.User)
     public static final OptionKey<String> DiagnoseDumpLevel = new OptionKey<>(":" + DebugContext.VERBOSE_LEVEL);
+    @Option(help = "Specify the log level if CompilationFailureAction#Diagnose is used." +
+            "See CompilationFailureAction for details. file:doc-files/CompilationFailureActionHelp.txt", type = OptionType.Debug)
+    public static final OptionKey<String> DiagnoseLogLevel = new OptionKey<>(":" + DebugContext.VERBOSE_LEVEL);
     @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DisableIntercept = new OptionKey<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)

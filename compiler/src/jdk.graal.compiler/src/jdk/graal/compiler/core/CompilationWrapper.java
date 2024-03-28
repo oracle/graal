@@ -29,6 +29,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.TrackNodeSourcePositio
 import static jdk.graal.compiler.debug.DebugOptions.Count;
 import static jdk.graal.compiler.debug.DebugOptions.Dump;
 import static jdk.graal.compiler.debug.DebugOptions.DumpPath;
+import static jdk.graal.compiler.debug.DebugOptions.Log;
 import static jdk.graal.compiler.debug.DebugOptions.MethodFilter;
 import static jdk.graal.compiler.debug.DebugOptions.PrintBackendCFG;
 import static jdk.graal.compiler.debug.DebugOptions.Time;
@@ -336,16 +337,19 @@ public abstract class CompilationWrapper<T> {
                 TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
             }
 
-            String diagnoseLevel = DebugOptions.DiagnoseDumpLevel.getValue(initialOptions);
+            String diagnoseDumpLevel = DebugOptions.DiagnoseDumpLevel.getValue(initialOptions);
 
             // pre GR-51012 this was just a number - we still want to support the old numeric values
-            boolean isOldLevel = diagnoseLevel.matches("-?\\d+");
+            boolean isOldLevel = diagnoseDumpLevel.matches("-?\\d+");
             if (isOldLevel) {
-                diagnoseLevel = ":" + diagnoseLevel;
+                diagnoseDumpLevel = ":" + diagnoseDumpLevel;
             }
 
+            String diagnoseLogLevel = DebugOptions.DiagnoseLogLevel.getValue(initialOptions);
+
             OptionValues retryOptions = new OptionValues(initialOptions,
-                            Dump, diagnoseLevel,
+                            Dump, diagnoseDumpLevel,
+                            Log, diagnoseLogLevel,
                             MethodFilter, null,
                             Count, "",
                             Time, "",
