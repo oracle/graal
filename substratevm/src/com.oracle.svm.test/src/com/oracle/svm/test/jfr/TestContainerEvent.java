@@ -30,8 +30,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.test.jfr.events.ThreadEvent;
 
 import jdk.jfr.Recording;
@@ -43,6 +45,8 @@ import jdk.jfr.consumer.RecordedEvent;
 public class TestContainerEvent extends JfrRecordingTest {
     @Test
     public void test() throws Throwable {
+        Assume.assumeTrue("Container support is limited to Linux", OS.LINUX.isCurrent());
+
         String[] events = new String[]{"jdk.ContainerConfiguration"};
         Recording recording = startRecording(events);
 
