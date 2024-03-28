@@ -97,7 +97,7 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
          * of the new stack pointer.
          */
         int calleeFrameSize = FrameAccess.returnAddressSize();
-        if (SubstrateOptions.PreserveFramePointer.getValue()) {
+        if (fromMethodWithCalleeSavedRegisters || SubstrateOptions.PreserveFramePointer.getValue()) {
             calleeFrameSize += FrameAccess.wordSize();
         }
         if (fromMethodWithCalleeSavedRegisters) {
@@ -117,7 +117,7 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
             AMD64CalleeSavedRegisters.singleton().emitRestore(masm, calleeFrameSize, asRegister(result), crb);
             masm.incrementq(AMD64.rsp, CalleeSavedRegisters.singleton().getSaveAreaSize());
         }
-        if (SubstrateOptions.PreserveFramePointer.getValue()) {
+        if (fromMethodWithCalleeSavedRegisters || SubstrateOptions.PreserveFramePointer.getValue()) {
             masm.pop(AMD64.rbp);
         }
 
