@@ -2257,12 +2257,18 @@ public final class Meta extends ContextAccessImpl {
         return klass;
     }
 
-    @TruffleBoundary
     public String toHostString(StaticObject str) {
         if (StaticObject.isNull(str)) {
             return null;
         }
         return stringConversion.toHost(str, getLanguage(), this);
+    }
+
+    public StaticObject toGuestString(String hostString) {
+        if (hostString == null) {
+            return StaticObject.NULL;
+        }
+        return stringConversion.toGuest(hostString, this);
     }
 
     @TruffleBoundary
@@ -2279,14 +2285,6 @@ public final class Meta extends ContextAccessImpl {
             return StaticObject.NULL;
         }
         return toGuestString(hostString.toString());
-    }
-
-    @TruffleBoundary
-    public StaticObject toGuestString(String hostString) {
-        if (hostString == null) {
-            return StaticObject.NULL;
-        }
-        return stringConversion.toGuest(hostString, this);
     }
 
     public static boolean isString(Object string) {
