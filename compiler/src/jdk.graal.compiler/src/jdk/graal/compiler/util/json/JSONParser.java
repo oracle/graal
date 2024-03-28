@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.util.json;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
@@ -55,7 +56,7 @@ public class JSONParser {
     }
 
     public JSONParser(Reader source) throws IOException {
-        this.source = source;
+        this.source = new BufferedReader(source);
         next = source.read();
     }
 
