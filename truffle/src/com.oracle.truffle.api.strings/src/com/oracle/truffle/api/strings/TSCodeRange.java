@@ -278,7 +278,7 @@ final class TSCodeRange {
     static int getAsciiCodeRange(Encoding encoding) {
         if (TStringGuards.is7BitCompatible(encoding)) {
             return get7Bit();
-        } else if (JCodings.getInstance().isSingleByte(encoding.jCoding)) {
+        } else if (encoding.isSingleByte()) {
             return getValidFixedWidth();
         } else {
             return getValidMultiByte();

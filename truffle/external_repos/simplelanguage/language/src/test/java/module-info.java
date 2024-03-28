@@ -44,7 +44,6 @@ open module org.graalvm.sl.test {
   requires org.graalvm.polyglot;
   requires junit;
   requires org.graalvm.truffle;
-  requires org.graalvm.shadowed.jcodings;
   requires org.graalvm.sl;
   exports com.oracle.truffle.sl.test;
   

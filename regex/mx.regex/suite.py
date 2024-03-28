@@ -140,6 +140,8 @@ suite = {
         "requires" : [
           "java.logging",
           "jdk.unsupported", # sun.misc.Unsafe
+          "org.graalvm.collections",
+          "org.graalvm.polyglot",
         ],
       },
       "subDir" : "src",
@@ -161,6 +163,9 @@ suite = {
     "TREGEX_TEST_DUMMY_LANG" : {
       "moduleInfo" : {
         "name" : "com.oracle.truffle.regex.test.dummylang",
+        "requires": [
+          "org.graalvm.truffle",
+        ],
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex.test.dummylang"],

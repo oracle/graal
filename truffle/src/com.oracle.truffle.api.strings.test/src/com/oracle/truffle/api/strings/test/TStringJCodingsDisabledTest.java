@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,17 +41,18 @@
 
 package com.oracle.truffle.api.strings.test;
 
-import static org.junit.runners.Parameterized.Parameter;
-import static org.junit.runners.Parameterized.Parameters;
-
 import java.util.Arrays;
 
 import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -119,6 +120,15 @@ public class TStringJCodingsDisabledTest {
     public static void setUp() {
         context = Context.newBuilder(TStringTestNoJCodingsDummyLanguage.ID).build();
         context.enter();
+        Assert.assertNotNull(TruffleString.Encoding.UTF_7.getEmpty());
+        boolean jcodingsEnabled;
+        try {
+            TruffleString.fromJavaStringUncached("utf7", TruffleString.Encoding.UTF_7);
+            jcodingsEnabled = true;
+        } catch (Throwable e) {
+            jcodingsEnabled = false;
+        }
+        Assume.assumeFalse("assumeFalse(jcodingsEnabled)", jcodingsEnabled);
     }
 
     @AfterClass

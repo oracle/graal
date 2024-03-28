@@ -47,7 +47,6 @@ import java.net.URLClassLoader;
 import java.security.ProtectionDomain;
 
 import org.graalvm.polyglot.Engine;
-import org.graalvm.shadowed.org.jcodings.EncodingDB;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -82,13 +81,10 @@ public class SeparatedClassLoadersTest {
         URL truffleURL = Truffle.class.getProtectionDomain().getCodeSource().getLocation();
         Assume.assumeNotNull(truffleURL);
 
-        URL jcodingsURL = EncodingDB.class.getProtectionDomain().getCodeSource().getLocation();
-        Assume.assumeNotNull(jcodingsURL);
-
         ClassLoader parent = Engine.class.getClassLoader().getParent();
 
         URLClassLoader sdkLoader = new URLClassLoader(new URL[]{sdkURL}, parent);
-        URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL, jcodingsURL}, sdkLoader);
+        URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL}, sdkLoader);
         Thread.currentThread().setContextClassLoader(truffleLoader);
 
         Class<?> engineClass = sdkLoader.loadClass(Engine.class.getName());

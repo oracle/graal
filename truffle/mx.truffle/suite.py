@@ -646,7 +646,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.profiles",
-        "TRUFFLE_JCODINGS",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -671,6 +670,7 @@ suite = {
         "TRUFFLE_API",
         "mx:JUNIT",
         "mx:JMH_1_21",
+        "TRUFFLE_JCODINGS",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1388,6 +1388,9 @@ suite = {
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
       "spotbugsIgnoresGenerated" : True,
+      "dependencies" : [
+          "TRUFFLE_API"
+      ],
       "shadedDependencies" : [
         "truffle:JCODINGS_1.0.58",
       ],
@@ -1577,6 +1580,9 @@ suite = {
           "java.management",
           "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
           "static jdk.jfr", # JFR is not included in the J9 JVM
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage",
+          "org.graalvm.polyglot",
         ],
         "exports" : [
           # Qualified exports
@@ -1645,7 +1651,6 @@ suite = {
           "java.sql", # java.sql.date java.sql.Time
           "org.graalvm.collections",
           "org.graalvm.nativeimage",
-          "org.graalvm.shadowed.jcodings",
         ],
         "exports" : [
           # Unqualified exports
@@ -1669,6 +1674,7 @@ suite = {
           "com.oracle.truffle.api.provider",
           "com.oracle.truffle.api.instrumentation.provider",
           "com.oracle.truffle.api.library.provider",
+          "com.oracle.truffle.api.strings.provider",
 
           # Qualified exports
           "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
@@ -1686,6 +1692,7 @@ suite = {
           "com.oracle.truffle.api.library.provider.DefaultExportProvider",
           "com.oracle.truffle.api.library.provider.EagerExportProvider",
           "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
+          "com.oracle.truffle.api.strings.provider.JCodingsProvider",
           "com.oracle.truffle.api.library.DefaultExportProvider", # Deprecated
           "com.oracle.truffle.api.library.EagerExportProvider", # Deprecated
           "com.oracle.truffle.api.TruffleLanguage.Provider", # Deprecated
@@ -1727,7 +1734,6 @@ suite = {
         "sdk:COLLECTIONS",
         "sdk:NATIVEIMAGE",
         "sdk:POLYGLOT",
-        "TRUFFLE_JCODINGS",
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
@@ -1778,6 +1784,10 @@ suite = {
           "com.oracle.truffle.nfi.backend.spi.types",
           "com.oracle.truffle.nfi.backend.spi.util",
         ],
+        "requires": [
+          "org.graalvm.collections",
+          "org.graalvm.polyglot",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
@@ -1801,6 +1811,9 @@ suite = {
         "name" : "com.oracle.truffle.truffle_nfi_libffi",
         "opens" : [
           "com.oracle.truffle.nfi.backend.libffi to org.graalvm.truffle.runtime.svm",
+        ],
+        "requires": [
+          "org.graalvm.truffle",
         ],
       },
       "subDir" : "src",
@@ -2010,6 +2023,9 @@ suite = {
       "subDir" : "src",
       "moduleInfo" : {
         "name" : "org.graalvm.sl",
+        "requires": [
+          "org.graalvm.polyglot",
+        ],
       },
       "javaCompliance" : "17+",
       "dependencies" : [
@@ -2161,6 +2177,7 @@ suite = {
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_TCK",
          "TRUFFLE_TCK_INSTRUMENTATION",
+         "TRUFFLE_JCODINGS",
       ],
       "unittestConfig": "truffle",
       "maven" : False,
@@ -2268,6 +2285,9 @@ suite = {
         "name" : "org.graalvm.locator",
         "exports" : [
           "com.oracle.graalvm.locator to jdk.graal.compiler.management",
+        ],
+        "requires": [
+          "org.graalvm.polyglot",
         ],
       },
       "dependencies": ["com.oracle.graalvm.locator"],
@@ -2426,7 +2446,9 @@ suite = {
       "dependencies" : [
         "org.graalvm.shadowed.org.jcodings",
       ],
-      "distDependencies" : [],
+      "distDependencies" : [
+        "TRUFFLE_API",
+      ],
       "description" : "JCodings module shadowed for Truffle.",
       "allowsJavadocWarnings" : True,
       "license" : ["MIT"],
