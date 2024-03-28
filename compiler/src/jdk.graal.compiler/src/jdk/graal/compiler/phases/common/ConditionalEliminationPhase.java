@@ -542,17 +542,52 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             }
         }
 
+        /**
+         * Optimize load field / store field pi inputs if possible.
+         *
+         * This is a common Java source code pattern like:
+         *
+         * <pre>
+         * if (someObject instanceof ConcreteClass concrete) {
+         *     use(concrete.field);
+         * }
+         * </pre>
+         *
+         * Bytecode parsing builds two instanceof checks:
+         *
+         * <pre>
+         *     if (someObject instanceof ConcreteClass[non-null]) {
+         *         guard = FixedGuard(ClassCastException, someObject instanceof ConcreteClass[may be null]);
+         *         concrete = Pi(guard, someObject, piStamp = ConcreteClass[may be null]);
+         *         use(concrete.field);
+         *     }
+         * </pre>
+         *
+         * Conditional elimination removes the guard. We are left with the Pi anchored on the if:
+         *
+         * <pre>
+         *     if (someObject instanceof ConcreteClass[non-null]) {
+         *         anchor = BeginNode();
+         *         concrete = Pi(anchor, someObject, piStamp = ConcreteClass[may be null]);
+         *         use(concrete.field);
+         *     }
+         * </pre>
+         *
+         * The Pi now proves a weaker stamp than the branch on which it is anchored. When we lower
+         * the field access, we would need to insert a null check. That null check would eventually
+         * fold away, but in the meantime it could prevent other high tier canonicalizations.
+         * Strengthen the Pi to include the information that the object is non-null.
+         */
         private void processAccessField(AccessFieldNode af) {
             ValueNode object = af.object();
             ResolvedJavaField field = af.field();
             if (object instanceof PiNode objectPi) {
                 // see if there are earlier pi's we can use for the same data
-
                 final boolean nonNull = ((AbstractObjectStamp) object.stamp(NodeView.DEFAULT)).nonNull();
                 GuardingNode fieldPiGuard = objectPi.getGuard();
                 LogicNode condition = null;
                 if (fieldPiGuard instanceof BeginNode b) {
-                    if (b.predecessor() instanceof IfNode ifNode) {
+                    if (b.predecessor() instanceof IfNode ifNode && b == ifNode.trueSuccessor()) {
                         condition = ifNode.condition();
                     }
                 } else if (fieldPiGuard instanceof GuardNode floatingGuard) {
@@ -562,13 +597,18 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                 }
 
                 if (condition instanceof UnaryOpLogicNode unaryLogicNode) {
-                    ValueNode value = unaryLogicNode.getValue();
+                    final ValueNode value = unaryLogicNode.getValue();
                     InfoElement infoElement = infoElementProvider.infoElements(value);
                     while (infoElement != null) {
-                        // skip the current guard of the pi and ensure (after a transform already
-                        // happened we are not routing it down again)
+                        /*
+                         * Once we optimized and skipped a pi we do not immediately remove it from
+                         * the graph. Other nodes may still use it, we let the canonicalizer take
+                         * care of it. We have to ensure we are not using a later pi again that we
+                         * just recently skipped. In the optimization (if conditional elimination is
+                         * called multiple times).
+                         */
                         if (infoElement.getGuard() != fieldPiGuard && nodeToBlock.get(infoElement.getGuard().asNode()).strictlyDominates(nodeToBlock.get(fieldPiGuard.asNode()))) {
-                            Stamp stamp = infoElement.getStamp();
+                            final Stamp stamp = infoElement.getStamp();
                             /*
                              * Determine if this pi can be skipped by using a pi based on the stamp
                              * of this guard.
