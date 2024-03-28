@@ -57,7 +57,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -177,15 +177,17 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
+                        @Bind("$node") Node node,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
-            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), BranchProfile.getUncached(), lib, language);
+            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), node, InlinedBranchProfile.getUncached(), lib, language);
         }
 
         @Specialization
         static Object readMember(Klass receiver, String member,
                         @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                         @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
-                        @Shared("error") @Cached BranchProfile error,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile error,
                         @CachedLibrary("receiver") InteropLibrary lib,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
             EspressoContext ctx = EspressoContext.get(lib);
@@ -227,7 +229,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return receiver.getSuperKlass();
             }
 
-            error.enter();
+            error.enter(node);
             throw UnknownIdentifierException.create(member);
         }
     }
@@ -261,24 +263,25 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static void doShared(Klass receiver, String member, Object value,
-                        @Shared("error") @Cached BranchProfile error,
+                        @Bind("$node") Node node,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException, UnsupportedTypeException {
-            writeMember(receiver, member, value, LookupFieldNodeGen.getUncached(), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), error);
+            writeMember(receiver, member, value, LookupFieldNodeGen.getUncached(), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), node, InlinedBranchProfile.getUncached());
         }
 
         @Specialization
         static void writeMember(Klass receiver, String member, Object value,
                         @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                         @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
-                        @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
             Field field = lookupFieldNode.execute(receiver, member, true);
             // Can only write to non-final fields.
             if (field != null && !field.isFinalFlagSet()) {
                 Object espressoValue = toEspressoNode.execute(value, field.resolveTypeKlass());
                 field.set(receiver.tryInitializeAndGetStatics(), espressoValue);
             } else {
-                error.enter();
+                error.enter(node);
                 throw UnknownIdentifierException.create(member);
             }
         }
@@ -308,17 +311,20 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         static Object doShared(Klass receiver, String member, Object[] arguments,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary receiverInterop,
                         @Bind("getLang(receiverInterop)") @SuppressWarnings("unused") EspressoLanguage language) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-            return invokeMember(receiver, member, arguments, receiverInterop, InteropLookupAndInvokeNodeGen.getUncached());
+            return invokeMember(receiver, member, arguments, null, receiverInterop, InlinedBranchProfile.getUncached(), InteropLookupAndInvokeNodeGen.getUncached());
         }
 
         @Specialization
         static Object invokeMember(Klass receiver, String member,
                         Object[] arguments,
+                        @Bind("$node") Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverInterop,
+                        @Cached InlinedBranchProfile error,
                         @Cached InteropLookupAndInvoke lookupAndInvoke)
                         throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
             if (!receiverInterop.isMemberInvocable(receiver, member)) {
                 // Not invocable, no matter the arity or argument types.
+                error.enter(node);
                 throw UnknownIdentifierException.create(member);
             }
             return lookupAndInvoke.execute(null, receiver, arguments, member, false);
@@ -400,6 +406,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, Object[] args,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary receiverInterop,
+                        @Bind("$node") Node node,
                         @Bind("getLang(receiverInterop)") @SuppressWarnings("unused") EspressoLanguage language) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
             if (receiver.isPrimitive()) {
                 return doPrimitive(receiver, args);
@@ -411,11 +418,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return doReferenceArray(receiver, args, ToPrimitiveFactory.ToIntNodeGen.getUncached());
             }
             if (isMultidimensionalArray(receiver)) {
-                return doMultidimensionalArray(receiver, args, ToPrimitiveFactory.ToIntNodeGen.getUncached());
+                return doMultidimensionalArray(receiver, args, node, InlinedBranchProfile.getUncached(), ToPrimitiveFactory.ToIntNodeGen.getUncached());
             }
             if (isObjectKlass(receiver)) {
-                return doObject(receiver, args, receiverInterop,
-                                InteropLookupAndInvokeNodeGen.getUncached());
+                return doObject(receiver, args, node, InlinedBranchProfile.getUncached(), receiverInterop, InteropLookupAndInvokeNodeGen.getUncached());
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
@@ -483,10 +489,13 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isMultidimensionalArray(receiver)")
         static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile error,
                         @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
             if (arrayKlass.getDimension() != arguments.length) {
+                error.enter(node);
                 throw ArityException.create(arrayKlass.getDimension(), arrayKlass.getDimension(), arguments.length);
             }
             EspressoContext context = EspressoContext.get(toInt);
@@ -502,9 +511,12 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile error,
                         @CachedLibrary("receiver") InteropLibrary receiverInterop,
                         @Cached InteropLookupAndInvoke lookupAndInvoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             if (!receiverInterop.isInstantiable(receiver)) {
+                error.enter(node);
                 throw UnsupportedMessageException.create();
             }
             ObjectKlass objectKlass = (ObjectKlass) receiver;
