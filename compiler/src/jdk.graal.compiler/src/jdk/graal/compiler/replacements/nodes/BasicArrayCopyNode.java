@@ -257,13 +257,12 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode
      * component type array. For example a long value can be written into a byte array by storing
      * the larger value in the first entry and storing {@code Illegal} in the slots whose value
      * comes from the long value. So a long in a byte array would be a long value followed by 7
-     * {@code Illegal} values. That also means such a write much be treated as a group by arraycopy
+     * {@code Illegal} values. That also means such a write must be treated as a group by arraycopy
      * so reads and writes can't be performed in the middle of the illegal values.
      * <p>
-     * So to ensure that an arraycopy properly treats these kinds of writes as group, it's
-     * sufficient to check that the first value is not {@code Illegal} and that the next value after
-     * the end is not {@code Illegal} since {@code Illegal} values only appear in the tail of these
-     * groups.
+     * To ensure that an arraycopy properly treats these kinds of writes as group, it's sufficient
+     * to check that the first value is not {@code Illegal} and that the next value after the end is
+     * not {@code Illegal} since {@code Illegal} values only appear in the tail of these groups.
      */
     private static boolean ensureIllegalValuesCanBeRepresented(int length, int srcPos, int srcLength, int dstPos, int dstLength, VirtualObjectNode src, VirtualObjectNode dst, VirtualizerTool tool) {
         if (length <= 0) {
