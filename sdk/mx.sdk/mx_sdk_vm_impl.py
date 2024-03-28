@@ -69,6 +69,7 @@ except ImportError:
 import mx
 import mx_gate
 import mx_javamodules
+import mx_jardistribution
 import mx_native
 import mx_subst
 import mx_sdk
@@ -1120,7 +1121,7 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
             root_contents = layout['./']
             for dep_name in dep_names:
                 dep = mx.dependency(dep_name)
-                if isinstance(dep, mx.JARDistribution):
+                if isinstance(dep, mx_jardistribution.JARDistribution):
                     if dep.is_stripped():
                         root_contents += ['dependency:{}:{}/*.map'.format(dep.suite.name, dep.name)]
                 elif isinstance(dep, GraalVmNativeImage):
