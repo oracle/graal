@@ -259,10 +259,11 @@ final class TStringInternalNodes {
                     codeRange = is8Bit(cr) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : cr;
                     codePointLength = length;
                 } else {
+                    JCodings jcodings = JCodings.getInstance();
                     if (arrayA instanceof NativePointer) {
                         ((NativePointer) arrayA).materializeByteArray(node, offsetA, length << stride, InlinedConditionProfile.getUncached());
                     }
-                    long attrs = JCodings.getInstance().calcStringAttributes(node, arrayA, offsetA, length, encoding, 0, exoticValidProfile, exoticFixedWidthProfile);
+                    long attrs = jcodings.calcStringAttributes(node, arrayA, offsetA, length, encoding, 0, exoticValidProfile, exoticFixedWidthProfile);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 }
@@ -383,8 +384,9 @@ final class TStringInternalNodes {
                     codeRange = is8Bit(cr) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : cr;
                     codePointLength = length;
                 } else {
+                    JCodings jcodings = JCodings.getInstance();
                     pointer.materializeByteArray(node, byteOffset, byteLength, InlinedConditionProfile.getUncached());
-                    long attrs = JCodings.getInstance().calcStringAttributes(node, pointer, byteOffset, length, encoding, 0, exoticValidProfile, exoticFixedWidthProfile);
+                    long attrs = jcodings.calcStringAttributes(node, pointer, byteOffset, length, encoding, 0, exoticValidProfile, exoticFixedWidthProfile);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 }
@@ -457,13 +459,14 @@ final class TStringInternalNodes {
         @Specialization(guards = "isUnsupportedEncoding(encoding)")
         int unsupported(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, int index, ErrorHandling errorHandling) {
             assert isStride0(a);
-            int cpLength = JCodings.getInstance().getCodePointLength(encoding, JCodings.asByteArray(arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());
+            JCodings jcodings = JCodings.getInstance();
+            int cpLength = jcodings.getCodePointLength(encoding, JCodings.asByteArray(arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());
             int regionLength = a.length() - index;
             if (errorHandling == ErrorHandling.BEST_EFFORT) {
                 if (cpLength > 0 && cpLength <= regionLength) {
                     return cpLength;
                 } else {
-                    return Math.min(JCodings.getInstance().minLength(encoding), regionLength);
+                    return Math.min(jcodings.minLength(encoding), regionLength);
                 }
             } else {
                 assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
@@ -730,8 +733,9 @@ final class TStringInternalNodes {
         @Specialization(guards = {"isUnsupportedEncoding(encoding)", "!is7Or8Bit(codeRangeA)"})
         int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, Encoding encoding, int i, ErrorHandling errorHandling) {
             assert isStride0(a);
+            JCodings jcodings = JCodings.getInstance();
             byte[] bytes = JCodings.asByteArray(arrayA);
-            return JCodings.getInstance().decode(a, bytes, JCodings.getInstance().codePointIndexToRaw(this, a, bytes, 0, i, false, encoding), encoding, errorHandling);
+            return jcodings.decode(a, bytes, jcodings.codePointIndexToRaw(this, a, bytes, 0, i, false, encoding), encoding, errorHandling);
         }
     }
 

@@ -839,10 +839,11 @@ public final class MutableTruffleString extends AbstractTruffleString {
                     codeRange = TStringGuards.is8Bit(cr) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : cr;
                     codePointLength = length;
                 } else {
+                    JCodings jcodings = JCodings.getInstance();
                     if (data instanceof NativePointer) {
                         ((NativePointer) data).materializeByteArray(node, a, exoticMaterializeNativeProfile);
                     }
-                    long attrs = JCodings.getInstance().calcStringAttributes(node, data, offset, length, Encoding.get(encoding), 0, exoticValidProfile, exoticFixedWidthProfile);
+                    long attrs = jcodings.calcStringAttributes(node, data, offset, length, Encoding.get(encoding), 0, exoticValidProfile, exoticFixedWidthProfile);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 }

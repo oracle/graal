@@ -43,17 +43,18 @@ package com.oracle.truffle.api.strings;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.provider.JCodingsProvider;
 
-interface JCodings {
+sealed interface JCodings permits JCodingsImpl {
 
     JCodingsProvider PROVIDER = loadProvider();
     boolean ENABLED = PROVIDER != null;
-    JCodings INSTANCE = ENABLED ? new JCodingsImpl(PROVIDER) : new JCodingsDisabled();
+    JCodings INSTANCE = ENABLED ? new JCodingsImpl(PROVIDER) : null;
 
     private static JCodingsProvider loadProvider() {
         if (TruffleOptions.AOT && !TStringAccessor.getNeedsAllEncodings()) {
@@ -76,6 +77,9 @@ interface JCodings {
     }
 
     static JCodings getInstance() {
+        if (INSTANCE == null) {
+            throw CompilerDirectives.shouldNotReachHere("TruffleStrings: JCodings is disabled!");
+        }
         return INSTANCE;
     }
 
