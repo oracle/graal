@@ -222,3 +222,7 @@ JNIEXPORT jstring JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NativeStrin
     const char *str = (const char *) (intptr_t) pointer;
     return (*env)->NewStringUTF(env, str);
 }
+
+JNIEXPORT jint JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NativeLibVersion_getLibTruffleNFIVersion(JNIEnv *env, jclass self) {
+    return 1;
+}

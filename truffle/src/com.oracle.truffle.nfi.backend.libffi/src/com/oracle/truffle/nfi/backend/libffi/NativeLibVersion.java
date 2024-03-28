@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.nfi.backend.libffi;
 
-/*
- * This is the umbrella file to include all generated native header at once
- * Please use it instead of including individual files
+/**
+ * Versioning for libtrufflenfi.so and the corresponding SVM implementation.
+ *
+ * On Hotspot, the Java code of the NFI libffi backend is working together with a JNI native
+ * library. On SVM, this native library doesn't exist. Instead, substitutions written in system java
+ * are used. That means the interface of functions substituted by SVM can not be changed without
+ * breaking compatibility of the Truffle NFI maven artifact with older versions of SVM.
+ *
+ * This version number can be used to make changes in a compatible way. For example, instead of
+ * changing the signature of a native method that's substituted by SVM, a new method can be
+ * introduced, and the Java code can use this version number to decide whether to call the old or
+ * the new method.
+ *
+ * Version history:
+ * <ul>
+ * <li>0 "old" versions, before this version check was introduced
+ * <li>1 first version with this version check
+ * </ul>
  */
+final class NativeLibVersion {
 
-#ifndef __TRUFFLE_NATIVE_H
-#define __TRUFFLE_NATIVE_H
+    public static int get() {
+        return VERSION;
+    }
 
-#include "com_oracle_truffle_nfi_backend_libffi_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_backend_libffi_LibFFIContext.h"
-#include "com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_backend_libffi_NativeString.h"
-#include "com_oracle_truffle_nfi_backend_libffi_NativeLibVersion.h"
+    private static final int VERSION;
 
-#endif
+    static {
+        int version;
+        try {
+            version = getLibTruffleNFIVersion();
+        } catch (UnsatisfiedLinkError e) {
+            // older than the first version that introduced version checks
+            version = 0;
+        }
+        VERSION = version;
+    }
+
+    private static native int getLibTruffleNFIVersion();
+}
