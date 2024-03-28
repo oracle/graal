@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,27 +24,39 @@
  * questions.
  */
 
-package com.oracle.objectfile.debugentry.range;
+package com.oracle.objectfile.dwarf.constants;
 
-import com.oracle.objectfile.debugentry.MethodEntry;
+/**
+ * Values used to build DWARF expressions and locations.
+ */
+public enum DwarfExpressionOpcode {
+    DW_OP_addr((byte) 0x03),
+    @SuppressWarnings("unused")
+    DW_OP_deref((byte) 0x06),
+    DW_OP_dup((byte) 0x12),
+    DW_OP_and((byte) 0x1a),
+    DW_OP_not((byte) 0x20),
+    DW_OP_plus((byte) 0x22),
+    DW_OP_shl((byte) 0x24),
+    DW_OP_shr((byte) 0x25),
+    DW_OP_bra((byte) 0x28),
+    DW_OP_eq((byte) 0x29),
+    DW_OP_lit0((byte) 0x30),
+    DW_OP_reg0((byte) 0x50),
+    DW_OP_breg0((byte) 0x70),
+    DW_OP_regx((byte) 0x90),
+    DW_OP_bregx((byte) 0x92),
+    DW_OP_push_object_address((byte) 0x97),
+    DW_OP_implicit_value((byte) 0x9e),
+    DW_OP_stack_value((byte) 0x9f);
 
-class LeafRange extends SubRange {
-    protected LeafRange(MethodEntry methodEntry, long lo, long hi, int line, PrimaryRange primary, Range caller) {
-        super(methodEntry, lo, hi, line, primary, caller);
+    private final byte value;
+
+    DwarfExpressionOpcode(byte b) {
+        value = b;
     }
 
-    @Override
-    protected void addCallee(SubRange callee) {
-        assert false : "should never be adding callees to a leaf range!";
-    }
-
-    @Override
-    public SubRange getFirstCallee() {
-        return null;
-    }
-
-    @Override
-    public boolean isLeaf() {
-        return true;
+    public byte value() {
+        return value;
     }
 }

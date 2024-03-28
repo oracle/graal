@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -529,7 +529,11 @@ public abstract class ObjectFile {
     }
 
     public Section newDebugSection(String name, ElementImpl impl) {
-        final Segment segment = getOrCreateSegment(null, name, false, false);
+        return newDebugSection(null, name, impl);
+    }
+
+    public Section newDebugSection(String segmentName, String name, ElementImpl impl) {
+        final Segment segment = getOrCreateSegment(segmentName, name, false, false);
         final int alignment = 1; // debugging information is mostly unaligned; padding can result in
                                  // corrupted data when the linker merges multiple debugging
                                  // sections from different inputs
@@ -1172,6 +1176,10 @@ public abstract class ObjectFile {
         // do nothing by default
     }
 
+    public List<String> getDebugSectionNames() {
+        return Collections.emptyList();
+    }
+
     protected static Iterable<LayoutDecision> allDecisions(final Map<Element, LayoutDecisionMap> decisions) {
         return () -> StreamSupport.stream(decisions.values().spliterator(), false)
                         .flatMap(layoutDecisionMap -> StreamSupport.stream(layoutDecisionMap.spliterator(), false)).iterator();
@@ -1294,6 +1302,10 @@ public abstract class ObjectFile {
     private final Map<Element, List<BuildDependency>> dependenciesByDependingElement = new IdentityHashMap<>();
     private final Map<Element, List<BuildDependency>> dependenciesByDependedOnElement = new IdentityHashMap<>();
 
+    protected Object getLayoutDecisionValue(Element e, LayoutDecision.Kind k) {
+        return decisionsTaken.get(e).getDecidedValue(k);
+    }
+
     public void write(DebugContext context, Path outputFile) throws IOException {
         try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
             withDebugContext(context, "ObjectFile.write", () -> {
@@ -1303,7 +1315,7 @@ public abstract class ObjectFile {
     }
 
     @SuppressWarnings("try")
-    public final void write(FileChannel outputChannel) {
+    public List<Element> write(FileChannel outputChannel) {
         List<Element> sortedObjectFileElements = new ArrayList<>();
         int totalSize = bake(sortedObjectFileElements);
         try {
@@ -1317,6 +1329,7 @@ public abstract class ObjectFile {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        return sortedObjectFileElements;
     }
 
     /*
@@ -1860,5 +1873,9 @@ public abstract class ObjectFile {
         } catch (Throwable e) {
             throw debugContext.handle(e);
         }
+    }
+
+    public long getCodeBaseAddress() {
+        return 0;
     }
 }

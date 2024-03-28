@@ -24,18 +24,19 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
-/*
- * DW_AT_language attribute has a range of pre-defined values but we
- * are only interested in Java.
+/**
+ * DW_FORM_flag only has two possible attribute values.
  */
-public enum DwarfLanguage {
-    DW_LANG_Java((byte) 0xb);
+public enum DwarfFlag {
+    @SuppressWarnings("unused")
+    DW_FLAG_false((byte) 0),
+    DW_FLAG_true((byte) 1);
 
     private final byte value;
 
-    DwarfLanguage(byte b) {
+    DwarfFlag(byte b) {
         value = b;
     }
 

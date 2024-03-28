@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,8 +36,7 @@ import java.util.Set;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.range.SubRange;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.dwarf.constants.DwarfExpressionOpcode;
 import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.BuildDependency;
@@ -48,8 +47,6 @@ import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
-import com.oracle.objectfile.elf.ELFMachine;
-import com.oracle.objectfile.elf.ELFObjectFile;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -78,9 +75,9 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                     /* Add this so we can use the text section base address for debug. */
                     LayoutDecision.Kind.VADDR};
 
-    public DwarfLocSectionImpl(DwarfDebugInfo dwarfSections) {
+    public DwarfLocSectionImpl(DwarfDebugInfoBase dwarfSections) {
         // debug_loc section depends on text section
-        super(dwarfSections, DwarfSectionName.DW_LOC_SECTION, DwarfSectionName.TEXT_SECTION, targetLayoutKinds);
+        super(dwarfSections, dwarfSections.locSectionName(), dwarfSections.textSectionName(), targetLayoutKinds);
         initDwarfRegMap();
     }
 
@@ -92,8 +89,8 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
          * Order all content decisions after all size decisions by making loc section content depend
          * on abbrev section size.
          */
-        String abbrevSectionName = dwarfSections.getAbbrevSectionImpl().getSectionName();
-        ELFObjectFile.ELFSection abbrevSection = (ELFObjectFile.ELFSection) getElement().getOwner().elementForName(abbrevSectionName);
+        String abbrevSectionName = dwarfSections.abbrevSectionName().value();
+        var abbrevSection = getElement().getOwner().elementForName(abbrevSectionName);
         LayoutDecision sizeDecision = decisions.get(abbrevSection).getDecision(LayoutDecision.Kind.SIZE);
         deps.add(BuildDependency.createOrGet(ourContent, sizeDecision));
         return deps;
@@ -151,7 +148,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
          * more up-front cross-referencing of CUs when it needs to resolve code addresses e.g. to
          * set a breakpoint, leading to a very slow response for the user.
          */
-        int base = primary.getLo();
+        long base = primary.getLo();
         log(context, "  [0x%08x] top level locations [0x%x, 0x%x] method %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodNameWithParams());
         pos = writeTopLevelLocations(context, compiledEntry, base, buffer, pos);
         if (!primary.isLeaf()) {
@@ -161,7 +158,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeTopLevelLocations(DebugContext context, CompiledMethodEntry compiledEntry, int base, byte[] buffer, int p) {
+    private int writeTopLevelLocations(DebugContext context, CompiledMethodEntry compiledEntry, long base, byte[] buffer, int p) {
         int pos = p;
         Range primary = compiledEntry.getPrimary();
         HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = primary.getVarRangeMap();
@@ -175,7 +172,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeInlineLocations(DebugContext context, CompiledMethodEntry compiledEntry, int base, byte[] buffer, int p) {
+    private int writeInlineLocations(DebugContext context, CompiledMethodEntry compiledEntry, long base, byte[] buffer, int p) {
         int pos = p;
         Range primary = compiledEntry.getPrimary();
         assert !primary.isLeaf();
@@ -197,16 +194,13 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeVarLocations(DebugContext context, DebugLocalInfo local, int base, List<SubRange> rangeList, byte[] buffer, int p) {
+    private int writeVarLocations(DebugContext context, DebugLocalInfo local, long base, List<SubRange> rangeList, byte[] buffer, int p) {
         assert !rangeList.isEmpty();
         int pos = p;
         // collect ranges and values, merging adjacent ranges that have equal value
         List<LocalValueExtent> extents = LocalValueExtent.coalesce(local, rangeList);
 
-        // write start of primary range as base address - see comment above for reasons why
-        // we choose ot do this rather than use the relevant compile unit low_pc
-        pos = writeAttrData8(-1L, buffer, pos);
-        pos = writeAttrAddress(base, buffer, pos);
+        pos = writeLocationsPrefix(base, buffer, pos);
         // write ranges as offsets from base
         for (LocalValueExtent extent : extents) {
             DebugLocalValueInfo value = extent.value;
@@ -240,6 +234,14 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         pos = writeAttrData8(0, buffer, pos);
         pos = writeAttrData8(0, buffer, pos);
 
+        return pos;
+    }
+
+    protected int writeLocationsPrefix(long base, byte[] buffer, int pos) {
+        // write start of primary range as base address - see comment above for reasons why
+        // we choose ot do this rather than use the relevant compile unit low_pc
+        pos = writeAttrData8(-1L, buffer, pos);
+        pos = writeAttrAddress(base, buffer, pos);
         return pos;
     }
 
@@ -362,7 +364,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         }
 
         @SuppressWarnings("unused")
-        boolean shouldMerge(int otherLo, int otherHi, DebugLocalValueInfo otherValue) {
+        boolean shouldMerge(long otherLo, long otherHi, DebugLocalValueInfo otherValue) {
             // ranges need to be contiguous to merge
             if (hi != otherLo) {
                 return false;
@@ -370,7 +372,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             return value.equals(otherValue);
         }
 
-        private LocalValueExtent maybeMerge(int otherLo, int otherHi, DebugLocalValueInfo otherValue) {
+        private LocalValueExtent maybeMerge(long otherLo, long otherHi, DebugLocalValueInfo otherValue) {
             if (shouldMerge(otherLo, otherHi, otherValue)) {
                 // We can extend the current extent to cover the next one.
                 this.hi = otherHi;
@@ -423,11 +425,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     }
 
     private void initDwarfRegMap() {
-        if (dwarfSections.elfMachine == ELFMachine.AArch64) {
+        if (dwarfSections.isAarch64()) {
             dwarfRegMap = GRAAL_AARCH64_TO_DWARF_REG_MAP;
             dwarfStackRegister = DwarfRegEncodingAArch64.SP.getDwarfEncoding();
         } else {
-            assert dwarfSections.elfMachine == ELFMachine.X86_64 : "must be";
+            assert dwarfSections.isAMD64() : "must be";
             dwarfRegMap = GRAAL_X86_64_TO_DWARF_REG_MAP;
             dwarfStackRegister = DwarfRegEncodingAMD64.RSP.getDwarfEncoding();
         }
