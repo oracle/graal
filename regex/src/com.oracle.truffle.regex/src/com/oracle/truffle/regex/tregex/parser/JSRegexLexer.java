@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import static com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor.UNICODE;
+
 import java.util.List;
 import java.util.Map;
 
@@ -54,8 +56,6 @@ import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.util.TBitSet;
-
-import static com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor.UNICODE;
 
 public final class JSRegexLexer extends RegexLexer {
 
@@ -85,11 +85,6 @@ public final class JSRegexLexer extends RegexLexer {
     @Override
     protected boolean featureEnabledZLowerCaseAssertion() {
         return false;
-    }
-
-    @Override
-    protected boolean featureEnabledWordBoundaries() {
-        return true;
     }
 
     @Override
@@ -165,11 +160,6 @@ public final class JSRegexLexer extends RegexLexer {
     @Override
     protected boolean featureEnabledClassSetExpressions() {
         return flags.isUnicodeSets();
-    }
-
-    @Override
-    protected boolean featureEnabledClassSetDifference() {
-        return true;
     }
 
     @Override
@@ -342,11 +332,10 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected int handleIncompleteEscapeX() {
+    protected void handleIncompleteEscapeX() {
         if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
         }
-        return -1;
     }
 
     @Override
@@ -358,8 +347,8 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected ClassSetOperator handleTripleAmpersandInClassSetExpression() {
-        throw syntaxError(JsErrorMessages.INVALID_CHARACTER_IN_CHARACTER_CLASS);
+    protected RegexSyntaxException handleInvalidCharInCharClass() {
+        return syntaxError(JsErrorMessages.INVALID_CHARACTER_IN_CHARACTER_CLASS);
     }
 
     private int handleInvalidEscape(int c) {
@@ -469,7 +458,11 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected Token parseCustomEscape(char c) {
-        if (c == 'k') {
+        if (c == 'b') {
+            return Token.createWordBoundary();
+        } else if (c == 'B') {
+            return Token.createNonWordBoundary();
+        } else if (c == 'k') {
             if (flags.isEitherUnicode() || hasNamedCaptureGroups()) {
                 if (atEnd()) {
                     handleUnfinishedEscape();
@@ -580,18 +573,18 @@ public final class JSRegexLexer extends RegexLexer {
      */
     private int parseUnicodeEscapeChar(boolean unicodeMode) throws RegexSyntaxException {
         if (unicodeMode && consumingLookahead("{")) {
-            final int value = parseHex(1, Integer.MAX_VALUE, 0x10ffff);
+            final int value = parseHexUnicode(1, Integer.MAX_VALUE, 0x10ffff);
             if (!consumingLookahead("}")) {
                 throw syntaxError(JsErrorMessages.INVALID_UNICODE_ESCAPE);
             }
             return value;
         } else {
-            final int value = parseHex(4, 4, 0xffff);
+            final int value = parseHexUnicode(4, 4, 0xffff);
             if (unicodeMode && Character.isHighSurrogate((char) value)) {
                 final int resetIndex = position;
                 if (consumingLookahead("\\u") && !lookahead("{")) {
                     final char lead = (char) value;
-                    final char trail = (char) parseHex(4, 4, 0xffff);
+                    final char trail = (char) parseHexUnicode(4, 4, 0xffff);
                     if (Character.isLowSurrogate(trail)) {
                         return Character.toCodePoint(lead, trail);
                     } else {
@@ -605,45 +598,13 @@ public final class JSRegexLexer extends RegexLexer {
         }
     }
 
-    private int parseHex(int minDigits, int maxDigits, int maxValue) throws RegexSyntaxException {
-        int ret = 0;
-        int initialIndex = position;
-        for (int i = 0; i < maxDigits; i++) {
-            if (atEnd() || !isHexDigit(curChar())) {
-                if (i < minDigits) {
-                    if (flags.isEitherUnicode()) {
-                        throw syntaxError(JsErrorMessages.INVALID_UNICODE_ESCAPE);
-                    } else {
-                        position = initialIndex;
-                        return -1;
-                    }
-                } else {
-                    break;
-                }
-            }
-            final char c = consumeChar();
-            ret *= 16;
-            if (c >= 'a') {
-                ret += c - ('a' - 10);
-            } else if (c >= 'A') {
-                ret += c - ('A' - 10);
-            } else {
-                ret += c - '0';
-            }
-            if (ret > maxValue) {
+    private int parseHexUnicode(int minDigits, int maxDigits, int maxValue) {
+        return parseHex(minDigits, maxDigits, maxValue, () -> {
+            if (flags.isEitherUnicode()) {
                 throw syntaxError(JsErrorMessages.INVALID_UNICODE_ESCAPE);
             }
-        }
-        return ret;
-    }
-
-    @Override
-    protected boolean parseLiteralStart(char c) {
-        return false;
-    }
-
-    @Override
-    protected boolean parseLiteralEnd(char c) {
-        return false;
+        }, () -> {
+            throw syntaxError(JsErrorMessages.INVALID_UNICODE_ESCAPE);
+        });
     }
 }

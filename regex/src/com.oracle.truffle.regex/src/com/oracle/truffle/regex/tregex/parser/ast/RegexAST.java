@@ -97,7 +97,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * Possibly wrapped root for NFA generation (see {@link #createPrefix()}).
      */
     private Group wrappedRoot;
-    private List<Group> captureGroups = new ArrayList<>();
+    private final List<Group> captureGroups = new ArrayList<>();
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
     private final GlobalSubTreeIndex subtrees = new GlobalSubTreeIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();

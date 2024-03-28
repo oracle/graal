@@ -61,6 +61,7 @@ public class Token implements JsonConvertible {
         z,
         caret,
         dollar,
+        linebreak,
         wordBoundary,
         nonWordBoundary,
         backReference,
@@ -73,15 +74,14 @@ public class Token implements JsonConvertible {
         lookBehindAssertionBegin,
         groupEnd,
         literalChar,
+        literalString,
         charClass,
         charClassBegin,
         charClassAtom,
         charClassEnd,
         classSet,
         inlineFlags,
-        conditionalBackreference,
-        nop,
-        linebreak
+        conditionalBackreference
     }
 
     private static final Token A = new Token(Kind.A);
@@ -89,6 +89,7 @@ public class Token implements JsonConvertible {
     private static final Token Z_LOWER_CASE = new Token(Kind.z);
     private static final Token CARET = new Token(Kind.caret);
     private static final Token DOLLAR = new Token(Kind.dollar);
+    private static final Token LINEBREAK = new Token(Kind.linebreak);
     private static final Token WORD_BOUNDARY = new Token(Kind.wordBoundary);
     private static final Token NON_WORD_BOUNDARY = new Token(Kind.nonWordBoundary);
     private static final Token ALTERNATION = new Token(Kind.alternation);
@@ -102,9 +103,6 @@ public class Token implements JsonConvertible {
     private static final Token LOOK_BEHIND_ASSERTION_BEGIN = new LookBehindAssertionBegin(false);
     private static final Token NEGATIVE_LOOK_BEHIND_ASSERTION_BEGIN = new LookBehindAssertionBegin(true);
     private static final Token GROUP_END = new Token(Kind.groupEnd);
-    private static final Token NOP = new Token(Kind.nop);
-
-    private static final Token LINEBREAK = new Token(Kind.linebreak);
 
     public static Token createA() {
         return A;
@@ -124,6 +122,10 @@ public class Token implements JsonConvertible {
 
     public static Token createDollar() {
         return DOLLAR;
+    }
+
+    public static Token createLineBreak() {
+        return LINEBREAK;
     }
 
     public static Token createWordBoundary() {
@@ -162,14 +164,6 @@ public class Token implements JsonConvertible {
         return GROUP_END;
     }
 
-    public static Token createNop() {
-        return NOP;
-    }
-
-    public static Token createLineBreak() {
-        return LINEBREAK;
-    }
-
     public static BackReference createBackReference(int groupNr, boolean namedReference) {
         return new BackReference(Kind.backReference, new int[]{groupNr}, namedReference);
     }
@@ -184,6 +178,10 @@ public class Token implements JsonConvertible {
 
     public static LiteralCharacter createLiteralCharacter(int codePoint) {
         return new LiteralCharacter(codePoint);
+    }
+
+    public static LiteralString createLiteralString(int start, int end) {
+        return new LiteralString(start, end);
     }
 
     public static CharacterClass createCharClass(CodePointSet codePointSet) {
@@ -441,6 +439,32 @@ public class Token implements JsonConvertible {
 
         public int getCodePoint() {
             return codePoint;
+        }
+    }
+
+    public static final class LiteralString extends Token {
+
+        private final int start;
+        private final int end;
+
+        public LiteralString(int start, int end) {
+            super(Kind.literalString);
+            this.start = start;
+            this.end = end;
+        }
+
+        @TruffleBoundary
+        @Override
+        public JsonObject toJson() {
+            return super.toJson().append(Json.prop("start", start), Json.prop("end", end));
+        }
+
+        public int getStart() {
+            return start;
+        }
+
+        public int getEnd() {
+            return end;
         }
     }
 
