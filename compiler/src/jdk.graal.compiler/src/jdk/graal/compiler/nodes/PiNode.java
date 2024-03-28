@@ -528,4 +528,134 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             return "PlaceholderStamp";
         }
     }
+
+    /**
+     * Optimize a (Fixed)Guard-condition-pi pattern as a whole: note that is is different than what
+     * conditional elimination does because here we detect exhaustive patterns and optimize them as
+     * a whole. This is hard to express in CE as we optimize both a pi and its condition in one go.
+     * There is no dedicated optimization phase in graal that does this, therefore we build on
+     * simplification as a more non-local transform.
+     *
+     * We are looking for the following pattern
+     */
+    // @formatter:off
+    //               inputPiObject
+    //               |
+    //               inputPi----
+    //               |          |
+    //               |          |
+    //            condition     |
+    //               |          |
+    //          (fixed) guard     |
+    //               |          |
+    //               usagePi----
+    //@formatter:on
+    /*
+     * and we optimize the condition and the pi together to use inputPi's input if inputPi does not
+     * contribute any knowledge to usagePi. This means that inputPi is totally skipped. If both
+     * inputPi and usagePi ultimately work on the same input (un-pi-ed) then later conditional
+     * elimination can cleanup inputPi's guard if applicable.
+     *
+     * Note: this optimization does not work for subtypes of PiNode like DynamicPi as their stamps
+     * are not yet known.
+     */
+    public static boolean guardTrySkipPi(GuardingNode guard, LogicNode condition, boolean negated) {
+        if (!(guard instanceof FixedGuardNode || guard instanceof GuardNode || guard instanceof BeginNode)) {
+            return false;
+        }
+        boolean progress = false;
+        final LogicNode usagePiCondition = condition;
+
+        if (usagePiCondition.inputs().filter(PiNode.class).isEmpty()) {
+            return false;
+        }
+
+        // look for the pattern from the javadoc
+        for (PiNode usagePi : piUsageSnapshot(guard)) {
+            /*
+             * Restrict this optimization to regular pi nodes only - sub classes of pi nodes
+             * implement delayed pi stamp computation or other optimizations and should thus not be
+             * skipped.
+             */
+            if (usagePi.isRegularPi()) {
+                final ValueNode usagePiObject = usagePi.object();
+
+                if (usagePiCondition.inputs().contains(usagePiObject)) {
+                    final Stamp usagePiPiStamp = usagePi.piStamp();
+                    final Stamp usagePiFinalStamp = usagePi.stamp(NodeView.DEFAULT);
+
+                    if (usagePiObject instanceof PiNode inputPi && inputPi.isRegularPi()) {
+                        /*
+                         * Ensure that the pi actually "belongs" to this guard in the sense that the
+                         * succeeding stamp for the guard is actually the pi stamp.
+                         */
+                        boolean piProvenByCondition = false;
+                        Stamp succeedingStamp = null;
+                        if (usagePiCondition instanceof UnaryOpLogicNode uol) {
+                            succeedingStamp = uol.getSucceedingStampForValue(negated);
+                        } else if (usagePiCondition instanceof BinaryOpLogicNode bol) {
+                            if (bol.getX() == inputPi) {
+                                succeedingStamp = bol.getSucceedingStampForX(negated, bol.getX().stamp(NodeView.DEFAULT), bol.getY().stamp(NodeView.DEFAULT).unrestricted());
+                            } else if (bol.getY() == inputPi) {
+                                succeedingStamp = bol.getSucceedingStampForY(negated, bol.getX().stamp(NodeView.DEFAULT).unrestricted(), bol.getY().stamp(NodeView.DEFAULT));
+                            }
+                        }
+                        piProvenByCondition = succeedingStamp != null && usagePiPiStamp.equals(succeedingStamp);
+
+                        if (piProvenByCondition) {
+                            /*
+                             * We want to find out if the inputPi can be skipped because usagePi's
+                             * guard and pi stamp prove enough knowledge to actually skip inputPi
+                             * completely. This can be relevant for complex type check patterns and
+                             * interconnected pis: conditional elimination cannot enumerate all
+                             * values thus we try to free up local patterns early by skipping
+                             * unnecessary pis.
+                             */
+                            final Stamp inputPiPiStamp = inputPi.piStamp();
+                            final Stamp inputPiObjectFinalStamp = inputPi.object().stamp(NodeView.DEFAULT);
+                            /*
+                             * Determine if the stamp from piInput.input & usagePi.piStamp is
+                             * equally strong than the current piStamp, then we can build a new pi
+                             * that skips the input pi.
+                             */
+                            final Stamp resultStampWithInputPiObjectOnly = usagePiPiStamp.improveWith(inputPiObjectFinalStamp);
+                            final boolean thisPiEquallyStrongWithoutInputPi = resultStampWithInputPiObjectOnly.tryImproveWith(inputPiPiStamp) == null;
+                            if (thisPiEquallyStrongWithoutInputPi) {
+                                assert resultStampWithInputPiObjectOnly.tryImproveWith(inputPiPiStamp) == null : Assertions.errorMessage(
+                                                "Dropping input pi assumes that input pi stamp does not contribute to knowledge but it does", inputPi, inputPi.object(), usagePiPiStamp,
+                                                usagePiFinalStamp);
+                                /*
+                                 * The input pi's object stamp was strong enough so we can skip the
+                                 * input pi.
+                                 */
+                                final ValueNode newPi = usagePiCondition.graph().addOrUnique(PiNode.create(inputPi.object(), usagePiPiStamp, usagePi.getGuard().asNode()));
+                                final LogicNode newCondition = (LogicNode) usagePiCondition.copyWithInputs(true);
+                                newCondition.replaceAllInputs(usagePiObject, inputPi.object());
+                                if (guard.asNode() instanceof FixedGuardNode fg) {
+                                    fg.setCondition(newCondition, negated);
+                                } else if (guard.asNode() instanceof GuardNode floatingGuard) {
+                                    floatingGuard.setCondition(newCondition, negated);
+                                } else if (guard.asNode() instanceof BeginNode) {
+                                    ((IfNode) guard.asNode().predecessor()).setCondition(newCondition);
+                                } else {
+                                    GraalError.shouldNotReachHere("Unknown guard " + guard);
+                                }
+                                usagePi.replaceAndDelete(newPi);
+                                progress = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return progress;
+    }
+
+    private boolean isRegularPi() {
+        return getClass() == PiNode.class;
+    }
+
+    private static Iterable<PiNode> piUsageSnapshot(GuardingNode guard) {
+        return guard.asNode().usages().filter(PiNode.class).snapshot();
+    }
 }

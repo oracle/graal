@@ -50,7 +50,7 @@ public interface StampProvider {
     AbstractPointerStamp createMethodAlwaysNullStamp();
 
     /**
-     * Create the method pointer always null stamp.
+     * Create the method pointer always null value.
      */
     Constant methodPointerAlwaysNullConstant();
 }

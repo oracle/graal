@@ -34,7 +34,6 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
-import jdk.graal.compiler.nodes.util.GraphUtil;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class BeginNode extends AbstractBeginNode implements Simplifiable {
@@ -60,7 +59,7 @@ public final class BeginNode extends AbstractBeginNode implements Simplifiable {
         }
 
         if (this.isAlive() && this.predecessor() instanceof IfNode ifNode) {
-            if (GraphUtil.guardTrySkipPi(this, ifNode.condition(), ifNode.falseSuccessor() == this)) {
+            if (PiNode.guardTrySkipPi(this, ifNode.condition(), ifNode.falseSuccessor() == this)) {
                 return;
             }
         }

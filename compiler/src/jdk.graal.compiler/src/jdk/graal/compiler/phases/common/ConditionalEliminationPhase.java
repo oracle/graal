@@ -215,7 +215,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
 
     private static void trySkippingGuardPis(StructuredGraph graph) {
         for (GuardNode floatingGuard : graph.getNodes(GuardNode.TYPE).snapshot()) {
-            GraphUtil.guardTrySkipPi(floatingGuard, floatingGuard.getCondition(), floatingGuard.isNegated());
+            PiNode.guardTrySkipPi(floatingGuard, floatingGuard.getCondition(), floatingGuard.isNegated());
         }
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After trySkipGuardPis");
     }
