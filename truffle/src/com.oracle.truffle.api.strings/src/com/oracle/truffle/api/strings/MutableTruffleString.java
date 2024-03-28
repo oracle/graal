@@ -82,7 +82,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     private static MutableTruffleString create(Object data, int offset, int length, Encoding encoding) {
         final int codePointLength;
         if (encoding.isFixedWidth()) {
-            codePointLength = encoding.isSupported() ? length : length / JCodings.getInstance().minLength(encoding.jCoding);
+            codePointLength = encoding.isSupported() ? length : length / JCodings.getInstance().minLength(encoding);
         } else {
             codePointLength = -1;
         }

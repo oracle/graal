@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,74 +38,68 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings;
+package com.oracle.truffle.api.strings.provider;
+
+import java.util.function.Function;
+
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.TranscodingErrorHandler;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
- * Wrapper object containing a {@link TruffleString}'s internal byte array, along with a byte offset
- * and length defining the region in use.
+ * NOT PUBLIC API.
+ * <p>
+ * Used to register optional {@link TruffleString} encoding support using a service provider.
+ * <p>
+ * This interface is not intended to be implemented directly; rather, it is an internal SPI,
+ * implementation of which is provided by the shadowed jcodings module.
  *
- * @since 22.1
+ * @since 24.1
  */
-public final class InternalByteArray {
+public interface JCodingsProvider {
 
-    static final InternalByteArray EMPTY = new InternalByteArray(TruffleString.Encoding.EMPTY_BYTES, 0, 0);
+    int MAX_JCODINGS_INDEX_VALUE = 0x7f;
 
-    private final byte[] array;
-    private final int offset;
-    private final int length;
+    interface Encoding {
+        int length(byte[] array, int index, int arrayLength);
 
-    InternalByteArray(byte[] array, int offset, int length) {
-        this.array = array;
-        this.offset = offset;
-        this.length = length;
+        int codeToMbcLength(int codepoint);
+
+        int codeToMbc(int codepoint, byte[] array, int index);
+
+        int mbcToCode(byte[] array, int index, int arrayEnd);
+
+        int prevCharHead(byte[] array, int arrayBegin, int index, int arrayEnd);
+
+        boolean isUnicode();
+
+        boolean isSingleByte();
+
+        boolean isFixedWidth();
+
+        int minLength();
+
+        int maxLength();
+
+        String getCharsetName();
+
+        byte[] getName();
     }
 
-    /**
-     * Get the internal byte array. Do not modify the array's contents!
-     *
-     * @since 22.1
-     */
-    public byte[] getArray() {
-        return array;
+    Encoding get(String encodingName);
+
+    record TranscodeResult(byte[] buffer, int length, boolean undefinedConversion) {
     }
 
-    /**
-     * Get the string region's starting index.
-     *
-     * @since 22.1
-     */
-    public int getOffset() {
-        return offset;
-    }
-
-    /**
-     * Get the string region's length.
-     *
-     * @since 22.1
-     */
-    public int getLength() {
-        return length;
-    }
-
-    /**
-     * Get the string region's end ({@code offset + length}).
-     *
-     * @since 22.1
-     */
-    public int getEnd() {
-        return offset + length;
-    }
-
-    /**
-     * Read the byte at {@code getArray()[getOffset() + index]} and return it as a byte, similar to
-     * {@link TruffleString.ReadByteNode}. Consider using {@link TruffleString.ReadByteNode} (and
-     * {@link TruffleString.MaterializeNode} before) instead if not needing the byte[] for other
-     * purposes, as that will avoid extra copying if the string {@link TruffleString#isNative() is
-     * stored in native memory}.
-     *
-     * @since 22.2
-     */
-    public byte get(int index) {
-        return array[offset + index];
-    }
+    TranscodeResult transcode(AbstractTruffleString a,
+                    int codePointLengthA,
+                    int byteArrayOffset,
+                    int byteLength,
+                    TruffleString.Encoding targetEncoding,
+                    Encoding jCodingSrc,
+                    Encoding jCodingDst,
+                    byte[] builtinReplacement,
+                    TranscodingErrorHandler errorHandler,
+                    Function<AbstractTruffleString, byte[]> asBytesMaterializeNative,
+                    Function<AbstractTruffleString, Encoding> getBytesEncoding);
 }

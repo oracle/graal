@@ -961,6 +961,10 @@ suite = {
         "exports" : [
           "org.graalvm.nativebridge",
         ],
+        "requires": [
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage",
+        ],
       },
       "subDir" : "src",
       "dependencies" : ["org.graalvm.nativebridge"],

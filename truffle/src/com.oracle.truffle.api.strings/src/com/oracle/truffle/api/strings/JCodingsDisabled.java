@@ -42,7 +42,6 @@ package com.oracle.truffle.api.strings;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
 final class JCodingsDisabled implements JCodings {
@@ -50,77 +49,62 @@ final class JCodingsDisabled implements JCodings {
     public static final String MESSAGE = "TruffleStrings: JCodings is disabled!";
 
     @Override
-    public Encoding get(String encodingName) {
+    public int minLength(TruffleString.Encoding encoding) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public Encoding get(TruffleString.Encoding encoding) {
+    public int maxLength(TruffleString.Encoding encoding) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public String name(Encoding jCoding) {
+    public boolean isFixedWidth(TruffleString.Encoding encoding) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public int minLength(Encoding enc) {
+    public boolean isSingleByte(TruffleString.Encoding encoding) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public int maxLength(Encoding e) {
+    public int getCodePointLength(TruffleString.Encoding encoding, int codepoint) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public boolean isFixedWidth(Encoding enc) {
+    public int getPreviousCodePointIndex(TruffleString.Encoding encoding, byte[] array, int arrayBegin, int index, int arrayEnd) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public boolean isSingleByte(Encoding enc) {
+    public int getCodePointLength(TruffleString.Encoding encoding, byte[] array, int index, int arrayLength) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public int getCodePointLength(Encoding jCoding, int codepoint) {
+    public int readCodePoint(TruffleString.Encoding encoding, byte[] array, int index, int arrayEnd, DecodingErrorHandler errorHandler) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public int getPreviousCodePointIndex(Encoding jCoding, byte[] array, int arrayBegin, int index, int arrayEnd) {
+    public boolean isValidCodePoint(TruffleString.Encoding encoding, int codepoint) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public int getCodePointLength(Encoding jCoding, byte[] array, int index, int arrayLength) {
+    public int writeCodePoint(TruffleString.Encoding encoding, int codepoint, byte[] array, int index) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd, DecodingErrorHandler errorHandler) {
+    public int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, TruffleString.Encoding encoding) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
-    public boolean isValidCodePoint(Encoding jCoding, int codepoint) {
-        throw CompilerDirectives.shouldNotReachHere(MESSAGE);
-    }
-
-    @Override
-    public int writeCodePoint(Encoding jCoding, int codepoint, byte[] array, int index) {
-        throw CompilerDirectives.shouldNotReachHere(MESSAGE);
-    }
-
-    @Override
-    public int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, Encoding jCoding) {
-        throw CompilerDirectives.shouldNotReachHere(MESSAGE);
-    }
-
-    @Override
-    public int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding, TruffleString.ErrorHandling errorHandling) {
+    public int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, TruffleString.Encoding encoding, TruffleString.ErrorHandling errorHandling) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
@@ -132,8 +116,6 @@ final class JCodingsDisabled implements JCodings {
 
     @Override
     public TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
-                    InlinedBranchProfile outOfMemoryProfile,
-                    InlinedConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode,
                     TranscodingErrorHandler errorHandler) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
