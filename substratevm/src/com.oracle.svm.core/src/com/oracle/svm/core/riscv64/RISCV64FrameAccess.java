@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.riscv64;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -33,6 +32,8 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton(FrameAccess.class)
 @Platforms(Platform.RISCV64.class)
@@ -54,13 +55,6 @@ public class RISCV64FrameAccess extends FrameAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer getReturnAddressLocation(Pointer sourceSp) {
         return sourceSp.subtract(returnAddressSize());
-    }
-
-    @Fold
-    @Override
-    public int savedBasePointerSize() {
-        // The base pointer is always pushed on the stack on method entry
-        return wordSize();
     }
 
     @Override

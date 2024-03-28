@@ -33,7 +33,9 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -82,6 +84,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.options.Option;
@@ -612,7 +615,7 @@ public final class Deoptimizer {
          * deoptimizeInRange(). So when this method returns we are inside the caller of
          * deoptimizeInRange().
          */
-        Pointer bottomSp = newSp.subtract(FrameAccess.returnAddressSize() + FrameAccess.singleton().savedBasePointerSize());
+        Pointer bottomSp = newSp.subtract(FrameAccess.returnAddressSize() + savedBasePointerSize());
         frame.getTargetContent().copyToPointer(bottomSp);
 
         if (DeoptimizationCounters.Options.ProfileDeoptimization.getValue()) {
@@ -620,6 +623,25 @@ public final class Deoptimizer {
         }
 
         return gpReturnValue;
+    }
+
+    /**
+     * Returns the size in bytes of the saved base pointer in the stack frame. The saved base
+     * pointer must be located immediately after the return address (if this is not the case in a
+     * new architecture, bigger modifications to the Deoptimizer code are required).
+     */
+    @Fold
+    static int savedBasePointerSize() {
+        if (Platform.includedIn(Platform.AMD64.class)) {
+            return SubstrateOptions.PreserveFramePointer.getValue() ? FrameAccess.wordSize() : 0;
+        } else if (Platform.includedIn(Platform.AARCH64.class)) {
+            // The base pointer is always saved with stp instruction on method entry
+            return FrameAccess.wordSize();
+        } else if (Platform.includedIn(Platform.RISCV64.class)) {
+            // The base pointer is always pushed on the stack on method entry
+            return FrameAccess.wordSize();
+        }
+        throw VMError.shouldNotReachHere("Unexpected platform: " + ImageSingletons.lookup(Platform.class));
     }
 
     /**
@@ -800,7 +822,7 @@ public final class Deoptimizer {
      */
     private VirtualFrame constructTargetFrame(CodeInfoQueryResult targetInfo, FrameInfoQueryResult sourceFrame) {
         FrameInfoQueryResult targetFrame = targetInfo.getFrameInfo();
-        int savedBasePointerSize = FrameAccess.singleton().savedBasePointerSize();
+        int savedBasePointerSize = savedBasePointerSize();
         int targetFrameSize = NumUtil.safeToInt(targetInfo.getTotalFrameSize()) - FrameAccess.returnAddressSize() - savedBasePointerSize;
         VirtualFrame result = new VirtualFrame(targetFrame);
 

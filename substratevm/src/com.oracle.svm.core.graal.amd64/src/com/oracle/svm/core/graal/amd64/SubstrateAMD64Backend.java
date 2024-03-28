@@ -188,6 +188,7 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -1097,6 +1098,41 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
+    /**
+     * Generates a method's prologue and epilogue.
+     * <p>
+     * Depending on the {@link SubstrateAMD64FrameMap frame map} properties and whether the rbp
+     * register is saved by the caller or the callee, we use different forms of prologue and
+     * epilogue.
+     *
+     * <pre>
+     *
+     *          |      preserveFramePointer       |
+     *          +----------------+----------------+
+     *          |     false      |      true      |
+     *  --------+----------------+----------------+
+     *          |  ; prologue    |  ; prologue    |
+     *          |  sub rsp, #fs  |  push rbp      |
+     *          |                |  mov rbp, rsp  |
+     *  rbp is  |                |  sub rsp, #fs  |
+     *  caller  |                |                |
+     *  saved   |  ; epilogue    |  ; epilogue    |
+     *          |  add rsp, #fs  |  add rsp, #fs  |
+     *          |  ret           |  pop rbp       |
+     *          |                |  ret           |
+     *  --------+----------------+----------------+
+     *          |  ; prologue    |  ; prologue    |
+     *          |  push rbp      |  push rbp      |
+     *          |  sub rsp, #fs  |  mov rbp, rsp  |
+     *  rbp is  |                |  sub rsp, #fs  |
+     *  callee  |                |                |
+     *  saved   |  ; epilogue    |  ; epilogue    |
+     *          |  add rsp, #fs  |  add rsp, #fs  |
+     *          |  pop rbp       |  pop rbp       |
+     *          |  ret           |  ret           |
+     *  --------+----------------+----------------+
+     * </pre>
+     */
     protected static class SubstrateAMD64FrameContext implements FrameContext {
 
         protected final SharedMethod method;
@@ -1132,7 +1168,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         protected void maybePushBasePointer(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-            if (((SubstrateAMD64RegisterConfig) crb.frameMap.getRegisterConfig()).shouldUseBasePointer()) {
+            SubstrateAMD64FrameMap frameMap = (SubstrateAMD64FrameMap) crb.frameMap;
+            if (frameMap.preserveFramePointer()) {
                 /*
                  * Note that we never use the `enter` instruction so that we have a predictable code
                  * pattern at each method prologue. And `enter` seems to be slower than the explicit
@@ -1140,28 +1177,29 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                  */
                 asm.push(rbp);
                 asm.movq(rbp, rsp);
+            } else if (isCalleeSaved(rbp, frameMap.getRegisterConfig(), method)) {
+                asm.push(rbp);
             }
         }
 
         @Override
         public void leave(CompilationResultBuilder crb) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
+            SubstrateAMD64FrameMap frameMap = (SubstrateAMD64FrameMap) crb.frameMap;
             crb.recordMark(SubstrateMarkId.EPILOGUE_START);
 
             if (method.hasCalleeSavedRegisters()) {
                 JavaKind returnKind = method.getSignature().getReturnKind();
                 Register returnRegister = null;
                 if (returnKind != JavaKind.Void) {
-                    returnRegister = crb.frameMap.getRegisterConfig().getReturnRegister(returnKind);
+                    returnRegister = frameMap.getRegisterConfig().getReturnRegister(returnKind);
                 }
-                AMD64CalleeSavedRegisters.singleton().emitRestore((AMD64MacroAssembler) crb.asm, crb.frameMap.totalFrameSize(), returnRegister, crb);
+                AMD64CalleeSavedRegisters.singleton().emitRestore(asm, frameMap.totalFrameSize(), returnRegister, crb);
             }
 
-            if (((SubstrateAMD64RegisterConfig) crb.frameMap.getRegisterConfig()).shouldUseBasePointer()) {
-                asm.movq(rsp, rbp);
+            asm.incrementq(rsp, frameMap.frameSize());
+            if (frameMap.preserveFramePointer() || isCalleeSaved(rbp, frameMap.getRegisterConfig(), method)) {
                 asm.pop(rbp);
-            } else {
-                asm.incrementq(rsp, crb.frameMap.frameSize());
             }
 
             crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
@@ -1412,11 +1450,31 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
-    private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
-        RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        FrameMap frameMap = new AMD64FrameMap(getProviders().getCodeCache(), registerConfigNonNull, new SubstrateReferenceMapBuilderFactory(),
-                        ((SubstrateAMD64RegisterConfig) registerConfigNonNull).shouldUseBasePointer());
-        return new AMD64FrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
+    private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig, SharedMethod method) {
+        FrameMap frameMap = new SubstrateAMD64FrameMap(getCodeCache(), (SubstrateAMD64RegisterConfig) registerConfig, new SubstrateReferenceMapBuilderFactory(), method);
+        return new AMD64FrameMapBuilder(frameMap, getCodeCache(), registerConfig);
+    }
+
+    /**
+     * AMD64 Substrate VM specific frame map.
+     * <p>
+     * The layout is basically the same as {@link AMD64FrameMap} except that space for rbp is also
+     * reserved when rbp is callee saved, not just if {@link #preserveFramePointer} is true.
+     */
+    static class SubstrateAMD64FrameMap extends AMD64FrameMap {
+        SubstrateAMD64FrameMap(CodeCacheProvider codeCache, SubstrateAMD64RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, SharedMethod method) {
+            super(codeCache, registerConfig, referenceMapFactory, registerConfig.shouldUseBasePointer());
+            if (!preserveFramePointer() && isCalleeSaved(rbp, registerConfig, method)) {
+                assert initialSpillSize == returnAddressSize() && spillSize == initialSpillSize : "rbp must be right after the return address";
+                initialSpillSize += getTarget().wordSize;
+                spillSize += getTarget().wordSize;
+            }
+        }
+    }
+
+    private static boolean isCalleeSaved(Register register, RegisterConfig config, SharedMethod method) {
+        RegisterAttributes registerAttributes = config.getAttributesMap()[register.number];
+        return registerAttributes.isCalleeSave() || registerAttributes.isAllocatable() && method.hasCalleeSavedRegisters();
     }
 
     @Override
@@ -1425,7 +1483,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         SubstrateCallingConventionKind ccKind = method.getCallingConventionKind();
         SubstrateCallingConventionType ccType = ccKind.isCustom() ? method.getCustomCallingConventionType() : ccKind.toType(false);
         CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), ccType, method, this);
-        return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), callingConvention, registerAllocationConfig, method);
+        return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig(), method), callingConvention, registerAllocationConfig, method);
     }
 
     protected AMD64ArithmeticLIRGenerator createArithmeticLIRGen(RegisterValue nullRegisterValue) {
