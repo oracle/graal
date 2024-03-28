@@ -1778,7 +1778,7 @@ public class NativeImage {
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
-        Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
+        Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LANGUAGE"));
         Function<String, String> keyMapper;
         if (OS.WINDOWS.isCurrent()) {
             requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
@@ -1788,7 +1788,9 @@ public class NativeImage {
         }
         Map<String, String> restrictedEnvironment = new HashMap<>();
         environment.forEach((key, val) -> {
-            if (requiredKeys.contains(keyMapper.apply(key))) {
+            String mappedKey = keyMapper.apply(key);
+            // LC_* are locale vars that override LANG for specific categories (or all, with LC_ALL)
+            if (requiredKeys.contains(mappedKey) || mappedKey.startsWith("LC_")) {
                 restrictedEnvironment.put(key, val);
             }
         });
