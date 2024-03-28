@@ -126,6 +126,9 @@ extern const struct __TruffleThreadAPI truffleThreadAPI;
 
 extern __thread int errnoMirror;
 
+// contains the "current" env from the most recent downcall, for faster lookup
+extern __thread struct __TruffleEnvInternal *cachedTruffleEnv;
+
 // keep this in sync with the code in com.oracle.truffle.nfi.NativeArgumentBuffer$TypeTag
 enum TypeTag {
     OBJECT = 0,

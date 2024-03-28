@@ -121,10 +121,17 @@ static TruffleEnv *lookupTruffleEnvOrError(int status, JNIEnv *env, struct __Tru
 
 static TruffleEnv *getTruffleEnv(TruffleContext *context) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
-    JavaVM *vm = ctx->javaVM;
-
+    struct __TruffleEnvInternal *cached = cachedTruffleEnv;
+    JavaVM *vm;
     JNIEnv *env;
-    int ret = (*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6);
+    int ret;
+
+    if (cached != NULL && cached->context == ctx) {
+        return (TruffleEnv *) cached;
+    }
+
+    vm = ctx->javaVM;
+    ret = (*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6);
     return lookupTruffleEnvOrError(ret, env, ctx);
 }
 
