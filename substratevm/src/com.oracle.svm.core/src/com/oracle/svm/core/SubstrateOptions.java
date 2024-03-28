@@ -989,6 +989,9 @@ public class SubstrateOptions {
     @Option(help = "Determines if implicit exceptions are fatal if they don't have a stack trace.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> ImplicitExceptionWithoutStacktraceIsFatal = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Determines if frame anchors are verified at run-time.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> VerifyFrameAnchors = new HostedOptionKey<>(false);
+
     @SuppressWarnings("unused")//
     @APIOption(name = "configure-reflection-metadata")//
     @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert, deprecated = true)//
