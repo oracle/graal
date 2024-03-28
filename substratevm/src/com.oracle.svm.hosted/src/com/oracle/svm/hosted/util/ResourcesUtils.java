@@ -39,34 +39,37 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.VMError;
+
 public class ResourcesUtils {
 
     /**
      * Returns jar path from the given url.
      */
     private static String urlToJarPath(URL url) {
-        try {
-            return ((JarURLConnection) url.openConnection()).getJarFileURL().toURI().getPath();
-        } catch (IOException | URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
+        return urlToJarUri(url).getPath();
     }
 
     /**
      * Returns directory that contains resource on the given url.
      */
     public static String getResourceSource(URL url, String resource, boolean fromJar) {
-        String source = fromJar ? Path.of(urlToJarPath(url)).toUri().toString() : Path.of(url.getPath()).toUri().toString();
-        if (!fromJar) {
-            // -1 removes trailing slash from path of directory that contains resource
-            source = source.substring(0, source.length() - resource.length() - 1);
-            if (source.endsWith("/")) {
-                // if resource was directory we still have one slash at the end
-                source = source.substring(0, source.length() - 1);
-            }
-        }
+        try {
+            String source = fromJar ? urlToJarUri(url).toString() : url.toURI().toString();
 
-        return source;
+            if (!fromJar) {
+                // -1 removes trailing slash from path of directory that contains resource
+                source = source.substring(0, source.length() - resource.length() - 1);
+                if (source.endsWith("/")) {
+                    // if resource was directory we still have one slash at the end
+                    source = source.substring(0, source.length() - 1);
+                }
+            }
+
+            return source;
+        } catch (URISyntaxException e) {
+            throw VMError.shouldNotReachHere("Cannot get uri from: " + url, e);
+        }
     }
 
     /**
@@ -132,6 +135,14 @@ public class ResourcesUtils {
         }
 
         return String.join(System.lineSeparator(), content);
+    }
+
+    private static URI urlToJarUri(URL url) {
+        try {
+            return ((JarURLConnection) url.openConnection()).getJarFileURL().toURI();
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
