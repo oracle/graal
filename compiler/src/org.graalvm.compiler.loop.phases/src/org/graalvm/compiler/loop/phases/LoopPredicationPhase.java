@@ -112,9 +112,8 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
                         final InductionVariable counter = counted.getLimitCheckedIV();
                         final Condition condition = ((CompareNode) counted.getLimitTest().condition()).condition().asCondition();
                         final boolean inverted = loop.counted().isInverted();
-                        if ((((IntegerStamp) counter.valueNode().stamp(NodeView.DEFAULT)).getBits() == 32) &&
-                                        !counted.isUnsignedCheck() &&
-                                        ((condition != NE && condition != EQ) || (counter.isConstantStride() && Math.abs(counter.constantStride()) == 1)) &&
+                        if ((((IntegerStamp) counter.valueNode().stamp(NodeView.DEFAULT)).getBits() == 32) && !counted.isUnsignedCheck() &&
+                                        ((condition != NE && condition != EQ) || (counter.isConstantStride() && LoopEx.absStrideIsOne(counter))) &&
                                         (loop.loopBegin().isMainLoop() || loop.loopBegin().isSimpleLoop())) {
                             NodeIterable<GuardNode> guards = loop.whole().nodes().filter(GuardNode.class);
                             if (LoopPredicationMainPath.getValue(graph.getOptions())) {
