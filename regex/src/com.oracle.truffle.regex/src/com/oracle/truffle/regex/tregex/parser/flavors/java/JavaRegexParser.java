@@ -202,6 +202,9 @@ public final class JavaRegexParser implements RegexParser {
                     astBuilder.addClassSet((Token.ClassSet) token,
                                     getFlags().isCaseInsensitive() ? JavaFlavor.getCaseFoldingAlgorithm(getFlags().isUnicodeCase() || getFlags().isUnicodeCharacterClass()) : null);
                     break;
+                case literalString:
+                    literalString((Token.LiteralString) token);
+                    break;
                 case linebreak:
                     pushGroup(); // (?:
                     addCharClass(CodePointSet.create('\r'));
@@ -236,6 +239,15 @@ public final class JavaRegexParser implements RegexParser {
 
     private RegexSyntaxException syntaxErrorHere(String message) {
         return RegexSyntaxException.createPattern(source, message, lexer.getLastTokenPosition());
+    }
+
+    private void literalString(Token.LiteralString token) {
+        int i = token.getStart();
+        while (i < token.getEnd()) {
+            int codePoint = source.getPattern().codePointAt(i);
+            astBuilder.addCharClass(CodePointSet.create(codePoint), true);
+            i += codePoint > Character.MAX_VALUE ? 2 : 1;
+        }
     }
 
     // The behavior of the word-boundary assertions depends on the notion of a word character.

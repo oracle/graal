@@ -828,6 +828,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 CompilerAsserts.partialEvaluationConstant(guard);
                 if (guard.getKind() == QuantifierGuard.Kind.updateRecursiveBackrefPointer) {
                     locals.saveRecursiveBackrefGroupStart(guard.getIndex());
+                } else {
+                    break;
                 }
             }
         }

@@ -89,7 +89,6 @@ public abstract class RegexLexer {
     private int nGroups = 1;
     private boolean identifiedAllGroups = false;
     protected final CompilationBuffer compilationBuffer;
-    private boolean literalMode = false;
 
     public RegexLexer(RegexSource source, CompilationBuffer compilationBuffer) {
         this.source = source;
@@ -112,12 +111,6 @@ public abstract class RegexLexer {
      * Returns {@code true} if {@code \z} position assertion is supported.
      */
     protected abstract boolean featureEnabledZLowerCaseAssertion();
-
-    /**
-     * Returns {@code true} if {@code \w} and {@code \W} word boundary position assertions are
-     * supported.
-     */
-    protected abstract boolean featureEnabledWordBoundaries();
 
     /**
      * Returns {@code true} if empty minimum values in bounded quantifiers (e.g. {@code {,1}}) are
@@ -218,11 +211,6 @@ public abstract class RegexLexer {
      * supported.
      */
     protected abstract boolean featureEnabledClassSetExpressions();
-
-    /**
-     * Returns {@code true} if class set expressions support the difference (--) operator.
-     */
-    protected abstract boolean featureEnabledClassSetDifference();
 
     /**
      * Updates a character set by expanding it to the set of characters that case fold to the same
@@ -335,14 +323,14 @@ public abstract class RegexLexer {
     /**
      * Handle incomplete hex escapes, e.g. {@code \x1}.
      */
-    protected abstract int handleIncompleteEscapeX();
+    protected abstract void handleIncompleteEscapeX();
 
     /**
      * Handle group references to non-existent groups.
      */
     protected abstract Token handleInvalidBackReference(int reference);
 
-    protected abstract ClassSetOperator handleTripleAmpersandInClassSetExpression();
+    protected abstract RegexSyntaxException handleInvalidCharInCharClass();
 
     /**
      * Handle groups starting with {@code (?} and invalid next char.
@@ -611,14 +599,6 @@ public abstract class RegexLexer {
         return pattern.charAt(position - 1) == c;
     }
 
-    protected boolean isEscaped() {
-        int backslashPosition = position - 1;
-        while (backslashPosition >= 0 && pattern.charAt(backslashPosition) == '\\') {
-            backslashPosition--;
-        }
-        return (position - backslashPosition) % 2 == 0;
-    }
-
     protected int count(Predicate<Character> predicate) {
         return count(predicate, position, pattern.length());
     }
@@ -790,16 +770,6 @@ public abstract class RegexLexer {
 
     private Token getNext() throws RegexSyntaxException {
         final char c = consumeChar();
-
-        if (literalMode) {
-            if (parseLiteralEnd(c)) {
-                literalMode = false;
-                return Token.createNop();
-            } else {
-                return charClass(CodePointSet.create(toCodePoint(c)));
-            }
-        }
-
         if (inCharacterClass()) {
             if (c == ']' && (!featureEnabledCharClassFirstBracketIsLiteral() || position != curCharClassStartIndex + (curCharClassInverted ? 2 : 1))) {
                 curCharClassStartIndex = -1;
@@ -855,12 +825,6 @@ public abstract class RegexLexer {
         if (custom != null) {
             return custom;
         }
-
-        if (parseLiteralStart(c)) {
-            literalMode = true;
-            return Token.createNop();
-        }
-
         if ('1' <= c && c <= '9') {
             final int restoreIndex = position;
             final int backRefNumber = parseIntSaturated(c - '0', countDecimalDigits(getMaxBackReferenceDigits() - 1), Integer.MAX_VALUE);
@@ -883,13 +847,6 @@ public abstract class RegexLexer {
                 return Token.createZLowerCase();
             }
         }
-        if (featureEnabledWordBoundaries()) {
-            if (c == 'b') {
-                return handleWordBoundary();
-            } else if (c == 'B') {
-                return Token.createNonWordBoundary();
-            }
-        }
         // Here we differentiate the case when parsing one of the six basic pre-defined
         // character classes (\w, \W, \d, \D, \s, \S) and Unicode character property
         // escapes. Both result in sets of characters, but in the former case, we can skip
@@ -908,14 +865,6 @@ public abstract class RegexLexer {
         } else {
             return literalChar(parseEscapeChar(c, false));
         }
-    }
-
-    protected abstract boolean parseLiteralStart(char c);
-
-    protected abstract boolean parseLiteralEnd(char c);
-
-    protected Token handleWordBoundary() {
-        return Token.createWordBoundary();
     }
 
     private Token parseGroupBegin() throws RegexSyntaxException {
@@ -1343,10 +1292,10 @@ public abstract class RegexLexer {
     private ClassSetOperator parseClassSetOperator() {
         if (consumingLookahead("&&")) {
             if (lookahead("&")) {
-                return handleTripleAmpersandInClassSetExpression();
+                throw handleInvalidCharInCharClass();
             }
             return ClassSetOperator.Intersection;
-        } else if (featureEnabledClassSetDifference() && consumingLookahead("--")) {
+        } else if (consumingLookahead("--")) {
             return ClassSetOperator.Difference;
         } else {
             return ClassSetOperator.Union;
@@ -1484,11 +1433,7 @@ public abstract class RegexLexer {
                 return '\u000B';
             case 'x':
                 if (!consumingLookahead(RegexLexer::isHexDigit, 2)) {
-                    int handle = handleIncompleteEscapeX();
-                    if (handle != -1) {
-                        return handle;
-                    }
-
+                    handleIncompleteEscapeX();
                     return c;
                 }
                 return Integer.parseInt(pattern, position - 2, position, 16);
@@ -1525,6 +1470,33 @@ public abstract class RegexLexer {
             }
             ret *= 8;
             ret += consumeChar() - '0';
+        }
+        return ret;
+    }
+
+    protected int parseHex(int minDigits, int maxDigits, int maxValue, Runnable handleTooFewDigits, Runnable handleValueTooLarge) {
+        int ret = 0;
+        int initialIndex = position;
+        for (int i = 0; i < maxDigits; i++) {
+            if (atEnd() || !isHexDigit(curChar())) {
+                if (i < minDigits) {
+                    handleTooFewDigits.run();
+                    position = initialIndex;
+                    return -1;
+                } else {
+                    break;
+                }
+            }
+            final int c = consumeChar() | 0x20;
+            ret *= 16;
+            if (c >= 'a') {
+                ret += c - ('a' - 10);
+            } else {
+                ret += c - '0';
+            }
+            if (ret > maxValue) {
+                handleValueTooLarge.run();
+            }
         }
         return ret;
     }

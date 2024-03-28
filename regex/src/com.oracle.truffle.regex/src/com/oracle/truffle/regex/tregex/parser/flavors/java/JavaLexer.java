@@ -194,11 +194,6 @@ public final class JavaLexer extends RegexLexer {
     }
 
     @Override
-    protected boolean featureEnabledWordBoundaries() {
-        return true;
-    }
-
-    @Override
     protected boolean featureEnabledBoundedQuantifierEmptyMin() {
         return false;
     }
@@ -286,11 +281,6 @@ public final class JavaLexer extends RegexLexer {
     @Override
     protected boolean featureEnabledClassSetExpressions() {
         return true;
-    }
-
-    @Override
-    protected boolean featureEnabledClassSetDifference() {
-        return false;
     }
 
     @Override
@@ -443,20 +433,7 @@ public final class JavaLexer extends RegexLexer {
     }
 
     @Override
-    protected int handleIncompleteEscapeX() {
-        if (consumingLookahead('{') && !atEnd() && RegexLexer.isHexDigit(curChar())) {
-            int ch = 0;
-            while (consumingLookahead(RegexLexer::isHexDigit, 1)) {
-                ch = (ch << 4) + Integer.parseInt(pattern, position - 1, position, 16);
-                if (ch > Character.MAX_CODE_POINT) {
-                    throw syntaxError(JavaErrorMessages.HEX_TOO_BIG);
-                }
-            }
-            if (!consumingLookahead('}')) {
-                throw syntaxError(JavaErrorMessages.UNCLOSED_HEX);
-            }
-            return ch;
-        }
+    protected void handleIncompleteEscapeX() {
         throw syntaxError(JavaErrorMessages.ILLEGAL_HEX_ESCAPE);
     }
 
@@ -474,11 +451,8 @@ public final class JavaLexer extends RegexLexer {
     }
 
     @Override
-    protected ClassSetOperator handleTripleAmpersandInClassSetExpression() {
-        // Java quirk: triple ampersands are interpreted as one literal ampersand. The parent
-        // function skips the first two, so we can just return the union operator here to simulate
-        // this behavior.
-        return ClassSetOperator.Union;
+    protected RegexSyntaxException handleInvalidCharInCharClass() {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -784,49 +758,49 @@ public final class JavaLexer extends RegexLexer {
     }
 
     @Override
-    protected boolean parseLiteralStart(char c) {
-        return c == 'Q';
-    }
-
-    @Override
-    protected boolean parseLiteralEnd(char c) {
-        return c == '\\' && consumingLookahead('E');
-    }
-
-    @Override
     protected Token parseCustomEscape(char c) {
-        if (c == 'k') {
-            if (atEnd()) {
-                handleUnfinishedEscape();
+        switch (c) {
+            case 'b' -> {
+                if (consumingLookahead("{g}")) {
+                    throw new UnsupportedRegexException("Extended grapheme cluster boundaries are not supported");
+                }
+                return Token.createWordBoundary();
             }
-            if (consumeChar() != '<') {
-                throw syntaxError(JavaErrorMessages.NAMED_CAPTURE_GROUP_REFERENCE_MISSING_BEGIN);
+            case 'B' -> {
+                return Token.createNonWordBoundary();
             }
-            String groupName = javaParseGroupName();
-            // backward reference
-            if (namedCaptureGroups.containsKey(groupName)) {
-                return Token.createBackReference(getSingleNamedGroupNumber(groupName), false);
+            case 'k' -> {
+                if (atEnd()) {
+                    handleUnfinishedEscape();
+                }
+                if (consumeChar() != '<') {
+                    throw syntaxError(JavaErrorMessages.NAMED_CAPTURE_GROUP_REFERENCE_MISSING_BEGIN);
+                }
+                String groupName = javaParseGroupName();
+                // backward reference
+                if (namedCaptureGroups.containsKey(groupName)) {
+                    return Token.createBackReference(getSingleNamedGroupNumber(groupName), false);
+                }
+                throw syntaxError(JavaErrorMessages.unknownGroupReference(groupName));
             }
-            throw syntaxError(JavaErrorMessages.unknownGroupReference(groupName));
-        }
-        if (c == 'R') {
-            return Token.createLineBreak();
-        }
-        if (c == 'X') {
-            throw new UnsupportedRegexException("Grapheme clusters are not supported");
-        }
-        if (c == 'G') {
-            throw new UnsupportedRegexException("End of previous match boundary matcher is not supported");
+            case 'R' -> {
+                return Token.createLineBreak();
+            }
+            case 'X' -> throw new UnsupportedRegexException("Grapheme clusters are not supported");
+            case 'G' -> throw new UnsupportedRegexException("End of previous match boundary matcher is not supported");
+            case 'Q' -> {
+                int start = position;
+                int end = pattern.indexOf("\\E", start);
+                if (end < 0) {
+                    end = pattern.length();
+                    position = end;
+                } else {
+                    position = end + 2;
+                }
+                return Token.createLiteralString(start, end);
+            }
         }
         return null;
-    }
-
-    @Override
-    protected Token handleWordBoundary() {
-        if (consumingLookahead("{g}")) {
-            throw new UnsupportedRegexException("Extended grapheme cluster boundaries are not supported");
-        }
-        return super.handleWordBoundary();
     }
 
     @Override
@@ -853,6 +827,19 @@ public final class JavaLexer extends RegexLexer {
                     position = cur;
                 }
                 return n;
+            case 'x':
+                if (consumingLookahead('{')) {
+                    int hex = parseHex(1, 8, Character.MAX_CODE_POINT, () -> {
+                        throw syntaxError(JavaErrorMessages.ILLEGAL_HEX_ESCAPE);
+                    }, () -> {
+                        throw syntaxError(JavaErrorMessages.HEX_TOO_BIG);
+                    });
+                    if (!consumingLookahead('}')) {
+                        throw syntaxError(JavaErrorMessages.UNCLOSED_HEX);
+                    }
+                    return hex;
+                }
+                return -1;
             case 'c':
                 if (atEnd()) {
                     throw syntaxError(JavaErrorMessages.ILLEGAL_CTRL_SEQ);

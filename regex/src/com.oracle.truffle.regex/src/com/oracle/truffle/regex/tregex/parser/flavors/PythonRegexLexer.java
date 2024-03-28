@@ -239,11 +239,6 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected boolean featureEnabledWordBoundaries() {
-        return true;
-    }
-
-    @Override
     protected boolean featureEnabledBoundedQuantifierEmptyMin() {
         return true;
     }
@@ -315,11 +310,6 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledClassSetExpressions() {
-        return false;
-    }
-
-    @Override
-    protected boolean featureEnabledClassSetDifference() {
         return false;
     }
 
@@ -475,7 +465,7 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected int handleIncompleteEscapeX() {
+    protected void handleIncompleteEscapeX() {
         throw syntaxError(PyErrorMessages.incompleteEscape(substring(2 + count(RegexLexer::isHexDigit))));
     }
 
@@ -486,7 +476,7 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected ClassSetOperator handleTripleAmpersandInClassSetExpression() {
+    protected RegexSyntaxException handleInvalidCharInCharClass() {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
@@ -559,7 +549,11 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected Token parseCustomEscape(char c) {
-        if (isOctalDigit(c) && lookahead(RegexLexer::isOctalDigit, 2)) {
+        if (c == 'b') {
+            return Token.createWordBoundary();
+        } else if (c == 'B') {
+            return Token.createNonWordBoundary();
+        } else if (isOctalDigit(c) && lookahead(RegexLexer::isOctalDigit, 2)) {
             int codePoint = (c - '0') * 64 + (consumeChar() - '0') * 8 + (consumeChar() - '0');
             if (codePoint > 0xff) {
                 handleOctalOutOfRange();
@@ -897,13 +891,4 @@ public final class PythonRegexLexer extends RegexLexer {
         return RegexSyntaxException.createPattern(source, msg, position);
     }
 
-    @Override
-    protected boolean parseLiteralStart(char c) {
-        return false;
-    }
-
-    @Override
-    protected boolean parseLiteralEnd(char c) {
-        return false;
-    }
 }

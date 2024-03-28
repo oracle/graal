@@ -97,11 +97,6 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected boolean featureEnabledWordBoundaries() {
-        return false;
-    }
-
-    @Override
     protected boolean featureEnabledBoundedQuantifierEmptyMin() {
         return false;
     }
@@ -198,11 +193,6 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledClassSetExpressions() {
-        return false;
-    }
-
-    @Override
-    protected boolean featureEnabledClassSetDifference() {
         return false;
     }
 
@@ -337,7 +327,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected int handleIncompleteEscapeX() {
+    protected void handleIncompleteEscapeX() {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
@@ -347,7 +337,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected ClassSetOperator handleTripleAmpersandInClassSetExpression() {
+    protected RegexSyntaxException handleInvalidCharInCharClass() {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
@@ -452,13 +442,4 @@ public final class OracleDBRegexLexer extends RegexLexer {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
-    @Override
-    protected boolean parseLiteralStart(char c) {
-        return false;
-    }
-
-    @Override
-    protected boolean parseLiteralEnd(char c) {
-        return false;
-    }
 }
