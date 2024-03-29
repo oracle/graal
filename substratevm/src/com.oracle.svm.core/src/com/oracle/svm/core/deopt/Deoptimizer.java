@@ -569,6 +569,7 @@ public final class Deoptimizer {
     @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
     public static UnsignedWord deoptStub(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        VMError.guarantee(VMThreads.StatusSupport.isStatusJava(), "Deopt stub execution must not be visible to other threads.");
         DeoptimizedFrame frame = (DeoptimizedFrame) ReferenceAccess.singleton().readObjectAt(framePointer, true);
 
         DeoptimizationCounters.counters().deoptCount.inc();
@@ -609,7 +610,6 @@ public final class Deoptimizer {
     @NeverInline("Custom prologue modifies stack pointer register")
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
     private static UnsignedWord rewriteStackStub(Pointer newSp, UnsignedWord gpReturnValue, @SuppressWarnings("unused") UnsignedWord fpReturnValue, DeoptimizedFrame frame) {
-
         /*
          * The first word of the new stack content is already the return address into the caller of
          * deoptimizeInRange(). So when this method returns we are inside the caller of
