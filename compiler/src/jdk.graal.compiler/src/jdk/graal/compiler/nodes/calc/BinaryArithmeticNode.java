@@ -492,7 +492,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
      * example with a constantness criterion: {@code (a * 2) * b => (a * b) * 2}
      *
      * This method accepts only {@linkplain #mayReassociate() operations that allow reassociation}
-     * such as +, -, *, &, |, ^, min, and max.
+     * such as +, -, *, &amp;, |, ^, min, and max.
      */
     public static ValueNode reassociateUnmatchedValues(BinaryArithmeticNode<?> node, NodePredicate criterion, NodeView view) {
         ValueNode forX = node.getX();
@@ -625,7 +625,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
      * criterion: {@code (a + 2) + 1 => a + (1 + 2)}
      * <p>
      * This method accepts only {@linkplain #mayReassociate() operations that allow reassociation}
-     * such as +, -, *, &, |, ^, min, and max.
+     * such as +, -, *, &amp;, |, ^, min, and max.
      *
      * @param forY
      * @param forX

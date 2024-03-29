@@ -78,10 +78,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  * <pre>
  * long v = 0L;
- * long v2 = Float.floatToRawIntBits(0f) & 0xFFFFFFFFL; // v2 = zeroextend(reinterpret(0.0))
+ * long v2 = Float.floatToRawIntBits(0f) &amp; 0xFFFFFFFFL; // v2 = zeroextend(reinterpret(0.0))
  * for (...) {
- *   v = (((int) v) + 123) & 0xFFFFFFFFL; // v = zeroextend(narrow(v) + 123)
- *   v2 = Float.floatToRawIntBits(Float.intBitsToFloat((int) v2) + 1f) & 0xFFFFFFFFL; // v2 = zeroextend(reinterpret(reinterpret(narrow(v2)) + 1f))
+ *   v = (((int) v) + 123) &amp; 0xFFFFFFFFL; // v = zeroextend(narrow(v) + 123)
+ *   v2 = Float.floatToRawIntBits(Float.intBitsToFloat((int) v2) + 1f) &amp; 0xFFFFFFFFL; // v2 = zeroextend(reinterpret(reinterpret(narrow(v2)) + 1f))
  * }
  * float s = Float.intBitsToFloat((int) v2); // s = reinterpret(narrow(v2))
  * return (int) v; // narrow(v)

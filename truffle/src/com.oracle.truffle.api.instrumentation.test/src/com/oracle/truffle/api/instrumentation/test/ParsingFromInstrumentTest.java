@@ -174,8 +174,8 @@ public class ParsingFromInstrumentTest {
                         if (target[0] != null) {
                             return;
                         }
+                        target[0] = src;
                         try {
-                            target[0] = src;
                             final CallTarget parsed = env.parse(src, "emptyList");
                             target[0] = parsed;
                             parsed.call(0);

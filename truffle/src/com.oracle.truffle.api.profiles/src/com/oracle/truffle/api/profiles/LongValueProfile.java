@@ -69,9 +69,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
  *     }
  * }
  * </pre>
- * <p>
- *
- * {@inheritDoc}
  *
  * @see #createIdentityProfile()
  * @see ValueProfile

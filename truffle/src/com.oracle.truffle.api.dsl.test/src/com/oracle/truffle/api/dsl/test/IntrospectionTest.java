@@ -79,7 +79,6 @@ public class IntrospectionTest {
 
     @SuppressWarnings("unused")
     @TypeSystemReference(IntrospectionTypeSystem.class)
-    // BEGIN: com.oracle.truffle.api.dsl.test.IntrospectionTest
     @Introspectable
     abstract static class NegateNode extends Node {
 
@@ -117,7 +116,6 @@ public class IntrospectionTest {
         info = Introspection.getSpecialization(node, "doGeneric");
         assertEquals(1, info.getInstances());
     }
-    // END: com.oracle.truffle.api.dsl.test.IntrospectionTest
 
     public abstract static class Introspection1Node extends ReflectableNode {
 

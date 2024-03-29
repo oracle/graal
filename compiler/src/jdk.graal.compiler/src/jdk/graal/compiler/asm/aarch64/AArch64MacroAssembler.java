@@ -1003,7 +1003,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 + shiftType(src2, shiftAmt & (size - 1)).
+     * dst = src1 + shiftType(src2, shiftAmt &amp; (size - 1)).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -1024,7 +1024,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 - shiftType(src2, shiftAmt & (size-1)) and sets condition flags.
+     * dst = src1 - shiftType(src2, shiftAmt &amp; (size-1)) and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -1056,7 +1056,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = -(shiftType(src, shiftAmt & (size - 1))).
+     * dst = -(shiftType(src, shiftAmt &amp; (size - 1))).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -1335,7 +1335,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * C.6.2.179 Logical Shift Left (immediate).
      * <p>
-     * dst = src << (shiftAmt & (size - 1)).
+     * dst = src &lt;&lt; (shiftAmt &amp; (size - 1)).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
@@ -1354,7 +1354,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * C.6.2.182 Logical Shift Right (immediate).
      * <p>
-     * dst = src >>> (shiftAmt & (size - 1)).
+     * dst = src >>> (shiftAmt &amp; (size - 1)).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
@@ -1369,7 +1369,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src >> (shiftAmt & log2(size)).
+     * dst = src >> (shiftAmt &amp; log2(size)).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
@@ -1384,7 +1384,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * C.6.2.228 Rotate right (register). dst = rotateRight(src1, (src2 & (size - 1))).<br>
+     * C.6.2.228 Rotate right (register). dst = rotateRight(src1, (src2 &amp; (size - 1))).<br>
      *
      * Preferred alias for RORV (C6.2.228)
      *
@@ -1415,7 +1415,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Clamps shiftAmt into range 0 <= shiftamt < size according to JLS.
+     * Clamps shiftAmt into range 0 &lt;= shiftamt &lt; size according to JLS.
      *
      * @param size size of operation. Must be 32 or 64.
      * @param shiftAmt arbitrary shift amount.
@@ -1441,7 +1441,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 & src2.
+     * dst = src1 &amp; src2.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -1477,7 +1477,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 & (~src2).
+     * dst = src1 &amp; (~src2).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -1489,7 +1489,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src & (~imm).
+     * dst = src &amp; (~imm).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -1662,7 +1662,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Compares x to (extendType(y) << imm) and sets condition flags.
+     * Compares x to (extendType(y) &lt;&tl; imm) and sets condition flags.
      *
      * This is an alias for {@link #subs(int, Register, Register, Register, ExtendType, int)}.
      *
@@ -1678,7 +1678,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Sets condition flags according to result of x & y.
+     * Sets condition flags according to result of x &amp; y.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stack-pointer.
@@ -1692,7 +1692,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * C6.2.334 Test bits (immediate).<br>
      *
-     * Sets condition flags according to the result of x & bimm
+     * Sets condition flags according to the result of x &amp; bimm
      */
     public void tst(int size, Register x, long bimm) {
         ands(size, zr, x, bimm);
@@ -1701,7 +1701,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * C6.2.335 Test bits (register).<br>
      *
-     * Sets condition flags according to the result of x & y
+     * Sets condition flags according to the result of x &amp; y
      */
     public void tst(int size, Register x, Register y) {
         ands(size, zr, x, y);

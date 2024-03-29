@@ -4707,7 +4707,7 @@ public final class TruffleString extends AbstractTruffleString {
          * Equivalent to:
          *
          * <pre>
-         * for (int i = 0; i < length; i++) {
+         * for (int i = 0; i &lt; length; i++) {
          *     if (codePointAt(a, fromIndexA + i) != codePointAt(b, fromIndexB + i)) {
          *         return false;
          *     }

@@ -121,7 +121,7 @@
     linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "45:00"},
     linux_amd64 + common.oraclejdkLatest + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
-    truffle_common + linux_amd64 + common.oraclejdk17 + guard {
+    truffle_common + linux_amd64 + common.oraclejdk21 + guard {
       name: "gate-truffle-javadoc",
       run: [
         ["mx", "build"],

@@ -24,10 +24,10 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.function.Consumer;
 
@@ -38,12 +38,11 @@ import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
@@ -222,7 +221,7 @@ public class AArch64AtomicMove {
 
     /**
      * Determines whether to use the atomic or load-store conditional implementation of atomic
-     * read&add based on the available hardware features.
+     * read&amp;add based on the available hardware features.
      *
      * These two variants are split into two separate classes, as deltaValue is allowed to be a
      * constant within the load-store conditional implementation.

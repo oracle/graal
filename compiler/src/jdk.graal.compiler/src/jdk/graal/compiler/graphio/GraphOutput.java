@@ -174,8 +174,8 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
 
         /**
          * Chooses which version of the protocol to use. The default version is <code>7.0</code>
-         * (when the {@link GraphOutput} & co. classes were introduced). The default can be changed
-         * to other known versions manually by calling this method.
+         * (when the {@link GraphOutput} &amp; co. classes were introduced). The default can be
+         * changed to other known versions manually by calling this method.
          * <p>
          * Note: the the default version is 7.0 since version 20.2. Previous versions used default
          * version 4.0

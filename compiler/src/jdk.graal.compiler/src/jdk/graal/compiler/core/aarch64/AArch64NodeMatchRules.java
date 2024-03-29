@@ -346,8 +346,8 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     /**
-     * Goal: Switch ((x << amt) >> amt) into a sign extend and fold into AArch64 add/sub (extended
-     * register) instruction.
+     * Goal: Switch ((x &lt;&lt; amt) >> amt) into a sign extend and fold into AArch64 add/sub
+     * (extended register) instruction.
      */
     @MatchRule("(Add=op x (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst))")
     @MatchRule("(Sub=op x (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst))")
@@ -364,8 +364,8 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     /**
-     * Goal: Fold ((x << amt) >> amt) << [0,4] into AArch64 add/sub (extended register) instruction
-     * with a sign extend and a shift.
+     * Goal: Fold ((x &lt;&lt; amt) >> amt) &lt;&lt; [0,4] into AArch64 add/sub (extended register)
+     * instruction with a sign extend and a shift.
      */
     @MatchRule("(Add=op x (LeftShift=outerShift (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst) Constant))")
     @MatchRule("(Sub=op x (LeftShift=outerShift (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst) Constant))")
@@ -700,7 +700,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     /**
-     * Goal: use AArch64's and not (bic) & or not (orn) instructions.
+     * Goal: use AArch64's and not (bic) &amp; or not (orn) instructions.
      */
     @MatchRule("(And=logic value1 (Not=not value2))")
     @MatchRule("(Or=logic value1 (Not=not value2))")
@@ -867,7 +867,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     /**
-     * Goal: Transform ((x & (1 << n)) == 0) -> (tbz/tbnz n label).
+     * Goal: Transform ((x &amp; (1 &lt;&lt; n)) == 0) -> (tbz/tbnz n label).
      */
     @MatchRule("(If (IntegerTest value Constant=a))")
     public ComplexMatchResult testBitAndBranch(IfNode root, ValueNode value, ConstantNode a) {
@@ -882,7 +882,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     /**
-     * Goal: Transform (if x < 0) -> (tbz x, sizeOfBits(x) - 1, label).
+     * Goal: Transform (if x &lt; 0) -> (tbz x, sizeOfBits(x) - 1, label).
      */
     @MatchRule("(If (IntegerLessThan=lessNode x Constant=y))")
     public ComplexMatchResult checkNegativeAndBranch(IfNode root, IntegerLessThanNode lessNode, ValueNode x, ConstantNode y) {

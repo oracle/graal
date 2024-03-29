@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
 
 /**
- * Common super-class for "a < b" comparisons both {@linkplain IntegerLessThanNode signed} and
+ * Common super-class for "a &lt; b" comparisons both {@linkplain IntegerLessThanNode signed} and
  * {@linkplain IntegerBelowNode unsigned}.
  */
 @NodeInfo()

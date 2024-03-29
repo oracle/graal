@@ -25,6 +25,7 @@
 package org.graalvm.tools.insight.test;
 
 import java.util.function.Function;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -36,12 +37,12 @@ final class Embedding {
 
     @SuppressWarnings("unchecked")
     static AutoCloseable enableInsight(Source agentSrc, Context context) {
-        // BEGIN: Embedding#apply
+        // @start region = "Embedding#apply"
         final Engine engine = context.getEngine();
         Instrument instrument = engine.getInstruments().get("insight");
         Function<Source, AutoCloseable> access = instrument.lookup(Function.class);
         AutoCloseable handle = access.apply(agentSrc);
-        // END: Embedding#apply
+        // @end region = "Embedding#apply"
         return handle;
     }
 }

@@ -51,6 +51,10 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -85,10 +89,6 @@ import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
 
 /**
  * A request that guest language program execution be suspended at specified locations on behalf of
@@ -128,7 +128,10 @@ import org.graalvm.collections.Equivalence;
  * </ul>
  * </p>
  * <p>
- * Example usage: {@link com.oracle.truffle.api.debug.BreakpointSnippets#example()}
+ * Example usage:
+ *
+ * {@snippet file="com/oracle/truffle/api/debug/Breakpoint.java"
+ * region="BreakpointSnippets#example"}
  *
  * @since 0.9
  */
@@ -1809,8 +1812,8 @@ class BreakpointSnippets {
         };
         Source someCode = Source.newBuilder("", "", "").build();
         TruffleInstrument.Env instrumentEnvironment = null;
-        // @formatter:off
-        // BEGIN: BreakpointSnippets.example
+        // @formatter:off // @replace regex='.*' replacement=''
+        // @start region="BreakpointSnippets#example"
         try (DebuggerSession session = Debugger.find(instrumentEnvironment).
                         startSession(suspendedCallback)) {
 
@@ -1823,8 +1826,8 @@ class BreakpointSnippets {
                             lineIs(3).build());
 
         }
-        // END: BreakpointSnippets.example
-        // @formatter:on
+        // @end region="BreakpointSnippets#example"
+        // @formatter:on // @replace regex='.*' replacement=''
 
     }
 }

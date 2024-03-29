@@ -48,10 +48,11 @@ import com.oracle.truffle.api.Truffle;
  * Represents an indirect call to a {@link CallTarget}. Indirect calls are calls for which the
  * {@link CallTarget} may change dynamically for each consecutive call. This part of the Truffle API
  * enables the runtime system to perform additional optimizations on indirect calls.
- *
+ * <p>
  * Please note: This class is not intended to be sub classed by guest language implementations.
- *
- * @see DirectCallNode for faster calls with a constantly known {@link CallTarget}.
+ * <p>
+ * See {@link DirectCallNode} for faster calls with a constantly known {@link CallTarget}.
+ * 
  * @since 0.8 or earlier
  */
 public abstract class IndirectCallNode extends Node {

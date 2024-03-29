@@ -223,7 +223,7 @@ import jdk.vm.ci.meta.Signature;
  *                 |
  *                pred
  *                 |
- *           WithException  <--- // to be lowered
+ *           WithException  &lt;--- // to be lowered
  *            /         \
  *    [next] /           \ [exceptionEdge]
  *          /             \
@@ -322,7 +322,7 @@ import jdk.vm.ci.meta.Signature;
  *                 |
  *                pred
  *                 |
- *           WithException  <--- // to be lowered
+ *           WithException  &lt;--- // to be lowered
  *            /         \
  *    [next] /           \ [exceptionEdge]
  *          /             \
@@ -387,7 +387,7 @@ import jdk.vm.ci.meta.Signature;
  *                 |
  *                pred
  *                 |
- *           WithException  <--- // to be lowered
+ *           WithException  &lt;--- // to be lowered
  *            /         \
  *    [next] /           \ [exceptionEdge]
  *          /             \

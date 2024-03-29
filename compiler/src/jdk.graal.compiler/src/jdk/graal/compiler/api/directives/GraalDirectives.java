@@ -211,11 +211,11 @@ public final class GraalDirectives {
      * Example usage (it specifies that the expected iteration count of the loop condition is 500,
      * so the iteration count of the loop body is 499):
      *
-     * <code>
+     * {@snippet :
      * for (int i = 0; injectIterationCount(500, i < array.length); i++) {
      *     // ...
      * }
-     * </code>
+     * }
      *
      * @param iterations the expected number of iterations that should be injected
      */

@@ -721,7 +721,7 @@ public abstract class TruffleLanguage<C> {
          *
          *         ExampleLocal(Env env, Thread thread) {
          *             this.env = env;
-         *             this.thread = new WeakReference<>(thread);
+         *             this.thread = new WeakReference&lt;&gt;(thread);
          *         }
          *
          *     }
@@ -770,7 +770,8 @@ public abstract class TruffleLanguage<C> {
      * Example usage of areOptionsCompatible if sharing of the language instances and parse caching
      * should be restricted by the script version option:
      *
-     * {@link TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible}
+     * {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible"}
      *
      * @param firstOptions the options used to create the first context, never <code>null</code>
      * @param newOptions the options that will be used for the new context, never <code>null</code>
@@ -823,9 +824,8 @@ public abstract class TruffleLanguage<C> {
      * do any complex operations. Just create the instance of the context, let the runtime system
      * register it properly. Should there be a need to perform complex initialization, override this
      * method and let the runtime call it <em>later</em> to finish any <em>post initialization</em>
-     * actions. Example:
-     *
-     * {@link TruffleLanguageSnippets.PostInitLanguage#createContext}
+     * actions. Example: {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.PostInitLanguage#createContext"}
      *
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
@@ -885,7 +885,8 @@ public abstract class TruffleLanguage<C> {
      * <p>
      * Typical implementation looks like:
      *
-     * {@link TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext}
+     * {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"}
      *
      * @see Registration#dependentLanguages() for specifying language dependencies.
      * @param context the context created by
@@ -1123,9 +1124,9 @@ public abstract class TruffleLanguage<C> {
      * successful for all pre-initialized languages the pre-initialized context is used, otherwise a
      * new context is created.
      * <p>
-     * Typical implementation looks like:
-     *
-     * {@link TruffleLanguageSnippets.PreInitializedLanguage#patchContext}
+     * Typical implementation looks like: {@snippet
+     * file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.PreInitializedLanguage#patchContext"}
      *
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} during
@@ -1178,7 +1179,8 @@ public abstract class TruffleLanguage<C> {
          * the {@link #getSource()} references them, it is essential to name them. Example that uses
          * the argument names:
          *
-         * {@link TruffleLanguageSnippets#parseWithParams}
+         * {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
+         * region="TruffleLanguageSnippets#parseWithParams"}
          *
          * @return symbolic names for parameters of {@link CallTarget#call(java.lang.Object...)}
          * @since 0.22
@@ -1280,8 +1282,9 @@ public abstract class TruffleLanguage<C> {
      * method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException} the
      * exception interop messages may be executed without a context being entered.
      * <p>
-     * <b>Example multi-threaded language implementation:</b>
-     * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
+     * <b>Example multi-threaded language implementation:</b> {@snippet
+     * file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
      *
      * @param thread the thread that accesses the context for the first time.
      * @param singleThreaded <code>true</code> if the access is considered single-threaded,
@@ -1301,8 +1304,9 @@ public abstract class TruffleLanguage<C> {
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
      * messages may be executed without a context being entered.
      * <p>
-     * <b>Example multi-threaded language implementation:</b>
-     * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
+     * <b>Example multi-threaded language implementation:</b> {@snippet
+     * file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
      *
      * @param context the context that should be prepared for multi-threading.
      * @since 0.28
@@ -1324,8 +1328,9 @@ public abstract class TruffleLanguage<C> {
      * If this method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException}
      * the exception interop messages may be executed without a context being entered.
      * <p>
-     * <b>Example multi-threaded language implementation:</b>
-     * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
+     * <b>Example multi-threaded language implementation:</b> {@snippet
+     * file="com/oracle/truffle/api/TruffleLanguage.java"
+     * region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
      *
      * @param context the context that is entered
      * @param thread the thread that accesses the context for the first time.
@@ -1927,8 +1932,9 @@ public abstract class TruffleLanguage<C> {
          * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
          * Thread termination as the polyglot thread may be cancelled before executing the executor
          * worker.<br/>
-         * A typical implementation looks like:
-         * {@link TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext}
+         * A typical implementation looks like: {@snippet file =
+         * "com/oracle/truffle/api/TruffleLanguage.java" region =
+         * "TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"}
          * <p>
          * The {@link TruffleContext} can be either an inner context created by
          * {@link #newInnerContextBuilder(String...)}.{@link TruffleContext.Builder#build()
@@ -1958,7 +1964,6 @@ public abstract class TruffleLanguage<C> {
          *
          * @param runnable the runnable to run on the threads created by the builder.
          * @return the builder for threads that have access to the given context.
-         *
          * @since 23.0
          */
         public TruffleThreadBuilder newTruffleThreadBuilder(Runnable runnable) {
@@ -1999,7 +2004,9 @@ public abstract class TruffleLanguage<C> {
          * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
          * Thread termination as the system thread may be cancelled before executing the executor
          * worker.<br/>
-         * A typical implementation looks like: {@link TruffleLanguageSnippets.SystemThreadLanguage}
+         * A typical implementation looks like: {@snippet file =
+         * "com/oracle/truffle/api/TruffleLanguage.java" region =
+         * "TruffleLanguageSnippets.SystemThreadLanguage"}
          *
          * @param runnable the runnable to run on this thread.
          * @param threadGroup the thread group, passed on to the underlying {@link Thread}.
@@ -2908,8 +2915,8 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
-         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
-         *             does not exist and cannot be created automatically
+         * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
+         *             {@code uri}, does not exist and cannot be created automatically
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -2971,8 +2978,8 @@ public abstract class TruffleLanguage<C> {
          * @since 19.3.0
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
-         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
-         *             does not exist and cannot be created automatically
+         * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
+         *             {@code uri}, does not exist and cannot be created automatically
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(java.net.URI)
          */
@@ -3052,8 +3059,8 @@ public abstract class TruffleLanguage<C> {
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
-         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
-         *             does not exist and cannot be created automatically
+         * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
+         *             {@code uri}, does not exist and cannot be created automatically
          * @since 21.1.0
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(URI)
@@ -4198,7 +4205,7 @@ class TruffleLanguageSnippets {
         final List<Thread> startedThreads = new ArrayList<>();
     }
 
-    // @formatter:off
+    // @formatter:off // @replace regex='.*' replacement=''
     abstract
     class MyLanguage extends TruffleLanguage<Context> {
         @Override
@@ -4209,7 +4216,7 @@ class TruffleLanguageSnippets {
     }
 
     abstract
-    // BEGIN: TruffleLanguageSnippets.PostInitLanguage#createContext
+    // @start region="TruffleLanguageSnippets.PostInitLanguage#createContext"
     class PostInitLanguage extends TruffleLanguage<Context> {
         @Override
         protected Context createContext(Env env) {
@@ -4227,10 +4234,10 @@ class TruffleLanguageSnippets {
             context.mul = context.env.parsePublic(source);
         }
     }
-    // END: TruffleLanguageSnippets.PostInitLanguage#createContext
+    // @end region="TruffleLanguageSnippets.PostInitLanguage#createContext"
 
     abstract static
-    // BEGIN: TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible
+    // @start region="TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible"
     class CompatibleLanguage extends TruffleLanguage<Env> {
 
         @Option(help = "", category = OptionCategory.USER)
@@ -4249,7 +4256,7 @@ class TruffleLanguageSnippets {
             return new CompatibleLanguageOptionDescriptors();
         }
     }
-    // END: TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible
+    // @end region="TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible"
 
     static class CompatibleLanguageOptionDescriptors implements OptionDescriptors{
 
@@ -4267,7 +4274,7 @@ class TruffleLanguageSnippets {
 
         private final OptionKey<String> version = new OptionKey<>("2.0");
 
-        // BEGIN: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
+        // @start region="TruffleLanguageSnippets.PreInitializedLanguage#patchContext"
         @Override
         protected boolean patchContext(Context context, Env newEnv) {
             if (!optionsAllowPreInitializedContext(context, newEnv)) {
@@ -4288,10 +4295,10 @@ class TruffleLanguageSnippets {
             final String newVersionValue = newEnv.getOptions().get(version);
             return Objects.equals(context.languageVersion, newVersionValue);
         }
-        // END: TruffleLanguageSnippets.PreInitializedLanguage#patchContext
+        // @end region="TruffleLanguageSnippets.PreInitializedLanguage#patchContext"
     }
 
-    // BEGIN: TruffleLanguageSnippets#parseWithParams
+    // @start region="TruffleLanguageSnippets#parseWithParams"
     public void parseWithParams(Env env) {
         Source multiply = Source.newBuilder("js",
                         "a * b",
@@ -4302,11 +4309,11 @@ class TruffleLanguageSnippets {
         Number ten = (Number) method.call(2, 5);
         assert 10 == ten.intValue();
     }
-    // END: TruffleLanguageSnippets#parseWithParams
+    // @end region="TruffleLanguageSnippets#parseWithParams"
 
 
     abstract
-    // BEGIN: TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread
+    // @start region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"
     class MultiThreadedLanguage extends TruffleLanguage<Context> {
 
         @Override
@@ -4337,10 +4344,10 @@ class TruffleLanguageSnippets {
             // perform disposal actions for threads
         }
     }
-    // END: TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread
+    // @end region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"
 
     abstract
-    // BEGIN: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
+    // @start region="TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"
     class AsyncThreadLanguage extends TruffleLanguage<Context> {
 
         @Override
@@ -4391,10 +4398,10 @@ class TruffleLanguageSnippets {
             }
         }
     }
-    // END: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
+    // @end region="TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"
 
     abstract static
-    // BEGIN: TruffleLanguageSnippets.SystemThreadLanguage
+    // @start region="TruffleLanguageSnippets.SystemThreadLanguage"
     class SystemThreadLanguage extends
             TruffleLanguage<SystemThreadLanguage.Context> {
 
@@ -4458,5 +4465,5 @@ class TruffleLanguageSnippets {
             }
         }
     }
-    // END: TruffleLanguageSnippets.SystemThreadLanguage
+    // @end region="TruffleLanguageSnippets.SystemThreadLanguage"
 }
