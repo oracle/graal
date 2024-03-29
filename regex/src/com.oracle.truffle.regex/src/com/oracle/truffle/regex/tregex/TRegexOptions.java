@@ -231,7 +231,7 @@ public class TRegexOptions {
      * Maximum number of {@link PureNFA} states allowed to be exploded in
      * {@link TRegexBacktrackingNFAExecutorNode}.
      */
-    public static final int TRegexMaxBackTrackerMergeExplodeSize = 300;
+    public static final int TRegexMaxBackTrackerMergeExplodeSize = 200;
 
     /**
      * Maximum number of {@link TRegexExecutorNode#getNumberOfTransitions() transitions} for a
