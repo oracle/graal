@@ -612,11 +612,15 @@ public final class Engine implements AutoCloseable {
          * If one of the set option keys or values is invalid then an
          * {@link IllegalArgumentException} is thrown when the engine is {@link #build() built}. The
          * given key and value must not be <code>null</code>.
-         *
-         * @see Engine#getOptions() To list all available options for engines.
-         * @see Language#getOptions() To list all available options for a {@link Language language}.
-         * @see Instrument#getOptions() To list all available options for an {@link Instrument
-         *      instrument}.
+         * <p>
+         * See {@link Engine#getOptions()} to list all available options for engines.
+         * <p>
+         * See {@link Language#getOptions()} to list all available options for a {@link Language
+         * language}.
+         * <p>
+         * See {@link Instrument#getOptions()} to list all available options for an
+         * {@link Instrument instrument}.
+         * 
          * @since 19.0
          */
         public Builder option(String key, String value) {

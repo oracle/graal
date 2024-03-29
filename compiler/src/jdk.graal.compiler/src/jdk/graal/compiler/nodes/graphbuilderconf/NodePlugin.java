@@ -222,8 +222,8 @@ public interface NodePlugin extends GraphBuilderPlugin {
      *
      * @param b the context
      * @param m information about the indy's bootstrap method
-     * @return pair with the call target & arguments for the static call, null if the indy cannot be
-     *         converted to a static call
+     * @return pair with the call target &amp; arguments for the static call, null if the indy
+     *         cannot be converted to a static call
      */
     default Pair<ResolvedJavaMethod, ValueNode[]> convertInvokeDynamic(GraphBuilderContext b, BootstrapMethodInvocation m) {
         return null;

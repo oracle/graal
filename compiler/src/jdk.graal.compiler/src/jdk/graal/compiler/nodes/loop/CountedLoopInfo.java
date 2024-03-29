@@ -70,7 +70,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * A regular head counted loop like
  *
  * <pre>
- * for (int i = 0; i < end; i++) {
+ * for (int i = 0; i &lt; end; i++) {
  *     // body
  * }
  * </pre>
@@ -85,7 +85,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * do {
  *   // body
  *   i++;
- * } while(i < end)
+ * } while(i &lt; end)
  * </pre>
  *
  * The iv compared against limit is not i, but the next iteration's body iv i+1.
@@ -168,7 +168,7 @@ public class CountedLoopInfo {
      * int i = 0;
      * do {
      *     i++;
-     * } while (i < 100);
+     * } while (i &lt; 100);
      * </pre>
      *
      * This loop performs 100 iterations. However, the following loop
@@ -176,7 +176,7 @@ public class CountedLoopInfo {
      * <pre>
      * int i = 0;
      * do {
-     * } while (i++ < 100);
+     * } while (i++ &lt; 100);
      * </pre>
      *
      * performs 101 iterations.

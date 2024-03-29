@@ -53,9 +53,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
  * {@link Float#floatToRawIntBits} and {@link Double#doubleToRawLongBits}, so that for example
  * {@code -0.0} is not considered the same as {@code 0.0}, even though primitive equality would
  * normally say that it was.
- * </p>
- *
- * {@inheritDoc}
  *
  * @since 0.10
  */

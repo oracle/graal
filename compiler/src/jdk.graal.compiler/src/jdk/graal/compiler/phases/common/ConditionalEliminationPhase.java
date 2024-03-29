@@ -118,7 +118,7 @@ import jdk.vm.ci.meta.TriState;
  * and traverses it depth first. Every time the traversal encounters a basic block whose predecessor
  * has multiple successors (i.e., the predecessor block ends with a control flow split node) it
  * inspects the control split's condition in detail: The condition leading to the current block
- * carries value & type information for the operands of the condition.
+ * carries value &amp; type information for the operands of the condition.
  *
  * Consider the following example where a variable {@code a} is used in a condition 3 times.
  * Traversing the dominator tree depth first and recording the value ranges for {@code a} after
@@ -127,8 +127,8 @@ import jdk.vm.ci.meta.TriState;
  * <pre>
  * if (a >= 0) {
  *     // a in [0:Integer.MAX_VAL]
- *     if (a < 1) {
- *         // a in [Integer.MIN_VAL,0] && a in [0:Integer.MAX_VAL]
+ *     if (a &lt; 1) {
+ *         // a in [Integer.MIN_VAL,0] &amp;&amp; a in [0:Integer.MAX_VAL]
  *         // --> a in [0]
  *         if (a == 0) { // true
  *         }

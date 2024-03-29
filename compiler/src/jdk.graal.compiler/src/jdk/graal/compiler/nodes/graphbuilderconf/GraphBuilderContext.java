@@ -161,8 +161,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * Adds a node with a non-void kind to the graph, pushes it to the stack. If the returned node
      * is a {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}, the
      * frame state is initialized. A {@link StateSplit} added using this method should <em>not</em>
-     * be added using {@link #add(ValueNode)} beforehand, otherwise its frame state will be
-     * initialized with an incorrect stack effect.
+     * be added using {@link #add(Node)} beforehand, otherwise its frame state will be initialized
+     * with an incorrect stack effect.
      *
      * @param kind the kind to use when type checking this operation
      * @param value the value to add to the graph and push to the stack

@@ -69,7 +69,8 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * The state of the stack is copied and saved into trees of {@linkplain ProfilerNode nodes}, which
  * represent the profile of the execution.
  * <p>
- * Usage example: {@codesnippet CPUSamplerSnippets#example}
+ * Usage example: {@snippet file = "com/oracle/truffle/tools/profiler/CPUSampler.java" region =
+ * "CPUSamplerSnippets#example"}
  *
  * @since 0.30
  */
@@ -775,8 +776,8 @@ class CPUSamplerSnippets {
 
     @SuppressWarnings("unused")
     public void example() {
-        // @formatter:off
-        // BEGIN: CPUSamplerSnippets#example
+        // @formatter:off // @replace regex='.*' replacement=''
+        // @start region="CPUSamplerSnippets#example"
         Context context = Context.create();
 
         CPUSampler sampler = CPUSampler.find(context.getEngine());
@@ -793,7 +794,7 @@ class CPUSamplerSnippets {
                 // ...
             }
         }
-        // END: CPUSamplerSnippets#example
-        // @formatter:on
+        // @end region="CPUSamplerSnippets#example"
+        // @formatter:on // @replace regex='.*' replacement=''
     }
 }

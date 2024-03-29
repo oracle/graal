@@ -145,7 +145,7 @@ public abstract class Loop<T extends BasicBlock<T>> {
      * For example in:
      *
      * <pre>
-     * for (int i = 0; i < N; i++) {
+     * for (int i = 0; i &lt; N; i++) {
      *     if (c) {
      *         // Block 1
      *         if (dummy) {

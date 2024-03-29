@@ -96,7 +96,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
      *
      * <pre>
      * public static long foo(int start) {
-     *     if (Integer.compareUnsigned(start, 2) < 0) {
+     *     if (Integer.compareUnsigned(start, 2) &lt; 0) {
      *         deoptimize();
      *     }
      *     int i = start;

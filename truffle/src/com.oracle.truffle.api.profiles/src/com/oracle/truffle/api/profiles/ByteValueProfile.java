@@ -56,9 +56,9 @@ import com.oracle.truffle.api.dsl.NeverDefault;
  *
  * <p>
  * <b> Usage example: </b>
- * {@link com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile}
- *
- * {@inheritDoc}
+ * 
+ * {@snippet file="com/oracle/truffle/api/profiles/ByteValueProfile.java"
+ * region="com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile"}
  *
  * @see #createIdentityProfile()
  * @see ValueProfile
@@ -200,11 +200,12 @@ public final class ByteValueProfile extends Profile {
 
 }
 
+// @formatter:off // @replace regex='.*' replacement=''
 class ByteProfileSnippets {
     class Node {
     }
 
-    // BEGIN: com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile
+    // @start region="com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile"
     class ByteProfileNode extends Node {
 
         final ByteValueProfile profile = ByteValueProfile.create();
@@ -215,5 +216,5 @@ class ByteProfileSnippets {
             return profiledValue;
         }
     }
-    // END: com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile
+    // @end region="com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile"
 }

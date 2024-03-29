@@ -160,6 +160,10 @@ def checkLinks(javadocDir):
             content = open(referencedfile, 'r').read()
             for path, s in sections:
                 if not s is None:
+                    s = s.replace("%3C", "&lt;")
+                    s = s.replace("%3E", "&gt;")
+                    s = s.replace("%5B", "[")
+                    s = s.replace("%5D", "]")
                     whereName = content.find('name="' + s + '"')
                     whereId = content.find('id="' + s + '"')
                     if whereName == -1 and whereId == -1:

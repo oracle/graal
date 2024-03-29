@@ -299,9 +299,15 @@ public final class EventContext {
      * cannot be used on multiple threads concurrently. It can be thrown on a different thread only
      * after the unwind finishes on the last thread.
      * <p>
-     * Usage example of forced return: {@link UnwindInstrumentationReturnSnippets#onCreate}
+     * Usage example of forced return:
+     *
+     * {@snippet file="com/oracle/truffle/api/instrumentation/EventContext.java"
+     * region="UnwindInstrumentationReturnSnippets#onCreate"}
      * <p>
-     * Usage example of reenter: {@link UnwindInstrumentationReenterSnippets#onCreate}
+     * Usage example of reenter:
+     * 
+     * {@snippet file="com/oracle/truffle/api/instrumentation/EventContext.java"
+     * region="UnwindInstrumentationReenterSnippets#onCreate"}
      *
      * @param info an info that is passed into
      *            {@link ExecutionEventListener#onUnwind(EventContext, VirtualFrame, Object)} or
@@ -488,9 +494,9 @@ public final class EventContext {
 
 class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
 
-    // @formatter:off
+    // @formatter:off // @replace regex='.*' replacement=''
     @Override
-    // BEGIN: UnwindInstrumentationReturnSnippets#onCreate
+    // @start region="UnwindInstrumentationReturnSnippets#onCreate"
     protected void onCreate(TruffleInstrument.Env env) {
         // Register a listener that checks the return value to all call nodes
         // If the return value is not 42, it forces to return 42.
@@ -515,15 +521,15 @@ class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
                                                 VirtualFrame f, Throwable ex) { }
             });
     }
-    // END: UnwindInstrumentationReturnSnippets#onCreate
-    // @formatter:on
+    // @end region="UnwindInstrumentationReturnSnippets#onCreate"
+    // @formatter:on // @replace regex='.*' replacement=''
 }
 
 class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
 
-    // @formatter:off
+    // @formatter:off // @replace regex='.*' replacement=''
     @Override
-    // BEGIN: UnwindInstrumentationReenterSnippets#onCreate
+    // @start region="UnwindInstrumentationReenterSnippets#onCreate"
     protected void onCreate(TruffleInstrument.Env env) {
         // Two event bindings are created: one for reenter, one for unwind
 
@@ -564,7 +570,7 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
                                                 VirtualFrame f, Throwable ex) { }
             });
     }
-    // END: UnwindInstrumentationReenterSnippets#onCreate
-    // @formatter:on
+    // @end region="UnwindInstrumentationReenterSnippets#onCreate"
+    // @formatter:on // @replace regex='.*' replacement=''
     // Checkstyle: resume
 }

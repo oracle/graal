@@ -82,6 +82,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
@@ -94,9 +96,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
-import org.graalvm.collections.EconomicSet;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -5795,7 +5794,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
          * <ul>
          * <li>it is a relative jmp or jcc with a 4 byte displacement</li>
          * <li>it is a forward jump</li>
-         * <li>it has an actual jump distance < (127 -
+         * <li>it has an actual jump distance &lt; (127 -
          * {@link JumpInfo#ALIGNMENT_COMPENSATION_HEURISTIC})</li>
          * </ul>
          * The jump distance of replaceable jumps is reduced by

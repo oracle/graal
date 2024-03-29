@@ -45,8 +45,8 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
 import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
@@ -71,7 +71,8 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * while the heap monitor was not collecting data are not tracked.
  *
  * <p>
- * Usage example: {@link HeapMonitorSnippets#example}
+ * Usage example: {@snippet file = "com/oracle/truffle/tools/profiler/HeapMonitor.java" region =
+ * "HeapMonitorSnippets#example"}
  *
  * @see #takeSummary()
  * @see #takeMetaObjectSummary()
@@ -187,6 +188,7 @@ public final class HeapMonitor implements Closeable {
      * @throws IllegalStateException if the heap monitor was already closed
      * @since 19.0
      */
+    @SuppressWarnings("javadoc")
     public synchronized void setCollecting(boolean collecting) {
         if (closed) {
             throw new IllegalStateException("Heap Allocation Monitor is already closed.");
@@ -216,6 +218,7 @@ public final class HeapMonitor implements Closeable {
      * @throws IllegalStateException if the heap monitor was already closed
      * @since 19.0
      */
+    @SuppressWarnings("javadoc")
     public HeapSummary takeSummary() {
         if (closed) {
             throw new IllegalStateException("Heap Allocation Monitor is already closed.");
@@ -245,6 +248,7 @@ public final class HeapMonitor implements Closeable {
      * @throws IllegalStateException if the heap monitor was already closed
      * @since 19.0
      */
+    @SuppressWarnings("javadoc")
     public Map<LanguageInfo, Map<String, HeapSummary>> takeMetaObjectSummary() {
         cleanReferenceQueue();
         processNewReferences();
@@ -481,8 +485,8 @@ class HeapMonitorSnippets {
 
     @SuppressWarnings("unused")
     public void example() throws InterruptedException {
-        // @formatter:off
-        // BEGIN: HeapMonitorSnippets#example
+        // @formatter:off // @replace regex='.*' replacement=''
+        // @start region="HeapMonitorSnippets#example"
         try (Context context = Context.create()) {
             HeapMonitor monitor = HeapMonitor.find(context.getEngine());
             monitor.setCollecting(true);
@@ -500,7 +504,7 @@ class HeapMonitorSnippets {
             monitor.setCollecting(false);
         }
         // Print the number of live instances per meta object every 100ms.
-        // END: HeapMonitorSnippets#example
-        // @formatter:on
+        // @end region="HeapMonitorSnippets#example"
+        // @formatter:on // @replace regex='.*' replacement=''
     }
 }

@@ -29,16 +29,15 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
-
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * Instruction that reinterprets some bit pattern as a different type. It is possible to reinterpret
- * the following: - int <-> float - long <-> double
+ * the following: - int &lt;-> float - long &lt;-> double
  */
 public class AArch64ReinterpretOp extends AArch64LIRInstruction {
     private static final LIRInstructionClass<AArch64ReinterpretOp> TYPE = LIRInstructionClass.create(AArch64ReinterpretOp.class);

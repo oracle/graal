@@ -289,12 +289,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * Branches to label if (left & right) == 0. If negated is true branchse on non-zero instead.
+     * Branches to label if (left &amp; right) == 0. If negated is true branchse on non-zero
+     * instead.
      *
      * @param left Integer kind. Non null.
      * @param right Integer kind. Non null.
-     * @param trueDestination destination if left & right == 0. Non null.
-     * @param falseDestination destination if left & right != 0. Non null
+     * @param trueDestination destination if left &amp; right == 0. Non null.
+     * @param falseDestination destination if left &amp; right != 0. Non null
      * @param trueSuccessorProbability hoistoric probability that comparison is true
      */
     @Override
@@ -516,13 +517,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * Moves trueValue into result if (left & right) == 0, else falseValue.
+     * Moves trueValue into result if (left &amp; right) == 0, else falseValue.
      *
      * @param left Integer kind. Non null.
      * @param right Integer kind. Non null.
      * @param trueValue Arbitrary value, same type as falseValue. Non null.
      * @param falseValue Arbitrary value, same type as trueValue. Non null.
-     * @return virtual register containing trueValue if (left & right) == 0, else falseValue.
+     * @return virtual register containing trueValue if (left &amp; right) == 0, else falseValue.
      */
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {

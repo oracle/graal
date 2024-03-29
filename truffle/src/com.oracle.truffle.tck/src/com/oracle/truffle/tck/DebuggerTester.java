@@ -87,7 +87,10 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * The debugger tester can print debug traces to standard output with -Dtruffle.debug.trace=true.
  *
- * Example usage: {@link com.oracle.truffle.tck.DebuggerTesterSnippets#testDebugging()}
+ * Example usage:
+ *
+ * {@snippet file="com/oracle/truffle/tck/DebuggerTester.java"
+ * region="DebuggerTesterSnippets#testDebugging"}
  *
  * @since 0.16
  */
@@ -1006,7 +1009,7 @@ public final class DebuggerTester implements AutoCloseable {
 
 class DebuggerTesterSnippets {
 
-    // BEGIN: DebuggerTesterSnippets.testDebugging
+    // @start region = "DebuggerTesterSnippets#testDebugging"
     public void testDebugging() {
         try (DebuggerTester tester = new DebuggerTester()) {
             // use your guest language source here
@@ -1036,5 +1039,5 @@ class DebuggerTesterSnippets {
             }
         }
     }
-    // END: DebuggerTesterSnippets.testDebugging
+    // @end region = "DebuggerTesterSnippets#testDebugging"
 }
