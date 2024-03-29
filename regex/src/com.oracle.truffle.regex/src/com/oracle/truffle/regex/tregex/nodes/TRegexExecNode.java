@@ -60,7 +60,6 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyCaptureGroupsRootNode;
@@ -354,13 +353,8 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     private void switchToEagerDFA(RegexProfile profile) {
         compileEagerDFA();
         if (eagerDFANode != EAGER_DFA_BAILED_OUT) {
-            int cgTrackingCost = ((TRegexDFAExecutorNode) eagerDFANode.getExecutor()).getCGTrackingCost();
-            if (cgTrackingCost > TRegexOptions.TRegexMaxEagerCGDFACost) {
-                eagerDFANode = EAGER_DFA_BAILED_OUT;
-            } else {
-                Loggers.LOG_SWITCH_TO_EAGER.fine(() -> "regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile) + " cost: " + cgTrackingCost);
-                runnerNode = insert(eagerDFANode);
-            }
+            Loggers.LOG_SWITCH_TO_EAGER.fine(() -> "regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
+            runnerNode = insert(eagerDFANode);
         }
     }
 
