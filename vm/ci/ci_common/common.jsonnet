@@ -408,7 +408,7 @@ local devkits = graal_common.devkits;
 
   mx_vm_cmd_suffix: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--debuginfo-dists', '--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}'],
   mx_vm_common: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
-  mx_vm_installables: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
+  mx_vm_complete: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
 
   svm_common_linux_amd64:        graal_common.deps.svm,
   svm_common_linux_aarch64:      graal_common.deps.svm,
@@ -427,13 +427,13 @@ local devkits = graal_common.devkits;
   artifact_deploy_sdk_base_dry_run(os, base_dist_name): self.deploy_artifacts_sdk(os, base_dist_name) + ['--tags', 'graalvm', '--dry-run'],
   deploy_sdk_base_dry_run(os, base_dist_name=null):     [self.mx_vm_common + vm.vm_profiles + self.maven_deploy_sdk_base_dry_run, self.mx_vm_common + vm.vm_profiles + self.artifact_deploy_sdk_base_dry_run(os, base_dist_name)],
 
-  maven_deploy_sdk_components:    self.maven_deploy_sdk +      ['--tags', 'installable,standalone',              vm.binaries_repository],
-  artifact_deploy_sdk_components(os): self.deploy_artifacts_sdk(os) +  ['--tags', 'installable,standalone',                ],
-  deploy_sdk_components(os):          [$.mx_vm_installables + self.maven_deploy_sdk_components, $.mx_vm_installables + self.artifact_deploy_sdk_components(os)],
+  maven_deploy_sdk_components:    self.maven_deploy_sdk +      ['--tags', 'standalone',              vm.binaries_repository],
+  artifact_deploy_sdk_components(os): self.deploy_artifacts_sdk(os) +  ['--tags', 'standalone',                ],
+  deploy_sdk_components(os):          [$.mx_vm_complete + self.maven_deploy_sdk_components, $.mx_vm_complete + self.artifact_deploy_sdk_components(os)],
 
-  maven_deploy_sdk_components_dry_run:    self.maven_deploy_sdk +     ['--tags', 'installable,standalone', '--dry-run', vm.binaries_repository],
-  artifact_deploy_sdk_components_dry_run(os): self.deploy_artifacts_sdk(os) + ['--tags', 'installable,standalone',                '--dry-run'],
-  deploy_sdk_components_dry_run(os):          [$.mx_vm_installables + self.maven_deploy_sdk_components_dry_run, $.mx_vm_installables + self.artifact_deploy_sdk_components_dry_run(os)],
+  maven_deploy_sdk_components_dry_run:    self.maven_deploy_sdk +     ['--tags', 'standalone', '--dry-run', vm.binaries_repository],
+  artifact_deploy_sdk_components_dry_run(os): self.deploy_artifacts_sdk(os) + ['--tags', 'standalone',                '--dry-run'],
+  deploy_sdk_components_dry_run(os):          [$.mx_vm_complete + self.maven_deploy_sdk_components_dry_run, $.mx_vm_complete + self.artifact_deploy_sdk_components_dry_run(os)],
 
   ruby_vm_build_linux_amd64:    self.svm_common_linux_amd64    + self.sulong_linux          + self.truffleruby_linux_amd64    + vm.custom_vm_linux,
   ruby_vm_build_linux_aarch64:  self.svm_common_linux_aarch64  + self.sulong_linux          + self.truffleruby_linux_aarch64  + vm.custom_vm_linux,
@@ -799,10 +799,10 @@ local devkits = graal_common.devkits;
 
   deploy_graalvm_linux_amd64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'amd64', java_version) + [
-      $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      $.mx_vm_complete + ['graalvm-show'],
+      $.mx_vm_complete + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
     ] + $.deploy_sdk_components(self.os) + [
-      $.mx_vm_installables + $.record_file_sizes,
+      $.mx_vm_complete + $.record_file_sizes,
       $.upload_file_sizes,
     ] + vm.collect_profiles() + $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
@@ -810,25 +810,25 @@ local devkits = graal_common.devkits;
     ] + $.deploy_sdk_base(self.os) + [
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "amd64", java_version) + [
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "amd64", java_version),
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_complete + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build($.mx_vm_complete, "linux", "amd64", java_version),
     notify_groups:: ['deploy'],
     timelimit: "1:30:00"
   },
 
   deploy_graalvm_linux_aarch64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'aarch64', java_version) + [
-      $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      $.mx_vm_complete + ['graalvm-show'],
+      $.mx_vm_complete + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
     ] + $.deploy_sdk_components(self.os) + [
-      $.mx_vm_installables + $.record_file_sizes,
+      $.mx_vm_complete + $.record_file_sizes,
       $.upload_file_sizes,
     ] + vm.collect_profiles() + $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
     ] + $.deploy_sdk_base(self.os) + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "aarch64", java_version) + [
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "aarch64", java_version),
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_complete + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build($.mx_vm_complete, "linux", "aarch64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '1:30:00',
     capabilities+: ["!xgene3"]
@@ -843,15 +843,15 @@ local devkits = graal_common.devkits;
     timelimit: '1:45:00',
   },
 
-  deploy_graalvm_installables_darwin_amd64(java_version): vm.check_structure + {
+  deploy_graalvm_standalones_darwin_amd64(java_version): vm.check_structure + {
     run: $.patch_env('darwin', 'amd64', java_version) + [
-      $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+      $.mx_vm_complete + ['graalvm-show'],
+      $.mx_vm_complete + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_complete + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
-      $.mx_vm_installables + $.record_file_sizes,
+      $.mx_vm_complete + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "darwin", "amd64", java_version),
+    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_complete, "darwin", "amd64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '3:00:00',
   },
@@ -865,15 +865,15 @@ local devkits = graal_common.devkits;
     timelimit: '1:45:00',
   },
 
-  deploy_graalvm_installables_darwin_aarch64(java_version): vm.check_structure + {
+  deploy_graalvm_standalones_darwin_aarch64(java_version): vm.check_structure + {
     run: $.patch_env('darwin', 'aarch64', java_version) + [
-      $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+      $.mx_vm_complete + ['graalvm-show'],
+      $.mx_vm_complete + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_complete + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
-      $.mx_vm_installables + $.record_file_sizes,
+      $.mx_vm_complete + $.record_file_sizes,
       $.upload_file_sizes,
-    ] +  $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "darwin", "aarch64", java_version),
+    ] +  $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_complete, "darwin", "aarch64", java_version),
     notify_emails: ['gilles.m.duboscq@oracle.com', 'bernhard.urban-forster@oracle.com'],
     timelimit: '3:00:00',
   },
@@ -887,15 +887,15 @@ local devkits = graal_common.devkits;
     timelimit: '1:30:00',
   },
 
-  deploy_graalvm_installables_windows_amd64(java_version): vm.check_structure + {
+  deploy_graalvm_standalones_windows_amd64(java_version): vm.check_structure + {
     run: $.patch_env('windows', 'amd64', java_version) + [
-      $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+      $.mx_vm_complete + ['graalvm-show'],
+      $.mx_vm_complete + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_complete + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
-      $.mx_vm_installables + $.record_file_sizes,
+      $.mx_vm_complete + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "windows", "amd64", java_version),
+    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_complete, "windows", "amd64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '2:30:00',
   },
@@ -927,7 +927,7 @@ local devkits = graal_common.devkits;
   },
 
   #
-  # Deploy GraalVM Base and Installables
+  # Deploy GraalVM Base and Standalones
   # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
   #
 
@@ -939,15 +939,15 @@ local devkits = graal_common.devkits;
 
   # Darwin/AMD64
   deploy_vm_base_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java21") + {name: 'post-merge-deploy-vm-base-java21-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_installable_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64("java21") + {name: 'post-merge-deploy-vm-installable-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
+  deploy_vm_standalones_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_standalones_darwin_amd64("java21") + {name: 'post-merge-deploy-vm-standalones-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   # Darwin/AARCH64
   deploy_vm_base_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64("java21") + {name: 'post-merge-deploy-vm-base-java21-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_installable_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_installables_darwin_aarch64("java21") + {name: 'post-merge-deploy-vm-installable-java21-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
+  deploy_vm_standalones_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_standalones_darwin_aarch64("java21") + {name: 'post-merge-deploy-vm-standalones-java21-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   # Windows/AMD64
   deploy_vm_base_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.deploy_vm_windows_jdk21 + self.deploy_graalvm_base_windows_amd64("java21") + self.deploy_build + {name: 'post-merge-deploy-vm-base-java21-windows-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_installable_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_vm_windows_jdk21 + self.deploy_graalvm_installables_windows_amd64("java21") + self.deploy_build + {name: 'post-merge-deploy-vm-installable-java21-windows-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
+  deploy_vm_standalones_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_vm_windows_jdk21 + self.deploy_graalvm_standalones_windows_amd64("java21") + self.deploy_build + {name: 'post-merge-deploy-vm-standalones-java21-windows-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   #
   # Deploy the GraalVM Ruby artifact (GraalVM Base + ruby - native image)

@@ -36,9 +36,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     short_name:: $.edition,
     setup+: [
       ['set-export', 'VM_ENV', self.short_name],
-      ['set-export', 'RELEASE_CATALOG', 'https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties|{ee=GraalVM Enterprise Edition}rest://gds.oracle.com/api/20220101/'],
-      ['set-export', 'RELEASE_PRODUCT_ID', 'D53FAE8052773FFAE0530F15000AA6C6'],
-      ['set-export', 'SNAPSHOT_CATALOG', ['mx', 'urlrewrite', 'http://www.graalvm.org/catalog/ce/java${BASE_JDK_SHORT_VERSION}']],
       ['cd', $.vm_dir],
     ],
   },
@@ -56,11 +53,11 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       {name: 'post-merge-deploy-vm-java21-linux-amd64'},
       {name: 'post-merge-deploy-vm-java21-linux-aarch64'},
       {name: 'post-merge-deploy-vm-base-java21-darwin-amd64'},
-      {name: 'post-merge-deploy-vm-installable-java21-darwin-amd64'},
+      {name: 'post-merge-deploy-vm-standalones-java21-darwin-amd64'},
       {name: 'post-merge-deploy-vm-base-java21-darwin-aarch64'},
-      {name: 'post-merge-deploy-vm-installable-java21-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-standalones-java21-darwin-aarch64'},
       {name: 'post-merge-deploy-vm-base-java21-windows-amd64'},
-      {name: 'post-merge-deploy-vm-installable-java21-windows-amd64'},
+      {name: 'post-merge-deploy-vm-standalones-java21-windows-amd64'},
       {name: 'post-merge-deploy-vm-ruby-java21-linux-amd64'},
       {name: 'post-merge-deploy-vm-ruby-java21-darwin-amd64'},
       {name: 'post-merge-deploy-vm-ruby-java21-darwin-aarch64'},
@@ -192,7 +189,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 
     #
-    # Deploy GraalVM Base and Installables
+    # Deploy GraalVM Base and Standalones
     # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
 
@@ -204,15 +201,15 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
     # Darwin/AMD64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_standalones_java21_darwin_amd64),
 
     # Darwin/AARCH64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_darwin_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_standalones_java21_darwin_aarch64),
 
     # Windows/AMD64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_windows_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_windows_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_standalones_java21_windows_amd64),
 
     #
     # Deploy the GraalVM Ruby image (GraalVM Base + ruby)
