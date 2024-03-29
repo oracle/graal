@@ -85,6 +85,24 @@ public final class ReflectionUtil {
         }
     }
 
+    public static Method lookupPublicMethodInClassHierarchy(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
+        return lookupPublicMethodInClassHierarchy(false, clazz, methodName, parameterTypes);
+    }
+
+    public static Method lookupPublicMethodInClassHierarchy(boolean optional, Class<?> clazz, String methodName, Class<?>... parameterTypes) {
+        try {
+            Method result = clazz.getMethod(methodName, parameterTypes);
+            openModule(result.getDeclaringClass());
+            result.setAccessible(true);
+            return result;
+        } catch (ReflectiveOperationException ex) {
+            if (optional) {
+                return null;
+            }
+            throw new ReflectionUtilError(ex);
+        }
+    }
+
     public static <T> Constructor<T> lookupConstructor(Class<T> declaringClass, Class<?>... parameterTypes) {
         return lookupConstructor(false, declaringClass, parameterTypes);
     }
