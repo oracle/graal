@@ -4506,10 +4506,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case YIELD -> {
                     b.declaration(context.getType(int.class), "constantPoolIndex", "allocateContinuationConstant()");
                     b.startIf().string("reachable").end().startBlock();
-                    b.startDeclaration(continuationLocation.asType(), "continuationLocation");
+                    b.startIf().string("reparseReason != null").end().startBlock();
+                    // We don't need to allocate ContinuationLocations when we reparse.
+                    b.startStatement().startCall("continuationLocations.put").string("constantPoolIndex").string("null").end(2);
+
+                    b.end().startElseBlock();
+
+                    b.startStatement().startCall("continuationLocations.put").string("constantPoolIndex");
                     b.startNew(continuationLocation.asType()).string("bci + " + operation.instruction.getInstructionLength()).string("currentStackHeight").end();
+                    b.end(2);
                     b.end();
-                    b.statement("continuationLocations.put(constantPoolIndex, continuationLocation)");
+
                     b.end();
                     yield new String[]{"constantPoolIndex"};
                 }
@@ -9064,6 +9071,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(type(Throwable.class), "throwable"));
 
             method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
+            mergeSuppressWarnings(method, "static-method");
 
             CodeTreeBuilder b = method.createBuilder();
 
