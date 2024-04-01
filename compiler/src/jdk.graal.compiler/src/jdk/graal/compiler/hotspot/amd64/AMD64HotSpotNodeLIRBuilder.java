@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
+import static jdk.vm.ci.amd64.AMD64.rbp;
 
 import jdk.graal.compiler.core.amd64.AMD64NodeLIRBuilder;
 import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
@@ -34,13 +34,18 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.gen.DebugInfoBuilder;
 import jdk.graal.compiler.hotspot.HotSpotDebugInfoBuilder;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
+import jdk.graal.compiler.hotspot.HotSpotLIRGenerationResult;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
 import jdk.graal.compiler.hotspot.HotSpotNodeLIRBuilder;
+import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
+import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.amd64.AMD64BreakpointOp;
+import jdk.graal.compiler.lir.amd64.AMD64SaveRegistersOp;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
@@ -53,7 +58,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeValueMap;
 import jdk.graal.compiler.replacements.amd64.AMD64IntrinsicStubs;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -92,6 +96,16 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     @Override
     protected void emitPrologue(StructuredGraph graph) {
         CallingConvention incomingArguments = gen.getResult().getCallingConvention();
+
+        HotSpotLIRGenerationResult result = getGen().getResult();
+        Stub stub = result.getStub();
+        if (stub != null && stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS) {
+            assert stub.getLinkage().getDescriptor().getTransition() != HotSpotForeignCallDescriptor.Transition.SAFEPOINT : stub;
+            AMD64SaveRegistersOp saveOp = getGen().emitSaveAllRegisters(false);
+            append(saveOp);
+            result.setSaveOnEntry(saveOp);
+        }
+
         Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
 
         prologAssignParams(incomingArguments, params);

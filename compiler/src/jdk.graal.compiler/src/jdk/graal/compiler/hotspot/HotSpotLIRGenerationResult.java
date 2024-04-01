@@ -26,15 +26,16 @@ package jdk.graal.compiler.hotspot;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.StandardOp.SaveRegistersOp;
 import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
 
@@ -51,6 +52,8 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
 
     private int maxInterpreterFrameSize;
 
+    private StandardOp.SaveRegistersOp saveOnEntry;
+
     /**
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
@@ -62,6 +65,14 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
         super(compilationId, lir, frameMapBuilder, registerAllocationConfig, callingConvention);
         this.stub = stub;
         this.requiresReservedStackAccessCheck = requiresReservedStackAccessCheck;
+    }
+
+    public void setSaveOnEntry(StandardOp.SaveRegistersOp saveOnEntry) {
+        this.saveOnEntry = saveOnEntry;
+    }
+
+    public StandardOp.SaveRegistersOp getSaveOnEntry() {
+        return saveOnEntry;
     }
 
     public EconomicMap<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo() {

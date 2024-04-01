@@ -33,12 +33,8 @@ import java.util.ListIterator;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.graal.compiler.hotspot.HotSpotCompiledCodeBuilder;
-import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
-import jdk.graal.compiler.hotspot.HotSpotHostBackend;
-import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.hotspot.nodes.StubStartNode;
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
@@ -48,6 +44,11 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.hotspot.HotSpotCompiledCodeBuilder;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
+import jdk.graal.compiler.hotspot.HotSpotHostBackend;
+import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.hotspot.nodes.StubStartNode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.lir.phases.LIRSuites;
@@ -64,7 +65,6 @@ import jdk.graal.compiler.phases.Speculative;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
@@ -126,10 +126,6 @@ public abstract class Stub {
     public EconomicSet<Register> getDestroyedCallerRegisters() {
         assert destroyedCallerRegisters != null : "not yet initialized";
         return destroyedCallerRegisters;
-    }
-
-    public boolean shouldSaveRegistersAroundCalls() {
-        return linkage.getEffect() != HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
     }
 
     protected final OptionValues options;

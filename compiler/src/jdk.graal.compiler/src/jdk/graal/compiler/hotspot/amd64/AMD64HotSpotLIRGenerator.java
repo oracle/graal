@@ -25,6 +25,8 @@
 package jdk.graal.compiler.hotspot.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.rbp;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
@@ -55,6 +57,7 @@ import jdk.graal.compiler.hotspot.HotSpotLockStack;
 import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.hotspot.stubs.ForeignCallStub;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -283,6 +286,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (pollOnReturnScratchRegister == null) {
             pollOnReturnScratchRegister = findPollOnReturnScratchRegister();
         }
+        AMD64SaveRegistersOp saveOnEntry = (AMD64SaveRegistersOp) getResult().getSaveOnEntry();
+        if (saveOnEntry != null) {
+            append(new AMD64RestoreRegistersOp(saveOnEntry.getSlots(), saveOnEntry));
+        }
         Register thread = getProviders().getRegisters().getThreadRegister();
         append(new AMD64HotSpotReturnOp(operand, getStub() != null, thread, pollOnReturnScratchRegister, config, getResult().requiresReservedStackAccessCheck()));
     }
@@ -313,6 +320,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             append(new AMD64VZeroUpper(arguments, getRegisterConfig()));
         }
         super.emitForeignCallOp(linkage, targetAddress, result, arguments, temps, info);
+
+        // Handle different return value locations
+        Stub stub = getStub();
+        if (stub != null && stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS && result != null) {
+            assert stub instanceof ForeignCallStub : stub;
+            CallingConvention inCC = stub.getLinkage().getIncomingCallingConvention();
+            if (!inCC.getReturn().equals(linkage.getOutgoingCallingConvention().getReturn())) {
+                assert isStackSlot(inCC.getReturn()) : inCC.getReturn();
+                emitMove(inCC.getReturn(), result);
+            }
+        }
     }
 
     /**
@@ -342,8 +360,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      *
      * @return the register save node
      */
-    private AMD64SaveRegistersOp emitSaveAllRegisters(boolean forSafepoint) {
-        Register[] savedRegisters = getSaveableRegisters(forSafepoint);
+    public AMD64SaveRegistersOp emitSaveAllRegisters(boolean forSafepoint) {
+        Register[] savedRegisters = getSaveableRegisters(forSafepoint, Value.ILLEGAL);
         AllocatableValue[] savedRegisterLocations = new AllocatableValue[savedRegisters.length];
         for (int i = 0; i < savedRegisters.length; i++) {
             savedRegisterLocations[i] = allocateSaveRegisterLocation(savedRegisters[i]);
@@ -353,8 +371,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     /**
      * @param forSafepoint saveable registers must be describable for register map.
+     * @param exclude
      */
-    protected Register[] getSaveableRegisters(boolean forSafepoint) {
+    protected Register[] getSaveableRegisters(boolean forSafepoint, AllocatableValue exclude) {
         RegisterArray allocatableRegisters = getResult().getRegisterAllocationConfig().getAllocatableRegisters();
 
         ArrayList<Register> registers = new ArrayList<>(allocatableRegisters.size());
@@ -363,6 +382,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (!forSafepoint || !reg.getRegisterCategory().equals(AMD64.MASK)) {
                 registers.add(reg);
             }
+        }
+
+        if (isRegister(exclude)) {
+            registers.remove(asRegister(exclude));
         }
 
         return registers.toArray(new Register[registers.size()]);
@@ -396,7 +419,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         AMD64SaveRegistersOp save = null;
         Stub stub = getStub();
-        if (destroysRegisters && stub != null && stub.shouldSaveRegistersAroundCalls()) {
+        if (destroysRegisters && stub != null && stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED) {
             save = emitSaveAllRegisters(stub.getLinkage().getDescriptor().getTransition() == HotSpotForeignCallDescriptor.Transition.SAFEPOINT);
         }
 
@@ -414,15 +437,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), config.threadLastJavaPcOffset(), thread));
         } else {
             result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
-        }
-
-        // Handle different return value locations
-        if (stub != null && stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS && result != null) {
-            CallingConvention inCC = stub.getLinkage().getIncomingCallingConvention();
-            if (!inCC.getReturn().equals(linkage.getOutgoingCallingConvention().getReturn())) {
-                assert isStackSlot(inCC.getReturn());
-                emitMove(inCC.getReturn(), result);
-            }
         }
 
         if (save != null) {

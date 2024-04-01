@@ -29,7 +29,6 @@ import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.lir.amd64.AMD64FrameMap;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeCacheProvider;
