@@ -160,21 +160,16 @@ public final class ContinuationResult {
     }
 
     /**
-     * Returns the bytecode node that was suspended.
+     * Returns the location at which the continuation was created.
+     * <p>
+     * This location can have a different {@link BytecodeNode} from the
+     * {@link ContinuationRootNode#getSourceRootNode() source root node} if the source bytecode was
+     * {@link BytecodeRootNodes#update updated} (explicitly or implicitly).
      *
      * @since 24.1
      */
-    public BytecodeNode getBytecodeNode() {
-        throw new UnsupportedOperationException("not implemented");
-    }
-
-    /**
-     * Returns the bytecode index at the point the continuation suspended.
-     *
-     * @since 24.1
-     */
-    public int getBci() {
-        throw new UnsupportedOperationException("not implemented");
+    public BytecodeLocation getBytecodeLocation() {
+        return rootNode.getLocation();
     }
 
     /**
@@ -184,6 +179,6 @@ public final class ContinuationResult {
      */
     @Override
     public String toString() {
-        return String.format("ContinuationResult [bci=%s, result=%s]", getBci(), result);
+        return String.format("ContinuationResult [location=%s, result=%s]", getBytecodeLocation(), result);
     }
 }

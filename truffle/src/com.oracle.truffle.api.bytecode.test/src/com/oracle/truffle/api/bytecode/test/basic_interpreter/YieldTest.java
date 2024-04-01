@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
@@ -49,6 +50,8 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 
 public class YieldTest extends AbstractBasicInterpreterTest {
 
@@ -319,6 +322,44 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         } else {
             fail("yield did not return a continuation");
         }
+    }
+
+    @Test
+    public void testYieldGetLocation() {
+        BasicInterpreter rootNode = parseNode("yieldGetLocation", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginYield();
+            b.emitCurrentLocation();
+            b.endYield();
+
+            b.beginReturn();
+            b.emitCurrentLocation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        ContinuationResult r1 = (ContinuationResult) rootNode.getCallTarget().call();
+        BytecodeLocation before = (BytecodeLocation) r1.getResult();
+
+        if (!hasUncached(interpreterClass)) {
+            /**
+             * Tricky behaviour: interpreters that don't have an uncached interpreter start with
+             * uninitialized bytecode. Though rootNode will transition to cached on first execution,
+             * the continuation's location will not be cached until after *its* first execution.
+             */
+            BytecodeLocation locationBeforeResume = r1.getBytecodeLocation();
+            assertEquals(BytecodeTier.UNCACHED /* actually uninit */, locationBeforeResume.getBytecodeNode().getTier());
+        }
+
+        BytecodeLocation after = (BytecodeLocation) r1.continueWith(null);
+        BytecodeLocation location = r1.getBytecodeLocation();
+
+        assertEquals(before.getBytecodeNode(), location.getBytecodeNode());
+        assertEquals(location.getBytecodeNode(), after.getBytecodeNode());
+        assertTrue(before.getBytecodeIndex() < location.getBytecodeIndex());
+        assertTrue(location.getBytecodeIndex() < after.getBytecodeIndex());
     }
 
     @Test

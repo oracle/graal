@@ -426,6 +426,14 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
     }
 
+    @Operation
+    public static final class CurrentLocation {
+        @Specialization
+        public static BytecodeLocation perform(@Bind("$location") BytecodeLocation location) {
+            return location;
+        }
+    }
+
     @Instrumentation
     public static final class IncrementValue {
         @Specialization

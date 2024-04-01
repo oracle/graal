@@ -7855,6 +7855,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createFindBytecodeIndex1());
             type.add(createFindBytecodeIndex2());
             type.add(createFindBytecodeIndexOfOperationNode());
+            type.add(createToString());
 
             return type;
         }
@@ -8220,6 +8221,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             return withTruffleBoundary(ex);
 
+        }
+
+        private CodeExecutableElement createToString() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "toString");
+            CodeTreeBuilder b = ex.createBuilder();
+            String tierString = switch (tier) {
+                case UNCACHED -> "uncached";
+                case UNINITIALIZED -> "uninitialized";
+                case CACHED -> "cached";
+            };
+
+            b.startReturn();
+            b.startStaticCall(type(String.class), "format");
+            b.doubleQuote(ElementUtils.getSimpleName(types.BytecodeNode) + " [name=%s, tier=" + tierString + "]");
+            b.string("((RootNode) getParent()).getQualifiedName()");
+            b.end(2);
+
+            return ex;
         }
 
         private CodeExecutableElement createCachedConstructor() {
@@ -10823,6 +10842,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             continuationRootNodeImpl.add(createExecute());
             continuationRootNodeImpl.add(createGetSourceRootNode());
+            continuationRootNodeImpl.add(createGetLocation());
             continuationRootNodeImpl.add(createGetLocals());
             continuationRootNodeImpl.add(createUpdateBytecodeLocation());
             continuationRootNodeImpl.add(createInvalidate());
@@ -10863,6 +10883,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getSourceRootNode");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("root").end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetLocation() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getLocation");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().string("location").end();
             return ex;
         }
 
@@ -10916,9 +10943,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createToString() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(String.class), "toString");
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "toString");
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("root.toString() + \"@\" + (location == null ? -1 : location.getBytecodeIndex())").end();
+            b.startReturn();
+            b.startStaticCall(type(String.class), "format");
+            b.doubleQuote(ElementUtils.getSimpleName(types.ContinuationRootNode) + " [location=%s]");
+            b.string("location");
+            b.end(2);
             return ex;
         }
     }

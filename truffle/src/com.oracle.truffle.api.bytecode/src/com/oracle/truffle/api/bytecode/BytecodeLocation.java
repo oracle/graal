@@ -140,6 +140,14 @@ public final class BytecodeLocation {
     }
 
     /**
+     * @since 24.1
+     */
+    @Override
+    public String toString() {
+        return String.format("BytecodeLocation [bytecode=%s, bci=%d]", bytecodes, bci);
+    }
+
+    /**
      * Dumps the bytecode, highlighting this location in the result.
      *
      * @return dump string
