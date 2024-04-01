@@ -365,6 +365,10 @@ public abstract class AbstractBasicInterpreterTest {
                         BasicInterpreterProduction.class);
     }
 
+    public static boolean hasUncached(Class<? extends BasicInterpreter> c) {
+        return c == BasicInterpreterWithUncached.class || c == BasicInterpreterProduction.class;
+    }
+
     public static boolean hasBE(Class<? extends BasicInterpreter> c) {
         return c == BasicInterpreterWithBE.class || c == BasicInterpreterProduction.class;
     }

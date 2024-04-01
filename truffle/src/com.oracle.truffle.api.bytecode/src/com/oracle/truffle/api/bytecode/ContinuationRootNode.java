@@ -66,6 +66,13 @@ public abstract class ContinuationRootNode extends RootNode {
     public abstract BytecodeRootNode getSourceRootNode();
 
     /**
+     * Returns the {@link BytecodeLocation} associated with this continuation.
+     *
+     * @since 24.1
+     */
+    public abstract BytecodeLocation getLocation();
+
+    /**
      * Returns the locals stored in the frame at the point that execution was suspended.
      *
      * @see BytecodeRootNode#getLocals
