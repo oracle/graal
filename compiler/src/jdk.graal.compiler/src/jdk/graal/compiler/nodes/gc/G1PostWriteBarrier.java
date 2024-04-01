@@ -36,14 +36,16 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 public class G1PostWriteBarrier extends ObjectWriteBarrier {
 
     public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
+    @OptionalInput protected ValueNode object;
     protected final boolean alwaysNull;
 
-    public G1PostWriteBarrier(AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        this(TYPE, address, value, precise, alwaysNull);
+    public G1PostWriteBarrier(AddressNode address, ValueNode value, ValueNode object, boolean alwaysNull) {
+        this(TYPE, address, value, object, alwaysNull);
     }
 
-    private G1PostWriteBarrier(NodeClass<? extends G1PostWriteBarrier> c, AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        super(c, address, value, precise);
+    private G1PostWriteBarrier(NodeClass<? extends G1PostWriteBarrier> c, AddressNode address, ValueNode value, ValueNode object, boolean alwaysNull) {
+        super(c, address, value, object == null);
+        this.object = object;
         this.alwaysNull = alwaysNull;
     }
 

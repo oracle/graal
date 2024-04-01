@@ -29,28 +29,26 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.DeoptimizingNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class G1PreWriteBarrier extends ObjectWriteBarrier implements DeoptimizingNode.DeoptBefore {
+public final class G1PreWriteBarrier extends ObjectWriteBarrier {
 
     public static final NodeClass<G1PreWriteBarrier> TYPE = NodeClass.create(G1PreWriteBarrier.class);
 
     @OptionalInput(InputType.State) private FrameState stateBefore;
-    private final boolean nullCheck;
     private final boolean doLoad;
 
-    public G1PreWriteBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad, boolean nullCheck) {
+    public G1PreWriteBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad) {
         super(TYPE, address, expectedObject, true);
-        assert doLoad == (expectedObject == null) : Assertions.errorMessageContext("adr", address, "expectedO", expectedObject, "doLoad", doLoad, "nullCheck", nullCheck);
+        assert doLoad == (expectedObject == null) : Assertions.errorMessageContext("adr", address, "expectedO", expectedObject, "doLoad", doLoad);
         this.doLoad = doLoad;
-        this.nullCheck = nullCheck;
     }
 
     public ValueNode getExpectedObject() {
@@ -59,26 +57,6 @@ public final class G1PreWriteBarrier extends ObjectWriteBarrier implements Deopt
 
     public boolean doLoad() {
         return doLoad;
-    }
-
-    public boolean getNullCheck() {
-        return nullCheck;
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return nullCheck;
-    }
-
-    @Override
-    public FrameState stateBefore() {
-        return stateBefore;
-    }
-
-    @Override
-    public void setStateBefore(FrameState state) {
-        updateUsages(stateBefore, state);
-        stateBefore = state;
     }
 
     @Override

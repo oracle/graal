@@ -28,6 +28,11 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_P
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -43,7 +48,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.nodes.extended.NullCheckNode;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrier;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrier;
 import jdk.graal.compiler.nodes.gc.G1PostWriteBarrier;
@@ -60,11 +64,6 @@ import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -109,21 +108,18 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     }
 
     @Snippet
-    public void g1PreWriteBarrier(Address address, Object object, Object expectedObject, @ConstantParameter boolean doLoad, @ConstantParameter boolean nullCheck,
+    public void g1PreWriteBarrier(Address address, Object object, Object expectedObject, @ConstantParameter boolean doLoad,
                     @ConstantParameter int traceStartCycle, @ConstantParameter Counters counters) {
-        satbBarrier(address, object, expectedObject, doLoad, nullCheck, traceStartCycle, counters);
+        satbBarrier(address, object, expectedObject, doLoad, traceStartCycle, counters);
     }
 
     @Snippet
     public void g1ReferentReadBarrier(Address address, Object object, Object expectedObject, @ConstantParameter int traceStartCycle, @ConstantParameter Counters counters) {
-        satbBarrier(address, object, expectedObject, false, false, traceStartCycle, counters);
+        satbBarrier(address, object, expectedObject, false, traceStartCycle, counters);
     }
 
-    private void satbBarrier(Address address, Object object, Object expectedObject, boolean doLoad, boolean nullCheck,
+    private void satbBarrier(Address address, Object object, Object expectedObject, boolean doLoad,
                     int traceStartCycle, Counters counters) {
-        if (nullCheck) {
-            NullCheckNode.nullCheck(address);
-        }
         Word thread = getThread();
         verifyOop(object);
         Word field = Word.fromAddress(address);
@@ -452,7 +448,6 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.add("expectedObject", expected);
 
             args.addConst("doLoad", barrier.doLoad());
-            args.addConst("nullCheck", barrier.getNullCheck());
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
