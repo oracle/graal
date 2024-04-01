@@ -34,6 +34,7 @@ import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
+import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.heapBaseRegister;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
@@ -328,7 +329,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
 
         Stub stub = gen.getStub();
-        AArch64MacroAssembler masm = new AArch64HotSpotMacroAssembler(getTarget(), config);
+        AArch64MacroAssembler masm = new AArch64HotSpotMacroAssembler(getTarget(), config, heapBaseRegister);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
 
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());

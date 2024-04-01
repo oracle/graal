@@ -62,6 +62,7 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerationResult;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
+import jdk.graal.compiler.hotspot.aarch64.g1.AArch64HotSpotG1BarrierSetLIRTool;
 import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
@@ -84,7 +85,8 @@ import jdk.graal.compiler.lir.aarch64.AArch64PrefetchOp;
 import jdk.graal.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import jdk.graal.compiler.lir.aarch64.AArch64SaveRegistersOp;
 import jdk.graal.compiler.lir.aarch64.AArch64SpinWaitOp;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
+import jdk.graal.compiler.lir.aarch64.g1.AArch64G1BarrierSetLIRGenerator;
+import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.vm.ci.aarch64.AArch64;
@@ -111,9 +113,12 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     final GraalHotSpotVMConfig config;
     private HotSpotDebugInfoBuilder debugInfoBuilder;
 
-    protected static BarrierSetLIRGenerator getBarrierSet(GraalHotSpotVMConfig config, HotSpotProviders providers) {
+    protected static BarrierSetLIRGeneratorTool getBarrierSet(GraalHotSpotVMConfig config, HotSpotProviders providers) {
         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
             return new AArch64HotSpotZBarrierSetLIRGenerator(config, providers);
+        }
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.G1) {
+            return new AArch64G1BarrierSetLIRGenerator(new AArch64HotSpotG1BarrierSetLIRTool(config, providers));
         }
         return null;
     }
@@ -122,7 +127,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         this(new AArch64LIRKindTool(), new AArch64ArithmeticLIRGenerator(null), getBarrierSet(config, providers), new AArch64HotSpotMoveFactory(), providers, config, lirGenRes);
     }
 
-    protected AArch64HotSpotLIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory,
+    protected AArch64HotSpotLIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGeneratorTool barrierSetLIRGen, MoveFactory moveFactory,
                     HotSpotProviders providers, GraalHotSpotVMConfig config, LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, barrierSetLIRGen, moveFactory, providers, lirGenRes);
         this.config = config;

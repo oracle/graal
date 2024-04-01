@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,5 +24,33 @@
  */
 package jdk.graal.compiler.lir.gen;
 
-public abstract class BarrierSetLIRGenerator implements BarrierSetLIRGeneratorTool {
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.vm.ci.meta.InvokeTarget;
+
+public interface G1BarrierSetLIRTool {
+
+    int satbQueueMarkingActiveOffset();
+
+    int satbQueueBufferOffset();
+
+    int satbQueueIndexOffset();
+
+    int cardQueueBufferOffset();
+
+    int cardQueueIndexOffset();
+
+    byte dirtyCardValue();
+
+    byte youngCardValue();
+
+    long cardTableAddress();
+
+    int logOfHeapRegionGrainBytes();
+
+    ForeignCallDescriptor preWriteBarrierDescriptor();
+
+    ForeignCallDescriptor postWriteBarrierDescriptor();
+
+    InvokeTarget getCallTarget(ForeignCallLinkage callTarget);
 }

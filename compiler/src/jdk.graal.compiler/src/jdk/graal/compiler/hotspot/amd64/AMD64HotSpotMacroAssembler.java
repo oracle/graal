@@ -24,21 +24,33 @@
  */
 package jdk.graal.compiler.hotspot.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.lir.amd64.AMD64Move;
 import jdk.graal.compiler.options.OptionValues;
-
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 
 public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
     private final GraalHotSpotVMConfig config;
+    private final HotSpotProviders providers;
 
-    public AMD64HotSpotMacroAssembler(GraalHotSpotVMConfig config, TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
+    public AMD64HotSpotMacroAssembler(GraalHotSpotVMConfig config, TargetDescription target, OptionValues optionValues, HotSpotProviders providers, boolean hasIntelJccErratum) {
         super(target, optionValues, hasIntelJccErratum);
         this.config = config;
+        this.providers = providers;
     }
 
     @Override
@@ -73,5 +85,59 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
         emitByte(displacement & 0xff);
         GraalError.guarantee(position() % 4 == 0, "must be aligned");
         emitInt(0);
+    }
+
+    public void loadObject(Register dst, AMD64Address address) {
+        if (config.useCompressedOops) {
+            movl(dst, address);
+            CompressEncoding encoding = config.getOopEncoding();
+            Register baseReg = encoding.hasBase() ? providers.getRegisters().getHeapBaseRegister() : Register.None;
+            AMD64Move.UncompressPointerOp.emitUncompressCode(this, dst, encoding.getShift(), baseReg, false);
+        } else {
+            movq(dst, address);
+        }
+    }
+
+    /**
+     * Perform some lightweight verification that value is a valid object or null. It checks that
+     * the value is an instance of its own class though it only checks the primary super table for
+     * compactness.
+     */
+    public void verifyOop(Register value, Register tmp, Register tmp2, boolean compressed, boolean nonNull) {
+        Label ok = new Label();
+
+        if (!nonNull) {
+            // first null check the value
+            testAndJcc(compressed ? DWORD : QWORD, value, value, AMD64Assembler.ConditionFlag.Zero, ok, true);
+        }
+
+        AMD64Address hubAddress;
+        if (compressed) {
+            CompressEncoding encoding = config.getOopEncoding();
+            Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(encoding) ? providers.getRegisters().getHeapBaseRegister() : Register.None;
+            movq(tmp, value);
+            AMD64Move.UncompressPointerOp.emitUncompressCode(this, tmp, encoding.getShift(), heapBaseRegister, true);
+            hubAddress = new AMD64Address(tmp, config.hubOffset);
+        } else {
+            hubAddress = new AMD64Address(value, config.hubOffset);
+        }
+
+        // Load the klass
+        if (config.useCompressedClassPointers) {
+            AMD64HotSpotMove.decodeKlassPointer(this, tmp, tmp2, hubAddress, config);
+        } else {
+            movq(tmp, hubAddress);
+        }
+        // Klass::_super_check_offset
+        movl(tmp2, new AMD64Address(tmp, config.superCheckOffsetOffset));
+        // if the super check offset is offsetof(_secondary_super_cache) then we skip the search of
+        // the secondary super array
+        cmplAndJcc(tmp2, config.secondarySuperCacheOffset, ConditionFlag.Equal, ok, true);
+        // Load the klass from the primary supers
+        movq(tmp2, new AMD64Address(tmp, tmp2, Stride.S1));
+        // the Klass* should be equal
+        cmpqAndJcc(tmp2, tmp, AMD64Assembler.ConditionFlag.Equal, ok, true);
+        illegal();
+        bind(ok);
     }
 }

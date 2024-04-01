@@ -156,6 +156,15 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> VerifyPhases = new OptionKey<>(false);
 
+    @Option(help = "Use generated assembly for GC barriers if supported by the platform", type = OptionType.Expert)
+    public static final OptionKey<Boolean> AssemblyGCBarriers = new OptionKey<>(true);
+
+    @Option(help = "Force use of slow path for assembly GC barriers. Intended for debugging only.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> AssemblyGCBarriersSlowPathOnly = new OptionKey<>(false);
+
+    @Option(help = "Verify oops processed by GC barriers", type = OptionType.Debug)
+    public static final OptionKey<Boolean> VerifyAssemblyGCBarriers = new OptionKey<>(false);
+
     // Debug settings:
     @Option(help = "Start tracing compiled GC barriers after N garbage collections (disabled if N <= 0).", type = OptionType.Debug)
     public static final OptionKey<Integer> GCDebugStartCycle = new OptionKey<>(-1);

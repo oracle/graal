@@ -54,7 +54,7 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
         COMPUTES_REGISTERS_KILLED,
 
         /**
-         * Uses a stack based calling convention and all registers are treated as callee saved..
+         * Uses a stack based calling convention and all registers are treated as callee saved.
          */
         KILLS_NO_REGISTERS
     }

@@ -27,15 +27,24 @@ package jdk.graal.compiler.nodes.gc;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
+import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public class G1PostWriteBarrier extends ObjectWriteBarrier {
+public class G1PostWriteBarrier extends ObjectWriteBarrier implements LIRLowerable {
 
     public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
+
     @OptionalInput protected ValueNode object;
     protected final boolean alwaysNull;
 
@@ -56,5 +65,32 @@ public class G1PostWriteBarrier extends ObjectWriteBarrier {
     @Override
     public Kind getKind() {
         return Kind.POST_BARRIER;
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        if (value.isJavaConstant() && value.asJavaConstant().isNull()) {
+            // These can be folded earlier
+            return;
+        }
+
+        AllocatableValue base;
+        LIRGeneratorTool lirGen = generator.getLIRGeneratorTool();
+        if (object != null) {
+            // Imprecise card mark where the base of the object is marked instead of the card
+            // containing address. Used for field stores.
+            base = lirGen.asAllocatable(generator.operand(object));
+        } else {
+            // Precise card mark
+            Value addr = generator.operand(address);
+            base = lirGen.newVariable(addr.getValueKind());
+            lirGen.emitMove(base, addr);
+        }
+        boolean nonNull = ((ObjectStamp) value.stamp(NodeView.DEFAULT)).nonNull();
+        if (base.equals(generator.operand(value))) {
+            // If the value being stored is the same as the base then there is nothing to do.
+            return;
+        }
+        lirGen.getWriteBarrierSet().emitPostWriteBarrier(lirGen, base, lirGen.asAllocatable(generator.operand(value)), nonNull);
     }
 }

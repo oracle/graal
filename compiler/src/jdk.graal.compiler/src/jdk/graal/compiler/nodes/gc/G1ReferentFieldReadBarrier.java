@@ -28,9 +28,12 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * The {@code G1ReferentFieldReadBarrier} is added when a read access is performed to the referent
@@ -39,7 +42,7 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
  * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
  */
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier {
+public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier implements LIRLowerable {
     public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.create(G1ReferentFieldReadBarrier.class);
 
     public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject) {
@@ -53,5 +56,12 @@ public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier {
     @Override
     public Kind getKind() {
         return Kind.PRE_BARRIER;
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        LIRGeneratorTool lirGen = generator.getLIRGeneratorTool();
+        lirGen.getWriteBarrierSet().emitPreWriteBarrier(lirGen,
+                        generator.operand(address), lirGen.asAllocatable(generator.operand(getExpectedObject())), false);
     }
 }

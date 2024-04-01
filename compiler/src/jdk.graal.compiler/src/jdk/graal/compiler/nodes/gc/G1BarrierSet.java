@@ -139,16 +139,16 @@ public class G1BarrierSet implements BarrierSet {
     private void addReadNodeBarriers(ReadNode node) {
         if (node.getBarrierType() == BarrierType.REFERENCE_GET) {
             StructuredGraph graph = node.graph();
-            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), uncompressExpectedValue(node)));
+            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), maybeUncompressExpectedValue(node)));
             graph.addAfterFixed(node, barrier);
         }
     }
 
     /**
      * The expected value argument might be in compressed form so allow subclasses to uncompress the
-     * value if that's the preferred form.
+     * value if that's the preferred form by the backend implementation of the barrier.
      */
-    protected ValueNode uncompressExpectedValue(ValueNode value) {
+    protected ValueNode maybeUncompressExpectedValue(ValueNode value) {
         return value;
     }
 
@@ -216,7 +216,7 @@ public class G1BarrierSet implements BarrierSet {
     }
 
     private void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, StructuredGraph graph) {
-        G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(address, uncompressExpectedValue(value), doLoad));
+        G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(address, maybeUncompressExpectedValue(value), doLoad));
         GraalError.guarantee(!node.getUsedAsNullCheck(), "trapping null checks are inserted after write barrier insertion: ", node);
         node.setStateBefore(null);
         graph.addBeforeFixed(node, preBarrier);
@@ -224,7 +224,7 @@ public class G1BarrierSet implements BarrierSet {
 
     private void addG1PostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, ValueNode object, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
-        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(address, uncompressExpectedValue(value), object, alwaysNull)));
+        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(address, maybeUncompressExpectedValue(value), object, alwaysNull)));
     }
 
     private static boolean isObjectValue(ValueNode value) {

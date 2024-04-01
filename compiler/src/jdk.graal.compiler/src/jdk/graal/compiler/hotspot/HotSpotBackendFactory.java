@@ -276,7 +276,7 @@ public abstract class HotSpotBackendFactory {
                 }
 
                 @Override
-                protected ValueNode uncompressExpectedValue(ValueNode value) {
+                protected ValueNode maybeUncompressExpectedValue(ValueNode value) {
                     if (value != null && (value.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp)) {
                         return HotSpotCompressionNode.uncompress(value.graph(), value, config.getOopEncoding());
                     }

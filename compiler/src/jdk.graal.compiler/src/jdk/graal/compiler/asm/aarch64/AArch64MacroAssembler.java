@@ -92,6 +92,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public ScratchRegister getScratchRegister() {
+        if (nextFreeScratchRegister == scratchRegister.length) {
+            throw new GraalError("Out of scratch registers");
+        }
         return scratchRegister[nextFreeScratchRegister++];
     }
 
@@ -1645,7 +1648,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void compare(int size, Register x, int y) {
         assert size == 32 || size == 64 : size;
-        assert isComparisonImmediate(y);
+        GraalError.guarantee(isComparisonImmediate(y), "invalid immediate value %s", y);
         /*
          * AArch64 has two compare instructions supporting an immediate operand: compare (cmp) and
          * compare negative (cmn), which are aliases for SUBS and ADDS, respectively. In both

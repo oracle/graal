@@ -75,6 +75,10 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
      */
     BarrierSetLIRGeneratorTool getBarrierSet();
 
+    default WriteBarrierSetLIRGeneratorTool getWriteBarrierSet() {
+        return (WriteBarrierSetLIRGeneratorTool) getBarrierSet();
+    }
+
     TargetDescription target();
 
     BasicBlock<?> getCurrentBlock();

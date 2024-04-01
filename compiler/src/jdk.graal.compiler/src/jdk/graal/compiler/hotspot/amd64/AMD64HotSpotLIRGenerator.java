@@ -54,6 +54,7 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerationResult;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
+import jdk.graal.compiler.hotspot.amd64.g1.AMD64HotSpotG1BarrierSetLIRTool;
 import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
@@ -77,13 +78,13 @@ import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import jdk.graal.compiler.lir.amd64.AMD64RestoreRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64SaveRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64VZeroUpper;
+import jdk.graal.compiler.lir.amd64.g1.AMD64G1BarrierSetLIRGenerator;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
+import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.lir.gen.MoveFactory.BackupSlotProvider;
-import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -113,9 +114,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         this(providers, config, lirGenRes, new BackupSlotProvider(lirGenRes.getFrameMapBuilder()));
     }
 
-    protected static BarrierSetLIRGenerator getBarrierSet(GraalHotSpotVMConfig config, Providers providers) {
+    protected static BarrierSetLIRGeneratorTool getBarrierSet(GraalHotSpotVMConfig config, HotSpotProviders providers) {
         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
             return new AMD64HotSpotZBarrierSetLIRGenerator(config, providers);
+        }
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.G1) {
+            return new AMD64G1BarrierSetLIRGenerator(new AMD64HotSpotG1BarrierSetLIRTool(config, providers));
         }
         return null;
     }
@@ -124,7 +128,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         this(new AMD64HotSpotLIRKindTool(), new AMD64ArithmeticLIRGenerator(null), getBarrierSet(config, providers), new AMD64HotSpotMoveFactory(backupSlotProvider), providers, config, lirGenRes);
     }
 
-    protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory,
+    protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGeneratorTool barrierSetLIRGen, MoveFactory moveFactory,
                     HotSpotProviders providers, GraalHotSpotVMConfig config, LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, barrierSetLIRGen, moveFactory, providers, lirGenRes);
         int basicLockSize = config.basicLockSize;

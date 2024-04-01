@@ -109,7 +109,7 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
     private final boolean printIrWithLir;
     private final int traceLIRGeneratorLevel;
 
-    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, CoreProviders providers,
+    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGeneratorTool barrierSetLIRGen, MoveFactory moveFactory, CoreProviders providers,
                     LIRGenerationResult res) {
         super(providers);
         this.lirKindTool = lirKindTool;

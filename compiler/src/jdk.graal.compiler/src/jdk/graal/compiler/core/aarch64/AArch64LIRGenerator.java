@@ -100,7 +100,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64VectorizedMismatchOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZapRegistersOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZapStackOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZeroMemoryOp;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
+import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.gen.MoveFactory;
@@ -120,7 +120,7 @@ import jdk.vm.ci.meta.ValueKind;
 
 public abstract class AArch64LIRGenerator extends LIRGenerator {
 
-    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, Providers providers,
+    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGeneratorTool barrierSetLIRGen, MoveFactory moveFactory, Providers providers,
                     LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, barrierSetLIRGen, moveFactory, providers, lirGenRes);
     }

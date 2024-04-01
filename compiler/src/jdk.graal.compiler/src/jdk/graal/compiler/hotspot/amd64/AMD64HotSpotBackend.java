@@ -271,7 +271,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         DebugContext debug = lir.getDebug();
 
         Stub stub = gen.getStub();
-        AMD64MacroAssembler masm = new AMD64HotSpotMacroAssembler(config, getTarget(), options, config.CPU_HAS_INTEL_JCC_ERRATUM);
+        AMD64MacroAssembler masm = new AMD64HotSpotMacroAssembler(config, getTarget(), options, getProviders(), config.CPU_HAS_INTEL_JCC_ERRATUM);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None, lir);

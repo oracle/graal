@@ -104,7 +104,7 @@ public final class SubprocessUtil {
     public static List<String> withoutDebuggerArguments(List<String> args) {
         List<String> result = new ArrayList<>(args.size());
         for (String arg : args) {
-            if (!(arg.equals("-Xdebug") || arg.startsWith("-Xrunjdwp:") || arg.startsWith("-agentlib:jdwp"))) {
+            if (!(arg.equals("-Xdebug") || arg.startsWith("-Xrunjdwp:") || arg.startsWith("-agentlib:jdwp") || arg.startsWith("-XX:+ShowMessageBoxOnError"))) {
                 result.add(arg);
             }
         }

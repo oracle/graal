@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.amd64;
+package jdk.graal.compiler.lir.gen;
 
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.ReadBarrierSetLIRGeneratorTool;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
- * AMD64 specific LIR generation for GC barriers.
+ * The platform independent base class for LIR generation for garbage collectors that need write
+ * barriers. Platform dependent operations are added in subinterfaces.
  */
-public abstract class AMD64ReadBarrierSetLIRGenerator implements ReadBarrierSetLIRGeneratorTool {
+public interface WriteBarrierSetLIRGeneratorTool extends BarrierSetLIRGeneratorTool {
 
     /**
-     * Emit an atomic read-and-write instruction with any required GC barriers.
+     * @param address the location being updated
+     * @param expectedObject the expected pre-value if known
+     * @param nonNull true if expectedObject is known to non-null
      */
-    public abstract Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
+    void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean nonNull);
 
     /**
-     * Emit an atomic compare and swap with any required GC barriers.
+     * @param address the location being updated
+     * @param value the value being written
+     * @param nonNull true if {@code value} is known to be non-null
      */
-    public abstract void emitCompareAndSwapOp(LIRGeneratorTool tool, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue,
-                    BarrierType barrierType);
+    void emitPostWriteBarrier(LIRGeneratorTool lirTool, Value address, Value value, boolean nonNull);
 }

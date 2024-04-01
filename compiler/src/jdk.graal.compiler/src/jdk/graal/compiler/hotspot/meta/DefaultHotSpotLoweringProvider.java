@@ -471,11 +471,17 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof ArrayCopyWithDelayedLoweringNode) {
             arraycopySnippets.lower((ArrayCopyWithDelayedLoweringNode) n, tool);
         } else if (n instanceof G1PreWriteBarrier) {
-            g1WriteBarrierSnippets.lower((G1PreWriteBarrier) n, tool);
+            if (!GraalOptions.AssemblyGCBarriers.getValue(n.getOptions())) {
+                g1WriteBarrierSnippets.lower((G1PreWriteBarrier) n, tool);
+            }
         } else if (n instanceof G1PostWriteBarrier) {
-            g1WriteBarrierSnippets.lower((G1PostWriteBarrier) n, tool);
+            if (!GraalOptions.AssemblyGCBarriers.getValue(n.getOptions())) {
+                g1WriteBarrierSnippets.lower((G1PostWriteBarrier) n, tool);
+            }
         } else if (n instanceof G1ReferentFieldReadBarrier) {
-            g1WriteBarrierSnippets.lower((G1ReferentFieldReadBarrier) n, tool);
+            if (!GraalOptions.AssemblyGCBarriers.getValue(n.getOptions())) {
+                g1WriteBarrierSnippets.lower((G1ReferentFieldReadBarrier) n, tool);
+            }
         } else if (n instanceof SerialWriteBarrier) {
             serialWriteBarrierSnippets.lower((SerialWriteBarrier) n, tool);
         } else if (n instanceof SerialArrayRangeWriteBarrier) {
