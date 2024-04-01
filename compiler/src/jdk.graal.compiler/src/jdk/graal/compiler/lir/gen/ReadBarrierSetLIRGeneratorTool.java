@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.amd64;
+package jdk.graal.compiler.lir.gen;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
-
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.meta.AllocatableValue;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.meta.Value;
 
 /**
- * AMD64 specific LIR generation for GC barriers.
+ * The platform independent base class for LIR generation for garbage collectors that need read
+ * barriers. Platform dependent operations are added in subinterfaces.
  */
-public abstract class AMD64BarrierSetLIRGenerator extends BarrierSetLIRGenerator {
+public interface ReadBarrierSetLIRGeneratorTool extends BarrierSetLIRGeneratorTool {
 
     /**
-     * Emit an atomic read-and-write instruction with any required GC barriers.
+     * Emit a read of a memory location along with the required read barrier.. {@code barrierType}
+     * will always be something besides {@link BarrierType#NONE}.
      */
-    public abstract Value emitAtomicReadAndWrite(LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
-
-    /**
-     * Emit an atomic compare and swap with any required GC barriers.
-     */
-    public abstract void emitCompareAndSwapOp(LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue,
-                    BarrierType barrierType);
+    Variable emitBarrieredLoad(LIRGeneratorTool tool, LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, BarrierType barrierType);
 }

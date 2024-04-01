@@ -29,6 +29,8 @@ import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.ReadBarrierSetLIRGeneratorTool;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -37,17 +39,18 @@ import jdk.vm.ci.meta.Value;
 /**
  * AArch64 specific LIR generation for GC barriers.
  */
-public abstract class AArch64BarrierSetLIRGenerator extends BarrierSetLIRGenerator {
+public abstract class AArch64ReadBarrierSetLIRGenerator extends BarrierSetLIRGenerator implements ReadBarrierSetLIRGeneratorTool {
 
     /**
      * Emit an atomic read-and-write instruction with any required GC barriers.
      */
-    public abstract Value emitAtomicReadAndWrite(LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
+    public abstract Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
 
     /**
      * Emit an atomic compare and swap with any required GC barriers.
      */
-    public abstract void emitCompareAndSwapOp(boolean isLogic, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result, AllocatableValue allocatableExpectedValue,
+    public abstract void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result,
+                    AllocatableValue allocatableExpectedValue,
                     AllocatableValue allocatableNewValue, BarrierType barrierType);
 
 }

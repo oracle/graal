@@ -137,11 +137,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         return val;
     }
 
-    @Override
-    public AArch64BarrierSetLIRGenerator getBarrierSet() {
-        return (AArch64BarrierSetLIRGenerator) super.getBarrierSet();
-    }
-
     /**
      * AArch64 cannot use anything smaller than a word in any instruction other than load and store.
      */
@@ -244,8 +239,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     protected void emitCompareAndSwapOp(boolean isLogicVariant, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result, AllocatableValue allocatableExpectedValue,
                     AllocatableValue allocatableNewValue, BarrierType barrierType) {
-        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
-            getBarrierSet().emitCompareAndSwapOp(isLogicVariant, address, memoryOrder, memKind, result, allocatableExpectedValue, allocatableNewValue, barrierType);
+        if (barrierType != BarrierType.NONE && getBarrierSet() instanceof AArch64ReadBarrierSetLIRGenerator barrierSetLIRGenerator) {
+            barrierSetLIRGenerator.emitCompareAndSwapOp(this, isLogicVariant, address, memoryOrder, memKind, result, allocatableExpectedValue, allocatableNewValue, barrierType);
         } else {
             append(new CompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address)));
         }
@@ -253,8 +248,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue, BarrierType barrierType) {
-        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
-            return getBarrierSet().emitAtomicReadAndWrite(accessKind, address, newValue, barrierType);
+        if (barrierType != BarrierType.NONE && getBarrierSet() instanceof AArch64ReadBarrierSetLIRGenerator barrierSetLIRGenerator) {
+            return barrierSetLIRGenerator.emitAtomicReadAndWrite(this, accessKind, address, newValue, barrierType);
         } else {
             Variable result = newVariable(toRegisterKind(accessKind));
             append(new AtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));

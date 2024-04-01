@@ -123,10 +123,6 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
 
         assert arithmeticLIRGen.lirGen == null;
         arithmeticLIRGen.lirGen = this;
-        if (barrierSetLIRGen != null) {
-            assert barrierSetLIRGen.lirGen == null;
-            barrierSetLIRGen.lirGen = this;
-        }
 
         this.moveFactory = moveFactory;
     }

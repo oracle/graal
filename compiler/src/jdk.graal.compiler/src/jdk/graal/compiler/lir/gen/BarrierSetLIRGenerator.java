@@ -25,9 +25,4 @@
 package jdk.graal.compiler.lir.gen;
 
 public abstract class BarrierSetLIRGenerator implements BarrierSetLIRGeneratorTool {
-    protected LIRGenerator lirGen;
-
-    public LIRGenerator getLIRGen() {
-        return lirGen;
-    }
 }

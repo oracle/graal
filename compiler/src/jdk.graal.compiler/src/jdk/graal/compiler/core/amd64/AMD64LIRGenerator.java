@@ -165,11 +165,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public AMD64BarrierSetLIRGenerator getBarrierSet() {
-        return (AMD64BarrierSetLIRGenerator) super.getBarrierSet();
-    }
-
-    @Override
     protected JavaConstant zapValueForKind(PlatformKind kind) {
         long dead = 0xDEADDEADDEADDEADL;
         switch ((AMD64Kind) kind) {
@@ -313,8 +308,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     protected void emitCompareAndSwapOp(LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue, BarrierType barrierType) {
-        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
-            getBarrierSet().emitCompareAndSwapOp(accessKind, memKind, raxValue, address, newValue, barrierType);
+        if (barrierType != BarrierType.NONE && getBarrierSet() instanceof AMD64ReadBarrierSetLIRGenerator readBarrierSet) {
+            readBarrierSet.emitCompareAndSwapOp(this, accessKind, memKind, raxValue, address, newValue, barrierType);
         } else {
             append(new CompareAndSwapOp(memKind, raxValue, address, raxValue, newValue));
         }
@@ -330,8 +325,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue, BarrierType barrierType) {
-        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
-            return getBarrierSet().emitAtomicReadAndWrite(accessKind, address, newValue, barrierType);
+        if (barrierType != BarrierType.NONE && getBarrierSet() instanceof AMD64ReadBarrierSetLIRGenerator readBarrierSet) {
+            return readBarrierSet.emitAtomicReadAndWrite(this, accessKind, address, newValue, barrierType);
         }
         Variable result = newVariable(toRegisterKind(accessKind));
         AMD64AddressValue addressValue = asAddressValue(address);

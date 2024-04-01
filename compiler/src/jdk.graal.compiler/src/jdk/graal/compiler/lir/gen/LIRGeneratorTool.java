@@ -70,6 +70,9 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
 
     ArithmeticLIRGeneratorTool getArithmetic();
 
+    /**
+     * Get the current barrier set code generator.
+     */
     BarrierSetLIRGeneratorTool getBarrierSet();
 
     TargetDescription target();
