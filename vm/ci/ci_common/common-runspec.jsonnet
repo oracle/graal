@@ -257,9 +257,9 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     }
   },
 
-  local extras(main_target, deploy, bench=false) = diskspace_required(vm.default_diskspace_required(self.os, self.arch, deploy).diskspace_required) + task_spec({ targets+: [main_target] + (if (deploy) then ['deploy'] else []) + (if (bench) then ['bench'] else []) }+ (if (bench) then { capabilities+: ['no_frequency_scaling'] } else {})),
-  local deploy_vm_common(main_target, deploy, bench) = extras(main_target, deploy, bench) + deploy_graalvm_base + common_os_deploy + name,
-  local deploy_vm_espresso_common(main_target, deploy, bench=false) = extras(main_target, deploy, bench) + deploy_graalvm_espresso + common_os_deploy + name,
+  local extras(main_target, deploy=true, bench=false) = diskspace_required(vm.default_diskspace_required(self.os, self.arch, deploy).diskspace_required) + task_spec({ targets+: [main_target] + (if (deploy) then ['deploy'] else []) + (if (bench) then ['bench'] else []) }+ (if (bench) then { capabilities+: ['no_frequency_scaling'] } else {})),
+  local deploy_vm_common(main_target, deploy=true, bench=false) = extras(main_target, deploy, bench) + deploy_graalvm_base + common_os_deploy + name,
+  local deploy_vm_espresso_common(main_target, deploy=true, bench=false) = extras(main_target, deploy, bench) + deploy_graalvm_espresso + common_os_deploy + name,
 
   local variants(s) = run_spec.generate_variants(s, feature_map),
 
@@ -274,24 +274,24 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
         // Linux
         "os_distro:linux": {
-          "linux:amd64:jdk21": deploy_vm_common('weekly', true, false) + full_vm_build,
-          "linux:amd64:jdk-latest": deploy_vm_common('post-merge', true, false) + full_vm_build,
-          "linux:aarch64:jdk21": deploy_vm_common('weekly', true, false) + full_vm_build + capabilities('!xgene3') + timelimit('1:30:00'),
-          "linux:aarch64:jdk-latest": deploy_vm_common('daily', true, false) + full_vm_build + capabilities('!xgene3') + timelimit('1:30:00'),
+          "linux:amd64:jdk21": deploy_vm_common('weekly') + full_vm_build,
+          "linux:amd64:jdk-latest": deploy_vm_common('post-merge') + full_vm_build,
+          "linux:aarch64:jdk21": deploy_vm_common('weekly') + full_vm_build + capabilities('!xgene3') + timelimit('1:30:00'),
+          "linux:aarch64:jdk-latest": deploy_vm_common('daily') + full_vm_build + capabilities('!xgene3') + timelimit('1:30:00'),
         },
 
         // Windows
         "os_distro:windows": {
-          "windows:amd64:jdk21": deploy_vm_common('weekly', true, false) + js_windows_common + svm_common + timelimit('1:30:00'),
-          "windows:amd64:jdk-latest": deploy_vm_common('daily', true, false) + js_windows_common + svm_common + timelimit('1:30:00'),
+          "windows:amd64:jdk21": deploy_vm_common('weekly') + js_windows_common + svm_common + timelimit('1:30:00'),
+          "windows:amd64:jdk-latest": deploy_vm_common('daily') + js_windows_common + svm_common + timelimit('1:30:00'),
         },
 
         //darwin
         "os_distro:darwin": {
-          "darwin:amd64:jdk21": deploy_vm_common('weekly', true, false) + full_vm_build,
-          "darwin:amd64:jdk-latest": deploy_vm_common('daily', true, false) + full_vm_build,
-          "darwin:aarch64:jdk21": deploy_vm_common('weekly', true, false) + full_vm_build + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
-          "darwin:aarch64:jdk-latest": deploy_vm_common('daily', true, false) + full_vm_build + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+          "darwin:amd64:jdk21": deploy_vm_common('weekly') + full_vm_build,
+          "darwin:amd64:jdk-latest": deploy_vm_common('daily') + full_vm_build,
+          "darwin:aarch64:jdk21": deploy_vm_common('weekly') + full_vm_build + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+          "darwin:aarch64:jdk-latest": deploy_vm_common('daily') + full_vm_build + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
         }
       }),
     },
@@ -305,11 +305,11 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     #
     "vm-espresso": platform_spec(no_jobs) + mx_env + variants({
       "os_distro:espresso": {
-        "linux:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
-        "linux:aarch64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
-        "windows:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + sulong + svm_common,
-        "darwin:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
-        "darwin:aarch64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
+        "linux:amd64:jdk21": deploy_vm_espresso_common('weekly') + full_vm_build,
+        "linux:aarch64:jdk21": deploy_vm_espresso_common('weekly') + full_vm_build,
+        "windows:amd64:jdk21": deploy_vm_espresso_common('weekly') + sulong + svm_common,
+        "darwin:amd64:jdk21": deploy_vm_espresso_common('weekly') + full_vm_build,
+        "darwin:aarch64:jdk21": deploy_vm_espresso_common('weekly') + full_vm_build,
       }
     }),
   },
