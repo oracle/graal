@@ -61,7 +61,7 @@ public final class InputOps {
         CompilerAsserts.partialEvaluationConstant(codePointSet);
         CompilerAsserts.partialEvaluationConstant(encoding);
         CompilerAsserts.partialEvaluationConstant(stride);
-        return indexOfNode.execute(input, fromIndex << stride, maxIndex << stride, codePointSet) >> stride;
+        return indexOfNode.execute(input, fromIndex << stride, maxIndex << stride, codePointSet, false) >> stride;
     }
 
     public static int indexOf(TruffleString input, int fromIndex, int maxIndex, InnerLiteral literal, Encodings.Encoding encoding,
