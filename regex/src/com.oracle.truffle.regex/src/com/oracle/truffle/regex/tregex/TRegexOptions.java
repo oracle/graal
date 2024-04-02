@@ -239,6 +239,12 @@ public class TRegexOptions {
      */
     public static final int TRegexMaxTransitionsInTrivialExecutor = 100;
 
+    /**
+     * Don't force evaluation of {@link com.oracle.truffle.api.strings.TruffleString.CodeRange} if
+     * the input string's byte length is greater than this threshold.
+     */
+    public static final int CODE_RANGE_EVALUATION_THRESHOLD = 2048;
+
     static {
         assert TRegexTraceFinderMaxNumberOfResults <= 254;
         assert TRegexParserTreeMaxSize <= Integer.MAX_VALUE;
