@@ -39,9 +39,9 @@ import com.oracle.svm.core.jdk.Resources;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class EmbeddedResourcesInfo {
 
-    private final ConcurrentHashMap<Resources.ModuleResourceRecord, List<String>> registeredResources = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Resources.ModuleResourceKey, List<String>> registeredResources = new ConcurrentHashMap<>();
 
-    public ConcurrentHashMap<Resources.ModuleResourceRecord, List<String>> getRegisteredResources() {
+    public ConcurrentHashMap<Resources.ModuleResourceKey, List<String>> getRegisteredResources() {
         return registeredResources;
     }
 
@@ -50,7 +50,7 @@ public class EmbeddedResourcesInfo {
     }
 
     public void declareResourceAsRegistered(Module module, String resource, String source) {
-        Resources.ModuleResourceRecord key = createStorageKey(module, resource);
+        Resources.ModuleResourceKey key = createStorageKey(module, resource);
         registeredResources.compute(key, (k, v) -> {
             if (v == null) {
                 ArrayList<String> newValue = new ArrayList<>();

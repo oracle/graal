@@ -93,9 +93,9 @@ public class EmbeddedResourceExporter {
         w.unindent();
     }
 
-    private static List<ResourceReportEntry> getResourceReportEntryList(ConcurrentHashMap<Resources.ModuleResourceRecord, List<String>> collection) {
+    private static List<ResourceReportEntry> getResourceReportEntryList(ConcurrentHashMap<Resources.ModuleResourceKey, List<String>> collection) {
         List<ResourceReportEntry> resourceInfoList = new ArrayList<>();
-        EconomicMap<Resources.ModuleResourceRecord, ResourceStorageEntryBase> resourceStorage = Resources.singleton().getResourceStorage();
+        EconomicMap<Resources.ModuleResourceKey, ResourceStorageEntryBase> resourceStorage = Resources.singleton().getResourceStorage();
         resourceStorage.getKeys().forEach(key -> {
             Module module = key.module();
             String resourceName = key.resource();

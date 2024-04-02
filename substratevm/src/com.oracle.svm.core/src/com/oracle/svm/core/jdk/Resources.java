@@ -81,19 +81,19 @@ public final class Resources {
     }
 
     /**
-     * The hosted map used to collect registered resources. Using a {@link ModuleResourceRecord} of
+     * The hosted map used to collect registered resources. Using a {@link ModuleResourceKey} of
      * (module, resourceName) provides implementations for {@code hashCode()} and {@code equals()}
      * needed for the map keys. Hosted module instances differ to runtime instances, so the map that
      * ends up in the image heap is computed after the runtime module instances have been computed
      * {see com.oracle.svm.hosted.ModuleLayerFeature}.
      */
-    private final EconomicMap<ModuleResourceRecord, ResourceStorageEntryBase> resources = ImageHeapMap.create();
+    private final EconomicMap<ModuleResourceKey, ResourceStorageEntryBase> resources = ImageHeapMap.create();
     private final EconomicMap<RequestedPattern, Boolean> requestedPatterns = ImageHeapMap.create();
 
     public record RequestedPattern(String module, String resource) {
     }
 
-    public record ModuleResourceRecord(Module module, String resource) {
+    public record ModuleResourceKey(Module module, String resource) {
     }
 
     /**
@@ -121,7 +121,7 @@ public final class Resources {
     Resources() {
     }
 
-    public EconomicMap<ModuleResourceRecord, ResourceStorageEntryBase> getResourceStorage() {
+    public EconomicMap<ModuleResourceKey, ResourceStorageEntryBase> getResourceStorage() {
         return resources;
     }
 
@@ -141,19 +141,19 @@ public final class Resources {
         return module == null ? null : module.getName();
     }
 
-    public static ModuleResourceRecord createStorageKey(Module module, String resourceName) {
+    public static ModuleResourceKey createStorageKey(Module module, String resourceName) {
         Module m = module != null && module.isNamed() ? module : null;
         if (ImageInfo.inImageBuildtimeCode()) {
             if (m != null) {
                 m = RuntimeModuleSupport.instance().getRuntimeModuleForHostedModule(m);
             }
         }
-        return new ModuleResourceRecord(m, resourceName);
+        return new ModuleResourceKey(m, resourceName);
     }
 
     public static Set<String> getIncludedResourcesModules() {
         return StreamSupport.stream(singleton().resources.getKeys().spliterator(), false)
-                        .map(ModuleResourceRecord::module)
+                        .map(ModuleResourceKey::module)
                         .filter(Objects::nonNull)
                         .map(Module::getName)
                         .collect(Collectors.toSet());
@@ -178,7 +178,7 @@ public final class Resources {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
         synchronized (resources) {
-            ModuleResourceRecord key = createStorageKey(m, resourceName);
+            ModuleResourceKey key = createStorageKey(m, resourceName);
             ResourceStorageEntryBase entry = resources.get(key);
             if (isNegativeQuery) {
                 if (entry == null) {
@@ -237,7 +237,7 @@ public final class Resources {
                 LogUtils.warning("Resource " + resourceName + " from module " + moduleName(module) + " produced the following IOException: " + e.getClass().getTypeName() + ": " + e.getMessage());
             }
         }
-        ModuleResourceRecord key = createStorageKey(module, resourceName);
+        ModuleResourceKey key = createStorageKey(module, resourceName);
         synchronized (resources) {
             updateTimeStamp();
             resources.put(key, new ResourceExceptionEntry(e));
