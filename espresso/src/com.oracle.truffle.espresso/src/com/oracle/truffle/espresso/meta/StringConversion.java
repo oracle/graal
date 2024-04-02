@@ -203,7 +203,7 @@ public final class StringConversion {
             return new AlmostString(extractHostBytes(host), extractHostHash(host), extractHostCoder(host));
         };
 
-        @TruffleBoundary
+        @TruffleBoundary(allowInlining = true)
         private static String newHostString(char[] chars) {
             return new String(chars);
         }
@@ -232,7 +232,7 @@ public final class StringConversion {
             }
         };
 
-        @TruffleBoundary
+        @TruffleBoundary(allowInlining = true)
         private static String newStringFromLatin1(byte[] bytes) {
             return new String(bytes, StandardCharsets.ISO_8859_1 /*- LATIN1 */);
         }
@@ -247,7 +247,7 @@ public final class StringConversion {
 
         ToGuest TO_NOT_COMPACT = (host, meta, maybeCopy) -> produceGuestString8(meta, getCharArray(host), extractHostHash(host));
 
-        @TruffleBoundary
+        @TruffleBoundary(allowInlining = true)
         private static char[] getCharArray(String host) {
             return host.toCharArray();
         }
