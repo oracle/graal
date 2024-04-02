@@ -28,7 +28,7 @@
           "properties": {
             "origin": {
               "type": "string",
-              "title": "Actual path to the resource"
+              "title": "Resource path"
             },
             "size": {
               "type": "integer",

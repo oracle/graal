@@ -547,7 +547,7 @@ public final class ResourcesFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         sealed = true;
         if (Options.GenerateEmbeddedResourcesFile.getValue()) {
-            Path reportLocation = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve("embedded-resources.json");
+            Path reportLocation = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(Options.EMBEDDED_RESOURCES_FILE_NAME);
             try (JsonWriter writer = new JsonWriter(reportLocation)) {
                 EmbeddedResourceExporter.printReport(writer);
             } catch (IOException e) {
