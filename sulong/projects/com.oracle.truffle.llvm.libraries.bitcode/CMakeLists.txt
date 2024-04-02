@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -110,7 +110,7 @@ endif()
 
 include(CheckIncludeFile)
 CHECK_INCLUDE_FILE(threads.h SUPPORTS_C11_THREADS)
-if(SUPPORTS_C11_THREADS)
+if(SUPPORTS_C11_THREADS AND NOT WIN32)
   target_sources(sulong PRIVATE src/c11threads.c)
 else()
   message(NOTICE "Compiling without C11 threads because threads.h is not available.")
