@@ -588,21 +588,22 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.length += repeat;
             } else {
                 assert isUnsupportedEncoding(sb.encoding);
+                JCodings jcodings = JCodings.getInstance();
                 if (Integer.compareUnsigned(codepoint, 0x10ffff) > 0) {
                     throw InternalErrors.invalidCodePoint(codepoint);
                 }
-                int length = JCodings.getInstance().getCodePointLength(sb.encoding, codepoint);
+                int length = jcodings.getCodePointLength(sb.encoding, codepoint);
                 if (!(sb.encoding.is7BitCompatible() && codepoint <= 0x7f)) {
-                    sb.updateCodeRange(TSCodeRange.getValid(JCodings.getInstance().isSingleByte(sb.encoding)));
+                    sb.updateCodeRange(TSCodeRange.getValid(jcodings.isSingleByte(sb.encoding)));
                 }
                 if (length < 1) {
                     throw InternalErrors.invalidCodePoint(codepoint);
                 }
                 sb.ensureCapacityWithStride(node, length * repeat, bufferGrowProfile, errorProfile);
                 for (int i = 0; i < repeat; i++) {
-                    int ret = JCodings.getInstance().writeCodePoint(sb.encoding, codepoint, sb.buf, sb.length);
-                    if (ret != length || JCodings.getInstance().getCodePointLength(sb.encoding, sb.buf, sb.length, sb.length + length) != ret ||
-                                    JCodings.getInstance().readCodePoint(sb.encoding, sb.buf, sb.length, sb.length + length, DecodingErrorHandler.RETURN_NEGATIVE) != codepoint) {
+                    int ret = jcodings.writeCodePoint(sb.encoding, codepoint, sb.buf, sb.length);
+                    if (ret != length || jcodings.getCodePointLength(sb.encoding, sb.buf, sb.length, sb.length + length) != ret ||
+                                    jcodings.readCodePoint(sb.encoding, sb.buf, sb.length, sb.length + length, DecodingErrorHandler.RETURN_NEGATIVE) != codepoint) {
                         throw InternalErrors.invalidCodePoint(codepoint);
                     }
                     sb.length += length;

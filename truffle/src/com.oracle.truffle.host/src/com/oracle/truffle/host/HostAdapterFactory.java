@@ -51,6 +51,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 
 /**
  * A factory class that generates host adapter classes.
@@ -100,6 +101,12 @@ final class HostAdapterFactory {
         CompilerAsserts.neverPartOfCompilation();
 
         AbstractHostAccess polyglotAccess = hostClassCache.polyglotHostAccess;
+        if (TruffleOptions.AOT) {
+            throw HostEngineException.unsupported(polyglotAccess, String.format(
+                            "Cannot create host adapter class to extend %s. Generating new classes at run time is not supported on Native Image.",
+                            types.length == 1 ? types[0] : Arrays.toString(types)));
+        }
+
         Class<?> superClass = null;
         final List<Class<?>> interfaces = new ArrayList<>();
         for (final Class<?> t : types) {
@@ -124,7 +131,7 @@ final class HostAdapterFactory {
                 throw HostEngineException.illegalArgument(polyglotAccess, String.format("Class not public: %s.", t.getCanonicalName()));
             }
             if (!HostInteropReflect.isExtensibleType(t) || !hostClassCache.allowsImplementation(t)) {
-                throw HostEngineException.illegalArgument(polyglotAccess, "Implementation not allowed for " + t);
+                throw HostEngineException.illegalArgument(polyglotAccess, String.format("Implementation not allowed for %s", t));
             }
         }
         superClass = superClass != null ? superClass : Object.class;
@@ -134,7 +141,7 @@ final class HostAdapterFactory {
 
         // Fail early if the class loader cannot load all supertypes.
         if (!classLoaderCanSee(commonLoader, types)) {
-            throw HostEngineException.illegalArgument(polyglotAccess, "Could not determine a class loader that can see all types: " + Arrays.toString(types));
+            throw HostEngineException.illegalArgument(polyglotAccess, String.format("Could not determine a class loader that can see all types: %s", Arrays.toString(types)));
         }
 
         Class<?> adapterClass;
@@ -161,7 +168,7 @@ final class HostAdapterFactory {
             }
             return new AdapterResult(adapterClass, constructor, valueConstructor);
         } else {
-            return new AdapterResult(HostEngineException.illegalArgument(polyglotAccess, "No accessible constructor: " + superClass.getCanonicalName()));
+            return new AdapterResult(HostEngineException.illegalArgument(polyglotAccess, String.format("No accessible constructor: %s", superClass.getCanonicalName())));
         }
     }
 
