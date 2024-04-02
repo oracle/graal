@@ -198,16 +198,16 @@ def _open_module_exports_args():
 class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
     _use_enterprise_polyglot = True
+    _use_optimized_runtime = True
 
     def __init__(self):
         super(TruffleUnittestConfig, self).__init__('truffle')
 
     def processDeps(self, deps):
-        if TruffleUnittestConfig._use_enterprise_polyglot:
-            dist_names = resolve_truffle_dist_names()
-            mx.logv(f'Adding Truffle runtime distributions {", ".join(dist_names)} to unittest dependencies.')
-            for dist_name in dist_names:
-                deps.add(mx.distribution(dist_name))
+        dist_names = resolve_truffle_dist_names(TruffleUnittestConfig._use_optimized_runtime, TruffleUnittestConfig._use_enterprise_polyglot)
+        mx.logv(f'Adding Truffle runtime distributions {", ".join(dist_names)} to unittest dependencies.')
+        for dist_name in dist_names:
+            deps.add(mx.distribution(dist_name))
 
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
@@ -238,8 +238,18 @@ class _DisableEnterpriseTruffleAction(Action):
     def __call__(self, parser, namespace, values, option_string=None):
         TruffleUnittestConfig._use_enterprise_polyglot = False
 
+class _DisableOptimizedRuntimeAction(Action):
+    def __init__(self, **kwargs):
+        kwargs['required'] = False
+        kwargs['nargs'] = 0
+        super(_DisableOptimizedRuntimeAction, self).__init__(**kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        TruffleUnittestConfig._use_optimized_runtime = False
+
 
 mx_unittest.add_unittest_argument('--disable-truffle-enterprise', default=False, help='Disables the automatic inclusion of Enterprise Truffle in unittest dependencies.', action=_DisableEnterpriseTruffleAction)
+mx_unittest.add_unittest_argument('--disable-truffle-optimized-runtime', default=False, help='Disables the automatic inclusion of Truffle optimized runtime in unittest dependencies.', action=_DisableOptimizedRuntimeAction)
 
 
 class NFITestConfig:
