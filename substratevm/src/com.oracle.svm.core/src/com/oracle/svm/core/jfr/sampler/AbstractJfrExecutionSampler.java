@@ -327,7 +327,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
         if (isSPAligned(sp)) {
             /* Stack is probably in a normal, walkable state. */
             callerSP = getCallerSP(codeInfo, sp, ip);
-            if (SubstrateOptions.PreserveFramePointer.getValue() && (isSPOutsideStackBoundaries(callerSP) || !isInAOTCompiledCode(FrameAccess.singleton().readReturnAddress(callerSP)))) {
+            if (SubstrateOptions.hasFramePointer() && (isSPOutsideStackBoundaries(callerSP) || !isInAOTCompiledCode(FrameAccess.singleton().readReturnAddress(callerSP)))) {
                 /*
                  * We are in the prologue or epilogue. Frame pointer and return address are on top
                  * of the stack.
