@@ -75,6 +75,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -2500,6 +2501,7 @@ public final class TruffleString extends AbstractTruffleString {
             return data;
         }
 
+        @InliningCutoff
         @Specialization(guards = "!isSupportedEncoding(a.encoding())")
         static NativePointer doNativeUnsupported(Node node, @SuppressWarnings("unused") AbstractTruffleString a, NativePointer data,
                         @Shared @Cached InlinedConditionProfile materializeProfile) {
@@ -2507,6 +2509,7 @@ public final class TruffleString extends AbstractTruffleString {
             return data;
         }
 
+        @InliningCutoff
         @Specialization
         static byte[] doLazyConcat(Node node, AbstractTruffleString a, @SuppressWarnings("unused") LazyConcat data) {
             // note: the write to a.data is racy, and we deliberately read it from the TString
@@ -2515,6 +2518,7 @@ public final class TruffleString extends AbstractTruffleString {
             return (byte[]) a.data();
         }
 
+        @InliningCutoff
         @Specialization
         static byte[] doLazyLong(Node node, AbstractTruffleString a, LazyLong data,
                         @Shared @Cached InlinedConditionProfile materializeProfile) {

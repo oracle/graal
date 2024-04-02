@@ -225,9 +225,6 @@ final class HostInteropReflect {
 
     @TruffleBoundary
     static Object newAdapterInstance(Node node, HostContext hostContext, Class<?> clazz, Object obj) throws IllegalArgumentException {
-        if (TruffleOptions.AOT) {
-            throw HostEngineException.unsupported(hostContext.access, "Unsupported target type.");
-        }
         HostClassDesc classDesc = HostClassDesc.forClass(hostContext, clazz);
         AdapterResult adapter = classDesc.getAdapter(hostContext);
         if (!adapter.isAutoConvertible()) {

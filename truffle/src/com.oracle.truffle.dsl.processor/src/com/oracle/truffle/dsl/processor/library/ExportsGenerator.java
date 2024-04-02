@@ -63,6 +63,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -1385,6 +1386,18 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             GeneratorUtils.addBoundaryOrTransferToInterpreter(cachedExecute, builder);
             builder.startThrow().startNew(context.getType(AbstractMethodError.class)).end().end();
         } else {
+            /*
+             * If the @ExportMessage annotated method already has a @TruffleBoundary, might as well
+             * copy over the @TruffleBoundary to the delegating cached library method. This reduces
+             * the number of useless runtime compiled methods. Note that we want to preserve any
+             * annotation attributes like @TruffleBoundary(transferToInterpreterOnException=false).
+             */
+            if (targetMethod != null) {
+                AnnotationMirror existingTruffleBoundary = ElementUtils.findAnnotationMirror(targetMethod, types.CompilerDirectives_TruffleBoundary);
+                if (existingTruffleBoundary != null) {
+                    cachedExecute.addAnnotationMirror(existingTruffleBoundary);
+                }
+            }
             builder.startReturn();
             if (targetMethod == null) {
                 builder.startCall("super", message.getName());

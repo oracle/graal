@@ -144,14 +144,21 @@ public abstract class DynamicObject implements TruffleObject {
 
     private static void verifyShape(Shape shape, Class<? extends DynamicObject> subclass) {
         Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
-        if (!(shapeType == subclass || (shapeType.isAssignableFrom(subclass) && DynamicObject.class.isAssignableFrom(shapeType)))) {
+        assert DynamicObject.class.isAssignableFrom(shapeType) : shapeType;
+        if (!(shapeType == subclass || shapeType == DynamicObject.class || shapeType.isAssignableFrom(subclass)) ||
+                        shape.hasInstanceProperties()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw illegalShape(shape, subclass);
+        }
+    }
+
+    private static IllegalArgumentException illegalShape(Shape shape, Class<? extends DynamicObject> subclass) {
+        Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
+        if (!(shapeType == subclass || shapeType == DynamicObject.class || shapeType.isAssignableFrom(subclass))) {
             throw illegalShapeType(shapeType, subclass);
         }
-        if (shape.hasInstanceProperties()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw illegalShapeProperties();
-        }
+        assert shape.hasInstanceProperties() : shape;
+        throw illegalShapeProperties();
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)

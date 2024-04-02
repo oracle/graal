@@ -356,11 +356,12 @@ public final class TruffleStringIterator {
         @Specialization(guards = {"isUnsupportedEncoding(it.encoding)"})
         static int unsupported(TruffleStringIterator it, DecodingErrorHandler errorHandler) {
             assert it.hasNext();
+            JCodings jcodings = JCodings.getInstance();
             byte[] bytes = JCodings.asByteArray(it.arrayA);
             int startIndex = it.rawIndex;
             int p = it.a.byteArrayOffset() + it.rawIndex;
             int end = it.a.byteArrayOffset() + it.a.length();
-            int length = JCodings.getInstance().getCodePointLength(it.encoding, bytes, p, end);
+            int length = jcodings.getCodePointLength(it.encoding, bytes, p, end);
             int codepoint = 0;
             if (length < 1) {
                 if (length < -1) {
@@ -371,9 +372,9 @@ public final class TruffleStringIterator {
                 }
             } else {
                 it.rawIndex += length;
-                codepoint = JCodings.getInstance().readCodePoint(it.encoding, bytes, p, end, errorHandler);
+                codepoint = jcodings.readCodePoint(it.encoding, bytes, p, end, errorHandler);
             }
-            if (length < 1 || !JCodings.getInstance().isValidCodePoint(it.encoding, codepoint)) {
+            if (length < 1 || !jcodings.isValidCodePoint(it.encoding, codepoint)) {
                 return it.applyErrorHandler(errorHandler, startIndex);
             }
             return codepoint;
@@ -638,11 +639,12 @@ public final class TruffleStringIterator {
         @Specialization(guards = {"isUnsupportedEncoding(it.encoding)"})
         static int unsupported(TruffleStringIterator it, DecodingErrorHandler errorHandler) {
             assert it.hasPrevious();
+            JCodings jcodings = JCodings.getInstance();
             byte[] bytes = JCodings.asByteArray(it.arrayA);
             int start = it.a.byteArrayOffset();
             int index = it.a.byteArrayOffset() + it.rawIndex;
             int end = it.a.byteArrayOffset() + it.a.length();
-            int prevIndex = JCodings.getInstance().getPreviousCodePointIndex(it.encoding, bytes, start, index, end);
+            int prevIndex = jcodings.getPreviousCodePointIndex(it.encoding, bytes, start, index, end);
             int codepoint = 0;
             if (prevIndex < 0) {
                 it.rawIndex--;
@@ -650,9 +652,9 @@ public final class TruffleStringIterator {
                 assert prevIndex >= it.a.byteArrayOffset();
                 assert prevIndex < index;
                 it.rawIndex = prevIndex - it.a.byteArrayOffset();
-                codepoint = JCodings.getInstance().readCodePoint(it.encoding, bytes, prevIndex, end, errorHandler);
+                codepoint = jcodings.readCodePoint(it.encoding, bytes, prevIndex, end, errorHandler);
             }
-            if (prevIndex < 0 || !JCodings.getInstance().isValidCodePoint(it.encoding, codepoint)) {
+            if (prevIndex < 0 || !jcodings.isValidCodePoint(it.encoding, codepoint)) {
                 return it.applyErrorHandlerReverse(errorHandler, index);
             }
             return codepoint;
