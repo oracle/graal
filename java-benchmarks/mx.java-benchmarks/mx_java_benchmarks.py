@@ -656,7 +656,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         return [
             # Due to the non-determinism of DaCapo version printing, we only match the name.
             re.compile(
-                r"^===== DaCapo (?P<version>\S+) ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", # pylint: disable=line-too-long
+                r"^===== DaCapo (?P<version>\S+(\s+\S+)*) ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", # pylint: disable=line-too-long
                 re.MULTILINE)
         ]
 
@@ -664,7 +664,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         return [
             # Due to the non-determinism of DaCapo version printing, we only match the name.
             re.compile(
-                r"^===== DaCapo (?P<version>\S+) ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
+                r"^===== DaCapo (?P<version>\S+(\s+\S+)*) ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
                 re.MULTILINE),
             re.compile(
                 r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
@@ -682,7 +682,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         return [
             # Due to the non-determinism of DaCapo version printing, we only match the name.
             mx_benchmark.StdOutRule(
-                r"===== DaCapo (?P<version>\S+) (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                r"===== DaCapo (?P<version>\S+(\s+\S+)*) (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),
@@ -699,7 +699,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"===== DaCapo (?P<version>\S+) (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                r"===== DaCapo (?P<version>\S+(\s+\S+)*) (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),
@@ -716,7 +716,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"===== DaCapo (?P<version>\S+) (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                r"===== DaCapo (?P<version>\S+(\s+\S+)*) (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),
