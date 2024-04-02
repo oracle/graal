@@ -32,6 +32,7 @@ import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.G1WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -83,7 +84,8 @@ public final class G1PreWriteBarrierNode extends ObjectWriteBarrierNode implemen
                 nonNull = ((ObjectStamp) expectedObject.stamp(NodeView.DEFAULT)).nonNull();
                 GraalError.guarantee(expectedObject.stamp(NodeView.DEFAULT) instanceof ObjectStamp, "expecting full size object");
             }
-            lirGen.getWriteBarrierSet().emitPreWriteBarrier(lirGen, generator.operand(address), operand, nonNull);
+            G1WriteBarrierSetLIRGeneratorTool g1BarrierSet = (G1WriteBarrierSetLIRGeneratorTool) generator.getLIRGeneratorTool().getWriteBarrierSet();
+            g1BarrierSet.emitPreWriteBarrier(lirGen, generator.operand(address), operand, nonNull);
         }
     }
 }

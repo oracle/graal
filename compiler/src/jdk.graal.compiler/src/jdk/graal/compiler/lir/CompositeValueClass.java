@@ -114,7 +114,7 @@ public final class CompositeValueClass<T> extends FieldIntrospection<T> {
         CompositeValueClass<?> valueClass = compositeClass.get(obj.getClass());
         StringBuilder result = new StringBuilder();
 
-        LIRIntrospection.appendValues(result, obj, "", "", "{", "}", new String[]{""}, valueClass.values);
+        LIRIntrospection.appendValues(result, obj, "", "", "{", "}", false, new String[]{""}, valueClass.values);
 
         for (int i = 0; i < valueClass.data.getCount(); i++) {
             result.append(" ").append(valueClass.data.getName(i)).append(": ").append(LIRIntrospection.getFieldString(obj, i, valueClass.data));

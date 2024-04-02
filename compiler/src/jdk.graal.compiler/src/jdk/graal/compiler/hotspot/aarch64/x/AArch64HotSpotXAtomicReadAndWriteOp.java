@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.aarch64;
+package jdk.graal.compiler.hotspot.aarch64.x;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
@@ -34,19 +34,18 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.aarch64.AArch64AtomicMove;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * Code generation for atomic read and write with read barrier.
  */
-public class AArch64HotSpotZAtomicReadAndWriteOp extends AArch64AtomicMove.AtomicReadAndWriteOp {
-    public static final LIRInstructionClass<AArch64HotSpotZAtomicReadAndWriteOp> TYPE = LIRInstructionClass.create(AArch64HotSpotZAtomicReadAndWriteOp.class);
+public class AArch64HotSpotXAtomicReadAndWriteOp extends AArch64AtomicMove.AtomicReadAndWriteOp {
+    public static final LIRInstructionClass<AArch64HotSpotXAtomicReadAndWriteOp> TYPE = LIRInstructionClass.create(AArch64HotSpotXAtomicReadAndWriteOp.class);
     private final GraalHotSpotVMConfig config;
     private final ForeignCallLinkage callTarget;
 
-    public AArch64HotSpotZAtomicReadAndWriteOp(AArch64Kind platformKind, Variable result, AllocatableValue newValue, AllocatableValue asAllocatable, GraalHotSpotVMConfig config,
+    public AArch64HotSpotXAtomicReadAndWriteOp(AArch64Kind platformKind, Variable result, AllocatableValue newValue, AllocatableValue asAllocatable, GraalHotSpotVMConfig config,
                     ForeignCallLinkage callTarget) {
         super(TYPE, platformKind, result, newValue, asAllocatable);
         this.config = config;
@@ -57,6 +56,6 @@ public class AArch64HotSpotZAtomicReadAndWriteOp extends AArch64AtomicMove.Atomi
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         super.emitCode(crb, masm);
         AArch64Address address = AArch64Address.createBaseRegisterOnlyAddress(64, asRegister(addressValue));
-        AArch64HotSpotZBarrierSetLIRGenerator.emitBarrier(crb, masm, null, asRegister(resultValue), config, callTarget, address, this, null);
+        AArch64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, null, asRegister(resultValue), config, callTarget, address, this, null);
     }
 }

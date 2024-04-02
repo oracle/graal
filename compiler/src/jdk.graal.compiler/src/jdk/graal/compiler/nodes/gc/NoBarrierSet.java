@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.graal;
+package jdk.graal.compiler.nodes.gc;
+
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
-import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * A {@link BarrierSet} that does not emit any read or write barriers.
  */
-public class SubstrateNoBarrierSet implements BarrierSet {
+public class NoBarrierSet implements BarrierSet {
     @Override
     public boolean hasWriteBarrier() {
         return false;
@@ -80,7 +79,7 @@ public class SubstrateNoBarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType guessReadWriteBarrier(ValueNode object, ValueNode value) {
+    public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
         return BarrierType.NONE;
     }
 

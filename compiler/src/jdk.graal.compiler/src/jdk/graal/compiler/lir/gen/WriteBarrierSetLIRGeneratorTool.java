@@ -24,8 +24,13 @@
  */
 package jdk.graal.compiler.lir.gen;
 
-import jdk.vm.ci.meta.AllocatableValue;
+import org.graalvm.word.LocationIdentity;
+
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * The platform independent base class for LIR generation for garbage collectors that need write
@@ -34,16 +39,11 @@ import jdk.vm.ci.meta.Value;
 public interface WriteBarrierSetLIRGeneratorTool extends BarrierSetLIRGeneratorTool {
 
     /**
-     * @param address the location being updated
-     * @param expectedObject the expected pre-value if known
-     * @param nonNull true if expectedObject is known to non-null
+     * @param barrierType
+     * @param locationIdentity
      */
-    void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean nonNull);
-
-    /**
-     * @param address the location being updated
-     * @param value the value being written
-     * @param nonNull true if {@code value} is known to be non-null
-     */
-    void emitPostWriteBarrier(LIRGeneratorTool lirTool, Value address, Value value, boolean nonNull);
+    default void emitStore(LIRGeneratorTool tool, ValueKind<?> kind, BarrierType barrierType, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder,
+                    LocationIdentity locationIdentity) {
+        tool.getArithmetic().emitStore(kind, address, input, state, memoryOrder);
+    }
 }

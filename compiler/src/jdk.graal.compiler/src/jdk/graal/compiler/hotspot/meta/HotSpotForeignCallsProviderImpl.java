@@ -217,6 +217,18 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         register(targetLinkage);
     }
 
+    public void linkStackOnlyForeignCall(boolean enabled, OptionValues options,
+                    HotSpotProviders providers,
+                    HotSpotForeignCallDescriptor descriptor,
+                    long address,
+                    boolean prependThread) {
+        if (enabled) {
+            linkStackOnlyForeignCall(options, providers, descriptor, address, prependThread);
+        } else {
+            register(descriptor.getSignature());
+        }
+    }
+
     public void linkStackOnlyForeignCall(OptionValues options,
                     HotSpotProviders providers,
                     HotSpotForeignCallDescriptor descriptor,

@@ -54,6 +54,7 @@ import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.gc.CardTableBarrierSet;
 import jdk.graal.compiler.nodes.gc.G1BarrierSet;
+import jdk.graal.compiler.nodes.gc.NoBarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
@@ -253,11 +254,14 @@ public abstract class HotSpotBackendFactory {
     private BarrierSet createBarrierSet(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
-        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
-            ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
-            return new HotSpotZBarrierSet(referentField);
+        ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.X) {
+            return new HotSpotXBarrierSet(referentField);
+        } else if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
+            return new HotSpotZBarrierSet(objectArrayType, referentField);
+        } else if (config.gc == HotSpotGraalRuntime.HotSpotGC.Epsilon) {
+            return new NoBarrierSet();
         } else if (config.useG1GC()) {
-            ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
             return new G1BarrierSet(objectArrayType, referentField) {
                 @Override
                 protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {
