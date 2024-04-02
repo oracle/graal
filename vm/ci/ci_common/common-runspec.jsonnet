@@ -113,7 +113,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   local full_vm_build = ruby_python_vm_build + task_spec(graal_common.deps.fastr),
 
   local mx_env = task_spec({
-    mx_vm_cmd_suffix:: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--debuginfo-dists', '--base-jdk-info=' + self.jdk_name + ':' + std.toString(self.jdk_version)],
+    mx_vm_cmd_suffix:: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--debuginfo-dists', '--base-jdk-info=' + self.downloads.JAVA_HOME.name + ':' + std.toString(self.jdk_version)],
     mx_env:: vm.edition,
     mx_vm_common:: vm.mx_cmd_base_no_env + ['--env', self.mx_env] + self.mx_vm_cmd_suffix,
   }),
@@ -125,12 +125,16 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ['set-export', 'GRAALVM_HOME', self.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
   ]}),
 
-  local deploy_sdk_base(base_dist_name=null) = task_spec({
-    local deploy_artifacts_sdk = (if base_dist_name != null then ['--base-dist-name=' + base_dist_name] else []) + ['--suite', 'sdk', 'deploy-artifacts', '--uploader', if self.os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader'],
-    local artifact_deploy_sdk_base = deploy_artifacts_sdk + ['--tags', 'graalvm'],
+  local deploy_artifacts_sdk(base_dist_name=null) = task_spec({
+    deploy_artifacts_sdk::(if base_dist_name != null then ['--base-dist-name=' + base_dist_name] else []) + ['--suite', 'sdk', 'deploy-artifacts', '--uploader', if self.os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader'],
+  }),
 
-    run +:
-    [self.mx_vm_common + vm.vm_profiles + maven_deploy_sdk_base, self.mx_vm_common + vm.vm_profiles + artifact_deploy_sdk_base] //if(self.os_distro == null) then null else self.os_distro
+  local artifact_deploy_sdk_base(base_dist_name=null) = task_spec({
+    artifact_deploy_sdk_base:: self.deploy_artifacts_sdk + ['--tags', 'graalvm'],
+  }),
+
+  local deploy_sdk_base(base_dist_name=null) = deploy_artifacts_sdk(base_dist_name) + artifact_deploy_sdk_base(base_dist_name) + task_spec({
+    run +: [self.mx_vm_common + vm.vm_profiles + maven_deploy_sdk_base, self.mx_vm_common + vm.vm_profiles + self.artifact_deploy_sdk_base] //if(self.os_distro == null) then null else self.os_distro
   }),
 
   local patch_env = task_spec({ run +:
