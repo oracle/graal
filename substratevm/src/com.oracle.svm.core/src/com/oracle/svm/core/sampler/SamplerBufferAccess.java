@@ -25,7 +25,6 @@
 
 package com.oracle.svm.core.sampler;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -34,6 +33,8 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Used to access the raw memory of a {@link SamplerBuffer}.

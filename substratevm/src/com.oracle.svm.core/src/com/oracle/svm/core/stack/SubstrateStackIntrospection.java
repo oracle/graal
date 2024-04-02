@@ -27,6 +27,7 @@ package com.oracle.svm.core.stack;
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -283,7 +284,8 @@ class SubstrateInspectedFrame implements InspectedFrame {
     }
 
     private VirtualFrame lookupVirtualFrame() {
-        DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(sp);
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
+        DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(thread, sp);
         if (deoptimizedFrame != null) {
             /*
              * Find the matching inlined frame, by skipping over the virtual frames that were
@@ -301,9 +303,10 @@ class SubstrateInspectedFrame implements InspectedFrame {
 
     @Override
     public void materializeVirtualObjects(boolean invalidateCode) {
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (virtualFrame == null) {
             DeoptimizedFrame deoptimizedFrame = getDeoptimizer().deoptSourceFrame(ip, false);
-            assert deoptimizedFrame == Deoptimizer.checkDeoptimized(sp);
+            assert deoptimizedFrame == Deoptimizer.checkDeoptimized(thread, sp);
         }
 
         if (invalidateCode) {
@@ -313,7 +316,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
              * a virtual object that was accessed via a local variable before would now have a
              * different value.
              */
-            Deoptimizer.invalidateMethodOfFrame(sp, null);
+            Deoptimizer.invalidateMethodOfFrame(thread, sp, null);
         }
 
         /* We must be deoptimized now. */

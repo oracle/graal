@@ -1230,12 +1230,12 @@ public class HeapDumpWriter {
         private void markStackValuesAsGCRoots(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
             if (markGCRoots) {
                 SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
-                CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
+                CodeInfoAccess.lookupCodeInfo(codeInfo, ip, queryResult);
 
                 NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
                 long referenceMapIndex = queryResult.getReferenceMapIndex();
                 if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
-                    throw CodeInfoTable.reportNoReferenceMap(sp, ip, codeInfo);
+                    throw CodeInfoTable.fatalErrorNoReferenceMap(sp, ip, codeInfo);
                 }
                 CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, this, null);
             }

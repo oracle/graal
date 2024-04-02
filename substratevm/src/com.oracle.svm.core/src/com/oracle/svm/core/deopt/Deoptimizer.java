@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.deopt;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -75,6 +77,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -227,23 +230,37 @@ public final class Deoptimizer {
      */
     public static boolean testGCinDeoptimizer = false;
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static DeoptimizedFrame checkDeoptimized(JavaFrame frame) {
+        if (DeoptimizationSupport.enabled()) {
+            return checkDeoptimized0(frame.getSP(), frame.getIP());
+        }
+        return null;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static DeoptimizedFrame checkDeoptimized(IsolateThread thread, Pointer sourceSp) {
+        if (DeoptimizationSupport.enabled()) {
+            CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(thread, sourceSp);
+            return checkDeoptimized0(sourceSp, returnAddress);
+        }
+        return null;
+    }
+
     /**
      * Checks if a physical stack frame (identified by the stack pointer) was deoptimized, and
      * returns the {@link DeoptimizedFrame} in that case.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static DeoptimizedFrame checkDeoptimized(Pointer sourceSp) {
-        if (DeoptimizationSupport.enabled()) {
-            CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
-            /* A frame is deoptimized when the return address was patched to the deoptStub. */
-            if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
-                /* The DeoptimizedFrame instance is stored above the return address. */
-                DeoptimizedFrame result = (DeoptimizedFrame) ReferenceAccess.singleton().readObjectAt(sourceSp, true);
-                if (result == null) {
-                    throw checkDeoptimizedError(sourceSp);
-                }
-                return result;
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static DeoptimizedFrame checkDeoptimized0(Pointer sourceSp, CodePointer returnAddress) {
+        /* A frame is deoptimized when the return address was patched to the deoptStub. */
+        if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
+            /* The DeoptimizedFrame instance is stored above the return address. */
+            DeoptimizedFrame result = (DeoptimizedFrame) ReferenceAccess.singleton().readObjectAt(sourceSp, true);
+            if (result == null) {
+                throw checkDeoptimizedError(sourceSp);
             }
+            return result;
         }
         return null;
     }
@@ -260,16 +277,16 @@ public final class Deoptimizer {
     }
 
     @Uninterruptible(reason = "Prevent stack walks from seeing an inconsistent stack.")
-    private static void installDeoptimizedFrame(Pointer sourceSp, DeoptimizedFrame deoptimizedFrame) {
+    private void installDeoptimizedFrame(DeoptimizedFrame deoptimizedFrame) {
         /*
          * Replace the return address to the deoptimized method with a pointer to the deoptStub.
          */
-        FrameAccess.singleton().writeReturnAddress(sourceSp, DeoptimizationSupport.getDeoptStubPointer());
+        FrameAccess.singleton().writeReturnAddress(targetThread, sourceSp, DeoptimizationSupport.getDeoptStubPointer());
 
         /*
-         * Store a pointer to the deoptimizedFrame on stack slot above the return address. From this
-         * point on, the GC will ignore the original source frame content. Instead it just collects
-         * this pointer to deoptimizedFrame.
+         * Store a pointer to the deoptimizedFrame in the stack slot above the return address. From
+         * this point on, the GC will ignore the original source frame content. Instead, it just
+         * visits the DeoptimizedFrame object.
          */
         ReferenceAccess.singleton().writeObjectAt(sourceSp, deoptimizedFrame, true);
     }
@@ -355,18 +372,17 @@ public final class Deoptimizer {
      */
     @NeverInline("Inlining of this method would require that we have deopt targets for callees of this method (SVM internals).")
     public static void deoptimizeFrame(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
-        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sourceSp);
-        if (deoptFrame != null) {
-            /* Already deoptimized, so nothing to do. */
-            registerSpeculationFailure(deoptFrame.getSourceInstalledCode(), speculation);
-            return;
-        }
-
         /*
          * Note that the thread needs to be read outside of the VMOperation, since the operation can
          * run in any different thread.
          */
         IsolateThread targetThread = CurrentIsolate.getCurrentThread();
+        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(targetThread, sourceSp);
+        if (deoptFrame != null) {
+            /* Already deoptimized, so nothing to do. */
+            registerSpeculationFailure(deoptFrame.getSourceInstalledCode(), speculation);
+            return;
+        }
 
         DeoptimizeFrameOperation vmOp = new DeoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, targetThread);
         vmOp.enqueue();
@@ -388,14 +404,10 @@ public final class Deoptimizer {
 
         @Override
         protected void operate() {
-            Deoptimizer.deoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, targetThread);
+            VMOperation.guaranteeInProgress("doDeoptimizeFrame");
+            CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
+            deoptimizeFrame(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, targetThread);
         }
-    }
-
-    private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread targetThread) {
-        VMOperation.guaranteeInProgress("doDeoptimizeFrame");
-        CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
-        deoptimizeFrame(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, targetThread);
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
@@ -428,8 +440,8 @@ public final class Deoptimizer {
      * Invalidates the {@link InstalledCode} of the method of the given frame. The method must be a
      * runtime compiled method, since there is not {@link InstalledCode} for native image methods.
      */
-    public static void invalidateMethodOfFrame(Pointer sourceSp, SpeculationReason speculation) {
-        CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
+    public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sourceSp, SpeculationReason speculation) {
+        CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(thread, sourceSp);
         SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(returnAddress);
         /*
          * We look up the installedCode before checking if the frame is deoptimized to avoid race
@@ -440,7 +452,7 @@ public final class Deoptimizer {
          * installedCode multiple times in case of a race is not a problem because the actual
          * invalidation is in a VMOperation.
          */
-        DeoptimizedFrame deoptimizedFrame = checkDeoptimized(sourceSp);
+        DeoptimizedFrame deoptimizedFrame = checkDeoptimized(thread, sourceSp);
         if (deoptimizedFrame != null) {
             installedCode = deoptimizedFrame.getSourceInstalledCode();
             if (installedCode == null) {
@@ -699,7 +711,7 @@ public final class Deoptimizer {
     private DeoptimizedFrame deoptSourceFrameOperation(CodePointer pc, boolean ignoreNonDeoptimizable) {
         VMOperation.guaranteeInProgress("deoptSourceFrame");
 
-        DeoptimizedFrame existing = checkDeoptimized(sourceSp);
+        DeoptimizedFrame existing = checkDeoptimized(targetThread, sourceSp);
         if (existing != null) {
             /* Already deoptimized, so nothing to do. */
             return existing;
@@ -770,7 +782,7 @@ public final class Deoptimizer {
         /* Allocate a buffer to hold the contents of the new target frame. */
         DeoptimizedFrame deoptimizedFrame = DeoptimizedFrame.factory(targetContentSize, sourceChunk.getEncodedFrameSize(), CodeInfoTable.lookupInstalledCode(pc), topFrame, relockObjectData, pc);
 
-        installDeoptimizedFrame(sourceSp, deoptimizedFrame);
+        installDeoptimizedFrame(deoptimizedFrame);
 
         if (Options.TraceDeoptimization.getValue()) {
             printDeoptimizedFrame(Log.log(), sourceSp, deoptimizedFrame, frameInfo, false);

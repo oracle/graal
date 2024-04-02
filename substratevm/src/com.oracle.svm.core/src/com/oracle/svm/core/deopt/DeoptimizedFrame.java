@@ -397,7 +397,7 @@ public final class DeoptimizedFrame {
         CodePointer ip = WordFactory.pointer(firstAddressEntry.returnAddress);
         CodeInfo info = CodeInfoTable.getImageCodeInfo(ip);
         SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
-        CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, ip), codeInfoQueryResult);
+        CodeInfoAccess.lookupCodeInfo(info, ip, codeInfoQueryResult);
         long handler = codeInfoQueryResult.getExceptionOffset();
         if (handler == 0) {
             throwMissingExceptionHandler(info, firstAddressEntry);
@@ -409,7 +409,7 @@ public final class DeoptimizedFrame {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Printing out error and then crashing.")
     private static void throwMissingExceptionHandler(CodeInfo info, ReturnAddress firstAddressEntry) {
         CodeInfoQueryResult detailedQueryResult = new CodeInfoQueryResult();
-        CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)), detailedQueryResult);
+        CodeInfoAccess.lookupCodeInfo(info, WordFactory.pointer(firstAddressEntry.returnAddress), detailedQueryResult);
         FrameInfoQueryResult frameInfo = detailedQueryResult.getFrameInfo();
         throw Deoptimizer.fatalDeoptimizationError("No exception handler registered for deopt target", frameInfo);
     }

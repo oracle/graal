@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core.sampler;
 
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 
 class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
@@ -49,7 +50,7 @@ class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
 
     @Override
     protected boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
-        return false;
+        throw JavaStackWalker.fatalErrorUnknownFrameEncountered(sp, ip);
     }
 
     static class StackTrace {

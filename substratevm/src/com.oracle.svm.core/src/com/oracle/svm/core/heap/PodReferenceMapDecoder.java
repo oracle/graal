@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -42,6 +39,10 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.BarrieredAccess;
 
 public final class PodReferenceMapDecoder {
     @DuplicatedInNativeCode

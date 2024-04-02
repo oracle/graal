@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.amd64;
+package com.oracle.svm.core.stack;
 
-import org.graalvm.nativeimage.Platform.AMD64;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
 
-@AutomaticallyRegisteredImageSingleton(FrameAccess.class)
-@Platforms(AMD64.class)
-public final class AMD64FrameAccess extends FrameAccess {
+/**
+ * Represents a physical Java stack frame.
+ *
+ * Note that the fields may contain stale values after interruptible code was executed, see
+ * {@link JavaStackWalk} for more details.
+ */
+@RawStructure
+public interface JavaFrame extends SimpleCodeInfoQueryResult {
+    @RawField
+    Pointer getSP();
+
+    @RawField
+    void setSP(Pointer sp);
+
+    @RawField
+    CodePointer getIP();
+
+    @RawField
+    void setIP(CodePointer ip);
+
+    @RawField
+    UntetheredCodeInfo getIPCodeInfo();
+
+    @RawField
+    void setIPCodeInfo(UntetheredCodeInfo codeInfo);
 }

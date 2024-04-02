@@ -335,6 +335,7 @@ public class RuntimeCodeInfoMemory {
             for (int i = 0; i < length;) {
                 UntetheredCodeInfo untetheredInfo = NonmovableArrays.getWord(table, i);
                 if (untetheredInfo.isNonNull()) {
+                    /* We are during a GC, so no need for a tether. */
                     CodeInfo info = CodeInfoAccess.convert(untetheredInfo);
                     callVisitor(visitor, info);
                 }

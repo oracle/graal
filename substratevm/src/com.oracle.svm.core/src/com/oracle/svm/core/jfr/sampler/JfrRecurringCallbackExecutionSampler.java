@@ -30,7 +30,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.thread.ThreadListenerSupport;

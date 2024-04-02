@@ -122,7 +122,7 @@ public class CodeInfoTable {
         }
         CodeInfoQueryResult result = new CodeInfoQueryResult();
         result.ip = absoluteIP;
-        CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, absoluteIP), result);
+        CodeInfoAccess.lookupCodeInfo(info, absoluteIP, result);
         return result;
     }
 
@@ -162,13 +162,13 @@ public class CodeInfoTable {
             referenceMapIndex = CodeInfoAccess.lookupStackReferenceMapIndex(info, CodeInfoAccess.relativeIP(info, ip));
         }
         if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
-            throw reportNoReferenceMap(sp, ip, info);
+            throw fatalErrorNoReferenceMap(sp, ip, info);
         }
         return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
     }
 
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fail.", calleeMustBe = false)
-    public static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, CodeInfo info) {
+    public static RuntimeException fatalErrorNoReferenceMap(Pointer sp, CodePointer ip, CodeInfo info) {
         Log.log().string("ip: ").hex(ip).string("  sp: ").hex(sp).string("  info:");
         CodeInfoAccess.log(info, Log.log()).newline();
         throw VMError.shouldNotReachHere("No reference map information found");
