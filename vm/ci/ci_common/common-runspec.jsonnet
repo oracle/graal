@@ -173,7 +173,12 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   local name = task_spec({
     java_version:: 'java' + if self.jdk_name == "jdk-latest" then "-latest"
                    else std.substr(self.jdk_name, 3, std.length(self.jdk_name) - 3),
-    name: std.join('-', self.targets + [self.task_name, std.toString(self.java_version), self.os, self.arch])
+    name: std.join('-',
+      self.targets
+      + [self.task_name, std.toString(self.java_version)]
+      + (if (std.objectHasAll(self, 'os_distro') && self.os_distro != 'ol') then [self.os_distro] else [])
+      + [self.os, self.arch]
+    ),
   }),
 
   local timelimit(t) = evaluate_late('999_time_limit',{ // the key starts with 999 to be the last one evaluated
