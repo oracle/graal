@@ -114,7 +114,25 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   local mx_env = task_spec({
     mx_vm_cmd_suffix:: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--debuginfo-dists', '--base-jdk-info=' + self.downloads.JAVA_HOME.name + ':' + std.toString(self.jdk_version)],
-    mx_env:: vm.edition,
+    mx_env::
+    if (self.os == 'linux') then
+      if (self.arch == 'amd64') then vm.edition
+      else if (self.arch == 'aarch64') then vm.edition + '-aarch64'
+      else error "arch not found: " + self.arch
+    # darwin
+    else if (self.os == 'darwin') then
+      if (self.arch == 'amd64') then vm.edition + '-darwin'
+      else if (self.arch == 'aarch64') then
+      # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
+        vm.edition + '-darwin-aarch64'
+      else error "arch not found: " + self.arch
+    # windows
+    else if (self.os == 'windows') then
+      if (self.arch == 'amd64') then vm.edition + '-win'
+      else error "arch not found: " + self.arch
+    else error "os not found: " + self.os,
+    mx_env_espresso:: vm.edition + '-espresso',
+    mx_env_llvm:: vm.edition + '-llvm-espresso',
     mx_vm_common:: vm.mx_cmd_base_no_env + ['--env', self.mx_env] + self.mx_vm_cmd_suffix,
   }),
   local maven_deploy_sdk = ['--suite', 'sdk', 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata'],
@@ -137,41 +155,12 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     run +: [self.mx_vm_common + vm.vm_profiles + maven_deploy_sdk_base, self.mx_vm_common + vm.vm_profiles + self.artifact_deploy_sdk_base] //if(self.os_distro == null) then null else self.os_distro
   }),
 
-  local patch_env = task_spec({ run +:
-      # linux
-      if (self.os == 'linux') then
-        if (self.arch == 'amd64') then [
-          # default
-        ]
-        else if (self.arch == 'aarch64') then [
-          ['set-export', 'VM_ENV', self.mx_env + '-aarch64'],
-        ]
-        else error "arch not found: " + self.arch
-      # darwin
-      else if (self.os == 'darwin') then
-        if (self.arch == 'amd64') then [
-          ['set-export', 'VM_ENV', self.mx_env + '-darwin'],
-        ]
-        else if (self.arch == 'aarch64') then [
-          # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
-          ['set-export', 'VM_ENV', self.mx_env + '-darwin-aarch64'],
-        ]
-        else error "arch not found: " + self.arch
-      # windows
-      else if (self.os == 'windows') then
-        if (self.arch == 'amd64') then [
-          ['set-export', 'VM_ENV', self.mx_env + '-win'],
-        ]
-        else error "arch not found: " + self.arch
-      else error "os not found: " + self.os
-  }),
-
   local check_base_graalvm_image = task_spec({ run +: [
       ['set-export', 'GRAALVM_DIST', self.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'paths', self.mx_vm_common + vm.vm_profiles + ['graalvm-dist-name']]]
     ] + vm.check_graalvm_base_build('$GRAALVM_DIST', self.os, self.arch, std.toString(self.jdk_version))
   }),
 
-  local deploy_graalvm_base = task_spec(vm.check_structure) + patch_env + build_base_graalvm_image + task_spec({
+  local deploy_graalvm_base = task_spec(vm.check_structure) + build_base_graalvm_image + task_spec({
       run +: vm.collect_profiles() + [
         self.mx_vm_common + vm.vm_profiles + record_file_sizes,
         upload_file_sizes,
@@ -208,13 +197,8 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   }),
 
   local deploy_graalvm_espresso = task_spec({
-    run: vm.collect_profiles() + (
-      if ((self.os == 'linux' || self.os == 'darwin') && self.arch == 'amd64') then [
-        ['set-export', 'VM_ENV', "${VM_ENV}-llvm-espresso"],
-      ] else [
-        ['set-export', 'VM_ENV', "${VM_ENV}-espresso"],
-      ]
-    ),
+    mx_env:: if ((self.os == 'linux' || self.os == 'darwin') && self.arch == 'amd64') then self.mx_env_llvm else self.mx_env_espresso,
+    run: vm.collect_profiles() + [['set-export', 'VM_ENV', self.mx_env]],
     notify_groups:: ['deploy'],
     timelimit: '1:45:00',
   }) + build_base_graalvm_image + deploy_sdk_base(base_dist_name='espresso') + task_spec({
