@@ -99,7 +99,7 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvoke;
-import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvokeNodeGen;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvokeFactory;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -311,7 +311,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         static Object doShared(Klass receiver, String member, Object[] arguments,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary receiverInterop,
                         @Bind("getLang(receiverInterop)") @SuppressWarnings("unused") EspressoLanguage language) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-            return invokeMember(receiver, member, arguments, null, receiverInterop, InlinedBranchProfile.getUncached(), InteropLookupAndInvokeNodeGen.getUncached());
+            return invokeMember(receiver, member, arguments, null, receiverInterop, InlinedBranchProfile.getUncached(), InteropLookupAndInvokeFactory.NonVirtualNodeGen.getUncached());
         }
 
         @Specialization
@@ -320,14 +320,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                         @Bind("$node") Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverInterop,
                         @Cached InlinedBranchProfile error,
-                        @Cached InteropLookupAndInvoke lookupAndInvoke)
+                        @Cached InteropLookupAndInvoke.NonVirtual lookupAndInvoke)
                         throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
             if (!receiverInterop.isMemberInvocable(receiver, member)) {
                 // Not invocable, no matter the arity or argument types.
                 error.enter(node);
                 throw UnknownIdentifierException.create(member);
             }
-            return lookupAndInvoke.execute(null, receiver, arguments, member, false);
+            return lookupAndInvoke.execute(null, receiver, arguments, member);
         }
     }
 
@@ -421,7 +421,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return doMultidimensionalArray(receiver, args, node, InlinedBranchProfile.getUncached(), ToPrimitiveFactory.ToIntNodeGen.getUncached());
             }
             if (isObjectKlass(receiver)) {
-                return doObject(receiver, args, node, InlinedBranchProfile.getUncached(), receiverInterop, InteropLookupAndInvokeNodeGen.getUncached());
+                return doObject(receiver, args, node, InlinedBranchProfile.getUncached(), receiverInterop, InteropLookupAndInvokeFactory.NonVirtualNodeGen.getUncached());
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
@@ -514,14 +514,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                         @Bind("$node") Node node,
                         @Cached InlinedBranchProfile error,
                         @CachedLibrary("receiver") InteropLibrary receiverInterop,
-                        @Cached InteropLookupAndInvoke lookupAndInvoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                        @Cached InteropLookupAndInvoke.NonVirtual lookupAndInvoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             if (!receiverInterop.isInstantiable(receiver)) {
                 error.enter(node);
                 throw UnsupportedMessageException.create();
             }
             ObjectKlass objectKlass = (ObjectKlass) receiver;
             StaticObject instance = allocateNewInstance(EspressoContext.get(lookupAndInvoke), objectKlass);
-            lookupAndInvoke.execute(instance, objectKlass, arguments, INIT_NAME, false);
+            lookupAndInvoke.execute(instance, objectKlass, arguments, INIT_NAME);
             return instance;
         }
 
