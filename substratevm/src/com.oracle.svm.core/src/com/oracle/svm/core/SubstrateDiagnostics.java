@@ -30,6 +30,7 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import com.oracle.svm.core.container.OperatingSystem;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -55,17 +56,16 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -506,6 +506,11 @@ public class SubstrateDiagnostics {
         return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
     }
 
+    private static boolean isContainerized() {
+        boolean allowInit = !SubstrateOptions.AsyncSignalSafeDiagnostics.getValue();
+        return Container.singleton().isContainerized(allowInit);
+    }
+
     public static class FatalErrorState {
         AtomicWord<IsolateThread> diagnosticThread;
         volatile int diagnosticThunkIndex;
@@ -855,7 +860,7 @@ public class SubstrateDiagnostics {
             Platform platform = ImageSingletons.lookup(Platform.class);
             log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
             log.string("Page size: ").unsigned(SubstrateOptions.getPageSize()).newline();
-            log.string("Container support: ").bool(Containers.Options.UseContainerSupport.getValue()).newline();
+            log.string("Containerized: ").bool(isContainerized()).newline();
             log.string("CPU features used for AOT compiled code: ").string(getBuildTimeCpuFeatures()).newline();
             log.indent(false);
         }
@@ -877,24 +882,38 @@ public class SubstrateDiagnostics {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("Runtime information:").indent(true);
 
-            int activeProcessorCount = Processor.singleton().getLastQueriedActiveProcessorCount();
-            log.string("CPU cores (container): ");
-            if (activeProcessorCount > 0) {
-                log.signed(activeProcessorCount).newline();
-            } else {
-                log.string("unknown").newline();
+            if (isContainerized()) {
+                log.string("CPU cores (container): ");
+                int processorCount = getContainerActiveProcessorCount();
+                if (processorCount > 0) {
+                    log.signed(processorCount).newline();
+                } else {
+                    log.string("unknown").newline();
+                }
             }
 
             log.string("CPU cores (OS): ");
-            if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue() && SubstrateOptions.JNI.getValue()) {
-                log.signed(Jvm.JVM_ActiveProcessorCount()).newline();
+            int processorCount = getOsProcessorCount();
+            if (processorCount > 0) {
+                log.signed(processorCount).newline();
             } else {
                 log.string("unknown").newline();
             }
 
-            log.string("Memory: ");
-            if (PhysicalMemory.isInitialized()) {
-                log.rational(PhysicalMemory.getCachedSize(), 1024 * 1024, 0).string("M").newline();
+            if (isContainerized()) {
+                log.string("Memory (container): ");
+                UnsignedWord memory = getContainerPhysicalMemory();
+                if (memory.aboveThan(0)) {
+                    log.rational(memory, 1024 * 1024, 0).string("M").newline();
+                } else {
+                    log.string("unknown").newline();
+                }
+            }
+
+            log.string("Memory (OS): ");
+            UnsignedWord memory = getOsPhysicalMemorySize();
+            if (memory.aboveThan(0)) {
+                log.rational(memory, 1024 * 1024, 0).string("M").newline();
             } else {
                 log.string("unknown").newline();
             }
@@ -915,6 +934,40 @@ public class SubstrateDiagnostics {
             } while (info.isNonNull());
 
             log.indent(false);
+        }
+
+        private static int getOsProcessorCount() {
+            if (SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
+                return OperatingSystem.singleton().getCachedActiveProcessorCount();
+            } else if (SubstrateOptions.JNI.getValue()) {
+                return OperatingSystem.singleton().getActiveProcessorCount();
+            } else {
+                return -1;
+            }
+        }
+
+        private static UnsignedWord getOsPhysicalMemorySize() {
+            if (SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
+                return OperatingSystem.singleton().getCachedPhysicalMemorySize();
+            } else {
+                return OperatingSystem.singleton().getPhysicalMemorySize();
+            }
+        }
+
+        private static int getContainerActiveProcessorCount() {
+            if (SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
+                return Container.singleton().getCachedActiveProcessorCount();
+            } else {
+                return Container.singleton().getActiveProcessorCount();
+            }
+        }
+
+        private static UnsignedWord getContainerPhysicalMemory() {
+            if (SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
+                return Container.singleton().getCachedPhysicalMemory();
+            } else {
+                return Container.singleton().getPhysicalMemory();
+            }
         }
     }
 

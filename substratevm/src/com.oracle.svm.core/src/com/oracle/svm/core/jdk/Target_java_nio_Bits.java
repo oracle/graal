@@ -31,7 +31,6 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.heap.PhysicalMemory;
 
 @TargetClass(className = "java.nio.Bits")
 final class Target_java_nio_Bits {
@@ -59,8 +58,8 @@ final class Target_java_nio_Bits {
 /**
  * {@code java.nio.Bits} caches the max. direct memory size in the field {@code MAX_MEMORY}. We
  * disable this cache and always call {@link DirectMemoryAccessors#getDirectMemory()} instead, which
- * uses our own cache. Otherwise, it could happen that {@code MAX_MEMORY} caches a temporary value
- * that is used during early VM startup, before {@link PhysicalMemory} is fully initialized.
+ * uses our own caching logic. Otherwise, it could happen that {@code MAX_MEMORY} caches an outdated
+ * value (with the serial GC, the max. heap size can change at run-time).
  */
 final class MaxMemoryAccessor {
     // Checkstyle: stop

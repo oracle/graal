@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
+ * published by the Free Software Foundation. Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,21 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.container.Container;
+#ifndef SHARE_UTILITY_ATTRIBUTENORETURN_HPP
+#define SHARE_UTILITY_ATTRIBUTENORETURN_HPP
 
-@TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = PlatformHasClass.class)
-final class Target_jdk_internal_platform_CgroupMetrics {
-    @Substitute
-    public static boolean isUseContainerSupport() {
-        /*
-         * It is important that this method can be folded to a constant before the static analysis,
-         * i.e., only relies on hosted options and other conditions that are constant. Inlining
-         * before analysis ensures that the constant is propagated out to call sites.
-         */
-        return Container.isSupported();
-    }
-}
+// Provide a (temporary) macro for the [[noreturn]] attribute.
+//
+// Unfortunately, some older (though still in use) compilers have bugs when
+// using [[noreturn]].  For them we use an empty definition for the attribute.
+//
+// Note: This can't be placed in globalDefinitions_xxx.hpp because the
+// attribute is used in debug.hpp, which can't include globalDefinitions.hpp.
+
+// clang 12 (and possibly prior) crashes during build if we use [[noreturn]]
+// for assertion failure reporting functions.  The problem seems to be fixed
+// in clang 13.
+#ifdef __clang__
+#if __clang_major__ < 13
+#define ATTRIBUTE_NORETURN
+#endif
+#endif
+
+// All other platforms can use [[noreturn]].
+#ifndef ATTRIBUTE_NORETURN
+#define ATTRIBUTE_NORETURN [[noreturn]]
+#endif
+
+#endif // SHARE_UTILITY_ATTRIBUTENORETURN_HPP

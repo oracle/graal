@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.container.Container;
+#ifndef _JAVASOFT_JNI_MD_H_
+#define _JAVASOFT_JNI_MD_H_
 
-@TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = PlatformHasClass.class)
-final class Target_jdk_internal_platform_CgroupMetrics {
-    @Substitute
-    public static boolean isUseContainerSupport() {
-        /*
-         * It is important that this method can be folded to a constant before the static analysis,
-         * i.e., only relies on hosted options and other conditions that are constant. Inlining
-         * before analysis ensures that the constant is propagated out to call sites.
-         */
-        return Container.isSupported();
-    }
-}
+#ifndef __has_attribute
+  #define __has_attribute(x) 0
+#endif
+
+#ifndef JNIEXPORT
+  #if (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4) && (__GNUC_MINOR__ > 2))) || __has_attribute(visibility)
+    #ifdef ARM
+      #define JNIEXPORT     __attribute__((externally_visible,visibility("default")))
+    #else
+      #define JNIEXPORT     __attribute__((visibility("default")))
+    #endif
+  #else
+    #define JNIEXPORT
+  #endif
+#endif
+
+#if (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4) && (__GNUC_MINOR__ > 2))) || __has_attribute(visibility)
+  #ifdef ARM
+    #define JNIIMPORT     __attribute__((externally_visible,visibility("default")))
+  #else
+    #define JNIIMPORT     __attribute__((visibility("default")))
+  #endif
+#else
+  #define JNIIMPORT
+#endif
+
+#define JNICALL
+
+typedef int jint;
+#ifdef _LP64
+typedef long jlong;
+#else
+typedef long long jlong;
+#endif
+
+typedef signed char jbyte;
+
+#endif /* !_JAVASOFT_JNI_MD_H_ */

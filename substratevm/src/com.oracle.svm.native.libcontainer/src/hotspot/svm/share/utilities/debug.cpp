@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
+ * published by the Free Software Foundation. Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,21 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.container.Container;
+#include "utilities/debug.hpp"
 
-@TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = PlatformHasClass.class)
-final class Target_jdk_internal_platform_CgroupMetrics {
-    @Substitute
-    public static boolean isUseContainerSupport() {
-        /*
-         * It is important that this method can be folded to a constant before the static analysis,
-         * i.e., only relies on hosted options and other conditions that are constant. Inlining
-         * before analysis ensures that the constant is propagated out to call sites.
-         */
-        return Container.isSupported();
-    }
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+
+#ifdef PRINT_WARNINGS
+ATTRIBUTE_PRINTF(1, 2)
+void warning(const char* format, ...) {
+  FILE* const err = stderr;
+  va_list ap;
+  va_start(ap, format);
+  vfprintf(err, format, ap);
+  va_end(ap);
+  fputc('\n', err);
 }
+#endif
+
+#ifdef ASSERT
+ATTRIBUTE_PRINTF(4, 5)
+void report_vm_error(const char* file, int line, const char* error_msg, const char* detail_fmt, ...) {
+  FILE* const err = stderr;
+  va_list detail_args;
+  va_start(detail_args, detail_fmt);
+  vfprintf(err, detail_fmt, detail_args);
+  va_end(detail_args);
+  fputc('\n', err);
+  abort();
+}
+
+void report_vm_error(const char* file, int line, const char* error_msg)
+{
+  report_vm_error(file, line, error_msg, "%s", "");
+}
+#endif

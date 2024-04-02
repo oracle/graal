@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
+ * published by the Free Software Foundation. Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,21 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.container.Container;
+#ifndef SHARE_UTILITIES_CHECKEDCAST_HPP
+#define SHARE_UTILITIES_CHECKEDCAST_HPP
 
-@TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = PlatformHasClass.class)
-final class Target_jdk_internal_platform_CgroupMetrics {
-    @Substitute
-    public static boolean isUseContainerSupport() {
-        /*
-         * It is important that this method can be folded to a constant before the static analysis,
-         * i.e., only relies on hosted options and other conditions that are constant. Inlining
-         * before analysis ensures that the constant is propagated out to call sites.
-         */
-        return Container.isSupported();
-    }
+#include "utilities/debug.hpp"
+
+// In many places we've added C-style casts to silence compiler
+// warnings, for example when truncating a size_t to an int when we
+// know the size_t is a small struct. Such casts are risky because
+// they effectively disable useful compiler warnings. We can make our
+// lives safer with this function, which ensures that any cast is
+// reversible without loss of information. It doesn't check
+// everything: it isn't intended to make sure that pointer types are
+// compatible, for example.
+template <typename T2, typename T1>
+constexpr T2 checked_cast(T1 thing) {
+  T2 result = static_cast<T2>(thing);
+  assert(static_cast<T1>(result) == thing, "must be");
+  return result;
 }
+
+#endif // SHARE_UTILITIES_CHECKEDCAST_HPP
+
