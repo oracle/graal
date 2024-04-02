@@ -493,7 +493,7 @@ def native_truffle_unittest(args):
     parsed_args.unittests_args = [_unescape(arg) for arg in parsed_args.unittests_args]
     parsed_args.exclude_class = [re.compile(fnmatch.translate(c)) for c in parsed_args.exclude_class] if parsed_args.exclude_class else []
     success = False
-    tmp = mx.mkdtemp()
+    tmp = tempfile.mkdtemp()
     try:
         jdk = mx.get_jdk(tag='graalvm')
         unittest_distributions = ['mx:JUNIT-PLATFORM-NATIVE']
