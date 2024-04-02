@@ -91,9 +91,9 @@ public abstract class AbstractLookupNode extends EspressoNode {
         return (!publicOnly || m.isPublic()) &&
                         m.isStatic() == isStatic &&
                         !m.isSignaturePolymorphicDeclared() &&
-                        m.getName().equals(methodName) &&
+                        methodName == m.getName() &&
                         // If signature is specified, do the check.
-                        (signature == null || m.getRawSignature().equals(signature));
+                        (signature == null || signature == m.getRawSignature());
     }
 
     @TruffleBoundary

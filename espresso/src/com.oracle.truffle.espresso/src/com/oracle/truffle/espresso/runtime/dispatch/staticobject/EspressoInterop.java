@@ -717,13 +717,13 @@ public class EspressoInterop extends BaseInterop {
                     String member,
                     Object[] arguments,
                     @CachedLibrary("receiver") InteropLibrary receiverInterop,
-                    @Cached InteropLookupAndInvoke lookupAndInvoke)
+                    @Cached InteropLookupAndInvoke.Virtual lookupAndInvoke)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         if (!receiverInterop.isMemberInvocable(receiver, member)) {
             // Not invocable, no matter the arity or argument types.
             throw UnknownIdentifierException.create(member);
         }
-        return lookupAndInvoke.execute(receiver, receiver.getKlass(), arguments, member, true);
+        return lookupAndInvoke.execute(receiver, receiver.getKlass(), arguments, member);
     }
 
     // endregion ### Members
