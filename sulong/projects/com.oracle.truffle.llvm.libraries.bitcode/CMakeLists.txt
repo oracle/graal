@@ -147,6 +147,9 @@ else()
 
   target_sources(sulong++ PRIVATE libsulongxx/windows/sulong++.def)
   target_sources(sulong++ PRIVATE libsulongxx/windows/exception_helpers.cpp libsulongxx/windows/type_info.cpp)
+  if(MSVC_VERSION GREATER_EQUAL 1939)
+    target_compile_definitions(sulong++ PRIVATE USE_THREAD_WAIT_V2)
+  endif()
   target_sources(sulong++ PRIVATE libsulongxx/windows/cpp_threads.cpp)
 
   target_compile_definitions(sulong++ PRIVATE _VCRT_BUILD)
