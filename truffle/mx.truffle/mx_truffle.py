@@ -427,25 +427,55 @@ def _truffle_gate_runner(args, tasks):
     with Task('Validate parsers', tasks) as t:
         if t: validate_parsers()
 
+
 # Run in vm suite with:
 # mx --env ce --native-images=. build
-# mx --env ce --native-images=. gate -o -s "Truffle Unchained Truffle ModulePath Unit Tests"
-def truffle_jvm_module_path_unit_tests_gate():
-    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--verbose', '--max-class-failures=25']))
+# mx --env ce --native-images=. gate -o -t "Truffle ModulePath Unit Tests Optimized"
+def truffle_jvm_module_path_optimized_unit_tests_gate():
+    _truffle_jvm_module_path_unit_tests_gate()
+
+
+# Run in vm suite with:
+# mx --env ce --native-images=. build
+# mx --env ce --native-images=. gate -o -t "Truffle ModulePath Unit Tests Fallback"
+def truffle_jvm_module_path_fallback_unit_tests_gate():
+    _truffle_jvm_module_path_unit_tests_gate(['--disable-truffle-optimized-runtime'])
+
+
+def _truffle_jvm_module_path_unit_tests_gate(additional_unittest_options=None):
+    if additional_unittest_options is None:
+        additional_unittest_options = []
+    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--verbose', '--max-class-failures=25'] + additional_unittest_options))
+
 
 # Run in VM suite with:
 # mx --env ce --native-images=. build
-# mx --env ce --native-images=. gate -o -s "Truffle Unchained Truffle ClassPath Unit Tests"
-def truffle_jvm_class_path_unit_tests_gate():
-    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25']))
+# mx --env ce --native-images=. gate -o -t "Truffle ClassPath Unit Tests Optimized"
+def truffle_jvm_class_path_optimized_unit_tests_gate():
+    _truffle_jvm_class_path_unit_tests_gate()
+
+
+# Run in VM suite with:
+# mx --env ce --native-images=. build
+# mx --env ce --native-images=. gate -o -t "Truffle ClassPath Unit Tests Fallback"
+def truffle_jvm_class_path_fallback_unit_tests_gate():
+    _truffle_jvm_class_path_unit_tests_gate(['--disable-truffle-optimized-runtime'])
+
+
+def _truffle_jvm_class_path_unit_tests_gate(additional_unittest_options=None):
+    if additional_unittest_options is None:
+        additional_unittest_options = []
+    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose',
+                   '--max-class-failures=25'] + additional_unittest_options))
 
     # GR-50223 temporarily still run tests with class-path isolation. they are to be removed.
     test_classes = [
-            "com.oracle.truffle.api.test.polyglot",
-            "com.oracle.truffle.api.test.examples",
-            "com.oracle.truffle.tck.tests",
-        ]
-    unittest(list(['--suite', 'truffle', '-Dpolyglotimpl.DisableClassPathIsolation=false', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
+        "com.oracle.truffle.api.test.polyglot",
+        "com.oracle.truffle.api.test.examples",
+        "com.oracle.truffle.tck.tests",
+    ]
+    unittest(list(['--suite', 'truffle', '-Dpolyglotimpl.DisableClassPathIsolation=false', '--use-graalvm', '--enable-timing',
+                   '--force-classpath', '--verbose', '--max-class-failures=25'] + additional_unittest_options + test_classes))
 
 
 @mx.command(_suite.name, 'native-truffle-unittest')
@@ -593,7 +623,7 @@ def native_truffle_unittest(args):
 
 # Run in VM suite with:
 # mx --env ce --native-images=. build
-# mx --env ce --native-images=. gate -o -s "Truffle Unchained SL JVM"
+# mx --env ce --native-images=. gate -o -t "Truffle SL JVM"
 def sl_jvm_gate_tests():
     _sl_jvm_gate_tests(mx.get_jdk(tag='graalvm'), force_cp=False, supports_optimization=True)
     _sl_jvm_gate_tests(mx.get_jdk(tag='graalvm'), force_cp=True, supports_optimization=True)
@@ -651,7 +681,7 @@ def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
 
 # Run in VM suite with:
 # mx --env ce --native-images=. build
-# mx --env ce --native-images=. gate -o -s "Truffle Unchained SL Native Optimized"
+# mx --env ce --native-images=. gate -o -t "Truffle SL Native Optimized"
 def sl_native_optimized_gate_tests(quick_build=False):
     _sl_native_optimized_gate_tests(force_cp=False, quick_build=quick_build)
     _sl_native_optimized_gate_tests(force_cp=True, quick_build=quick_build)
@@ -696,7 +726,7 @@ def _sl_native_optimized_gate_tests(force_cp, quick_build):
 
 # Run in VM suite with:
 # mx --env ce --native-images=. build
-# mx --env ce --native-images=. gate -o -s "Truffle Unchained SL Native Fallback"
+# mx --env ce --native-images=. gate -o -t "Truffle SL Native Fallback"
 def sl_native_fallback_gate_tests(quick_build=False):
     _sl_native_fallback_gate_tests(force_cp=False, quick_build=quick_build)
     _sl_native_fallback_gate_tests(force_cp=True, quick_build=quick_build)
