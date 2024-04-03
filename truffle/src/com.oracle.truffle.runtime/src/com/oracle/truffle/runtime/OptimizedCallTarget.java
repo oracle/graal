@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1127,7 +1127,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     /**
      * Intrinsifiable compiler directive for creating a frame.
      */
-    public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
+    public static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
         return new FrameWithoutBoxing(descriptor, args);
     }
 
