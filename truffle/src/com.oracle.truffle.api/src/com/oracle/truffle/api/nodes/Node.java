@@ -488,7 +488,16 @@ public abstract class Node implements NodeInterface, Cloneable {
         return NodeUtil.isReplacementSafe(getParent(), this, newNode);
     }
 
-    private void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
+    /**
+     * Reports that {@code oldNode} was replaced with {@code newNode}, notifying any
+     * {@link ReplaceObserver replace observers} and invalidating any compiled call targets.
+     * <p>
+     * This method does not actually replace the nodes. Use {@link Node#replace(Node, CharSequence)}
+     * to replace nodes.
+     *
+     * @since 24.1
+     */
+    protected void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
         Node node = this;
         while (node != null) {
             boolean consumed = false;

@@ -148,7 +148,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @SuppressWarnings({"serial"})
-    protected static class EarlyReturnException extends ControlFlowException {
+    public static class EarlyReturnException extends ControlFlowException {
         private static final long serialVersionUID = 3637685681756424058L;
 
         public final Object result;

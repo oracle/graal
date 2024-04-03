@@ -433,13 +433,6 @@ public abstract class RootNode extends ExecutableNode {
         return frameDescriptor;
     }
 
-    protected final boolean notifyReplace(Node oldnode, Node newNode, CharSequence reason) {
-        if (callTarget instanceof ReplaceObserver observer) {
-            return observer.nodeReplaced(oldnode, newNode, reason);
-        }
-        return false;
-    }
-
     /**
      * Does this contain AST content that it is possible to instrument. Can be called on any thread
      * and without a language context.

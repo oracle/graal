@@ -7424,7 +7424,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // switch
             b.end(); // while
 
-            b.statement("getRoot().notifyReplace(this, newNode, reason)");
+            b.statement("reportReplace(this, newNode, reason)");
             if (model.enableYield) {
                 b.startFor().type(continuationRootNodeImpl.asType()).string(" continuation : continuations").end().startBlock();
                 b.statement("continuation.invalidate(this, newNode, reason)");
@@ -8464,9 +8464,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.end(2);
 
                             b.startIf().string("osrResult != null").end().startBlock();
-                            b.statement(setFrameObject("sp", "osrResult"));
-                            b.statement("sp++");
-                            emitReturnTopOfStack(b);
+                            /**
+                             * executeOSR invokes BytecodeNode#continueAt, which returns an int
+                             * encoding the sp and bci when it returns/when the bytecode is
+                             * rewritten. Returning this value is correct in either case: If it's a
+                             * return, we'll read the result out of the frame (the OSR code copies
+                             * the OSR frame contents back into our frame first); if it's a rewrite,
+                             * we'll transition and continue executing.
+                             */
+                            b.startReturn().cast(type(int.class)).string("osrResult").end();
                             b.end();
 
                             b.end();
@@ -10919,7 +10925,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(types.Node, "newNode"));
             ex.addParameter(new CodeVariableElement(context.getDeclaredType(CharSequence.class), "reason"));
             CodeTreeBuilder b = ex.createBuilder();
-            b.startStatement().startCall("notifyReplace");
+            b.startStatement().startCall("reportReplace");
             b.string("oldNode");
             b.string("newNode");
             b.string("reason");
