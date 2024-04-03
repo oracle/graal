@@ -178,8 +178,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         static Object doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
                         @Bind("$node") Node node,
+                        @Cached @Shared InlinedBranchProfile error,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
-            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), node, InlinedBranchProfile.getUncached(), lib, language);
+            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), node, error, lib, language);
         }
 
         @Specialization
@@ -187,7 +188,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                         @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                         @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                         @Bind("$node") Node node,
-                        @Cached InlinedBranchProfile error,
+                        @Cached @Shared InlinedBranchProfile error,
                         @CachedLibrary("receiver") InteropLibrary lib,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
             EspressoContext ctx = EspressoContext.get(lib);
@@ -264,9 +265,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "language.isShared()")
         static void doShared(Klass receiver, String member, Object value,
                         @Bind("$node") Node node,
+                        @Cached @Shared InlinedBranchProfile error,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException, UnsupportedTypeException {
-            writeMember(receiver, member, value, LookupFieldNodeGen.getUncached(), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), node, InlinedBranchProfile.getUncached());
+            writeMember(receiver, member, value, LookupFieldNodeGen.getUncached(), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), node, error);
         }
 
         @Specialization
@@ -274,7 +276,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                         @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                         @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
                         @Bind("$node") Node node,
-                        @Cached InlinedBranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
+                        @Cached @Shared InlinedBranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
             Field field = lookupFieldNode.execute(receiver, member, true);
             // Can only write to non-final fields.
             if (field != null && !field.isFinalFlagSet()) {
@@ -309,9 +311,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, String member, Object[] arguments,
+                        @Bind("$node") Node node,
+                        @Cached @Shared InlinedBranchProfile error,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary receiverInterop,
                         @Bind("getLang(receiverInterop)") @SuppressWarnings("unused") EspressoLanguage language) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-            return invokeMember(receiver, member, arguments, null, receiverInterop, InlinedBranchProfile.getUncached(), InteropLookupAndInvokeFactory.NonVirtualNodeGen.getUncached());
+            return invokeMember(receiver, member, arguments, node, receiverInterop, error, InteropLookupAndInvokeFactory.NonVirtualNodeGen.getUncached());
         }
 
         @Specialization
