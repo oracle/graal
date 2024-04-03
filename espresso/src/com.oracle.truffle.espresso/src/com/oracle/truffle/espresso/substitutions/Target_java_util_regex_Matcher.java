@@ -22,9 +22,11 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.Target_java_util_regex_Pattern.LOGGER;
 import static com.oracle.truffle.espresso.substitutions.Target_java_util_regex_Pattern.convertFlags;
 import static java.lang.Math.max;
 
+import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,6 +56,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeInterface;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions
@@ -134,12 +137,6 @@ public final class Target_java_util_regex_Matcher {
     private static final int NOANCHOR = 0;
     private static final int ENDANCHOR = 1;
 
-    private enum MatchMode {
-        MATCH_NOANCHOR,
-        MATCH_ENDANCHOR,
-        SEARCH
-    }
-
     @ImportStatic(Target_java_util_regex_Matcher.class)
     @Substitution(hasReceiver = true)
     abstract static class Match extends SubstitutionNode {
@@ -153,7 +150,7 @@ public final class Target_java_util_regex_Matcher {
                         @Bind("this") Node node) {
             assert getContext().regexSubstitutionsEnabled();
             meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
-            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, getMatchMode(anchor));
+            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, getMatchAction(anchor));
             return checkResult(self, from, anchor, regexObject, javaRegexExecNode, node, meta);
         }
 
@@ -165,18 +162,17 @@ public final class Target_java_util_regex_Matcher {
                         @Cached JavaRegexCompileNode javaRegexCompileNode,
                         @Bind("this") Node node) {
             assert context.regexSubstitutionsEnabled();
+            RegexAction action = getMatchAction(anchor);
             meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
-            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, getMatchMode(anchor));
-            String method;
+            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, action);
             Field destination;
             if (anchor == ENDANCHOR) {
-                method = "fullmatch";
                 destination = meta.java_util_regex_Pattern_HIDDEN_tregexFullmatch;
             } else {
-                method = "match";
+                assert anchor == NOANCHOR;
                 destination = meta.java_util_regex_Pattern_HIDDEN_tregexMatch;
             }
-            Object regexObject = javaRegexCompileNode.execute(node, self, method, destination, context);
+            Object regexObject = javaRegexCompileNode.execute(node, self, action, destination, context);
             return checkResult(self, from, anchor, regexObject, javaRegexExecNode, node, meta);
         }
 
@@ -192,18 +188,19 @@ public final class Target_java_util_regex_Matcher {
             return (Boolean) original.call(self, from, anchor);
         }
 
-        private static MatchMode getMatchMode(int anchor) {
-            MatchMode mode;
+        private static RegexAction getMatchAction(int anchor) {
             if (anchor == NOANCHOR) {
-                mode = MatchMode.MATCH_NOANCHOR;
+                return RegexAction.Match;
             } else {
                 assert anchor == ENDANCHOR;
-                mode = MatchMode.MATCH_ENDANCHOR;
+                return RegexAction.FullMatch;
             }
-            return mode;
         }
 
         public static Object getRegexObject(StaticObject self, int anchor, Meta meta) {
+            if (meta.java_util_regex_Matcher_parentPattern == null || meta.java_util_regex_Pattern_HIDDEN_tregexMatch == null) {
+                return null;
+            }
             StaticObject parentPattern = meta.java_util_regex_Matcher_parentPattern.getObject(self);
             if (anchor == ENDANCHOR) {
                 return meta.java_util_regex_Pattern_HIDDEN_tregexFullmatch.getHiddenObject(parentPattern);
@@ -245,7 +242,7 @@ public final class Target_java_util_regex_Matcher {
                         @Bind("this") Node node) {
             assert getContext().regexSubstitutionsEnabled();
             meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
-            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, MatchMode.SEARCH);
+            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, RegexAction.Search);
 
             saveBackup(self, meta);
             boolean isMatch = javaRegexExecNode.execute(node, regexObject, self, from, meta);
@@ -264,9 +261,9 @@ public final class Target_java_util_regex_Matcher {
                         @Bind("this") Node node) {
             assert context.regexSubstitutionsEnabled();
             meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
-            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, MatchMode.SEARCH);
+            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, RegexAction.Search);
 
-            Object regexObject = javaRegexCompileNode.execute(node, self, "search", meta.java_util_regex_Pattern_HIDDEN_tregexSearch, context);
+            Object regexObject = javaRegexCompileNode.execute(node, self, RegexAction.Search, meta.java_util_regex_Pattern_HIDDEN_tregexSearch, context);
             saveBackup(self, meta);
             boolean isMatch = javaRegexExecNode.execute(node, regexObject, self, from, meta);
             if (!isMatch) {
@@ -333,11 +330,11 @@ public final class Target_java_util_regex_Matcher {
 
     @GenerateInline
     @GenerateUncached
-    public abstract static class JavaRegexCompileNode extends Node {
-        public abstract Object execute(Node node, StaticObject self, String method, Field destination, EspressoContext context);
+    abstract static class JavaRegexCompileNode extends Node {
+        public abstract Object execute(Node node, StaticObject self, RegexAction action, Field destination, EspressoContext context);
 
         @Specialization
-        static Object doDefault(StaticObject self, String method, Field destination, EspressoContext context,
+        static Object doDefault(StaticObject self, RegexAction action, Field destination, EspressoContext context,
                         @CachedLibrary(limit = "3") InteropLibrary regexObjectInterop,
                         @CachedLibrary(limit = "3") InteropLibrary integerInterop,
                         @CachedLibrary(limit = "3") InteropLibrary mapInterop,
@@ -347,9 +344,10 @@ public final class Target_java_util_regex_Matcher {
             StaticObject patternObject = meta.java_util_regex_Matcher_parentPattern.getObject(self);
             String pattern = meta.toHostString(meta.java_util_regex_Pattern_pattern.getObject(patternObject));
 
-            Source src = getSource(method, pattern, patternObject, meta);
+            Source src = getSource(action, pattern, meta.java_util_regex_Pattern_flags0.getInt(patternObject), meta.getJavaVersion());
 
             Object regexObject = context.getEnv().parseInternal(src).call();
+            LOGGER.log(Level.FINEST, () -> "Compiled Pattern: " + pattern);
             destination.setHiddenObject(patternObject, regexObject);
 
             int groupCount = getGroupCount(regexObject, regexObjectInterop, integerInterop);
@@ -496,10 +494,23 @@ public final class Target_java_util_regex_Matcher {
         }
     }
 
+    enum RegexAction {
+        Validate,
+        Match,
+        FullMatch,
+        Search
+    }
+
     @TruffleBoundary
-    private static Source getSource(String method, String pattern, StaticObject patternObject, Meta meta) {
-        String combined = "Encoding=UTF-16,Flavor=JavaUtilPattern,MatchingMode=" + method + ",JavaJDKVersion=" + meta.getJavaVersion();
-        String sourceStr = combined + '/' + pattern + '/' + convertFlags(meta.java_util_regex_Pattern_flags0.getInt(patternObject));
+    static Source getSource(RegexAction action, String pattern, int flags, JavaVersion javaVersion) {
+        String actionString = switch (action) {
+            case Validate -> "Validate=true";
+            case Match -> "MatchingMode=match";
+            case FullMatch -> "MatchingMode=fullmatch";
+            case Search -> "MatchingMode=search";
+        };
+        String combined = "Encoding=UTF-16,Flavor=JavaUtilPattern," + actionString + ",JavaJDKVersion=" + javaVersion;
+        String sourceStr = combined + '/' + pattern + '/' + convertFlags(flags);
         return Source.newBuilder("regex", sourceStr, "patternExpr").build();
     }
 
@@ -540,15 +551,15 @@ public final class Target_java_util_regex_Matcher {
     private static void executeLastWithFallback(StaticObject self, Meta meta) {
         if (meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.getHiddenObject(self) != StaticObject.NULL) {
             int from = (int) meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.getHiddenObject(self);
-            MatchMode action = (MatchMode) meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.getHiddenObject(self);
-
+            RegexAction action = (RegexAction) meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.getHiddenObject(self);
+            assert action != RegexAction.Validate;
             compileFallBackIfRequired(self, meta);
             applyBackup(self, meta);
 
             switch (action) {
-                case MATCH_NOANCHOR -> executeMatch(self, from, NOANCHOR, meta);
-                case MATCH_ENDANCHOR -> executeMatch(self, from, ENDANCHOR, meta);
-                case SEARCH -> executeSearch(self, from, meta);
+                case Match -> executeMatch(self, from, NOANCHOR, meta);
+                case FullMatch -> executeMatch(self, from, ENDANCHOR, meta);
+                case Search -> executeSearch(self, from, meta);
             }
         }
     }
@@ -572,6 +583,9 @@ public final class Target_java_util_regex_Matcher {
     }
 
     static boolean isUnsupportedMatcher(StaticObject self, Meta meta) {
+        if (meta.java_util_regex_Matcher_parentPattern == null) {
+            return true;
+        }
         StaticObject parentPattern = meta.java_util_regex_Matcher_parentPattern.getObject(self);
         if (Target_java_util_regex_Pattern.isUnsupportedPattern(parentPattern, meta)) {
             return true;

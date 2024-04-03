@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.Target_java_util_regex_Matcher.getSource;
+
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
@@ -45,10 +47,11 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Target_java_util_regex_Matcher.RegexAction;
 
 @EspressoSubstitutions
 public final class Target_java_util_regex_Pattern {
-    public static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, "Regex");
+    static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, "Regex");
     private static final int ALL_FLAGS = Pattern.CASE_INSENSITIVE | Pattern.MULTILINE |
                     Pattern.DOTALL | Pattern.UNICODE_CASE | Pattern.CANON_EQ | Pattern.UNIX_LINES | Pattern.LITERAL |
                     Pattern.UNICODE_CHARACTER_CLASS | Pattern.COMMENTS;
@@ -57,6 +60,9 @@ public final class Target_java_util_regex_Pattern {
     }
 
     static boolean isUnsupportedPattern(StaticObject parentPattern, Meta meta) {
+        if (meta.java_util_regex_Pattern_HIDDEN_unsupported == null) {
+            return true;
+        }
         Object unsupported = meta.java_util_regex_Pattern_HIDDEN_unsupported.getHiddenObject(parentPattern);
         return unsupported == null || (boolean) unsupported;
     }
@@ -82,7 +88,7 @@ public final class Target_java_util_regex_Pattern {
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, unknownFlagMessage(f));
             }
             String pattern = meta.toHostString(p);
-            Source src = getSource(f, pattern);
+            Source src = getSource(RegexAction.Validate, pattern, f, meta.getJavaVersion());
             try {
                 context.getEnv().parseInternal(src).call();
             } catch (Exception e) {
@@ -122,12 +128,6 @@ public final class Target_java_util_regex_Pattern {
                         @Bind("getContext()") @SuppressWarnings("unused") EspressoContext context,
                         @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original) {
             original.call(self, p, f);
-        }
-
-        @TruffleBoundary
-        private static Source getSource(int f, String pattern) {
-            String sourceStr = "Encoding=UTF-16,Flavor=JavaUtilPattern,Validate=true" + '/' + pattern + '/' + convertFlags(f);
-            return Source.newBuilder("regex", sourceStr, "patternExpr").build();
         }
     }
 
