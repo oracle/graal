@@ -45,10 +45,8 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -67,25 +65,18 @@ public final class KlassLayoutHelperNode extends FloatingNode implements Canonic
      */
     private final int klassLayoutHelperNeutralValue;
 
-    /**
-     * The value of {@link GraalHotSpotVMConfig#klassLayoutHelperOffset}.
-     */
-    private final int klassLayoutHelperOffset;
-
-    public KlassLayoutHelperNode(ValueNode klass, int klassLayoutHelperNeutralValue, int klassLayoutHelperOffset) {
+    public KlassLayoutHelperNode(ValueNode klass, int klassLayoutHelperNeutralValue) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
         this.klass = klass;
         this.klassLayoutHelperNeutralValue = klassLayoutHelperNeutralValue;
-        this.klassLayoutHelperOffset = klassLayoutHelperOffset;
     }
 
-    public static ValueNode create(GraalHotSpotVMConfig config, ValueNode klass, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess) {
-        Stamp stamp = StampFactory.forKind(JavaKind.Int);
-        return canonical(null, klass, stamp, constantReflection, metaAccess, config.klassLayoutHelperNeutralValue, config.klassLayoutHelperOffset);
+    public static ValueNode create(GraalHotSpotVMConfig config, ValueNode klass, ConstantReflectionProvider constantReflection) {
+        return canonical(null, klass, constantReflection, config.klassLayoutHelperNeutralValue);
     }
 
     public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter GraalHotSpotVMConfig config, ValueNode klass) {
-        ValueNode valueNode = create(config, klass, b.getConstantReflection(), b.getMetaAccess());
+        ValueNode valueNode = create(config, klass, b.getConstantReflection());
         b.push(JavaKind.Int, b.append(valueNode));
         return true;
     }
@@ -119,18 +110,15 @@ public final class KlassLayoutHelperNode extends FloatingNode implements Canonic
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
         } else {
-            return canonical(this, klass, stamp(NodeView.DEFAULT), tool.getConstantReflection(), tool.getMetaAccess(), klassLayoutHelperNeutralValue, klassLayoutHelperOffset);
+            return canonical(this, klass, tool.getConstantReflection(), klassLayoutHelperNeutralValue);
         }
     }
 
-    private static ValueNode canonical(KlassLayoutHelperNode klassLayoutHelperNode, ValueNode klass, Stamp stamp, ConstantReflectionProvider constantReflection,
-                    MetaAccessProvider metaAccess, int klassLayoutHelperNeutralValue, int klassLayoutHelperOffset) {
+    private static ValueNode canonical(KlassLayoutHelperNode klassLayoutHelperNode, ValueNode klass, ConstantReflectionProvider constantReflection, int klassLayoutHelperNeutralValue) {
         KlassLayoutHelperNode self = klassLayoutHelperNode;
-        if (klass.isConstant()) {
-            if (!klass.asConstant().isDefaultForKind()) {
-                Constant constant = stamp.readConstant(constantReflection.getMemoryAccessProvider(), klass.asConstant(), klassLayoutHelperOffset);
-                return ConstantNode.forConstant(stamp, constant, metaAccess);
-            }
+        if (klass.isConstant() && !klass.asConstant().isDefaultForKind()) {
+            HotSpotResolvedObjectType javaType = (HotSpotResolvedObjectType) constantReflection.asJavaType(klass.asConstant());
+            return ConstantNode.forInt(javaType.layoutHelper());
         }
         if (klass instanceof LoadHubNode) {
             LoadHubNode hub = (LoadHubNode) klass;
@@ -140,13 +128,12 @@ public final class KlassLayoutHelperNode extends FloatingNode implements Canonic
                 HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) ostamp.type();
                 if (type != null && type.isArray() && !type.getComponentType().isPrimitive()) {
                     // The layout for all object arrays is the same.
-                    Constant constant = stamp.readConstant(constantReflection.getMemoryAccessProvider(), type.klass(), klassLayoutHelperOffset);
-                    return ConstantNode.forConstant(stamp, constant, metaAccess);
+                    return ConstantNode.forInt(type.layoutHelper());
                 }
             }
         }
         if (self == null) {
-            self = new KlassLayoutHelperNode(klass, klassLayoutHelperNeutralValue, klassLayoutHelperOffset);
+            self = new KlassLayoutHelperNode(klass, klassLayoutHelperNeutralValue);
         }
         return self;
     }
