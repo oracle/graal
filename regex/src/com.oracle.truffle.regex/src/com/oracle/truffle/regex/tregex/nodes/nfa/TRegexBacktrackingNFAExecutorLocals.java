@@ -246,18 +246,14 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return sp + 2 + result.length + nQuantifierCounts + nZeroWidthQuantifiers + zeroWidthQuantifierCGOffsets[zeroWidthQuantifierCGOffsets.length - 1];
     }
 
-    private int offsetQuantifierCount(Quantifier q) {
-        CompilerAsserts.partialEvaluationConstant(q.getIndex());
-        return offsetQuantifierCounts() + q.getIndex();
+    private int offsetQuantifierCount(int quantifierIndex) {
+        CompilerAsserts.partialEvaluationConstant(quantifierIndex);
+        return offsetQuantifierCounts() + quantifierIndex;
     }
 
-    private int offsetZeroWidthQuantifierIndex(Quantifier q) {
-        CompilerAsserts.partialEvaluationConstant(q.getZeroWidthIndex());
-        return offsetZeroWidthQuantifierIndices() + q.getZeroWidthIndex();
-    }
-
-    private int offsetZeroWidthQuantifierCG(Quantifier q) {
-        return offsetZeroWidthQuantifierCG(q.getZeroWidthIndex());
+    private int offsetZeroWidthQuantifierIndex(int quantifierZeroWidthIndex) {
+        CompilerAsserts.partialEvaluationConstant(quantifierZeroWidthIndex);
+        return offsetZeroWidthQuantifierIndices() + quantifierZeroWidthIndex;
     }
 
     private int offsetZeroWidthQuantifierCG(int zeroWidthIndex) {
@@ -435,45 +431,45 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         }
     }
 
-    public int getQuantifierCount(Quantifier q) {
-        return stack()[offsetQuantifierCount(q)];
+    public int getQuantifierCount(int quantifierIndex) {
+        return stack()[offsetQuantifierCount(quantifierIndex)];
     }
 
-    public void setQuantifierCount(Quantifier q, int count) {
-        stack()[offsetQuantifierCount(q)] = count;
+    public void setQuantifierCount(int quantifierIndex, int count) {
+        stack()[offsetQuantifierCount(quantifierIndex)] = count;
     }
 
-    public void resetQuantifierCount(Quantifier q) {
-        stack()[offsetQuantifierCount(q)] = 0;
+    public void resetQuantifierCount(int quantifierIndex) {
+        stack()[offsetQuantifierCount(quantifierIndex)] = 0;
     }
 
-    public void incQuantifierCount(Quantifier q) {
-        stack()[offsetQuantifierCount(q)]++;
+    public void incQuantifierCount(int quantifierIndex) {
+        stack()[offsetQuantifierCount(quantifierIndex)]++;
     }
 
-    public int getZeroWidthQuantifierGuardIndex(Quantifier q) {
-        return stack()[offsetZeroWidthQuantifierIndex(q)];
+    public int getZeroWidthQuantifierGuardIndex(int quantifierZeroWidthIndex) {
+        return stack()[offsetZeroWidthQuantifierIndex(quantifierZeroWidthIndex)];
     }
 
-    public void setZeroWidthQuantifierGuardIndex(Quantifier q) {
-        stack()[offsetZeroWidthQuantifierIndex(q)] = getIndex();
+    public void setZeroWidthQuantifierGuardIndex(int quantifierZeroWidthIndex) {
+        stack()[offsetZeroWidthQuantifierIndex(quantifierZeroWidthIndex)] = getIndex();
     }
 
-    public boolean isResultUnmodifiedByZeroWidthQuantifier(Quantifier q) {
-        int start = offsetCaptureGroups() + 2 * zeroWidthTermEnclosedCGLow[q.getZeroWidthIndex()];
-        int length = zeroWidthQuantifierCGOffsets[q.getZeroWidthIndex() + 1] - zeroWidthQuantifierCGOffsets[q.getZeroWidthIndex()];
+    public boolean isResultUnmodifiedByZeroWidthQuantifier(int quantifierZeroWidthIndex) {
+        int start = offsetCaptureGroups() + 2 * zeroWidthTermEnclosedCGLow[quantifierZeroWidthIndex];
+        int length = zeroWidthQuantifierCGOffsets[quantifierZeroWidthIndex + 1] - zeroWidthQuantifierCGOffsets[quantifierZeroWidthIndex];
         for (int i = 0; i < length; i++) {
-            if (stack()[offsetZeroWidthQuantifierCG(q) + i] != stack()[start + i]) {
+            if (stack()[offsetZeroWidthQuantifierCG(quantifierZeroWidthIndex) + i] != stack()[start + i]) {
                 return false;
             }
         }
         return true;
     }
 
-    public void setZeroWidthQuantifierResults(Quantifier q) {
-        int start = offsetCaptureGroups() + 2 * zeroWidthTermEnclosedCGLow[q.getZeroWidthIndex()];
-        int length = zeroWidthQuantifierCGOffsets[q.getZeroWidthIndex() + 1] - zeroWidthQuantifierCGOffsets[q.getZeroWidthIndex()];
-        System.arraycopy(stack(), start, stack(), offsetZeroWidthQuantifierCG(q), length);
+    public void setZeroWidthQuantifierResults(int quantifierZeroWidthIndex) {
+        int start = offsetCaptureGroups() + 2 * zeroWidthTermEnclosedCGLow[quantifierZeroWidthIndex];
+        int length = zeroWidthQuantifierCGOffsets[quantifierZeroWidthIndex + 1] - zeroWidthQuantifierCGOffsets[quantifierZeroWidthIndex];
+        System.arraycopy(stack(), start, stack(), offsetZeroWidthQuantifierCG(quantifierZeroWidthIndex), length);
     }
 
     public long[] getTransitionBitSet() {
