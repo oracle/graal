@@ -61,6 +61,13 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Override
     public void before() {
         setupContext("engine.MultiTier", "false");
+        // TODO without eager loading, the first compilation on some tests fails because this type
+        // is not loaded
+        try {
+            Class.forName(BasicInterpreter.EarlyReturnException.class.getName());
+        } catch (ClassNotFoundException ex) {
+        }
+
     }
 
     @Test
@@ -89,7 +96,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testInstrumentation() {
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addTwoConstants", b -> {
+        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addTwoConstantsInstrumented", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -124,7 +131,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testYield() {
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addTwoConstants", b -> {
+        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addYield", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -156,7 +163,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testYieldInstrumentation() {
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addTwoConstants", b -> {
+        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addYieldInstrumented", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();

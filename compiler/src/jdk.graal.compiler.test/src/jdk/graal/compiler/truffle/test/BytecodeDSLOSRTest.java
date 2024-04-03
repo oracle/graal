@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
@@ -34,16 +36,21 @@ import org.junit.rules.TestRule;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
-import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Instrumentation;
+import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.runtime.BytecodeOSRMetadata;
 
 import jdk.graal.compiler.test.GraalTest;
@@ -56,14 +63,21 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         return nodes.getNode(nodes.count() - 1);
     }
 
+    private static BytecodeDSLOSRTestRootNode parseNodeWithSources(BytecodeParser<BytecodeDSLOSRTestRootNodeGen.Builder> builder) {
+        BytecodeRootNodes<BytecodeDSLOSRTestRootNode> nodes = BytecodeDSLOSRTestRootNodeGen.create(BytecodeConfig.WITH_SOURCE, builder);
+        return nodes.getNode(nodes.count() - 1);
+    }
+
     @Rule public TestRule timeout = GraalTest.createTimeout(30, TimeUnit.SECONDS);
+
+    static final int OSR_THRESHOLD = 10 * BytecodeOSRMetadata.OSR_POLL_INTERVAL;
 
     @Before
     @Override
     public void before() {
         setupContext("engine.MultiTier", "false",
                         "engine.OSR", "true",
-                        "engine.OSRCompilationThreshold", String.valueOf(10 * BytecodeOSRMetadata.OSR_POLL_INTERVAL),
+                        "engine.OSRCompilationThreshold", String.valueOf(OSR_THRESHOLD),
                         "engine.OSRMaxCompilationReAttempts", String.valueOf(1),
                         "engine.ThrowOnMaxOSRCompilationReAttemptsReached", "true");
     }
@@ -89,6 +103,122 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         }
     }
 
+    @Test
+    public void testReturnValueFromLoop() {
+        /**
+         * @formatter:off
+         * result = 0
+         * for (int i = 0; i < OSR_THRESHOLD*2; i++) {
+         *   result++;
+         *   if (inCompiledCode) result++;
+         * }
+         * @formatter:on
+         */
+        BytecodeDSLOSRTestRootNode root = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            BytecodeLocal i = b.createLocal();
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            b.beginLt();
+            b.emitLoadLocal(i);
+            b.emitLoadConstant(OSR_THRESHOLD * 2);
+            b.endLt();
+
+            b.beginBlock();
+            b.beginIncrement(result);
+            b.emitLoadLocal(result);
+            b.endIncrement();
+
+            b.beginIncrementIfCompiled(result);
+            b.emitLoadLocal(result);
+            b.endIncrementIfCompiled();
+
+            b.beginIncrement(i);
+            b.emitLoadLocal(i);
+            b.endIncrement();
+            b.endBlock();
+            b.endWhile();
+
+            b.emitLoadLocal(result);
+            b.endBlock();
+            b.endRoot();
+        });
+
+        // 1*(# interpreter iterations) + 2*(# compiled iterations)
+        assertEquals(OSR_THRESHOLD * 3, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testInstrumented() {
+        /**
+         * @formatter:off
+         * result = 0
+         * for (int i = 0; i < OSR_THRESHOLD*2; i++) {
+         *   result++;
+         *   if (inCompiledCode) enableInstrumentation;
+         *   result = plusOne(result) // no-op if instrumentation disabled
+         * }
+         * @formatter:on
+         */
+        BytecodeDSLOSRTestRootNode root = parseNodeWithSources(b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            BytecodeLocal i = b.createLocal();
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            b.beginLt();
+            b.emitLoadLocal(i);
+            b.emitLoadConstant(OSR_THRESHOLD * 2);
+            b.endLt();
+
+            b.beginBlock();
+            b.beginIncrement(result);
+            b.emitLoadLocal(result);
+            b.endIncrement();
+
+            b.emitInstrumentIfCompiled();
+
+            b.beginStoreLocal(result);
+            b.beginPlusOne();
+            b.emitLoadLocal(result);
+            b.endPlusOne();
+            b.endStoreLocal();
+
+            b.beginIncrement(i);
+            b.emitLoadLocal(i);
+            b.endIncrement();
+
+            b.endBlock();
+            b.endWhile();
+
+            b.emitLoadLocal(result);
+            b.endBlock();
+            b.endRoot();
+        });
+
+        // 1*(# interpreter iterations) + 2*(# instrumented iterations)
+        assertEquals(OSR_THRESHOLD * 3, root.getCallTarget().call());
+    }
+
     @TruffleLanguage.Registration(id = "BytecodeDSLOSRTestLanguage")
     static class BytecodeDSLOSRTestLanguage extends TruffleLanguage<Object> {
         @Override
@@ -98,7 +228,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class)
-    public abstract static class BytecodeDSLOSRTestRootNode extends RootNode implements BytecodeRootNode {
+    public abstract static class BytecodeDSLOSRTestRootNode extends DebugBytecodeRootNode {
 
         static class InCompiledCodeException extends AbstractBytecodeTruffleException {
             private static final long serialVersionUID = 1L;
@@ -115,6 +245,61 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
                 if (CompilerDirectives.inCompiledCode()) {
                     throw new InCompiledCodeException();
                 }
+            }
+        }
+
+        @Operation
+        static final class Lt {
+            @Specialization
+            public static boolean perform(int left, int right) {
+                return left < right;
+            }
+        }
+
+        @Operation
+        static final class Increment {
+            @Specialization
+            public static void perform(VirtualFrame frame, int currentValue, LocalSetter variable) {
+                variable.setInt(frame, currentValue + 1);
+            }
+        }
+
+        @Operation
+        static final class IncrementIfCompiled {
+            @Specialization
+            public static void perform(VirtualFrame frame, int currentValue, LocalSetter variable) {
+                /**
+                 * NB: this is implemented as one operation rather than a built-in IfThen operation
+                 * because the IfThen branch profile would mark the "in compiled code" branch as
+                 * dead and we'd deopt on OSR entry.
+                 */
+                if (CompilerDirectives.inCompiledCode()) {
+                    variable.setInt(frame, currentValue + 1);
+                }
+            }
+        }
+
+        @Instrumentation
+        static final class PlusOne {
+            @Specialization
+            public static int perform(int value) {
+                return value + 1;
+            }
+        }
+
+        @Operation
+        static final class InstrumentIfCompiled {
+            @Specialization
+
+            public static void perform(@Bind("$root") BytecodeDSLOSRTestRootNode root) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    enableInstrumentation(root);
+                }
+            }
+
+            @TruffleBoundary
+            private static void enableInstrumentation(BytecodeDSLOSRTestRootNode root) {
+                root.getRootNodes().update(BytecodeDSLOSRTestRootNodeGen.newConfigBuilder().addInstrumentation(PlusOne.class).build());
             }
         }
 
