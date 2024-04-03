@@ -68,11 +68,24 @@ public final class GraalDirectives {
 
     /**
      * Directive for the compiler to fall back to the bytecode interpreter at this point.
+     * <p/>
      *
      * This is equivalent to calling
      * {@link #deoptimize(DeoptimizationAction, DeoptimizationReason, boolean)} with
      * {@link DeoptimizationAction#None}, {@link DeoptimizationReason#TransferToInterpreter} and
      * {@code false} as arguments.
+     * <p/>
+     *
+     * This directive is typically used directly after a branch:
+     *
+     * <pre>
+     * if (someCondition) {
+     *     deoptimize();
+     * }
+     * </pre>
+     *
+     * This combination will be transformed into a guard. Code between the {@code if} and the
+     * deoptimization may be removed from the compiled code.
      */
     public static void deoptimize() {
     }
@@ -86,6 +99,32 @@ public final class GraalDirectives {
      * {@link DeoptimizationReason#TransferToInterpreter} and {@code false} as arguments.
      */
     public static void deoptimizeAndInvalidate() {
+    }
+
+    /**
+     * Directive for the compiler to fall back to the bytecode interpreter at this point.
+     * <p/>
+     *
+     * This is similar to calling {@link #deoptimize()}, but the deoptimization will use a precise
+     * frame state and will be prevented from being converted to a guard or otherwise moving in the
+     * control flow.
+     * <p/>
+     *
+     * This directive is typically used if the deoptimization is at the end of a section of code
+     * that should remain part of the compiled code:
+     *
+     * <pre>
+     *     if (someCondition) {
+     *         ... some code ...
+     *         preciseDeoptimize();
+     *     }
+     * </pre>
+     *
+     * Unlike {@link #deoptimize()}, this construct will not be transformed into a guard, and the
+     * code preceding the precise deoptimization will not be removed from the compiled code.
+     */
+    public static void preciseDeoptimize() {
+
     }
 
     /**

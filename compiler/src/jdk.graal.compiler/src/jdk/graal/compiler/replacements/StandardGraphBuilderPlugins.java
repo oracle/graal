@@ -49,7 +49,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -141,6 +140,7 @@ import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
 import jdk.graal.compiler.nodes.extended.SwitchCaseProbabilityNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.extended.UnsafeMemoryLoadNode;
@@ -171,6 +171,7 @@ import jdk.graal.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.ConstantFoldUtil;
 import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
@@ -1697,7 +1698,8 @@ public class StandardGraphBuilderPlugins {
             return Objects.requireNonNull(snippetReflection.asObject(type, value.asJavaConstant()), value + " must be a non-null compile time constant");
         }
 
-        static void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, boolean withSpeculation) {
+        @SuppressWarnings("hiding")
+        void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, boolean withSpeculation) {
             SpeculationReason speculationReason = null;
             if (withSpeculation) {
                 BytecodePosition pos = new BytecodePosition(null, b.getMethod(), b.bci());
@@ -1706,7 +1708,8 @@ public class StandardGraphBuilderPlugins {
             add(b, action, reason, speculationReason);
         }
 
-        static void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, SpeculationReason speculationReason) {
+        @SuppressWarnings("hiding")
+        DeoptimizeNode add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, SpeculationReason speculationReason) {
             Speculation speculation = SpeculationLog.NO_SPECULATION;
             if (speculationReason != null) {
                 GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is needed to use `deoptimize with speculation`");
@@ -1714,7 +1717,23 @@ public class StandardGraphBuilderPlugins {
                     speculation = b.getGraph().getSpeculationLog().speculate(speculationReason);
                 }
             }
-            b.add(new DeoptimizeNode(action, reason, speculation));
+            return b.add(new DeoptimizeNode(action, reason, speculation));
+        }
+    }
+
+    static class PreciseDeoptimizePlugin extends DeoptimizePlugin {
+
+        PreciseDeoptimizePlugin(SnippetReflectionProvider snippetReflection, DeoptimizationAction action, DeoptimizationReason reason, Boolean withSpeculation,
+                        String name, Type... argumentTypes) {
+            super(snippetReflection, action, reason, withSpeculation, name, argumentTypes);
+        }
+
+        @Override
+        DeoptimizeNode add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, SpeculationReason speculationReason) {
+            b.add(new StateSplitProxyNode());
+            DeoptimizeNode deopt = super.add(b, action, reason, speculationReason);
+            deopt.mayConvertToGuard(false);
+            return deopt;
         }
     }
 
@@ -1726,6 +1745,7 @@ public class StandardGraphBuilderPlugins {
                         "deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, boolean.class));
         r.register(new DeoptimizePlugin(snippetReflection, null, null, null,
                         "deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, SpeculationReason.class));
+        r.register(new PreciseDeoptimizePlugin(snippetReflection, None, TransferToInterpreter, false, "preciseDeoptimize"));
 
         r.register(new RequiredInlineOnlyInvocationPlugin("inCompiledCode") {
             @Override
