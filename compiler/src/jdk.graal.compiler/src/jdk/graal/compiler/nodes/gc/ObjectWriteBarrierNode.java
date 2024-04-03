@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,43 +24,29 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.spi.Lowerable;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
-import jdk.vm.ci.meta.JavaKind;
-
 @NodeInfo
-public abstract class ArrayRangeWriteBarrier extends WriteBarrier implements Lowerable {
+public abstract class ObjectWriteBarrierNode extends WriteBarrierNode {
 
-    public static final NodeClass<ArrayRangeWriteBarrier> TYPE = NodeClass.create(ArrayRangeWriteBarrier.class);
-    @Input ValueNode length;
+    public static final NodeClass<ObjectWriteBarrierNode> TYPE = NodeClass.create(ObjectWriteBarrierNode.class);
+    @OptionalInput protected ValueNode value;
+    protected final boolean precise;
 
-    private final int elementStride;
-
-    protected ArrayRangeWriteBarrier(NodeClass<? extends ArrayRangeWriteBarrier> c, AddressNode address, ValueNode length, int elementStride) {
+    protected ObjectWriteBarrierNode(NodeClass<? extends ObjectWriteBarrierNode> c, AddressNode address, ValueNode value, boolean precise) {
         super(c, address);
-        this.length = length;
-        this.elementStride = elementStride;
+        this.value = value;
+        this.precise = precise;
     }
 
-    public ValueNode getLength() {
-        return length;
+    public ValueNode getValue() {
+        return value;
     }
 
-    public int getElementStride() {
-        return elementStride;
-    }
-
-    /**
-     * Returns this barrier's length, extended to {@code long} if needed.
-     */
-    public ValueNode getLengthAsLong() {
-        return IntegerConvertNode.convert(length, StampFactory.forKind(JavaKind.Long), graph(), NodeView.DEFAULT);
+    public boolean usePrecise() {
+        return precise;
     }
 }

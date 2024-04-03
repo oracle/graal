@@ -22,42 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package jdk.graal.compiler.nodes.gc;
 
-import jdk.graal.compiler.core.common.type.StampFactory;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
+
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.spi.Lowerable;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
-@NodeInfo
-public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable {
+@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
+public final class G1ArrayRangePreWriteBarrierNode extends ArrayRangeWriteBarrierNode {
+    public static final NodeClass<G1ArrayRangePreWriteBarrierNode> TYPE = NodeClass.create(G1ArrayRangePreWriteBarrierNode.class);
 
-    public static final NodeClass<WriteBarrier> TYPE = NodeClass.create(WriteBarrier.class);
-    @Input(InputType.Association) AddressNode address;
-
-    public enum Kind {
-        PRE_BARRIER,
-        POST_BARRIER
-    }
-
-    protected WriteBarrier(NodeClass<? extends WriteBarrier> c, AddressNode address) {
-        super(c, StampFactory.forVoid());
-        this.address = address;
+    public G1ArrayRangePreWriteBarrierNode(AddressNode address, ValueNode length, int elementStride) {
+        super(TYPE, address, length, elementStride);
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        assert graph().getGuardsStage().areFrameStatesAtDeopts();
-        tool.getLowerer().lower(this, tool);
+    public Kind getKind() {
+        return Kind.PRE_BARRIER;
     }
-
-    public AddressNode getAddress() {
-        return address;
-    }
-
-    public abstract Kind getKind();
 }

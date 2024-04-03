@@ -22,23 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package jdk.graal.compiler.nodes.gc;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
-@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public class G1ArrayRangePostWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<G1ArrayRangePostWriteBarrier> TYPE = NodeClass.create(G1ArrayRangePostWriteBarrier.class);
+@NodeInfo(cycles = CYCLES_8, size = SIZE_4)
+public class SerialWriteBarrierNode extends ObjectWriteBarrierNode {
+    public static final NodeClass<SerialWriteBarrierNode> TYPE = NodeClass.create(SerialWriteBarrierNode.class);
 
-    public G1ArrayRangePostWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
-        super(TYPE, address, length, elementStride);
+    protected boolean verifyOnly;
+
+    public SerialWriteBarrierNode(AddressNode address, boolean precise) {
+        this(TYPE, address, precise);
+    }
+
+    protected SerialWriteBarrierNode(NodeClass<? extends SerialWriteBarrierNode> c, AddressNode address, boolean precise) {
+        super(c, address, null, precise);
+    }
+
+    public void setVerifyOnly(boolean value) {
+        this.verifyOnly = value;
+    }
+
+    public boolean getVerifyOnly() {
+        return verifyOnly;
     }
 
     @Override

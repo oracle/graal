@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,37 +24,42 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
-
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = CYCLES_8, size = SIZE_4)
-public class SerialWriteBarrier extends ObjectWriteBarrier {
-    public static final NodeClass<SerialWriteBarrier> TYPE = NodeClass.create(SerialWriteBarrier.class);
+@NodeInfo
+public abstract class ArrayRangeWriteBarrierNode extends WriteBarrierNode implements Lowerable {
 
-    protected boolean verifyOnly;
+    public static final NodeClass<ArrayRangeWriteBarrierNode> TYPE = NodeClass.create(ArrayRangeWriteBarrierNode.class);
+    @Input ValueNode length;
 
-    public SerialWriteBarrier(AddressNode address, boolean precise) {
-        this(TYPE, address, precise);
+    private final int elementStride;
+
+    protected ArrayRangeWriteBarrierNode(NodeClass<? extends ArrayRangeWriteBarrierNode> c, AddressNode address, ValueNode length, int elementStride) {
+        super(c, address);
+        this.length = length;
+        this.elementStride = elementStride;
     }
 
-    protected SerialWriteBarrier(NodeClass<? extends SerialWriteBarrier> c, AddressNode address, boolean precise) {
-        super(c, address, null, precise);
+    public ValueNode getLength() {
+        return length;
     }
 
-    public void setVerifyOnly(boolean value) {
-        this.verifyOnly = value;
+    public int getElementStride() {
+        return elementStride;
     }
 
-    public boolean getVerifyOnly() {
-        return verifyOnly;
-    }
-
-    @Override
-    public Kind getKind() {
-        return Kind.POST_BARRIER;
+    /**
+     * Returns this barrier's length, extended to {@code long} if needed.
+     */
+    public ValueNode getLengthAsLong() {
+        return IntegerConvertNode.convert(length, StampFactory.forKind(JavaKind.Long), graph(), NodeView.DEFAULT);
     }
 }

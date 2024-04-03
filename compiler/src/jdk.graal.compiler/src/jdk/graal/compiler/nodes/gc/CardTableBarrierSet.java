@@ -168,13 +168,13 @@ public class CardTableBarrierSet implements BarrierSet {
         }
     }
 
-    public boolean isMatchingBarrier(FixedAccessNode n, WriteBarrier barrier) {
+    public boolean isMatchingBarrier(FixedAccessNode n, WriteBarrierNode barrier) {
         if (n instanceof ReadNode) {
             return false;
         } else if (n instanceof WriteNode || n instanceof LoweredAtomicReadAndWriteNode || n instanceof AbstractCompareAndSwapNode) {
-            return barrier instanceof SerialWriteBarrier && matches(n, (SerialWriteBarrier) barrier);
+            return barrier instanceof SerialWriteBarrierNode && matches(n, (SerialWriteBarrierNode) barrier);
         } else if (n instanceof ArrayRangeWrite) {
-            return barrier instanceof SerialArrayRangeWriteBarrier && matches((ArrayRangeWrite) n, (SerialArrayRangeWriteBarrier) barrier);
+            return barrier instanceof SerialArrayRangeWriteBarrierNode && matches((ArrayRangeWrite) n, (SerialArrayRangeWriteBarrierNode) barrier);
         } else {
             throw GraalError.shouldNotReachHere("Unexpected node: " + n.getClass()); // ExcludeFromJacocoGeneratedReport
         }
@@ -183,7 +183,7 @@ public class CardTableBarrierSet implements BarrierSet {
     public void addArrayRangeBarriers(ArrayRangeWrite write) {
         if (arrayRangeWriteRequiresBarrier(write)) {
             StructuredGraph graph = write.asNode().graph();
-            SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
+            SerialArrayRangeWriteBarrierNode serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrierNode(write.getAddress(), write.getLength(), write.getElementStride()));
             graph.addAfterFixed(write.postBarrierInsertionPosition(), serialArrayRangeWriteBarrier);
         }
     }
@@ -220,26 +220,26 @@ public class CardTableBarrierSet implements BarrierSet {
     }
 
     private static boolean hasWriteBarrier(FixedAccessNode node) {
-        return node.next() instanceof SerialWriteBarrier && matches(node, (SerialWriteBarrier) node.next());
+        return node.next() instanceof SerialWriteBarrierNode && matches(node, (SerialWriteBarrierNode) node.next());
     }
 
     private static boolean hasWriteBarrier(ArrayRangeWrite write) {
         FixedWithNextNode node = write.asFixedWithNextNode();
-        return node.next() instanceof SerialArrayRangeWriteBarrier && matches(write, (SerialArrayRangeWriteBarrier) node.next());
+        return node.next() instanceof SerialArrayRangeWriteBarrierNode && matches(write, (SerialArrayRangeWriteBarrierNode) node.next());
     }
 
     private static void addSerialPostWriteBarrier(FixedAccessNode node, AddressNode address, StructuredGraph graph) {
         // Use a precise barrier for everything that might be an array write. Being too precise with
         // the barriers does not cause any correctness issues.
         boolean precise = node.getBarrierType() != BarrierType.FIELD;
-        graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(address, precise)));
+        graph.addAfterFixed(node, graph.add(new SerialWriteBarrierNode(address, precise)));
     }
 
     private static boolean isNonNullObjectValue(ValueNode value) {
         return value.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp && !StampTool.isPointerAlwaysNull(value);
     }
 
-    private static boolean matches(FixedAccessNode node, SerialWriteBarrier barrier) {
+    private static boolean matches(FixedAccessNode node, SerialWriteBarrierNode barrier) {
         if (!barrier.usePrecise()) {
             if (barrier.getAddress() instanceof OffsetAddressNode && node.getAddress() instanceof OffsetAddressNode) {
                 return GraphUtil.unproxify(((OffsetAddressNode) barrier.getAddress()).getBase()) == GraphUtil.unproxify(((OffsetAddressNode) node.getAddress()).getBase());
@@ -248,7 +248,7 @@ public class CardTableBarrierSet implements BarrierSet {
         return barrier.getAddress() == node.getAddress();
     }
 
-    private static boolean matches(ArrayRangeWrite node, SerialArrayRangeWriteBarrier barrier) {
+    private static boolean matches(ArrayRangeWrite node, SerialArrayRangeWriteBarrierNode barrier) {
         return barrier.getAddress() == node.getAddress() && node.getLength() == barrier.getLength() && node.getElementStride() == barrier.getElementStride();
     }
 

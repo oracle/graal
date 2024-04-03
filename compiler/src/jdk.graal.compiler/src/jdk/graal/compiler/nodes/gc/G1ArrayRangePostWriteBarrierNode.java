@@ -34,15 +34,15 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class G1ArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<G1ArrayRangePreWriteBarrier> TYPE = NodeClass.create(G1ArrayRangePreWriteBarrier.class);
+public class G1ArrayRangePostWriteBarrierNode extends ArrayRangeWriteBarrierNode {
+    public static final NodeClass<G1ArrayRangePostWriteBarrierNode> TYPE = NodeClass.create(G1ArrayRangePostWriteBarrierNode.class);
 
-    public G1ArrayRangePreWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
+    public G1ArrayRangePostWriteBarrierNode(AddressNode address, ValueNode length, int elementStride) {
         super(TYPE, address, length, elementStride);
     }
 
     @Override
     public Kind getKind() {
-        return Kind.PRE_BARRIER;
+        return Kind.POST_BARRIER;
     }
 }

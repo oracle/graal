@@ -36,23 +36,22 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public class G1PostWriteBarrier extends ObjectWriteBarrier implements LIRLowerable {
+public class G1PostWriteBarrierNode extends ObjectWriteBarrierNode implements LIRLowerable {
 
-    public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
+    public static final NodeClass<G1PostWriteBarrierNode> TYPE = NodeClass.create(G1PostWriteBarrierNode.class);
 
     @OptionalInput protected ValueNode object;
     protected final boolean alwaysNull;
 
-    public G1PostWriteBarrier(AddressNode address, ValueNode value, ValueNode object, boolean alwaysNull) {
+    public G1PostWriteBarrierNode(AddressNode address, ValueNode value, ValueNode object, boolean alwaysNull) {
         this(TYPE, address, value, object, alwaysNull);
     }
 
-    private G1PostWriteBarrier(NodeClass<? extends G1PostWriteBarrier> c, AddressNode address, ValueNode value, ValueNode object, boolean alwaysNull) {
+    private G1PostWriteBarrierNode(NodeClass<? extends G1PostWriteBarrierNode> c, AddressNode address, ValueNode value, ValueNode object, boolean alwaysNull) {
         super(c, address, value, object == null);
         this.object = object;
         this.alwaysNull = alwaysNull;

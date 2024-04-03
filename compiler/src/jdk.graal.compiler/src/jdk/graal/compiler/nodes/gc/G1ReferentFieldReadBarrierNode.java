@@ -42,10 +42,10 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
  * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
  */
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier implements LIRLowerable {
-    public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.create(G1ReferentFieldReadBarrier.class);
+public final class G1ReferentFieldReadBarrierNode extends ObjectWriteBarrierNode implements LIRLowerable {
+    public static final NodeClass<G1ReferentFieldReadBarrierNode> TYPE = NodeClass.create(G1ReferentFieldReadBarrierNode.class);
 
-    public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject) {
+    public G1ReferentFieldReadBarrierNode(AddressNode address, ValueNode expectedObject) {
         super(TYPE, address, expectedObject, true);
     }
 

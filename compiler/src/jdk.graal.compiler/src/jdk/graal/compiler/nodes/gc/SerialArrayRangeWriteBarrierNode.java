@@ -33,10 +33,10 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<SerialArrayRangeWriteBarrier> TYPE = NodeClass.create(SerialArrayRangeWriteBarrier.class);
+public final class SerialArrayRangeWriteBarrierNode extends ArrayRangeWriteBarrierNode {
+    public static final NodeClass<SerialArrayRangeWriteBarrierNode> TYPE = NodeClass.create(SerialArrayRangeWriteBarrierNode.class);
 
-    public SerialArrayRangeWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
+    public SerialArrayRangeWriteBarrierNode(AddressNode address, ValueNode length, int elementStride) {
         super(TYPE, address, length, elementStride);
     }
 

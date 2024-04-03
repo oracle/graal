@@ -45,14 +45,14 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class G1PreWriteBarrier extends ObjectWriteBarrier implements LIRLowerable {
+public final class G1PreWriteBarrierNode extends ObjectWriteBarrierNode implements LIRLowerable {
 
-    public static final NodeClass<G1PreWriteBarrier> TYPE = NodeClass.create(G1PreWriteBarrier.class);
+    public static final NodeClass<G1PreWriteBarrierNode> TYPE = NodeClass.create(G1PreWriteBarrierNode.class);
 
     @OptionalInput(InputType.State) private FrameState stateBefore;
     private final boolean doLoad;
 
-    public G1PreWriteBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad) {
+    public G1PreWriteBarrierNode(AddressNode address, ValueNode expectedObject, boolean doLoad) {
         super(TYPE, address, expectedObject, true);
         assert doLoad == (expectedObject == null) : Assertions.errorMessageContext("adr", address, "expectedO", expectedObject, "doLoad", doLoad);
         this.doLoad = doLoad;
