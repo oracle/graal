@@ -197,6 +197,20 @@ public class TestOptionKey {
             // Expected
         }
 
+        EconomicMap<String, String> parsedSettings = EconomicMap.create();
+        OptionsParser.parseSeparatedSettings("MyOption=a MyLongOption=42", parsedSettings);
+        Assert.assertEquals("a", parsedSettings.get("MyOption"));
+        Assert.assertEquals("42", parsedSettings.get("MyLongOption"));
+
+        OptionsParser.parseSeparatedSettings("@MyOption=a string with spaces@MyLongOption=51@MyBooleanOption=false", parsedSettings);
+        Assert.assertEquals("a string with spaces", parsedSettings.get("MyOption"));
+        Assert.assertEquals("51", parsedSettings.get("MyLongOption"));
+        Assert.assertEquals("false", parsedSettings.get("MyBooleanOption"));
+
+        // Single option also works
+        OptionsParser.parseSeparatedSettings("MyIntegerOption=1001", parsedSettings);
+        Assert.assertEquals("1001", parsedSettings.get("MyIntegerOption"));
+
         EconomicMap<String, String> optionSettings = EconomicMap.create();
         optionSettings.put("MyOption", "value 1");
         optionSettings.put("MyIntegerOption", "1001");

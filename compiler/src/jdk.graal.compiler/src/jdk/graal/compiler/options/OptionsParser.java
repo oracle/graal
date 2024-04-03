@@ -33,6 +33,7 @@ import java.util.Formatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.ServiceLoader;
+import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -97,6 +98,27 @@ public class OptionsParser {
             throw new IllegalArgumentException("Option setting has does not match the pattern <name>=<value>: " + optionSetting);
         }
         dst.put(optionSetting.substring(0, eqIndex), optionSetting.substring(eqIndex + 1));
+    }
+
+    /**
+     * Parses a whitespace-separated list of option settings, adding parsed key-value pairs to the
+     * given map. If the options string starts with a non-alphanumeric character, that character is
+     * used as a delimiter instead.
+     *
+     * @param separatedOptions string containing a separated list of option settings.
+     * @param settings map to which parsed option settings will be stored as key-value pairs.
+     */
+    public static void parseSeparatedSettings(String separatedOptions, EconomicMap<String, String> settings) {
+        String sepRegex = "\\s+";
+        String options = separatedOptions;
+        if (!separatedOptions.isEmpty() && !Character.isLetterOrDigit(separatedOptions.charAt(0))) {
+            sepRegex = Pattern.quote(separatedOptions.substring(0, 1)) + "+";
+            options = separatedOptions.substring(1);
+        }
+
+        for (String optionSetting : options.split(sepRegex)) {
+            OptionsParser.parseOptionSettingTo(optionSetting, settings);
+        }
     }
 
     /**
