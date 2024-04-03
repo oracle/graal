@@ -136,7 +136,12 @@ public final class EspressoEnv {
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = env.getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = env.getOptions().get(EspressoOptions.TrivialMethodSize);
-        this.RegexSubstitutions = env.getOptions().get(EspressoOptions.UseTRegex);
+        boolean regexSubstitutions = env.getOptions().get(EspressoOptions.UseTRegex);
+        if (regexSubstitutions && !env.getInternalLanguages().containsKey("regex")) {
+            context.getLogger().warning("UseTRegex is set to true but the 'regex' language is not available. Ignoring UseTRegex.");
+            regexSubstitutions = false;
+        }
+        this.RegexSubstitutions = regexSubstitutions;
         boolean useHostFinalReferenceOption = env.getOptions().get(EspressoOptions.UseHostFinalReference);
         this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
         if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {

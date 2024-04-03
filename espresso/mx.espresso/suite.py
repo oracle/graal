@@ -78,10 +78,6 @@ suite = {
                 "name" : "java-benchmarks",
                 "subdir": True,
             },
-            {
-                "name": "regex",
-                "subdir": True,
-            },
         ],
     },
 
@@ -118,7 +114,6 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "com.oracle.truffle.espresso.jdwp",
                 "com.oracle.truffle.espresso.shadowed.asm",
-                "regex:TREGEX",
             ],
             "requires": [
                 "java.logging",
@@ -379,7 +374,6 @@ suite = {
             "distDependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "regex:TREGEX",
             ],
             "maven" : {
                 "artifactId" : "espresso-language",
