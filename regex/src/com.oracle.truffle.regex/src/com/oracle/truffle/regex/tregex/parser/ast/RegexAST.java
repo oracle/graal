@@ -98,6 +98,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      */
     private Group wrappedRoot;
     private final List<Group> captureGroups = new ArrayList<>();
+    private final List<Token.Quantifier> quantifiers = new ArrayList<>();
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
     private final GlobalSubTreeIndex subtrees = new GlobalSubTreeIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
@@ -174,8 +175,17 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return groupCount.getCount();
     }
 
-    public Counter getQuantifierCount() {
-        return quantifierCount;
+    public int getQuantifierCount() {
+        return quantifiers.size();
+    }
+
+    public void registerQuantifier(QuantifiableTerm quantifiable) {
+        quantifiable.getQuantifier().setIndex(quantifiers.size());
+        quantifiers.add(quantifiable.getQuantifier());
+    }
+
+    public Token.Quantifier[] getQuantifierArray() {
+        return quantifiers.toArray(Token.Quantifier[]::new);
     }
 
     public void registerZeroWidthQuantifiable(QuantifiableTerm zeroWidthQuantifiable) {

@@ -502,7 +502,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     private void setQuantifierIndex(QuantifiableTerm term) {
         assert term.hasQuantifier();
         if (isForward() && term.getQuantifier().getIndex() < 0) {
-            term.getQuantifier().setIndex(ast.getQuantifierCount().inc());
+            ast.registerQuantifier(term);
         }
     }
 

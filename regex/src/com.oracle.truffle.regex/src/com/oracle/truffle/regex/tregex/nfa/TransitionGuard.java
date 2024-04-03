@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.EnumSet;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.ConditionalBackReferenceGroup;
@@ -47,12 +49,10 @@ import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-import java.util.Objects;
-
 /**
  * Transition guards introduced by bounded {@link Quantifier}s.
  */
-public final class QuantifierGuard {
+public final class TransitionGuard {
 
     public enum Kind {
         /**
@@ -115,124 +115,114 @@ public final class QuantifierGuard {
         /**
          * Transition is entering the then-branch (the first alternative) of a
          * {@link ConditionalBackReferenceGroup}. The capture group identified by
-         * {@link #getIndex()} must be matched in order to proceed.
+         * {@link #getIndex(long)} must be matched in order to proceed.
          */
         checkGroupMatched,
         /**
          * Transition is entering the else-branch (the second alternative) of a
          * {@link ConditionalBackReferenceGroup}. The capture group identified by
-         * {@link #getIndex()} must be *not* matched in order to proceed.
+         * {@link #getIndex(long)} must be *not* matched in order to proceed.
          */
         checkGroupNotMatched
     }
 
-    public static final QuantifierGuard[] NO_GUARDS = {};
+    private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.enter, Kind.loop, Kind.loopInc, Kind.exit, Kind.exitReset);
+    private static final EnumSet<Kind> ZERO_WIDTH_QUANTIFIER_GUARDS = EnumSet.of(Kind.enterZeroWidth, Kind.exitZeroWidth, Kind.escapeZeroWidth);
+    private static final EnumSet<Kind> GROUP_GUARDS = EnumSet.of(Kind.updateCG, Kind.updateRecursiveBackrefPointer, Kind.checkGroupMatched, Kind.checkGroupNotMatched);
 
-    private final Kind kind;
-    private final Quantifier quantifier;
-    private final int index;
+    public static final long[] NO_GUARDS = {};
 
-    private QuantifierGuard(Kind kind, Quantifier quantifier) {
-        this.kind = kind;
-        this.quantifier = quantifier;
-        this.index = -1;
+    public static long createEnter(Quantifier quantifier) {
+        return create(Kind.enter, quantifier);
     }
 
-    private QuantifierGuard(Kind kind, int index) {
-        this.kind = kind;
-        this.quantifier = null;
-        this.index = index;
+    public static long createLoop(Quantifier quantifier) {
+        return create(Kind.loop, quantifier);
     }
 
-    public static QuantifierGuard createEnter(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.enter, quantifier);
+    public static long createLoopInc(Quantifier quantifier) {
+        return create(Kind.loopInc, quantifier);
     }
 
-    public static QuantifierGuard createLoop(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.loop, quantifier);
+    public static long createExit(Quantifier quantifier) {
+        return create(Kind.exit, quantifier);
     }
 
-    public static QuantifierGuard createLoopInc(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.loopInc, quantifier);
+    public static long createClear(Quantifier quantifier) {
+        return create(Kind.exitReset, quantifier);
     }
 
-    public static QuantifierGuard createExit(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.exit, quantifier);
+    public static long createEnterZeroWidth(Quantifier quantifier) {
+        return createZeroWidth(Kind.enterZeroWidth, quantifier);
     }
 
-    public static QuantifierGuard createClear(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.exitReset, quantifier);
+    public static long createExitZeroWidth(Quantifier quantifier) {
+        return createZeroWidth(Kind.exitZeroWidth, quantifier);
     }
 
-    public static QuantifierGuard createEnterZeroWidth(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.enterZeroWidth, quantifier);
+    public static long createEscapeZeroWidth(Quantifier quantifier) {
+        return createZeroWidth(Kind.escapeZeroWidth, quantifier);
     }
 
-    public static QuantifierGuard createExitZeroWidth(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.exitZeroWidth, quantifier);
+    public static long createUpdateCG(int index) {
+        return create(Kind.updateCG, index);
     }
 
-    public static QuantifierGuard createEscapeZeroWidth(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.escapeZeroWidth, quantifier);
+    public static long createUpdateRecursiveBackref(int index) {
+        return create(Kind.updateRecursiveBackrefPointer, index);
     }
 
-    public static QuantifierGuard createUpdateCG(int index) {
-        return new QuantifierGuard(Kind.updateCG, index);
+    public static long createCheckGroupMatched(int groupNumber) {
+        return create(Kind.checkGroupMatched, groupNumber);
     }
 
-    public static QuantifierGuard createUpdateRecursiveBackref(int index) {
-        return new QuantifierGuard(Kind.updateRecursiveBackrefPointer, index);
+    public static long createCheckGroupNotMatched(int groupNumber) {
+        return create(Kind.checkGroupNotMatched, groupNumber);
     }
 
-    public static QuantifierGuard createCheckGroupMatched(int groupNumber) {
-        return new QuantifierGuard(Kind.checkGroupMatched, groupNumber);
+    private static long create(Kind kind, Quantifier q) {
+        assert q.hasIndex();
+        return create(kind, q.getIndex());
     }
 
-    public static QuantifierGuard createCheckGroupNotMatched(int groupNumber) {
-        return new QuantifierGuard(Kind.checkGroupNotMatched, groupNumber);
+    private static long createZeroWidth(Kind kind, Quantifier q) {
+        assert q.hasZeroWidthIndex();
+        return create(kind, q.getZeroWidthIndex());
     }
 
-    public Kind getKind() {
-        return kind;
+    private static long create(Kind kind, int index) {
+        return ((long) kind.ordinal()) << 32 | index;
     }
 
-    public Quantifier getQuantifier() {
-        return quantifier;
+    public static Kind getKind(long guard) {
+        return Kind.values()[(int) ((guard >>> 32) & 0xff)];
+    }
+
+    public static int getQuantifierIndex(long guard) {
+        assert QUANTIFIER_GUARDS.contains(getKind(guard));
+        return (int) guard;
+    }
+
+    public static int getZeroWidthQuantifierIndex(long guard) {
+        assert ZERO_WIDTH_QUANTIFIER_GUARDS.contains(getKind(guard));
+        return (int) guard;
     }
 
     /**
      * Returns the capture group boundary index for {@code updateCG} guards.
      */
-    public int getIndex() {
-        return index;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof QuantifierGuard)) {
-            return false;
-        }
-        QuantifierGuard other = (QuantifierGuard) obj;
-        return this.kind == other.kind && Objects.equals(this.quantifier, other.quantifier) && this.index == other.index;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(kind, quantifier, index);
+    public static int getIndex(long guard) {
+        assert GROUP_GUARDS.contains(getKind(guard));
+        return (int) guard;
     }
 
     @TruffleBoundary
-    @Override
-    public String toString() {
-        if (quantifier != null) {
-            return kind + " " + quantifier;
-        } else {
-            return kind + " " + index;
-        }
+    public static String toString(long guard) {
+        return getKind(guard) + " " + ((int) guard);
     }
 
     @TruffleBoundary
-    public JsonValue toJson() {
-        return Json.val(toString());
+    public static JsonValue toJson(long guard) {
+        return Json.val(toString(guard));
     }
 }
