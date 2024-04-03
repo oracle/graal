@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.buffer;
 
 import java.util.Arrays;
+import java.util.PrimitiveIterator;
 
 import com.oracle.truffle.regex.util.EmptyArrays;
 
@@ -63,7 +64,7 @@ import com.oracle.truffle.regex.util.EmptyArrays;
  * }
  * </pre>
  */
-public class LongArrayBuffer extends AbstractArrayBuffer {
+public class LongArrayBuffer extends AbstractArrayBuffer implements Iterable<Long> {
 
     protected long[] buf;
 
@@ -115,5 +116,32 @@ public class LongArrayBuffer extends AbstractArrayBuffer {
 
     public long[] toArray() {
         return isEmpty() ? EmptyArrays.LONG : Arrays.copyOf(buf, length);
+    }
+
+    @Override
+    public PrimitiveIterator.OfLong iterator() {
+        return new LongArrayBufferIterator(buf, length);
+    }
+
+    private static final class LongArrayBufferIterator implements PrimitiveIterator.OfLong {
+
+        private final long[] buf;
+        private final int size;
+        private int i = 0;
+
+        private LongArrayBufferIterator(long[] buf, int size) {
+            this.buf = buf;
+            this.size = size;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < size;
+        }
+
+        @Override
+        public long nextLong() {
+            return buf[i++];
+        }
     }
 }
