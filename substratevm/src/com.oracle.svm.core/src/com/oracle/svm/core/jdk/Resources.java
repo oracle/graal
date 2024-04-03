@@ -88,9 +88,9 @@ public final class Resources {
      * com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<Pair<Module, String>, ResourceStorageEntryBase> resources = ImageHeapMap.create();
-    private final EconomicMap<ModuleResourcePair, Boolean> includePatterns = ImageHeapMap.create();
+    private final EconomicMap<RequestedPattern, Boolean> requestedPatterns = ImageHeapMap.create();
 
-    public record ModuleResourcePair(String module, String resource) {
+    public record RequestedPattern(String module, String resource) {
     }
 
     /**
@@ -257,9 +257,9 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerIncludePattern(String module, String pattern) {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
-        synchronized (includePatterns) {
+        synchronized (requestedPatterns) {
             updateTimeStamp();
-            includePatterns.put(new ModuleResourcePair(module, handleEscapedCharacters(pattern)), Boolean.TRUE);
+            requestedPatterns.put(new RequestedPattern(module, handleEscapedCharacters(pattern)), Boolean.TRUE);
         }
     }
 
@@ -318,9 +318,9 @@ public final class Resources {
         ResourceStorageEntryBase entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                MapCursor<ModuleResourcePair, Boolean> cursor = includePatterns.getEntries();
+                MapCursor<RequestedPattern, Boolean> cursor = requestedPatterns.getEntries();
                 while (cursor.advance()) {
-                    ModuleResourcePair moduleResourcePair = cursor.getKey();
+                    RequestedPattern moduleResourcePair = cursor.getKey();
                     if (Objects.equals(moduleName, moduleResourcePair.module) &&
                                     (matchResource(moduleResourcePair.resource, resourceName) || matchResource(moduleResourcePair.resource, canonicalResourceName))) {
                         return null;
