@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-51136 Uninitialized static slots of a `Frame` can now be read, and returns the default value for the access kind. 
 * GR-38322 Added `--engine.TraceMissingSafepointPollInterval=N` to show Java stacktraces when there are [missing `TruffleSafepoint.poll()` calls](https://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md#find-missing-safepoint-polls).
 * GR-52644 Deprecated `TruffleLanguage.Registration.needsAllEncodings`, no longer needs to be declared. It is sufficient for a language module to require `org.graalvm.shadowed.jcodings` to enable all string encodings.
+* GR-53074 Replacing a `Node` now properly invalidates the `CallTarget` for a `RootNode` that is also a `BytecodeOSRNode`.
 
 ## Version 24.0.0
 

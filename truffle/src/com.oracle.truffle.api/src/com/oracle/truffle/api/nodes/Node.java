@@ -506,6 +506,7 @@ public abstract class Node implements NodeInterface, Cloneable {
             if (node instanceof BytecodeOSRNode) {
                 NodeAccessor.RUNTIME.onOSRNodeReplaced((BytecodeOSRNode) node, oldNode, newNode, reason);
             }
+
             if (consumed) {
                 break;
             }
