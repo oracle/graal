@@ -111,10 +111,13 @@ class WindowsBuildEnvironmentUtil {
                             "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
                             "-property", "installationPath"});
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                Path installationPath = Paths.get(reader.readLine());
-                Path possibleLocation = installationPath.resolve(VCVARSALL_SUBPATH);
-                if (isRegularReadableFile(possibleLocation)) {
-                    return possibleLocation;
+                String installationPathLine = reader.readLine();
+                if (installationPathLine != null) {
+                    Path installationPath = Paths.get(installationPathLine);
+                    Path possibleLocation = installationPath.resolve(VCVARSALL_SUBPATH);
+                    if (isRegularReadableFile(possibleLocation)) {
+                        return possibleLocation;
+                    }
                 }
             }
         } catch (IOException e) {
