@@ -145,12 +145,11 @@ public class DebugOptions {
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
     @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
-    @Option(help = "Specify the dump level if CompilationFailureAction=Diagnose is used. " +
-                    "See CompilationFailureAction for details.", type = OptionType.User)
-    public static final OptionKey<String> DiagnoseDumpLevel = new OptionKey<>(":" + DebugContext.VERBOSE_LEVEL);
-    @Option(help = "Specify the log level if CompilationFailureAction#Diagnose is used." +
-            "See CompilationFailureAction for details. file:doc-files/CompilationFailureActionHelp.txt", type = OptionType.Debug)
-    public static final OptionKey<String> DiagnoseLogLevel = new OptionKey<>(":" + DebugContext.VERBOSE_LEVEL);
+    @Option(help = "Option values to use during a retry compilation triggered by CompilationFailureAction=Diagnose " +
+                   "or CompilationFailureAction=ExitVM. If the value starts with a non-word character, that " +
+                   "character is used as the separator between options instead of a space. For example: " +
+                   "\\\"DiagnoseOptions=@Log=Inlining@LogFile=/path/with space.\\\"", type = OptionType.User)
+    public static final OptionKey<String> DiagnoseOptions = new OptionKey<>("Dump=:" + DebugContext.VERBOSE_LEVEL);
     @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DisableIntercept = new OptionKey<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
