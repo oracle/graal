@@ -108,6 +108,7 @@ class WindowsBuildEnvironmentUtil {
         try {
             Process p = Runtime.getRuntime().exec(new String[]{vsWhereExe.toAbsolutePath().toString(),
                             "-version", VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION,
+                            "-products", "*", /* https://github.com/microsoft/vswhere/issues/22 */
                             "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
                             "-property", "installationPath"});
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
