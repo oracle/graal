@@ -1294,7 +1294,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Te
         if java_home_jdk().javaCompliance >= '9':
             # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9
             # Skips initial check benchmark which tests for javac.jar on classpath.
-            runArgs += ["-pja", "-ict"]
+            runArgs += ["-ict"]
         return runArgs
 
     def vmArgs(self, bmSuiteArgs):
