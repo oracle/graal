@@ -31,9 +31,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.shadowed.org.json.JSONArray;
@@ -43,9 +40,11 @@ import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 public class ProfilerCLITest {
@@ -364,8 +363,8 @@ public class ProfilerCLITest {
         final long sampleCount;
         final boolean gatherSelfHitTimes;
         synchronized (sampler) {
-            Map<TruffleContext, CPUSamplerData> data = sampler.getData();
-            CPUSamplerData samplerData = data.values().iterator().next();
+            List<CPUSamplerData> data = sampler.getDataList();
+            CPUSamplerData samplerData = data.iterator().next();
             threadToNodesMap = samplerData.getThreadData();
             period = sampler.getPeriod();
             sampleCount = samplerData.getSamples();

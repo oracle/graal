@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 23.1.4
+* GR-53413: `CPUSampler` no longer guarantees to keep all contexts on the engine alive. As a result `CPUSampler#getData()` is deprecated and may not return data for all contexts on the engine. The contexts that were already collected by GC won't be in the returned map. `CPUSamplerData#getContext()` is also deprecated and returns null if the context was already collected.
+* GR-53413: `CPUSamplerData#getDataList()` was introduced and returns all data collected by the sampler as a list of `CPUSamplerData`. For each context on the engine, including the ones that were already collected, there is a corresponding element in the list. `CPUSamplerData#getContextIndex()` returns the index of the data in the list.
+
 ## Version 23.0.0
 * GR-41407: Added new option `--dap.SourcePath` to allow to resolve sources with relative paths.
 
