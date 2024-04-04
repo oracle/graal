@@ -697,26 +697,39 @@ public final class ProbeNode extends Node {
         return visitor.index;
     }
 
-    private EventChainNode findParentChain(VirtualFrame frame, EventBinding<?> binding) {
+    final ProbeNode findParentProbe() {
         Node node = getParent().getParent();
         while (node != null) {
-            if (node instanceof WrapperNode) {
-                ProbeNode probe = ((WrapperNode) node).getProbeNode();
-                EventChainNode c = probe.lazyUpdate(frame);
-                if (c != null) {
-                    c = c.find(binding);
-                }
-                if (c != null) {
-                    return c;
+            ProbeNode probe = null;
+            if (node instanceof WrapperNode wrapper) {
+                return wrapper.getProbeNode();
+            } else if (node instanceof InstrumentableNode instrumentable) {
+                probe = instrumentable.findProbe();
+                if (probe != null && probe.eagerProbe && probe != this) {
+                    assert probe != this;
+                    return probe;
                 }
             } else if (node instanceof RootNode) {
-                break;
+                return null;
             }
             node = node.getParent();
         }
-        if (node == null) {
-            throw new IllegalStateException("The AST node is not yet adopted. ");
+        throw new IllegalStateException("The AST node is not yet adopted. ");
+    }
+
+    private EventChainNode findParentChain(VirtualFrame frame, EventBinding<?> binding) {
+        ProbeNode probe = this;
+        while ((probe = probe.findParentProbe()) != null) {
+            assert probe != this;
+            EventChainNode c = probe.lazyUpdate(frame);
+            if (c != null) {
+                c = c.find(binding);
+            }
+            if (c != null) {
+                return c;
+            }
         }
+
         return null;
 
     }
