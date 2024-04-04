@@ -165,6 +165,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
@@ -177,6 +178,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.services.Services;
 
@@ -482,6 +485,8 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
+    private static final SpeculationReasonGroup JVMTI_NOTIFY_ALLOCATE_INSTANCE = new SpeculationReasonGroup("JvmtiNotifyAllocateInstance");
+
     private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
         r.register(new InvocationPlugin("copyMemory0", Receiver.class, Object.class, long.class, Object.class, long.class, long.class) {
@@ -495,16 +500,18 @@ public class HotSpotGraphBuilderPlugins {
         r.register(new InvocationPlugin("allocateInstance", Receiver.class, Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
-                if (b.getGraph().getProfilingInfo() != null && b.getGraph().getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.RuntimeConstraint) > 20) {
-                    // Heuristic to prevent deoptimization loops.
-                    return false;
-                }
                 if (config.shouldNotifyObjectAllocAddress != 0) {
+                    SpeculationLog speculationLog = b.getGraph().getSpeculationLog();
+                    SpeculationReason speculationReason = JVMTI_NOTIFY_ALLOCATE_INSTANCE.createSpeculationReason();
+                    if (speculationLog == null || !speculationLog.maySpeculate(speculationReason)) {
+                        return false;
+                    }
                     try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
                         OffsetAddressNode address = OffsetAddressNode.create(helper.asWord(config.shouldNotifyObjectAllocAddress));
                         ValueNode shouldPostVMObjectAlloc = b.add(new JavaReadNode(JavaKind.Int, address, LocationIdentity.ANY_LOCATION, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
                         LogicNode testShouldPostVMObjectAlloc = IntegerEqualsNode.create(shouldPostVMObjectAlloc, ConstantNode.forInt(0), NodeView.DEFAULT);
-                        FixedGuardNode guard = new FixedGuardNode(testShouldPostVMObjectAlloc, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateRecompile);
+                        FixedGuardNode guard = new FixedGuardNode(testShouldPostVMObjectAlloc, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateRecompile,
+                                        speculationLog.speculate(speculationReason), false);
                         b.add(guard);
                     }
                 }
