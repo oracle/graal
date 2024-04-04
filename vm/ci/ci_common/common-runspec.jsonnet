@@ -262,7 +262,14 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       llvm_jdk(b)[b.jdk] + default_os_arch(b)[b.os][b.arch]
   })),
 
-  local extras(main_target, deploy=true, bench=false) = diskspace_required(vm.default_diskspace_required(self.os, self.arch, deploy).diskspace_required) + task_spec({ targets+: [main_target] + (if (deploy) then ['deploy'] else []) + (if (bench) then ['bench'] else []) }+ (if (bench) then { capabilities+: ['no_frequency_scaling'] } else {})),
+  local extras(main_target, deploy=true, bench=false) =
+    diskspace_required(vm.default_diskspace_required(self.os, self.arch, deploy).diskspace_required)
+    + task_spec({
+        targets+: [main_target] + (if (deploy) then ['deploy'] else []) + (if (bench) then ['bench'] else [])
+      }
+      + (if (bench) then { capabilities+: ['no_frequency_scaling'] } else {})
+    ),
+
   local deploy_vm_common(main_target, deploy=true, bench=false) = extras(main_target, deploy, bench) + deploy_graalvm_base + common_os_deploy + name,
   local deploy_vm_espresso_common(main_target, deploy=true, bench=false) = extras(main_target, deploy, bench) + deploy_graalvm_espresso + common_os_deploy + name,
 
