@@ -568,7 +568,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return The number of compilation tiers this element was recorded in. Tier 0 is the
-         * interpreter.
+         *         interpreter.
          * @since 21.3.0
          */
         public int getNumberOfTiers() {
@@ -577,7 +577,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return The number of times this element was recorded on top of the stack, executing in
-         * the given compilation tier.
+         *         the given compilation tier.
          * @since 21.3.0
          */
         public int getTierSelfCount(int tier) {
@@ -589,7 +589,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return The number of times this element was recorded anywhere on the stack, executing in
-         * the given compilation tier.
+         *         the given compilation tier.
          * @since 21.3.0
          */
         public int getTierTotalCount(int tier) {
@@ -625,7 +625,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return An immutable list of time stamps for the times that the element was on the top of
-         * the stack
+         *         the stack
          * @since 0.30
          */
         public List<Long> getSelfHitTimes() {
@@ -763,7 +763,8 @@ public final class CPUSampler implements Closeable {
                 if (context.isClosed()) {
                     continue;
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, Collections.singletonMap(context, activeContexts.get(context)), !sampleContextInitialization, period, TimeUnit.MILLISECONDS);
+                List<StackSample> samples = safepointStackSampler.sample(env, Collections.singletonMap(context, activeContexts.get(context)), !sampleContextInitialization, period,
+                                TimeUnit.MILLISECONDS);
                 resultsToProcess.add(new SamplingResult(samples, context, taskStartTime));
             }
         }

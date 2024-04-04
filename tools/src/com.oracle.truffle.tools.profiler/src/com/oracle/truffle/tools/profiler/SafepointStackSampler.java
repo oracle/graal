@@ -24,11 +24,9 @@
  */
 package com.oracle.truffle.tools.profiler;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,7 +44,6 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;

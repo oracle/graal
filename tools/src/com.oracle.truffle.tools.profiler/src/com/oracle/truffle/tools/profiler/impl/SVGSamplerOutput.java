@@ -24,28 +24,29 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.CPUSamplerData;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
-import org.graalvm.shadowed.org.json.JSONArray;
-import org.graalvm.shadowed.org.json.JSONObject;
-
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
+
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
+
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
+import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 final class SVGSamplerOutput {
 
@@ -153,7 +154,8 @@ final class SVGSamplerOutput {
     }
 
     public static String ttfString(String color, String font, double size, double x, double y, String text, String loc, String extras) {
-        return String.format(Locale.ROOT, "<text text-anchor=\"%s\" x=\"%f\" y=\"%f\" font-size=\"%f\" font-family=\"%s\" fill=\"%s\" %s >%s</text>\n", loc == null ? "left" : loc, x, y, size, font, color,
+        return String.format(Locale.ROOT, "<text text-anchor=\"%s\" x=\"%f\" y=\"%f\" font-size=\"%f\" font-family=\"%s\" fill=\"%s\" %s >%s</text>\n", loc == null ? "left" : loc, x, y, size, font,
+                        color,
                         extras == null ? "" : extras, escape(text));
     }
 
