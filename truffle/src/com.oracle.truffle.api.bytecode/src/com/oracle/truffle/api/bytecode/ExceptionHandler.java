@@ -38,35 +38,71 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.introspection;
+package com.oracle.truffle.api.bytecode;
 
-import com.oracle.truffle.api.source.SourceSection;
+public final class ExceptionHandler {
 
-public final class SourceInformation {
+    private static final int HANDLER_EPILOG_EXCEPTIONAL = -1;
+    private static final int HANDLER_TAG_EXCEPTIONAL = -2;
+
     private final Object[] data;
 
-    SourceInformation(Object[] data) {
+    ExceptionHandler(Object[] data) {
         this.data = data;
     }
 
-    public int getBeginBci() {
+    public int getStartIndex() {
         return (int) data[0];
     }
 
-    public int getEndBci() {
+    public boolean isEpilogExceptionalHandler() {
+        return (int) data[4] == HANDLER_EPILOG_EXCEPTIONAL;
+    }
+
+    public boolean isTagExceptionalHandler() {
+        return (int) data[4] == HANDLER_TAG_EXCEPTIONAL;
+    }
+
+    public int getEndIndex() {
         return (int) data[1];
     }
 
-    public SourceSection getSourceSection() {
-        return (SourceSection) data[2];
+    private boolean isSpecialHandler() {
+        return (int) data[4] < 0;
+    }
+
+    public int getHandlerIndex() {
+        if (isSpecialHandler()) {
+            return -1;
+        }
+        return (int) data[2];
+    }
+
+    public int getExceptionVariableIndex() {
+        if (isSpecialHandler()) {
+            return -1;
+        }
+        return (int) data[4];
     }
 
     @Override
     public String toString() {
-        Object sourceSection = getSourceSection();
-        if (sourceSection == null) {
-            sourceSection = "<none>";
+        String description;
+        if (isSpecialHandler()) {
+            switch ((int) data[4]) {
+                case HANDLER_TAG_EXCEPTIONAL:
+                    description = String.format("tag.exceptional tag(%d)", (int) data[3]);
+                    break;
+                case HANDLER_EPILOG_EXCEPTIONAL:
+                    description = String.format("epilog.exceptional");
+                    break;
+                default:
+                    description = "Unknown Special Handler";
+                    break;
+            }
+        } else {
+            description = String.format("%04x ex: local(%d)", getHandlerIndex(), getExceptionVariableIndex());
         }
-        return String.format("[%04x .. %04x] %s", getBeginBci(), getEndBci(), sourceSection);
+        return String.format("[%04x : %04x] -> %s", getStartIndex(), getEndIndex(), description);
     }
 }

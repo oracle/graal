@@ -46,7 +46,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.introspection.Argument;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
@@ -336,7 +335,7 @@ public @interface GenerateBytecode {
      * Whether to generate introspection data for specializations. The data is accessible using
      * {@link Argument#getSpecializationInfo()}.
      *
-     * @see com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection
+     * @see com.oracle.truffle.api.bytecode.BytecodeIntrospection
      * @since 24.1
      */
     boolean enableSpecializationIntrospection() default true;

@@ -38,13 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.introspection;
+package com.oracle.truffle.api.bytecode;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import com.oracle.truffle.api.bytecode.BytecodeLocation;
 
 public final class Instruction {
 

@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.bytecode;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.introspection.TagTree;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
