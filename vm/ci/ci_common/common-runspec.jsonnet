@@ -263,8 +263,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   })),
 
   local extras(main_target, deploy=true, bench=false) =
-    diskspace_required(vm.default_diskspace_required(self.os, self.arch, deploy).diskspace_required)
-    + task_spec({
+    task_spec({
         targets+: [main_target] + (if (deploy) then ['deploy'] else []) + (if (bench) then ['bench'] else [])
       }
       + (if (bench) then { capabilities+: ['no_frequency_scaling'] } else {})
