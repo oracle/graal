@@ -50,7 +50,7 @@ import jdk.graal.compiler.core.GraalCompilerOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
-import jdk.graal.compiler.truffle.test.SLTruffleGraalTestSuite;
+import jdk.graal.compiler.truffle.test.SLCompileASTTestSuite;
 
 /**
  * Tests support for dumping graphs and other info useful for debugging a compiler crash.
@@ -208,7 +208,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Djdk.graal.CrashAt=root test1"),
-                        SLTruffleGraalTestSuite.class.getName(), "test");
+                        SLCompileASTTestSuite.class.getName(), "test");
     }
 
     /**
@@ -227,7 +227,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Djdk.graal.CrashAt=root test1:PermanentBailout"),
-                        SLTruffleGraalTestSuite.class.getName(), "test");
+                        SLCompileASTTestSuite.class.getName(), "test");
     }
 
     private static final boolean VERBOSE = Boolean.getBoolean("CompilationWrapperTest.verbose");

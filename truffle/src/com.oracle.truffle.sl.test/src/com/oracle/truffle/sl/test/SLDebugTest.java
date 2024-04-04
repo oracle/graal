@@ -1185,55 +1185,61 @@ public class SLDebugTest extends AbstractSLTest {
 
             // Step through the program
             StepDepth lastStep = steps[0];
+            int postitionIndex = 0;
             int stepIndex = 0;
             StepConfig expressionStepConfig = StepConfig.newBuilder().sourceElements(elements).build();
             for (String stepPos : stepPositions.split("\n")) {
                 if (stepIndex < steps.length) {
                     lastStep = steps[stepIndex++];
                 }
-                final StepDepth stepDepth = lastStep;
-                expectSuspended((SuspendedEvent event) -> {
-                    if (!includeStatements) {
-                        assertTrue("Needs to be an expression", event.hasSourceElement(SourceElement.EXPRESSION));
-                    } else {
-                        assertTrue("Needs to be an expression or statement",
-                                        event.hasSourceElement(SourceElement.EXPRESSION) || event.hasSourceElement(SourceElement.STATEMENT));
-                    }
-                    SourceSection ss = event.getSourceSection();
-                    DebugValue[] inputValues = event.getInputValues();
-                    String input = "";
-                    if (inputValues != null) {
-                        StringBuilder inputBuilder = new StringBuilder("(");
-                        for (DebugValue v : inputValues) {
-                            if (inputBuilder.length() > 1) {
-                                inputBuilder.append(',');
-                            }
-                            if (v != null) {
-                                inputBuilder.append(v.toDisplayString());
-                            } else {
-                                inputBuilder.append("null");
-                            }
+                try {
+                    final StepDepth stepDepth = lastStep;
+                    expectSuspended((SuspendedEvent event) -> {
+                        if (!includeStatements) {
+                            assertTrue("Needs to be an expression", event.hasSourceElement(SourceElement.EXPRESSION));
+                        } else {
+                            assertTrue("Needs to be an expression or statement",
+                                            event.hasSourceElement(SourceElement.EXPRESSION) || event.hasSourceElement(SourceElement.STATEMENT));
                         }
-                        inputBuilder.append(") ");
-                        input = inputBuilder.toString();
-                    }
-                    DebugValue returnValue = event.getReturnValue();
-                    String ret = (returnValue != null) ? returnValue.toDisplayString() : "<none>";
+                        SourceSection ss = event.getSourceSection();
+                        DebugValue[] inputValues = event.getInputValues();
+                        String input = "";
+                        if (inputValues != null) {
+                            StringBuilder inputBuilder = new StringBuilder("(");
+                            for (DebugValue v : inputValues) {
+                                if (inputBuilder.length() > 1) {
+                                    inputBuilder.append(',');
+                                }
+                                if (v != null) {
+                                    inputBuilder.append(v.toDisplayString());
+                                } else {
+                                    inputBuilder.append("null");
+                                }
+                            }
+                            inputBuilder.append(") ");
+                            input = inputBuilder.toString();
+                        }
+                        DebugValue returnValue = event.getReturnValue();
+                        String ret = (returnValue != null) ? returnValue.toDisplayString() : "<none>";
 
-                    String actualPos = "<" + ss.getStartLine() + ":" + ss.getStartColumn() + " - " + ss.getEndLine() + ":" + ss.getEndColumn() + "> " + input + ret;
-                    assertEquals(stepPos, actualPos);
-                    switch (stepDepth) {
-                        case INTO:
-                            event.prepareStepInto(expressionStepConfig);
-                            break;
-                        case OVER:
-                            event.prepareStepOver(expressionStepConfig);
-                            break;
-                        case OUT:
-                            event.prepareStepOut(expressionStepConfig);
-                            break;
-                    }
-                });
+                        String actualPos = "<" + ss.getStartLine() + ":" + ss.getStartColumn() + " - " + ss.getEndLine() + ":" + ss.getEndColumn() + "> " + input + ret;
+                        assertEquals(stepPos, actualPos);
+                        switch (stepDepth) {
+                            case INTO:
+                                event.prepareStepInto(expressionStepConfig);
+                                break;
+                            case OVER:
+                                event.prepareStepOver(expressionStepConfig);
+                                break;
+                            case OUT:
+                                event.prepareStepOut(expressionStepConfig);
+                                break;
+                        }
+                    });
+                } catch (AssertionError e) {
+                    throw new AssertionError("Failure at step " + postitionIndex + ":" + stepPos + ": " + e.getMessage(), e);
+                }
+                postitionIndex++;
             }
             expectDone();
         }
@@ -1241,95 +1247,110 @@ public class SLDebugTest extends AbstractSLTest {
 
     @Test
     public void testExpressionStepInto() {
-        final String stepIntoPositions = "<2:3 - 2:7> <none>\n" +
-                        "<2:7 - 2:7> <none>\n" +
-                        "<2:7 - 2:7> () 2\n" +
-                        "<2:3 - 2:7> (2) 2\n" +
-                        "<3:10 - 3:25> <none>\n" +
-                        "<3:10 - 3:15> <none>\n" +
-                        "<3:10 - 3:10> <none>\n" +
-                        "<3:10 - 3:10> () 2\n" +
-                        "<3:15 - 3:15> <none>\n" +
-                        "<3:15 - 3:15> () 0\n" +
-                        "<3:10 - 3:15> (2,0) true\n" +
-                        "<3:20 - 3:25> <none>\n" +
-                        "<3:20 - 3:20> <none>\n" +
-                        "<3:20 - 3:20> () 5\n" +
-                        "<3:25 - 3:25> <none>\n" +
-                        "<3:25 - 3:25> () 0\n" +
-                        "<3:20 - 3:25> (5,0) true\n" +
-                        "<3:10 - 3:25> (true,true) true\n" +
-                        "<4:5 - 4:13> <none>\n" +
-                        "<4:9 - 4:13> <none>\n" +
-                        "<4:9 - 4:9> <none>\n" +
-                        "<4:9 - 4:9> () 2\n" +
-                        "<4:13 - 4:13> <none>\n" +
-                        "<4:13 - 4:13> () 2\n" +
-                        "<4:9 - 4:13> (2,2) 4\n" +
-                        "<4:5 - 4:13> (4) 4\n" +
-                        "<5:5 - 5:29> <none>\n" +
-                        "<5:9 - 5:29> <none>\n" +
-                        "<5:10 - 5:14> <none>\n" +
-                        "<5:10 - 5:10> <none>\n" +
-                        "<5:10 - 5:10> () 4\n" +
-                        "<5:14 - 5:14> <none>\n" +
-                        "<5:14 - 5:14> () 4\n" +
-                        "<5:10 - 5:14> (4,4) 16\n" +
-                        "<5:20 - 5:28> <none>\n" +
-                        "<5:20 - 5:24> <none>\n" +
-                        "<5:20 - 5:20> <none>\n" +
-                        "<5:20 - 5:20> () 2\n" +
-                        "<5:24 - 5:24> <none>\n" +
-                        "<5:24 - 5:24> () 2\n" +
-                        "<5:20 - 5:24> (2,2) 4\n" +
-                        "<5:28 - 5:28> <none>\n" +
-                        "<5:28 - 5:28> () 1\n" +
-                        "<5:20 - 5:28> (4,1) 5\n" +
-                        "<5:9 - 5:29> () 3\n" +
-                        "<5:5 - 5:29> (3) 3\n" +
-                        "<6:5 - 6:27> <none>\n" +
-                        "<6:9 - 6:27> <none>\n" +
-                        "<6:9 - 6:9> <none>\n" +
-                        "<6:9 - 6:9> () 2\n" +
-                        "<6:13 - 6:27> <none>\n" +
-                        "<6:13 - 6:21> <none>\n" +
-                        "<6:13 - 6:21> () transform\n" +
-                        "<6:23 - 6:23> <none>\n" +
-                        "<6:23 - 6:23> () 4\n" +
-                        "<6:26 - 6:26> <none>\n" +
-                        "<6:26 - 6:26> () 3\n" +
-                        "<11:10 - 11:26> <none>\n" +
-                        "<11:11 - 11:15> <none>\n" +
-                        "<11:11 - 11:11> <none>\n" +
-                        "<11:11 - 11:11> () 1\n" +
-                        "<11:15 - 11:15> <none>\n" +
-                        "<11:15 - 11:15> () 1\n" +
-                        "<11:11 - 11:15> (1,1) 2\n" +
-                        "<11:21 - 11:25> <none>\n" +
-                        "<11:21 - 11:21> <none>\n" +
-                        "<11:21 - 11:21> () 4\n" +
-                        "<11:25 - 11:25> <none>\n" +
-                        "<11:25 - 11:25> () 3\n" +
-                        "<11:21 - 11:25> (4,3) 7\n" +
-                        "<11:10 - 11:26> () 14\n" +
-                        "<6:13 - 6:27> (transform,4,3) 14\n" +
-                        "<6:9 - 6:27> (2,14) -12\n" +
-                        "<6:5 - 6:27> (-12) -12\n" +
-                        "<3:10 - 3:25> <none>\n" +
-                        "<3:10 - 3:15> <none>\n" +
-                        "<3:10 - 3:10> <none>\n" +
-                        "<3:10 - 3:10> () -12\n" +
-                        "<3:15 - 3:15> <none>\n" +
-                        "<3:15 - 3:15> () 0\n" +
-                        "<3:10 - 3:15> (-12,0) false\n" +
-                        "<3:10 - 3:25> (false,null) false\n" +
-                        "<8:10 - 8:14> <none>\n" +
-                        "<8:10 - 8:10> <none>\n" +
-                        "<8:10 - 8:10> () -12\n" +
-                        "<8:14 - 8:14> <none>\n" +
-                        "<8:14 - 8:14> () 1\n" +
-                        "<8:10 - 8:14> (-12,1) -12";
-        checkExpressionStepPositions(stepIntoPositions, false, StepDepth.INTO);
+        final StringBuilder b = new StringBuilder();
+        b.append("<2:3 - 2:7> <none>\n");
+        b.append("<2:7 - 2:7> <none>\n");
+        b.append("<2:7 - 2:7> () 2\n");
+        b.append("<2:3 - 2:7> (2) 2\n");
+        b.append("<3:10 - 3:25> <none>\n");
+        b.append("<3:10 - 3:15> <none>\n");
+        b.append("<3:10 - 3:10> <none>\n");
+        b.append("<3:10 - 3:10> () 2\n");
+        b.append("<3:15 - 3:15> <none>\n");
+        b.append("<3:15 - 3:15> () 0\n");
+        b.append("<3:10 - 3:15> (2,0) true\n");
+        b.append("<3:20 - 3:25> <none>\n");
+        b.append("<3:20 - 3:20> <none>\n");
+        b.append("<3:20 - 3:20> () 5\n");
+        b.append("<3:25 - 3:25> <none>\n");
+        b.append("<3:25 - 3:25> () 0\n");
+        b.append("<3:20 - 3:25> (5,0) true\n");
+        b.append("<3:10 - 3:25> (true,true) true\n");
+        b.append("<4:5 - 4:13> <none>\n");
+        b.append("<4:9 - 4:13> <none>\n");
+        b.append("<4:9 - 4:9> <none>\n");
+        b.append("<4:9 - 4:9> () 2\n");
+        b.append("<4:13 - 4:13> <none>\n");
+        b.append("<4:13 - 4:13> () 2\n");
+        b.append("<4:9 - 4:13> (2,2) 4\n");
+        b.append("<4:5 - 4:13> (4) 4\n");
+        b.append("<5:5 - 5:29> <none>\n");
+        b.append("<5:9 - 5:29> <none>\n");
+        b.append("<5:10 - 5:14> <none>\n");
+        b.append("<5:10 - 5:10> <none>\n");
+        b.append("<5:10 - 5:10> () 4\n");
+        b.append("<5:14 - 5:14> <none>\n");
+        b.append("<5:14 - 5:14> () 4\n");
+        b.append("<5:10 - 5:14> (4,4) 16\n");
+        b.append("<5:20 - 5:28> <none>\n");
+        b.append("<5:20 - 5:24> <none>\n");
+        b.append("<5:20 - 5:20> <none>\n");
+        b.append("<5:20 - 5:20> () 2\n");
+        b.append("<5:24 - 5:24> <none>\n");
+        b.append("<5:24 - 5:24> () 2\n");
+        b.append("<5:20 - 5:24> (2,2) 4\n");
+        b.append("<5:28 - 5:28> <none>\n");
+        b.append("<5:28 - 5:28> () 1\n");
+        b.append("<5:20 - 5:28> (4,1) 5\n");
+
+        // short circuits are broken in the AST interpreter
+        if (mode == RunMode.AST) {
+            b.append("<5:9 - 5:29> () 3\n");
+        } else {
+            b.append("<5:9 - 5:29> (16,5) 3\n");
+        }
+
+        b.append("<5:5 - 5:29> (3) 3\n");
+        b.append("<6:5 - 6:27> <none>\n");
+        b.append("<6:9 - 6:27> <none>\n");
+        b.append("<6:9 - 6:9> <none>\n");
+        b.append("<6:9 - 6:9> () 2\n");
+        b.append("<6:13 - 6:27> <none>\n");
+        b.append("<6:13 - 6:21> <none>\n");
+        b.append("<6:13 - 6:21> () transform\n");
+        b.append("<6:23 - 6:23> <none>\n");
+        b.append("<6:23 - 6:23> () 4\n");
+        b.append("<6:26 - 6:26> <none>\n");
+        b.append("<6:26 - 6:26> () 3\n");
+        b.append("<11:10 - 11:26> <none>\n");
+        b.append("<11:11 - 11:15> <none>\n");
+        b.append("<11:11 - 11:11> <none>\n");
+        b.append("<11:11 - 11:11> () 1\n");
+        b.append("<11:15 - 11:15> <none>\n");
+        b.append("<11:15 - 11:15> () 1\n");
+        b.append("<11:11 - 11:15> (1,1) 2\n");
+        b.append("<11:21 - 11:25> <none>\n");
+        b.append("<11:21 - 11:21> <none>\n");
+        b.append("<11:21 - 11:21> () 4\n");
+        b.append("<11:25 - 11:25> <none>\n");
+        b.append("<11:25 - 11:25> () 3\n");
+        b.append("<11:21 - 11:25> (4,3) 7\n");
+
+        // short circuits are broken in the AST interpreter
+        if (mode == RunMode.AST) {
+            b.append("<11:10 - 11:26> () 14\n");
+        } else {
+            b.append("<11:10 - 11:26> (2,7) 14\n");
+        }
+
+        b.append("<6:13 - 6:27> (transform,4,3) 14\n");
+        b.append("<6:9 - 6:27> (2,14) -12\n");
+        b.append("<6:5 - 6:27> (-12) -12\n");
+        b.append("<3:10 - 3:25> <none>\n");
+        b.append("<3:10 - 3:15> <none>\n");
+        b.append("<3:10 - 3:10> <none>\n");
+        b.append("<3:10 - 3:10> () -12\n");
+        b.append("<3:15 - 3:15> <none>\n");
+        b.append("<3:15 - 3:15> () 0\n");
+        b.append("<3:10 - 3:15> (-12,0) false\n");
+        b.append("<3:10 - 3:25> (false,null) false\n");
+        b.append("<8:10 - 8:14> <none>\n");
+        b.append("<8:10 - 8:10> <none>\n");
+        b.append("<8:10 - 8:10> () -12\n");
+        b.append("<8:14 - 8:14> <none>\n");
+        b.append("<8:14 - 8:14> () 1\n");
+        b.append("<8:10 - 8:14> (-12,1) -12\n");
+        checkExpressionStepPositions(b.toString(), false, StepDepth.INTO);
     }
 
     @Test

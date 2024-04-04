@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.parser;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -63,7 +64,9 @@ import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
@@ -102,9 +105,13 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
     private static final boolean DO_LOG_NODE_CREATION = false;
     private static final boolean FORCE_SERIALIZE = false;
+    private static final boolean FORCE_MATERIALZE_COMPLETE = true;
 
     private static final Class<?>[] EXPRESSION = new Class[]{ExpressionTag.class};
+    private static final Class<?>[] READ_VARIABLE = new Class[]{ExpressionTag.class, ReadVariableTag.class};
+    private static final Class<?>[] WRITE_VARIABLE = new Class[]{StatementTag.class, ExpressionTag.class, WriteVariableTag.class};
     private static final Class<?>[] STATEMENT = new Class[]{StatementTag.class};
+    private static final Class<?>[] CONDITION = new Class[]{StatementTag.class, ExpressionTag.class};
     private static final Class<?>[] CALL = new Class[]{CallTag.class, ExpressionTag.class};
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
@@ -124,7 +131,12 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 throw new RuntimeException(ex);
             }
         } else {
-            nodes = SLBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, slParser);
+            if (FORCE_MATERIALZE_COMPLETE) {
+                nodes = SLBytecodeRootNodeGen.create(BytecodeConfig.COMPLETE, slParser);
+            } else {
+                nodes = SLBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, slParser);
+            }
+
         }
 
         for (SLBytecodeRootNode node : nodes.getNodes()) {
@@ -164,40 +176,18 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
     private final ArrayList<BytecodeLocal> locals = new ArrayList<>();
 
-    @Override
-    public Void visit(ParseTree tree) {
-        beginSourceSection(tree);
-        super.visit(tree);
-        b.endSourceSection();
-        return null;
-    }
-
-    private void beginSourceSection(ParseTree tree) throws AssertionError {
-        int sourceStart;
-        int sourceEnd;
-
-        if (tree instanceof ParserRuleContext) {
-            ParserRuleContext ctx = (ParserRuleContext) tree;
-            sourceStart = ctx.getStart().getStartIndex();
-            sourceEnd = ctx.getStop().getStopIndex() + 1;
-        } else if (tree instanceof TerminalNode) {
-            TerminalNode node = (TerminalNode) tree;
-            sourceStart = node.getSymbol().getStartIndex();
-            sourceEnd = node.getSymbol().getStopIndex() + 1;
-        } else {
-            throw new AssertionError("unknown tree type: " + tree);
-        }
-
-        b.beginSourceSection(sourceStart, sourceEnd - sourceStart);
+    private void beginSourceSection(Token token) throws AssertionError {
+        b.beginSourceSection(token.getStartIndex(), token.getText().length());
     }
 
     @Override
     public Void visitFunction(FunctionContext ctx) {
-        TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
-        beginSourceSection(ctx);
-
+        Token nameToken = ctx.IDENTIFIER(0).getSymbol();
+        TruffleString name = asTruffleString(nameToken, false);
+        int functionStartPos = nameToken.getStartIndex();
+        int functionEndPos = ctx.getStop().getStopIndex();
+        b.beginSourceSection(functionStartPos, functionEndPos - functionStartPos + 1);
         b.beginRoot(language);
-        b.beginBlock();
 
         int parameterCount = enterFunction(ctx).size();
 
@@ -209,9 +199,11 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             locals.add(argLocal);
 
             b.beginStoreLocal(argLocal);
+            beginSourceSection(paramToken);
             b.beginSLLoadArgument();
             b.emitLoadConstant(i);
             b.endSLLoadArgument();
+            b.endSourceSection();
             b.endStoreLocal();
         }
 
@@ -227,8 +219,6 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         b.beginReturn();
         b.emitLoadConstant(SLNull.SINGLETON);
         b.endReturn();
-
-        b.endBlock();
 
         SLBytecodeRootNode node = b.endRoot();
         node.setTSName(name);
@@ -257,14 +247,44 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
     }
 
     @Override
+    public Void visitStatement(StatementContext ctx) {
+        ParseTree tree = ctx;
+        if (tree.getChildCount() == 1) {
+            tree = tree.getChild(0);
+        }
+        if (tree instanceof Return_statementContext ret) {
+            int start = ret.getStart().getStartIndex();
+            int end;
+            if (ret.expression() == null) {
+                end = ctx.getStop().getStopIndex();
+            } else {
+                end = ret.expression().getStop().getStopIndex();
+            }
+            beginAttribution(STATEMENT, start, end);
+            super.visitStatement(ctx);
+            endAttribution(STATEMENT);
+        } else if (tree instanceof If_statementContext || tree instanceof While_statementContext) {
+            super.visitStatement(ctx);
+        } else {
+            // filter ; from the source section
+            if (tree.getChildCount() == 2) {
+                tree = tree.getChild(0);
+            }
+            beginAttribution(STATEMENT, tree);
+            super.visitStatement(ctx);
+            endAttribution(STATEMENT);
+        }
+
+        return null;
+    }
+
+    @Override
     public Void visitBreak_statement(Break_statementContext ctx) {
         if (breakLabel == null) {
             semErr(ctx.b, "break used outside of loop");
         }
 
-        b.beginTag(STATEMENT);
         b.emitBranch(breakLabel);
-        b.endTag(STATEMENT);
 
         return null;
     }
@@ -274,19 +294,14 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         if (continueLabel == null) {
             semErr(ctx.c, "continue used outside of loop");
         }
-
-        b.beginTag(STATEMENT);
         b.emitBranch(continueLabel);
-        b.endTag(STATEMENT);
 
         return null;
     }
 
     @Override
     public Void visitDebugger_statement(Debugger_statementContext ctx) {
-        b.beginTag(DebuggerTags.AlwaysHalt.class);
-        b.endTag();
-
+        b.emitSLAlwaysHalt();
         return null;
     }
 
@@ -295,7 +310,6 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         BytecodeLabel oldBreak = breakLabel;
         BytecodeLabel oldContinue = continueLabel;
 
-        b.beginTag(STATEMENT);
         b.beginBlock();
 
         breakLabel = b.createLabel();
@@ -304,16 +318,17 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         b.emitLabel(continueLabel);
         b.beginWhile();
 
+        beginAttribution(CONDITION, ctx.condition);
         b.beginSLToBoolean();
         visit(ctx.condition);
         b.endSLToBoolean();
+        endAttribution(CONDITION);
 
         visit(ctx.body);
         b.endWhile();
         b.emitLabel(breakLabel);
 
         b.endBlock();
-        b.endTag(STATEMENT);
 
         breakLabel = oldBreak;
         continueLabel = oldContinue;
@@ -323,23 +338,25 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
     @Override
     public Void visitIf_statement(If_statementContext ctx) {
-        b.beginTag(STATEMENT);
-
         if (ctx.alt == null) {
             b.beginIfThen();
 
+            beginAttribution(CONDITION, ctx.condition);
             b.beginSLToBoolean();
             visit(ctx.condition);
             b.endSLToBoolean();
+            endAttribution(CONDITION);
 
             visit(ctx.then);
             b.endIfThen();
         } else {
             b.beginIfThenElse();
 
+            beginAttribution(CONDITION, ctx.condition);
             b.beginSLToBoolean();
             visit(ctx.condition);
             b.endSLToBoolean();
+            endAttribution(CONDITION);
 
             visit(ctx.then);
 
@@ -347,13 +364,11 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             b.endIfThenElse();
         }
 
-        b.endTag(STATEMENT);
         return null;
     }
 
     @Override
     public Void visitReturn_statement(Return_statementContext ctx) {
-        b.beginTag(STATEMENT);
         b.beginReturn();
 
         if (ctx.expression() == null) {
@@ -363,14 +378,12 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         }
 
         b.endReturn();
-        b.endTag(STATEMENT);
 
         return null;
     }
 
     @Override
     public Void visitExpression(ExpressionContext ctx) {
-        b.beginTag(EXPRESSION);
         List<Logic_termContext> terms = ctx.logic_term();
         if (terms.size() == 1) {
             visit(terms.get(0));
@@ -379,22 +392,21 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             emitShortCircuitOperands(terms);
             b.endSLOr();
         }
-        b.endTag(EXPRESSION);
         return null;
     }
 
     @Override
     public Void visitLogic_term(Logic_termContext ctx) {
-        b.beginTag(EXPRESSION);
         List<Logic_factorContext> factors = ctx.logic_factor();
         if (factors.size() == 1) {
             visit(factors.get(0));
         } else {
+            beginAttribution(EXPRESSION, ctx);
             b.beginSLAnd();
             emitShortCircuitOperands(factors);
             b.endSLAnd();
+            endAttribution(EXPRESSION);
         }
-        b.endTag(EXPRESSION);
 
         return null;
     }
@@ -418,8 +430,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             return visit(ctx.arithmetic(0));
         }
 
-        b.beginTag(EXPRESSION);
-
+        beginAttribution(EXPRESSION, ctx);
         switch (ctx.OP_COMPARE().getText()) {
             case "<":
                 b.beginSLLessThan();
@@ -467,7 +478,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 throw new UnsupportedOperationException();
         }
 
-        b.endTag(EXPRESSION);
+        endAttribution(EXPRESSION);
 
         return null;
     }
@@ -500,7 +511,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
     public Void visitArithmetic(ArithmeticContext ctx) {
 
         if (!ctx.OP_ADD().isEmpty()) {
-            b.beginTag(EXPRESSION);
+            beginAttribution(EXPRESSION, ctx);
 
             for (int i = ctx.OP_ADD().size() - 1; i >= 0; i--) {
                 switch (ctx.OP_ADD(i).getText()) {
@@ -532,7 +543,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 }
             }
 
-            b.endTag(EXPRESSION);
+            endAttribution(EXPRESSION);
         } else {
             visit(ctx.term(0));
         }
@@ -543,7 +554,8 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
     @Override
     public Void visitTerm(TermContext ctx) {
         if (!ctx.OP_MUL().isEmpty()) {
-            b.beginTag(EXPRESSION);
+
+            beginAttribution(EXPRESSION, ctx);
 
             for (int i = ctx.OP_MUL().size() - 1; i >= 0; i--) {
                 switch (ctx.OP_MUL(i).getText()) {
@@ -574,7 +586,8 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 }
             }
 
-            b.endTag(EXPRESSION);
+            endAttribution(EXPRESSION);
+
         } else {
             visit(ctx.factor(0));
         }
@@ -591,11 +604,15 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         if (idx == -1) {
             int localIdx = getNameIndex(ident);
             if (localIdx != -1) {
+                beginAttribution(READ_VARIABLE, ident);
                 b.emitLoadLocal(locals.get(localIdx));
+                endAttribution(READ_VARIABLE);
             } else {
+                beginAttribution(EXPRESSION, ident);
                 b.beginSLFunctionLiteral();
                 b.emitLoadConstant(asTruffleString(ident, false));
                 b.endSLFunctionLiteral();
+                endAttribution(EXPRESSION);
             }
             return;
         }
@@ -603,17 +620,14 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         Member_expressionContext last = members.get(idx);
 
         if (last instanceof MemberCallContext lastCtx) {
-            b.beginTag(CALL);
+            beginAttribution(CALL, ident.getStartIndex(), lastCtx.getStop().getStopIndex());
             b.beginSLInvoke();
-
             buildMemberExpressionRead(ident, members, idx - 1);
-
             for (ExpressionContext arg : lastCtx.expression()) {
                 visit(arg);
             }
-
             b.endSLInvoke();
-            b.endTag(CALL);
+            endAttribution(CALL);
         } else if (last instanceof MemberAssignContext lastCtx) {
             int index = idx - 1;
 
@@ -621,12 +635,14 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 int localIdx = getNameIndex(ident);
                 assert localIdx != -1;
 
+                beginAttribution(WRITE_VARIABLE, ident.getStartIndex(), lastCtx.getStop().getStopIndex());
                 b.beginBlock();
                 b.beginStoreLocal(locals.get(localIdx));
                 visit(lastCtx.expression());
                 b.endStoreLocal();
                 b.emitLoadLocal(locals.get(localIdx));
                 b.endBlock();
+                endAttribution(WRITE_VARIABLE);
 
             } else {
                 Member_expressionContext last1 = members.get(index);
@@ -636,55 +652,49 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 } else if (last1 instanceof MemberAssignContext) {
                     semErr(lastCtx.expression().start, "invalid assignment target");
                 } else if (last1 instanceof MemberFieldContext lastCtx1) {
-                    b.beginTag(EXPRESSION);
                     b.beginSLWriteProperty();
                     buildMemberExpressionRead(ident, members, index - 1);
                     b.emitLoadConstant(asTruffleString(lastCtx1.IDENTIFIER().getSymbol(), false));
                     visit(lastCtx.expression());
                     b.endSLWriteProperty();
-                    b.endTag(EXPRESSION);
 
                 } else {
                     MemberIndexContext lastCtx2 = (MemberIndexContext) last1;
 
-                    b.beginTag(EXPRESSION);
                     b.beginSLWriteProperty();
                     buildMemberExpressionRead(ident, members, index - 1);
                     visit(lastCtx2.expression());
                     visit(lastCtx.expression());
                     b.endSLWriteProperty();
-                    b.endTag(EXPRESSION);
                 }
 
             }
         } else if (last instanceof MemberFieldContext lastCtx) {
-
-            b.beginTag(EXPRESSION);
             b.beginSLReadProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
             b.emitLoadConstant(asTruffleString(lastCtx.IDENTIFIER().getSymbol(), false));
             b.endSLReadProperty();
-            b.endTag(EXPRESSION);
         } else {
             MemberIndexContext lastCtx = (MemberIndexContext) last;
 
-            b.beginTag(EXPRESSION);
             b.beginSLReadProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
             visit(lastCtx.expression());
             b.endSLReadProperty();
-            b.endTag(EXPRESSION);
         }
     }
 
     @Override
     public Void visitStringLiteral(StringLiteralContext ctx) {
+        beginAttribution(EXPRESSION, ctx);
         b.emitLoadConstant(asTruffleString(ctx.STRING_LITERAL().getSymbol(), true));
+        endAttribution(EXPRESSION);
         return null;
     }
 
     @Override
     public Void visitNumericLiteral(NumericLiteralContext ctx) {
+        beginAttribution(EXPRESSION, ctx);
         Object value;
         try {
             value = Long.parseLong(ctx.NUMERIC_LITERAL().getText());
@@ -692,7 +702,64 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             value = new SLBigInteger(new BigInteger(ctx.NUMERIC_LITERAL().getText()));
         }
         b.emitLoadConstant(value);
+        endAttribution(EXPRESSION);
         return null;
+    }
+
+    private void beginAttribution(Class<?>[] tags, ParseTree tree) {
+        beginAttribution(tags, getStartIndex(tree), getEndIndex(tree));
+    }
+
+    private static int getEndIndex(ParseTree tree) {
+        if (tree instanceof ParserRuleContext ctx) {
+            return ctx.getStop().getStopIndex();
+        } else if (tree instanceof TerminalNode node) {
+            return node.getSymbol().getStopIndex();
+        } else {
+            throw new AssertionError("unknown tree type: " + tree);
+        }
+    }
+
+    private static int getStartIndex(ParseTree tree) {
+        if (tree instanceof ParserRuleContext ctx) {
+            return ctx.getStart().getStartIndex();
+        } else if (tree instanceof TerminalNode node) {
+            return node.getSymbol().getStartIndex();
+        } else {
+            throw new AssertionError("unknown tree type: " + tree);
+        }
+    }
+
+    private void beginAttribution(Class<?>[] tags, Token token) {
+        beginAttribution(tags, token.getStartIndex(), token.getStopIndex());
+    }
+
+    ArrayDeque<Class<?>[]> tagStack = new ArrayDeque<>();
+
+    private void beginAttribution(Class<?>[] tags, int start, int end) {
+        boolean parentCondition = tagStack.peek() == CONDITION;
+        tagStack.push(tags);
+        if (parentCondition) {
+            return;
+        }
+        beginSourceSection(start, end);
+        b.beginTag(tags);
+    }
+
+    private void beginSourceSection(int start, int end) {
+        int length = end - start + 1;
+        assert length >= 0;
+        b.beginSourceSection(start, length);
+    }
+
+    private void endAttribution(Class<?>[] tags) {
+        tagStack.pop();
+        boolean parentCondition = tagStack.peek() == CONDITION;
+        if (parentCondition) {
+            return;
+        }
+        b.endTag(tags);
+        b.endSourceSection();
     }
 
 }

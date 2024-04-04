@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,32 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.truffle.sl.test.SLSimpleTestSuite;
 import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
 
-/*
- * We turn on the flag to compile every Truffle function immediately, on its first execution
- * in the interpreter. And we wait until compilation finishes so that we really execute the
- * compiled method. This leads to a lot of compilation, but that is the purpose of this
- * test. It also leads to a lot of deoptimization, since the first time a method is compiled
- * it has all nodes in the uninitialized specialization. This means that most methods are
- * compiled multiple times, in different specialization states.
- */
 @RunWith(SLTestRunner.class)
-@SLTestSuite(value = {"tests"}, testCaseDirectory = SLSimpleTestSuite.class, options = {"engine.CompileImmediately", "true", "engine.BackgroundCompilation", "false"})
-public class SLCompileImmediatelyTestSuite {
+@SLTestSuite(value = {"sl"}, options = {//
+                "engine.BackgroundCompilation", "false",
+                "engine.SingleTierCompilationThreshold", "10",
+                "engine.MultiTier", "false",
+                "engine.CompileImmediately", "false",
+                "sl.UseBytecode", "true"
+})
+public class SLCompileBytecodeTestSuite {
+
+    public static void main(String[] args) throws Exception {
+        SLTestRunner.runInMain(SLCompileBytecodeTestSuite.class, args);
+    }
+
+    @BeforeClass
+    public static void setupTestRunner() {
+        SLCompileASTTestSuite.installBuiltins();
+    }
+
     /*
      * Our "mx unittest" command looks for methods that are annotated with @Test. By just defining
      * an empty method, this class gets included and the test suite is properly executed.

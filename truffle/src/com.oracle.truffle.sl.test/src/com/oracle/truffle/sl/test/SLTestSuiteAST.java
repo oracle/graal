@@ -44,11 +44,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(SLTestRunner.class)
-@SLTestSuite(value = {"tests"}, options = {"sl.UseBytecode", "true"})
-public class SLBytecodeSimpleTestSuite {
+@SLTestSuite({"tests"})
+public class SLTestSuiteAST {
 
     public static void main(String[] args) throws Exception {
-        SLTestRunner.runInMain(SLBytecodeSimpleTestSuite.class, args);
+        SLTestRunner.runInMain(SLTestSuiteAST.class, args);
     }
 
     /*

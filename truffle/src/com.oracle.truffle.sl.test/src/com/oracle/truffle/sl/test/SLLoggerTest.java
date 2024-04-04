@@ -60,7 +60,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SLLoggerTest {
+public class SLLoggerTest extends AbstractSLTest {
 
     private static final Source ADD_SL;
     private static final Source MUL_SL;
@@ -89,7 +89,7 @@ public class SLLoggerTest {
         if (currentContext != null) {
             throw new IllegalStateException("Context already created");
         }
-        currentContext = Context.newBuilder("sl").options(options).logHandler(testHandler).build();
+        currentContext = newContextBuilder("sl").options(options).logHandler(testHandler).build();
         return currentContext;
     }
 
