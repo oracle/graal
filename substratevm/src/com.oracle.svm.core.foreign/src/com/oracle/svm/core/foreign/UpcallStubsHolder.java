@@ -29,7 +29,7 @@ import java.lang.invoke.MethodType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateUtil;
+import jdk.graal.compiler.util.Digest;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 
 import jdk.vm.ci.meta.ConstantPool;
@@ -81,7 +81,7 @@ public final class UpcallStubsHolder {
         }
 
         builder.append('_');
-        builder.append(SubstrateUtil.digest(assignmentsBuilder.toString()));
+        builder.append(Digest.digest(assignmentsBuilder.toString()));
 
         return builder.toString();
     }

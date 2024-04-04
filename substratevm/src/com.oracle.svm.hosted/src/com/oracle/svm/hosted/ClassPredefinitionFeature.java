@@ -25,6 +25,10 @@
  */
 package com.oracle.svm.hosted;
 
+import static jdk.internal.org.objectweb.asm.Opcodes.ACC_FINAL;
+import static jdk.internal.org.objectweb.asm.Opcodes.ACC_PUBLIC;
+import static jdk.internal.org.objectweb.asm.Opcodes.ACC_STATIC;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -34,11 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.java.LambdaUtils;
-import jdk.internal.org.objectweb.asm.ClassVisitor;
-import jdk.internal.org.objectweb.asm.FieldVisitor;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -57,12 +56,14 @@ import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.util.ModuleSupport;
 
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.util.Digest;
 import jdk.internal.org.objectweb.asm.ClassReader;
+import jdk.internal.org.objectweb.asm.ClassVisitor;
 import jdk.internal.org.objectweb.asm.ClassWriter;
-
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_FINAL;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_STATIC;
+import jdk.internal.org.objectweb.asm.FieldVisitor;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
 
 @AutomaticallyRegisteredFeature
 public class ClassPredefinitionFeature implements InternalFeature {
@@ -158,7 +159,7 @@ public class ClassPredefinitionFeature implements InternalFeature {
                 }
 
                 // Compute our own hash code, the files could have been messed with.
-                String hash = PredefinedClassesSupport.hash(data, 0, data.length);
+                String hash = Digest.digest(data);
 
                 if (LambdaUtils.isLambdaClassName(nameInfo)) {
                     /**
@@ -179,7 +180,7 @@ public class ClassPredefinitionFeature implements InternalFeature {
                 ClassWriter writer = new ClassWriter(0);
                 reader.accept(writer, ClassReader.SKIP_DEBUG);
                 byte[] canonicalData = writer.toByteArray();
-                String canonicalHash = PredefinedClassesSupport.hash(canonicalData, 0, canonicalData.length);
+                String canonicalHash = Digest.digest(canonicalData);
 
                 String className = transformClassName(reader.getClassName());
                 PredefinedClass record = nameToRecord.computeIfAbsent(className, PredefinedClass::new);
