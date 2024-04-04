@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,39 +24,27 @@
  * questions.
  */
 
-package com.oracle.svm.core.nmt;
+package com.oracle.svm.core.jfr;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.nmt.NmtCategory;
 
-class NmtMallocMemorySnapshot {
-    private final NmtMallocMemoryInfo[] categories;
-    private final NmtMallocMemoryInfo total;
-
+public class JfrNmtCategorySerializer implements JfrSerializer {
     @Platforms(Platform.HOSTED_ONLY.class)
-    NmtMallocMemorySnapshot() {
-        total = new NmtMallocMemoryInfo();
-        categories = new NmtMallocMemoryInfo[NmtCategory.values().length];
-        for (int i = 0; i < categories.length; i++) {
-            categories[i] = new NmtMallocMemoryInfo();
+    public JfrNmtCategorySerializer() {
+    }
+
+    @Override
+    public void write(JfrChunkWriter writer) {
+        writer.writeCompressedLong(JfrType.NMTType.getId());
+
+        NmtCategory[] nmtCategories = NmtCategory.values();
+        writer.writeCompressedLong(nmtCategories.length);
+        for (NmtCategory nmtCategory : nmtCategories) {
+            writer.writeCompressedInt(nmtCategory.ordinal());
+            writer.writeString(nmtCategory.getName());
         }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    NmtMallocMemoryInfo getInfoByCategory(NmtCategory category) {
-        return getInfoByCategory(category.ordinal());
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    NmtMallocMemoryInfo getInfoByCategory(int category) {
-        assert category < categories.length;
-        return categories[category];
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    NmtMallocMemoryInfo getTotalInfo() {
-        return total;
     }
 }
