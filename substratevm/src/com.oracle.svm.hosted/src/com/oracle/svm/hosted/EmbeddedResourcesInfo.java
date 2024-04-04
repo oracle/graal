@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.core.jdk.Resources.createStorageKey;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,7 +48,11 @@ public class EmbeddedResourcesInfo {
     }
 
     public void declareResourceAsRegistered(Module module, String resource, String source) {
-        Resources.ModuleResourceKey key = createStorageKey(module, resource);
+        if (!ResourcesFeature.Options.GenerateEmbeddedResourcesFile.getValue()) {
+            return;
+        }
+
+        Resources.ModuleResourceKey key = Resources.createStorageKey(module, resource);
         registeredResources.compute(key, (k, v) -> {
             if (v == null) {
                 ArrayList<String> newValue = new ArrayList<>();
@@ -71,5 +73,4 @@ public class EmbeddedResourcesInfo {
             return v;
         });
     }
-
 }

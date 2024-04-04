@@ -146,7 +146,7 @@ public final class ResourcesFeature implements InternalFeature {
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
-        public static final String EMBEDDED_RESOURCES_FILE_NAME = "embedded-resources.json";
+        private static final String EMBEDDED_RESOURCES_FILE_NAME = "embedded-resources.json";
         @Option(help = "Create a " + EMBEDDED_RESOURCES_FILE_NAME + " file in the build directory. The output conforms to the JSON schema located at: " +
                         "docs/reference-manual/native-image/assets/embedded-resources-schema-v1.0.0.json", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> GenerateEmbeddedResourcesFile = new HostedOptionKey<>(false);
