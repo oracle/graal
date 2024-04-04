@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@
 
 package com.oracle.svm.core.nmt;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -36,29 +38,57 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 class NmtMallocMemoryInfo {
     private final AtomicLong count = new AtomicLong(0);
     private final AtomicLong used = new AtomicLong(0);
+    private final AtomicLong countAtPeakUsage = new AtomicLong(0);
+    private final AtomicLong peakUsed = new AtomicLong(0);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     NmtMallocMemoryInfo() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void track(UnsignedWord allocationSize) {
-        count.incrementAndGet();
-        used.addAndGet(allocationSize.rawValue());
+        long newUsed = used.addAndGet(allocationSize.rawValue());
+        long newCount = count.incrementAndGet();
+        updatePeak(newUsed, newCount);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void updatePeak(long newUsed, long newCount) {
+        long oldUsed = peakUsed.get();
+        while (oldUsed < newUsed) {
+            if (peakUsed.compareAndSet(oldUsed, newUsed)) {
+                /* Recording the count at peak usage is racy (similar to Hotspot). */
+                countAtPeakUsage.set(newCount);
+                return;
+            }
+            oldUsed = peakUsed.get();
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void untrack(UnsignedWord allocationSize) {
         long lastCount = count.decrementAndGet();
         long lastSize = used.addAndGet(-allocationSize.rawValue());
         assert lastSize >= 0 && lastCount >= 0;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getUsed() {
         return used.get();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getCount() {
         return count.get();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    long getPeakUsed() {
+        return peakUsed.get();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    long getCountAtPeakUsage() {
+        return countAtPeakUsage.get();
     }
 }
