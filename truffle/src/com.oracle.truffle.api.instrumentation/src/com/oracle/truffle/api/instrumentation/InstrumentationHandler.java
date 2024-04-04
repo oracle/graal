@@ -643,7 +643,7 @@ final class InstrumentationHandler {
 
         Node parentInstrumentable = null;
         SourceSection parentInstrumentableSourceSection = null;
-        Node parentNode = probeNodeImpl.getParent();
+        Node parentNode = ((Node) probeNodeImpl.findInstrumentableNode()).getParent();
         while (parentNode != null && parentNode.getParent() != null) {
             if (parentInstrumentable == null) {
                 SourceSection parentSourceSection = parentNode.getSourceSection();
