@@ -51,6 +51,8 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Generates a bytecode interpreter using the Bytecode DSL. The Bytecode DSL automatically produces
@@ -189,6 +191,44 @@ public @interface GenerateBytecode {
      * @see #enableRootTagging()
      */
     boolean enableRootBodyTagging() default true;
+
+    /**
+     * Allows to customize the {@link NodeLibrary} implementation that is used for tag
+     * instrumentation. This option only makes sense if {@link #enableTagInstrumentation()} is set
+     * to <code>true</code>.
+     * <p>
+     * Common use-cases when implementing a custom tag tree node library is required:
+     * <ul>
+     * <li>Allowing instruments to access the current receiver or function object
+     * <li>Implementing custom scopes for local variables instead of the default global scope.
+     * <li>Hiding certain local local variables or arguments from instruments.
+     * </ul>
+     * <p>
+     * Minimal example tag node library:
+     *
+     * <pre>
+     * &#64;ExportLibrary(value = NodeLibrary.class, receiverType = TagTreeNode.class)
+     * final class MyTagTreeNodeExports {
+     *
+     *     &#64;ExportMessage
+     *     static boolean hasScope(TagTreeNode node, Frame frame) {
+     *         return true;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     &#64;SuppressWarnings("unused")
+     *     static Object getScope(TagTreeNode node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
+     *         return new MyScope(node, frame);
+     *     }
+     * }
+     * </pre>
+     *
+     * See the {@link NodeLibrary} javadoc for more details.
+     *
+     * @see TagTreeNode
+     * @since 24.1
+     */
+    Class<?> tagTreeNodeLibrary() default TagTreeNodeExports.class;
 
     /**
      * Whether to use unsafe array accesses.

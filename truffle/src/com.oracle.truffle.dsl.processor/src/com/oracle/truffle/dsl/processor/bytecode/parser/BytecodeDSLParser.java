@@ -93,6 +93,9 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsMode
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.SuperInstructionDecision;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
+import com.oracle.truffle.dsl.processor.library.ExportsData;
+import com.oracle.truffle.dsl.processor.library.ExportsLibrary;
+import com.oracle.truffle.dsl.processor.library.ExportsParser;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -304,7 +307,14 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 getSimpleName(types.GenerateBytecode));
                 model.enableRootBodyTagging = false;
             }
+            parseTagTreeNodeLibrary(model, generateBytecodeMirror);
 
+        } else {
+            AnnotationValue tagTreeNodeLibraryValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "tagTreeNodeLibrary", false);
+            if (tagTreeNodeLibraryValue != null) {
+                model.addError(generateBytecodeMirror, tagTreeNodeLibraryValue,
+                                "The attribute tagTreeNodeLibrary must not be set if enableTagInstrumentation is not enabled. Enable tag instrumentation or remove this attribute.");
+            }
         }
 
         Map<String, List<ExecutableElement>> constructorsByFDType = viableConstructors.stream().collect(Collectors.groupingBy(ctor -> {
@@ -875,6 +885,54 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.finalizeInstructions();
 
         return;
+    }
+
+    private void parseTagTreeNodeLibrary(BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror) {
+        AnnotationValue tagTreeNodeLibraryValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "tagTreeNodeLibrary");
+        TypeMirror tagTreeNodeLibrary = ElementUtils.getAnnotationValue(TypeMirror.class, generateBytecodeMirror, "tagTreeNodeLibrary");
+        ExportsParser parser = new ExportsParser();
+        TypeElement type = ElementUtils.castTypeElement(tagTreeNodeLibrary);
+        if (type == null) {
+            model.addError(generateBytecodeMirror, tagTreeNodeLibraryValue,
+                            "Invalid type specified for the tag tree node library. Must be a declared class.",
+                            getQualifiedName(tagTreeNodeLibrary));
+            return;
+        }
+
+        ExportsData exports = parser.parse(type, false);
+        model.tagTreeNodeLibrary = exports;
+        if (exports.hasErrors()) {
+            model.addError(generateBytecodeMirror, tagTreeNodeLibraryValue,
+                            "The provided tag tree node library '%s' contains errors. Please fix the errors in the class to resolve this problem.",
+                            getQualifiedName(tagTreeNodeLibrary));
+            return;
+        }
+
+        ExportsLibrary nodeLibrary = exports.getExportedLibraries().get(ElementUtils.getTypeSimpleId(types.NodeLibrary));
+        if (nodeLibrary == null) {
+            model.addError(generateBytecodeMirror, tagTreeNodeLibraryValue,
+                            "The provided tag tree node library '%s' must export a library of type '%s' but does not. " +
+                                            "Add @%s(value = %s.class, receiverType = %s.class) to the class declaration to resolve this.",
+                            getQualifiedName(tagTreeNodeLibrary),
+                            getQualifiedName(types.NodeLibrary),
+                            getSimpleName(types.ExportLibrary),
+                            getSimpleName(types.NodeLibrary),
+                            getSimpleName(types.TagTreeNode));
+            return;
+        }
+
+        if (!ElementUtils.typeEquals(nodeLibrary.getReceiverType(), types.TagTreeNode)) {
+            model.addError(generateBytecodeMirror, tagTreeNodeLibraryValue,
+                            "The provided tag tree node library '%s' must export the '%s' library with receiver type '%s' but it currently uses '%s'. " +
+                                            "Change the receiver type to '%s' to resolve this.",
+                            getQualifiedName(tagTreeNodeLibrary),
+                            getSimpleName(types.NodeLibrary),
+                            getSimpleName(types.TagTreeNode),
+                            getSimpleName(nodeLibrary.getReceiverType()),
+                            getSimpleName(types.TagTreeNode));
+            return;
+        }
+
     }
 
     private static void checkUnsupportedAnnotation(BytecodeDSLModel model, List<? extends AnnotationMirror> annotations, TypeMirror annotation, String error) {
