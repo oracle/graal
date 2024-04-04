@@ -150,7 +150,6 @@ public final class DebuggerController implements ContextsListener {
     }
 
     /**
-    /**
      * Installs a line breakpoint within a given method.
      *
      * @param command the command that represents the breakpoint
@@ -774,7 +773,11 @@ public final class DebuggerController implements ContextsListener {
                 }
                 CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1, steppingInfo);
                 // get the top frame for checking instance filters
-                if (checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
+                CallFrame callFrame = null;
+                if (callFrames.length > 0) {
+                    callFrame = callFrames[0];
+                }
+                if (checkExclusionFilters(steppingInfo, event, currentThread, callFrame)) {
                     fine(() -> "not suspending here: " + event.getSourceSection());
                     // continue stepping until completed
                     commandRequestIds.put(currentThread, steppingInfo);
