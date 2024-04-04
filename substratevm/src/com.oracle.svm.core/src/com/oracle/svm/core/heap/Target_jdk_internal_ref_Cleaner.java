@@ -29,7 +29,9 @@ import java.lang.ref.ReferenceQueue;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -64,7 +66,8 @@ final class Target_java_lang_ref_Cleaner {
 
 @TargetClass(className = "java.lang.ref.Cleaner$Cleanable")
 final class Target_java_lang_ref_Cleaner_Cleanable {
-    @Alias
+    @AnnotateOriginal
+    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
     native void clean();
 }
 
@@ -119,6 +122,10 @@ final class Target_jdk_internal_ref_PhantomCleanable {
 
     @Alias
     native boolean isListEmpty();
+
+    @AnnotateOriginal
+    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
+    /* final */ native void clean();
 }
 
 final class HolderObjectFieldTransformer implements FieldValueTransformer {
