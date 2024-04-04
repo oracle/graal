@@ -48,7 +48,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.introspection.Instruction;
+import com.oracle.truffle.api.bytecode.Instruction;
 
 public class AbstractInstructionTest {
 

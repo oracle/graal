@@ -53,12 +53,12 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.bytecode.BytecodeIntrospection;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
-import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
-import com.oracle.truffle.api.bytecode.introspection.Instruction;
-import com.oracle.truffle.api.bytecode.introspection.SourceInformation;
+import com.oracle.truffle.api.bytecode.ExceptionHandler;
+import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.SourceInformation;
 import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;

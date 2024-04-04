@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.introspection;
+package com.oracle.truffle.api.bytecode;
 
 import java.util.ArrayList;
 import java.util.Collections;

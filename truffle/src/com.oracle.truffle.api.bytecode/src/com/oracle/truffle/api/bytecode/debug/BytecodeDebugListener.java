@@ -41,7 +41,7 @@
 package com.oracle.truffle.api.bytecode.debug;
 
 import com.oracle.truffle.api.bytecode.BytecodeNode;
-import com.oracle.truffle.api.bytecode.introspection.Instruction;
+import com.oracle.truffle.api.bytecode.Instruction;
 
 /**
  * Subclass this bytecode node to get additional debug event that are normally not available. Useful

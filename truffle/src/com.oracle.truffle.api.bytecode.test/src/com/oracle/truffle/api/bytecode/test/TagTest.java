@@ -73,7 +73,7 @@ import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
-import com.oracle.truffle.api.bytecode.introspection.TagTree;
+import com.oracle.truffle.api.bytecode.TagTree;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -1398,7 +1398,7 @@ public class TagTest extends AbstractInstructionTest {
                         new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, 333, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x000f, 333, RootBodyTag.class));
-     }
+    }
 
     private static final NodeLibrary NODE_LIBRARY = NodeLibrary.getUncached();
     private static final InteropLibrary INTEROP = InteropLibrary.getUncached();

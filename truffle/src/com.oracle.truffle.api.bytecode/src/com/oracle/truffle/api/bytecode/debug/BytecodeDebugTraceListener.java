@@ -42,7 +42,7 @@ package com.oracle.truffle.api.bytecode.debug;
 
 import java.io.PrintStream;
 
-import com.oracle.truffle.api.bytecode.introspection.Instruction;
+import com.oracle.truffle.api.bytecode.Instruction;
 
 public interface BytecodeDebugTraceListener extends BytecodeDebugListener {
 

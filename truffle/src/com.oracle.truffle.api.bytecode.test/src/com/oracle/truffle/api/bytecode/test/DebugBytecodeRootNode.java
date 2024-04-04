@@ -45,8 +45,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener;
-import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 

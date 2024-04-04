@@ -43,9 +43,6 @@ package com.oracle.truffle.api.bytecode;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
-import com.oracle.truffle.api.bytecode.introspection.Instruction;
-import com.oracle.truffle.api.bytecode.introspection.SourceInformation;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
