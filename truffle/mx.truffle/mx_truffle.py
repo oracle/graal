@@ -117,7 +117,7 @@ def javadoc(args, vm=None):
         'com.oracle.truffle.api.object',
         'com.oracle.truffle.api.staticobject',
     ]
-    mx.javadoc(['--unified', '--projects', ','.join(projects)] + extraArgs + args, includeDeps=False)
+    mx.javadoc(['--unified', '--disallow-all-warnings','--projects', ','.join(projects)] + extraArgs + args, includeDeps=False)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
 
