@@ -30,11 +30,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.WeakHashMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -100,7 +102,7 @@ public final class CPUSampler implements Closeable {
     }
 
     private final Env env;
-    private final Map<TruffleContext, MutableSamplerData> activeContexts = Collections.synchronizedMap(new HashMap<>());
+    private final Map<TruffleContext, MutableSamplerData> activeContexts = Collections.synchronizedMap(new WeakHashMap<>());
     private volatile boolean closed;
     private volatile boolean collecting;
     private long period = 10;
@@ -465,16 +467,26 @@ public final class CPUSampler implements Closeable {
             if (activeContexts.isEmpty()) {
                 return Collections.emptyMap();
             }
-            TruffleContext context = activeContexts.keySet().iterator().next();
-            if (context.isActive()) {
-                throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
+            System.out.println("Active contexts size = " + activeContexts.size());
+            Map<TruffleContext, MutableSamplerData> contexts = new LinkedHashMap<>();
+            for (TruffleContext context : activeContexts.keySet()) {
+                if (context.isActive()) {
+                    throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
+                }
+                if (!context.isClosed()) {
+                    contexts.put(context, activeContexts.get(context));
+                }
             }
-            Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
-            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization, timeout, timeoutUnit);
-            for (StackSample stackSample : sample) {
-                stacks.put(stackSample.thread, stackSample.stack);
+            if (!contexts.isEmpty()) {
+                Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
+                List<StackSample> sample = safepointStackSampler.sample(env, contexts, !sampleContextInitialization, timeout, timeoutUnit);
+                for (StackSample stackSample : sample) {
+                    stacks.put(stackSample.thread, stackSample.stack);
+                }
+                return Collections.unmodifiableMap(stacks);
+            } else {
+                return Collections.emptyMap();
             }
-            return Collections.unmodifiableMap(stacks);
         }
     }
 
@@ -556,7 +568,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return The number of compilation tiers this element was recorded in. Tier 0 is the
-         *         interpreter.
+         * interpreter.
          * @since 21.3.0
          */
         public int getNumberOfTiers() {
@@ -565,7 +577,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return The number of times this element was recorded on top of the stack, executing in
-         *         the given compilation tier.
+         * the given compilation tier.
          * @since 21.3.0
          */
         public int getTierSelfCount(int tier) {
@@ -577,7 +589,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return The number of times this element was recorded anywhere on the stack, executing in
-         *         the given compilation tier.
+         * the given compilation tier.
          * @since 21.3.0
          */
         public int getTierTotalCount(int tier) {
@@ -613,7 +625,7 @@ public final class CPUSampler implements Closeable {
 
         /**
          * @return An immutable list of time stamps for the times that the element was on the top of
-         *         the stack
+         * the stack
          * @since 0.30
          */
         public List<Long> getSelfHitTimes() {
@@ -751,7 +763,7 @@ public final class CPUSampler implements Closeable {
                 if (context.isClosed()) {
                     continue;
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization, period, TimeUnit.MILLISECONDS);
+                List<StackSample> samples = safepointStackSampler.sample(env, Collections.singletonMap(context, activeContexts.get(context)), !sampleContextInitialization, period, TimeUnit.MILLISECONDS);
                 resultsToProcess.add(new SamplingResult(samples, context, taskStartTime));
             }
         }
