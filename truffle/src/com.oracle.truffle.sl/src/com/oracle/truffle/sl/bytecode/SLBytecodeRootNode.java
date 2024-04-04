@@ -50,6 +50,7 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
+import com.oracle.truffle.api.debug.DebuggerTags.AlwaysHalt;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -130,6 +131,16 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
 
     public void setTSName(TruffleString tsName) {
         this.tsName = tsName;
+    }
+
+    // see also SLReadArgumentNode
+    @Operation(tags = AlwaysHalt.class)
+    public static final class SLAlwaysHalt {
+
+        @Specialization
+        static void doDefault() {
+            // nothing to do. always halt will be triggered by the tag.
+        }
     }
 
     // see also SLReadArgumentNode

@@ -49,14 +49,14 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SLReadPropertyTest {
+public class SLReadPropertyTest extends AbstractSLTest {
 
     private Context ctx;
     private Value slObject;
 
     @Before
     public void setUp() {
-        this.ctx = Context.create("sl");
+        this.ctx = newContextBuilder("sl").build();
         this.slObject = ctx.eval("sl", "function createObject() {\n" +
                         "obj1 = new();\n" +
                         "obj1.number = 42;\n" +

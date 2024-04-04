@@ -50,12 +50,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ToStringOfEvalTest {
+public class ToStringOfEvalTest extends AbstractSLTest {
     Context context;
 
     @Before
     public void initialize() {
-        context = Context.create();
+        context = newContextBuilder().build();
     }
 
     @After

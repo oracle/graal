@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -59,12 +60,15 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -72,6 +76,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
@@ -110,9 +115,11 @@ import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
-import com.oracle.truffle.sl.runtime.SLBigInteger;
-import com.oracle.truffle.sl.parser.SLNodeVisitor;
 import com.oracle.truffle.sl.parser.SLBytecodeVisitor;
+import com.oracle.truffle.sl.parser.SLNodeVisitor;
+import com.oracle.truffle.sl.parser.SimpleLanguageLexer;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser;
+import com.oracle.truffle.sl.runtime.SLBigInteger;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
@@ -357,8 +364,91 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             targets = SLNodeVisitor.parseSL(this, source);
         }
 
+        for (RootCallTarget node : targets.values()) {
+            System.out.println(node.getRootNode().getQualifiedName());
+            printInstrumentationTree(System.out, "  ", node.getRootNode());
+        }
+
         RootCallTarget rootTarget = targets.get(SLStrings.MAIN);
         return new SLEvalRootNode(this, rootTarget, targets).getCallTarget();
+    }
+
+    public static void printInstrumentationTree(PrintStream w, String indent, Node node) {
+        ProvidedTags tags = SLLanguage.class.getAnnotation(ProvidedTags.class);
+        Class<?>[] tagClasses = tags.value();
+        if (node instanceof SLRootNode root) {
+            w.println(root.getSourceSection().getCharacters());
+        }
+        if (node instanceof BytecodeNode bytecode) {
+            w.println(bytecode.dump());
+        }
+
+        String newIndent = indent;
+        List<Class<? extends Tag>> foundTags = getTags(node, tagClasses);
+        if (!foundTags.isEmpty()) {
+            int lineLength = 0;
+            w.print(indent);
+            lineLength += indent.length();
+            w.print("(");
+            lineLength += 1;
+            String sep = "";
+            for (Class<? extends Tag> tag : foundTags) {
+                String identifier = Tag.getIdentifier(tag);
+                if (identifier == null) {
+                    identifier = tag.getSimpleName();
+                }
+                w.print(sep);
+                lineLength += sep.length();
+                w.print(identifier);
+                lineLength += identifier.length();
+                sep = ",";
+            }
+            w.print(")");
+            lineLength += 1;
+            SourceSection sourceSection = node.getSourceSection();
+
+            int spaces = 60 - lineLength;
+            for (int i = 0; i < spaces; i++) {
+                w.print(" ");
+            }
+
+            String characters = sourceSection.getCharacters().toString();
+            characters = characters.replaceAll("\\n", "");
+
+            if (characters.length() > 60) {
+                characters = characters.subSequence(0, 57) + "...";
+            }
+
+            w.printf("%s %3s:%-3s-%3s:%-3s | %3s:%-3s   %s%n", sourceSection.getSource().getName(),
+                            sourceSection.getStartLine(),
+                            sourceSection.getStartColumn(),
+                            sourceSection.getEndLine(),
+                            sourceSection.getEndColumn(),
+                            sourceSection.getCharIndex(),
+                            sourceSection.getCharLength(), characters);
+            newIndent = newIndent + "  ";
+        }
+
+        for (Node child : node.getChildren()) {
+            printInstrumentationTree(w, newIndent, child);
+        }
+
+    }
+
+    @SuppressWarnings({"unchecked", "cast"})
+    private static List<Class<? extends Tag>> getTags(Node node, Class<?>[] tags) {
+        if (node instanceof InstrumentableNode instrumentableNode) {
+            if (instrumentableNode.isInstrumentable()) {
+                List<Class<? extends Tag>> foundTags = new ArrayList<>();
+                for (Class<?> tag : tags) {
+                    if (instrumentableNode.hasTag((Class<? extends Tag>) tag)) {
+                        foundTags.add((Class<? extends Tag>) tag);
+                    }
+                }
+                return foundTags;
+            }
+        }
+        return List.of();
     }
 
     /**

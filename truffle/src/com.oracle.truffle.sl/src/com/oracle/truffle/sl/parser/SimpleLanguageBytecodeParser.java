@@ -61,22 +61,22 @@ public class SimpleLanguageBytecodeParser extends Parser {
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		T__0=1, T__1=2, T__2=3, T__3=4, T__4=5, T__5=6, T__6=7, T__7=8, T__8=9, 
-		T__9=10, T__10=11, T__11=12, T__12=13, T__13=14, T__14=15, T__15=16, T__16=17, 
-		T__17=18, WS=19, COMMENT=20, LINE_COMMENT=21, OP_OR=22, OP_AND=23, OP_COMPARE=24, 
+		T__0=1, T__1=2, T__2=3, T__3=4, T__4=5, T__5=6, T__6=7, T__7=8, T__8=9,
+		T__9=10, T__10=11, T__11=12, T__12=13, T__13=14, T__14=15, T__15=16, T__16=17,
+		T__17=18, WS=19, COMMENT=20, LINE_COMMENT=21, OP_OR=22, OP_AND=23, OP_COMPARE=24,
 		OP_ADD=25, OP_MUL=26, IDENTIFIER=27, STRING_LITERAL=28, NUMERIC_LITERAL=29;
 	public static final int
-		RULE_simplelanguage = 0, RULE_function = 1, RULE_block = 2, RULE_statement = 3, 
-		RULE_break_statement = 4, RULE_continue_statement = 5, RULE_expression_statement = 6, 
-		RULE_debugger_statement = 7, RULE_while_statement = 8, RULE_if_statement = 9, 
-		RULE_return_statement = 10, RULE_expression = 11, RULE_logic_term = 12, 
-		RULE_logic_factor = 13, RULE_arithmetic = 14, RULE_term = 15, RULE_factor = 16, 
+		RULE_simplelanguage = 0, RULE_function = 1, RULE_block = 2, RULE_statement = 3,
+		RULE_break_statement = 4, RULE_continue_statement = 5, RULE_expression_statement = 6,
+		RULE_debugger_statement = 7, RULE_while_statement = 8, RULE_if_statement = 9,
+		RULE_return_statement = 10, RULE_expression = 11, RULE_logic_term = 12,
+		RULE_logic_factor = 13, RULE_arithmetic = 14, RULE_term = 15, RULE_factor = 16,
 		RULE_member_expression = 17;
 	private static String[] makeRuleNames() {
 		return new String[] {
-			"simplelanguage", "function", "block", "statement", "break_statement", 
-			"continue_statement", "expression_statement", "debugger_statement", "while_statement", 
-			"if_statement", "return_statement", "expression", "logic_term", "logic_factor", 
+			"simplelanguage", "function", "block", "statement", "break_statement",
+			"continue_statement", "expression_statement", "debugger_statement", "while_statement",
+			"if_statement", "return_statement", "expression", "logic_term", "logic_factor",
 			"arithmetic", "term", "factor", "member_expression"
 		};
 	}
@@ -84,17 +84,17 @@ public class SimpleLanguageBytecodeParser extends Parser {
 
 	private static String[] makeLiteralNames() {
 		return new String[] {
-			null, "'function'", "'('", "','", "')'", "'{'", "'}'", "'break'", "';'", 
-			"'continue'", "'debugger'", "'while'", "'if'", "'else'", "'return'", 
+			null, "'function'", "'('", "','", "')'", "'{'", "'}'", "'break'", "';'",
+			"'continue'", "'debugger'", "'while'", "'if'", "'else'", "'return'",
 			"'='", "'.'", "'['", "']'", null, null, null, "'||'", "'&&'"
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
 	private static String[] makeSymbolicNames() {
 		return new String[] {
-			null, null, null, null, null, null, null, null, null, null, null, null, 
-			null, null, null, null, null, null, null, "WS", "COMMENT", "LINE_COMMENT", 
-			"OP_OR", "OP_AND", "OP_COMPARE", "OP_ADD", "OP_MUL", "IDENTIFIER", "STRING_LITERAL", 
+			null, null, null, null, null, null, null, null, null, null, null, null,
+			null, null, null, null, null, null, null, "WS", "COMMENT", "LINE_COMMENT",
+			"OP_OR", "OP_AND", "OP_COMPARE", "OP_ADD", "OP_MUL", "IDENTIFIER", "STRING_LITERAL",
 			"NUMERIC_LITERAL"
 		};
 	}
@@ -816,7 +816,7 @@ public class SimpleLanguageBytecodeParser extends Parser {
 					setState(114);
 					logic_term();
 					}
-					} 
+					}
 				}
 				setState(119);
 				_errHandler.sync(this);
@@ -879,7 +879,7 @@ public class SimpleLanguageBytecodeParser extends Parser {
 					setState(122);
 					logic_factor();
 					}
-					} 
+					}
 				}
 				setState(127);
 				_errHandler.sync(this);
@@ -995,7 +995,7 @@ public class SimpleLanguageBytecodeParser extends Parser {
 					setState(135);
 					term();
 					}
-					} 
+					}
 				}
 				setState(140);
 				_errHandler.sync(this);
@@ -1058,7 +1058,7 @@ public class SimpleLanguageBytecodeParser extends Parser {
 					setState(143);
 					factor();
 					}
-					} 
+					}
 				}
 				setState(148);
 				_errHandler.sync(this);
@@ -1083,7 +1083,7 @@ public class SimpleLanguageBytecodeParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_factor; }
-	 
+
 		public FactorContext() { }
 		public void copyFrom(FactorContext ctx) {
 			super.copyFrom(ctx);
@@ -1162,7 +1162,7 @@ public class SimpleLanguageBytecodeParser extends Parser {
 						setState(150);
 						member_expression();
 						}
-						} 
+						}
 					}
 					setState(155);
 					_errHandler.sync(this);
@@ -1219,7 +1219,7 @@ public class SimpleLanguageBytecodeParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_member_expression; }
-	 
+
 		public Member_expressionContext() { }
 		public void copyFrom(Member_expressionContext ctx) {
 			super.copyFrom(ctx);

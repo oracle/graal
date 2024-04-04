@@ -58,12 +58,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
-public class SLParseInContextTest {
+public class SLParseInContextTest extends AbstractSLTest {
     private Context context;
 
     @Before
     public void setup() throws Exception {
-        context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
+        context = newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
     }
 
     @After
