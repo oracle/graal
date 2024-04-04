@@ -111,6 +111,7 @@ import com.oracle.truffle.api.TruffleSafepoint.InterruptibleFunction;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
@@ -221,6 +222,8 @@ public abstract class Accessor {
         public abstract int findBytecodeIndex(RootNode rootNode, Node callNode, Frame frame);
 
         public abstract boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled);
+
+        public abstract Node resolveInstrumentableCallNode(RootNode root, FrameInstance callNode);
     }
 
     public abstract static class SourceSupport extends Support {

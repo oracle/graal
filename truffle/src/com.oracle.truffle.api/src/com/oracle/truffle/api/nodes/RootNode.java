@@ -538,6 +538,10 @@ public abstract class RootNode extends ExecutableNode {
         // no default implementation
     }
 
+    protected Node resolveInstrumentableCallNode(FrameInstance instance) {
+        return instance.getCallNode();
+    }
+
     /**
      * Provide a list of stack frames that led to a schedule of asynchronous execution of this root
      * node on the provided frame. The asynchronous frames are expected to be found here when

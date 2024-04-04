@@ -164,6 +164,11 @@ public interface FrameInstance {
      **/
     Node getCallNode();
 
+    default Node getInstrumentableCallNode() {
+        RootCallTarget target = (RootCallTarget) getCallTarget();
+        return FrameAccessor.ACCESSOR.nodeSupport().resolveInstrumentableCallNode(target.getRootNode(), this);
+    }
+
     /**
      * The {@link CallTarget} being invoked in this frame.
      * <p>
