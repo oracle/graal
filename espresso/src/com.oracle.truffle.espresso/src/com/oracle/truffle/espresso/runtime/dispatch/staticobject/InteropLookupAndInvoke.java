@@ -24,15 +24,14 @@
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.CandidateMethodWithArgs;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
@@ -73,21 +72,14 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
         @Specialization
         public Object doVirtual(StaticObject receiver, Klass klass, Object[] arguments, String member,
                         @Cached LookupVirtualMethodNode lookup,
-                        @Cached OverLoadedMethodSelectorNode selector,
-                        @Cached ToEspressoNode.DynamicToEspresso toEspresso,
-                        @Cached InvokeEspressoNode invoke,
-                        @Cached InlinedBranchProfile single,
-                        @Cached InlinedBranchProfile nonVarargs,
-                        @Cached InlinedBranchProfile varargs,
-                        @Cached InlinedBranchProfile multiple,
+                        @Cached SelectAndInvokeNode selectAndInvoke,
                         @Cached InlinedBranchProfile error,
                         @Cached InlinedBranchProfile exception)
                         throws ArityException, UnsupportedTypeException {
             assert receiver != null;
             Method[] candidates = lookup.execute(klass, member, arguments.length);
             if (candidates != null) {
-                return selectAndInvoke(receiver, arguments, candidates, this, selector, toEspresso, invoke,
-                                single, nonVarargs, varargs, multiple, error, exception);
+                return selectAndInvoke(selectAndInvoke, exception, receiver, arguments, candidates);
             }
             error.enter(this);
             throw ArityException.create(arguments.length + 1, -1, arguments.length);
@@ -99,81 +91,91 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
         @Specialization
         public Object doNonVirtual(StaticObject receiver, Klass klass, Object[] arguments, String member,
                         @Cached LookupDeclaredMethod lookup,
-                        @Cached OverLoadedMethodSelectorNode selector,
-                        @Cached ToEspressoNode.DynamicToEspresso toEspresso,
-                        @Cached InvokeEspressoNode invoke,
-                        @Cached InlinedBranchProfile single,
-                        @Cached InlinedBranchProfile nonVarargs,
-                        @Cached InlinedBranchProfile varargs,
-                        @Cached InlinedBranchProfile multiple,
+                        @Cached SelectAndInvokeNode selectAndInvoke,
                         @Cached InlinedBranchProfile error,
                         @Cached InlinedBranchProfile exception)
                         throws ArityException, UnsupportedTypeException {
             boolean isStatic = receiver == null;
             Method[] candidates = lookup.execute(klass, member, true, isStatic, arguments.length);
             if (candidates != null) {
-                return selectAndInvoke(receiver, arguments, candidates, this, selector, toEspresso, invoke,
-                                single, nonVarargs, varargs, multiple, error, exception);
+                return selectAndInvoke(selectAndInvoke, exception, receiver, arguments, candidates);
             }
             error.enter(this);
             throw ArityException.create(arguments.length + 1, -1, arguments.length);
         }
     }
 
-    private static Object selectAndInvoke(StaticObject receiver, Object[] arguments, Method[] candidates,
-                    InteropLookupAndInvoke node,
-                    OverLoadedMethodSelectorNode selector,
-                    ToEspressoNode.DynamicToEspresso toEspresso,
-                    InvokeEspressoNode invoke,
-                    InlinedBranchProfile single,
-                    InlinedBranchProfile nonVarargs,
-                    InlinedBranchProfile varargs,
-                    InlinedBranchProfile multiple,
-                    InlinedBranchProfile error,
-                    InlinedBranchProfile exception)
-                    throws ArityException, UnsupportedTypeException {
-        assert candidates.length > 0;
+    Object selectAndInvoke(SelectAndInvokeNode selectAndInvoke, InlinedBranchProfile exception,
+                    StaticObject receiver, Object[] args, Method[] candidates) throws UnsupportedTypeException, ArityException {
         try {
-            if (candidates.length == 1) {
-                single.enter(node);
-                // common case with no overloads
-                Method m = candidates[0];
-                assert m.isPublic();
-                if (!m.isVarargs()) {
-                    nonVarargs.enter(node);
-                    assert m.getParameterCount() == arguments.length;
-                    return invoke.execute(m, receiver, arguments);
-                } else {
-                    varargs.enter(node);
-                    CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspresso);
-                    if (matched != null) {
-                        matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched);
-                        if (matched != null) {
-                            return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
-                        }
-                    }
-                    error.enter(node);
-                    throw UnsupportedTypeException.create(arguments);
-                }
-            } else {
-                multiple.enter(node);
-                // multiple overloaded methods found
-                // find method with type matches
-                CandidateMethodWithArgs typeMatched = selector.execute(candidates, arguments);
-                if (typeMatched != null) {
-                    // single match found!
-                    return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
-                } else {
-                    // unable to select exactly one best candidate for the input args!
-                    error.enter(node);
-                    throw UnsupportedTypeException.create(arguments);
-                }
-            }
+            return selectAndInvoke.execute(receiver, args, candidates);
         } catch (EspressoException e) {
-            exception.enter(node);
-            Meta meta = e.getGuestException().getKlass().getMeta();
-            EspressoLanguage language = meta.getLanguage();
-            throw InteropUtils.unwrapExceptionBoundary(language, e, meta);
+            exception.enter(this);
+            throw InteropUtils.unwrapExceptionBoundary(getLanguage(), e, getMeta());
+        }
+    }
+
+    @GenerateUncached
+    abstract static class SelectAndInvokeNode extends EspressoNode {
+        public abstract Object execute(StaticObject receiver, Object[] args, Method[] candidates) throws ArityException, UnsupportedTypeException;
+
+        @Specialization(guards = {"isSingleNonVarargs(candidates)"})
+        Object doSingleNonVarargs(StaticObject receiver, Object[] args, Method[] candidates,
+                        @Cached @Exclusive InvokeEspressoNode invoke)
+                        throws ArityException, UnsupportedTypeException {
+            assert candidates.length == 1;
+            Method m = candidates[0];
+            assert m.getParameterCount() == args.length;
+            assert m.isPublic();
+            return invoke.execute(m, receiver, args);
+        }
+
+        @Specialization(guards = {"isSingleVarargs(candidates)"})
+        Object doSingleVarargs(StaticObject receiver, Object[] args, Method[] candidates,
+                        @Cached @Exclusive InvokeEspressoNode invoke,
+                        @Cached ToEspressoNode.DynamicToEspresso toEspresso,
+                        @Cached InlinedBranchProfile error)
+                        throws ArityException, UnsupportedTypeException {
+            assert candidates.length == 1;
+            Method m = candidates[0];
+            assert m.isPublic();
+            CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, args, m.resolveParameterKlasses(), toEspresso);
+            if (matched != null) {
+                matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched);
+                assert matched != null;
+                return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
+            }
+            error.enter(this);
+            throw UnsupportedTypeException.create(args);
+        }
+
+        @Specialization(guards = {"isMulti(candidates)"})
+        Object doMulti(StaticObject receiver, Object[] args, Method[] candidates,
+                        @Cached OverLoadedMethodSelectorNode selector,
+                        @Cached @Exclusive InvokeEspressoNode invoke,
+                        @Cached InlinedBranchProfile error)
+                        throws ArityException, UnsupportedTypeException {
+            CandidateMethodWithArgs typeMatched = selector.execute(candidates, args);
+            if (typeMatched != null) {
+                // single match found!
+                return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
+            } else {
+                // unable to select exactly one best candidate for the input args!
+                error.enter(this);
+                throw UnsupportedTypeException.create(args);
+            }
+        }
+
+        static boolean isSingleNonVarargs(Method[] candidates) {
+            return candidates.length == 1 && !candidates[0].isVarargs();
+        }
+
+        static boolean isSingleVarargs(Method[] candidates) {
+            return candidates.length == 1 && candidates[0].isVarargs();
+        }
+
+        static boolean isMulti(Method[] candidates) {
+            return candidates.length > 1;
         }
     }
 }
