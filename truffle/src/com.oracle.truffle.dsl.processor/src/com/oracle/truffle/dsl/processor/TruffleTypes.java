@@ -379,7 +379,7 @@ public class TruffleTypes {
     public static final String Variadic_Name = "com.oracle.truffle.api.bytecode.Variadic";
     public static final String Instrumentation_Name = "com.oracle.truffle.api.bytecode.Instrumentation";
 
-    public static final String Argument_ArgumentType_Name = "com.oracle.truffle.api.bytecode.Argument.ArgumentType";
+    public static final String Argument_ArgumentType_Name = "com.oracle.truffle.api.bytecode.Instruction.Argument.ArgumentType";
     public static final String BytecodeIntrospection_Name = "com.oracle.truffle.api.bytecode.BytecodeIntrospection";
     public static final String Instruction_Name = "com.oracle.truffle.api.bytecode.Instruction";
     public static final String TagTree_Name = "com.oracle.truffle.api.bytecode.TagTree";
