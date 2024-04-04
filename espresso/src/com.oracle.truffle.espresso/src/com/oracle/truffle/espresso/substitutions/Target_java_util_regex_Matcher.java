@@ -555,7 +555,7 @@ public final class Target_java_util_regex_Matcher {
             assert action != RegexAction.Validate;
             compileFallBackIfRequired(self, meta);
             applyBackup(self, meta);
-
+            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
             switch (action) {
                 case Match -> executeMatch(self, from, NOANCHOR, meta);
                 case FullMatch -> executeMatch(self, from, ENDANCHOR, meta);
