@@ -334,6 +334,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
@@ -655,9 +656,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         // stack frame, so shouldn't do it again.
         if (!maybePrepareForContinuation(frame)) {
             initArguments(frame);
+            // Initialize the BCI slot.
+            setBCI(frame, 0);
         }
-        // Initialize the BCI slot.
-        setBCI(frame, 0);
     }
 
     // region OSR support
