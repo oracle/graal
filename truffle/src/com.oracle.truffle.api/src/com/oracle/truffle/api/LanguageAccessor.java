@@ -466,7 +466,7 @@ final class LanguageAccessor extends Accessor {
                 TruffleLogger.LoggerCache loggerCache = (TruffleLogger.LoggerCache) logger;
                 if (logLevels == null) {
                     loggerCache.removeLogLevelsForVMObject(vmObject);
-                } else if (!logLevels.isEmpty() || !ENGINE.isContextBoundLogger(loggerCache.getSPI())) {
+                } else if (!logLevels.isEmpty()) {
                     loggerCache.addLogLevelsForVMObject(vmObject, logLevels);
                 }
             }
