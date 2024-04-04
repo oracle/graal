@@ -215,7 +215,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
 
     private static void trySkippingGuardPis(StructuredGraph graph) {
         for (GuardNode floatingGuard : graph.getNodes(GuardNode.TYPE).snapshot()) {
-            PiNode.guardTrySkipPi(floatingGuard, floatingGuard.getCondition(), floatingGuard.isNegated());
+            PiNode.guardTrySkipPi(floatingGuard, floatingGuard.getCondition(), floatingGuard.isNegated(), NodeView.DEFAULT);
         }
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After trySkipGuardPis");
     }
@@ -590,9 +590,9 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     if (b.predecessor() instanceof IfNode ifNode && b == ifNode.trueSuccessor()) {
                         condition = ifNode.condition();
                     }
-                } else if (fieldPiGuard instanceof GuardNode floatingGuard) {
+                } else if (fieldPiGuard instanceof GuardNode floatingGuard && !floatingGuard.isNegated()) {
                     condition = floatingGuard.getCondition();
-                } else if (fieldPiGuard instanceof FixedGuardNode fixedGuard) {
+                } else if (fieldPiGuard instanceof FixedGuardNode fixedGuard && !fixedGuard.isNegated()) {
                     condition = fixedGuard.getCondition();
                 }
 

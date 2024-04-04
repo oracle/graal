@@ -222,7 +222,7 @@ public class LoadFieldPiCanonicalizationTest extends GraalCompilerTest {
     public static Object uniquePutFieldSnippet(Object base, int value) {
         if (base instanceof A a) {
             /*
-             * The two branches access the same field. The field load should be uniqued, and the
+             * The two branches access the same field. The field store should be uniqued, and the
              * inner branch should go away.
              */
             if (a instanceof B b) {

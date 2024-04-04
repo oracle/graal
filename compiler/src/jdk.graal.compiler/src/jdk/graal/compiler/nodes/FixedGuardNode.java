@@ -119,7 +119,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
         }
 
         if (this.isAlive()) {
-            if (PiNode.guardTrySkipPi(this, getCondition(), isNegated())) {
+            if (PiNode.guardTrySkipPi(this, getCondition(), isNegated(), NodeView.from(tool))) {
                 return;
             }
         }
