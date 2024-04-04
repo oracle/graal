@@ -77,8 +77,16 @@ public class MethodArgsUtils {
      * <li>{@code [long l, NULL]} -> [l, NULL]</li>
      * </ul>
      */
-    @TruffleBoundary
     public static CandidateMethodWithArgs matchCandidate(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode.DynamicToEspresso toEspressoNode) {
+        Object[] convertedArgs = convertedArgs(candidate, arguments, parameterKlasses, toEspressoNode);
+        if (convertedArgs != null) {
+            return new CandidateMethodWithArgs(candidate, convertedArgs, parameterKlasses);
+        }
+        return null;
+    }
+
+    @TruffleBoundary
+    private static Object[] convertedArgs(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         assert arguments.length == parameterKlasses.length || (candidate.isVarargs() && arguments.length >= parameterKlasses.length - 1);
         int paramLength = parameterKlasses.length;
         try {
@@ -139,7 +147,7 @@ public class MethodArgsUtils {
                 }
             }
 
-            return new CandidateMethodWithArgs(candidate, convertedArgs, parameterKlasses);
+            return convertedArgs;
         } catch (ArithmeticException // If expansion of the given vararg array overflows
                         | OutOfMemoryError // If converted args array creation fails.
                         | UnsupportedTypeException e) {
@@ -162,7 +170,6 @@ public class MethodArgsUtils {
      * <li>{@code [long l]} -> [l, []]</li>
      * <li>{@code [long l, NULL]} -> [l, NULL]</li>
      */
-    @TruffleBoundary
     public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched) {
         assert matched.getMethod().isVarargs();
         int varArgsIndex = matched.getParameterTypes().length - 1;
@@ -176,6 +183,12 @@ public class MethodArgsUtils {
             return matched;
         }
 
+        Object[] finalConvertedArgs = shrinkVarargs(matched, varArgsIndex, varArgsType, isPrimitive, varArgsLength);
+        return new CandidateMethodWithArgs(matched.getMethod(), finalConvertedArgs, matched.getParameterTypes());
+    }
+
+    @TruffleBoundary
+    private static Object[] shrinkVarargs(CandidateMethodWithArgs matched, int varArgsIndex, Klass varArgsType, boolean isPrimitive, int varArgsLength) {
         StaticObject varArgsArray = isPrimitive ? varArgsType.getAllocator().createNewPrimitiveArray(varArgsType, varArgsLength) : varArgsType.allocateReferenceArray(varArgsLength);
 
         int index = 0;
@@ -192,7 +205,7 @@ public class MethodArgsUtils {
         Object[] finalConvertedArgs = new Object[matched.getParameterTypes().length];
         System.arraycopy(matched.getConvertedArgs(), 0, finalConvertedArgs, 0, varArgsIndex);
         finalConvertedArgs[varArgsIndex] = varArgsArray;
-        return new CandidateMethodWithArgs(matched.getMethod(), finalConvertedArgs, matched.getParameterTypes());
+        return finalConvertedArgs;
     }
 
     public static PrimitiveKlass boxedTypeToPrimitiveType(Klass primitiveType) {
