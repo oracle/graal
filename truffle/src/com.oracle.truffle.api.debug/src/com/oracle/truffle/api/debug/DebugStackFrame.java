@@ -118,7 +118,7 @@ public final class DebugStackFrame {
         if (currentFrame == null) {
             node = getContext().getInstrumentedNode();
         } else {
-            node = currentFrame.getCallNode();
+            node = currentFrame.getInstrumentableCallNode();
             node = InstrumentableNode.findInstrumentableParent(node);
         }
         try {
@@ -247,7 +247,7 @@ public final class DebugStackFrame {
             SuspendedContext context = getContext();
             return event.getSession().resolveSection(context.getInstrumentedSourceSection());
         } else {
-            Node callNode = currentFrame.getCallNode();
+            Node callNode = currentFrame.getInstrumentableCallNode();
             if (callNode != null) {
                 return event.getSession().resolveSection(callNode);
             }
@@ -302,7 +302,7 @@ public final class DebugStackFrame {
         if (currentFrame == null) {
             node = context.getInstrumentedNode();
         } else {
-            node = currentFrame.getCallNode();
+            node = currentFrame.getInstrumentableCallNode();
             if (node == null) {
                 return null;
             }
@@ -497,7 +497,7 @@ public final class DebugStackFrame {
         if (currentFrame == null) {
             return getContext().getInstrumentedNode();
         } else {
-            Node callNode = currentFrame.getCallNode();
+            Node callNode = currentFrame.getInstrumentableCallNode();
             if (callNode != null) {
                 return callNode;
             }
