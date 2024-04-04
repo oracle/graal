@@ -383,6 +383,8 @@ public class TruffleTypes {
     public static final String BytecodeIntrospection_Name = "com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection";
     public static final String Instruction_Name = "com.oracle.truffle.api.bytecode.introspection.Instruction";
     public static final String TagTree_Name = "com.oracle.truffle.api.bytecode.introspection.TagTree";
+    public static final String TagTreeNode_Name = "com.oracle.truffle.api.bytecode.TagTreeNode";
+    public static final String TagTreeNodeExports_Name = "com.oracle.truffle.api.bytecode.TagTreeNodeExports";
 
     public static final String BytecodeSerializer_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer";
     public static final String BytecodeSerializer_SerializerContext_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext";
@@ -430,6 +432,8 @@ public class TruffleTypes {
     public final DeclaredType BytecodeIntrospection = c.getDeclaredTypeOptional(BytecodeIntrospection_Name);
     public final DeclaredType Instruction = c.getDeclaredTypeOptional(Instruction_Name);
     public final DeclaredType TagTree = c.getDeclaredTypeOptional(TagTree_Name);
+    public final DeclaredType TagTreeNode = c.getDeclaredTypeOptional(TagTreeNode_Name);
+    public final DeclaredType TagTreeNodeExports = c.getDeclaredTypeOptional(TagTreeNodeExports_Name);
 
     public final DeclaredType BytecodeSerializer = c.getDeclaredTypeOptional(BytecodeSerializer_Name);
     public final DeclaredType BytecodeSerializer_SerializerContext = c.getDeclaredTypeOptional(BytecodeSerializer_SerializerContext_Name);
@@ -517,6 +521,10 @@ public class TruffleTypes {
     public final DeclaredType TruffleInstrument_Registration = c.getDeclaredTypeOptional(TruffleInstrument_Registration_Name);
     public final DeclaredType StandardTags_RootTag = c.getDeclaredTypeOptional(StandardTags_RootTag_Name);
     public final DeclaredType StandardTags_RootBodyTag = c.getDeclaredTypeOptional(StandardTags_RootBodyTag_Name);
+
+    // Interop API
+    public static final String NodeLibrary_Name = "com.oracle.truffle.api.interop.NodeLibrary";
+    public final DeclaredType NodeLibrary = c.getDeclaredTypeOptional(NodeLibrary_Name);
 
     // OM API
     public static final String DynamicObjectFactory_Name = "com.oracle.truffle.api.object.DynamicObjectFactory";

@@ -67,6 +67,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationA
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -166,6 +167,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel tagLeaveVoidInstruction;
 
     public final List<CustomOperationModel> instrumentations = new ArrayList<>();
+    public ExportsData tagTreeNodeLibrary;
 
     public String getName() {
         return templateType.getSimpleName() + suffix;

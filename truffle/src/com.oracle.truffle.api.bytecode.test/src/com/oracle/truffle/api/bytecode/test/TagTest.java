@@ -56,10 +56,13 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -75,7 +78,9 @@ import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -88,10 +93,15 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 public class TagTest extends AbstractInstructionTest {
 
@@ -1077,7 +1087,6 @@ public class TagTest extends AbstractInstructionTest {
         assertEvents(node,
                         events,
                         new Event(1, EventKind.ENTER, 0x0002, 0x000d, null, RootBodyTag.class), new Event(2, EventKind.RETURN_VALUE, 0x0002, 0x000d, 42, RootBodyTag.class));
-
     }
 
     @Test
@@ -1194,8 +1203,8 @@ public class TagTest extends AbstractInstructionTest {
         Source s = Source.newBuilder("test", "12345678", "name").build();
         TagInstrumentationTestRootNode node = parseComplete((b) -> {
             b.beginSource(s);
-
             b.beginSourceSection(0, 8);
+
             b.beginRoot(TagTestLanguage.REF.get(null));
             b.beginSourceSection(2, 4);
             b.beginTag(ExpressionTag.class);
@@ -1205,8 +1214,8 @@ public class TagTest extends AbstractInstructionTest {
             b.beginTag(ExpressionTag.class);
             b.emitLoadConstant(42);
             b.endTag(ExpressionTag.class);
-
             b.endRoot();
+
             b.endSourceSection();
             b.endSource();
         });
@@ -1323,7 +1332,6 @@ public class TagTest extends AbstractInstructionTest {
 
             b.endRoot();
         });
-
         assertInstructions(node,
                         "load.constant",
                         "yield",
@@ -1390,6 +1398,71 @@ public class TagTest extends AbstractInstructionTest {
                         new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, 333, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x000f, 333, RootBodyTag.class));
+     }
+
+    private static final NodeLibrary NODE_LIBRARY = NodeLibrary.getUncached();
+    private static final InteropLibrary INTEROP = InteropLibrary.getUncached();
+
+    @Test
+    public void testNodeLibrary() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            BytecodeLocal l1 = b.createLocal(FrameSlotKind.Illegal, "l1", "l1_info");
+            BytecodeLocal l2 = b.createLocal(FrameSlotKind.Illegal,
+                            TruffleString.fromJavaStringUncached("l2", Encoding.UTF_16), "l2_info");
+
+            b.beginStoreLocal(l1);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(l1);
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadLocal(l1);
+            b.endTag(ExpressionTag.class);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(l2);
+            b.emitLoadConstant(41);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(l1);
+            b.endReturn();
+
+            b.endRoot();
+        });
+        instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), (c) -> {
+            return new ExecutionEventNode() {
+                @Override
+                protected void onEnter(VirtualFrame frame) {
+                    assertScope(frame.materialize(), c.getInstrumentedNode());
+                }
+
+                @TruffleBoundary
+                private void assertScope(Frame frame, Node instruementedNode) {
+                    try {
+                        Object scope = NODE_LIBRARY.getScope(instruementedNode, frame, true);
+                        Object members = INTEROP.getMembers(scope);
+                        assertEquals(2, INTEROP.getArraySize(members));
+                        Object l1 = INTEROP.readArrayElement(members, 0L);
+                        Object l2 = INTEROP.readArrayElement(members, 1L);
+                        assertEquals("l1", INTEROP.asString(l1));
+                        assertEquals("l2", INTEROP.asString(l2));
+
+                        Object l1Value = INTEROP.readMember(scope, "l1");
+                        Object l2Value = INTEROP.readMember(scope, "l2");
+
+                        assertEquals(42, l1Value);
+
+                    } catch (InteropException e) {
+                        throw CompilerDirectives.shouldNotReachHere(e);
+                    }
+                }
+
+            };
+        });
+        node.getCallTarget().call();
 
     }
 

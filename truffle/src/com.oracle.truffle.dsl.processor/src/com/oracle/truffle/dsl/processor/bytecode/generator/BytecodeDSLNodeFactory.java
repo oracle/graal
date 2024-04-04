@@ -317,7 +317,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         bytecodeNodeGen.add(createEncodeTags());
         if (model.enableTagInstrumentation) {
-            bytecodeNodeGen.add(createSupportsTagImpl());
+            bytecodeNodeGen.add(createResolveInstrumentableCallNode());
         }
 
         // Define a loop counter class to track how many back-edges have been taken.
@@ -434,20 +434,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return bytecodeNodeGen;
     }
 
-    private CodeExecutableElement createSupportsTagImpl() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(boolean.class), "supportsTagImpl");
-        ex.addParameter(new CodeVariableElement(type(Class.class), "tag"));
+    private CodeExecutableElement createResolveInstrumentableCallNode() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "resolveInstrumentableCallNode", 1);
+        ex.renameArguments("frame");
         ex.getModifiers().remove(Modifier.ABSTRACT);
         ex.getModifiers().add(Modifier.FINAL);
         CodeTreeBuilder b = ex.createBuilder();
-        boolean elseIf = false;
-        for (TypeMirror tag : model.getProvidedTags()) {
-            elseIf = b.startIf(elseIf);
-            b.string("tag == ").typeLiteral(tag).end().startBlock();
-            b.startReturn().string("true").end();
-            b.end();
-        }
-        b.returnFalse();
+
+        b.startDeclaration(types.BytecodeLocation, "location").startStaticCall(types.BytecodeLocation, "get").string("frame").end().end();
+        b.startIf().string("location == null || !(location.getBytecodeNode() instanceof AbstractBytecodeNode bytecodeNode)").end().startBlock();
+        b.startReturn().string("super.resolveInstrumentableCallNode(frame)").end();
+        b.end();
+        b.statement("return bytecodeNode.findInstrumentableCallNode(location.getBytecodeIndex())");
         return ex;
     }
 
@@ -6360,7 +6358,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         TagNodeFactory() {
             type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
                             ElementKind.CLASS, null, "TagNode");
-            type.setSuperClass(types.Node);
+            type.setSuperClass(types.TagTreeNode);
             type.getImplements().add(types.InstrumentableNode);
             type.getImplements().add(types.TagTree);
 
@@ -6384,12 +6382,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createFindProbe());
             type.add(createIsInstrumentable());
             type.add(createHasTag());
-            type.add(createSupportsTag());
             type.add(createGetSourceSection());
             type.add(createGetSourceSections());
             type.add(createCreateSourceSection());
             type.add(createFindBytecodeNode());
             type.add(createToString());
+            type.addOptional(createDispatch());
+            type.add(createGetLanguage());
 
             // TagTree
             type.add(createGetTreeChildren());
@@ -6471,6 +6470,35 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected disconnected node."));
             b.end();
             b.statement("return bytecodeNode");
+            return ex;
+        }
+
+        private CodeExecutableElement createGetLanguage() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTreeNode, "getLanguage");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.setReturnType(generic(type(Class.class), model.languageClass));
+            ex.getAnnotationMirrors().clear();
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().typeLiteral(model.languageClass).end();
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createDispatch() {
+            if (ElementUtils.typeEquals(model.tagTreeNodeLibrary.getTemplateType().asType(),
+                            types.TagTreeNodeExports)) {
+                // use default implementation
+                return null;
+            }
+
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTreeNode, "dispatch");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.getAnnotationMirrors().clear();
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().typeLiteral(model.tagTreeNodeLibrary.getTemplateType().asType()).end();
             return ex;
         }
 
@@ -6557,16 +6585,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 index++;
             }
             b.returnFalse();
-            return ex;
-        }
-
-        private CodeExecutableElement createSupportsTag() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "supportsTag");
-            ex.renameArguments("tag");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            CodeTreeBuilder b = ex.createBuilder();
-            b.statement("return supportsTagImpl(tag)");
             return ex;
         }
 
@@ -6730,7 +6748,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createInstrumentableNodeIsInstrumentable());
                 type.add(createInstrumentableNodeFindProbe());
                 type.add(createInstrumentableNodeHasTag());
-                type.add(createInstrumentableNodeSupportsTag());
+                type.add(createFindInstrumentableCallNode());
             }
 
             type.add(createReadValidBytecode());
@@ -6793,16 +6811,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             return type;
-        }
-
-        private CodeExecutableElement createInstrumentableNodeSupportsTag() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "supportsTag");
-            ex.renameArguments("tag");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            CodeTreeBuilder b = ex.createBuilder();
-            b.statement("return supportsTagImpl(tag)");
-            return ex;
         }
 
         private Element createValidateBytecodes() {
@@ -6986,6 +6994,28 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
             b.end().end();
             return b.build();
+        }
+
+        private CodeExecutableElement createFindInstrumentableCallNode() {
+            CodeExecutableElement ex = new CodeExecutableElement(
+                            Set.of(FINAL),
+                            types.Node, "findInstrumentableCallNode",
+                            new CodeVariableElement(type(int.class), "bci"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.declaration(type(int[].class), "localHandlers", "handlers");
+            b.startFor().string("int i = 0; i < localHandlers.length; i += 5").end().startBlock();
+            b.startIf().string("localHandlers[i] > bci").end().startBlock().statement("continue").end();
+            b.startIf().string("localHandlers[i + 1] <= bci").end().startBlock().statement("continue").end();
+            b.statement("int local = localHandlers[i + 4]");
+            b.startIf().string("local != HANDLER_TAG_EXCEPTIONAL").end().startBlock();
+            b.statement("continue");
+            b.end();
+            b.statement("int nodeId = localHandlers[i + 2]");
+            b.statement("return tagRoot.tagNodes[nodeId]");
+            b.end();
+            b.statement("return null");
+            return ex;
         }
 
         private CodeExecutableElement createInstrumentableNodeCreateWrapper() {
