@@ -30,12 +30,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.WeakHashMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
@@ -124,7 +126,10 @@ public final class CPUSampler implements Closeable {
     }
 
     private final Env env;
-    private final Map<TruffleContext, MutableSamplerData> activeContexts = Collections.synchronizedMap(new HashMap<>());
+
+    private int nextContextIndex;
+    private final Map<TruffleContext, Integer> activeContexts = new WeakHashMap<>();
+    private final List<MutableSamplerData> samplerData = new ArrayList<>();
     private volatile boolean closed;
     private volatile boolean collecting;
     private long period = 10;
@@ -157,7 +162,9 @@ public final class CPUSampler implements Closeable {
             @Override
             public void onContextCreated(TruffleContext context) {
                 synchronized (CPUSampler.this) {
-                    activeContexts.put(context, new MutableSamplerData());
+                    int contextIndex = nextContextIndex++;
+                    activeContexts.put(context, contextIndex);
+                    samplerData.add(new MutableSamplerData(contextIndex));
                 }
             }
 
@@ -368,7 +375,7 @@ public final class CPUSampler implements Closeable {
     @Deprecated
     public synchronized long getSampleCount() {
         long sum = 0;
-        for (MutableSamplerData value : activeContexts.values()) {
+        for (MutableSamplerData value : samplerData) {
             sum += value.samplesTaken.get();
         }
         return sum;
@@ -413,7 +420,7 @@ public final class CPUSampler implements Closeable {
             return Collections.emptyMap();
         }
         Map<Thread, Collection<ProfilerNode<Payload>>> returnValue = new HashMap<>();
-        for (Map.Entry<Thread, ProfilerNode<Payload>> entry : activeContexts.values().iterator().next().threadData.entrySet()) {
+        for (Map.Entry<Thread, ProfilerNode<Payload>> entry : samplerData.iterator().next().threadData.entrySet()) {
             ProfilerNode<Payload> copy = new ProfilerNode<>();
             copy.deepCopyChildrenFrom(entry.getValue(), COPY_PAYLOAD);
             returnValue.put(entry.getKey(), copy.getChildren());
@@ -429,28 +436,59 @@ public final class CPUSampler implements Closeable {
      * {@link #setCollecting(boolean)}. The collected data can be cleared from the cpusampler using
      * {@link #clearData()}
      *
-     * @return a map from {@link TruffleContext} to {@link CPUSamplerData}.
+     * @return a map from {@link TruffleContext} to {@link CPUSamplerData}. The contexts that were
+     *         already collected are not in the returned map even though data was collected for
+     *         them. All collected data can be obtained using {@link CPUSampler#getDataList()}.
      * @since 21.3.0
+     *
+     * @deprecated in 21.3.11. Contexts are no longer stored permanently. Use {@link #getDataList()}
+     *             to get all sampler data.
      */
+    @Deprecated
     public synchronized Map<TruffleContext, CPUSamplerData> getData() {
-        if (activeContexts.isEmpty()) {
+        List<CPUSamplerData> dataList = getDataList();
+        if (dataList.isEmpty()) {
             return Collections.emptyMap();
         }
         Map<TruffleContext, CPUSamplerData> contextToData = new HashMap<>();
-        for (Entry<TruffleContext, MutableSamplerData> contextEntry : this.activeContexts.entrySet()) {
+        for (Map.Entry<TruffleContext, Integer> contextEntry : activeContexts.entrySet()) {
+            contextToData.put(contextEntry.getKey(), dataList.get(contextEntry.getValue()));
+        }
+        return Collections.unmodifiableMap(contextToData);
+    }
+
+    /**
+     * Get per-context profiling data. Context objects are not stored, the profiling data is an
+     * unmodifiable list of {@link CPUSamplerData}. It is collected based on the configuration of
+     * the {@link CPUSampler} (e.g. {@link #setFilter(SourceSectionFilter)},
+     * {@link #setPeriod(long)}, etc.) and collecting can be controlled by the
+     * {@link #setCollecting(boolean)}. The collected data can be cleared from the cpusampler using
+     * {@link #clearData()}
+     *
+     * @return a list of {@link CPUSamplerData} where each element corresponds to one context.
+     * @since 21.3.11
+     */
+    public synchronized List<CPUSamplerData> getDataList() {
+        if (samplerData.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<Integer, TruffleContext> availableContexts = new HashMap<>();
+        for (Map.Entry<TruffleContext, Integer> contextEntry : activeContexts.entrySet()) {
+            availableContexts.put(contextEntry.getValue(), contextEntry.getKey());
+        }
+        List<CPUSamplerData> dataList = new ArrayList<>();
+        for (MutableSamplerData mutableSamplerData : this.samplerData) {
             Map<Thread, Collection<ProfilerNode<Payload>>> threads = new HashMap<>();
-            final MutableSamplerData mutableSamplerData = contextEntry.getValue();
             for (Map.Entry<Thread, ProfilerNode<Payload>> threadEntry : mutableSamplerData.threadData.entrySet()) {
                 ProfilerNode<Payload> copy = new ProfilerNode<>();
                 copy.deepCopyChildrenFrom(threadEntry.getValue(), COPY_PAYLOAD);
                 threads.put(threadEntry.getKey(), copy.getChildren());
             }
-            TruffleContext context = contextEntry.getKey();
-            contextToData.put(context,
-                            new CPUSamplerData(context, threads, mutableSamplerData.biasStatistic, mutableSamplerData.durationStatistic, mutableSamplerData.samplesTaken.get(), period,
-                                            mutableSamplerData.missedSamples.get()));
+            dataList.add(new CPUSamplerData(mutableSamplerData.index, availableContexts.get(mutableSamplerData.index), threads, mutableSamplerData.biasStatistic, mutableSamplerData.durationStatistic,
+                            mutableSamplerData.samplesTaken.get(), period,
+                            mutableSamplerData.missedSamples.get()));
         }
-        return Collections.unmodifiableMap(contextToData);
+        return Collections.unmodifiableList(dataList);
     }
 
     /**
@@ -459,8 +497,8 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized void clearData() {
-        for (TruffleContext context : activeContexts.keySet()) {
-            activeContexts.put(context, new MutableSamplerData());
+        for (ListIterator<MutableSamplerData> dataIterator = samplerData.listIterator(); dataIterator.hasNext();) {
+            dataIterator.set(new MutableSamplerData(dataIterator.next().index));
         }
     }
 
@@ -469,7 +507,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized boolean hasData() {
-        for (MutableSamplerData mutableSamplerData : activeContexts.values()) {
+        for (MutableSamplerData mutableSamplerData : samplerData) {
             if (mutableSamplerData.samplesTaken.get() > 0) {
                 return true;
             }
@@ -527,16 +565,25 @@ public final class CPUSampler implements Closeable {
             if (activeContexts.isEmpty()) {
                 return Collections.emptyMap();
             }
-            TruffleContext context = activeContexts.keySet().iterator().next();
-            if (context.isActive()) {
-                throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
+            Map<TruffleContext, MutableSamplerData> contexts = new LinkedHashMap<>();
+            for (TruffleContext context : activeContexts.keySet()) {
+                if (context.isActive()) {
+                    throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
+                }
+                if (!context.isClosed()) {
+                    contexts.put(context, samplerData.get(activeContexts.get(context)));
+                }
             }
-            Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
-            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
-            for (StackSample stackSample : sample) {
-                stacks.put(stackSample.thread, stackSample.stack);
+            if (!contexts.isEmpty()) {
+                Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
+                List<StackSample> sample = safepointStackSampler.sample(env, contexts, !sampleContextInitialization);
+                for (StackSample stackSample : sample) {
+                    stacks.put(stackSample.thread, stackSample.stack);
+                }
+                return Collections.unmodifiableMap(stacks);
+            } else {
+                return Collections.emptyMap();
             }
-            return Collections.unmodifiableMap(stacks);
         }
     }
 
@@ -589,7 +636,7 @@ public final class CPUSampler implements Closeable {
     }
 
     private synchronized TruffleContext[] contexts() {
-        return activeContexts.keySet().toArray(new TruffleContext[activeContexts.size()]);
+        return activeContexts.keySet().toArray(new TruffleContext[0]);
     }
 
     /**
@@ -797,7 +844,7 @@ public final class CPUSampler implements Closeable {
                         continue;
                     }
                     synchronized (CPUSampler.this) {
-                        final MutableSamplerData mutableSamplerData = activeContexts.get(result.context);
+                        final MutableSamplerData mutableSamplerData = samplerData.get(activeContexts.get(result.context));
                         for (StackSample sample : result.samples) {
                             mutableSamplerData.biasStatistic.accept(sample.biasNs);
                             mutableSamplerData.durationStatistic.accept(sample.durationNs);
@@ -881,7 +928,11 @@ public final class CPUSampler implements Closeable {
                 if (context.isClosed()) {
                     continue;
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
+                MutableSamplerData data;
+                synchronized (CPUSampler.this) {
+                    data = samplerData.get(activeContexts.get(context));
+                }
+                List<StackSample> samples = safepointStackSampler.sample(env, Collections.singletonMap(context, data), !sampleContextInitialization);
                 resultsToProcess.add(new SamplingResult(samples, context, taskStartTime));
             }
         }
@@ -889,11 +940,16 @@ public final class CPUSampler implements Closeable {
     }
 
     static class MutableSamplerData {
+        final int index;
         final Map<Thread, ProfilerNode<Payload>> threadData = new HashMap<>();
         final AtomicLong samplesTaken = new AtomicLong(0);
         final LongSummaryStatistics biasStatistic = new LongSummaryStatistics(); // nanoseconds
         final LongSummaryStatistics durationStatistic = new LongSummaryStatistics(); // nanoseconds
         final AtomicLong missedSamples = new AtomicLong(0);
+
+        MutableSamplerData(int index) {
+            this.index = index;
+        }
     }
 
 }
@@ -913,7 +969,7 @@ class CPUSamplerSnippets {
         sampler.close();
         // Read information about the roots of the tree per thread.
         for (Collection<ProfilerNode<CPUSampler.Payload>> nodes
-                : sampler.getData().values().iterator().next().threadData.values()) {
+                : sampler.getDataList().iterator().next().threadData.values()) {
             for (ProfilerNode<CPUSampler.Payload> node : nodes) {
                 final String rootName = node.getRootName();
                 final int selfHitCount = node.getPayload().getSelfHitCount();
