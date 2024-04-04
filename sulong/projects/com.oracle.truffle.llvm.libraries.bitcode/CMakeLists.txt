@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -110,7 +110,7 @@ endif()
 
 include(CheckIncludeFile)
 CHECK_INCLUDE_FILE(threads.h SUPPORTS_C11_THREADS)
-if(SUPPORTS_C11_THREADS)
+if(SUPPORTS_C11_THREADS AND NOT WIN32)
   target_sources(sulong PRIVATE src/c11threads.c)
 else()
   message(NOTICE "Compiling without C11 threads because threads.h is not available.")
@@ -147,6 +147,9 @@ else()
 
   target_sources(sulong++ PRIVATE libsulongxx/windows/sulong++.def)
   target_sources(sulong++ PRIVATE libsulongxx/windows/exception_helpers.cpp libsulongxx/windows/type_info.cpp)
+  if(MSVC_VERSION GREATER_EQUAL 1939)
+    target_compile_definitions(sulong++ PRIVATE USE_THREAD_WAIT_V2)
+  endif()
   target_sources(sulong++ PRIVATE libsulongxx/windows/cpp_threads.cpp)
 
   target_compile_definitions(sulong++ PRIVATE _VCRT_BUILD)
