@@ -237,6 +237,9 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       "amd64": vm_c.vm_linux_amd64,
       "aarch64": vm_c.vm_linux_aarch64,
     },
+    "ubuntu": {
+      "amd64": vm_c.vm_linux_amd64_ubuntu,
+    },
     "darwin": {
       "amd64": vm_c.vm_darwin_amd64,
       "aarch64": vm_c.vm_darwin_aarch64,
@@ -249,7 +252,8 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   local default_os_arch_jdk_mixin = task_spec(run_spec.evaluate_late({
     // this starts with _ on purpose so that it will be evaluated first
     "_os_arch_jdk": function(b)
-      default_jdk(b)[b.jdk] + default_os_arch(b)[b.os][b.arch]
+      local os = if (std.objectHasAll(b, 'os_distro')) then b.os_distro else b.os;
+      default_jdk(b)[b.jdk] + default_os_arch(b)[os][b.arch]
   })),
 
   local espresso_os_arch_jdk_mixin = task_spec(run_spec.evaluate_late({
@@ -280,6 +284,16 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
       "windows:amd64:jdk21": deploy_vm_common('weekly') + js_windows_common + svm_common + timelimit('1:30:00'),
       "windows:amd64:jdk-latest": deploy_vm_common('daily') + js_windows_common + svm_common + timelimit('1:30:00'),
+
+      "variants": {
+        "ubuntu": {
+          "*": exclude,
+          "linux:amd64:jdk21": deploy_vm_common('weekly') + full_vm_build + task_spec({os_distro:: 'ubuntu'}),
+        }
+      }
+    }),
+    "vm-base-ubuntu": mx_env + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk21": deploy_vm_common('weekly') + full_vm_build + task_spec({os_distro:: 'ubuntu'}),
     }),
   },
 
