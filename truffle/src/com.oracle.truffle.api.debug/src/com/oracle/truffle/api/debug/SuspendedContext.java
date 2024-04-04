@@ -166,7 +166,7 @@ interface SuspendedContext {
 
         @Override
         public boolean hasTag(Class<? extends Tag> tag) {
-            return ((node instanceof InstrumentableNode) && ((InstrumentableNode) node).hasTag(tag));
+            return ((node instanceof InstrumentableNode node) && node.hasTag(tag));
         }
 
         @Override

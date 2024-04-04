@@ -448,7 +448,7 @@ public final class DebuggerSession implements Closeable {
             if (nodeRoot != null && nodeRoot != root) {
                 throw new IllegalArgumentException(String.format("The node %s belongs to a root %s, which is different from the current root %s.", node, nodeRoot, root));
             }
-            Node callNode = frameInstance.getCallNode();
+            Node callNode = frameInstance.getInstrumentableCallNode();
             if (callNode == null) {
                 callNode = node;
                 if (callNode == null) {
@@ -1141,7 +1141,7 @@ public final class DebuggerSession implements Closeable {
                     return null;
                 }
 
-                Node callNode = frameInstance.getCallNode();
+                Node callNode = frameInstance.getInstrumentableCallNode();
                 RootNode rootNode;
                 if (callNode == null) {
                     // GR-52192 temporary workaround for Espresso, where a meaningful call node
@@ -1512,7 +1512,7 @@ public final class DebuggerSession implements Closeable {
         final MaterializedFrame frame;
 
         Caller(FrameInstance frameInstance) {
-            this.node = frameInstance.getCallNode();
+            this.node = frameInstance.getInstrumentableCallNode();
             this.frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
         }
 

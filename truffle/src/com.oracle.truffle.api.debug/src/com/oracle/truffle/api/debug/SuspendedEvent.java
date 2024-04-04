@@ -793,7 +793,7 @@ public final class SuspendedEvent {
                             // we stop at eval root stack frames
                             return frameInstance;
                         }
-                        Node callNode = frameInstance.getCallNode();
+                        Node callNode = frameInstance.getInstrumentableCallNode();
                         if (callNode != null && !hasRootTag(callNode)) {
                             if (raw) {
                                 frameInstances.add(null);
@@ -824,7 +824,7 @@ public final class SuspendedEvent {
         private boolean hasRootTag(Node callNode) {
             Node node = callNode;
             do {
-                if (node instanceof InstrumentableNode && ((InstrumentableNode) node).supportsTag(RootTag.class)) {
+                if (node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(RootTag.class)) {
                     return true;
                 }
                 node = node.getParent();
