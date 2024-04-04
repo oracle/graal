@@ -52,6 +52,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.impl.Accessor;
 
 final class NodeAccessor extends Accessor {
@@ -201,6 +202,11 @@ final class NodeAccessor extends Accessor {
         @Override
         public boolean isSameFrame(RootNode root, Frame frame1, Frame frame2) {
             return root.isSameFrame(frame1, frame2);
+        }
+
+        @Override
+        public Node resolveInstrumentableCallNode(RootNode root, FrameInstance frameInstance) {
+            return root.resolveInstrumentableCallNode(frameInstance);
         }
     }
 

@@ -60,6 +60,7 @@ import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -479,6 +480,10 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected void prepareForInstrumentation(@SuppressWarnings("unused") Set<Class<?>> tags) {
         // no default implementation
+    }
+
+    protected Node resolveInstrumentableCallNode(FrameInstance instance) {
+        return instance.getCallNode();
     }
 
     /**

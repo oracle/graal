@@ -41,8 +41,10 @@
 package com.oracle.truffle.api.frame;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Represents a current frame instance on the stack. Please note that any frame instance must not be
@@ -153,6 +155,11 @@ public interface FrameInstance {
      * @since 0.8 or earlier
      **/
     Node getCallNode();
+
+    default Node getInstrumentableCallNode() {
+        RootCallTarget target = (RootCallTarget) getCallTarget();
+        return FrameAccessor.ACCESSOR.nodeSupport().resolveInstrumentableCallNode(target.getRootNode(), this);
+    }
 
     /**
      * The {@link CallTarget} being invoked in this frame.

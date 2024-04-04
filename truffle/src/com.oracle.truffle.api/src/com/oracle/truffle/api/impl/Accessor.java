@@ -110,6 +110,7 @@ import com.oracle.truffle.api.TruffleSafepoint.InterruptibleFunction;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
@@ -214,6 +215,8 @@ public abstract class Accessor {
         public abstract EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread);
 
         public abstract boolean isSameFrame(RootNode root, Frame frame1, Frame frame2);
+
+        public abstract Node resolveInstrumentableCallNode(RootNode root, FrameInstance callNode);
     }
 
     public abstract static class SourceSupport extends Support {
