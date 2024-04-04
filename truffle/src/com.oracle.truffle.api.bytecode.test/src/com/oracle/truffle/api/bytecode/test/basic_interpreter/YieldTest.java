@@ -398,6 +398,34 @@ public class YieldTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testYieldInstrumentBeforeTransitionToCached() {
+        BasicInterpreter rootNode = parseNode("yieldInstrumentBeforeTransitionToCached", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.beginYield();
+            b.emitLoadArgument(0);
+            b.endYield();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginIncrementValue();
+            b.emitLoadLocal(result);
+            b.endIncrementValue();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        // Instrument immediately, before transitioning to cached.
+        rootNode.getRootNodes().update(createBytecodeConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build());
+
+        ContinuationResult cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        assertEquals(43L, cont.continueWith(42L));
+    }
+
+    @Test
     public void testYieldTransitionToInstrumentedInsideContinuation() {
         BasicInterpreter rootNode = parseNode("yieldTransitionToInstrumentedInsideContinuation", b -> {
             b.beginRoot(LANGUAGE);

@@ -308,9 +308,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // This method delegates to the current tier's continueAt, handling the case where
         // the tier changes.
         bytecodeNodeGen.add(createContinueAt());
-        if (model.enableYield) {
-            bytecodeNodeGen.add(createContinueAtContinuation());
-        }
         bytecodeNodeGen.add(createTransitionToCached());
         bytecodeNodeGen.add(createUpdateBytecode());
         bytecodeNodeGen.add(createEnsureSources());
@@ -818,11 +815,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeTreeBuilder b = ex.createBuilder();
 
         b.startReturn().startCall("continueAt");
+        b.string("bytecode");
+        b.string("numLocals << 16");
         b.string("frame");
         if (model.enableYield) {
             b.string("frame");
+            b.string("null");
         }
-        b.string("numLocals << 16");
+
         b.end(2);
 
         return ex;
@@ -837,6 +837,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeExecutableElement createContinueAt() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(Object.class), "continueAt");
+        ex.addParameter(new CodeVariableElement(abstractBytecodeNode.asType(), "bc"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
         if (model.enableYield) {
             /**
@@ -851,66 +853,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * resumed, it will be the materialized frame used for local accesses.
              */
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+            /**
+             * When we resume, this parameter is non-null and is included so that the root node can
+             * be patched when the interpreter transitions to cached.
+             */
+            ex.addParameter(new CodeVariableElement(continuationRootNodeImpl.asType(), "continuationRootNode"));
         }
-        ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
 
         CodeTreeBuilder b = ex.createBuilder();
 
         b.statement("int state = startState");
-        // These don't change between invocations. Read them once.
-        b.statement("AbstractBytecodeNode bc = this.bytecode");
-
-        b.startWhile().string("true").end().startBlock();
-
-        b.startAssign("state");
-        b.startCall("bc", "continueAt");
-        b.string("this");
-        b.string("frame");
-        if (model.enableYield) {
-            b.string("localFrame");
-        }
-        b.string("state");
-        b.end();
-        b.end();
-
-        b.startIf().string("(state & 0xFFFF) == 0xFFFF").end().startBlock();
-        b.statement("break");
-        b.end().startElseBlock();
-        b.lineComment("Bytecode or tier changed");
-        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-
-        if (model.isBytecodeUpdatable()) {
-            b.declaration(abstractBytecodeNode.asType(), "oldBytecode", "bc");
-            b.statement("bc = this.bytecode");
-            b.statement("state = oldBytecode.transitionState(bc, state)");
-        } else {
-            b.statement("bc = this.bytecode");
-        }
-
-        b.end();
-        b.end();
-
-        String returnValue = getFrameObject("(state >> 16) & 0xFFFF");
-        b.startReturn().string(returnValue).end();
-
-        return ex;
-    }
-
-    private CodeExecutableElement createContinueAtContinuation() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(Object.class), "continueAtContinuation");
-        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
-        ex.addParameter(new CodeVariableElement(continuationRootNodeImpl.asType(), "continuationRootNode"));
-
-        CodeTreeBuilder b = ex.createBuilder();
-
-        b.declaration(types.BytecodeLocation, "location", "continuationRootNode.location");
-        b.statement("int startState = ((continuationRootNode.sp + numLocals) << 16) | (location.getBytecodeIndex() & 0xFFFF)");
-        b.statement("int state = startState");
-        // These don't change between invocations. Read them once.
-        b.startDeclaration(abstractBytecodeNode.asType(), "bc");
-        b.cast(abstractBytecodeNode.asType()).string("location.getBytecodeNode()");
-        b.end();
 
         b.startWhile().string("true").end().startBlock();
 
@@ -936,28 +888,36 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("bc = this.bytecode");
             b.statement("state = oldBytecode.transitionState(bc, state)");
 
-            b.newLine();
+            if (model.enableYield) {
+                /**
+                 * We can be here for one of two reasons:
+                 *
+                 * 1. We transitioned from uncached/uninitialized to cached. In this case, we update
+                 * the ContinuationRootNode so future calls will start executing the cached
+                 * interpreter.
+                 *
+                 * 2. Bytecode was rewritten. In this case, since the bytecode invalidation logic
+                 * patches all ContinuationRootNodes with the new bytecode, we don't have to update
+                 * anything.
+                 */
+                b.startIf().string("continuationRootNode != null && oldBytecode.oldBytecodes == null").end().startBlock();
+                b.lineComment("Transition continuationRootNode to cached.");
 
-            b.declaration(type(int.class), "newContinuationBci");
+                b.startDeclaration(types.BytecodeLocation, "newContinuationLocation");
+                b.startCall("bc.getBytecodeLocation");
+                b.string("continuationRootNode.getLocation().getBytecodeIndex()");
+                b.end(2);
 
-            b.startIf().string("oldBytecode.oldBytecodes == null").end().startBlock();
-            b.lineComment("Bytecode unchanged");
-            b.statement("newContinuationBci = location.getBytecodeIndex()");
-            b.end().startElseBlock();
-            b.lineComment("Bytecode changed; compute adjusted bci");
-            b.startAssign("newContinuationBci");
-            b.startStaticCall(abstractBytecodeNode.asType(), "computeNewBci");
-            b.string("location.getBytecodeIndex()");
-            b.string("oldBytecode.oldBytecodes");
-            b.string("bc.bytecodes");
-            b.end(3);
+                b.startStatement().startCall("continuationRootNode.updateBytecodeLocation");
+                b.string("newContinuationLocation");
+                b.string("oldBytecode");
+                b.string("bc");
+                b.doubleQuote("transition to cached");
+                b.end(2);
 
-            b.startDeclaration(types.BytecodeLocation, "newContinuationLocation");
-            b.startCall("bc.getBytecodeLocation").string("newContinuationBci").end();
-            b.end();
+                b.end();
+            }
 
-            b.startStatement().startCall("continuationRootNode.updateBytecodeLocation").string("newContinuationLocation").end(2);
-            b.statement("location = newContinuationLocation");
         } else {
             b.statement("bc = this.bytecode");
         }
@@ -1467,7 +1427,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
         ex.addParameter(new CodeVariableElement(type(CharSequence.class), "reason"));
         if (model.enableYield) {
-            ex.addParameter(new CodeVariableElement(type(int.class), "numYields"));
+            ex.addParameter(new CodeVariableElement(generic(Map.class, type(Integer.class), continuationLocation.asType()), "continuationLocations"));
         }
 
         CodeTreeBuilder b = ex.createBuilder();
@@ -1493,7 +1453,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("newBytecode");
             b.string("reason");
             if (model.enableYield) {
-                b.string("numYields");
+                b.string("continuationLocations");
             }
             b.end(2);
             b.end();
@@ -4274,14 +4234,38 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("reparseReason != null").end().startBlock(); // {
             b.statement("result = builtNodes.get(buildIndex)");
 
+            if (model.enableYield) {
+                b.declaration(abstractBytecodeNode.asType(), "oldBytecodeNode", "result.bytecode");
+            }
+
             b.startIf().string("parseBytecodes").end().startBlock();
             b.statement("assert result.numLocals == this.numLocals");
             b.statement("assert result.nodes == this.nodes");
             b.statement("assert result.getFrameDescriptor().getNumberOfSlots() == maxStackHeight + numLocals");
+
+            if (model.enableYield) {
+                /**
+                 * Copy ContinuationRootNodes into new constant array *before* we update the new
+                 * bytecode, otherwise a racy thread may read it as null
+                 */
+                b.startFor().type(context.getType(int.class)).string(" constantPoolIndex : continuationLocations.keySet()").end().startBlock();
+
+                b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
+                b.cast(continuationRootNodeImpl.asType()).string("oldBytecodeNode.constants[constantPoolIndex]");
+                b.end();
+
+                b.startStatement().startCall("ACCESS.objectArrayWrite");
+                b.string("constants_");
+                b.string("constantPoolIndex");
+                b.string("continuationRootNode");
+                b.end(2);
+
+                b.end();
+            }
+
             b.end();
 
             if (model.enableYield) {
-                b.declaration(abstractBytecodeNode.asType(), "oldBytecodeNode", "result.bytecode");
                 b.startDeclaration(abstractBytecodeNode.asType(), "bytecodeNode");
             } else {
                 b.startStatement();
@@ -4292,29 +4276,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             b.string("this.reparseReason");
             if (model.enableYield) {
-                b.string("continuationLocations.size()");
+                b.string("continuationLocations");
             }
             b.end();
             b.end();
-
-            if (model.enableYield) {
-                b.startIf().string("parseBytecodes").end().startBlock();
-                b.startFor().type(context.getType(int.class)).string(" constantPoolIndex : continuationLocations.keySet()").end().startBlock();
-
-                b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
-                b.cast(continuationRootNodeImpl.asType()).string("oldBytecodeNode.constants[constantPoolIndex]");
-                b.end();
-
-// b.startStatement().startCall("continuationRootNode.updateBytecode").string("bytecodeNode").end(2);
-
-                b.startStatement().startCall("ACCESS.objectArrayWrite");
-                b.string("constants_");
-                b.string("constantPoolIndex");
-                b.string("continuationRootNode");
-                b.end(2);
-
-                b.end(2);
-            }
 
             b.startAssert().string("result.buildIndex == buildIndex").end();
 
@@ -4474,9 +4439,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startIf().string("labelImpl.isDefined()").end().startBlock();
                     emitThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
                     b.end();
+
                     // Mark the branch target as uninitialized. Add this location to a work list to
                     // be processed once the label is defined.
-
                     b.startIf().string("this.reachable").end().startBlock();
                     b.startStatement().startCall("registerUnresolvedLabel");
                     b.string("labelImpl");
@@ -4506,12 +4471,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case YIELD -> {
                     b.declaration(context.getType(int.class), "constantPoolIndex", "allocateContinuationConstant()");
                     b.startIf().string("reachable").end().startBlock();
-                    b.startIf().string("reparseReason != null").end().startBlock();
-                    // We don't need to allocate ContinuationLocations when we reparse.
-                    b.startStatement().startCall("continuationLocations.put").string("constantPoolIndex").string("null").end(2);
-
-                    b.end().startElseBlock();
-
                     b.startStatement().startCall("continuationLocations.put").string("constantPoolIndex");
                     b.startNew(continuationLocation.asType()).string("bci + " + operation.instruction.getInstructionLength()).string("currentStackHeight").end();
                     b.end(2);
@@ -7370,21 +7329,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createInvalidate() {
             CodeExecutableElement invalidate = new CodeExecutableElement(Set.of(FINAL), type(void.class), "invalidate");
-            invalidate.addParameter(new CodeVariableElement(types.Node, "newNode"));
+            invalidate.addParameter(new CodeVariableElement(type.asType(), "newNode"));
             invalidate.addParameter(new CodeVariableElement(type(CharSequence.class), "reason"));
             if (model.enableYield) {
-                invalidate.addParameter(new CodeVariableElement(type(int.class), "numYields"));
+                invalidate.addParameter(new CodeVariableElement(generic(Map.class, type(Integer.class), continuationLocation.asType()), "continuationLocations"));
             }
             CodeTreeBuilder b = invalidate.createBuilder();
 
             b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
             b.declaration(type(int.class), "bci", "0");
-            if (model.enableYield) {
-                b.declaration(type(int.class), "continuationIndex", "0");
-                b.startDeclaration(arrayOf(continuationRootNodeImpl.asType()), "continuations");
-                b.startNewArray(arrayOf(continuationRootNodeImpl.asType()), CodeTreeBuilder.singleString("numYields"));
-                b.end(2);
-            }
 
             b.startAssign("this.oldBytecodes").startStaticCall(type(Arrays.class), "copyOf").string("bc").string("bc.length").end().end();
 
@@ -7407,11 +7360,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
                 b.startCaseBlock();
                 if (group.isYield) {
-                    CodeTree constantIndex = readImmediate("bc", "bci", instructions.get(0).getImmediate(ImmediateKind.CONSTANT));
-                    b.startAssign("continuations[continuationIndex++]");
-                    b.cast(continuationRootNodeImpl.asType());
-                    b.string("constants[" + constantIndex.toString() + "]");
+                    b.startDeclaration(type(int.class), "constantPoolIndex");
+                    b.tree(readImmediate("bc", "bci", instructions.get(0).getImmediate(ImmediateKind.CONSTANT)));
                     b.end();
+
+                    b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
+                    b.cast(continuationRootNodeImpl.asType());
+                    b.string("constants[constantPoolIndex]");
+                    b.end();
+
+                    b.declaration(continuationLocation.asType(), "continuationLocation", "continuationLocations.get(constantPoolIndex)");
+
+                    b.startStatement().startCall("continuationRootNode", "updateBytecodeLocation");
+                    b.string("newNode.getBytecodeLocation(continuationLocation.bci)");
+                    b.string("this");
+                    b.string("newNode");
+                    b.string("reason");
+                    b.end(2);
                 }
                 InstructionModel invalidateInstruction = model.getInvalidateInstruction(length);
                 emitInvalidateInstruction(b, "this", "bc", "bci", CodeTreeBuilder.singleString("op"), createInstructionConstant(invalidateInstruction));
@@ -7425,11 +7390,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // while
 
             b.statement("reportReplace(this, newNode, reason)");
-            if (model.enableYield) {
-                b.startFor().type(continuationRootNodeImpl.asType()).string(" continuation : continuations").end().startBlock();
-                b.statement("continuation.invalidate(this, newNode, reason)");
-                b.end();
-            }
 
             return invalidate;
         }
@@ -10841,7 +10801,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             continuationRootNodeImpl.add(new CodeVariableElement(Set.of(FINAL), bytecodeNodeGen.asType(), "root"));
             continuationRootNodeImpl.add(new CodeVariableElement(Set.of(FINAL), context.getType(int.class), "sp"));
-            continuationRootNodeImpl.add(compFinal(new CodeVariableElement(Set.of(), types.BytecodeLocation, "location")));
+            continuationRootNodeImpl.add(compFinal(new CodeVariableElement(Set.of(VOLATILE), types.BytecodeLocation, "location")));
             continuationRootNodeImpl.add(GeneratorUtils.createConstructorUsingFields(
                             Set.of(), continuationRootNodeImpl,
                             ElementFilter.constructorsIn(((TypeElement) types.RootNode.asElement()).getEnclosedElements()).stream().filter(x -> x.getParameters().size() == 2).findFirst().get()));
@@ -10851,7 +10811,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             continuationRootNodeImpl.add(createGetLocation());
             continuationRootNodeImpl.add(createGetLocals());
             continuationRootNodeImpl.add(createUpdateBytecodeLocation());
-            continuationRootNodeImpl.add(createInvalidate());
             continuationRootNodeImpl.add(createCreateContinuation());
             continuationRootNodeImpl.add(createToString());
 
@@ -10880,7 +10839,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement(copyFrameTo("parentFrame", "root.numLocals", "frame", "root.numLocals", "sp - 1"));
             b.statement(setFrameObject(COROUTINE_FRAME_IDX, "parentFrame"));
             b.statement(setFrameObject("root.numLocals + sp - 1", "inputValue"));
-            b.statement("return root.continueAtContinuation(frame, parentFrame, this)");
+            b.declaration(types.BytecodeLocation, "bytecodeLocation", "location");
+            b.statement("int startState = ((sp + root.numLocals) << 16) | (bytecodeLocation.getBytecodeIndex() & 0xFFFF)");
+
+            b.startReturn();
+            b.startCall("root.continueAt");
+            b.startGroup().cast(abstractBytecodeNode.asType()).string("bytecodeLocation.getBytecodeNode()").end();
+            b.string("startState");
+            b.string("frame");
+            b.string("parentFrame");
+            b.string("this");
+            b.end(2);
 
             return ex;
         }
@@ -10913,21 +10882,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createUpdateBytecodeLocation() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "updateBytecodeLocation");
             ex.addParameter(new CodeVariableElement(types.BytecodeLocation, "newLocation"));
-            CodeTreeBuilder b = ex.createBuilder();
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.statement("location = newLocation");
-            return ex;
-        }
-
-        private CodeExecutableElement createInvalidate() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "invalidate");
-            ex.addParameter(new CodeVariableElement(types.Node, "oldNode"));
-            ex.addParameter(new CodeVariableElement(types.Node, "newNode"));
+            ex.addParameter(new CodeVariableElement(types.BytecodeNode, "oldBytecode"));
+            ex.addParameter(new CodeVariableElement(types.BytecodeNode, "newBytecode"));
             ex.addParameter(new CodeVariableElement(context.getDeclaredType(CharSequence.class), "reason"));
             CodeTreeBuilder b = ex.createBuilder();
+            b.tree(createNeverPartOfCompilation());
+            b.statement("location = newLocation");
             b.startStatement().startCall("reportReplace");
-            b.string("oldNode");
-            b.string("newNode");
+            b.string("oldBytecode");
+            b.string("newBytecode");
             b.string("reason");
             b.end(2);
             return ex;

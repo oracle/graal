@@ -497,7 +497,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @since 24.1
      */
-    protected void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
+    protected final void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
         Node node = this;
         while (node != null) {
             boolean consumed = false;
