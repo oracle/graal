@@ -349,6 +349,10 @@ suite = {
             "jacoco" : "exclude",
             "graalCompilerSourceEdition": "ignore",
         },
+
+        "espresso-legacy-nativeimage-properties": {
+            "class": "EspressoLegacyNativeImageProperties",
+        },
     },
 
     # ------------- distributions
@@ -545,7 +549,7 @@ suite = {
                 "linux": {
                     "<others>": {
                         "layout": {
-                            "./native-image.properties": ["file:mx.espresso/native-image-preinit.properties"],
+                            "./native-image.properties": "dependency:espresso:espresso-legacy-nativeimage-properties",
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
@@ -561,7 +565,7 @@ suite = {
                 "linux-musl": {
                     "<others>": {
                         "layout": {
-                            "./": ["file:mx.espresso/native-image.properties"],
+                            "./native-image.properties": "dependency:espresso:espresso-legacy-nativeimage-properties",
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
@@ -576,7 +580,7 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "layout": {
-                            "./": ["file:mx.espresso/native-image.properties"],
+                            "./native-image.properties": "dependency:espresso:espresso-legacy-nativeimage-properties",
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
