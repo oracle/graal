@@ -73,7 +73,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     // @formatter:off
 
     private static void assertInstructionEquals(Instruction instr, int bci, String name) {
-        assertEquals(bci, instr.getBci());
+        assertEquals(bci, instr.getBytecodeIndex());
         assertEquals(name, instr.getName());
     }
 
@@ -999,15 +999,15 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        BytecodeIntrospection data = node.getIntrospectionData();
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
 
-        assertEquals(4, data.getInstructions().size());
-        assertInstructionEquals(data.getInstructions().get(0), 0, "load.argument");
-        assertInstructionEquals(data.getInstructions().get(1), 2, "load.argument");
-        assertInstructionEquals(data.getInstructions().get(2), 4, "c.AddOperation");
+        assertEquals(4, instructions.size());
+        assertInstructionEquals(instructions.get(0), 0, "load.argument");
+        assertInstructionEquals(instructions.get(1), 2, "load.argument");
+        assertInstructionEquals(instructions.get(2), 4, "c.AddOperation");
         // With BE, the add instruction's encoding includes its child indices.
         int beOffset = hasBE(interpreterClass) ? 2 : 0;
-        assertInstructionEquals(data.getInstructions().get(3), 6 + beOffset, "return");
+        assertInstructionEquals(instructions.get(3), 6 + beOffset, "return");
 
     }
 
@@ -1118,19 +1118,19 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals("1 + 2", s3.getSourceSection().getCharacters().toString());
         assertEquals("return 1 + 2", s4.getSourceSection().getCharacters().toString());
 
-        List<Instruction> instructions = data.getInstructions();
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
 
         assertEquals(0, s1.getBeginBci());
-        assertEquals(instructions.get(1).getBci(), s1.getEndBci());
+        assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndBci());
 
-        assertEquals(2, instructions.get(1).getBci());
-        assertEquals(instructions.get(2).getBci(), s2.getEndBci());
+        assertEquals(2, instructions.get(1).getBytecodeIndex());
+        assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndBci());
 
         assertEquals(0, s3.getBeginBci());
-        assertEquals(instructions.get(3).getBci(), s3.getEndBci());
+        assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndBci());
 
         assertEquals(0, s4.getBeginBci());
-        assertEquals(instructions.get(3).getBci() + 1, s4.getEndBci());
+        assertEquals(instructions.get(3).getBytecodeIndex() + 1, s4.getEndBci());
     }
 
     @Test
@@ -1227,15 +1227,17 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         // todo these tests do not pass, since quickening is not implemented yet properly
 
-        assertInstructionEquals(node.getIntrospectionData().getInstructions().get(2), 2, "c.AddOperation");
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+
+        assertInstructionEquals(instructions.get(2), 2, "c.AddOperation");
 
         assertEquals(3L, node.getCallTarget().call(1L, 2L));
 
-        assertInstructionEquals(node.getIntrospectionData().getInstructions().get(2), 2, "c.AddOperation.q.AddLongs");
+        assertInstructionEquals(instructions.get(2), 2, "c.AddOperation.q.AddLongs");
 
         assertEquals("foobar", node.getCallTarget().call("foo", "bar"));
 
-        assertInstructionEquals(node.getIntrospectionData().getInstructions().get(2), 2, "c.AddOperation");
+        assertInstructionEquals(instructions.get(2), 2, "c.AddOperation");
     }
 
     @Test
@@ -1256,6 +1258,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         // todo these tests do not pass, since quickening is not implemented yet properly
 
-        assertInstructionEquals(node.getIntrospectionData().getInstructions().get(1), 1, "si.load.argument.c.LessThanOperation");
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+
+        assertInstructionEquals(instructions.get(1), 1, "si.load.argument.c.LessThanOperation");
     }
 }

@@ -41,62 +41,39 @@
 package com.oracle.truffle.api.bytecode;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class Instruction {
+public abstract class Instruction {
 
-    // [BytecodeLocation location, String name, short[] bytes, Object[][] arguments, Object[][]
-    // subinstructions?]
-    private final Object[] data;
-
-    public Instruction(Object[] data) {
-        this.data = data;
+    protected Instruction(Object token) {
+        BytecodeRootNodes.checkToken(token);
     }
 
-    public int getBci() {
-        return getLocation().getBytecodeIndex();
+    public abstract BytecodeNode getBytecodeNode();
+
+    public abstract int getBytecodeIndex();
+
+    public final int getInstructionIndex() {
+        return getLocation().getInstructionIndex();
     }
 
-    public BytecodeLocation getLocation() {
-        return (BytecodeLocation) data[0];
+    public final BytecodeLocation getLocation() {
+        return getBytecodeNode().getBytecodeLocation(getBytecodeIndex());
     }
 
-    public String getName() {
-        return (String) data[1];
-    }
+    public abstract String getName();
 
-    public byte[] getBytes() {
-        short[] shorts = (short[]) data[2];
-        byte[] result = new byte[shorts.length * 2];
-        for (int i = 0; i < shorts.length; i++) {
-            result[2 * i] = (byte) (shorts[i] & 0xff);
-            result[2 * i + 1] = (byte) ((shorts[i] >> 8) & 0xff);
-        }
+    public abstract int getOperationCode();
 
-        return result;
-    }
+    public abstract List<Argument> getArguments();
 
-    public List<Argument> getArgumentValues() {
-        if (data[3] == null) {
-            return List.of();
-        }
-        return Arrays.stream((Object[]) data[3]).map(x -> new Argument((Object[]) x)).collect(Collectors.toUnmodifiableList());
-    }
-
-    public List<Instruction> getSubInstructions() {
-        if (data.length >= 5) {
-            return Arrays.stream((Object[]) data[4]).map(x -> new Instruction((Object[]) x)).collect(Collectors.toUnmodifiableList());
-        } else {
-            return List.of();
-        }
-    }
-
-    private static final int REASONABLE_INSTRUCTION_LENGTH = 3;
+    protected abstract Instruction next();
 
     @Override
     public String toString() {
@@ -105,145 +82,83 @@ public final class Instruction {
 
     private String toString(String prefix) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("%s[%04x] ", prefix, getBci()));
-
-        byte[] bytes = getBytes();
-        for (int i = 0; i < REASONABLE_INSTRUCTION_LENGTH; i++) {
-            if (i < bytes.length) {
-                sb.append(String.format("%02x ", bytes[i]));
-            } else {
-                sb.append("   ");
-            }
-        }
-
-        for (int i = REASONABLE_INSTRUCTION_LENGTH; i < bytes.length; i++) {
-            sb.append(String.format("%02x ", bytes[i]));
-        }
-
+        sb.append(String.format("%s[%03x] ", prefix, getBytecodeIndex()));
+        sb.append(String.format("%03x ", getOperationCode()));
         sb.append(String.format("%-30s", getName()));
-
-        for (Argument a : getArgumentValues()) {
+        for (Argument a : getArguments()) {
             sb.append(' ').append(a.toString());
         }
-
-        for (Instruction instr : getSubInstructions()) {
-            sb.append('\n').append(instr.toString(prefix + "      "));
-        }
-
         return sb.toString();
     }
 
-    public final class Argument {
+    public static abstract class Argument {
 
-        private final Object[] data;
-        private final List<SpecializationInfo> specializationInfo;
-
-        Argument(Object[] data) {
-            this.data = data;
-            assert data.length >= 3;
-
-            // materialize eagerly to materialize for possible mutations
-            this.specializationInfo = materializeSpecializationInfo();
+        protected Argument(Object token) {
+            BytecodeRootNodes.checkToken(token);
         }
 
-        private List<SpecializationInfo> materializeSpecializationInfo() {
-            if (getKind() != ArgumentType.NODE_PROFILE) {
-                return null;
-            }
-            Object o = data[2];
-            if (o instanceof Node n && Introspection.isIntrospectable(n)) {
+        public abstract Kind getKind();
+
+        public abstract String getName();
+
+        public int asInteger() {
+            throw unsupported();
+        }
+
+        public int asBytecodeIndex() {
+            throw unsupported();
+        }
+
+        public Object asConstant() {
+            throw unsupported();
+        }
+
+        public Node asNodeProfile() {
+            throw unsupported();
+        }
+
+        public Node asTagNode() {
+            throw unsupported();
+        }
+
+        public BranchProfile asBranchProfile() {
+            throw unsupported();
+        }
+
+        public final List<SpecializationInfo> getSpecializationInfo() {
+            Node n = asNodeProfile();
+            if (Introspection.isIntrospectable(n)) {
                 return Introspection.getSpecializations(n);
             } else {
                 return null;
             }
         }
 
-        public enum ArgumentType {
-            CONSTANT,
-            BYTECODE_INDEX,
-            INTEGER,
-            NODE_PROFILE,
-            BRANCH_PROFILE,
-            INSTRUMENT_PROFILE;
-        }
-
-        public ArgumentType getKind() {
-            return (ArgumentType) data[0];
-        }
-
-        public int getInteger() {
-            if (getKind() != ArgumentType.INTEGER) {
-                throw new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
-            }
-            return (short) data[2];
-        }
-
-        public int getBytecodeIndex() {
-            if (getKind() != ArgumentType.CONSTANT) {
-                throw new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
-            }
-            return (short) data[2];
-        }
-
-        public Object getConstant() {
-            if (getKind() != ArgumentType.CONSTANT) {
-                throw new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
-            }
-            return data[2];
-        }
-
-        public Node getNode() {
-            if (getKind() != ArgumentType.NODE_PROFILE) {
-                throw new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
-            }
-            Object o = data[2];
-            if (o instanceof Node n) {
-                return n;
-            } else {
-                return null;
-            }
-        }
-
-        public List<SpecializationInfo> getSpecializationInfo() {
-            if (getKind() != ArgumentType.NODE_PROFILE) {
-                throw new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
-            }
-            return specializationInfo;
-        }
-
-        public BranchProfile getBranchProfile() {
-            if (getKind() != ArgumentType.BRANCH_PROFILE) {
-                throw new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
-            }
-            int[] values = (int[]) data[2];
-            return new BranchProfile(values[0], values[1], values[2]);
-        }
-
-        public String getName() {
-            return (String) data[1];
+        private RuntimeException unsupported() {
+            return new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             switch (getKind()) {
                 case INTEGER:
-                    return String.format("%s(%d)", getName(), (short) data[2]);
+                    return String.format("%s(%d)", getName(), asInteger());
                 case CONSTANT:
-                    return String.format("%s(%s)", getName(), printConstant(data[2]));
+                    return String.format("%s(%s)", getName(), printConstant(asConstant()));
                 case NODE_PROFILE:
-                    return String.format("%s(%s)", getName(), printNodeProfile(data[2]));
+                    return String.format("%s(%s)", getName(), printNodeProfile(asNodeProfile()));
                 case BYTECODE_INDEX:
-                    return String.format("%s(%04x)", getName(), (short) data[2]);
+                    return String.format("%s(%04x)", getName(), asBytecodeIndex());
                 case BRANCH_PROFILE:
-                    return String.format("%s(%s)", getName(), getBranchProfile().toString());
-                case INSTRUMENT_PROFILE:
-                    return String.format("%s(%s)", getName(), printInstrumentationProfile(data[2]));
+                    return String.format("%s(%s)", getName(), asBranchProfile().toString());
+                case TAG_NODE:
+                    return String.format("%s(%s)", getName(), printTagProfile(asTagNode()));
                 default:
                     throw new UnsupportedOperationException("Unexpected value: " + this);
             }
         }
 
-        private static String printInstrumentationProfile(Object o) {
+        private static String printTagProfile(Object o) {
             if (o == null) {
                 return "null";
             }
@@ -308,6 +223,15 @@ public final class Instruction {
             throw new AssertionError(String.format("Unhandled array type %s", array));
         }
 
+        public enum Kind {
+            CONSTANT,
+            BYTECODE_INDEX,
+            INTEGER,
+            NODE_PROFILE,
+            BRANCH_PROFILE,
+            TAG_NODE;
+        }
+
         public record BranchProfile(int index, int trueCount, int falseCount) {
 
             public double getFrequency() {
@@ -326,6 +250,44 @@ public final class Instruction {
                 return String.format("%s:%.2f", index, getFrequency());
             }
 
+        }
+
+    }
+
+    static final class InstructionIterable implements Iterable<Instruction> {
+
+        private final BytecodeNode bytecodeNode;
+
+        InstructionIterable(BytecodeNode bytecodeNode) {
+            this.bytecodeNode = bytecodeNode;
+        }
+
+        @Override
+        public Iterator<Instruction> iterator() {
+            return new InstructionIterator(bytecodeNode.findInstruction(0));
+        }
+
+    }
+
+    private static final class InstructionIterator implements Iterator<Instruction> {
+
+        private Instruction current;
+
+        InstructionIterator(Instruction start) {
+            this.current = start;
+        }
+
+        public boolean hasNext() {
+            return current != null;
+        }
+
+        public Instruction next() {
+            if (current == null) {
+                throw new NoSuchElementException();
+            }
+            Instruction next = current;
+            current = next.next();
+            return next;
         }
 
     }

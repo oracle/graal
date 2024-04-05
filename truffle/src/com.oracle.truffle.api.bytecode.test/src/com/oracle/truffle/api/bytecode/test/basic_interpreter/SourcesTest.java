@@ -88,18 +88,18 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertEquals(node.getSourceSection().getCharLength(), 8);
 
         BytecodeNode bytecode = node.getBytecodeNode();
-        List<Instruction> instructions = bytecode.getIntrospectionData().getInstructions();
+        List<Instruction> instructions = bytecode.getInstructionsAsList();
         BytecodeLocation location1 = instructions.get(0).getLocation();
         BytecodeLocation location2 = instructions.get(1).getLocation();
 
-        assertEquals(location1.findSourceLocation().getSource(), source);
-        assertEquals(location1.findSourceLocation().getCharIndex(), 7);
-        assertEquals(location1.findSourceLocation().getCharLength(), 1);
+        assertEquals(location1.getSourceLocation().getSource(), source);
+        assertEquals(location1.getSourceLocation().getCharIndex(), 7);
+        assertEquals(location1.getSourceLocation().getCharLength(), 1);
 
         // return
-        assertEquals(location2.findSourceLocation().getSource(), source);
-        assertEquals(location2.findSourceLocation().getCharIndex(), 0);
-        assertEquals(location2.findSourceLocation().getCharLength(), 8);
+        assertEquals(location2.getSourceLocation().getSource(), source);
+        assertEquals(location2.getSourceLocation().getCharIndex(), 0);
+        assertEquals(location2.getSourceLocation().getCharLength(), 8);
     }
 
     @Test
@@ -113,12 +113,12 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         });
 
         BytecodeNode bytecode = node.getBytecodeNode();
-        List<Instruction> instructions = bytecode.getIntrospectionData().getInstructions();
+        List<Instruction> instructions = bytecode.getInstructionsAsList();
         BytecodeLocation location1 = instructions.get(0).getLocation();
         BytecodeLocation location2 = instructions.get(1).getLocation();
 
-        assertNull(location1.findSourceLocation());
-        assertNull(location2.findSourceLocation());
+        assertNull(location1.getSourceLocation());
+        assertNull(location2.getSourceLocation());
     }
 
     @Test
@@ -201,7 +201,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         assertSourceSection(source1, 0, source1.getLength(), root.getSourceSection());
 
-        List<Instruction> instructions = root.getBytecodeNode().getIntrospectionData().getInstructions();
+        List<Instruction> instructions = root.getBytecodeNode().getInstructionsAsList();
         assertInstructionSourceSection(source1, 0, source1.getLength(), instructions.get(0));
         assertInstructionSourceSection(source1, 0, source1.getLength(), instructions.get(1));
         assertInstructionSourceSection(source1, 1, 2, instructions.get(2));
@@ -216,7 +216,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     private static void assertInstructionSourceSection(Source source, int startIndex, int length, Instruction i) {
-        assertSourceSection(source, startIndex, length, i.getLocation().findSourceLocation());
+        assertSourceSection(source, startIndex, length, i.getLocation().getSourceLocation());
     }
 
     private static void assertSourceSection(Source source, int startIndex, int length, SourceSection section) {
@@ -364,9 +364,9 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertEquals(node.getSourceSection().getCharIndex(), 0);
         assertEquals(node.getSourceSection().getCharLength(), 8);
 
-        List<Instruction> instructions = node.getBytecodeNode().getIntrospectionData().getInstructions();
-        SourceSection sourceSection0 = instructions.get(0).getLocation().findSourceLocation();
-        SourceSection sourceSection1 = instructions.get(1).getLocation().findSourceLocation();
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        SourceSection sourceSection0 = instructions.get(0).getLocation().getSourceLocation();
+        SourceSection sourceSection1 = instructions.get(1).getLocation().getSourceLocation();
 
         // load constant
         assertEquals(sourceSection0.getSource(), source);

@@ -403,7 +403,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         @Specialization
         @TruffleBoundary
         public static void doAppend(List<?> indices, @Bind("$location") BytecodeLocation location) {
-            ((List<Integer>) indices).add(location.findInstructionIndex());
+            ((List<Integer>) indices).add(location.getInstructionIndex());
         }
     }
 

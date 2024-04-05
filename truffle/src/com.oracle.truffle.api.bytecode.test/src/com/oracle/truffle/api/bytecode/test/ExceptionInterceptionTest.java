@@ -109,7 +109,7 @@ public class ExceptionInterceptionTest {
         } catch (MyException ex) {
             BytecodeLocation location = ex.getBytecodeLocation();
             assertNotNull(location);
-            assertTrue(location.findInstruction().getName().contains("Throw"));
+            assertTrue(location.getInstruction().getName().contains("Throw"));
         }
     }
 
@@ -131,7 +131,7 @@ public class ExceptionInterceptionTest {
         } catch (MyException ex) {
             BytecodeLocation location = ex.getBytecodeLocation();
             assertNotNull(location);
-            assertTrue(location.findInstruction().getName().contains("ThrowStackOverflow"));
+            assertTrue(location.getInstruction().getName().contains("ThrowStackOverflow"));
         }
     }
 
@@ -167,7 +167,7 @@ public class ExceptionInterceptionTest {
         } catch (MyException ex) {
             childThrowLocation = ex.getBytecodeLocation();
             assertNotNull(childThrowLocation);
-            assertTrue(childThrowLocation.findInstruction().getName().contains("Throw"));
+            assertTrue(childThrowLocation.getInstruction().getName().contains("Throw"));
         }
 
         BytecodeLocation rootThrowLocation = null;
@@ -177,7 +177,7 @@ public class ExceptionInterceptionTest {
         } catch (MyException ex) {
             rootThrowLocation = ex.getBytecodeLocation();
             assertNotNull(rootThrowLocation);
-            assertTrue(rootThrowLocation.findInstruction().getName().contains("Invoke"));
+            assertTrue(rootThrowLocation.getInstruction().getName().contains("Invoke"));
         }
 
         assertNotEquals(childThrowLocation, rootThrowLocation);
@@ -246,7 +246,7 @@ public class ExceptionInterceptionTest {
             assertEquals("internal error", ex.result);
             BytecodeLocation location = ex.getBytecodeLocation();
             assertNotNull(location);
-            assertTrue(location.findInstruction().getName().contains("ThrowControlFlowInternalError"));
+            assertTrue(location.getInstruction().getName().contains("ThrowControlFlowInternalError"));
         }
     }
 
@@ -273,7 +273,7 @@ public class ExceptionInterceptionTest {
             assertEquals(42, ex.result);
             BytecodeLocation location = ex.getBytecodeLocation();
             assertNotNull(location);
-            assertTrue(location.findInstruction().getName().contains("ThrowControlFlowTruffleException"));
+            assertTrue(location.getInstruction().getName().contains("ThrowControlFlowTruffleException"));
         }
     }
 

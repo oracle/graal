@@ -75,15 +75,6 @@ public final class BytecodeIntrospection {
         this.data = data;
     }
 
-    public List<Instruction> getInstructions() {
-        Object[] instructions = (Object[]) data[1];
-        List<Instruction> result = new ArrayList<>(instructions.length);
-        for (int i = 0; i < instructions.length; i++) {
-            result.add(new Instruction((Object[]) instructions[i]));
-        }
-        return Collections.unmodifiableList(result);
-    }
-
     public List<ExceptionHandler> getExceptionHandlers() {
         Object[] handlers = (Object[]) data[2];
         List<ExceptionHandler> result = new ArrayList<>(handlers.length);
@@ -117,18 +108,14 @@ public final class BytecodeIntrospection {
 
     @Override
     public String toString() {
-        List<Instruction> instructions = getInstructions();
         List<ExceptionHandler> exceptions = getExceptionHandlers();
         List<SourceInformation> sourceInformation = getSourceInformation();
         return String.format("""
                         BytecodeIntrospection[
-                            instructions(%s) = %s
                             exceptionHandlers(%s) = %s
                             sourceInformation(%s) = %s
                             tagTree = %s
                         ]""",
-                        instructions.size(),
-                        formatList(instructions),
                         exceptions.size(),
                         formatList(exceptions),
                         sourceInformation != null ? sourceInformation.size() : "-",

@@ -55,7 +55,7 @@ public class AbstractInstructionTest {
     public static void printInstructions(BytecodeRootNode root) {
         System.out.print("[\n");
         String sep = "";
-        for (Instruction s : root.getIntrospectionData().getInstructions()) {
+        for (Instruction s : root.getBytecodeNode().getInstructionsAsList()) {
             System.out.print(sep);
             System.out.print("\"");
             System.out.print(s.getName());
@@ -79,7 +79,7 @@ public class AbstractInstructionTest {
     }
 
     public static void assertInstructions(BytecodeRootNode node, String... expectedInstructions) {
-        List<Instruction> actualInstructions = node.getIntrospectionData().getInstructions();
+        List<Instruction> actualInstructions = node.getBytecodeNode().getInstructionsAsList();
         if (actualInstructions.size() != expectedInstructions.length) {
             throw throwBytecodeNodeAssertion(node, expectedInstructions, String.format("Invalid instruction size. Expected %s got %s.", expectedInstructions.length, actualInstructions.size()));
         }

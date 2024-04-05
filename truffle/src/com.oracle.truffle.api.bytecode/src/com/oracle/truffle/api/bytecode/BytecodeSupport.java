@@ -109,4 +109,5 @@ public final class BytecodeSupport {
             return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
         }
     }
+
 }

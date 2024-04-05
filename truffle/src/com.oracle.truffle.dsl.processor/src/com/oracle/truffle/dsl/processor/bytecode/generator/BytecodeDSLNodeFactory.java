@@ -192,6 +192,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private CodeTypeElement tagNode;
 
     private CodeTypeElement tagRootNode;
+    private CodeTypeElement instructionImpl;
 
     // Represents the index that user locals start from. Depends on the number of reserved slots.
     private int userLocalsStartIndex;
@@ -229,6 +230,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 bytecodeNodeGen.add(tag);
             }
         }
+
+        InstructionImplFactory instructionImplFactory = new InstructionImplFactory();
+        this.instructionImpl = instructionImplFactory.type;
 
         TagNodeFactory tagNodeFactory = null;
         TagRootNodeFactory tagRootNodeFactory = null;
@@ -270,6 +274,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         // Define the builder class.
         bytecodeNodeGen.add(new BuilderFactory().create());
+
+        instructionImplFactory.create();
+        bytecodeNodeGen.add(instructionImplFactory.type);
 
         configEncoder = bytecodeNodeGen.add(createBytecodeConfigEncoderClass());
 
@@ -1637,7 +1644,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     void emitQuickening(CodeTreeBuilder b, String node, String bc, String bci, CodeTree oldInstruction, CodeTree newInstruction) {
         if (model.specializationDebugListener && oldInstruction == null) {
             b.startBlock();
-            b.startDeclaration(types.Instruction, "oldInstruction");
+            b.startDeclaration(instructionImpl.asType(), "oldInstruction");
             String old = bc + "[" + bci + "]";
             emitParseInstruction(b, node, bci, CodeTreeBuilder.singleString(old));
             b.end();
@@ -1668,7 +1675,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     void emitInvalidateInstruction(CodeTreeBuilder b, String node, String bc, String bci, CodeTree oldInstruction, CodeTree newInstruction) {
         if (model.specializationDebugListener && oldInstruction == null) {
             b.startBlock();
-            b.startDeclaration(types.Instruction, "oldInstruction");
+            b.startDeclaration(instructionImpl.asType(), "oldInstruction");
             String old = bc + "[" + bci + "]";
             emitParseInstruction(b, node, bci, CodeTreeBuilder.singleString(old));
             b.end();
@@ -1709,7 +1716,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         if (model.specializationDebugListener && oldInstruction == null) {
             b.startBlock();
-            b.startDeclaration(types.Instruction, "oldInstruction");
+            b.startDeclaration(instructionImpl.asType(), "oldInstruction");
             String old = bc + "[" + operandBci + "]";
             emitParseInstruction(b, node, operandBci, CodeTreeBuilder.singleString(old));
             b.end();
@@ -1750,7 +1757,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     CodeTreeBuilder emitParseInstruction(CodeTreeBuilder b, String node, String bci, CodeTree operand) {
-        b.startNew(types.Instruction).startCall(node, "parseInstruction").string(bci).tree(operand).string("null").end().end();
+        b.startNew(instructionImpl.asType()).string(node).string(bci).tree(operand).end();
         return b;
     }
 
@@ -6351,6 +6358,377 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
     }
 
+    class InstructionImplFactory {
+
+        private CodeTypeElement type;
+
+        private CodeTypeElement abstractArgument;
+
+        InstructionImplFactory() {
+            type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
+                            ElementKind.CLASS, null, "InstructionImpl");
+            type.setSuperClass(types.Instruction);
+        }
+
+        private void create() {
+            type.add(new CodeVariableElement(Set.of(FINAL), abstractBytecodeNode.asType(), "bytecode"));
+            type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "bci"));
+            type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "opcode"));
+
+            CodeExecutableElement constructor = type.add(createConstructorUsingFields(Set.of(), type, null, Set.of("token")));
+            CodeTree tree = constructor.getBodyTree();
+            CodeTreeBuilder b = constructor.createBuilder();
+            b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+            b.tree(tree);
+
+            abstractArgument = type.add(new AbstractArgumentFactory().create());
+            type.add(createGetBytecodeIndex());
+            type.add(createGetBytecodeNode());
+            type.add(createGetOperationCode());
+            type.add(createGetLength());
+            type.add(createGetArguments());
+            type.add(createGetName());
+            type.add(createNext());
+
+            Set<String> generated = new HashSet<>();
+            for (ImmediateKind kind : ImmediateKind.values()) {
+                String className = getImmediateClassName(kind);
+                if (generated.contains(className)) {
+                    continue;
+                }
+                if (kind == ImmediateKind.TAG_NODE && !model.enableTagInstrumentation) {
+                    continue;
+                }
+                CodeTypeElement implType = type.add(new ArgumentFactory(kind).create());
+                abstractArgument.getPermittedSubclasses().add(implType.asType());
+                generated.add(className);
+            }
+        }
+
+        private CodeExecutableElement createGetBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getBytecodeIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return bci");
+            return ex;
+        }
+
+        private CodeExecutableElement createNext() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "next");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(type(int.class), "nextBci", "bci + getLength()");
+            b.startIf().string("nextBci >= bytecode.bytecodes.length").end().startBlock();
+            b.returnNull();
+            b.end();
+            b.startReturn().startNew(type.asType()).string("bytecode").string("nextBci").string("bytecode.readValidBytecode(bytecode.bytecodes, nextBci)").end().end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetBytecodeNode() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getBytecodeNode");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return bytecode");
+            return ex;
+        }
+
+        private CodeExecutableElement createGetName() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getName");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startSwitch().string("opcode").end().startBlock();
+            // Pop any value produced by a transparent operation's child.
+            for (InstructionModel instruction : model.getInstructions()) {
+                b.startCase().tree(createInstructionConstant(instruction)).end();
+                b.startCaseBlock();
+                b.startReturn().doubleQuote(instruction.name).end();
+                b.end();
+            }
+            b.end();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Invalid opcode"));
+            return ex;
+        }
+
+        private CodeExecutableElement createGetLength() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(int.class), "getLength");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startSwitch().string("opcode").end().startBlock();
+            // Pop any value produced by a transparent operation's child.
+            for (var instructions : groupInstructionsByLength(model.getInstructions())) {
+                for (InstructionModel instruction : instructions) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                InstructionModel instruction = instructions.get(0);
+                b.startCaseBlock();
+                b.startReturn().string(instruction.getInstructionLength()).end();
+                b.end();
+            }
+            b.end();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Invalid opcode"));
+            return ex;
+        }
+
+        private CodeExecutableElement createGetArguments() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getArguments");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startSwitch().string("opcode").end().startBlock();
+            // Pop any value produced by a transparent operation's child.
+            for (var instructions : groupInstructionsByImmediates(model.getInstructions())) {
+                for (InstructionModel instruction : instructions) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                InstructionModel instruction = instructions.get(0);
+
+                b.startCaseBlock();
+                b.startReturn().startStaticCall(type(List.class), "of");
+                for (InstructionImmediate immediate : instruction.getImmediates()) {
+                    b.startGroup();
+                    b.newLine();
+                    b.startIndention();
+                    b.startNew(getImmediateClassName(immediate.kind()));
+                    b.string("bytecode");
+                    b.doubleQuote(immediate.name());
+                    b.string("bci + " + immediate.offset());
+                    b.end();
+                    b.end();
+                    b.end();
+                }
+                b.end().end(); // return
+
+                b.end(); // case block
+            }
+            b.end();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Invalid opcode"));
+            return ex;
+        }
+
+        private Collection<List<InstructionModel>> groupInstructionsByLength(Collection<InstructionModel> models) {
+            return models.stream().sorted(Comparator.comparingInt((i) -> i.getInstructionLength())).collect(Collectors.groupingBy((m) -> m.getInstructionLength())).values();
+        }
+
+        private Collection<List<InstructionModel>> groupInstructionsByImmediates(Collection<InstructionModel> models) {
+            return models.stream().collect(Collectors.groupingBy((m) -> m.getImmediates())).values().stream().sorted(Comparator.comparingInt((i) -> i.get(0).getId())).toList();
+        }
+
+        private CodeExecutableElement createGetOperationCode() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getOperationCode");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().string("opcode").end();
+            return ex;
+        }
+
+        private static String getImmediateClassName(ImmediateKind kind) {
+            switch (kind) {
+                case BRANCH_PROFILE:
+                    return "BranchProfileArgument";
+                case BYTECODE_INDEX:
+                    return "BytecodeIndexArgument";
+                case CONSTANT:
+                    return "ConstantArgument";
+                case LOCAL_SETTER:
+                case LOCAL_SETTER_RANGE_LENGTH:
+                case LOCAL_SETTER_RANGE_START:
+                case INTEGER:
+                    return "IntegerArgument";
+                case NODE_PROFILE:
+                    return "NodeProfileArgument";
+                case TAG_NODE:
+                    return "TagNodeArgument";
+            }
+            throw new AssertionError("invalid kind");
+        }
+
+        class AbstractArgumentFactory {
+
+            private CodeTypeElement type;
+
+            AbstractArgumentFactory() {
+            }
+
+            private CodeTypeElement create() {
+                type = new CodeTypeElement(Set.of(PRIVATE, SEALED, STATIC, ABSTRACT),
+                                ElementKind.CLASS, null, "AbstractArgument");
+                type.setSuperClass(types.Instruction_Argument);
+                type.add(new CodeVariableElement(Set.of(FINAL), abstractBytecodeNode.asType(), "bytecode"));
+                type.add(new CodeVariableElement(Set.of(FINAL), type(String.class), "name"));
+                type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "bci"));
+                CodeExecutableElement constructor = type.add(createConstructorUsingFields(Set.of(), type, null, Set.of("token")));
+                CodeTree tree = constructor.getBodyTree();
+                CodeTreeBuilder b = constructor.createBuilder();
+                b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+                b.tree(tree);
+
+                type.add(createGetName());
+
+                return type;
+            }
+
+            private CodeExecutableElement createGetName() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "getName");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+                b.statement("return name");
+                return ex;
+            }
+
+        }
+
+        class ArgumentFactory {
+
+            private CodeTypeElement type;
+            private ImmediateKind immediateKind;
+
+            ArgumentFactory(ImmediateKind immediateKind) {
+                this.immediateKind = immediateKind;
+            }
+
+            private CodeTypeElement create() {
+                type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
+                                ElementKind.CLASS, null, getImmediateClassName(immediateKind));
+                type.setSuperClass(abstractArgument.asType());
+                type.add(createConstructorUsingFields(Set.of(), type));
+                type.add(createGetKind());
+
+                switch (immediateKind) {
+                    case BYTECODE_INDEX:
+                        type.add(createAsBytecodeIndex());
+                        break;
+                    case INTEGER:
+                    case LOCAL_SETTER:
+                    case LOCAL_SETTER_RANGE_LENGTH:
+                    case LOCAL_SETTER_RANGE_START:
+                        type.add(createAsInteger());
+                        break;
+                    case CONSTANT:
+                        type.add(createAsConstant());
+                        break;
+                    case NODE_PROFILE:
+                        type.add(createAsNodeProfile());
+                        break;
+                    case BRANCH_PROFILE:
+                        type.add(createAsBranchProfile());
+                        break;
+                    case TAG_NODE:
+                        type.add(createAsTagNode());
+                        break;
+                    default:
+                        throw new AssertionError("Unexpected kind");
+                }
+
+                return type;
+            }
+
+            private CodeExecutableElement createAsBytecodeIndex() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asBytecodeIndex");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.startReturn();
+                b.string(readBc("bci"));
+                b.end();
+                return ex;
+            }
+
+            private CodeExecutableElement createAsInteger() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asInteger");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.startReturn();
+                b.string(readBc("bci"));
+                b.end();
+                return ex;
+            }
+
+            private CodeExecutableElement createAsConstant() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asConstant");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.declaration(type(Object[].class), "constants", "this.bytecode.constants");
+                b.startReturn();
+                b.string(readConst(readBc("bci")));
+                b.end();
+                return ex;
+            }
+
+            private CodeExecutableElement createAsNodeProfile() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asNodeProfile");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+                b.declaration(arrayOf(types.Node), "cachedNodes", "this.bytecode.getCachedNodes()");
+                b.startIf().string("cachedNodes == null").end().startBlock();
+                b.statement("return null");
+                b.end();
+                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.startReturn();
+                b.tree(readNodeProfile(types.Node, CodeTreeBuilder.singleString(readBc("bci"))));
+                b.end();
+                return ex;
+            }
+
+            private CodeExecutableElement createAsTagNode() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asTagNode");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.declaration(tagRootNode.asType(), "tagRoot", "this.bytecode.tagRoot");
+                b.startIf().string("tagRoot == null").end().startBlock();
+                b.statement("return null");
+                b.end();
+                b.startReturn();
+                b.tree(readTagNode(types.TagTreeNode, CodeTreeBuilder.singleString(readBc("bci"))));
+                b.end();
+                return ex;
+            }
+
+            private CodeExecutableElement createAsBranchProfile() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asBranchProfile");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.declaration(type(int.class), "index", readBc("bci"));
+                b.declaration(type(int[].class), "profiles", "this.bytecode.getBranchProfiles()");
+                b.startIf().string("profiles == null").end().startBlock();
+
+                b.startReturn();
+                b.startNew(types.Instruction_Argument_BranchProfile);
+                b.string("index");
+                b.string("0");
+                b.string("0");
+                b.end(); // new
+                b.end(); // return
+
+                b.end(); // block
+                b.startReturn();
+                b.startNew(types.Instruction_Argument_BranchProfile);
+                b.string("index");
+                b.string("profiles[index * 2]");
+                b.string("profiles[index * 2 + 1]");
+                b.end();
+                b.end();
+                return ex;
+            }
+
+            private CodeExecutableElement createGetKind() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "getKind");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+                b.startReturn();
+                String name = switch (immediateKind) {
+                    case BRANCH_PROFILE -> "BRANCH_PROFILE";
+                    case BYTECODE_INDEX -> "BYTECODE_INDEX";
+                    case CONSTANT -> "CONSTANT";
+                    case INTEGER, LOCAL_SETTER, LOCAL_SETTER_RANGE_LENGTH, LOCAL_SETTER_RANGE_START -> "INTEGER";
+                    case NODE_PROFILE -> "NODE_PROFILE";
+                    case TAG_NODE -> "TAG_NODE";
+                };
+                b.staticReference(types.Instruction_Argument_Kind, name);
+                b.end();
+                return ex;
+            }
+
+        }
+
+    }
+
     class TagNodeFactory {
 
         private CodeTypeElement type;
@@ -6791,7 +7169,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             // Define methods for introspecting the bytecode and source.
             type.add(createGetIntrospectionData());
-            type.add(createParseInstruction());
             type.add(createGetSourceSection());
             type.add(createFindSourceLocation());
             type.add(createFindSourceLocationBeginEnd());
@@ -6889,7 +7266,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             break;
                         case TAG_NODE:
                             b.startIf().string("tagNodes != null").end().startBlock();
-                            b.declaration(tagNode.asType(), "node", readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(immediate.name())));
+                            b.declaration(tagNode.asType(), "node", readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(immediate.name())));
                             b.startIf().string("node == null").end().startBlock();
                             b.tree(createValidationError("tagNode is null"));
                             b.end();
@@ -6955,7 +7332,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startCase().string("HANDLER_TAG_EXCEPTIONAL").end().startCaseBlock();
 
                 b.startIf().string("tagNodes != null").end().startBlock();
-                b.declaration(tagNode.asType(), "node", readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString("handlerBci")));
+                b.declaration(tagNode.asType(), "node", readTagNode(tagNode.asType(), CodeTreeBuilder.singleString("handlerBci")));
                 b.startIf().string("node == null").end().startBlock();
                 b.tree(createValidationError("tagNode is null"));
                 b.end();
@@ -7586,31 +7963,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             b.declaration(generic(type(List.class), type(Object[].class)), "instructions", "new ArrayList<>()");
 
-            b.declaration(type(int[].class), "bci", "new int[1]");
-            b.startTryBlock();
-
-            b.startFor().string("; bci[0] < bc.length;").end().startBlock();
-            b.startStatement().startCall("instructions", "add").startCall("parseInstruction").string("bci[0]").string(readBc("bci[0]")).string("bci").end().end().end();
-            b.end();
-
-            b.end().startCatchBlock(type(Throwable.class), "e");
-            b.statement("StringBuilder b = new StringBuilder()");
-            b.declaration("String", "sep", "\"\"");
-
-            b.startFor().string("Object[] instruction : instructions").end().startBlock();
-            b.statement("b.append(sep)");
-            b.startStatement().startCall("b.append").startGroup().startNew(types.Instruction).string("instruction").end().string(".toString()").end(3);
-            b.statement("sep = \"\\n    \"");
-            b.end();
-
-            b.startThrow().startNew(type(IllegalStateException.class));
-            b.startGroup();
-            b.doubleQuote("Error parsing instructions at ").string(" + bci[0] + ").doubleQuote(". Parsed instructions so far: \\n    ").string(" + b.toString()");
-            b.end();
-            b.string("e");
-            b.end().end();
-            b.end(); // catch block
-
             b.statement("Object[] exHandlersInfo = new Object[handlers.length / 5]");
 
             b.startFor().string("int idx = 0; idx < exHandlersInfo.length; idx++").end().startBlock();
@@ -7672,107 +8024,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
-            b.startNew(types.Instruction);
-            b.startCall("parseInstruction").string("bci").string("readValidBytecode(this.bytecodes, bci)").string("null").end();
+            b.startNew(instructionImpl.asType());
+            b.string("this").string("bci").string("readValidBytecode(this.bytecodes, bci)");
             b.end();
             b.end();
-            return ex;
-        }
-
-        private CodeExecutableElement createParseInstruction() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(), type(Object[].class), "parseInstruction");
-            ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
-            ex.addParameter(new CodeVariableElement(type(int.class), "operand"));
-            ex.addParameter(new CodeVariableElement(type(int[].class), "nextBci"));
-            CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
-            b.declaration(arrayOf(types.Node), "cachedNodes", "getCachedNodes()");
-            b.declaration(arrayOf(type(int.class)), "branchProfiles", "getBranchProfiles()");
-            b.declaration(types.BytecodeLocation, "location", "findLocation(bci)");
-            if (model.enableTagInstrumentation) {
-                b.declaration(arrayOf(tagNode.asType()), "tagNodes", "tagRoot != null ? tagRoot.tagNodes : null");
-            }
-
-            b.startSwitch().string("operand").end().startBlock();
-
-            for (InstructionModel instr : model.getInstructions()) {
-                b.startCase().tree(createInstructionConstant(instr)).end().startCaseBlock();
-
-                b.startIf().string("nextBci != null").end().startBlock();
-                b.statement("nextBci[0] = bci + " + instr.getInstructionLength());
-                b.end();
-
-                // instruction data array
-                b.startReturn().startNewArray(arrayOf(context.getType(Object.class)), null);
-                b.string("location");
-                b.doubleQuote(instr.name);
-                b.string("new short[] {" + instr.getId() + "}");
-
-                // arguments array
-                b.startNewArray(arrayOf(context.getType(Object.class)), null);
-
-                for (InstructionImmediate immediate : instr.getImmediates()) {
-                    // argument data array
-                    b.startNewArray(arrayOf(context.getType(Object.class)), null);
-                    b.staticReference(types.Argument_ArgumentType, switch (immediate.kind()) {
-                        case CONSTANT -> "CONSTANT";
-                        case BYTECODE_INDEX -> "BYTECODE_INDEX";
-                        case INTEGER, LOCAL_SETTER, LOCAL_SETTER_RANGE_LENGTH, LOCAL_SETTER_RANGE_START -> "INTEGER";
-                        case NODE_PROFILE -> "NODE_PROFILE";
-                        case BRANCH_PROFILE -> "BRANCH_PROFILE";
-                        case TAG_NODE -> "INSTRUMENT_PROFILE";
-                        default -> throw new AssertionError("Unexpected kind");
-                    });
-                    b.doubleQuote(immediate.name());
-                    String readImmediate = readBc("bci + " + immediate.offset());
-                    switch (immediate.kind()) {
-                        case BYTECODE_INDEX:
-                        case INTEGER:
-                        case LOCAL_SETTER:
-                        case LOCAL_SETTER_RANGE_LENGTH:
-                        case LOCAL_SETTER_RANGE_START:
-                            b.string(readImmediate);
-                            break;
-                        case CONSTANT:
-                            b.string(readConst(readImmediate));
-                            break;
-                        case NODE_PROFILE:
-                            b.startGroup();
-                            b.string("cachedNodes != null ? ");
-                            b.string(readNodeProfile(types.Node, CodeTreeBuilder.singleString(readImmediate)));
-                            b.string(" : null");
-                            b.end();
-                            break;
-                        case BRANCH_PROFILE:
-                            b.string("new int[] {" + readImmediate + ", " + readBranchProfile(readImmediate + " * 2") + ", " + readBranchProfile(readImmediate + " * 2 + 1") + "}");
-                            break;
-                        case TAG_NODE:
-                            b.startGroup();
-                            b.string("tagNodes != null ? ");
-                            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readImmediate)));
-                            b.string(" : null");
-                            b.end();
-                            break;
-                        default:
-                            throw new AssertionError("Unexpected kind");
-                    }
-                    b.end(); // Object[]
-
-                }
-                b.end(); // Object[]
-
-                b.end(); // Object[]
-                b.end(); // return
-
-                b.end();
-            }
-
-            b.caseDefault().startCaseBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere(b.create().doubleQuote("Invalid BCI at index: ").string(" + bci").build()));
-            b.end();
-
-            b.end();
-
             return ex;
         }
 
@@ -9369,7 +9624,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = method.createBuilder();
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
             b.end();
             b.statement("tagNode.findProbe().onEnter(frame)");
 
@@ -9396,7 +9651,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = method.createBuilder();
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
             b.end();
             b.statement("tagNode.findProbe().onReturnValue(frame, null)");
 
@@ -9464,7 +9719,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
             b.end();
             b.statement("tagNode.findProbe().onReturnValue(frame, returnValue)");
 
@@ -9544,7 +9799,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
             b.end();
             b.statement("tagNode.findProbe().onReturnValue(frame, value)");
 
@@ -10494,7 +10749,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (tier.isCached()) {
                 // If not in the uncached interpreter, we need to retrieve the node for the call.
                 CodeTree nodeIndex = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.NODE_PROFILE));
-                CodeTree readNode = CodeTreeBuilder.createBuilder().string(readNodeProfile(cachedType, nodeIndex)).build();
+                CodeTree readNode = CodeTreeBuilder.createBuilder().tree(readNodeProfile(cachedType, nodeIndex)).build();
                 b.declaration(cachedType, "node", readNode);
 
                 if (model.enableTracing) {
@@ -11120,7 +11375,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return String.format("branchProfiles == null ? 0 : ACCESS.intArrayRead(branchProfiles, %s)", index);
     }
 
-    private static String readInstrumentationProfile(TypeMirror expectedType, CodeTree index) {
+    private static CodeTree readTagNode(TypeMirror expectedType, CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS.cast");
         b.startCall("ACCESS.objectArrayRead");
@@ -11129,10 +11384,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end();
         b.typeLiteral(expectedType);
         b.end();
-        return b.toString();
+        return b.build();
     }
 
-    private static String readNodeProfile(TypeMirror expectedType, CodeTree index) {
+    private static CodeTree readNodeProfile(TypeMirror expectedType, CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS.cast");
         b.startCall("ACCESS.objectArrayRead");
@@ -11141,7 +11396,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end();
         b.typeLiteral(expectedType);
         b.end();
-        return b.toString();
+        return b.build();
     }
 
     private static String getFrameObject(String index) {

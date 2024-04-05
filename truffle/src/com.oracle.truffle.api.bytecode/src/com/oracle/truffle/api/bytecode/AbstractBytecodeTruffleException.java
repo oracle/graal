@@ -133,6 +133,6 @@ public abstract class AbstractBytecodeTruffleException extends AbstractTruffleEx
         if (bci == INVALID_BCI) {
             return super.getEncapsulatingSourceSection();
         }
-        return BytecodeLocation.get(getLocation(), bci).findSourceLocation();
+        return BytecodeLocation.get(getLocation(), bci).getSourceLocation();
     }
 }

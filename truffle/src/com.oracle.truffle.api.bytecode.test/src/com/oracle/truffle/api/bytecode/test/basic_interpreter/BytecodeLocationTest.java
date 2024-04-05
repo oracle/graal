@@ -184,9 +184,9 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
         assert baz.getName().equals("baz");
 
         // Check that the start locations map to the first instruction.
-        assertEquals(0, foo.getStartLocation().findInstructionIndex());
-        assertEquals(0, bar.getStartLocation().findInstructionIndex());
-        assertEquals(0, baz.getStartLocation().findInstructionIndex());
+        assertEquals(0, foo.getStartLocation().getInstructionIndex());
+        assertEquals(0, bar.getStartLocation().getInstructionIndex());
+        assertEquals(0, baz.getStartLocation().getInstructionIndex());
 
         for (boolean fooArgument : List.of(true, false)) {
             Object result = foo.getCallTarget().call(fooArgument);
@@ -202,7 +202,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             // baz
             BytecodeLocation bazLocation = bytecodeLocations.get(1);
             assertNotNull(bazLocation);
-            SourceSection bazSourceSection = bazLocation.findSourceLocation();
+            SourceSection bazSourceSection = bazLocation.getSourceLocation();
             assertEquals(bazSource, bazSourceSection.getSource());
             if (fooArgument) {
                 assertEquals("<trace1>", bazSourceSection.getCharacters());
@@ -213,14 +213,14 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             // bar
             BytecodeLocation barLocation = bytecodeLocations.get(2);
             assertNotNull(barLocation);
-            SourceSection barSourceSection = barLocation.findSourceLocation();
+            SourceSection barSourceSection = barLocation.getSourceLocation();
             assertEquals(barSource, barSourceSection.getSource());
             assertEquals("baz(arg0)", barSourceSection.getCharacters());
 
             // foo
             BytecodeLocation fooLocation = bytecodeLocations.get(3);
             assertNotNull(fooLocation);
-            SourceSection fooSourceSection = fooLocation.findSourceLocation();
+            SourceSection fooSourceSection = fooLocation.getSourceLocation();
             assertEquals(fooSource, fooSourceSection.getSource());
             assertEquals("bar(arg0)", fooSourceSection.getCharacters());
         }
@@ -368,7 +368,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             BytecodeLocation bazLocation = locations.get(1);
             assertNotNull(bazLocation);
             assertNotEquals(-1, bazLocation);
-            SourceSection bazSourceSection = bazLocation.findSourceLocation();
+            SourceSection bazSourceSection = bazLocation.getSourceLocation();
             assertEquals(bazSource, bazSourceSection.getSource());
             if (continuationArgument) {
                 assertEquals("<trace1>", bazSourceSection.getCharacters());
@@ -379,14 +379,14 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             // bar
             BytecodeLocation barLocation = locations.get(2);
             assertNotNull(barLocation);
-            SourceSection barSourceSection = barLocation.findSourceLocation();
+            SourceSection barSourceSection = barLocation.getSourceLocation();
             assertEquals(barSource, barSourceSection.getSource());
             assertEquals("baz(x)", barSourceSection.getCharacters());
 
             // foo
             BytecodeLocation fooLocation = locations.get(3);
             assertNotNull(fooLocation);
-            SourceSection fooSourceSection = fooLocation.findSourceLocation();
+            SourceSection fooSourceSection = fooLocation.getSourceLocation();
             assertEquals(fooSource, fooSourceSection.getSource());
             assertEquals("continue(c, arg0)", fooSourceSection.getCharacters());
         }
@@ -436,8 +436,8 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
         // Check that mapping between instruction index and bci produces the same result.
         BytecodeNode bytecodeNode = rootNode.getBytecodeNode();
         for (int expectedIndex : indices) {
-            int bci = bytecodeNode.findBciFromInstructionIndex(expectedIndex);
-            int actualIndex = bytecodeNode.findInstructionIndex(bci);
+            BytecodeLocation location = bytecodeNode.getBytecodeLocationFromInstructionIndex(expectedIndex);
+            int actualIndex = location.getInstructionIndex();
             assertEquals(expectedIndex, actualIndex);
         }
     }

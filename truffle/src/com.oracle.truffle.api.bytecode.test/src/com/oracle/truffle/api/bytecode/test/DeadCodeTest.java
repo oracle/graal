@@ -620,9 +620,9 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "throw",
                         "load.constant",
                         "return");
-        node.getIntrospectionData().getInstructions().stream() //
+        node.getBytecodeNode().getInstructionsAsList().stream() //
                         .filter(insn -> insn.getName().equals("load.argument")) //
-                        .forEach(insn -> assertEquals(0, insn.getArgumentValues().get(0).getInteger()));
+                        .forEach(insn -> assertEquals(0, insn.getArguments().get(0).asInteger()));
         try {
             node.getCallTarget().call(42);
             fail("exception expected");
