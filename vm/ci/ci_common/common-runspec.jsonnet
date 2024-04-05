@@ -182,10 +182,8 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   ) + deploy_sdk_base() + check_base_graalvm_image + timelimit("1:00:00"),
 
   local name = task_spec({
-    java_version:: 'java' + if self.jdk_name == "jdk-latest" then "-latest"
-                   else std.substr(self.jdk_name, 3, std.length(self.jdk_name) - 3),
     name: std.join('-', vm_common.job_name_targets(self)
-      + [self.task_name, std.toString(self.java_version)]
+      + [self.task_name, std.strReplace(self.jdk_name, 'jdk', 'java')]
       + (if (std.objectHasAll(self, 'os_distro') && self.os_distro != 'ol') then [self.os_distro] else [])
       + [self.os, self.arch]
     ),
