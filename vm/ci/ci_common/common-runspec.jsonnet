@@ -10,16 +10,14 @@ local task_spec = run_spec.task_spec;
 local platform_spec = run_spec.platform_spec;
 local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}));
 {
+  local no_jobs = {'*'+: exclude},
+
   local target(t) = task_spec({targets+: [t]}),
   local gate = target('gate'),
   local post_merge = target('post-merge'),
   local daily = target('daily'),
   local weekly = target('weekly'),
   local deploy = target('deploy'),
-
-  local timelimit(t) = evaluate_late('999_time_limit', { // the key starts with 999 to be the last one evaluated
-    timelimit: t
-  }),
 
   common_vm: graal_common.build_base + vm.vm_setup + vm.custom_vm + {
     python_version: "3",
@@ -60,17 +58,43 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     },
   },
 
-  local record_file_sizes = ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
-  local upload_file_sizes = ['bench-uploader.py', 'sizes.json'],
   local common_os_deploy = deploy + task_spec({
     deploysArtifacts: true,
     packages+: if (self.os == 'linux') then {maven: '>=3.3.9'} else {},
     environment+: if (self.os == 'darwin') then {PATH: '$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH:/usr/local/bin'} else {},
     downloads+: if (self.os == 'darwin') then {MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false}} else {},
   }),
-  local no_jobs = {
-    "*"+: exclude,
-  },
+
+  local timelimit(t) = evaluate_late('999_time_limit', { // the key starts with 999 to be the last one evaluated
+    timelimit: t
+  }),
+
+  local name = task_spec({
+    name: std.join('-', vm_common.job_name_targets(self)
+      + [self.task_name, std.strReplace(self.jdk_name, 'jdk', 'java')]
+      + (if (std.objectHasAll(self, 'os_distro') && self.os_distro != 'ol') then [self.os_distro] else [])
+      + [self.os, self.arch]
+    ),
+  }),
+
+  local notify_groups(group) = task_spec({
+    notify_groups+: if(std.type(group) == 'string') then [group] else group
+  }),
+
+  local diskspace_required(diskspace) = task_spec({
+    diskspace_required: diskspace
+  }),
+
+  local capabilities(caps) = task_spec({
+    capabilities+: if(std.type(caps) == 'string') then [caps] else caps
+  }),
+
+  local notify_emails(emails) = task_spec({
+    notify_emails+: if(std.type(emails) == 'string') then [emails] else emails
+  }),
+
+  local record_file_sizes = ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
+  local upload_file_sizes = ['bench-uploader.py', 'sizes.json'],
 
   local svm_common = task_spec(graal_common.deps.svm) + task_spec({
     packages+: if (self.os == 'windows') then graal_common.devkits[std.join('', ["windows-jdk", if (self.jdk_version == 23) then 'Latest' else std.toString(self.jdk_version)])].packages else {} // we can remove self.jdk_version == 23 and add a hidden field isLatest and use it
@@ -137,30 +161,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       notify_groups:: ['deploy'],
     },
   ) + deploy_sdk_base() + check_base_graalvm_image + timelimit("1:00:00"),
-
-  local name = task_spec({
-    name: std.join('-', vm_common.job_name_targets(self)
-      + [self.task_name, std.strReplace(self.jdk_name, 'jdk', 'java')]
-      + (if (std.objectHasAll(self, 'os_distro') && self.os_distro != 'ol') then [self.os_distro] else [])
-      + [self.os, self.arch]
-    ),
-  }),
-
-  local notify_groups(group) = task_spec({
-    notify_groups+: if(std.type(group) == 'string') then [group] else group
-  }),
-
-  local diskspace_required(diskspace) = task_spec({
-    diskspace_required: diskspace
-  }),
-
-  local capabilities(caps) = task_spec({
-    capabilities+: if(std.type(caps) == 'string') then [caps] else caps
-  }),
-
-  local notify_emails(emails) = task_spec({
-    notify_emails+: if(std.type(emails) == 'string') then [emails] else emails
-  }),
 
   local deploy_graalvm_espresso = svm_common + sulong + common_os_deploy + name + task_spec({
     mx_env:: if ((self.os == 'linux' || self.os == 'darwin') && self.arch == 'amd64') then self.mx_env_llvm else self.mx_env_espresso,
