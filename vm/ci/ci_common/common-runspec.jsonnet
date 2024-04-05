@@ -57,24 +57,24 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
     common_vm_windows_jdk21: self.common_vm_windows + graal_common.devkits['windows-jdk21'],
     common_vm_windows_jdkLatest: self.common_vm_windows + graal_common.devkits['windows-jdkLatest'],
-    vm_linux_amd64_common: {
+
+    vm_linux_amd64_common: self.common_vm_linux + {
       capabilities+: ['manycores', 'ram16gb', 'fast'],
     },
+    vm_linux_amd64: graal_common.linux_amd64 + self.vm_linux_amd64_common,
 
-    vm_linux_amd64: graal_common.linux_amd64 + self.common_vm + self.vm_linux_amd64_common,
-
-    vm_linux_amd64_ol9: graal_common.linux_amd64_ol9 + self.common_vm + self.vm_linux_amd64_common,
+    vm_linux_amd64_ol9: graal_common.linux_amd64_ol9 + self.vm_linux_amd64_common,
     vm_ol9_amd64: self.vm_linux_amd64_ol9,
 
-    vm_linux_amd64_ubuntu: graal_common.linux_amd64_ubuntu + self.common_vm + self.vm_linux_amd64_common,
+    vm_linux_amd64_ubuntu: graal_common.linux_amd64_ubuntu + self.vm_linux_amd64_common,
     vm_ununtu_amd64: self.vm_linux_amd64_ubuntu,
 
-    vm_linux_aarch64: self.common_vm + graal_common.linux_aarch64,
+    vm_linux_aarch64: self.common_vm_linux + graal_common.linux_aarch64,
 
-    vm_linux_aarch64_ol9: self.common_vm + graal_common.linux_aarch64_ol9,
+    vm_linux_aarch64_ol9: self.common_vm_linux + graal_common.linux_aarch64_ol9,
     vm_ol9_aarch64: self.vm_linux_aarch64_ol9,
 
-    vm_darwin_amd64: self.common_vm + graal_common.darwin_amd64 + {
+    vm_darwin_amd64: self.common_vm_darwin + graal_common.darwin_amd64 + {
       capabilities+: ['darwin_bigsur', 'ram16gb'],
       packages+: {
         gcc: '==4.9.2',
@@ -87,7 +87,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
     vm_darwin_amd64_jdkLatest: self.vm_darwin_amd64,
 
-    vm_darwin_aarch64: self.common_vm + graal_common.darwin_aarch64 + {
+    vm_darwin_aarch64: self.common_vm_darwin + graal_common.darwin_aarch64 + {
       capabilities+: ['darwin_bigsur'],
       environment+: {
         # for compatibility with macOS BigSur
