@@ -335,13 +335,10 @@ public abstract class NativeImageDebugInfoProviderBase {
     }
 
     protected static int elementSize(ElementInfo elementInfo) {
-        if (elementInfo == null || !(elementInfo instanceof SizableInfo)) {
+        if (!(elementInfo instanceof SizableInfo) || elementInfo instanceof StructInfo structInfo && structInfo.isIncomplete()) {
             return 0;
         }
-        if (elementInfo instanceof StructInfo && ((StructInfo) elementInfo).isIncomplete()) {
-            return 0;
-        }
-        Integer size = ((SizableInfo) elementInfo).getSizeInfo().getProperty();
+        Integer size = ((SizableInfo) elementInfo).getSizeInBytes();
         assert size != null;
         return size;
     }

@@ -48,12 +48,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
@@ -75,6 +69,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
@@ -86,6 +81,13 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -95,17 +97,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class NativeLibraries {
 
     private final MetaAccessProvider metaAccess;
+    private final WordTypes wordTypes;
 
     private final SnippetReflectionProvider snippetReflection;
     private final TargetDescription target;
-    private ClassInitializationSupport classInitializationSupport;
+    private final ClassInitializationSupport classInitializationSupport;
 
     private final Map<Object, ElementInfo> elementToInfo;
     private final Map<Class<? extends CContext.Directives>, NativeCodeContext> compilationUnitToContext;
 
     private final ResolvedJavaType wordBaseType;
-    private final ResolvedJavaType signedType;
-    private final ResolvedJavaType unsignedType;
+    private final ResolvedJavaType signedWordType;
+    private final ResolvedJavaType unsignedWordType;
     private final ResolvedJavaType pointerBaseType;
     private final ResolvedJavaType stringType;
     private final ResolvedJavaType byteArrayType;
@@ -219,11 +222,11 @@ public final class NativeLibraries {
         }
     }
 
-    public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target,
-                    ClassInitializationSupport classInitializationSupport, Path tempDirectory, DebugContext debug) {
-        this.metaAccess = metaAccess;
-        this.constantReflection = constantReflection;
-        this.snippetReflection = snippetReflection;
+    public NativeLibraries(HostedProviders providers, TargetDescription target, ClassInitializationSupport classInitializationSupport, Path tempDirectory, DebugContext debug) {
+        this.metaAccess = providers.getMetaAccess();
+        this.constantReflection = providers.getConstantReflection();
+        this.snippetReflection = providers.getSnippetReflection();
+        this.wordTypes = providers.getWordTypes();
         this.target = target;
         this.classInitializationSupport = classInitializationSupport;
         this.tempDirectory = tempDirectory;
@@ -234,8 +237,8 @@ public final class NativeLibraries {
         compilationUnitToContext = new HashMap<>();
 
         wordBaseType = lookupAndRegisterType(WordBase.class);
-        signedType = lookupAndRegisterType(SignedWord.class);
-        unsignedType = lookupAndRegisterType(UnsignedWord.class);
+        signedWordType = lookupAndRegisterType(SignedWord.class);
+        unsignedWordType = lookupAndRegisterType(UnsignedWord.class);
         pointerBaseType = lookupAndRegisterType(PointerBase.class);
         stringType = lookupAndRegisterType(String.class);
         byteArrayType = lookupAndRegisterType(byte[].class);
@@ -266,6 +269,10 @@ public final class NativeLibraries {
         this.cache = new CAnnotationProcessorCache();
     }
 
+    public static NativeLibraries singleton() {
+        return ImageSingletons.lookup(NativeLibraries.class);
+    }
+
     private ResolvedJavaType lookupAndRegisterType(Class<?> clazz) {
         AnalysisType type = (AnalysisType) metaAccess.lookupJavaType(clazz);
         type.registerAsReachable("is native library type");
@@ -274,6 +281,10 @@ public final class NativeLibraries {
 
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
+    }
+
+    public WordTypes getWordTypes() {
+        return wordTypes;
     }
 
     public SnippetReflectionProvider getSnippetReflection() {
@@ -571,19 +582,27 @@ public final class NativeLibraries {
     }
 
     public boolean isSigned(ResolvedJavaType type) {
+        if (type.isPrimitive()) {
+            return !type.getJavaKind().isUnsigned();
+        }
+
         /*
-         * No assignable check, we only go for exact match since Word (which implements Signed,
-         * Unsigned, and Pointer) should not match here.
+         * Explicitly filter types that implement UnsignedWord or PointerBase (e.g., Word implements
+         * SignedWord, UnsignedWord, and Pointer).
          */
-        return signedType.equals(type);
+        return signedWordType.isAssignableFrom(type) && !unsignedWordType.isAssignableFrom(type) && !pointerBaseType.isAssignableFrom(type);
     }
 
-    public boolean isUnsigned(ResolvedJavaType type) {
+    public boolean isIntegerType(ResolvedJavaType type) {
+        if (type.isPrimitive()) {
+            return type.getJavaKind().isNumericInteger();
+        }
+
         /*
-         * No assignable check, we only go for exact match since Word (which implements Signed,
-         * Unsigned, and Pointer) should not match here.
+         * Explicitly filter types that implement PointerBase (e.g., Word implements SignedWord,
+         * UnsignedWord, and Pointer).
          */
-        return unsignedType.equals(type);
+        return (signedWordType.isAssignableFrom(type) || unsignedWordType.isAssignableFrom(type)) && !pointerBaseType.isAssignableFrom(type);
     }
 
     public boolean isString(ResolvedJavaType type) {

@@ -22,26 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.c.info;
+package com.oracle.svm.core.c.enums;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-public class EnumValueInfo extends ElementInfo {
-
-    private final ResolvedJavaMethod annotatedMethod;
-
-    public EnumValueInfo(ResolvedJavaMethod annotatedMethod) {
-        super(annotatedMethod.getName());
-        this.annotatedMethod = annotatedMethod;
+public class CEnumNoLookup extends CEnumRuntimeData {
+    public CEnumNoLookup(long[] javaToC, int bytesInC, boolean isCValueUnsigned) {
+        super(javaToC, bytesInC, isCValueUnsigned);
     }
 
     @Override
-    public ResolvedJavaMethod getAnnotatedElement() {
-        return annotatedMethod;
-    }
-
-    @Override
-    public void accept(InfoTreeVisitor visitor) {
-        visitor.visitEnumValueInfo(this);
+    protected Enum<?> lookupEnum(long value) {
+        return null;
     }
 }
