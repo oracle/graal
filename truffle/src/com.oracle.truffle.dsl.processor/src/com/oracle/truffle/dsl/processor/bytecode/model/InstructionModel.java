@@ -47,6 +47,7 @@ import java.util.List;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
@@ -343,11 +344,14 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public boolean isInstrumentationOnly() {
+    public boolean isInstrumentation() {
         switch (kind) {
             case TAG_ENTER:
             case TAG_LEAVE:
+            case TAG_LEAVE_VOID:
                 return true;
+            case CUSTOM:
+                return operation.kind == OperationKind.CUSTOM_INSTRUMENTATION;
             default:
                 return false;
         }
