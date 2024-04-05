@@ -55,9 +55,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       },
     },
 
-    common_vm_windows_jdk21: self.common_vm_windows + graal_common.devkits['windows-jdk21'],
-    common_vm_windows_jdkLatest: self.common_vm_windows + graal_common.devkits['windows-jdkLatest'],
-
     vm_linux_amd64_common: self.common_vm_linux + {
       capabilities+: ['manycores', 'ram16gb', 'fast'],
     },
@@ -95,9 +92,8 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       },
     },
 
-    vm_windows_amd64: self.common_vm_windows + graal_common.windows_server_2016_amd64,
-    vm_windows_amd64_jdk21: self.common_vm_windows_jdk21 + graal_common.windows_server_2016_amd64,
-    vm_windows_amd64_jdkLatest: self.common_vm_windows_jdkLatest + graal_common.windows_server_2016_amd64,
+    vm_windows_amd64_jdk21: self.common_vm_windows + graal_common.devkits['windows-jdk21'] + graal_common.windows_server_2016_amd64,
+    vm_windows_amd64_jdkLatest: self.common_vm_windows + graal_common.devkits['windows-jdkLatest'] + graal_common.windows_server_2016_amd64,
   },
 
   local record_file_sizes = ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
