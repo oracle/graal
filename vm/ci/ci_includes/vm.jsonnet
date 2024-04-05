@@ -237,9 +237,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # Trigger the releaser service and notify the indexer
     self.vm_notifier_daily,
     self.vm_notifier_weekly,
-  ] + vm_common_runspec.deploy_vm_base + vm_common_runspec.deploy_vm_espresso,
+  ],
 
-  builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds, std.thisFile)],
+  builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_runspec.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds, std.thisFile)],
 
   compiler_gate:: (import '../../../compiler/ci/ci_common/gate.jsonnet')
 }

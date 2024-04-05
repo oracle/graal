@@ -4,6 +4,7 @@ local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet";
 local exclude    = run_spec.exclude;
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local graal_c = import '../../../ci/common.jsonnet';
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
 local task_spec = run_spec.task_spec;
 local platform_spec = run_spec.platform_spec;
@@ -298,9 +299,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     }),
   },
 
-  processed_vm_base_builds::run_spec.process(deploy_vm_base_task_dict),
-  deploy_vm_base: self.processed_vm_base_builds.list,
-
   local deploy_vm_espresso_task_dict = {
     #
     # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
@@ -314,6 +312,8 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     }),
   },
 
-  processed_vm_espresso_builds::run_spec.process(deploy_vm_espresso_task_dict),
-  deploy_vm_espresso: self.processed_vm_espresso_builds.list,
+  builds: utils.add_defined_in(std.flattenArrays([run_spec.process(task_dict).list for task_dict in [
+    deploy_vm_base_task_dict,
+    deploy_vm_espresso_task_dict,
+  ]]), std.thisFile),
 }
