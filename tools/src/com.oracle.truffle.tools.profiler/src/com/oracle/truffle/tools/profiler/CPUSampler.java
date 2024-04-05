@@ -102,7 +102,10 @@ public final class CPUSampler implements Closeable {
     }
 
     private final Env env;
-    private final Map<TruffleContext, MutableSamplerData> activeContexts = Collections.synchronizedMap(new WeakHashMap<>());
+
+    private int contextIndex;
+    private final Map<TruffleContext, Integer> activeContexts = Collections.synchronizedMap(new WeakHashMap<>());
+    private final Map<Integer, MutableSamplerData> samplerData = Collections.synchronizedMap(new LinkedHashMap<>());
     private volatile boolean closed;
     private volatile boolean collecting;
     private long period = 10;
@@ -136,7 +139,9 @@ public final class CPUSampler implements Closeable {
             @Override
             public void onContextCreated(TruffleContext context) {
                 synchronized (CPUSampler.this) {
-                    activeContexts.put(context, new MutableSamplerData());
+                    contextIndex++;
+                    activeContexts.put(context, contextIndex);
+                    samplerData.put(contextIndex, new MutableSamplerData());
                 }
             }
 
@@ -332,12 +337,12 @@ public final class CPUSampler implements Closeable {
      * @return a map from {@link TruffleContext} to {@link CPUSamplerData}.
      * @since 21.3.0
      */
-    public synchronized Map<TruffleContext, CPUSamplerData> getData() {
-        if (activeContexts.isEmpty()) {
+    public synchronized Map<Integer, CPUSamplerData> getData() {
+        if (samplerData.isEmpty()) {
             return Collections.emptyMap();
         }
-        Map<TruffleContext, CPUSamplerData> contextToData = new HashMap<>();
-        for (Entry<TruffleContext, MutableSamplerData> contextEntry : this.activeContexts.entrySet()) {
+        Map<Integer, CPUSamplerData> contextToData = new HashMap<>();
+        for (Entry<Integer, MutableSamplerData> contextEntry : this.samplerData.entrySet()) {
             Map<Thread, Collection<ProfilerNode<Payload>>> threads = new HashMap<>();
             final MutableSamplerData mutableSamplerData = contextEntry.getValue();
             for (Map.Entry<Thread, ProfilerNode<Payload>> threadEntry : mutableSamplerData.threadData.entrySet()) {
@@ -345,9 +350,9 @@ public final class CPUSampler implements Closeable {
                 copy.deepCopyChildrenFrom(threadEntry.getValue(), COPY_PAYLOAD);
                 threads.put(threadEntry.getKey(), copy.getChildren());
             }
-            TruffleContext context = contextEntry.getKey();
-            contextToData.put(context,
-                            new CPUSamplerData(context, threads, mutableSamplerData.biasStatistic, mutableSamplerData.durationStatistic, mutableSamplerData.samplesTaken.get(), period,
+            int localContextIndex = contextEntry.getKey();
+            contextToData.put(localContextIndex,
+                            new CPUSamplerData(localContextIndex, threads, mutableSamplerData.biasStatistic, mutableSamplerData.durationStatistic, mutableSamplerData.samplesTaken.get(), period,
                                             mutableSamplerData.missedSamples.get()));
         }
         return Collections.unmodifiableMap(contextToData);
@@ -359,8 +364,8 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized void clearData() {
-        for (TruffleContext context : activeContexts.keySet()) {
-            activeContexts.put(context, new MutableSamplerData());
+        for (Map.Entry<Integer, MutableSamplerData> dataEntry : samplerData.entrySet()) {
+            dataEntry.setValue(new MutableSamplerData());
         }
     }
 
@@ -369,7 +374,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized boolean hasData() {
-        for (MutableSamplerData mutableSamplerData : activeContexts.values()) {
+        for (MutableSamplerData mutableSamplerData : samplerData.values()) {
             if (mutableSamplerData.samplesTaken.get() > 0) {
                 return true;
             }
@@ -467,14 +472,13 @@ public final class CPUSampler implements Closeable {
             if (activeContexts.isEmpty()) {
                 return Collections.emptyMap();
             }
-            System.out.println("Active contexts size = " + activeContexts.size());
             Map<TruffleContext, MutableSamplerData> contexts = new LinkedHashMap<>();
             for (TruffleContext context : activeContexts.keySet()) {
                 if (context.isActive()) {
                     throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
                 }
                 if (!context.isClosed()) {
-                    contexts.put(context, activeContexts.get(context));
+                    contexts.put(context, samplerData.get(activeContexts.get(context)));
                 }
             }
             if (!contexts.isEmpty()) {
@@ -547,7 +551,7 @@ public final class CPUSampler implements Closeable {
     }
 
     private synchronized TruffleContext[] contexts() {
-        return activeContexts.keySet().toArray(new TruffleContext[activeContexts.size()]);
+        return activeContexts.keySet().toArray(new TruffleContext[0]);
     }
 
     /**
@@ -667,7 +671,7 @@ public final class CPUSampler implements Closeable {
                         if (!collecting) {
                             return;
                         }
-                        final MutableSamplerData mutableSamplerData = activeContexts.get(result.context);
+                        final MutableSamplerData mutableSamplerData = samplerData.get(activeContexts.get(result.context));
                         for (StackSample sample : result.samples) {
                             mutableSamplerData.biasStatistic.accept(sample.biasNs);
                             mutableSamplerData.durationStatistic.accept(sample.durationNs);
@@ -763,7 +767,7 @@ public final class CPUSampler implements Closeable {
                 if (context.isClosed()) {
                     continue;
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, Collections.singletonMap(context, activeContexts.get(context)), !sampleContextInitialization, period,
+                List<StackSample> samples = safepointStackSampler.sample(env, Collections.singletonMap(context, samplerData.get(activeContexts.get(context))), !sampleContextInitialization, period,
                                 TimeUnit.MILLISECONDS);
                 resultsToProcess.add(new SamplingResult(samples, context, taskStartTime));
             }

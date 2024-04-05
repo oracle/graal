@@ -43,7 +43,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -87,7 +86,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         context.initialize(ProxyLanguage.ID);
         sampler.setCollecting(false);
 
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        Map<Integer, CPUSamplerData> data = sampler.getData();
         assertEquals(1, data.size());
 
         assertEquals(0, searchInitializeContext(data).size());
@@ -113,13 +112,13 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         context.initialize(ProxyLanguage.ID);
         sampler.setCollecting(false);
 
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        Map<Integer, CPUSamplerData> data = sampler.getData();
         assertEquals(1, data.size());
 
         assertEquals(0, searchInitializeContext(data).size());
     }
 
-    private static List<ProfilerNode<Payload>> searchInitializeContext(Map<TruffleContext, CPUSamplerData> data) {
+    private static List<ProfilerNode<Payload>> searchInitializeContext(Map<Integer, CPUSamplerData> data) {
         List<ProfilerNode<Payload>> found = new ArrayList<>();
         for (CPUSamplerData d : data.values()) {
             Map<Thread, Collection<ProfilerNode<Payload>>> threadData = d.getThreadData();
@@ -146,7 +145,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testCollectingAndHasData() {
 
         sampler.setCollecting(true);
-        Map<TruffleContext, CPUSamplerData> before = sampler.getData();
+        Map<Integer, CPUSamplerData> before = sampler.getData();
         Assert.assertEquals(0, before.values().iterator().next().getSamples());
         Assert.assertTrue(sampler.isCollecting());
         Assert.assertFalse(sampler.hasData());
@@ -155,7 +154,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             eval(defaultSourceForSampling);
         }
 
-        Map<TruffleContext, CPUSamplerData> after = sampler.getData();
+        Map<Integer, CPUSamplerData> after = sampler.getData();
         Assert.assertNotEquals(0, after.values().iterator().next().getSamples());
         Assert.assertTrue(sampler.isCollecting());
         Assert.assertTrue(sampler.hasData());
@@ -166,7 +165,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertTrue(sampler.hasData());
 
         sampler.clearData();
-        Map<TruffleContext, CPUSamplerData> cleared = sampler.getData();
+        Map<Integer, CPUSamplerData> cleared = sampler.getData();
         Assert.assertFalse(sampler.isCollecting());
         Assert.assertEquals(0, cleared.values().iterator().next().getSamples());
 
@@ -221,7 +220,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     private Collection<ProfilerNode<Payload>> getProfilerNodes() {
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        Map<Integer, CPUSamplerData> data = sampler.getData();
         Assert.assertEquals(1, data.size());
         Map<Thread, Collection<ProfilerNode<Payload>>> threadData = data.values().iterator().next().getThreadData();
         Assert.assertEquals(1, threadData.size());
@@ -338,7 +337,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assume.assumeFalse(Truffle.getRuntime().getClass().toString().contains("Default"));
         Context.Builder builder = Context.newBuilder().option("engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD)).option("engine.LastTierCompilationThreshold",
                         Integer.toString(2 * FIRST_TIER_THRESHOLD)).option("engine.BackgroundCompilation", "false");
-        Map<TruffleContext, CPUSamplerData> data;
+        Map<Integer, CPUSamplerData> data;
         try (Context c = builder.build()) {
             CPUSampler cpuSampler = CPUSampler.find(c.getEngine());
             cpuSampler.setCollecting(true);

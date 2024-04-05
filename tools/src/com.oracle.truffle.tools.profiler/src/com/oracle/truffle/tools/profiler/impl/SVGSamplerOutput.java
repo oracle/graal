@@ -41,7 +41,6 @@ import java.util.Scanner;
 import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONObject;
 
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.CPUSampler;
@@ -50,7 +49,7 @@ import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 final class SVGSamplerOutput {
 
-    public static void printSamplingFlameGraph(PrintStream out, Map<TruffleContext, CPUSamplerData> data) {
+    public static void printSamplingFlameGraph(PrintStream out, Map<Integer, CPUSamplerData> data) {
         GraphOwner graph = new GraphOwner(new StringBuilder(), data);
 
         graph.addComponent(new SVGFlameGraph(graph));
@@ -215,7 +214,7 @@ final class SVGSamplerOutput {
     private static class GraphOwner implements SVGComponent {
 
         private final SVGSamplerOutput svg;
-        private final Map<TruffleContext, CPUSamplerData> data;
+        private final Map<Integer, CPUSamplerData> data;
         private ArrayList<SVGComponent> components;
         private Random random = new Random();
         private Map<GraphColorMap, String> languageColors;
@@ -233,7 +232,7 @@ final class SVGSamplerOutput {
         public final JSONArray sampleJsonKeys = new JSONArray();
         public final JSONArray sampleData = new JSONArray();
 
-        GraphOwner(StringBuilder output, Map<TruffleContext, CPUSamplerData> data) {
+        GraphOwner(StringBuilder output, Map<Integer, CPUSamplerData> data) {
             svg = new SVGSamplerOutput(output);
             this.data = data;
             components = new ArrayList<>();

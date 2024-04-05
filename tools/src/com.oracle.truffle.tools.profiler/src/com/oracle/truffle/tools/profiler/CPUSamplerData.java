@@ -40,7 +40,7 @@ import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
  */
 public final class CPUSamplerData {
 
-    final TruffleContext context;
+    final int contextIndex;
     final Map<Thread, Collection<ProfilerNode<Payload>>> threadData;
     final LongSummaryStatistics biasStatistics;  // nanoseconds
     final LongSummaryStatistics durationStatistics;  // nanoseconds
@@ -48,10 +48,10 @@ public final class CPUSamplerData {
     final long intervalMs;
     final long missedSamples;
 
-    CPUSamplerData(TruffleContext context, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
+    CPUSamplerData(int contextIndex, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
                     long samplesTaken,
                     long intervalMs, long missedSamples) {
-        this.context = context;
+        this.contextIndex = contextIndex;
         this.threadData = threadData;
         this.biasStatistics = biasStatistics;
         this.durationStatistics = durationStatistics;
@@ -61,11 +61,22 @@ public final class CPUSamplerData {
     }
 
     /**
+     * @return The context index this data applies to.
+     * @since 24.1.0
+     */
+    public int getContextIndex() {
+        return contextIndex;
+    }
+
+    /**
      * @return The context this data applies to.
      * @since 21.3.0
+     * @deprecated Contexts are no longer stored. Use {@link #getContextIndex()} to differentiate
+     *             sampler data for different contexts.
      */
+    @Deprecated
     public TruffleContext getContext() {
-        return context;
+        return null;
     }
 
     /**
