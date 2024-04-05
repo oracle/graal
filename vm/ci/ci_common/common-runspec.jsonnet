@@ -228,28 +228,28 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
     "vm-base": mx_env + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr,
-      "linux:amd64:jdk-latest": post_merge + svm_common + sulong + truffleruby + graalpy + fastr,
-      "linux:aarch64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr + capabilities('!xgene3') + timelimit('1:30:00'),
-      "linux:aarch64:jdk-latest": daily + svm_common + sulong + truffleruby + graalpy + fastr + capabilities('!xgene3') + timelimit('1:30:00'),
+      "linux:amd64:jdk21": weekly + svm_common,
+      "linux:amd64:jdk-latest": post_merge + svm_common,
+      "linux:aarch64:jdk21": weekly + svm_common + capabilities('!xgene3') + timelimit('1:30:00'),
+      "linux:aarch64:jdk-latest": daily + svm_common + capabilities('!xgene3') + timelimit('1:30:00'),
 
-      "darwin:amd64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr,
-      "darwin:amd64:jdk-latest": daily + svm_common + sulong + truffleruby + graalpy + fastr,
-      "darwin:aarch64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
-      "darwin:aarch64:jdk-latest": daily + svm_common + sulong + truffleruby + graalpy + fastr + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+      "darwin:amd64:jdk21": weekly + svm_common,
+      "darwin:amd64:jdk-latest": daily + svm_common,
+      "darwin:aarch64:jdk21": weekly + svm_common + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+      "darwin:aarch64:jdk-latest": daily + svm_common + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
 
-      "windows:amd64:jdk21": weekly + graalnodejs + svm_common + timelimit('1:30:00'),
-      "windows:amd64:jdk-latest": daily + graalnodejs + svm_common + timelimit('1:30:00'),
+      "windows:amd64:jdk21": weekly + svm_common + timelimit('1:30:00'),
+      "windows:amd64:jdk-latest": daily + svm_common + timelimit('1:30:00'),
 
       "variants": {
         "ubuntu": {
           "*": exclude,
-          "linux:amd64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr + task_spec({os_distro:: 'ubuntu'}),
+          "linux:amd64:jdk21": weekly + svm_common + task_spec({os_distro:: 'ubuntu'}),
         }
       }
     }),
     "vm-base-ubuntu": mx_env + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr + task_spec({os_distro:: 'ubuntu'}),
+      "linux:amd64:jdk21": weekly + svm_common + task_spec({os_distro:: 'ubuntu'}),
     }),
   },
 
@@ -258,11 +258,11 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
     #
     "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr,
-      "linux:aarch64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr,
-      "darwin:amd64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr,
-      "darwin:aarch64:jdk21": weekly + svm_common + sulong + truffleruby + graalpy + fastr,
-      "windows:amd64:jdk21": weekly + sulong + svm_common,
+      "linux:amd64:jdk21": weekly + svm_common + sulong,
+      "linux:aarch64:jdk21": weekly + svm_common + sulong,
+      "darwin:amd64:jdk21": weekly + svm_common + sulong,
+      "darwin:aarch64:jdk21": weekly + svm_common + sulong,
+      "windows:amd64:jdk21": weekly + svm_common + sulong,
     }),
   },
 
