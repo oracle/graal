@@ -21,7 +21,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     timelimit: t
   }),
 
-  common_vm: graal_common.build_base + vm.vm_setup + {
+  common_vm: graal_common.build_base + vm.vm_setup + vm.custom_vm + {
     python_version: "3",
     logs+: [
       '*/mxbuild/dists/stripped/*.map',
@@ -77,7 +77,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   local svm_common = task_spec(graal_common.deps.svm) + task_spec({
     packages+: if (self.os == 'windows') then graal_common.devkits[std.join('', ["windows-jdk", if (self.jdk_version == 23) then 'Latest' else std.toString(self.jdk_version)])].packages else {} // we can remove self.jdk_version == 23 and add a hidden field isLatest and use it
   }),
-  local ruby_vm_build = svm_common + sulong + truffleruby + run_spec.task_spec(vm.custom_vm),
+  local ruby_vm_build = svm_common + sulong + truffleruby,
   local graalpy = task_spec(graal_common.deps.graalpy),
   local ruby_python_vm_build = ruby_vm_build + graalpy,
   local full_vm_build = ruby_python_vm_build + task_spec(graal_common.deps.fastr),
