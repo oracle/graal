@@ -197,23 +197,18 @@ public class TestOptionKey {
             // Expected
         }
 
-        EconomicMap<String, String> parsedSettings = EconomicMap.create();
-        OptionsParser.parseSettings("MyOption=a MyLongOption=42", parsedSettings);
-        Assert.assertEquals("a", parsedSettings.get("MyOption"));
-        Assert.assertEquals("42", parsedSettings.get("MyLongOption"));
-
-        OptionsParser.parseSettings("@MyOption=a string with spaces@MyLongOption=51@MyBooleanOption=false", parsedSettings);
-        Assert.assertEquals("a string with spaces", parsedSettings.get("MyOption"));
-        Assert.assertEquals("51", parsedSettings.get("MyLongOption"));
-        Assert.assertEquals("false", parsedSettings.get("MyBooleanOption"));
+        Assert.assertArrayEquals(OptionsParser.splitOptions("MyOption=a  MyLongOption=42"),
+                        new String[]{"MyOption=a", "MyLongOption=42"});
+        Assert.assertArrayEquals(OptionsParser.splitOptions("@MyOption=a string with spaces@MyLongOption=51@MyBooleanOption=false"),
+                        new String[]{"MyOption=a string with spaces", "MyLongOption=51", "MyBooleanOption=false"});
 
         // Single option also works
-        OptionsParser.parseSettings("MyIntegerOption=1001", parsedSettings);
-        Assert.assertEquals("1001", parsedSettings.get("MyIntegerOption"));
+        Assert.assertArrayEquals(OptionsParser.splitOptions("MyIntegerOption=1001"),
+                        new String[]{"MyIntegerOption=1001"});
 
         // Contiguous repeats of delimiters throw IllegalArgumentException
         try {
-            OptionsParser.parseSettings("#MyIntegerOption=1001##SomeOtherOption=false", parsedSettings);
+            OptionsParser.splitOptions("#MyIntegerOption=1001##SomeOtherOption=false");
             Assert.fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             // Expected

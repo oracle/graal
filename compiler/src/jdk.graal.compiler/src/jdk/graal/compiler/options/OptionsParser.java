@@ -74,8 +74,8 @@ public class OptionsParser {
      * Parses a map representing assignments of values to options.
      *
      * @param optionSettings option settings (i.e., assignments of values to options)
-     * @param values         the object in which to store the parsed values
-     * @param loader         source of the available {@link OptionDescriptors}
+     * @param values the object in which to store the parsed values
+     * @param loader source of the available {@link OptionDescriptors}
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
     public static void parseOptions(EconomicMap<String, String> optionSettings, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
@@ -85,6 +85,23 @@ public class OptionsParser {
                 parseOption(cursor.getKey(), cursor.getValue(), values, loader);
             }
         }
+    }
+
+    /**
+     * Parses an array of option settings of the form {@code "OptionKey=Value"} in {@code options},
+     * adding parsed options to {@code values}.
+     *
+     * @param options array of option setting strings (i.e., assignments of values to options).
+     * @param values the object in which to store the parsed values
+     * @param loader source of the available {@link OptionDescriptors}
+     * @throws IllegalArgumentException if there's a problem parsing any of {@code options}
+     */
+    public static void parseOptions(String[] options, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
+        EconomicMap<String, String> settings = EconomicMap.create();
+        for (String option : options) {
+            parseOptionSettingTo(option, settings);
+        }
+        parseOptions(settings, values, loader);
     }
 
     /**
@@ -101,15 +118,16 @@ public class OptionsParser {
     }
 
     /**
-     * Parses a list of option settings in {@code options}, adding parsed key-value pairs to
-     * {@code settings}. If {@code options} starts with a non-letter character, that character is
-     * used as the delimiter between options. Otherwise, whitespace is the delimiter.
+     * Splits a list of option settings into an array of options. If {@code options} starts with a
+     * non-letter character, that character is used as the delimiter between options. Otherwise,
+     * whitespace is the delimiter.
      *
-     * @param options  string containing a separated list of option settings.
-     * @param settings map to which parsed option settings will be stored as key-value pairs.
-     * @throws IllegalArgumentException if a non-whitespace delimiter is used and the delimiter appears repeated contiguously in {@code options}.
+     * @param options string containing a separated list of option settings.
+     * @return an array of strings containing the individual parsed options.
+     * @throws IllegalArgumentException if a non-whitespace delimiter is used and the delimiter
+     *             appears repeated contiguously in {@code options}.
      */
-    public static void parseSettings(String options, EconomicMap<String, String> settings) {
+    public static String[] splitOptions(String options) {
         String sepRegex = "\\s+";
         String toParse = options;
         if (!options.isEmpty() && !Character.isLetter(options.charAt(0))) {
@@ -117,21 +135,22 @@ public class OptionsParser {
             toParse = options.substring(1);
         }
 
-        for (String optionSetting : toParse.split(sepRegex)) {
+        String[] settings = toParse.split(sepRegex);
+        for (String optionSetting : settings) {
             if (optionSetting.isEmpty()) {
-                throw new IllegalArgumentException(String.format("Delimiter '%s' is repeated contiguously in %s", options.charAt(0), options));
+                throw new IllegalArgumentException(String.format("Delimiter '%s' is repeated contiguously in \"%s\"", options.charAt(0), options));
             }
-            OptionsParser.parseOptionSettingTo(optionSetting, settings);
         }
+        return settings;
     }
 
     /**
      * Looks up an {@link OptionDescriptor} based on a given name.
      *
      * @param loader source of the available {@link OptionDescriptors}
-     * @param name   the name of the option to look up
+     * @param name the name of the option to look up
      * @return the {@link OptionDescriptor} whose name equals {@code name} or null if not such
-     * descriptor is available
+     *         descriptor is available
      */
     private static OptionDescriptor lookup(Iterable<OptionDescriptors> loader, String name) {
         for (OptionDescriptors optionDescriptors : loader) {
@@ -146,10 +165,10 @@ public class OptionsParser {
     /**
      * Parses a given option name and value.
      *
-     * @param name           the option name
+     * @param name the option name
      * @param uncheckedValue the unchecked value for the option
-     * @param values         the object in which to store the parsed option and value
-     * @param loader         source of the available {@link OptionDescriptors}
+     * @param values the object in which to store the parsed option and value
+     * @param loader source of the available {@link OptionDescriptors}
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
     public static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
@@ -296,8 +315,8 @@ public class OptionsParser {
      * matching is based on Dice's coefficient.
      *
      * @param toSearch the set of option descriptors to search
-     * @param name     the option name to search for
-     * @param matches  the collection to which fuzzy matches of {@code name} will be added
+     * @param name the option name to search for
+     * @param matches the collection to which fuzzy matches of {@code name} will be added
      * @return whether any fuzzy matches were found
      */
     public static boolean collectFuzzyMatches(Iterable<OptionDescriptor> toSearch, String name, Collection<OptionDescriptor> matches) {

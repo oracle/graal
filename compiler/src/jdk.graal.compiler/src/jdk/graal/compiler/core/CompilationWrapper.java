@@ -367,7 +367,17 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
-    private static OptionValues getRetryOptions(OptionValues initialOptions, String dumpPath) {
+    /**
+     * Parses options to be used for retry compilations, storing the result in {@code values}. Any
+     * defaults already present in {@code values} should be overridden by the parsed options.
+     *
+     * @param options an array of options, obtained from the value of
+     *            {@link DebugOptions#DiagnoseOptions}.
+     * @param values the object in which to store the parsed values.
+     */
+    protected abstract void parseRetryOptions(String[] options, EconomicMap<OptionKey<?>, Object> values);
+
+    private OptionValues getRetryOptions(OptionValues initialOptions, String dumpPath) {
         EconomicMap<OptionKey<?>, Object> values = EconomicMap.create(initialOptions.getMap());
         /*
          * Override values in initialOptions with useful defaults, but let them be overridden in
@@ -381,9 +391,7 @@ public abstract class CompilationWrapper<T> {
         values.put(TrackNodeSourcePosition, true);
 
         String diagnoseOptions = DebugOptions.DiagnoseOptions.getValue(initialOptions);
-        EconomicMap<String, String> settings = EconomicMap.create();
-        OptionsParser.parseSettings(diagnoseOptions, settings);
-        OptionsParser.parseOptions(settings, values, OptionsParser.getOptionsLoader());
+        parseRetryOptions(OptionsParser.splitOptions(diagnoseOptions), values);
         return new OptionValues(values);
     }
 
