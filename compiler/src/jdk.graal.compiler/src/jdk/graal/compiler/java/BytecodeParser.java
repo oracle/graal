@@ -315,6 +315,7 @@ import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.java.BciBlockMapping.BciBlock;
 import jdk.graal.compiler.java.BciBlockMapping.ExceptionDispatchBlock;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.BeginStateSplitNode;
@@ -333,6 +334,7 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FullInfopointNode;
 import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.IncompatibleStateMergeNode;
 import jdk.graal.compiler.nodes.InliningLog;
 import jdk.graal.compiler.nodes.InliningLog.PlaceholderInvokable;
 import jdk.graal.compiler.nodes.Invokable;
@@ -860,7 +862,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
     }
 
-    private static final class Target {
+    protected static final class Target {
         final FixedNode entry;
         final FixedNode originalEntry;
         final FrameStateBuilder state;
@@ -875,6 +877,18 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             this.entry = entry;
             this.state = state;
             this.originalEntry = originalEntry;
+        }
+
+        public FixedNode getEntry() {
+            return entry;
+        }
+
+        public FixedNode getOriginalEntry() {
+            return originalEntry;
+        }
+
+        public FrameStateBuilder getState() {
+            return state;
         }
     }
 
@@ -1934,7 +1948,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         genInvokeSpecial(target);
     }
 
-    void genInvokeSpecial(JavaMethod target) {
+    protected void genInvokeSpecial(JavaMethod target) {
         if (callTargetIsResolved(target)) {
             assert target != null;
             assert target.getSignature() != null;
@@ -2975,7 +2989,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         // ever parsed so we should bailout here instead.
         int expectedDepth = frameState.getMethod().isSynchronized() && !epilogue ? 1 : 0;
         if (frameState.lockDepth(false) == expectedDepth) {
-            throw bailout("unbalanced monitors: too many exits");
+            handleUnstructuredLocking("too many monitorexits");
+            return;
         }
         MonitorIdNode monitorId = frameState.peekMonitorId();
         ValueNode lockedObject = frameState.popLock();
@@ -2984,11 +2999,34 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             ValueNode originalLockedObject = GraphUtil.originalValue(lockedObject, false);
             ValueNode originalX = GraphUtil.originalValue(x, false);
             if (originalLockedObject != originalX) {
-                throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", originalLockedObject, originalX));
+                // at this point, the lock objects could still be equal, but not visibly to the
+                // parser; add a run-time check
+                LogicNode eq = append(genObjectEquals(x, lockedObject));
+                IfNode ifNode = append(new IfNode(eq, null, null, BranchProbabilityNode.EXTREMELY_FAST_PATH_PROFILE));
+
+                // lock objects not equal
+                ifNode.setFalseSuccessor(graph.add(new BeginNode()));
+                lastInstr = ifNode.falseSuccessor();
+                FrameStateBuilder oldState = frameState.copy();
+                frameState.pushLock(lockedObject, monitorId);
+                handleMismatchAtMonitorexit();
+                frameState = oldState;
+
+                // lock objects equal
+                ifNode.setTrueSuccessor(graph.add(new BeginNode()));
+                lastInstr = ifNode.trueSuccessor();
             }
         }
         MonitorExitNode monitorExit = append(new MonitorExitNode(lockedObject, monitorId, escapedValue));
         monitorExit.setStateAfter(createFrameState(bci, monitorExit));
+    }
+
+    protected void handleUnstructuredLocking(String msg) {
+        throw bailout("Unstructured locking: " + msg);
+    }
+
+    protected void handleMismatchAtMonitorexit() {
+        append(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.TransferToInterpreter));
     }
 
     protected void genJsr(int dest) {
@@ -3224,11 +3262,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         this.entryStateArray[block.id] = entryState;
     }
 
-    private void setFirstInstruction(BciBlock block, FixedWithNextNode firstInstruction) {
+    protected void setFirstInstruction(BciBlock block, FixedWithNextNode firstInstruction) {
         this.firstInstructionArray[block.id] = firstInstruction;
     }
 
-    private FixedWithNextNode getFirstInstruction(BciBlock block) {
+    protected FixedWithNextNode getFirstInstruction(BciBlock block) {
         return firstInstructionArray[block.id];
     }
 
@@ -3323,9 +3361,13 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 assert !(block instanceof ExceptionDispatchBlock) : block;
                 assert !getEntryState(block).rethrowException();
                 target.state.setRethrowException(false);
+                FrameStateBuilder entryState = getEntryState(block);
+                if (!entryState.areLocksMergeableWith(target.state)) {
+                    return handleUnmergeableLocks(target, block, loopBegin, entryState);
+                }
                 getEntryState(block).merge(loopBegin, target.state);
-
                 debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
+
                 return result;
             }
             assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
@@ -3363,12 +3405,21 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             EndNode newEnd = graph.add(new EndNode());
             Target target = checkLoopExit(checkUnwind(newEnd, block, state), block);
             FixedNode result = target.entry;
+            FrameStateBuilder entryState = getEntryState(block);
+            if (!entryState.areLocksMergeableWith(target.state)) {
+                return handleUnmergeableLocks(target, block, mergeNode, entryState);
+            }
             getEntryState(block).merge(mergeNode, target.state);
             mergeNode.addForwardEnd(newEnd);
-
             debug.log("createTarget %s: merging state, result: %s", block, result);
+
             return result;
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected FixedNode handleUnmergeableLocks(Target target, BciBlock mergeBlock, AbstractMergeNode merge, FrameStateBuilder mergeState) {
+        throw bailout("Locks cannot be merged. Possibly unstructured locking, which is not supported.");
     }
 
     /**
@@ -3430,7 +3481,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
     private void handleUnwindBlock() {
         if (frameState.lockDepth(false) != 0) {
-            throw bailout("unbalanced monitors: too few exits exiting frame");
+            handleUnstructuredLocking("too few monitorexits exiting frame");
         }
         assert !frameState.rethrowException();
         if (parent == null) {
@@ -3474,7 +3525,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 assert !frameState.rethrowException();
             }
             if (frameState.lockDepth(false) != 0) {
-                throw bailout("unbalanced monitors: too few exits exiting frame");
+                handleUnstructuredLocking("too few monitorexits exiting frame");
             }
         }
     }
@@ -5763,6 +5814,13 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * {@link GraphBuilderConfiguration#retainLocalVariables()} is true.
      */
     protected boolean mustClearNonLiveLocalsAtOSREntry() {
+        return true;
+    }
+
+    /**
+     * Determines if the locked objects of two FrameStateBuilders must be identical during merging.
+     */
+    public boolean mustEnforceLockObjectEquality() {
         return true;
     }
 }

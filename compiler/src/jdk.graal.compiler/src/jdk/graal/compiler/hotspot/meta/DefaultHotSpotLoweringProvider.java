@@ -1002,6 +1002,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             runtimeCalls.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, new ForeignCallSignature("createLongExactOverflowException", ArithmeticException.class));
             runtimeCalls.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY,
                             new ForeignCallSignature("createIllegalArgumentExceptionArgumentIsNotAnArray", IllegalArgumentException.class));
+            runtimeCalls.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, new ForeignCallSignature("createUnstructuredLockingException", IllegalMonitorStateException.class));
         }
     }
 

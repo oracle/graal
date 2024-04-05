@@ -518,11 +518,27 @@ public final class FrameStateBuilder implements SideEffectsState {
                 }
                 throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - monitors do not match", other));
             }
-            // ID's match now also the objects should match
-            if (originalValue(lockedObjects[i], false) != originalValue(other.lockedObjects[i], false)) {
+            /*
+             * ID's match now also the objects should match. However, the parser might not see an
+             * actual equality. Depending on a parser flag, (seemingly) different locked objects can
+             * still be merged which defers the consequences of wrong locks to the run time.
+             */
+            if (parser.mustEnforceLockObjectEquality() && originalValue(lockedObjects[i], false) != originalValue(other.lockedObjects[i], false)) {
                 throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - locked objects do not match", other));
             }
         }
+    }
+
+    public boolean areLocksMergeableWith(FrameStateBuilder other) {
+        if (lockedObjects.length != other.lockedObjects.length) {
+            return false;
+        }
+        for (int i = 0; i < lockedObjects.length; i++) {
+            if (!MonitorIdNode.monitorIdentityEquals(monitorIds[i], other.monitorIds[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void merge(AbstractMergeNode block, FrameStateBuilder other) {

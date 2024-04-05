@@ -1352,10 +1352,13 @@ public class BciBlockMapping implements JavaMethodContext {
                 case DCMPL:
                 case DCMPG:
                 case MONITOREXIT:
-                    // All stack manipulation, comparison, conversion and arithmetic operators
-                    // except for idiv and irem can't throw exceptions so the don't need to connect
-                    // exception edges. MONITOREXIT can't throw exceptions in the context of
-                    // compiled code because of the structured locking requirement in the parser.
+                    /*
+                     * All stack manipulation, comparison, conversion and arithmetic operators
+                     * except for idiv and irem can't throw exceptions so the don't need to connect
+                     * exception edges. MONITOREXIT can't throw exceptions in the context of JIT
+                     * compiled code because of the structured locking requirement in the parser;
+                     * SVM has special handling for unstructured locking (see [GR-51446]).
+                     */
                     break;
 
                 case WIDE:

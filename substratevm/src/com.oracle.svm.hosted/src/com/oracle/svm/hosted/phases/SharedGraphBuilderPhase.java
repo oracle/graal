@@ -82,10 +82,14 @@ import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.java.BciBlockMapping;
+import jdk.graal.compiler.java.BciBlockMapping.BciBlock;
+import jdk.graal.compiler.java.BytecodeParser.Target;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.AbstractEndNode;
+import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
@@ -96,10 +100,13 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.IncompatibleStateMergeNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnreachableBeginNode;
@@ -109,6 +116,7 @@ import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
@@ -117,6 +125,7 @@ import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
@@ -641,6 +650,75 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             checkWordType(returnVal, method.getSignature().getReturnType(null), "return value");
 
             super.genReturn(returnVal, returnKind);
+        }
+
+        @Override
+        public boolean mustEnforceLockObjectEquality() {
+            return false;
+        }
+
+        @Override
+        protected void handleUnstructuredLocking(String msg) {
+            if (getDispatchBlock(bci()) == blockMap.getUnwindBlock()) {
+                genReleaseMonitors();
+            }
+            emitBytecodeExceptionCheck(graph.unique(LogicConstantNode.contradiction()), true, BytecodeExceptionKind.UNSTRUCTURED_LOCKING);
+        }
+
+        @Override
+        protected void handleMismatchAtMonitorexit() {
+            genThrowUnsupportedFeatureException("Unexpected lock object at monitorexit. Unstructured locking is not supported.");
+        }
+
+        @Override
+        protected FixedNode handleUnmergeableLocks(Target target, BciBlock mergeBlock, AbstractMergeNode merge, FrameStateBuilder mergeState) {
+            assert mergeBlock != blockMap.getUnwindBlock() : "Unmergeable locks are not expected for unwind block!";
+            FixedWithNextNode originalLast = lastInstr;
+            FrameStateBuilder originalState = frameState;
+
+            FixedWithNextNode begin = graph.add(new BeginNode());
+            lastInstr = begin;
+            frameState = target.getState();
+
+            genReleaseMonitors();
+            if (!(merge instanceof IncompatibleStateMergeNode)) {
+                setFirstInstruction(mergeBlock, IncompatibleStateMergeNode.convertAndReplace(merge));
+            }
+            genThrowUnsupportedFeatureException("Cannot merge branch due to incompatible lock states!");
+
+            lastInstr = originalLast;
+            frameState = originalState;
+
+            if (target.getOriginalEntry() != null) {
+                target.getEntry().safeDelete();
+                return begin;
+            } else {
+                target.getOriginalEntry().replaceAndDelete(begin);
+                return target.getEntry();
+            }
+        }
+
+        private void genReleaseMonitors() {
+            final int monitorsToRelease = method.isSynchronized() ? frameState.lockDepth(false) - 1 : frameState.lockDepth(false);
+            for (int i = 0; i < monitorsToRelease; i++) {
+                MonitorIdNode id = frameState.peekMonitorId();
+                ValueNode lock = frameState.popLock();
+                frameState.pushLock(lock, id);
+                genMonitorExit(lock, null, bci(), true);
+            }
+        }
+
+        private void genThrowUnsupportedFeatureException(String msg) {
+            genNewInstance(getMetaAccess().lookupJavaType(UnsupportedFeatureException.class));
+            frameState.push(JavaKind.Object, frameState.peekObject());
+            ConstantNode msgConst = ConstantNode.forConstant(getConstantReflection().forString(msg), getMetaAccess(), getGraph());
+            frameState.push(JavaKind.Object, msgConst);
+            Constructor<?> ctor = ReflectionUtil.lookupConstructor(UnsupportedFeatureException.class, String.class);
+            ResolvedJavaMethod ctorMeth = getMetaAccess().lookupJavaMethod(ctor);
+            genInvokeSpecial(ctorMeth);
+            ValueNode exception = frameState.pop(JavaKind.Object);
+            lastInstr.setNext(handleException(exception, bci(), false)); // TODO
+                                                                         // BytecodeFrame.UNWIND_BCI?
         }
 
         private void checkWordType(ValueNode value, JavaType expectedType, String reason) {
