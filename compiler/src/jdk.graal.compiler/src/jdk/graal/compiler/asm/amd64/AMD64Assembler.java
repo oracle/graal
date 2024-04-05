@@ -1079,7 +1079,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         return register.getRegisterCategory().equals(category) || (category instanceof UnionRegisterCategory && ((UnionRegisterCategory) category).contains(register));
     }
 
-    private enum VEXOpAssertion {
+    public enum VEXOpAssertion {
         AVX1(CPUFeature.AVX, CPUFeature.AVX, null),
         AVX1_2(CPUFeature.AVX, CPUFeature.AVX2, null),
         AVX2(CPUFeature.AVX2, CPUFeature.AVX2, null),
@@ -1106,6 +1106,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AVX1_128ONLY_AVX512F_128ONLY(CPUFeature.AVX, null, EVEXFeatureAssertion.AVX512F_128ONLY),
         AVX1_AVX2_AVX512F_BW(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_ALL),
         AVX1_AVX2_AVX512BW_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
+        AVX1_AVX2_AVX512DQ_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_DQ_VL),
         AVX1_AVX2_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
         AVX2_AVX512BW_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
         AVX2_AVX512F_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
