@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -47,6 +48,7 @@ import java.util.function.Predicate;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.bytecode.Instruction.InstructionIterable;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
@@ -115,6 +117,18 @@ public abstract class BytecodeNode extends Node {
             return null;
         }
         return findLocation(bci);
+    }
+
+    /**
+     * Computes a {@link BytecodeLocation} using the given instruction index.
+     * <p>
+     * This method can be used to map the result of {@link #getInstructionIndex()} back to a
+     * location.
+     *
+     * @since 24.1
+     */
+    public final BytecodeLocation getBytecodeLocationFromInstructionIndex(int instructionIndex) {
+        return getBytecodeLocation(findBciFromInstructionIndex(instructionIndex));
     }
 
     /**
@@ -213,6 +227,18 @@ public abstract class BytecodeNode extends Node {
      */
     public abstract BytecodeIntrospection getIntrospectionData();
 
+    public final Iterable<Instruction> getInstructions() {
+        return new InstructionIterable(this);
+    }
+
+    public final List<Instruction> getInstructionsAsList() {
+        List<Instruction> instructions = new ArrayList<>();
+        for (Instruction instruction : getInstructions()) {
+            instructions.add(instruction);
+        }
+        return instructions;
+    }
+
     /**
      * Sets a threshold that must be reached before the uncached interpreter switches to a cached
      * interpreter. The interpreter can switch to cached when the number of times it returns,
@@ -255,7 +281,7 @@ public abstract class BytecodeNode extends Node {
             throw new IllegalArgumentException("Invalid highlighted location. Belongs to a different BytecodeNode.");
         }
         BytecodeIntrospection id = getIntrospectionData();
-        List<Instruction> instructions = id.getInstructions();
+        List<Instruction> instructions = getInstructionsAsList();
         List<ExceptionHandler> exceptions = id.getExceptionHandlers();
         List<SourceInformation> sourceInformation = id.getSourceInformation();
         int highlightedBci = highlighedLocation == null ? -1 : highlighedLocation.getBytecodeIndex();
@@ -269,7 +295,7 @@ public abstract class BytecodeNode extends Node {
                         getClass().getSimpleName(),
                         ((RootNode) getParent()).getQualifiedName(),
                         instructions.size(),
-                        formatList(instructions, (i) -> i.getBci() == highlightedBci),
+                        formatList(instructions, (i) -> i.getBytecodeIndex() == highlightedBci),
                         exceptions.size(),
                         formatList(exceptions, (e) -> highlightedBci >= e.getStartIndex() && highlightedBci < e.getEndIndex()),
                         sourceInformation != null ? sourceInformation.size() : "-",
@@ -353,21 +379,21 @@ public abstract class BytecodeNode extends Node {
      *
      * @since 24.1
      */
-    public abstract int findInstructionIndex(int bci);
+    protected abstract int findInstructionIndex(int bci);
 
     /**
      * Finds the bytecode location associated with the given instruction index.
      *
      * @since 24.1
      */
-    public abstract int findBciFromInstructionIndex(int instructionIndex);
+    protected abstract int findBciFromInstructionIndex(int instructionIndex);
 
     /**
      * Finds the instruction associated with the given bytecode index.
      *
      * @since 24.1
      */
-    public abstract Instruction findInstruction(int bci);
+    protected abstract Instruction findInstruction(int bci);
 
     protected abstract int findBytecodeIndex(Frame frame, Node operationNode);
 

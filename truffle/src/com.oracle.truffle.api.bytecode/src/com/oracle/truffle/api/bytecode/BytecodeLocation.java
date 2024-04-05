@@ -98,20 +98,8 @@ public final class BytecodeLocation {
      *
      * @since 24.1
      */
-    public int findInstructionIndex() {
+    public int getInstructionIndex() {
         return bytecodes.findInstructionIndex(bci);
-    }
-
-    /**
-     * Computes a {@link BytecodeLocation} using the given instruction index.
-     * <p>
-     * This method can be used to map the result of {@link #findInstructionIndex()} back to a
-     * location.
-     *
-     * @since 24.1
-     */
-    public static BytecodeLocation fromInstructionIndex(int instructionIndex, BytecodeNode bytecodeNode) {
-        return new BytecodeLocation(bytecodeNode, bytecodeNode.findBciFromInstructionIndex(instructionIndex));
     }
 
     /**
@@ -161,7 +149,7 @@ public final class BytecodeLocation {
      * @see BytecodeNode#findSourceLocation(int)
      * @since 24.1
      */
-    public SourceSection findSourceLocation() {
+    public SourceSection getSourceLocation() {
         return bytecodes.findSourceLocation(bci);
     }
 
@@ -171,7 +159,7 @@ public final class BytecodeLocation {
      * @see BytecodeNode#findSourceLocations(int)
      * @since 24.1
      */
-    public SourceSection[] findSourceLocations() {
+    public SourceSection[] getSourceLocations() {
         return bytecodes.findSourceLocations(bci);
     }
 
@@ -180,7 +168,7 @@ public final class BytecodeLocation {
      *
      * @since 24.1
      */
-    public Instruction findInstruction() {
+    public Instruction getInstruction() {
         return bytecodes.findInstruction(bci);
     }
 
