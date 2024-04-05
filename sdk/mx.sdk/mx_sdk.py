@@ -99,7 +99,16 @@ def build_oracle_compliant_javadoc_args(suite, product_name, feature_name):
 def javadoc(args):
     """build the Javadoc for all API packages"""
     extraArgs = build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'SDK')
-    mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + extraArgs + args)
+    excludedPackages = [
+        'org.graalvm.polyglot.tck',
+        'org.graalvm.sdk',
+        'org.graalvm.shadowed.org.jline.reader',
+        'org.graalvm.shadowed.org.jline.reader.impl.completer',
+        'org.graalvm.shadowed.org.jline.reader.impl.history',
+        'org.graalvm.shadowed.org.jline.terminal.impl',
+        'org.graalvm.shadowed.org.jline.utils',
+    ]
+    mx.javadoc(['--unified', '--disallow-all-warnings', '--exclude-packages', ','.join(excludedPackages)] + extraArgs + args)
 
 def upx(args):
     """compress binaries using the upx tool"""
