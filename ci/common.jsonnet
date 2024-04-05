@@ -230,8 +230,20 @@ local common_json = import "../common.json";
     },
 
     graalnodejs:: {
+      local this = self,
       packages+: if self.os == "linux" then {
         cmake: "==3.22.2",
+      } else {},
+      environment+: if self.os == "windows" then {
+        local devkits_version = std.filterMap(
+          function(p) std.startsWith(p, 'devkit:VS'),  # filter function
+          function(p) std.substr(p, std.length('devkit:VS'), 4),  # map function
+          std.objectFields(this.packages)  # array
+        )[0],
+        DEVKIT_VERSION: devkits_version,  # TODO: dep of Graal.nodejs
+      } else {},
+      downloads+: if self.os == "windows" then {
+        NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
       } else {},
     },
 

@@ -79,6 +79,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   }),
   local ruby_vm_build = svm_common + sulong + truffleruby,
   local graalpy = task_spec(graal_common.deps.graalpy),
+  local graalnodejs = task_spec(graal_common.deps.graalnodejs),
   local ruby_python_vm_build = ruby_vm_build + graalpy,
   local full_vm_build = ruby_python_vm_build + task_spec(graal_common.deps.fastr),
 
@@ -175,16 +176,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ],
   }) + timelimit('1:45:00'),
 
-  local js_windows_common = task_spec({
-    environment+: if(self.os == 'windows') then local devkits_version = std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0];
-    {
-      DEVKIT_VERSION: devkits_version,
-    } else {},
-    downloads+: if(self.os == 'windows') then {
-      NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
-    } else {},
-  }),
-
   local default_jdk(b) = {
     "jdk21"+: vm.vm_java_21,
     "jdk-latest"+: vm.vm_java_Latest,
@@ -249,8 +240,8 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       "darwin:aarch64:jdk21": weekly + full_vm_build + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
       "darwin:aarch64:jdk-latest": daily + full_vm_build + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
 
-      "windows:amd64:jdk21": weekly + js_windows_common + svm_common + timelimit('1:30:00'),
-      "windows:amd64:jdk-latest": daily + js_windows_common + svm_common + timelimit('1:30:00'),
+      "windows:amd64:jdk21": weekly + graalnodejs + svm_common + timelimit('1:30:00'),
+      "windows:amd64:jdk-latest": daily + graalnodejs + svm_common + timelimit('1:30:00'),
 
       "variants": {
         "ubuntu": {
