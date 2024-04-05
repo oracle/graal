@@ -75,6 +75,7 @@ public final class CPUSamplerData {
      *             sampler data for different contexts.
      */
     @Deprecated
+    @SuppressWarnings("static-method")
     public TruffleContext getContext() {
         return null;
     }
