@@ -1703,7 +1703,6 @@ suite = {
           "com.oracle.truffle.api.dsl",
           "com.oracle.truffle.api.bytecode",
           "com.oracle.truffle.api.bytecode.debug",
-          "com.oracle.truffle.api.bytecode.introspection",
           "com.oracle.truffle.api.bytecode.serialization",
           "com.oracle.truffle.api.bytecode.tracing",
           "com.oracle.truffle.api.profiles",

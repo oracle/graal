@@ -6388,6 +6388,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createGetLength());
             type.add(createGetArguments());
             type.add(createGetName());
+            type.add(createIsInstrumentation());
             type.add(createNext());
 
             Set<String> generated = new HashSet<>();
@@ -6446,6 +6447,33 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createIsInstrumentation() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "isInstrumentation");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            Map<Boolean, List<InstructionModel>> grouped = groupInstructionsByInstrumentation(model.getInstructions());
+
+            if (!grouped.containsKey(true)) {
+                // Simplification: no instruction is an instrumentation instruction.
+                b.startReturn().string("false").end();
+                return ex;
+            }
+
+            b.startSwitch().string("opcode").end().startBlock();
+            for (var entry : grouped.entrySet()) {
+                for (InstructionModel instruction : entry.getValue()) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                b.startCaseBlock();
+                b.startReturn().string(Boolean.toString(entry.getKey())).end();
+                b.end();
+            }
+
+            b.end();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Invalid opcode"));
+            return ex;
+        }
+
         private CodeExecutableElement createGetLength() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(int.class), "getLength");
             CodeTreeBuilder b = ex.createBuilder();
@@ -6497,6 +6525,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
             b.tree(GeneratorUtils.createShouldNotReachHere("Invalid opcode"));
             return ex;
+        }
+
+        private Map<Boolean, List<InstructionModel>> groupInstructionsByInstrumentation(Collection<InstructionModel> models) {
+            return models.stream().collect(Collectors.groupingBy(InstructionModel::isInstrumentation));
         }
 
         private Collection<List<InstructionModel>> groupInstructionsByLength(Collection<InstructionModel> models) {
@@ -7699,12 +7731,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private record TranslationInstructionGroup(int instructionLength, boolean instrumentation) implements Comparable<TranslationInstructionGroup> {
             TranslationInstructionGroup(InstructionModel instr) {
-                this(instr.getInstructionLength(), isInstrumentationInstruction(instr));
-            }
-
-            private static boolean isInstrumentationInstruction(InstructionModel instr) {
-                return instr.kind == InstructionKind.TAG_ENTER || instr.kind == InstructionKind.TAG_LEAVE || instr.kind == InstructionKind.TAG_LEAVE_VOID ||
-                                instr.operation != null && instr.operation.kind == OperationKind.CUSTOM_INSTRUMENTATION;
+                this(instr.getInstructionLength(), instr.isInstrumentation());
             }
 
             // needs a deterministic ordering after grouping
@@ -11369,10 +11396,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private static String readConst(String index) {
         return String.format("ACCESS.objectArrayRead(constants, %s)", index);
-    }
-
-    private static String readBranchProfile(String index) {
-        return String.format("branchProfiles == null ? 0 : ACCESS.intArrayRead(branchProfiles, %s)", index);
     }
 
     private static CodeTree readTagNode(TypeMirror expectedType, CodeTree index) {

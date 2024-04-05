@@ -72,9 +72,18 @@ import com.oracle.truffle.api.source.Source;
 public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     // @formatter:off
 
-    private static void assertInstructionEquals(Instruction instr, int bci, String name) {
-        assertEquals(bci, instr.getBytecodeIndex());
+    private static void assertInstructionEquals(Instruction instr, Integer bci, String name) {
+        assertInstructionEquals(instr, bci, name, null);
+    }
+
+    private static void assertInstructionEquals(Instruction instr, Integer bci, String name, Boolean instrumentation) {
+        if (bci != null) {
+            assertEquals(bci.intValue(), instr.getBytecodeIndex());
+        }
         assertEquals(name, instr.getName());
+        if (instrumentation != null) {
+            assertEquals(instrumentation.booleanValue(), instr.isInstrumentation());
+        }
     }
 
     @Test
@@ -1131,6 +1140,43 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         assertEquals(0, s4.getBeginBci());
         assertEquals(instructions.get(3).getBytecodeIndex() + 1, s4.getEndBci());
+    }
+
+    @Test
+    public void testIntrospectionDataInstrumentationInstructions() {
+        BasicInterpreter node = parseNode("introspectionDataInstrumentationInstructions", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.beginAddOperation();
+            b.emitLoadArgument(0);
+            b.beginIncrementValue();
+            b.emitLoadArgument(1);
+            b.endIncrementValue();
+            b.endAddOperation();
+            b.endTag(ExpressionTag.class);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        assertEquals(4, instructions.size());
+        assertInstructionEquals(instructions.get(0), null, "load.argument", false);
+        assertInstructionEquals(instructions.get(1), null, "load.argument", false);
+        assertInstructionEquals(instructions.get(2), null, "c.AddOperation", false);
+        assertInstructionEquals(instructions.get(3), null, "return", false);
+
+        node.getRootNodes().update(createBytecodeConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build());
+
+        instructions = node.getBytecodeNode().getInstructionsAsList();
+        assertEquals(5, instructions.size());
+        assertInstructionEquals(instructions.get(0), null, "load.argument", false);
+        assertInstructionEquals(instructions.get(1), null, "load.argument", false);
+        assertInstructionEquals(instructions.get(2), null, "c.IncrementValue", true);
+        assertInstructionEquals(instructions.get(3), null, "c.AddOperation", false);
+        assertInstructionEquals(instructions.get(4), null, "return", false);
     }
 
     @Test

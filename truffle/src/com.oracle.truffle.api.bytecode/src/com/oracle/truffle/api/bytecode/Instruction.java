@@ -73,6 +73,8 @@ public abstract class Instruction {
 
     public abstract List<Argument> getArguments();
 
+    public abstract boolean isInstrumentation();
+
     protected abstract Instruction next();
 
     @Override
@@ -91,7 +93,7 @@ public abstract class Instruction {
         return sb.toString();
     }
 
-    public static abstract class Argument {
+    public abstract static class Argument {
 
         protected Argument(Object token) {
             BytecodeRootNodes.checkToken(token);

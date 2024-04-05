@@ -71,6 +71,7 @@ import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.TagTree;
@@ -243,6 +244,11 @@ public class TagTest extends AbstractInstructionTest {
                         "load.local",
                         "tag.leave",
                         "return");
+        boolean[] isInstrumentation = new boolean[] {true, false, false, true, true, false, true, false};
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        for (int i = 0; i < instructions.size(); i++) {
+            assertEquals(isInstrumentation[i], instructions.get(i).isInstrumentation());
+        }
 
         assertEquals(42, node.getCallTarget().call());
 
@@ -255,6 +261,10 @@ public class TagTest extends AbstractInstructionTest {
                         "load.local$Int$unboxed",
                         "tag.leave$Int",
                         "return");
+        instructions = node.getBytecodeNode().getInstructionsAsList();
+        for (int i = 0; i < instructions.size(); i++) {
+            assertEquals(isInstrumentation[i], instructions.get(i).isInstrumentation());
+        }
 
         QuickeningCounts counts = assertQuickenings(node, 8, 4);
 
