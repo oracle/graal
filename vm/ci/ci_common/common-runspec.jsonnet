@@ -40,6 +40,10 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
     common_vm_linux: self.common_vm,
 
+    common_vm_linux_amd64: self.common_vm_linux + {
+      capabilities+: ['manycores', 'ram16gb', 'fast'],
+    },
+
     common_vm_darwin: self.common_vm + {
       environment+: {
         LANG: 'en_US.UTF-8'
@@ -55,36 +59,35 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       },
     },
 
-    vm_linux_amd64_common: self.common_vm_linux + {
-      capabilities+: ['manycores', 'ram16gb', 'fast'],
-    },
+    # linux/amd64
+    vm_linux_amd64: graal_common.linux_amd64 + self.common_vm_linux_amd64,
+    vm_ol9_amd64: graal_common.linux_amd64_ol9 + self.common_vm_linux_amd64,
+    vm_ubuntu_amd64: graal_common.linux_amd64_ubuntu + self.common_vm_linux_amd64,
 
-    vm_linux_amd64: graal_common.linux_amd64 + self.vm_linux_amd64_common,
-    vm_ol9_amd64: graal_common.linux_amd64_ol9 + self.vm_linux_amd64_common,
-    vm_ubuntu_amd64: graal_common.linux_amd64_ubuntu + self.vm_linux_amd64_common,
-
+    # linux/aarch64
     vm_linux_aarch64: self.common_vm_linux + graal_common.linux_aarch64,
     vm_ol9_aarch64: self.common_vm_linux + graal_common.linux_aarch64_ol9,
 
+    # darwin/amd64
     vm_darwin_amd64: self.common_vm_darwin + graal_common.darwin_amd64 + {
       capabilities+: ['darwin_bigsur', 'ram16gb'],
       packages+: {
         gcc: '==4.9.2',
       },
       environment+: {
-        # for compatibility with macOS BigSur
-        MACOSX_DEPLOYMENT_TARGET: '11.0',
+        MACOSX_DEPLOYMENT_TARGET: '11.0',  # for compatibility with macOS BigSur
       },
     },
 
+    # darwin/aarch64
     vm_darwin_aarch64: self.common_vm_darwin + graal_common.darwin_aarch64 + {
       capabilities+: ['darwin_bigsur'],
       environment+: {
-        # for compatibility with macOS BigSur
-        MACOSX_DEPLOYMENT_TARGET: '11.0',
+        MACOSX_DEPLOYMENT_TARGET: '11.0',  # for compatibility with macOS BigSur
       },
     },
 
+    # windows/amd64
     vm_windows_amd64_jdk21: self.common_vm_windows + graal_common.devkits['windows-jdk21'] + graal_common.windows_server_2016_amd64,
     vm_windows_amd64_jdkLatest: self.common_vm_windows + graal_common.devkits['windows-jdkLatest'] + graal_common.windows_server_2016_amd64,
   },
