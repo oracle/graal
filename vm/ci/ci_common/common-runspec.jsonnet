@@ -57,7 +57,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
     common_vm_windows_jdk21: self.common_vm_windows + graal_common.devkits['windows-jdk21'],
     common_vm_windows_jdkLatest: self.common_vm_windows + graal_common.devkits['windows-jdkLatest'],
-    vm_linux_amd64_common: graal_common.deps.svm {
+    vm_linux_amd64_common: {
       capabilities+: ['manycores', 'ram16gb', 'fast'],
     },
 
