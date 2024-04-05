@@ -129,7 +129,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ] + vm.check_graalvm_base_build('$GRAALVM_DIST', self.os, self.arch, std.toString(self.jdk_version))
   }),
 
-  local deploy_graalvm_base = common_os_deploy + name + task_spec(vm.check_structure) + build_base_graalvm_image + task_spec({
+  local deploy_graalvm_base = svm_common + common_os_deploy + name + task_spec(vm.check_structure) + build_base_graalvm_image + task_spec({
       run +: vm.collect_profiles() + [
         self.mx_vm_common + vm.vm_profiles + record_file_sizes,
         upload_file_sizes,
@@ -162,7 +162,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     notify_emails+: if(std.type(emails) == 'string') then [emails] else emails
   }),
 
-  local deploy_graalvm_espresso = common_os_deploy + name + task_spec({
+  local deploy_graalvm_espresso = svm_common + sulong + common_os_deploy + name + task_spec({
     mx_env:: if ((self.os == 'linux' || self.os == 'darwin') && self.arch == 'amd64') then self.mx_env_llvm else self.mx_env_espresso,
     run: vm.collect_profiles() + [['set-export', 'VM_ENV', self.mx_env]],
     notify_groups:: ['deploy'],
@@ -228,28 +228,28 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
     "vm-base": mx_env + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk21": weekly + svm_common,
-      "linux:amd64:jdk-latest": post_merge + svm_common,
-      "linux:aarch64:jdk21": weekly + svm_common + capabilities('!xgene3') + timelimit('1:30:00'),
-      "linux:aarch64:jdk-latest": daily + svm_common + capabilities('!xgene3') + timelimit('1:30:00'),
+      "linux:amd64:jdk21": weekly,
+      "linux:amd64:jdk-latest": post_merge,
+      "linux:aarch64:jdk21": weekly + capabilities('!xgene3') + timelimit('1:30:00'),
+      "linux:aarch64:jdk-latest": daily + capabilities('!xgene3') + timelimit('1:30:00'),
 
-      "darwin:amd64:jdk21": weekly + svm_common,
-      "darwin:amd64:jdk-latest": daily + svm_common,
-      "darwin:aarch64:jdk21": weekly + svm_common + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
-      "darwin:aarch64:jdk-latest": daily + svm_common + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+      "darwin:amd64:jdk21": weekly,
+      "darwin:amd64:jdk-latest": daily,
+      "darwin:aarch64:jdk21": weekly + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+      "darwin:aarch64:jdk-latest": daily + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
 
-      "windows:amd64:jdk21": weekly + svm_common + timelimit('1:30:00'),
-      "windows:amd64:jdk-latest": daily + svm_common + timelimit('1:30:00'),
+      "windows:amd64:jdk21": weekly + timelimit('1:30:00'),
+      "windows:amd64:jdk-latest": daily + timelimit('1:30:00'),
 
       "variants": {
         "ubuntu": {
           "*": exclude,
-          "linux:amd64:jdk21": weekly + svm_common + task_spec({os_distro:: 'ubuntu'}),
+          "linux:amd64:jdk21": weekly + task_spec({os_distro:: 'ubuntu'}),
         }
       }
     }),
     "vm-base-ubuntu": mx_env + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk21": weekly + svm_common + task_spec({os_distro:: 'ubuntu'}),
+      "linux:amd64:jdk21": weekly + task_spec({os_distro:: 'ubuntu'}),
     }),
   },
 
@@ -258,11 +258,11 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
     #
     "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk21": weekly + svm_common + sulong,
-      "linux:aarch64:jdk21": weekly + svm_common + sulong,
-      "darwin:amd64:jdk21": weekly + svm_common + sulong,
-      "darwin:aarch64:jdk21": weekly + svm_common + sulong,
-      "windows:amd64:jdk21": weekly + svm_common + sulong,
+      "linux:amd64:jdk21": weekly,
+      "linux:aarch64:jdk21": weekly,
+      "darwin:amd64:jdk21": weekly,
+      "darwin:aarch64:jdk21": weekly,
+      "windows:amd64:jdk21": weekly,
     }),
   },
 
