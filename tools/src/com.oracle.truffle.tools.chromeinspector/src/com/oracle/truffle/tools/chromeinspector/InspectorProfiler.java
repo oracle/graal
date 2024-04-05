@@ -132,7 +132,7 @@ public final class InspectorProfiler extends ProfilerDomain {
         synchronized (sampler) {
             sampler.setCollecting(false);
             sampler.setGatherSelfHitTimes(oldGatherSelfHitTimes);
-            data = sampler.getData();
+            data = sampler.getIndexedData();
             sampler.clearData();
             period = sampler.getPeriod();
         }

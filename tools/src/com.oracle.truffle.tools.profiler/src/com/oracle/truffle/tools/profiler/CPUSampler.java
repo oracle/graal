@@ -336,8 +336,28 @@ public final class CPUSampler implements Closeable {
      *
      * @return a map from {@link TruffleContext} to {@link CPUSamplerData}.
      * @since 21.3.0
+     *
+     * @deprecated Contexts are no longer stored. Use {@link #getIndexedData()} to get per-context
+     *             sampler data.
      */
-    public synchronized Map<Integer, CPUSamplerData> getData() {
+    @Deprecated
+    @SuppressWarnings("static-method")
+    public Map<TruffleContext, CPUSamplerData> getData() {
+        return Collections.emptyMap();
+    }
+
+    /**
+     * Get per-context profiling data. Context objects are not stored, the profiling data is an
+     * unmodifiable map that maps context indices to {@link CPUSamplerData}. It is collected based
+     * on the configuration of the {@link CPUSampler} (e.g. {@link #setFilter(SourceSectionFilter)},
+     * {@link #setPeriod(long)}, etc.) and collecting can be controlled by the
+     * {@link #setCollecting(boolean)}. The collected data can be cleared from the cpusampler using
+     * {@link #clearData()}
+     *
+     * @return a map from context indices to {@link CPUSamplerData}.
+     * @since 24.1.0
+     */
+    public synchronized Map<Integer, CPUSamplerData> getIndexedData() {
         if (samplerData.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -804,7 +824,7 @@ class CPUSamplerSnippets {
         sampler.close();
         // Read information about the roots of the tree per thread.
         for (Collection<ProfilerNode<CPUSampler.Payload>> nodes
-                : sampler.getData().values().iterator().next().threadData.values()) {
+                : sampler.getIndexedData().values().iterator().next().threadData.values()) {
             for (ProfilerNode<CPUSampler.Payload> node : nodes) {
                 final String rootName = node.getRootName();
                 final int selfHitCount = node.getPayload().getSelfHitCount();

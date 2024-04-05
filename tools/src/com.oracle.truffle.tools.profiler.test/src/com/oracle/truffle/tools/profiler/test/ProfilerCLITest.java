@@ -363,7 +363,7 @@ public class ProfilerCLITest {
         final long sampleCount;
         final boolean gatherSelfHitTimes;
         synchronized (sampler) {
-            Map<Integer, CPUSamplerData> data = sampler.getData();
+            Map<Integer, CPUSamplerData> data = sampler.getIndexedData();
             CPUSamplerData samplerData = data.values().iterator().next();
             threadToNodesMap = samplerData.getThreadData();
             period = sampler.getPeriod();

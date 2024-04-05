@@ -86,7 +86,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         context.initialize(ProxyLanguage.ID);
         sampler.setCollecting(false);
 
-        Map<Integer, CPUSamplerData> data = sampler.getData();
+        Map<Integer, CPUSamplerData> data = sampler.getIndexedData();
         assertEquals(1, data.size());
 
         assertEquals(0, searchInitializeContext(data).size());
@@ -112,7 +112,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         context.initialize(ProxyLanguage.ID);
         sampler.setCollecting(false);
 
-        Map<Integer, CPUSamplerData> data = sampler.getData();
+        Map<Integer, CPUSamplerData> data = sampler.getIndexedData();
         assertEquals(1, data.size());
 
         assertEquals(0, searchInitializeContext(data).size());
@@ -145,7 +145,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testCollectingAndHasData() {
 
         sampler.setCollecting(true);
-        Map<Integer, CPUSamplerData> before = sampler.getData();
+        Map<Integer, CPUSamplerData> before = sampler.getIndexedData();
         Assert.assertEquals(0, before.values().iterator().next().getSamples());
         Assert.assertTrue(sampler.isCollecting());
         Assert.assertFalse(sampler.hasData());
@@ -154,7 +154,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             eval(defaultSourceForSampling);
         }
 
-        Map<Integer, CPUSamplerData> after = sampler.getData();
+        Map<Integer, CPUSamplerData> after = sampler.getIndexedData();
         Assert.assertNotEquals(0, after.values().iterator().next().getSamples());
         Assert.assertTrue(sampler.isCollecting());
         Assert.assertTrue(sampler.hasData());
@@ -165,7 +165,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertTrue(sampler.hasData());
 
         sampler.clearData();
-        Map<Integer, CPUSamplerData> cleared = sampler.getData();
+        Map<Integer, CPUSamplerData> cleared = sampler.getIndexedData();
         Assert.assertFalse(sampler.isCollecting());
         Assert.assertEquals(0, cleared.values().iterator().next().getSamples());
 
@@ -220,7 +220,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     private Collection<ProfilerNode<Payload>> getProfilerNodes() {
-        Map<Integer, CPUSamplerData> data = sampler.getData();
+        Map<Integer, CPUSamplerData> data = sampler.getIndexedData();
         Assert.assertEquals(1, data.size());
         Map<Thread, Collection<ProfilerNode<Payload>>> threadData = data.values().iterator().next().getThreadData();
         Assert.assertEquals(1, threadData.size());
@@ -344,7 +344,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             for (int i = 0; i < 3 * FIRST_TIER_THRESHOLD; i++) {
                 c.eval(defaultSourceForSampling);
             }
-            data = cpuSampler.getData();
+            data = cpuSampler.getIndexedData();
         }
         CPUSamplerData samplerData = data.values().iterator().next();
         Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = samplerData.getThreadData().values().iterator().next();

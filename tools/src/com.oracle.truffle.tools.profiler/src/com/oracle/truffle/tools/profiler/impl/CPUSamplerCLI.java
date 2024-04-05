@@ -222,7 +222,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler, String absoluteOutputPath) {
         PrintStream out = chooseOutputStream(env, absoluteOutputPath);
-        Map<Integer, CPUSamplerData> data = sampler.getData();
+        Map<Integer, CPUSamplerData> data = sampler.getIndexedData();
         OptionValues options = env.getOptions();
         switch (chooseOutput(options)) {
             case HISTOGRAM:
@@ -306,7 +306,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static boolean sampleDurationTooLong(CPUSampler sampler) {
-        for (CPUSamplerData value : sampler.getData().values()) {
+        for (CPUSamplerData value : sampler.getIndexedData().values()) {
             if (value.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod() * MILLIS_TO_NANOS) {
                 return true;
             }
