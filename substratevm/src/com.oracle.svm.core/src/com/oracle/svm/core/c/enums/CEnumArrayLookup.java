@@ -26,20 +26,19 @@ package com.oracle.svm.core.c.enums;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 
-public class EnumArrayLookup extends EnumRuntimeData {
-
+public class CEnumArrayLookup extends CEnumRuntimeData {
     private final long cOffset;
-    private Enum<?>[] cToJava;
+    private final Enum<?>[] cToJava;
 
-    public EnumArrayLookup(long[] javaToC, long cOffset, Enum<?>[] cToJava) {
-        super(javaToC);
+    public CEnumArrayLookup(long[] javaToC, int bytesInC, boolean isCValueUnsigned, long cOffset, Enum<?>[] cToJava) {
+        super(javaToC, bytesInC, isCValueUnsigned);
         this.cOffset = cOffset;
         this.cToJava = cToJava;
     }
 
     @Override
-    protected Enum<?> convertCToJava(long cValue) {
-        long arrayIdx = cValue - cOffset;
+    protected Enum<?> lookupEnum(long value) {
+        long arrayIdx = value - cOffset;
         if (UnsignedMath.aboveOrEqual(arrayIdx, cToJava.length)) {
             return null;
         }
