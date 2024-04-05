@@ -21,75 +21,43 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     timelimit: t
   }),
 
-  local vm_c = {
-    common_vm: graal_common.build_base + vm.vm_setup + {
-      python_version: "3",
-      logs+: [
-        '*/mxbuild/dists/stripped/*.map',
-        '**/install.packages.R.log',
-      ],
-      environment+: if(self.os == 'darwin') then {
-        LANG: 'en_US.UTF-8'
-      } else if(self.os == 'windows') then {
-        PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',
-      } else {},
-      downloads+: if(self.os == 'darwin') then {
-        MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
-      } else {},
+  common_vm: graal_common.build_base + vm.vm_setup + {
+    python_version: "3",
+    logs+: [
+      '*/mxbuild/dists/stripped/*.map',
+      '**/install.packages.R.log',
+    ],
+    environment+: if(self.os == 'darwin') then {
+      LANG: 'en_US.UTF-8'
+    } else if(self.os == 'windows') then {
+      PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',
+    } else {},
+    downloads+: if(self.os == 'darwin') then {
+      MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
+    } else {},
+  },
+
+  common_vm_linux: self.common_vm,
+
+  common_vm_linux_amd64: self.common_vm_linux + {
+    capabilities+: ['manycores', 'ram16gb', 'fast'],
+  },
+
+  common_vm_darwin: self.common_vm + {
+    environment+: {
+      LANG: 'en_US.UTF-8',
+      MACOSX_DEPLOYMENT_TARGET: '11.0',  # for compatibility with macOS BigSur
     },
+    capabilities+: ['darwin_bigsur'],
+  },
 
-    common_vm_linux: self.common_vm,
-
-    common_vm_linux_amd64: self.common_vm_linux + {
-      capabilities+: ['manycores', 'ram16gb', 'fast'],
+  common_vm_windows: self.common_vm + {
+    downloads+: {
+      MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
     },
-
-    common_vm_darwin: self.common_vm + {
-      environment+: {
-        LANG: 'en_US.UTF-8'
-      },
+    environment+: {
+      PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',
     },
-
-    common_vm_windows: self.common_vm + {
-      downloads+: {
-        MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
-      },
-      environment+: {
-        PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',
-      },
-    },
-
-    # linux/amd64
-    vm_linux_amd64: graal_common.linux_amd64 + self.common_vm_linux_amd64,
-    vm_ol9_amd64: graal_common.linux_amd64_ol9 + self.common_vm_linux_amd64,
-    vm_ubuntu_amd64: graal_common.linux_amd64_ubuntu + self.common_vm_linux_amd64,
-
-    # linux/aarch64
-    vm_linux_aarch64: self.common_vm_linux + graal_common.linux_aarch64,
-    vm_ol9_aarch64: self.common_vm_linux + graal_common.linux_aarch64_ol9,
-
-    # darwin/amd64
-    vm_darwin_amd64: self.common_vm_darwin + graal_common.darwin_amd64 + {
-      capabilities+: ['darwin_bigsur', 'ram16gb'],
-      packages+: {
-        gcc: '==4.9.2',
-      },
-      environment+: {
-        MACOSX_DEPLOYMENT_TARGET: '11.0',  # for compatibility with macOS BigSur
-      },
-    },
-
-    # darwin/aarch64
-    vm_darwin_aarch64: self.common_vm_darwin + graal_common.darwin_aarch64 + {
-      capabilities+: ['darwin_bigsur'],
-      environment+: {
-        MACOSX_DEPLOYMENT_TARGET: '11.0',  # for compatibility with macOS BigSur
-      },
-    },
-
-    # windows/amd64
-    vm_windows_amd64_jdk21: self.common_vm_windows + graal_common.devkits['windows-jdk21'] + graal_common.windows_server_2016_amd64,
-    vm_windows_amd64_jdkLatest: self.common_vm_windows + graal_common.devkits['windows-jdkLatest'] + graal_common.windows_server_2016_amd64,
   },
 
   local record_file_sizes = ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
@@ -229,18 +197,26 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   local default_os_arch(b) = {
     "linux": {
-      "amd64": vm_c.vm_linux_amd64,
-      "aarch64": vm_c.vm_linux_aarch64,
+      "amd64": graal_common.linux_amd64 + $.common_vm_linux_amd64,
+      "aarch64": graal_common.linux_aarch64 + $.common_vm_linux,
     },
     "ubuntu": {
-      "amd64": vm_c.vm_ubuntu_amd64,
+      "amd64": graal_common.linux_amd64_ubuntu + $.common_vm_linux_amd64,
     },
     "darwin": {
-      "amd64": vm_c.vm_darwin_amd64,
-      "aarch64": vm_c.vm_darwin_aarch64,
+      "amd64": graal_common.darwin_amd64 + $.common_vm_darwin + {
+        capabilities+: ['ram16gb'],
+        packages+: {
+          gcc: '==4.9.2',
+        },
+      },
+      "aarch64": graal_common.darwin_aarch64 + $.common_vm_darwin,
     },
     "windows": {
-      "amd64": if (b.jdk == "jdk-latest") then vm_c.vm_windows_amd64_jdkLatest else vm_c.vm_windows_amd64_jdk21,
+      "amd64": if (b.jdk == "jdk-latest") then
+        graal_common.devkits['windows-jdkLatest'] + graal_common.windows_server_2016_amd64 + $.common_vm_windows
+      else
+        graal_common.devkits['windows-jdk21'] + graal_common.windows_server_2016_amd64 + $.common_vm_windows,
     },
   },
 
