@@ -382,7 +382,7 @@ public abstract class CompilationWrapper<T> {
 
         String diagnoseOptions = DebugOptions.DiagnoseOptions.getValue(initialOptions);
         EconomicMap<String, String> settings = EconomicMap.create();
-        OptionsParser.parseSeparatedSettings(diagnoseOptions, settings);
+        OptionsParser.parseSettings(diagnoseOptions, settings);
         OptionsParser.parseOptions(settings, values, OptionsParser.getOptionsLoader());
         return new OptionValues(values);
     }

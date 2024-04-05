@@ -198,18 +198,26 @@ public class TestOptionKey {
         }
 
         EconomicMap<String, String> parsedSettings = EconomicMap.create();
-        OptionsParser.parseSeparatedSettings("MyOption=a MyLongOption=42", parsedSettings);
+        OptionsParser.parseSettings("MyOption=a MyLongOption=42", parsedSettings);
         Assert.assertEquals("a", parsedSettings.get("MyOption"));
         Assert.assertEquals("42", parsedSettings.get("MyLongOption"));
 
-        OptionsParser.parseSeparatedSettings("@MyOption=a string with spaces@MyLongOption=51@MyBooleanOption=false", parsedSettings);
+        OptionsParser.parseSettings("@MyOption=a string with spaces@MyLongOption=51@MyBooleanOption=false", parsedSettings);
         Assert.assertEquals("a string with spaces", parsedSettings.get("MyOption"));
         Assert.assertEquals("51", parsedSettings.get("MyLongOption"));
         Assert.assertEquals("false", parsedSettings.get("MyBooleanOption"));
 
         // Single option also works
-        OptionsParser.parseSeparatedSettings("MyIntegerOption=1001", parsedSettings);
+        OptionsParser.parseSettings("MyIntegerOption=1001", parsedSettings);
         Assert.assertEquals("1001", parsedSettings.get("MyIntegerOption"));
+
+        // Contiguous repeats of delimiters throw IllegalArgumentException
+        try {
+            OptionsParser.parseSettings("#MyIntegerOption=1001##SomeOtherOption=false", parsedSettings);
+            Assert.fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
 
         EconomicMap<String, String> optionSettings = EconomicMap.create();
         optionSettings.put("MyOption", "value 1");

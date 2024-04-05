@@ -146,7 +146,7 @@ public class DebugOptions {
     @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
     @Option(help = "Option values to use during a retry compilation triggered by CompilationFailureAction=Diagnose " +
-                   "or CompilationFailureAction=ExitVM. If the value starts with a non-word character, that " +
+                   "or CompilationFailureAction=ExitVM. If the value starts with a non-letter character, that " +
                    "character is used as the separator between options instead of a space. For example: " +
                    "\\\"DiagnoseOptions=@Log=Inlining@LogFile=/path/with space.\\\"", type = OptionType.User)
     public static final OptionKey<String> DiagnoseOptions = new OptionKey<>("Dump=:" + DebugContext.VERBOSE_LEVEL);

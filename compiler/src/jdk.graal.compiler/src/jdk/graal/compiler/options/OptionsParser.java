@@ -74,8 +74,8 @@ public class OptionsParser {
      * Parses a map representing assignments of values to options.
      *
      * @param optionSettings option settings (i.e., assignments of values to options)
-     * @param values the object in which to store the parsed values
-     * @param loader source of the available {@link OptionDescriptors}
+     * @param values         the object in which to store the parsed values
+     * @param loader         source of the available {@link OptionDescriptors}
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
     public static void parseOptions(EconomicMap<String, String> optionSettings, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
@@ -101,22 +101,26 @@ public class OptionsParser {
     }
 
     /**
-     * Parses a whitespace-separated list of option settings, adding parsed key-value pairs to the
-     * given map. If the options string starts with a non-alphanumeric character, that character is
-     * used as a delimiter instead.
+     * Parses a list of option settings in {@code options}, adding parsed key-value pairs to
+     * {@code settings}. If {@code options} starts with a non-letter character, that character is
+     * used as the delimiter between options. Otherwise, whitespace is the delimiter.
      *
-     * @param separatedOptions string containing a separated list of option settings.
+     * @param options  string containing a separated list of option settings.
      * @param settings map to which parsed option settings will be stored as key-value pairs.
+     * @throws IllegalArgumentException if a non-whitespace delimiter is used and the delimiter appears repeated contiguously in {@code options}.
      */
-    public static void parseSeparatedSettings(String separatedOptions, EconomicMap<String, String> settings) {
+    public static void parseSettings(String options, EconomicMap<String, String> settings) {
         String sepRegex = "\\s+";
-        String options = separatedOptions;
-        if (!separatedOptions.isEmpty() && !Character.isLetterOrDigit(separatedOptions.charAt(0))) {
-            sepRegex = Pattern.quote(separatedOptions.substring(0, 1)) + "+";
-            options = separatedOptions.substring(1);
+        String toParse = options;
+        if (!options.isEmpty() && !Character.isLetter(options.charAt(0))) {
+            sepRegex = Pattern.quote(options.substring(0, 1));
+            toParse = options.substring(1);
         }
 
-        for (String optionSetting : options.split(sepRegex)) {
+        for (String optionSetting : toParse.split(sepRegex)) {
+            if (optionSetting.isEmpty()) {
+                throw new IllegalArgumentException(String.format("Delimiter '%s' is repeated contiguously in %s", options.charAt(0), options));
+            }
             OptionsParser.parseOptionSettingTo(optionSetting, settings);
         }
     }
@@ -125,9 +129,9 @@ public class OptionsParser {
      * Looks up an {@link OptionDescriptor} based on a given name.
      *
      * @param loader source of the available {@link OptionDescriptors}
-     * @param name the name of the option to look up
+     * @param name   the name of the option to look up
      * @return the {@link OptionDescriptor} whose name equals {@code name} or null if not such
-     *         descriptor is available
+     * descriptor is available
      */
     private static OptionDescriptor lookup(Iterable<OptionDescriptors> loader, String name) {
         for (OptionDescriptors optionDescriptors : loader) {
@@ -142,10 +146,10 @@ public class OptionsParser {
     /**
      * Parses a given option name and value.
      *
-     * @param name the option name
+     * @param name           the option name
      * @param uncheckedValue the unchecked value for the option
-     * @param values the object in which to store the parsed option and value
-     * @param loader source of the available {@link OptionDescriptors}
+     * @param values         the object in which to store the parsed option and value
+     * @param loader         source of the available {@link OptionDescriptors}
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
     public static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
@@ -183,7 +187,9 @@ public class OptionsParser {
         return false;
     }
 
-    /** Parses a given option value with a known descriptor. */
+    /**
+     * Parses a given option value with a known descriptor.
+     */
     public static Object parseOptionValue(OptionDescriptor desc, Object uncheckedValue) {
         Class<?> optionType = desc.getOptionValueType();
         Object value;
@@ -256,7 +262,7 @@ public class OptionsParser {
 
     /**
      * Compute string similarity based on Dice's coefficient.
-     *
+     * <p>
      * Ported from str_similar() in globals.cpp.
      */
     public static float stringSimilarity(String str1, String str2) {
@@ -290,8 +296,8 @@ public class OptionsParser {
      * matching is based on Dice's coefficient.
      *
      * @param toSearch the set of option descriptors to search
-     * @param name the option name to search for
-     * @param matches the collection to which fuzzy matches of {@code name} will be added
+     * @param name     the option name to search for
+     * @param matches  the collection to which fuzzy matches of {@code name} will be added
      * @return whether any fuzzy matches were found
      */
     public static boolean collectFuzzyMatches(Iterable<OptionDescriptor> toSearch, String name, Collection<OptionDescriptor> matches) {
