@@ -232,7 +232,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> hash = StaticSymbols.putName("hash");
         public static final Symbol<Name> hashCode = StaticSymbols.putName("hashCode");
         public static final Symbol<Name> length = StaticSymbols.putName("length");
-        public static final Symbol<Name> substring = StaticSymbols.putName("substring");
         public static final Symbol<Name> toCharArray = StaticSymbols.putName("toCharArray");
         public static final Symbol<Name> charAt = StaticSymbols.putName("charAt");
         public static final Symbol<Name> coder = StaticSymbols.putName("coder");
@@ -417,7 +416,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> compile = StaticSymbols.putName("compile");
         public static final Symbol<Name> capturingGroupCount = StaticSymbols.putName("capturingGroupCount");
         public static final Symbol<Name> groupCount = StaticSymbols.putName("groupCount");
-        public static final Symbol<Name> text = StaticSymbols.putName("text");
         public static final Symbol<Name> match = StaticSymbols.putName("match");
         public static final Symbol<Name> search = StaticSymbols.putName("search");
         public static final Symbol<Name> modCount = StaticSymbols.putName("modCount");
@@ -529,7 +527,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> containsKey = StaticSymbols.putName("containsKey");
         public static final Symbol<Name> getKey = StaticSymbols.putName("getKey");
         public static final Symbol<Name> getValue = StaticSymbols.putName("getValue");
-        public static final Symbol<Name> copyOf = StaticSymbols.putName("copyOf");
         public static final Symbol<Name> setValue = StaticSymbols.putName("setValue");
         public static final Symbol<Name> entrySet = StaticSymbols.putName("entrySet");
         public static final Symbol<Name> hasNext = StaticSymbols.putName("hasNext");
@@ -968,7 +965,6 @@ public final class Symbol<T> extends ByteSequence {
         // java.util.regex
         public static final Symbol<Type> java_util_regex_Pattern = StaticSymbols.putType("Ljava/util/regex/Pattern;");
         public static final Symbol<Type> java_util_regex_Pattern_Node = StaticSymbols.putType("Ljava/util/regex/Pattern$Node;");
-        public static final Symbol<Type> java_util_regex_PatternSyntaxException = StaticSymbols.putType("Ljava/util/regex/PatternSyntaxException;");
         public static final Symbol<Type> java_util_regex_Matcher = StaticSymbols.putType("Ljava/util/regex/Matcher;");
         public static final Symbol<Type> java_util_regex_IntHashSet = StaticSymbols.putType("Ljava/util/regex/IntHashSet;");
         public static final Symbol<Type> java_util_regex_IntHashSet_array = StaticSymbols.putType("[Ljava/util/regex/IntHashSet;");

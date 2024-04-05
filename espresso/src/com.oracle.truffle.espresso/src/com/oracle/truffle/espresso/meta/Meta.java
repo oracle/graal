@@ -271,7 +271,6 @@ public final class Meta extends ContextAccessImpl {
         java_lang_reflect_InvocationTargetException = knownKlass(Type.java_lang_reflect_InvocationTargetException);
         java_lang_NegativeArraySizeException = knownKlass(Type.java_lang_NegativeArraySizeException);
         java_lang_IllegalArgumentException = knownKlass(Type.java_lang_IllegalArgumentException);
-        java_lang_IllegalArgumentException_init = java_lang_IllegalArgumentException.requireMethod(Name._init_, Signature._void_String);
         java_lang_IllegalStateException = knownKlass(Type.java_lang_IllegalStateException);
         java_lang_NullPointerException = knownKlass(Type.java_lang_NullPointerException);
         java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
@@ -1047,8 +1046,6 @@ public final class Meta extends ContextAccessImpl {
             java_util_regex_IntHashSet = null;
         }
 
-        java_util_regex_PatternSyntaxException = knownKlass(Type.java_util_regex_PatternSyntaxException);
-
         java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
         java_math_BigInteger_init = java_math_BigInteger.requireDeclaredMethod(Name._init_, Signature._void_byte_array);
         java_math_BigInteger_toByteArray = java_math_BigInteger.requireDeclaredMethod(Name.toByteArray, Signature._byte_array);
@@ -1447,7 +1444,6 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_reflect_InvocationTargetException;
     public final ObjectKlass java_lang_NegativeArraySizeException;
     public final ObjectKlass java_lang_IllegalArgumentException;
-    public final Method java_lang_IllegalArgumentException_init;
     public final ObjectKlass java_lang_IllegalMonitorStateException;
     public final ObjectKlass java_lang_IllegalStateException;
     public final ObjectKlass java_lang_NullPointerException;
@@ -1842,7 +1838,6 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_util_regex_Pattern_localCount;
     public final Field java_util_regex_Pattern_localTCNCount;
     public final ObjectKlass java_util_regex_IntHashSet;
-    public final ObjectKlass java_util_regex_PatternSyntaxException;
     public final ObjectKlass java_util_regex_Matcher;
     public final Method java_util_regex_Matcher_init;
     public final Method java_util_regex_Matcher_reset;
