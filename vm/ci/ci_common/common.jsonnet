@@ -6,8 +6,19 @@ local repo_config = import '../../../repo-configuration.libsonnet';
 local devkits = graal_common.devkits;
 
 {
+  job_name_targets(build)::
+    local has_deploy = std.member(build.targets, 'deploy');
+    local filtered_targets = [target for target in build.targets
+      if target != 'mach5'  # don't add 'mach5' to the job name
+      && target != 'deploy'  # the 'deploy' target is re-added later
+    ];
+    if (has_deploy) then
+      filtered_targets + ['deploy']  # the 'deploy' target appears last in the job name
+    else
+      filtered_targets,
+
   verify_name(build): {
-    expected_prefix:: std.join('-', [target for target in build.targets if target != "mach5"]) + '-vm',
+    expected_prefix:: std.join('-', $.job_name_targets(build)) + '-vm',
     expected_suffix:: build.os + '-' + build.arch,
     assert std.startsWith(build.name, self.expected_prefix) : "'%s' is defined in '%s' with '%s' targets but does not start with '%s'" % [build.name, build.defined_in, build.targets, self.expected_prefix],
     assert std.endsWith(build.name, self.expected_suffix) : "'%s' is defined in '%s' with os/arch '%s/%s' but does not end with '%s'" % [build.name, build.defined_in, build.os, build.arch, self.expected_suffix],
