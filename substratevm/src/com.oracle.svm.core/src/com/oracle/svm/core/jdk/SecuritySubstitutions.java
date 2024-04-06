@@ -65,6 +65,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -294,6 +295,7 @@ class ProviderVerifierJavaHomeAccessors {
 }
 
 @TargetClass(className = "javax.crypto.JceSecurity")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+17/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
 
