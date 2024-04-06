@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -488,8 +488,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     /**
      * Tries to push down values which satisfy the criterion. This is an assistant function for
-     * {@linkplain BinaryArithmeticNode#reassociateMatchedValues} reassociateMatchedValues}. For
-     * example with a constantness criterion: {@code (a * 2) * b => (a * b) * 2}
+     * {@linkplain BinaryArithmeticNode#reassociateMatchedValues}. For example with a constantness
+     * criterion: {@code (a * 2) * b => (a * b) * 2}
      *
      * This method accepts only {@linkplain #mayReassociate() operations that allow reassociation}
      * such as +, -, *, &amp;, |, ^, min, and max.
