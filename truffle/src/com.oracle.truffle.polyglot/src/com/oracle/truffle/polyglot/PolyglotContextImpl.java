@@ -2837,14 +2837,12 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                     localsCleared = true;
                 }
             }
-            if (parent == null) {
-                Object defaultLoggers = EngineAccessor.LANGUAGE.getDefaultLoggers();
-                Object engineLoggers = engine.getEngineLoggers();
-                Object[] loggersToRecompute = engineLoggers != null ? new Object[]{defaultLoggers, engineLoggers} : new Object[]{defaultLoggers};
-                EngineAccessor.LANGUAGE.configureLoggers(this, null, loggersToRecompute);
-                if (this.config.logHandler != null && !PolyglotLoggers.haveSameTarget(this.config.logHandler, engine.logHandler)) {
-                    this.config.logHandler.close();
-                }
+            Object defaultLoggers = EngineAccessor.LANGUAGE.getDefaultLoggers();
+            Object engineLoggers = engine.getEngineLoggers();
+            Object[] loggersToRecompute = engineLoggers != null ? new Object[]{defaultLoggers, engineLoggers} : new Object[]{defaultLoggers};
+            EngineAccessor.LANGUAGE.configureLoggers(this, null, loggersToRecompute);
+            if (parent == null && this.config.logHandler != null && !PolyglotLoggers.haveSameTarget(this.config.logHandler, engine.logHandler)) {
+                this.config.logHandler.close();
             }
         }
         return true;
