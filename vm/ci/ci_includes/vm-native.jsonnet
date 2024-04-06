@@ -8,7 +8,7 @@ local vm_common = import '../ci_common/common.jsonnet';
       ['mx', '--env', 'ce', '--native-images=lib:jvmcicompiler', 'gate', '--no-warning-as-error', '--tags', 'build,truffle-jvm'],
     ],
     notify_emails: ["christian.humer@oracle.com", "tomas.zezula@oracle.com", "jakub.chaloupka@oracle.com"],
-    timelimit: '40:00',
+    timelimit: '1:00:00',
     name: self.targets[0] + '-vm-ce-truffle-jvm-labs' + self.jdk_name + '-linux-amd64',
   },
 
