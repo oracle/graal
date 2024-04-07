@@ -56,6 +56,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.api.test.SubprocessTestUtils.WithSubprocess;
 import com.oracle.truffle.runtime.BytecodeOSRMetadata;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
@@ -66,7 +67,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
-    @Rule public TestRule timeout = GraalTest.createTimeout(30, TimeUnit.SECONDS);
+    @Rule public TestRule timeout = SubprocessTestUtils.disableForParentProcess(GraalTest.createTimeout(30, TimeUnit.SECONDS));
 
     private int osrThreshold;
 
@@ -191,10 +192,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      * Test that OSR fails if the code cannot be compiled.
      */
     @Test
+    @WithSubprocess
     public void testFailedCompilation() throws IOException, InterruptedException {
         // Run in a subprocess to prevent graph graal dumps that are enabled by the default mx
         // unittest options.
-        SubprocessTestUtils.executeInSubprocess(BytecodeOSRNodeTest.class, () -> {
+        SubprocessTestUtils.newBuilder(BytecodeOSRNodeTest.class, () -> {
             Context.Builder builder = newContextBuilder().logHandler(new ByteArrayOutputStream());
             builder.option("engine.MultiTier", "false");
             builder.option("engine.OSR", "true");
@@ -207,7 +209,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
             // Compilation should be disabled after a compilation failure.
             Assert.assertTrue(osrNode.getGraalOSRMetadata().isDisabled());
-        });
+        }).run();
     }
 
     /*
@@ -468,6 +470,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      * enter and exit, and even when assertions are disabled.
      */
     @Test
+    @WithSubprocess
     public void testFrameTransferWithStaticAccessesWithAssertionsDisabled() throws Throwable {
         // Execute in a subprocess to disable assertion checking for frames.
         SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(BytecodeOSRNodeTest.class,
@@ -542,6 +545,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      * Same as above, but with assertion disabled.
      */
     @Test
+    @WithSubprocess
     public void testFrameTransferWithUninitializedStaticSlotsWithoutAssertions() throws Throwable {
         // Execute in a subprocess to disable assertion checking for frames.
         SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(BytecodeOSRNodeTest.class,
