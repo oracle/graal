@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1022,11 +1022,16 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 long value = CodeUtil.convert(-stamp.lowerBound(), stamp.getBits(), false);
                                 return createConstant(stamp.getBits(), value);
                             }
+                            /*
+                             * Two's complement negation preserves trailing zero bits: If s is of
+                             * the form xx100, its negation is ~s + 1 = yy011 + 00001 = zz100. This
+                             * is also true for the most negative value, whose negation is itself.
+                             */
+                            long newMayBeSet = ~CodeUtil.mask(Long.numberOfTrailingZeros(stamp.mayBeSet)) & CodeUtil.mask(bits);
                             if (stamp.lowerBound() != CodeUtil.minValue(bits)) {
-                                // TODO(ls) check if the mask calculation is correct...
-                                return create(bits, -stamp.upperBound(), -stamp.lowerBound());
+                                return create(bits, -stamp.upperBound(), -stamp.lowerBound(), 0, newMayBeSet);
                             } else {
-                                return stamp.unrestricted();
+                                return stampForMask(bits, 0, newMayBeSet);
                             }
                         }
                     },
@@ -1164,12 +1169,30 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 return a;
                             } else if (b.mayBeSet() == 0) {
                                 return b;
+                            } else if (b.lowerBound == b.upperBound && NumUtil.isUnsignedPowerOf2(CodeUtil.mask(bits) & b.upperBound)) {
+                                /*
+                                 * Multiplication by a constant power of 2 is a left shift. These
+                                 * computations are unsigned because we also want to recognize the
+                                 * type's MIN_VALUE as a power of 2.
+                                 */
+                                int shiftAmount = NumUtil.unsignedLog2(CodeUtil.mask(bits) & b.upperBound);
+                                return OPS.getShl().foldStamp(a, IntegerStamp.createConstant(bits, shiftAmount));
+                            } else if (a.lowerBound == a.upperBound && NumUtil.isUnsignedPowerOf2(CodeUtil.mask(bits) & a.upperBound)) {
+                                int shiftAmount = NumUtil.unsignedLog2(CodeUtil.mask(bits) & a.upperBound);
+                                return OPS.getShl().foldStamp(b, IntegerStamp.createConstant(bits, shiftAmount));
                             } else {
-                                // if a has the full range or b, the result will also have it
-                                if (a.isUnrestricted()) {
-                                    return a;
-                                } else if (b.isUnrestricted()) {
-                                    return b;
+                                if (Long.numberOfTrailingZeros(a.mayBeSet) > 0 || Long.numberOfTrailingZeros(b.mayBeSet) > 0) {
+                                    /* We can at least exploit some zero bits below. */
+                                } else {
+                                    /*
+                                     * Otherwise, if a has the full range or b, the result will also
+                                     * have it.
+                                     */
+                                    if (a.isUnrestricted()) {
+                                        return a;
+                                    } else if (b.isUnrestricted()) {
+                                        return b;
+                                    }
                                 }
                                 // a!=0 && b !=0 holds
                                 long newLowerBound = Long.MAX_VALUE;
@@ -1244,11 +1267,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 if (a.canBePositive()) {
                                     if (b.canBePositive()) {
                                         if (multiplicationOverflows(maxPosA, maxPosB, bits)) {
-                                            return a.unrestricted();
+                                            return IntegerStamp.stampForMask(bits, 0, newMayBeSet);
                                         }
                                         long maxCandidate = maxPosA * maxPosB;
                                         if (multiplicationOverflows(minPosA, minPosB, bits)) {
-                                            return a.unrestricted();
+                                            return IntegerStamp.stampForMask(bits, 0, newMayBeSet);
                                         }
                                         long minCandidate = minPosA * minPosB;
                                         newLowerBound = Math.min(newLowerBound, minCandidate);
@@ -1256,11 +1279,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                                     }
                                     if (b.canBeNegative()) {
                                         if (multiplicationOverflows(minPosA, maxNegB, bits)) {
-                                            return a.unrestricted();
+                                            return IntegerStamp.stampForMask(bits, 0, newMayBeSet);
                                         }
                                         long maxCandidate = minPosA * maxNegB;
                                         if (multiplicationOverflows(maxPosA, minNegB, bits)) {
-                                            return a.unrestricted();
+                                            return IntegerStamp.stampForMask(bits, 0, newMayBeSet);
                                         }
                                         long minCandidate = maxPosA * minNegB;
                                         newLowerBound = Math.min(newLowerBound, minCandidate);
@@ -1270,11 +1293,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 if (a.canBeNegative()) {
                                     if (b.canBePositive()) {
                                         if (multiplicationOverflows(maxNegA, minPosB, bits)) {
-                                            return a.unrestricted();
+                                            return IntegerStamp.stampForMask(bits, 0, newMayBeSet);
                                         }
                                         long maxCandidate = maxNegA * minPosB;
                                         if (multiplicationOverflows(minNegA, maxPosB, bits)) {
-                                            return a.unrestricted();
+                                            return IntegerStamp.stampForMask(bits, 0, newMayBeSet);
                                         }
                                         long minCandidate = minNegA * maxPosB;
                                         newLowerBound = Math.min(newLowerBound, minCandidate);
@@ -1282,11 +1305,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                                     }
                                     if (b.canBeNegative()) {
                                         if (multiplicationOverflows(minNegA, minNegB, bits)) {
-                                            return a.unrestricted();
+                                            return IntegerStamp.stampForMask(bits, 0, newMayBeSet);
                                         }
                                         long maxCandidate = minNegA * minNegB;
                                         if (multiplicationOverflows(maxNegA, maxNegB, bits)) {
-                                            return a.unrestricted();
+                                            return IntegerStamp.stampForMask(bits, 0, newMayBeSet);
                                         }
                                         long minCandidate = maxNegA * maxNegB;
                                         newLowerBound = Math.min(newLowerBound, minCandidate);
@@ -1641,7 +1664,34 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp b = (IntegerStamp) stamp2;
                             assert a.getBits() == b.getBits() : "Bits must match " + Assertions.errorMessageContext("a", a, "b", b);
 
-                            return stampForMask(a.getBits(), a.mustBeSet() & b.mustBeSet(), a.mayBeSet() & b.mayBeSet());
+                            int bits = a.getBits();
+                            long mustBeSet = a.mustBeSet & b.mustBeSet;
+                            long mayBeSet = a.mayBeSet & b.mayBeSet;
+                            if (significantBit(bits, mayBeSet) == 0) {
+                                /*
+                                 * The result will be positive. Try to refine the bounds. We can
+                                 * only exploit positive bounds, and one of the inputs may be
+                                 * negative. For example, for [-20, -10] & [10, 20] we can use the
+                                 * positive 20 as an upper bound for the result, but the other
+                                 * value's upper bound -10 gives no useful information.
+                                 */
+                                long upperBound = maxValueForMasks(bits, mustBeSet, mayBeSet);
+                                if (a.lowerBound >= 0) {
+                                    upperBound = Math.min(upperBound, a.upperBound);
+                                }
+                                if (b.lowerBound >= 0) {
+                                    upperBound = Math.min(upperBound, b.upperBound);
+                                }
+                                return create(bits, 0, upperBound, mustBeSet, mayBeSet);
+                            } else if (significantBit(bits, mustBeSet) == 1) {
+                                /*
+                                 * The result will be negative. Try to refine the bounds. Both upper
+                                 * bounds must be negative, so we can exploit both.
+                                 */
+                                long upperBound = Math.min(maxValueForMasks(bits, mustBeSet, mayBeSet), Math.min(a.upperBound, b.upperBound));
+                                return create(bits, minValueForMasks(bits, mustBeSet, mayBeSet), upperBound, mustBeSet, mayBeSet);
+                            }
+                            return stampForMask(bits, mustBeSet, mayBeSet);
                         }
 
                         @Override
@@ -1706,6 +1756,16 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp a = (IntegerStamp) stamp1;
                             IntegerStamp b = (IntegerStamp) stamp2;
                             assert a.getBits() == b.getBits() : "Bits must match " + Assertions.errorMessageContext("a", a, "b", b);
+                            if (b.lowerBound == -1 && b.upperBound == -1) {
+                                /*
+                                 * This is a bitwise negation. Fold with the Not op which takes
+                                 * bounds into account, unlike the code below which only uses the
+                                 * masks.
+                                 */
+                                return OPS.getNot().foldStamp(a);
+                            } else if (a.lowerBound == -1 && a.upperBound == -1) {
+                                return OPS.getNot().foldStamp(b);
+                            }
 
                             long variableBits = (a.mustBeSet() ^ a.mayBeSet()) | (b.mustBeSet() ^ b.mayBeSet());
                             long newMustBeSet = (a.mustBeSet() ^ b.mustBeSet()) & ~variableBits;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,8 +109,21 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
             }
 
             if (op.isAssociative()) {
-                // Canonicalize expressions like "(a * 2) * 4" => "(a * 8)"
-                ValueNode reassociated = reassociateMatchedValues(self != null ? self : (MulNode) new MulNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
+                /*
+                 * Canonicalize expressions like "(a * 2) * 4" => "(a * 8)". Account for the
+                 * possibility that the inner multiply is represented as a shift.
+                 */
+                ValueNode assocX = forX;
+                MulNode assocSelf = self;
+                if (forX instanceof LeftShiftNode leftShift && leftShift.getY().isJavaConstant()) {
+                    ValueNode xAsMultiply = leftShift.getEquivalentMulNode();
+                    if (xAsMultiply != null) {
+                        assocX = xAsMultiply;
+                        assocSelf = null;  // must build a new node for association
+                    }
+                }
+                MulNode assocNode = assocSelf != null ? assocSelf : (MulNode) new MulNode(assocX, forY).maybeCommuteInputs();
+                ValueNode reassociated = reassociateMatchedValues(assocNode, ValueNode.isConstantPredicate(), assocX, forY, view);
                 if (reassociated != self) {
                     return reassociated;
                 }
@@ -164,6 +177,13 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                 }
             }
         } else if (i < 0) {
+            if (stamp instanceof IntegerStamp integerStamp && i == CodeUtil.minValue(integerStamp.getBits())) {
+                /*
+                 * The min value is negative, but for multiplication it behaves like the largest
+                 * unsigned power of 2. So unlike the case below, we do not need a negation.
+                 */
+                return LeftShiftNode.create(forX, ConstantNode.forInt(integerStamp.getBits() - 1), view);
+            }
             if (CodeUtil.isPowerOf2(-i)) {
                 return NegateNode.create(LeftShiftNode.create(forX, ConstantNode.forInt(CodeUtil.log2(-i)), view), view);
             }
