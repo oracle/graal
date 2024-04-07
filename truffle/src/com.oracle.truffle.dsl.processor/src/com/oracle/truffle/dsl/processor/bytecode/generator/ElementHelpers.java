@@ -65,6 +65,10 @@ interface ElementHelpers {
         return ProcessorContext.getInstance().getType(t);
     }
 
+    static DeclaredType declaredType(Class<?> t) {
+        return ProcessorContext.getInstance().getDeclaredType(t);
+    }
+
     static TypeElement element(Class<?> t) {
         TypeElement type = ElementUtils.castTypeElement(ProcessorContext.getInstance().getDeclaredType(t));
         if (type == null) {

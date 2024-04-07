@@ -1229,17 +1229,17 @@ public class TagTest extends AbstractInstructionTest {
             b.endSourceSection();
             b.endSource();
         });
-        TagTree tree = node.getIntrospectionData().getTagTree();
+        TagTree tree = node.getBytecodeNode().getTagTree();
         assertSourceSection(0, 8, tree.getSourceSection());
         assertSourceSection(2, 4, tree.getTreeChildren().get(0).getSourceSection());
         assertSourceSection(0, 8, tree.getTreeChildren().get(1).getSourceSection());
 
-        SourceSection[] sections = node.getIntrospectionData().getTagTree().getTreeChildren().get(0).getSourceSections();
+        SourceSection[] sections = node.getBytecodeNode().getTagTree().getTreeChildren().get(0).getSourceSections();
         assertSourceSection(2, 4, sections[0]);
         assertSourceSection(0, 8, sections[1]);
         assertEquals(2, sections.length);
 
-        sections = node.getIntrospectionData().getTagTree().getTreeChildren().get(1).getSourceSections();
+        sections = node.getBytecodeNode().getTagTree().getTreeChildren().get(1).getSourceSections();
         assertSourceSection(0, 8, sections[0]);
         assertEquals(1, sections.length);
 
@@ -1258,7 +1258,7 @@ public class TagTest extends AbstractInstructionTest {
             b.endRoot();
         });
 
-        TagTree tree = node.getIntrospectionData().getTagTree();
+        TagTree tree = node.getBytecodeNode().getTagTree();
         assertNull(tree.getSourceSection());
         assertEquals(0, tree.getSourceSections().length);
         assertNull(tree.getTreeChildren().get(0).getSourceSection());

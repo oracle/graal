@@ -75,12 +75,8 @@ public abstract class Instruction {
 
     @Override
     public String toString() {
-        return toString("");
-    }
-
-    private String toString(String prefix) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("%s[%03x] ", prefix, getBytecodeIndex()));
+        sb.append(String.format("[%03x] ", getBytecodeIndex()));
         sb.append(String.format("%03x ", getOperationCode()));
         sb.append(String.format("%-30s", getName()));
         for (Argument a : getArguments()) {

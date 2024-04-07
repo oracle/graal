@@ -45,6 +45,7 @@ import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.createInitializedVariable;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.type;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.declaredType;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.wildcard;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.addOverride;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
@@ -64,6 +65,7 @@ import java.io.DataOutput;
 import java.io.IOError;
 import java.io.IOException;
 import java.lang.invoke.VarHandle;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -291,6 +293,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // Define helper classes containing the constants for instructions and operations.
         bytecodeNodeGen.add(new InstructionConstantsFactory().create());
         bytecodeNodeGen.add(new OperationsConstantsFactory().create());
+
+        bytecodeNodeGen.add(new ExceptionHandlerImplFactory().create());
+        bytecodeNodeGen.add(new ExceptionHandlerListFactory().create());
+        bytecodeNodeGen.add(new SourceInformationImplFactory().create());
+        bytecodeNodeGen.add(new SourceInformationListFactory().create());
 
         // Define the classes that implement continuations (yield).
         if (model.enableYield) {
@@ -5852,19 +5859,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startReturn().string(UNINIT).end();
             b.end();
 
-            b.startIf().string("exHandlers.length <= exHandlerCount + 5").end().startBlock();
+            b.startIf().string("exHandlers.length <= exHandlerCount + EXCEPTION_HANDLER_LENGTH").end().startBlock();
             b.statement("exHandlers = Arrays.copyOf(exHandlers, exHandlers.length * 2)");
             b.end();
 
             b.statement("int result = exHandlerCount");
-
-            b.statement("exHandlers[exHandlerCount++] = startBci");
-            b.statement("exHandlers[exHandlerCount++] = endBci");
-            b.statement("exHandlers[exHandlerCount++] = handlerBci");
-            b.statement("exHandlers[exHandlerCount++] = spStart");
-            b.statement("exHandlers[exHandlerCount++] = exceptionLocal");
+            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_START_BCI] = startBci");
+            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_END_BCI] = endBci");
+            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
+            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_STACK_POINTER] = spStart");
+            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_LOCAL] = exceptionLocal");
+            b.statement("exHandlerCount += EXCEPTION_HANDLER_LENGTH");
 
             b.statement("return result");
+
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_START_BCI")).createInitBuilder().string("0");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_END_BCI")).createInitBuilder().string("1");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_HANDLER_BCI")).createInitBuilder().string("2");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_STACK_POINTER")).createInitBuilder().string("3");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_OFFSET_LOCAL")).createInitBuilder().string("4");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "EXCEPTION_HANDLER_LENGTH")).createInitBuilder().string("5");
 
             return ex;
         }
@@ -6493,6 +6507,288 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             return operationsElement;
         }
+    }
+
+    class ExceptionHandlerImplFactory {
+
+        private CodeTypeElement type;
+
+        ExceptionHandlerImplFactory() {
+        }
+
+        private CodeTypeElement create() {
+            type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
+                            ElementKind.CLASS, null, "ExceptionHandlerImpl");
+            type.setSuperClass(types.ExceptionHandler);
+
+            type.add(new CodeVariableElement(Set.of(FINAL), abstractBytecodeNode.asType(), "bytecode"));
+            type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "baseIndex"));
+
+            CodeExecutableElement constructor = type.add(createConstructorUsingFields(Set.of(), type, null, Set.of("token")));
+            CodeTree tree = constructor.getBodyTree();
+            CodeTreeBuilder b = constructor.createBuilder();
+            b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+            b.tree(tree);
+            type.add(createGetKind());
+            type.add(createGetStartIndex());
+            type.add(createGetEndIndex());
+            type.add(createGetHandlerIndex());
+            type.add(createGetExceptionVariableIndex());
+            type.add(createGetTagTree());
+            return type;
+        }
+
+        private CodeExecutableElement createGetKind() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getKind");
+            CodeTreeBuilder b = ex.createBuilder();
+            if (hasSpecialHandlers()) {
+                b.startSwitch();
+                b.string("bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_LOCAL]");
+                b.end().startBlock();
+                if (model.enableTagInstrumentation) {
+                    b.startCase().string("HANDLER_TAG_EXCEPTIONAL").end().startCaseBlock();
+                    b.startReturn().staticReference(types.ExceptionHandler_HandlerKind, "TAG").end();
+                    b.end();
+                }
+                if (model.epilogExceptional != null) {
+                    b.startCase().string("HANDLER_EPILOG_EXCEPTIONAL").end().startCaseBlock();
+                    b.startReturn().staticReference(types.ExceptionHandler_HandlerKind, "EPILOG").end();
+                    b.end();
+                }
+                b.caseDefault().startCaseBlock();
+                b.startReturn().staticReference(types.ExceptionHandler_HandlerKind, "CUSTOM").end();
+                b.end();
+                b.end(); // switch block
+            } else {
+                b.startReturn().staticReference(types.ExceptionHandler_HandlerKind, "CUSTOM").end();
+            }
+            return ex;
+        }
+
+        private boolean hasSpecialHandlers() {
+            return model.enableTagInstrumentation || model.epilogExceptional != null;
+        }
+
+        private CodeExecutableElement createGetStartIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getStartIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_START_BCI]");
+            return ex;
+        }
+
+        private CodeExecutableElement createGetEndIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getEndIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_END_BCI]");
+            return ex;
+        }
+
+        private CodeExecutableElement createGetHandlerIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getHandlerIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (hasSpecialHandlers()) {
+                b.startSwitch();
+                b.string("getKind()");
+                b.end().startBlock();
+                if (model.enableTagInstrumentation) {
+                    b.startCase().string("TAG").end();
+                }
+                if (model.epilogExceptional != null) {
+                    b.startCase().string("EPILOG").end();
+                }
+                b.startCaseBlock();
+                b.statement("return super.getHandlerIndex()");
+                b.end();
+                b.caseDefault().startCaseBlock();
+                b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
+                b.end();
+                b.end(); // switch block
+            } else {
+                b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
+            }
+
+            return ex;
+        }
+
+        private CodeExecutableElement createGetExceptionVariableIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getExceptionVariableIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (hasSpecialHandlers()) {
+                b.startSwitch();
+                b.string("getKind()");
+                b.end().startBlock();
+                if (model.enableTagInstrumentation) {
+                    b.startCase().string("TAG").end();
+                }
+                if (model.epilogExceptional != null) {
+                    b.startCase().string("EPILOG").end();
+                }
+                b.startCaseBlock();
+                b.statement("return super.getExceptionVariableIndex()");
+                b.end();
+                b.caseDefault().startCaseBlock();
+                b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_LOCAL]");
+                b.end();
+                b.end(); // switch block
+            } else {
+                b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_LOCAL]");
+            }
+
+            return ex;
+        }
+
+        private CodeExecutableElement createGetTagTree() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getTagTree");
+            CodeTreeBuilder b = ex.createBuilder();
+            if (model.enableTagInstrumentation) {
+                b.startIf().string("getKind() == ").staticReference(types.ExceptionHandler_HandlerKind, "TAG").end().startBlock();
+                b.declaration(type(int.class), "nodeId", "bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
+                b.statement("return bytecode.tagRoot.tagNodes[nodeId]");
+                b.end().startElseBlock();
+                b.statement("return super.getTagTree()");
+                b.end();
+            } else {
+                b.statement("return super.getTagTree()");
+            }
+
+            return ex;
+        }
+
+    }
+
+    class ExceptionHandlerListFactory {
+
+        private CodeTypeElement type;
+
+        private CodeTypeElement create() {
+            type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
+                            ElementKind.CLASS, null, "ExceptionHandlerList");
+            type.setSuperClass(generic(type(AbstractList.class), types.ExceptionHandler));
+            type.add(new CodeVariableElement(Set.of(FINAL), abstractBytecodeNode.asType(), "bytecode"));
+            type.add(createConstructorUsingFields(Set.of(), type, null, Set.of("token")));
+            type.add(createGet());
+            type.add(createSize());
+            return type;
+        }
+
+        private CodeExecutableElement createGet() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", 1);
+            ex.setReturnType(types.ExceptionHandler);
+            ex.renameArguments("index");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(type(int.class), "baseIndex", "index * EXCEPTION_HANDLER_LENGTH");
+            b.startIf().string("baseIndex < 0 || baseIndex >= bytecode.handlers.length").end().startBlock();
+            b.startThrow().startNew(type(IndexOutOfBoundsException.class)).string("String.valueOf(index)").end().end();
+            b.end();
+            b.startReturn();
+            b.startNew("ExceptionHandlerImpl").string("bytecode").string("baseIndex").end();
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createSize() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "size");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return bytecode.handlers.length / EXCEPTION_HANDLER_LENGTH");
+            return ex;
+        }
+
+    }
+
+    class SourceInformationImplFactory {
+
+        private CodeTypeElement type;
+
+        SourceInformationImplFactory() {
+
+        }
+
+        private CodeTypeElement create() {
+            type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
+                            ElementKind.CLASS, null, "SourceInformationImpl");
+            type.setSuperClass(types.SourceInformation);
+
+            type.add(new CodeVariableElement(Set.of(FINAL), abstractBytecodeNode.asType(), "bytecode"));
+            type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "baseIndex"));
+
+            CodeExecutableElement constructor = type.add(createConstructorUsingFields(Set.of(), type, null, Set.of("token")));
+            CodeTree tree = constructor.getBodyTree();
+            CodeTreeBuilder b = constructor.createBuilder();
+            b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+            b.tree(tree);
+            type.add(createGetBeginBci());
+            type.add(createGetEndBci());
+            type.add(createGetSourceSection());
+
+            return type;
+        }
+
+        private CodeExecutableElement createGetBeginBci() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
+            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
+            b.statement("return beginBci");
+            return ex;
+        }
+
+        private CodeExecutableElement createGetEndBci() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
+            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
+            b.statement("return endBci");
+            return ex;
+        }
+
+        private CodeExecutableElement createGetSourceSection() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getSourceSection");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return AbstractBytecodeNode.createSourceSection(bytecode.sources, bytecode.sourceInfo, baseIndex)");
+            return ex;
+        }
+
+    }
+
+    class SourceInformationListFactory {
+
+        private CodeTypeElement type;
+
+        private CodeTypeElement create() {
+            type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
+                            ElementKind.CLASS, null, "SourceInformationList");
+            type.setSuperClass(generic(type(AbstractList.class), types.SourceInformation));
+            type.add(new CodeVariableElement(Set.of(FINAL), abstractBytecodeNode.asType(), "bytecode"));
+            type.add(createConstructorUsingFields(Set.of(), type, null, Set.of("token")));
+            type.add(createGet());
+            type.add(createSize());
+            return type;
+        }
+
+        private CodeExecutableElement createGet() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", 1);
+            ex.setReturnType(types.SourceInformation);
+            ex.renameArguments("index");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(type(int.class), "baseIndex", "index * SOURCE_INFO_LENGTH");
+            b.startIf().string("baseIndex < 0 || baseIndex >= bytecode.sourceInfo.length").end().startBlock();
+            b.startThrow().startNew(type(IndexOutOfBoundsException.class)).string("String.valueOf(index)").end().end();
+            b.end();
+            b.startReturn();
+            b.startNew("SourceInformationImpl").string("bytecode").string("baseIndex").end();
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createSize() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "size");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return bytecode.sourceInfo.length / SOURCE_INFO_LENGTH");
+            return ex;
+        }
+
     }
 
     class InstructionImplFactory {
@@ -7340,7 +7636,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), arrayOf(type(int.class)), "getBranchProfiles"));
 
             // Define methods for introspecting the bytecode and source.
-            type.add(createGetIntrospectionData());
             type.add(createGetSourceSection());
             type.add(createFindSourceLocation());
             type.add(createFindSourceLocationBeginEnd());
@@ -7348,6 +7643,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createFindSourceLocationsBeginEnd());
             type.add(createCreateSourceSection());
             type.add(createFindInstruction());
+            type.add(createGetSourceInformation());
+            type.add(createGetExceptionHandlers());
+            type.add(createGetTagTree());
 
             if (model.isBytecodeUpdatable()) {
                 type.add(createTransitionState());
@@ -7463,16 +7761,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.declaration(arrayOf(type(int.class)), "ex", "this.handlers");
 
-            b.startIf().string("ex.length % 5 != 0").end().startBlock();
+            b.startIf().string("ex.length % EXCEPTION_HANDLER_LENGTH != 0").end().startBlock();
             b.tree(createValidationError("exception handler table size is incorrect"));
             b.end();
 
-            b.startFor().string("int i = 0; i < ex.length; i = i + 5").end().startBlock();
-            b.declaration(type(int.class), "startBci", "ex[i + 0]");
-            b.declaration(type(int.class), "endBci", "ex[i + 1]");
-            b.declaration(type(int.class), "handlerBci", "ex[i + 2]");
-            b.declaration(type(int.class), "spStart", "ex[i + 3]");
-            b.declaration(type(int.class), "exceptionLocal", "ex[i + 4]");
+            b.startFor().string("int i = 0; i < ex.length; i = i + EXCEPTION_HANDLER_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "startBci", "ex[i + EXCEPTION_HANDLER_OFFSET_START_BCI]");
+            b.declaration(type(int.class), "endBci", "ex[i + EXCEPTION_HANDLER_OFFSET_END_BCI]");
+            b.declaration(type(int.class), "handlerBci", "ex[i + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
+            b.declaration(type(int.class), "spStart", "ex[i + EXCEPTION_HANDLER_OFFSET_STACK_POINTER]");
+            b.declaration(type(int.class), "exceptionLocal", "ex[i + EXCEPTION_HANDLER_OFFSET_LOCAL]");
 
             b.startIf().string("startBci").string(" < 0 || ").string("startBci").string(" >= bc.length").end().startBlock();
             b.tree(createValidationError("startBci index is out of bounds"));
@@ -8216,54 +8514,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createGetIntrospectionData() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeIntrospection, "getIntrospectionData");
+        private CodeExecutableElement createFindInstructionIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findInstructionIndex");
+            ex.renameArguments("searchBci");
             CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            emitStableBytecodeSearch(b, "searchBci", "instructionIndex", g -> 1, true);
+            return ex;
+        }
 
-            if (model.isBytecodeUpdatable()) {
-                b.declaration(arrayOf(type(short.class)), "oldBc", "this.oldBytecodes");
-                b.declaration(arrayOf(type(short.class)), "bc", "oldBc != null ? oldBc : this.bytecodes");
-            } else {
-                b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
-            }
-            b.declaration(generic(type(List.class), type(Object[].class)), "instructions", "new ArrayList<>()");
-
-            b.statement("Object[] exHandlersInfo = new Object[handlers.length / 5]");
-
-            b.startFor().string("int idx = 0; idx < exHandlersInfo.length; idx++").end().startBlock();
-            b.statement("exHandlersInfo[idx] = new Object[]{ handlers[idx * 5], handlers[idx * 5 + 1], handlers[idx * 5 + 2], handlers[idx * 5 + 3], handlers[idx * 5 + 4] }");
-            b.end();
-
-            b.declaration(generic(type(List.class), type(Object[].class)), "sourceData", "new ArrayList<>()");
-            b.startIf().string("sourceInfo != null").end().startBlock();
-            b.startFor().string("int index = 0; index < sourceInfo.length; index += SOURCE_INFO_LENGTH").end().startBlock();
-
-            // we encode ranges with no SourceSection using (-1, -1)
-            b.startIf().string("sourceInfo[index + 1] == -1").end().startBlock();
-            b.statement("continue");
-            b.end();
-
-            b.statement("int encodedBcis = sourceInfo[index + SOURCE_INFO_OFFSET_BCI]");
-            b.statement("int beginBci = (encodedBcis >> 16) & 0xFFFF");
-            b.statement("int endBci = encodedBcis & 0xFFFF");
-            b.declaration(types.SourceSection, "section", "createSourceSection(this.sources, sourceInfo, index)");
-            b.statement("sourceData.add(new Object[]{beginBci, endBci, section})");
-            b.end();
-            b.end();
-
-            b.declaration(type(Object.class), "tagTree", "null");
-
-            if (model.enableTagInstrumentation) {
-                b.startIf().string("tagRoot != null").end().startBlock();
-                b.startAssign("tagTree").string("this.tagRoot.root").end();
-                b.end();
-            }
-
-            b.startReturn().startNew(types.BytecodeIntrospection);
-            b.string("new Object[]{0, instructions.toArray(), exHandlersInfo, sourceData.toArray(), tagTree}");
-            b.end(2);
-
-            return withTruffleBoundary(ex);
+        private CodeExecutableElement createFindBciFromInstructionIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBciFromInstructionIndex");
+            ex.renameArguments("searchIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            emitStableBytecodeSearch(b, "searchIndex", "instructionIndex", g -> 1, false);
+            return ex;
         }
 
         private CodeExecutableElement createFindInstruction() {
@@ -8275,6 +8541,39 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("this").string("bci").string("readValidBytecode(this.bytecodes, bci)");
             b.end();
             b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetSourceInformation() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getSourceInformation");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn();
+            b.startNew("SourceInformationList").string("this").end();
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetExceptionHandlers() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getExceptionHandlers");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn();
+            b.startNew("ExceptionHandlerList").string("this").end();
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetTagTree() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getTagTree");
+            ex.renameArguments("bci");
+            CodeTreeBuilder b = ex.createBuilder();
+            if (model.enableTagInstrumentation) {
+                b.startIf().string("this.tagRoot == null").end().startBlock();
+                b.statement("return null");
+                b.end();
+                b.statement("return this.tagRoot.root");
+            } else {
+                b.statement("return null");
+            }
             return ex;
         }
 

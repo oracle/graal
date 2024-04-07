@@ -40,69 +40,121 @@
  */
 package com.oracle.truffle.api.bytecode;
 
-public final class ExceptionHandler {
+/**
+ * Represents the meta-information of an exception handler in a bytecode interpreter. An exception
+ * handler stores information for bytecode index ranges that determine how an exception should be
+ * handled at a particular location.
+ *
+ * @see BytecodeNode#getExceptionHandlers()
+ * @see BytecodeLocation#getExceptionHandlers()
+ * @since 24.1
+ */
+public abstract class ExceptionHandler {
 
-    private static final int HANDLER_EPILOG_EXCEPTIONAL = -1;
-    private static final int HANDLER_TAG_EXCEPTIONAL = -2;
-
-    private final Object[] data;
-
-    ExceptionHandler(Object[] data) {
-        this.data = data;
+    /**
+     * Internal constructor for generated code. Do not use.
+     *
+     * @since 24.1
+     */
+    protected ExceptionHandler(Object token) {
+        BytecodeRootNodes.checkToken(token);
     }
 
-    public int getStartIndex() {
-        return (int) data[0];
+    /**
+     * Returns a kind that determine whether handler is a custom or a special exception handler.
+     *
+     * @see HandlerKind
+     * @since 24.1
+     */
+    public abstract HandlerKind getKind();
+
+    /**
+     * Returns the start bytecode index of this exception handler (inclusive).
+     *
+     * @since 24.1
+     */
+    public abstract int getStartIndex();
+
+    /**
+     * Returns the end bytecode index of this exception handler (exclusive).
+     *
+     * @since 24.1
+     */
+    public abstract int getEndIndex();
+
+    /**
+     * Returns the target bytecode index of this exception handler if this exception handler is of
+     * kind {@link HandlerKind#CUSTOM}.
+     *
+     * @throws UnsupportedOperationException for handlers not of kind {@link HandlerKind#CUSTOM}
+     * @since 24.1
+     */
+    public int getHandlerIndex() throws UnsupportedOperationException {
+        throw new UnsupportedOperationException("getHandlerIndex() is not supported for handler kind: " + getKind());
     }
 
-    public boolean isEpilogExceptionalHandler() {
-        return (int) data[4] == HANDLER_EPILOG_EXCEPTIONAL;
+    /**
+     * Returns the target exception variable index of this exception handler if this exception
+     * handler is of kind {@link HandlerKind#CUSTOM}.
+     *
+     * @throws UnsupportedOperationException for handlers not of kind {@link HandlerKind#CUSTOM}
+     * @since 24.1
+     */
+    public int getExceptionVariableIndex() throws UnsupportedOperationException {
+        throw new UnsupportedOperationException("getExceptionVariableIndex() is not supported for handler kind: " + getKind());
     }
 
-    public boolean isTagExceptionalHandler() {
-        return (int) data[4] == HANDLER_TAG_EXCEPTIONAL;
-    }
-
-    public int getEndIndex() {
-        return (int) data[1];
-    }
-
-    private boolean isSpecialHandler() {
-        return (int) data[4] < 0;
-    }
-
-    public int getHandlerIndex() {
-        if (isSpecialHandler()) {
-            return -1;
-        }
-        return (int) data[2];
-    }
-
-    public int getExceptionVariableIndex() {
-        if (isSpecialHandler()) {
-            return -1;
-        }
-        return (int) data[4];
+    /**
+     * Returns the tag tree of this exception handler if this exception handler is of kind
+     * {@link HandlerKind#TAG}.
+     *
+     * @throws UnsupportedOperationException for handlers not of kind {@link HandlerKind#TAG}
+     * @since 24.1
+     */
+    public TagTree getTagTree() throws UnsupportedOperationException {
+        throw new UnsupportedOperationException("getTagTree() is not supported for handler kind: " + getKind());
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         String description;
-        if (isSpecialHandler()) {
-            switch ((int) data[4]) {
-                case HANDLER_TAG_EXCEPTIONAL:
-                    description = String.format("tag.exceptional tag(%d)", (int) data[3]);
-                    break;
-                case HANDLER_EPILOG_EXCEPTIONAL:
-                    description = String.format("epilog.exceptional");
-                    break;
-                default:
-                    description = "Unknown Special Handler";
-                    break;
-            }
-        } else {
-            description = String.format("%04x ex: local(%d)", getHandlerIndex(), getExceptionVariableIndex());
+        switch (getKind()) {
+            case CUSTOM:
+                description = String.format("%04x ex: local(%d)", getHandlerIndex(), getExceptionVariableIndex());
+                break;
+            case EPILOG:
+                description = "epilog.exceptional";
+                break;
+            case TAG:
+                description = String.format("tag.exceptional tag(%s)", getTagTree());
+                break;
+            default:
+                throw new AssertionError("Invalid handler kind");
         }
         return String.format("[%04x : %04x] -> %s", getStartIndex(), getEndIndex(), description);
+    }
+
+    /**
+     * Represents the kind of the exception handler.
+     */
+    public enum HandlerKind {
+
+        /**
+         * Handler directly emitted with the bytecode builder.
+         */
+        CUSTOM,
+
+        /**
+         * A special handler which handles tag instrumentation exceptional behavior. Only emitted if
+         * {@link GenerateBytecode#enableTagInstrumentation() tag instrumentation} is enabled.
+         */
+        TAG,
+
+        /**
+         * A special handler which handles epilog exceptional behavior. Only emitted if the language
+         * specifies an {@link EpilogExceptional} annotated operation.
+         */
+        EPILOG,
+
     }
 }

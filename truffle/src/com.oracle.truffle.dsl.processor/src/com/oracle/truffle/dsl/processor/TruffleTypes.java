@@ -384,6 +384,9 @@ public class TruffleTypes {
     public static final String Instruction_Argument_BranchProfile_Name = "com.oracle.truffle.api.bytecode.Instruction.Argument.BranchProfile";
     public static final String BytecodeIntrospection_Name = "com.oracle.truffle.api.bytecode.BytecodeIntrospection";
     public static final String Instruction_Name = "com.oracle.truffle.api.bytecode.Instruction";
+    public static final String SourceInformation_Name = "com.oracle.truffle.api.bytecode.SourceInformation";
+    public static final String ExceptionHandler_Name = "com.oracle.truffle.api.bytecode.ExceptionHandler";
+    public static final String ExceptionHandler_HandlerKind_Name = "com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind";
     public static final String TagTree_Name = "com.oracle.truffle.api.bytecode.TagTree";
     public static final String TagTreeNode_Name = "com.oracle.truffle.api.bytecode.TagTreeNode";
     public static final String TagTreeNodeExports_Name = "com.oracle.truffle.api.bytecode.TagTreeNodeExports";
@@ -435,6 +438,9 @@ public class TruffleTypes {
     public final DeclaredType Instruction_Argument_Kind = c.getDeclaredTypeOptional(Instruction_Argument_Kind_Name);
     public final DeclaredType BytecodeIntrospection = c.getDeclaredTypeOptional(BytecodeIntrospection_Name);
     public final DeclaredType Instruction = c.getDeclaredTypeOptional(Instruction_Name);
+    public final DeclaredType SourceInformation = c.getDeclaredTypeOptional(SourceInformation_Name);
+    public final DeclaredType ExceptionHandler = c.getDeclaredTypeOptional(ExceptionHandler_Name);
+    public final DeclaredType ExceptionHandler_HandlerKind = c.getDeclaredTypeOptional(ExceptionHandler_HandlerKind_Name);
     public final DeclaredType TagTree = c.getDeclaredTypeOptional(TagTree_Name);
     public final DeclaredType TagTreeNode = c.getDeclaredTypeOptional(TagTreeNode_Name);
     public final DeclaredType TagTreeNodeExports = c.getDeclaredTypeOptional(TagTreeNodeExports_Name);

@@ -227,13 +227,6 @@ public abstract class BytecodeNode extends Node {
         return (BytecodeRootNode) getParent();
     }
 
-    /**
-     * Computes the introspection data for this bytecode node.
-     *
-     * @since 24.1
-     */
-    public abstract BytecodeIntrospection getIntrospectionData();
-
     public final Iterable<Instruction> getInstructions() {
         return new InstructionIterable(this);
     }
@@ -245,6 +238,16 @@ public abstract class BytecodeNode extends Node {
         }
         return instructions;
     }
+
+    /**
+     * Produces a list of {@link SourceInformation} for a bytecode node. If no source information is
+     * available, returns {@code null}.
+     */
+    public abstract List<SourceInformation> getSourceInformation();
+
+    public abstract List<ExceptionHandler> getExceptionHandlers();
+
+    public abstract TagTree getTagTree();
 
     /**
      * Sets a threshold that must be reached before the uncached interpreter switches to a cached
@@ -287,10 +290,9 @@ public abstract class BytecodeNode extends Node {
         if (highlighedLocation != null && highlighedLocation.getBytecodeNode() != this) {
             throw new IllegalArgumentException("Invalid highlighted location. Belongs to a different BytecodeNode.");
         }
-        BytecodeIntrospection id = getIntrospectionData();
         List<Instruction> instructions = getInstructionsAsList();
-        List<ExceptionHandler> exceptions = id.getExceptionHandlers();
-        List<SourceInformation> sourceInformation = id.getSourceInformation();
+        List<ExceptionHandler> exceptions = getExceptionHandlers();
+        List<SourceInformation> sourceInformation = getSourceInformation();
         int highlightedBci = highlighedLocation == null ? -1 : highlighedLocation.getBytecodeIndex();
         return String.format("""
                         %s(name=%s)[
@@ -306,8 +308,8 @@ public abstract class BytecodeNode extends Node {
                         exceptions.size(),
                         formatList(exceptions, (e) -> highlightedBci >= e.getStartIndex() && highlightedBci < e.getEndIndex()),
                         sourceInformation != null ? sourceInformation.size() : "-",
-                        formatList(sourceInformation, (s) -> highlightedBci >= s.getBeginBci() && highlightedBci < s.getEndBci()),
-                        formatTagTree(id.getTagTree(), (s) -> highlightedBci >= s.getStartBci() && highlightedBci <= s.getEndBci()));
+                        formatList(sourceInformation, (s) -> highlightedBci >= s.getStartIndex() && highlightedBci < s.getEndIndex()),
+                        formatTagTree(getTagTree(), (s) -> highlightedBci >= s.getStartBci() && highlightedBci <= s.getEndBci()));
     }
 
     private static <T> String formatList(List<T> list, Predicate<T> highlight) {
