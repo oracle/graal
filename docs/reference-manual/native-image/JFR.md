@@ -74,14 +74,14 @@ The following key-value pairs are supported:
 
 | Name       | Default Value | Description                                                                                                                                        |
 |------------|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| name       | none          | Name that can be used to identify the recording, e.g., “name=MyRecording”                                                                          |
-| settings   | none          | Settings file (profile.jfc, default.jfc, etc.), e.g., “settings=myprofile.jfc”                                                                     |
-| delay      | none          | Delay recording start with (s)econds, (m)inutes), (h)ours), or (d)ays, e.g., “delay=5h”                                                            |
-| duration   | infinite (0)  | Duration of recording in (s)econds, (m)inutes, (h)ours, or (d)ays, e.g., “duration=300s”                                                           |
-| filename   | none          | Resulting recording filename, e.g., “filename=recording1.jfr”                                                                                      |
-| maxage     | no limit (0)  | Maximum time to keep the recorded data on disk in (s)econds, (m)inutes, (h)ours, or (d)ays, e.g., 60m, or 0 for no limit. For example, “maxage=1d” |
-| maxsize    | no limit (0)  | Maximum amount of bytes to keep on disk in (k)B, (M)B or (G)B, e.g., 500M, or 0 for no limit. For example, “maxsize=1G”                            |
-| dumponexit | false         | Whether to dump a running recording when the JVM shuts down, e.g., “dumponexit=true”                                                               |
+| name       | none          | Name that can be used to identify the recording, for example, “name=MyRecording”                                                                          |
+| settings   | none          | Settings file (profile.jfc, default.jfc, and so on), for example, “settings=myprofile.jfc”                                                                     |
+| delay      | none          | Delay recording start with (s)econds, (m)inutes), (h)ours), or (d)ays, for example, “delay=5h”                                                            |
+| duration   | infinite (0)  | Duration of recording in (s)econds, (m)inutes, (h)ours, or (d)ays, for example, “duration=300s”                                                           |
+| filename   | none          | Resulting recording filename, for example, “filename=recording1.jfr”                                                                                      |
+| maxage     | no limit (0)  | Maximum time to keep the recorded data on disk in (s)econds, (m)inutes, (h)ours, or (d)ays, for example, 60m, or 0 for no limit. For example, “maxage=1d” |
+| maxsize    | no limit (0)  | Maximum amount of bytes to keep on disk in (k)B, (M)B or (G)B, for example, 500M, or 0 for no limit. For example, “maxsize=1G”                            |
+| dumponexit | false         | Whether to dump a running recording when the JVM shuts down, for example, “dumponexit=true”                                                               |
 
 ## Configure JFR System Logging
 

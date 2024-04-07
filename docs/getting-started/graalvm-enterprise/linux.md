@@ -13,17 +13,17 @@ This distribution can be installed on Oracle Linux and Red Hat Enterprise Linux 
 
 Follow these steps to install Oracle GraalVM:
 
-1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/). 
+1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/).
 Select the preferred Oracle GraalVM version, **22** for the Java version, **Linux** for the operating system, and the architecture. Start downloading.
 
 2. Change directory to the location where you want to install Oracle GraalVM, then move the _.tar.gz_ file to that directory.
 
-3. Unzip the archive:
+3. Uncompress the file:
     ```shell
     tar -xzf graalvm-jdk-<version>_linux-<architecture>.tar.gz
     ```
-4. There can be multiple JDKs installed on your machine. The next step is to configure your runtime environment:
-  - Set the `JAVA_HOME` environment variable to resolve to the installation directory:
+4. There can be multiple JDKs installed on your machine. The next step is to configure the runtime environment:
+  - Set the value of the `JAVA_HOME` environment variable to the installation directory:
     ```shell
     export JAVA_HOME=/path/to/<graalvm>
     ```

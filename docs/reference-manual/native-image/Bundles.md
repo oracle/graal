@@ -164,7 +164,7 @@ The full option help of `--bundle-apply` shows a more advanced use case that wil
                       arguments and files that have been passed to native-image originally
                       to create the bundle. Note that if an extra --bundle-create gets passed
                       after --bundle-apply, a new bundle will be written based on the given
-                      bundle args plus any additional arguments that have been passed
+                      bundle arguments plus any additional arguments that have been passed
                       afterwards. For example:
                       > native-image --bundle-apply=app.nib --bundle-create=app_dbg.nib -g
                       creates a new bundle app_dbg.nib based on the given app.nib bundle.
@@ -185,7 +185,7 @@ If the container image is newly created, you can also see the build output from 
 The name of the container image is the hash of the used Dockerfile.
 If the container image already exists you will see the following line in the build output instead:
 
-```shell
+```
 Native Image Bundles: Reusing container image c253ca50f50b380da0e23b168349271976d57e4e.
 ```
 
@@ -380,7 +380,7 @@ Inside a bundle you can find the following inner structure:
 ├── com.oracle.svm.driver.launcher <- launcher for executing the bundled application
 ├── input <- All information required to rebuild the image
 │   ├── auxiliary <- Contains auxiliary files passed to native-image via arguments
-│   │                (e.g. external `config-*.json` files or PGO `*.iprof`-files)
+│   │                (for example, external `config-*.json` files or PGO `*.iprof`-files)
 │   ├── classes   <- Contains all class-path and module-path entries passed to the builder
 │   │   ├── cp
 │   │   └── p
@@ -408,7 +408,7 @@ Inside a bundle you can find the following inner structure:
 The layout of a bundle file itself is versioned.
 There are two properties in _META-INF/nibundle.properties_ that declare which version of the layout a given bundle file is based on.
 Bundles currently use the following layout version:
-```shell
+```
 BundleFileVersionMajor=0
 BundleFileVersionMinor=9
 ```

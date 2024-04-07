@@ -15,7 +15,7 @@ These graphs are further transformed in the building process before they are com
 In addition to the comprehensive report of the whole analysis universe, the points-to analysis can also produce reachability reports on why certain type/method/field is reachable.
 
 ## Call tree
-The call tree is a a breadth-first tree reduction of the call graph as seen by the points-to analysis.
+The call tree is a breadth-first tree reduction of the call graph as seen by the points-to analysis.
 The points-to analysis eliminates calls to methods that it determines cannot be reachable at runtime, based on the analyzed receiver types.
 It also completely eliminates invocations in unreachable code blocks, such as blocks guarded by a type check that always fails.
 The call tree report is enabled using the `-H:+PrintAnalysisCallTree` command-line option and can be formatted either as a `TXT` file (default) or as a set of `CSV` files using the `-H:PrintAnalysisCallTreeType=CSV` option.
@@ -175,7 +175,7 @@ For each option, the right-hand side specifies the pattern of the code element t
 - The syntax for specifying types and fields is the same as that of suppression/expansion (See documentation for `-H:ImageObjectTreeSuppressTypes` above).
 - The syntax for specifying methods is the same as that of method filters (See documentation for `-Djdk.graal.MethodFilter`).
 
-When one of the option is enabled and the corresponding code element is reachable, a reachability trace will be dumped to a TXT file and Native Image will abort.
+When one of the option is enabled and the corresponding code element is reachable, a reachability trace will be dumped to a TXT file and Native Image will stop.
 Here is an example of the reachability report for `-H:AbortOnTypeReachable=java.io.File`:
 
 ```

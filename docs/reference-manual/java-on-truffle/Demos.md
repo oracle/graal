@@ -19,12 +19,12 @@ GraalVM Native Image technology allows compiling applications ahead-of-time (AOT
 * have lower memory usage
 
 The main trade off for using Native Image is that the analysis and compilation of your program happens under the closed world assumption, meaning the static analysis needs to process all bytecode which will ever be executed in the application.
-This makes using some language features like dynamic class loading or reflection tricky.
+This makes using some language features such as dynamic class loading or reflection tricky.
 
 Java on Truffle is a JVM implementation of a JVM bytecode interpreter, built on the [Truffle framework](../../../truffle/docs/README.md).
 It is essentially a Java application, as are the Truffle framework itself and the GraalVM JIT compiler.
 All three of them can be compiled ahead-of-time with `native-image`.
-Using Java on Truffle for some parts of your application makes it possible to isolate the required dynamic behaviour and still use the native executable on the rest of your code.
+Using Java on Truffle for some parts of your application makes it possible to isolate the required dynamic behavior and still use the native executable on the rest of your code.
 
 Consider a canonical Java Shell tool (JShell) as an example command line application.
 It is a REPL capable of evaluating Java code and consists of two parts:
@@ -49,7 +49,7 @@ The JShell implementation is actually the normal JShell launcher code, which onl
 The "glue" code that binds the part which is AOT compiled with the component that dynamically evaluates the code is located in the `EspressoExecutionControl` class.
 It loads the JShell classes within the Java on Truffle context and delegate the input to them:
 
-```shell
+```
     protected final Lazy<Value> ClassBytecodes = Lazy.of(() -> loadClass("jdk.jshell.spi.ExecutionControl$ClassBytecodes"));
     protected final Lazy<Value> byte_array = Lazy.of(() -> loadClass("[B"));
     protected final Lazy<Value> ExecutionControlException = Lazy.of(() -> loadClass("jdk.jshell.spi.ExecutionControl$ExecutionControlException"));
@@ -111,7 +111,7 @@ Watch a video version of the mixing AOT and JIT compiled code with Java on Truff
 
 ## GraalVM Tools with Java on Truffle
 
-Java on Truffle is a proper part of the GraalVM ecosystem, and like other GraalVM-supported languages gets the support of developer tooling by default. The [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/) integrates with the tools like the debugger, profiler, memory analyser, the [Instrumentation API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html).
+Java on Truffle is a proper part of the GraalVM ecosystem, and like other GraalVM-supported languages gets the support of developer tooling by default. The [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/) integrates with the tools such as the debugger, profiler, memory analyzer, the [Instrumentation API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html).
 The interpreter for a language needs to mark the AST nodes with some annotations to support those tools.
 
 For example, to be able to use a profiler, a language interpreter needs to mark the root nodes.

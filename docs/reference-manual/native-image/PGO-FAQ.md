@@ -18,7 +18,7 @@ Note that the quality of Profile-Guided Optimization depends on the quality of t
 You should make sure that your tests accurately represent the workload that will run in production.
 In general, it is not easy to guarantee that, because:
 
-- Unit tests are designed to test all the corner-cases of the components, many of which are uncommon in practice (i.e., while they need to be tested and work correctly, corner-cases in your code usually do not need to be fast).
+- Unit tests are designed to test all the corner-cases of the components, many of which are uncommon in practice (in other words, while they need to be tested and work correctly, corner-cases in your code usually do not need to be fast).
 - Different components of your code are not always represented with the same number of unit tests.
   A profile based on a unit-test suite may over-represent the importance of one component, and under-represent the importance of others.
 - Unit-test suites evolve over time as more and more tests get added.
@@ -38,7 +38,7 @@ What we recommend instead is to either:
 - Or, create a benchmark workload that represents what your application does in production.
   A good benchmark would incorporate characteristics of a typical workload.
   In the previous web server example, a realistic benchmark would incorporate the distribution of requests that was observed when the web-server was running in production.
-  I.e., the benchmark would model how often a file of a particular size was requested in production, as well as the compression ratios of the files.
+  That is, the benchmark would model how often a file of a particular size was requested in production, as well as the compression ratios of the files.
 
 ### Are PGO profiles sufficiently cross-platform, or should each target be instrumented separately?
 
@@ -75,7 +75,7 @@ While we continually strive to minimize the overhead of instrumentation, you wil
 and your mileage will vary depending on the code patterns in the application that you are running.
 
 Also, note that the benchmark should ideally be representative of the workload that you expect in production.
-The more the benchmark's workload corresponds to the production workload, the morely likely it is that PGO have a positive performance impact
+The more the benchmark's workload corresponds to the production workload, the more likely it is that PGO have a positive performance impact
 on the optimized native build.
 
 In conclusion, if the benchmark accurately represents the workload that you will be running in production, then it is a good idea to collect the profiles on the instrumented benchmark binary, and subsequently use these profiles to build an optimized native executable for your production workload.

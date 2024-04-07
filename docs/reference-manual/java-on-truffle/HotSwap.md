@@ -8,7 +8,7 @@ redirect_from: /reference-manual/java-on-truffle/hotswap-plugin/
 
 # Enhanced HotSwap Capabilities with Java on Truffle
 
-With Java on Truffle you can benefit from enhanced HotSwap capabilites that allow the code to evolve naturally during development without the need for restarting a running application.
+With Java on Truffle you can benefit from enhanced HotSwap capabilities that allow the code to evolve naturally during development without the need for restarting a running application.
 You do not have to configure anything specific besides launching your app in debug mode and attaching a standard IDE debugger to gain the advantages of enhanced HotSwap.
 
 ## Debugging with Java on Truffle
@@ -92,7 +92,7 @@ The following changes are supported:
 * Add and remove fields
 * Change field type
 * Move field in hierarchy and preserve state (see note below)
-* Changes to class access modifiers, e.g. abstract and final modifiers
+* Changes to class access modifiers, for example, abstract and final modifiers
 * Changes to Lambdas
 * Add new anonymous inner classes
 * Remove anonymous inner classes
@@ -101,7 +101,7 @@ The following changes are supported:
 
 **Note**: When instance fields are moved in the class hierarchy the state is preserved whenever possible.
 Examples include the Pull Up Field refactoring where all existing instances of the origin subclass will be able to read the previously stored value from the super class field.
-On the other hand, for unrelated subclass instances where the field was not present prior to the change, the new field value will be the language default (i.e. null for object-type fields, 0 for int etc.).
+On the other hand, for unrelated subclass instances where the field was not present prior to the change, the new field value will be the language default (null for object-type fields, 0 for int, and so on).
 
 As of GraalVM 22.1.0, the following limitations remain:
 * Changes to Enums
@@ -109,7 +109,7 @@ As of GraalVM 22.1.0, the following limitations remain:
 ## HotSwap Plugin API
 
 With Java on Truffle you can benefit from enhanced HotSwap capabilities that allow the code to evolve naturally during development without the need for restarting a running application.
-While code reloading (HotSwap) is a powerful tool, it is not sufficient to reflect all kinds of changes, e.g., changes to annotations, framework-specific changes such as implemented services or beans.
+While code reloading (HotSwap) is a powerful tool, it is not sufficient to reflect all kinds of changes, for example, changes to annotations, framework-specific changes such as implemented services or beans.
 For these things the code often needs to be executed to reload configurations or contexts before the changes are fully reflected in the running instance.
 This is where the Truffle on Java HotSwap Plugin API comes in handy.
 The Truffle on Java HotSwap Plugin API is meant for framework developers by setting up appropriate hooks to reflect changes in response to source code edits in your IDE.
@@ -215,7 +215,7 @@ Upon completion of a HotSwap action the plugin receives a `postHotSwap` call tha
 ### Detecting and Injecting New Classes
 
 HotSwap is designed to enable classes to be HotSwap'ed in a running application.
-However, if a developer introduces an entirely new class, e.g., a new `@Controller `class in Micronaut, HotSwap does not magically inject a new class, as doing so would require knowledge about internal classloading logic at the very least.
+However, if a developer introduces an entirely new class (for example, a new `@Controller `class in Micronaut), HotSwap does not magically inject a new class, as doing so would require knowledge about internal classloading logic at the very least.
 
 A standard way in which classes are discovered by a framework is through the `ServiceLoader` mechanism.
 The Truffle on Java HotSwap API has built-in support for registering service implementation change listeners by means of the method `EspressoHotSwap.registerMetaInfServicesListener`:
@@ -228,7 +228,7 @@ The current support is limited to listening for implementation changes for class
 Whenever there is a change to the set of service implementations for the registered class type, the `action` is fired.
 In the Micronaut HotSwap plugin, `reloadContext` is executed which will then pickup the changes automatically.
 
-**Note**: HotSwap actions caused by changes to service implementation changes are fired indepent of HotSwap. As a developer, you do not need to perform a HotSwap from your IDE to see the new functionality in the running application.
+**Note**: HotSwap actions caused by changes to service implementation changes are fired independent of HotSwap. As a developer, you do not need to perform a HotSwap from your IDE to see the new functionality in the running application.
 
 ### Next-Level HotSwap for Micronaut
 
@@ -264,4 +264,4 @@ Now you are all setup.
 
 6. Once the application is started, verify that you get a response from the `ConferenceController` by going to `http://localhost:8080/conferences/random`.
 
-7. Try to make various changes to the classes within the sample app, e.g., change the `@Controller` mapping to a different value, or add a new `@Get`annotated method and apply HotSwap to see the magic. In case you define a new `@Controller` class, all you need is compiling the class and once the change is picked up by the file system watch, you will see the reload without the need for explicitly HotSwap.
+7. Try to make various changes to the classes within the sample app, for example, change the `@Controller` mapping to a different value, or add a new `@Get`annotated method and apply HotSwap to see the magic. In case you define a new `@Controller` class, all you need is compiling the class and once the change is picked up by the file system watch, you will see the reload without the need for explicitly HotSwap.

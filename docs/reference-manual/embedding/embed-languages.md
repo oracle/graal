@@ -65,8 +65,8 @@ Here is an example Maven dependency setup that you can put into your project:
 ```
 
 Language and tool dependencies use the [GraalVM Free Terms and Conditions (GFTC)](https://www.oracle.com/downloads/licenses/graal-free-license.html) license.
-To use community-licensed versions instead, add the `-community` suffix to each artifact (e.g., `js-community`).
-To access [polyglot isolate](#polyglot-isolates) artifacts, use the `-isolate` suffix instead (e.g. `js-isolate`).
+To use community-licensed versions instead, add the `-community` suffix to each artifact (for example, `js-community`).
+To access [polyglot isolate](#polyglot-isolates) artifacts, use the `-isolate` suffix instead (for example, `js-isolate`).
 
 The artifacts `polyglot` and `tools` include all available languages and tools as dependencies. 
 This artifact might grow or shrink between major releases. We recommend selecting only the needed language(s) for a production deployment.
@@ -91,12 +91,12 @@ For example:
 ```
 $JAVA_HOME/bin/java -classpath=lib --module-path=lib/polyglot --add-modules=org.graalvm.polyglot ...
 ```
-In this example, `lib/polyglot` folder should contain all polyglot and language jars.
+In this example, `lib/polyglot` directory should contain all polyglot and language JAR files.
 In order to access polyglot classes from the class-path you also need to specify the `--add-modules=org.graalvm.polyglot` JVM option.
 If you are using [native-image](https://www.graalvm.org/latest/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications) polyglot modules on the class-path will be automatically upgraded to the module-path.
 
-While we do support creating single uber Jars from polyglot libraries, e.g. using the Maven Assembly plugin, we do not recommend it.
-Also note that uber jars are not supported in combination with creating native-images.
+While we do support creating single uber JAR files from polyglot libraries, for example using the Maven Assembly plugin, we do not recommend it.
+Also note that uber JAR files are not supported in combination with creating native-images.
 
 ## Compile and Run a Polyglot Application
 
@@ -247,7 +247,7 @@ tab4type="java" tab4id="Lookup_Java_from_Python" tab4name="Python" tab4path="emb
 - The script looks up the Java type `java.math.BigDecimal` and stores it in a variable named `BigDecimal`.
 - The static method `BigDecimal.valueOf(long)` is invoked to create new
 `BigDecimal`s with value `10`. In addition to looking up static Java methods, it
-is also possible to directly instantiate the returned Java type., e.g., in
+is also possible to directly instantiate the returned Java type., for example, in
 JavaScript using the `new` keyword.
 - The new decimal is used to invoke the `pow` instance method with `20` which calculates  `10^20`.
 - The result of the script is converted to a host object by calling `asHostObject()`. The return value is automatically cast to the `BigDecimal` type.
@@ -271,7 +271,7 @@ tab4type="java" tab4id="Proxy_Python" tab4name="Python" tab4path="embed/proxy_py
 
 &nbsp;In this code:
 - The Java class `ComputedArray` implements the proxy interface `ProxyArray` so
-that guest languages treat instances of the Java class like arrays.
+that guest languages treat instances of the Java class-like arrays.
 - `ComputedArray` array overrides the method `get` and computes the value
 using an arithmetic expression.
 - The array proxy does not support write access. For this reason, it throws
@@ -297,7 +297,7 @@ These restrictions can be lifted entirely by setting `allowAllAccess` to `true`.
 
 ### Controlling Access to Host Functions
 
-It might be desireable to limit the access of guest applications to the host.
+It might be desirable to limit the access of guest applications to the host.
 For example, if a Java method is exposed that calls `System.exit` then the guest application will be able to exit the host process.
 In order to avoid accidentally exposed methods, no host access is allowed by default and every public method or field needs to be annotated with `@HostAccess.Export` explicitly.
 
@@ -320,7 +320,7 @@ Host access is fully customizable by creating a custom [`HostAccess`](https://ww
 ### Controlling Host Callback Parameter Scoping
 
 By default, a `Value` lives as long as the corresponding `Context`.
-However, it may be desireable to change this default behavior and bind a value to a scope, such that when execution leaves the scope, the value is invalidated.
+However, it may be desirable to change this default behavior and bind a value to a scope, such that when execution leaves the scope, the value is invalidated.
 An example for such a scope are guest-to-host callbacks, where a `Value` may be passed as a callback parameter.
 We have already seen above how passing callback parameters works with the default `HostAccess.EXPLICIT`:
 
@@ -350,7 +350,7 @@ public static void main(String[] args) {
 
 In this example, `lastResult` maintains a reference to the value from the guest that is stored on the host and remains accessible also after the scope of `callback()` has ended.
 
-However, this is not always desireable, as keeping the value alive may block resources unnecessarily or not reflect the behavior of ephemeral values correctly.
+However, this is not always desirable, as keeping the value alive may block resources unnecessarily or not reflect the behavior of ephemeral values correctly.
 For these cases, `HostAccess.SCOPED` can be used, which changes the default behavior for all callbacks, such that values that are passed as callback parameters are only valid for the duration of the callback.
 
 To make the above code work with `HostAccess.SCOPED`, individual values passed as a callback parameters can be pinned to extend their validity until after the callback returns:
@@ -440,17 +440,17 @@ This table shows the level of optimizations the Java runtimes currently provide:
 ### Explanations
 
 * **Optimized:** Executed guest application code can be compiled and executed as highly efficient machine code at run time.
-* **Optimized with additional compiler passes:** Oracle GraalVM implements additional optimizations performed during run-time compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better run-time performance and memory consumption.
+* **Optimized with additional compiler passes:** Oracle GraalVM implements additional optimizations performed during runtime compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better runtime performance and memory consumption.
 * **Optimized if enabled via experimental VM option:** Optimization is not enabled by default and must be enabled using `-XX:+EnableJVMCI` virtual machine option. In addition, to support compilation, the Graal compiler must be downloaded as a JAR file and put on the `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application.
 * **No runtime optimizations:** With no runtime optimizations or if JVMCI is not enabled, the guest application code is executed in interpreter-only mode. 
 * **JVMCI:** Refers to the [Java-Level JVM Compiler Interface](https://openjdk.org/jeps/243) supported by most Java runtimes.
 
-A project has been created to enable run-time optimization by default for Oracle JDK and OpenJDK.
+A project has been created to enable runtime optimization by default for Oracle JDK and OpenJDK.
 See [Project Galahad](https://openjdk.org/projects/galahad/) for further details.
 
 ### Enable Optimization on OpenJDK and Oracle JDK
 
-When running on a JDK run-time optimization enabled by default, like OpenJDK, you might see a warning like this:
+When running on a JDK runtime optimization enabled by default, such as OpenJDK, you might see a warning like this:
 
 ```
 [engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to machine code.
@@ -459,13 +459,13 @@ Execution without runtime compilation will negatively impact the guest applicati
 
 This indicates that the guest application is executed with no runtime optimizations enabled.
 The warning can be suppressed by either suppressing using the `--engine.WarnInterpreterOnly=false` option or the `-Dpolyglot.engine.WarnInterpreterOnly=false` system property.
-In addition, the `compiler.jar` and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`. 
-Note that the compiler jar must *not* be put on the module or class path. 
+In addition, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`. 
+Note that `compiler.jar` must *not* be put on the module or class path. 
 Refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) for an example configuration using Maven or Gradle.
 
 ### Switching to the Fallback Engine
 
-If the need arises, for example, running only trivial scripts or in the resource-constrained systems, you may want to switch to the fallback engine without run-time optimizations.
+If the need arises, for example, running only trivial scripts or in the resource-constrained systems, you may want to switch to the fallback engine without runtime optimizations.
 Since Polyglot version 23.1, the fallback engine can be activated by removing the `truffle-runtime` and `truffle-enterprise` modules from the class or module path.
 
 This can be achieved with Maven like this:
@@ -491,12 +491,12 @@ This can be achieved with Maven like this:
 ```
 
 The exclusion rule for `truffle-enterprise` is unnecessary if you only use `-community` dependencies.
-Since `truffle-enterprise` is excluded, the fallback engine does not support advanced extensions like sandbox limits or polyglot isolates.
+Since `truffle-enterprise` is excluded, the fallback engine does not support advanced extensions such as sandbox limits or polyglot isolates.
 It may be useful to double-check with `mvn dependency:tree` that the two dependencies are not included elsewhere.
 
 If the runtime was excluded successfully, you should see the following log message:
 
-```shell
+```
 [engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
 Execution without runtime compilation will negatively impact the guest application performance.
 The following cause was found: No optimizing Truffle runtime found on the module or class-path.
@@ -556,13 +556,13 @@ To build a native executable with the above configuration, run:
 mvn -Pnative package
 ```
 
-To build a native executable from a polyglot application, for example, a Java-host application embedding Python, a `./resources` folder containing all the required files is created by default.
-By default, the language runtime will look for the resources folder relative to the native executable or library image that was built.
+To build a native executable from a polyglot application, for example, a Java-host application embedding Python, a `./resources` directory containing all the required files is created by default.
+By default, the language runtime will look for the resources directory relative to the native executable or library image that was built.
 At run time, the lookup location may be customized using the `-Dpolyglot.engine.resourcePath=path/to/resources` option.
 To disable the resource creation, the `-H:-CopyLanguageResources` build-time option may be used.
-Note that some languages may not support running without a resources folder.
+Note that some languages may not support running without a resources directory.
 
-With Polyglot version 23.1 the language home options like `-Dorg.graalvm.home` should no longer be used and were replaced with the resource folder option.
+With Polyglot version 23.1 the language home options like `-Dorg.graalvm.home` should no longer be used and were replaced with the resource directory option.
 The language home options remain functional for compatibility reasons but may be removed in future releases.
 
 ### Configuring Native Host Reflection
@@ -882,7 +882,7 @@ for (;;) {
 
 The GraalVM Polyglot API allows users to instrument the execution of guest languages through [ExecutionListener class](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html).
 For example, it lets you attach an execution listener that is invoked for every statement of the guest language program.
-Execution listeners are designed as simple API for polyglot embedders and may become handy in, e.g., single-stepping through the program.
+Execution listeners are designed as simple API for polyglot embedders and may become handy in, for example, single-stepping through the program.
 
 ```java
 import org.graalvm.polyglot.*;
@@ -937,10 +937,10 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
     private static final String LANGUAGE_ID = "<<INSERT LANGUAGE ID HERE>>";
 ```
 
-Rename the class as desired and change the `LANGUAGE_ID` to the desired Truffle language (e.g. "python" for GraalPy or "ruby" for TruffleRuby). 
+Rename the class as desired and change the `LANGUAGE_ID` to the desired Truffle language (for example, "python" for GraalPy or "ruby" for TruffleRuby). 
 To use it, include a `META-INF/services/javax.script.ScriptEngineFactory` file in your resources with the chosen class name.
 This will allow the default `javax.script.ScriptEngineManager` to discover the language automatically.
-Alternatively, the factory can be registerd via `javax.script.ScriptEngineManager#registerEngineName` or instantiated and used directly.
+Alternatively, the factory can be registered via `javax.script.ScriptEngineManager#registerEngineName` or instantiated and used directly.
 
 The best practice is to close the `ScriptEngine` when no longer used rather than relying on finalizers.
 To close it, use `((AutoCloseable) scriptEngine).close();` since `ScriptEngine` does not have a `close()` method.

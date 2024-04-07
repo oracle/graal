@@ -9,14 +9,15 @@ Oracle GraalVM is available for Windows on the x64 architecture.
 
 Follow these steps to install Oracle GraalVM:
 
-1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/). Select the preferred Oracle GraalVM version, **22** for the Java version, and **Windows** for the operating system. Start downloading.
+1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/).
+Select the preferred Oracle GraalVM version, **22** for the Java version, and **Windows** for the operating system. Start downloading.
 
-2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
+2. Change directory to the location where you want to install GraalVM, then move the _.zip_ file to it.
 
-3. Unzip the archive to your file system.
+3. Unzip the file.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 8, 10, and 11.
-  - Set the `JAVA_HOME` environment variable to resolve to the installation directory:
+  - Set the value of the `JAVA_HOME` environment variable to the installation directory:
     ```shell
     setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
     ```
@@ -26,7 +27,7 @@ Follow these steps to install Oracle GraalVM:
     ```  
   Note that the `/M` flag, equivalent to `-m`, requires elevated user privileges.
 
-5. Restart Command Prompt to reload the environment variables. Then use the following command to check whether the variables were set correctly:
+5. Restart Command Prompt to reload the environment variables. Then use the following command to check whether the variables are set correctly:
     ```shell
     echo %PATH%
     echo %JAVA_HOME%

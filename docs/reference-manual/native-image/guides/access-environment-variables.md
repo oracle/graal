@@ -49,7 +49,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     <no output>
     ```
 
-3. Create a new environment variable named "HELLOWORLD" and give it the value "Hello World!". (If you are using a `bash` shell, follow the example below.) Now, run the native executable again--it will correctly print out the name and value of the matching environment variable(s).
+3. Create a new environment variable named "HELLOWORLD" and give it the value "Hello World!". (If you are using a `bash` shell, follow the example below.) Now, run the native executable again&mdash;it will correctly print out the name and value of the matching environment variable(s).
     ```shell
     export HELLOWORLD='Hello World!'
     ```

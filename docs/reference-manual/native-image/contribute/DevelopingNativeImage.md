@@ -48,8 +48,8 @@ See the [documentation on IDE integration](../../../../compiler/docs/IDEs.md) fo
 
 ## Build Native Executables
 
-After running `mx build` you can use `mx native-image` to build native images.
-You can specify the main entry point, i.e., the application you want to create the image for. For more information run `mx native-image --help`.
+After running `mx build` you can use `mx native-image` to build a native executable.
+You can specify the main entry point, that is, the application for wish you want to create the executable. For more information run `mx native-image --help`.
 
 A native image generation is performed by a Java program, a Native Image builder, that runs on a JVMCI-enabled JDK. You can debug it with a regular Java debugger.
 Use `mx native-image --debug-attach` to start native image generation so that it waits for a Java debugger to attach first (by default, at port 8000).
