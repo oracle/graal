@@ -715,10 +715,6 @@ public class SubstrateOptions {
     @Option(help = "Check if native-toolchain is known to work with native-image", type = Expert)//
     public static final HostedOptionKey<Boolean> CheckToolchain = new HostedOptionKey<>(true);
 
-    @APIOption(name = "install-exit-handlers")//
-    @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
-    public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
-
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
 
@@ -889,6 +885,16 @@ public class SubstrateOptions {
         /** Use {@link SubstrateOptions#getPageSize()} instead. */
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
         protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
+
+        /** Use {@link SubstrateOptions#needsExitHandlers()} instead. */
+        @APIOption(name = "install-exit-handlers")//
+        @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
+        protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
+    }
+
+    @Fold
+    public static final boolean needsExitHandlers() {
+        return ConcealedOptions.InstallExitHandlers.getValue() || VMInspectionOptions.hasJfrSupport() || VMInspectionOptions.hasNativeMemoryTrackingSupport();
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
