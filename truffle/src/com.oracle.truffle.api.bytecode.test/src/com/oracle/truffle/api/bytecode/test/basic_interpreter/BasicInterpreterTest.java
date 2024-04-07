@@ -54,9 +54,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.bytecode.BytecodeIntrospection;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.SourceInformation;
@@ -1052,8 +1052,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             // @formatter:on
         });
 
-        BytecodeIntrospection data = node.getIntrospectionData();
-        List<ExceptionHandler> handlers = data.getExceptionHandlers();
+        BytecodeNode bytecode = node.getBytecodeNode();
+        List<ExceptionHandler> handlers = bytecode.getExceptionHandlers();
 
         assertEquals(3, handlers.size());
         // note: handlers get emitted in order of endTryCatch()
@@ -1261,8 +1261,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endSource();
         });
 
-        BytecodeIntrospection data = node.getIntrospectionData();
-        List<SourceInformation> sourceInformation = data.getSourceInformation();
+        BytecodeNode bytecode = node.getBytecodeNode();
+        List<SourceInformation> sourceInformation = bytecode.getSourceInformation();
 
         assertEquals(4, sourceInformation.size());
         SourceInformation s1 = sourceInformation.get(0); // 1
@@ -1277,17 +1277,17 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
 
-        assertEquals(0, s1.getBeginBci());
-        assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndBci());
+        assertEquals(0, s1.getStartIndex());
+        assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndIndex());
 
         assertEquals(2, instructions.get(1).getBytecodeIndex());
-        assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndBci());
+        assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndIndex());
 
-        assertEquals(0, s3.getBeginBci());
-        assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndBci());
+        assertEquals(0, s3.getStartIndex());
+        assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndIndex());
 
-        assertEquals(0, s4.getBeginBci());
-        assertEquals(instructions.get(3).getBytecodeIndex() + 1, s4.getEndBci());
+        assertEquals(0, s4.getStartIndex());
+        assertEquals(instructions.get(3).getBytecodeIndex() + 1, s4.getEndIndex());
     }
 
     @Test

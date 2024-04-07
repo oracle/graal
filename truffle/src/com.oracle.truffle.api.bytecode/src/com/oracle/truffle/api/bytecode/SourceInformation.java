@@ -42,32 +42,53 @@ package com.oracle.truffle.api.bytecode;
 
 import com.oracle.truffle.api.source.SourceSection;
 
-public final class SourceInformation {
+/**
+ * Represents a source information object which contains source section information for a range of
+ * bytecodes.
+ *
+ * @see BytecodeNode#getSourceInformation()
+ * @see BytecodeLocation#getSourceInformation()
+ */
+public abstract class SourceInformation {
 
-    private final Object[] data;
-
-    SourceInformation(Object[] data) {
-        this.data = data;
+    /**
+     * Internal constructor for generated code. Do not use.
+     *
+     * @since 24.1
+     */
+    protected SourceInformation(Object token) {
+        BytecodeRootNodes.checkToken(token);
     }
 
-    public int getBeginBci() {
-        return (int) data[0];
-    }
+    /**
+     * Returns the start bytecode index for this source information object (inclusive).
+     *
+     * @since 24.1
+     */
+    public abstract int getStartIndex();
 
-    public int getEndBci() {
-        return (int) data[1];
-    }
+    /**
+     * Returns the end bytecode index for this source information object (exclusive).
+     *
+     * @since 24.1
+     */
+    public abstract int getEndIndex();
 
-    public SourceSection getSourceSection() {
-        return (SourceSection) data[2];
-    }
+    /**
+     * Returns the source section associated with this source information object. Never
+     * <code>null</code>.
+     *
+     * @since 24.1
+     */
+    public abstract SourceSection getSourceSection();
 
     @Override
-    public String toString() {
+    public final String toString() {
         Object sourceSection = getSourceSection();
         if (sourceSection == null) {
             sourceSection = "<none>";
         }
-        return String.format("[%04x .. %04x] %s", getBeginBci(), getEndBci(), sourceSection);
+        return String.format("[%04x .. %04x] %s", getStartIndex(), getEndIndex(), sourceSection);
     }
+
 }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -163,42 +164,47 @@ public final class BytecodeLocation {
     }
 
     /**
-     * Computes the list of exception handlers guarding this location.
+     * Returns all exception handlers that span over this bytecode location.
      *
      * @since 24.1
      */
-    public List<ExceptionHandler> findExceptionHandlers() {
-        var handlers = bytecodes.getIntrospectionData().getExceptionHandlers();
+    public List<ExceptionHandler> getExceptionHandlers() {
+        var handlers = bytecodes.getExceptionHandlers();
         if (handlers == null) {
             return null;
         }
+        List<ExceptionHandler> found = null;
         for (ExceptionHandler handler : handlers) {
             if (bci >= handler.getStartIndex() && bci < handler.getEndIndex()) {
-                // TODO this implementation is incomplete
-                // multiple handlers? inner most?
-                return List.of(handler);
+                if (found == null) {
+                    found = new ArrayList<>();
+                }
+                found.add(handler);
             }
         }
-        return null;
+        return found == null ? List.of() : found;
     }
 
     /**
-     * Computes the source information at this location.
+     * Returns all source informations available at this location.
      *
      * @since 24.1
      */
-    public SourceInformation findSourceInformation() {
-        var sourceInfos = bytecodes.getIntrospectionData().getSourceInformation();
+    public List<SourceInformation> getSourceInformation() {
+        var sourceInfos = bytecodes.getSourceInformation();
         if (sourceInfos == null) {
             return null;
         }
+        List<SourceInformation> found = null;
         for (SourceInformation info : sourceInfos) {
-            if (bci >= info.getBeginBci() && bci < info.getEndBci()) {
-                // return multiple source infos?
-                return info;
+            if (bci >= info.getStartIndex() && bci < info.getEndIndex()) {
+                if (found == null) {
+                    found = new ArrayList<>();
+                }
+                found.add(info);
             }
         }
-        return null;
+        return found == null ? List.of() : found;
 
     }
 
