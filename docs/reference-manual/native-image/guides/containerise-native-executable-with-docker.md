@@ -1,11 +1,11 @@
 ---
 layout: ni-docs
 toc_group: how-to-guides
-link_title: Containerise a Native Executable and Run in a Docker Container
+link_title: Containerize a Native Executable and Run in a Docker Container
 permalink: /reference-manual/native-image/guides/containerise-native-executable-and-run-in-docker-container/
 ---
 
-# Containerise a Native Executable and Run in a Docker Container
+# Containerize a Native Executable and Run in a Docker Container
 
 Docker containers provide the flexibility of development environments to match a production environment, to help isolate your application, and to minimize overhead. 
 For self-contained executables, generated with GraalVM Native Image, containers are an obvious deployment choice.
@@ -15,7 +15,7 @@ To support container-based development, there are several GraalVM container imag
 - Oracle GraalVM container images, available in [Oracle Container Registry (OCR)](https://container-registry.oracle.com/ords/ocr/ba/graalvm) under the [GraalVM Free Terms and Conditions (GFTC) license](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 - GraalVM Community Edition container images published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
 
-This guide shows how to containerise a native executable for your Java application.
+This guide shows how to containerize a native executable for your Java application.
 You will use a GraalVM container image with Native Image to compile a Java application ahead-of-time into a native executable.
 
 ### Sample Application
@@ -71,15 +71,15 @@ With the built-in support for GraalVM Native Image in Spring Boot 3, it has beco
 
     You should get a random nonsense verse. 
 
-4. Bring the application to the foreground using `fg`, and then enter `<CTRL-c>` to terminate the application.
+4. Bring the application to the foreground using `fg`, and then enter `<CTRL-c>` to stop the application.
         
-## Containerise the Native Executable
+## Containerize the Native Executable
 
 The generated native executable is platform-dependent.
 
-1. Containerise the native executable using the following command:
+1. Containerize the native executable using the following command:
 
-    - On Linux, containerise the native executable generated in the previous step using the following command:
+    - On Linux, containerize the native executable generated in the previous step using the following command:
     
         ```shell
         docker build -f Dockerfiles/Dockerfile.native --build-arg APP_FILE=benchmark-jibber -t jibber-benchmark:native.0.0.1-SNAPSHOT .

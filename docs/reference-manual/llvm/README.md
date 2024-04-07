@@ -39,7 +39,7 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
     sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
     ```
     
-    Extact:
+    Extract:
     ```shell
     tar -xzf <archive>.tar.gz
     ```

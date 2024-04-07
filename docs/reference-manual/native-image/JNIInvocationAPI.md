@@ -34,7 +34,7 @@ public final class NativeImpl {
 After being processed by the `native-image` builder, the code [exposes a C function](C-API.md) `Java_org_pkg_apinative_Native_add` (the name follows conventions of JNI that will be handy later) and a Native Image signature typical for JNI methods.
 The first parameter is a reference to the `JNIEnv*` value.
 The second parameter is a reference to the `jclass` value for the class declaring the method.
-The third parameter is a portable (e.g., `long`) identifier of the [Native Image isolatethread](C-API.md).
+The third parameter is a portable (for example, `long`) identifier of the [Native Image isolatethread](C-API.md).
 The rest of the parameters are the actual parameters of the Java `Native.add` method described in the next section. Compile the code with the `--shared` option:
 ```shell
 $JAVA_HOME/bin/native-image --shared -H:Name=libnativeimpl -cp nativeimpl
@@ -52,7 +52,7 @@ public final class Native {
 }
 ```
 The package name of the class, as well as the name of the method, has to correspond (after the [JNI mangling](https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/design.html)) to the name of the `@CEntryPoint` introduced previously.
-The first argument is a portable (e.g., `long`) identifier of the Native Image isolate thread.
+The first argument is a portable (for example, `long`) identifier of the Native Image isolate thread.
 The rest of the arguments match the parameters of the entry point.
 
 ## Load the Native Library
@@ -81,7 +81,7 @@ public final class NativeImpl {
 }
 ```
 Native Image then generates default native implementation of the method into the final `.so` library.
-The method initializes the Native Image runtime and returns a portable identification, e.g., `long`, to hold an instance of a [Native Image isolatethread](C-API.md).
+The method initializes the Native Image runtime and returns a portable identification (for example, `long`), to hold an instance of a [Native Image isolatethread](C-API.md).
 The isolate thread can then be used for multiple invocations of the native part of your code:
 ```java
 package org.pkg.apinative;
@@ -109,7 +109,7 @@ There is a detailed [tutorial on the C interface](https://github.com/oracle/graa
 The following example shows how to make a callback to JVM.
 
 In the classical setup, when C needs to call into JVM, it uses a [jni.h](JNI.md) header file.
-The file defines essential JVM structures (like `JNIEnv`) as well as functions one can invoke to inspect classes, access fields, and call methods in the JVM.
+The file defines essential JVM structures (such as `JNIEnv`) as well as functions one can invoke to inspect classes, access fields, and call methods in the JVM.
 In order to call these functions from the `NativeImpl` class in the above example, you need to define appropriate Java API wrappers of the `jni.h` concepts:
 
 ```java
@@ -192,7 +192,7 @@ interface JValue extends PointerBase {
     JValue addressOf(int index);
 }
 ```
-The `addressOf` method is a special Native Image construct used to perform C pointer arithmetics.
+The `addressOf` method is a special Native Image construct used to perform C pointer arithmetic.
 Given a pointer, one can treat it as the initial element of an array, then, for example, use `addressOf(1)` to access the subsequent element.
 With this you have all the API needed to make a callback - redefine the previously introduced `NativeImpl.add` method to accept properly typed pointers, and then use these pointers to invoke a JVM method before computing the sum of `a + b`:
 

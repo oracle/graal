@@ -29,7 +29,7 @@ For more information describing how to define and use these options, read the [`
 
 Run `native-image --help` for help on build options.
 
-* `-cp, -classpath, --class-path <class search path of directories and zip/jar files>`: a `:` (`;` on Windows) separated list of directories, JAR archives, and ZIP archives to search for class files
+* `-cp, -classpath, --class-path <class search path of directories and ZIP/JAR files>`: a `:` (`;` on Windows) separated list of directories, JAR archives, and ZIP archives to search for class files
 * `-p <module path>, --module-path <module path>`: a `:` (`;` on Windows) separated list of directories. Each directory is a directory of modules.
 * `--add-modules <module name>[,<module name>...]`: add root modules to resolve in addition to the initial module. `<module name>` can also be `ALL-DEFAULT`, `ALL-SYSTEM`, `ALL-MODULE-PATH`.
 * `-D<name>=<value>`: set a system property 
@@ -90,19 +90,19 @@ Run `native-image --help` for help on build options.
 
 Run `native-image --help-extra` for help on additional options.
 
-* `--exclude-config`: exclude configuration for a comma-separated pair of classpath/modulepath pattern and resource pattern. For example: `--exclude-config foo.jar,META-INF\/native-image\/.*.properties` ignores all properties files in _META-INF/native-image_ in all JARs named _foo.jar_.
+* `--exclude-config`: exclude configuration for a comma-separated pair of classpath/modulepath pattern and resource pattern. For example: `--exclude-config foo.jar,META-INF\/native-image\/.*.properties` ignores all properties files in _META-INF/native-image_ in all JAR files named _foo.jar_.
 * `--expert-options`: list image build options for experts
 * `--expert-options-all`: list all image build options for experts (use at your own risk). Options marked with _Extra help available_ contain help that can be shown with `--expert-options-detail`
 * `--expert-options-detail`: display all available help for a comma-separated list of option names. Pass `*` to show extra help for all options that contain it.
 * `--configurations-path <search path of option-configuration directories>`: a separated list of directories to be treated as option-configuration directories.
 * `--debug-attach[=<port or host:port (* can be used as host meaning bind to all interfaces)>]`: attach to a debugger during native executable generation (default port is 8000)
-* `--diagnostics-mode`: Enables logging of image-build information to a diagnostics folder.
+* `--diagnostics-mode`: Enables logging of image-build information to a diagnostics directory.
 * `--dry-run`: output the command line that would be used for building
 * `--bundle-create[=new-bundle.nib]`: in addition to image building, create a native image bundle file _(*.nibfile)_ that allows rebuilding of that image again at a later point. If a bundle file gets passed, the bundle will be created with the given name. Otherwise, the bundle file name is derived from the image name. Note both bundle options can be extended with `dry-run` and `container`.
     - `dry-run`: only perform the bundle operations without any actual native executable building
     - `container`: set up a container image and perform a native executable generation from inside that container. Requires Podman or rootless Docker to be installed. If available, Podman is preferred and rootless Docker is the fallback. Specifying one or the other as `=<container-tool>` forces the use of a specific tool.
     - `dockerfile=<Dockerfile>`: use a user provided `Dockerfile` instead of the default based on [Oracle Linux 8 base images for GraalVM](https://github.com/graalvm/container)
-* `--bundle-apply=some-bundle.nib[,dry-run][,container[=<container-tool>][,dockerfile=<Dockerfile>]]`: an image will be built from the given bundle file with the exact same arguments and files that have been passed to Native Image originally to create the bundle. Note that if an extra `--bundle-create` gets passed after `--bundle-apply`, a new bundle will be written based on the given bundle args plus any additional arguments that haven been passed afterwards. For example: `native-image --bundle-apply=app.nib --bundle-create=app_dbg.nib -g` creates a new bundle _app_dbg.nib_ based on the given _app.nib_ bundle. Both bundles are the same except the new one also uses the `-g` option.
+* `--bundle-apply=some-bundle.nib[,dry-run][,container[=<container-tool>][,dockerfile=<Dockerfile>]]`: an image will be built from the given bundle file with the exact same arguments and files that have been passed to Native Image originally to create the bundle. Note that if an extra `--bundle-create` gets passed after `--bundle-apply`, a new bundle will be written based on the given bundle arguments plus any additional arguments that haven been passed afterwards. For example: `native-image --bundle-apply=app.nib --bundle-create=app_dbg.nib -g` creates a new bundle _app_dbg.nib_ based on the given _app.nib_ bundle. Both bundles are the same except the new one also uses the `-g` option.
 * `-E<env-var-key>[=<env-var-value>]`: allow Native Image to access the given environment variable during native executable generation. If the optional `<env-var-value>` is not given, the value of the environment variable will be taken from the environment Native Image was invoked from.
 * `-V<key>=<value>`:  provide values for placeholders in the _native-image.properties_ files
 * `--add-exports`: value `<module>/<package>=<target-module>(,<target-module>)` updates `<module>` to export `<package>` to `<target-module>`, regardless of module declaration. `<target-module>` can be `ALL-UNNAMED` to export to all unnamed modules

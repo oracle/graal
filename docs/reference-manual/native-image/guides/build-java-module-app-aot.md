@@ -9,7 +9,7 @@ permalink: /reference-manual/native-image/guides/build-java-modules-into-native-
 
 GraalVM Native Image supports the [Java Platform Module System](https://www.oracle.com/uk/corporate/features/understanding-java-9-modules.html), introduced in Java 9, which means you can convert a modularized Java application into a native executable. 
 
-The `native-image` tool accepts the module-related arguments like `--module` (`-m`), `--module-path` (`-p`), `--add-opens`, `--add-exports` (same as for the `java` launcher). 
+The `native-image` tool accepts the module-related arguments such as `--module` (`-m`), `--module-path` (`-p`), `--add-opens`, `--add-exports` (same as for the `java` launcher). 
 When such a module-related argument is used, the `native-image` tool itself is used as a module too.
  
 In addition to supporting `--add-reads` and `--add-modules`, all module related options are considered prior to scanning the module path. 
