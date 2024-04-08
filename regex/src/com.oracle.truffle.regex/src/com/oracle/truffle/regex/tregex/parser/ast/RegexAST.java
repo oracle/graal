@@ -83,7 +83,6 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private RegexFlags flags;
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexParserTreeMaxSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
-    private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
     private final TBitSet referencedGroups = new TBitSet(Long.SIZE);
     private final TBitSet recursivelyReferencedGroups = new TBitSet(Long.SIZE);
@@ -101,6 +100,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final List<Token.Quantifier> quantifiers = new ArrayList<>();
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
     private final GlobalSubTreeIndex subtrees = new GlobalSubTreeIndex();
+    private final GroupsWithGuardsIndex groupsWithGuards = new GroupsWithGuardsIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private StateSet<RegexAST, PositionAssertion> nfaAnchoredInitialStates;
@@ -263,6 +263,16 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return subtrees;
     }
 
+    public void registerGroupWithGuards(Group group) {
+        if (group.getGroupsWithGuardsIndex() < 0) {
+            groupsWithGuards.add(group);
+        }
+    }
+
+    public GroupsWithGuardsIndex getGroupsWithGuards() {
+        return groupsWithGuards;
+    }
+
     public List<PositionAssertion> getReachableCarets() {
         return reachableCarets;
     }
@@ -290,6 +300,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             referencedGroups.set(groupNumber);
         }
         return register(new BackReference(groupNumbers));
+    }
+
+    public TBitSet getReferencedGroups() {
+        return referencedGroups;
     }
 
     public boolean isGroupReferenced(int groupNumber) {

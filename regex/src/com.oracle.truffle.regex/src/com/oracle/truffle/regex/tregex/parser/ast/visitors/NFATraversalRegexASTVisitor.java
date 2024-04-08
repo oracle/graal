@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
@@ -54,8 +55,10 @@ import com.oracle.truffle.regex.tregex.nfa.ASTStepVisitor;
 import com.oracle.truffle.regex.tregex.nfa.TransitionGuard;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
+import com.oracle.truffle.regex.tregex.parser.ast.GlobalSubTreeIndex;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupsWithGuardsIndex;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
@@ -63,6 +66,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.util.TBitSet;
@@ -133,12 +137,12 @@ public abstract class NFATraversalRegexASTVisitor {
      * NB: For every looping group, this set tells us whether there is an {@code enter} node for it
      * on the current path.
      */
-    private final StateSet<RegexAST, Group> insideLoops;
+    private final StateSet<GroupsWithGuardsIndex, Group> insideLoops;
     /**
      * This set is needed to make sure that a quantified term cannot match the empty string, as is
      * specified in step 2a of RepeatMatcher from ECMAScript draft 2018, chapter 21.2.2.5.1.
      */
-    private final StateSet<RegexAST, Group> insideEmptyGuardGroup;
+    private final StateSet<GroupsWithGuardsIndex, Group> insideEmptyGuardGroup;
     private RegexASTNode cur;
     private Set<LookBehindAssertion> traversableLookBehindAssertions;
     private boolean canTraverseCaret = false;
@@ -175,13 +179,13 @@ public abstract class NFATraversalRegexASTVisitor {
      */
     private final EconomicSet<DeduplicationKey> pathDeduplicationSet = EconomicSet.create();
 
-    private final StateSet<RegexAST, RegexASTNode> lookAroundsOnPath;
+    private final StateSet<GlobalSubTreeIndex, RegexASTSubtreeRootNode> lookAroundsOnPath;
     private int dollarsOnPath = 0;
     private int caretsOnPath = 0;
-    private final int[] nodeVisitCount;
-
+    private final int[] lookAroundVisitiedCount;
     private final TBitSet captureGroupUpdates;
     private final TBitSet captureGroupClears;
+    private final TBitSet referencedGroupBoundaries;
     private int lastGroup = -1;
 
     /**
@@ -195,14 +199,19 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected NFATraversalRegexASTVisitor(RegexAST ast) {
         this.ast = ast;
-        this.insideLoops = StateSet.create(ast);
-        this.insideEmptyGuardGroup = StateSet.create(ast);
-        this.lookAroundsOnPath = StateSet.create(ast);
-        this.nodeVisitCount = new int[ast.getNumberOfStates()];
+        this.insideLoops = StateSet.create(ast.getGroupsWithGuards());
+        this.insideEmptyGuardGroup = StateSet.create(ast.getGroupsWithGuards());
+        this.lookAroundsOnPath = StateSet.create(ast.getSubtrees());
+        this.lookAroundVisitiedCount = new int[ast.getSubtrees().size()];
         this.captureGroupUpdates = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.captureGroupClears = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
+        this.referencedGroupBoundaries = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.quantifierGuardsLoop = new int[ast.getQuantifierCount()];
         this.quantifierGuardsExited = new int[ast.getQuantifierCount()];
+        for (int i : ast.getReferencedGroups()) {
+            referencedGroupBoundaries.set(Group.groupNumberToBoundaryIndexStart(i));
+            referencedGroupBoundaries.set(Group.groupNumberToBoundaryIndexEnd(i));
+        }
     }
 
     public Set<LookBehindAssertion> getTraversableLookBehindAssertions() {
@@ -272,7 +281,7 @@ public abstract class NFATraversalRegexASTVisitor {
         assert dollarsOnPath == 0;
         assert caretsOnPath == 0;
         assert lookAroundsOnPath.isEmpty();
-        assert nodeVisitsEmpty() : Arrays.toString(nodeVisitCount);
+        assert nodeVisitsEmpty() : Arrays.toString(lookAroundVisitiedCount);
         assert !shouldRetreat;
         assert Arrays.stream(quantifierGuardsLoop).allMatch(x -> x == 0);
         assert Arrays.stream(quantifierGuardsExited).allMatch(x -> x == 0);
@@ -377,7 +386,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 long[] reordered = new long[quantifierGuardsResult.length];
                 int i = 0;
                 for (long guard : quantifierGuardsResult) {
-                    if (TransitionGuard.getKind(guard) == TransitionGuard.Kind.updateRecursiveBackrefPointer) {
+                    if (TransitionGuard.is(guard, TransitionGuard.Kind.updateRecursiveBackrefPointer)) {
                         reordered[i++] = guard;
                     }
                 }
@@ -385,7 +394,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     return;
                 }
                 for (long guard : quantifierGuardsResult) {
-                    if (TransitionGuard.getKind(guard) != TransitionGuard.Kind.updateRecursiveBackrefPointer) {
+                    if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateRecursiveBackrefPointer)) {
                         reordered[i++] = guard;
                     }
                 }
@@ -395,18 +404,6 @@ public abstract class NFATraversalRegexASTVisitor {
         }
     }
 
-    @TruffleBoundary
-    protected PositionAssertion getLastDollarOnPath() {
-        assert dollarsOnPath();
-        for (int i = curPath.length() - 1; i >= 0; i--) {
-            long element = curPath.get(i);
-            if (pathGetNode(element).isDollar()) {
-                return (PositionAssertion) pathGetNode(element);
-            }
-        }
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
     protected GroupBoundaries getGroupBoundaries() {
         return ast.createGroupBoundaries(getCaptureGroupUpdates(), getCaptureGroupClears(), getLastGroup());
     }
@@ -414,14 +411,14 @@ public abstract class NFATraversalRegexASTVisitor {
     /**
      * Advances the traversal by diving into {@link #cur current node} in pursuit of the next
      * successor.
-     * 
+     *
      * @return {@code true} if a successor was reached in this step
      */
     private boolean doAdvance() {
         // We only use the insideLoops optimization when the regex flavor does not allow empty loop
         // iterations. Empty loop iterations can occur when a regex flavor monitor capture groups
         // in its empty check, or when it doesn't use backtracking when exiting a loop.
-        if (cur.isDead() || (!ast.getOptions().getFlavor().canHaveEmptyLoopIterations() && insideLoops.contains(cur))) {
+        if (cur.isDead() || (!ast.getOptions().getFlavor().canHaveEmptyLoopIterations() && cur.isGroupWithGuards() && insideLoops.contains(cur.asGroup()))) {
             return retreat();
         }
         if (cur.isSequence()) {
@@ -436,7 +433,9 @@ public abstract class NFATraversalRegexASTVisitor {
                     if (shouldRetreat) {
                         return retreat();
                     }
-                    unregisterInsideLoop(parent);
+                    if (parent.isLoop()) {
+                        unregisterInsideLoop(parent);
+                    }
                 } else {
                     pushGroupExit(parent);
                     if (shouldRetreat) {
@@ -486,10 +485,10 @@ public abstract class NFATraversalRegexASTVisitor {
                 }
             } else if (canTraverseLookArounds() && cur.isLookAheadAssertion()) {
                 enterLookAhead((LookAheadAssertion) cur);
-                addToVisitedSet(lookAroundsOnPath);
+                addLookAroundToVisitedSet();
                 return advanceTerm((Term) cur);
             } else if (canTraverseLookArounds() && cur.isLookBehindAssertion()) {
-                addToVisitedSet(lookAroundsOnPath);
+                addLookAroundToVisitedSet();
                 if (traversableLookBehindAssertions == null || traversableLookBehindAssertions.contains(cur)) {
                     return advanceTerm((LookBehindAssertion) cur);
                 } else {
@@ -508,7 +507,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     /**
      * Advances past the given {@link Term} and updates {@link #cur the current node}.
-     * 
+     *
      * @return {@code true} if a successor was reached in this step (possible if
      *         {@link #advanceEmptyGuard} returns {@code true} and we have the quantified group as
      *         the successor)
@@ -535,7 +534,7 @@ public abstract class NFATraversalRegexASTVisitor {
             // which are forbidden in the DFA,
             // and b) termination is ensured by resolving exitZeroWidth/escapeZeroWidth guards
             // statically.
-            if (insideEmptyGuardGroup.contains(curTerm) && !(ast.getOptions().getFlavor().canHaveEmptyLoopIterations() && isBuildingDFA())) {
+            if (curTerm.isGroupWithGuards() && insideEmptyGuardGroup.contains(curTerm) && !(ast.getOptions().getFlavor().canHaveEmptyLoopIterations() && isBuildingDFA())) {
                 return advanceEmptyGuard(curTerm);
             }
             Sequence parentSeq = (Sequence) curTerm.getParent();
@@ -565,7 +564,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * Advances past a {@link Group} with an empty-guard. This can produce a transition to the
      * special empty-match state that is represented by setting the successor to the quantified
      * group.
-     * 
+     *
      * @return {@code true} if a successor (the quantified group) was reached in this step
      */
     private boolean advanceEmptyGuard(Term curTerm) {
@@ -590,7 +589,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     /**
      * Backtrack through the traversal and find an unexplored alternative.
-     * 
+     *
      * @return {@code true} if a successor was found in this step
      */
     private boolean retreat() {
@@ -602,7 +601,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 Group group = (Group) node;
                 if (pathIsGroupEnter(lastVisited) || pathIsGroupPassThrough(lastVisited)) {
                     if (pathGroupHasNext(lastVisited)) {
-                        if (pathIsGroupPassThrough(lastVisited)) {
+                        if (pathIsGroupPassThrough(lastVisited) && group.isLoop()) {
                             // a passthrough node was changed to an enter node,
                             // so we register the loop in insideLoops
                             registerInsideLoop(group);
@@ -620,13 +619,15 @@ public abstract class NFATraversalRegexASTVisitor {
                             assert pathIsGroupPassThrough(lastVisited);
                             popGroupPassThrough(group);
                         }
-                        if (pathIsGroupEnter(lastVisited)) {
+                        if (pathIsGroupEnter(lastVisited) && group.isLoop()) {
                             // we only deregister the node from insideLoops if this was an enter
                             // node, if it was a passthrough node, it was already deregistered when
                             // it was transformed from an enter node in doAdvance
                             unregisterInsideLoop(group);
                         }
-                        insideEmptyGuardGroup.remove(group);
+                        if (group.hasEmptyGuard()) {
+                            insideEmptyGuardGroup.remove(group);
+                        }
                     }
                 } else if (ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex()) {
                     // In Ruby, Python and OracleDB, when we finish an iteration of a loop, there is
@@ -664,7 +665,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     if (node.isLookAheadAssertion()) {
                         leaveLookAhead(node.asLookAheadAssertion());
                     }
-                    removeFromVisitedSet(lastVisited, lookAroundsOnPath);
+                    removeLookAroundFromVisitedSet(lastVisited);
                 } else if (node.isDollar()) {
                     dollarsOnPath--;
                 } else if (node.isCaret()) {
@@ -693,7 +694,8 @@ public abstract class NFATraversalRegexASTVisitor {
         // two states of the traversal that differ only in capture groups, since the state that was
         // encountered first will dominate the one found later and any empty capture groups that
         // would have been matched along the way cannot affect future matching.
-        boolean captureGroupsMatter = ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() || (isBuildingDFA() && ast.getProperties().hasConditionalBackReferences());
+        boolean captureGroupsMatter = (ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() && ast.getProperties().hasBackReferences()) ||
+                        (isBuildingDFA() && ast.getProperties().hasConditionalBackReferences());
         DeduplicationKey key = new DeduplicationKey(cur,
                         lookAroundsOnPath,
                         caretsOnPath(),
@@ -702,7 +704,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         internal ? insideEmptyGuardGroup : null,
                         captureGroupsMatter ? getCaptureGroupUpdates() : null,
                         captureGroupsMatter ? getCaptureGroupClears() : null,
-                        captureGroupsMatter ? getLastGroup() : -1);
+                        referencedGroupBoundaries);
         boolean isDuplicate = !pathDeduplicationSet.add(key);
         if (isDuplicate) {
             return retreat();
@@ -1104,9 +1106,9 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (curGuard != null && curGuard.getGuard() == guard) {
                     return;
                 }
-                while (curGuard != null && (!(TransitionGuard.getKind(curGuard.getGuard()) == TransitionGuard.Kind.enterZeroWidth &&
+                while (curGuard != null && (!(TransitionGuard.is(curGuard.getGuard(), TransitionGuard.Kind.enterZeroWidth) &&
                                 TransitionGuard.getZeroWidthQuantifierIndex(curGuard.getGuard()) == TransitionGuard.getZeroWidthQuantifierIndex(guard)))) {
-                    if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && TransitionGuard.getKind(curGuard.getGuard()) == TransitionGuard.Kind.updateCG) {
+                    if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && TransitionGuard.is(curGuard.getGuard(), TransitionGuard.Kind.updateCG)) {
                         keptAliveByCaptureGroups = true;
                     }
                     curGuard = curGuard.getPrev();
@@ -1122,7 +1124,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     // TODO: We should be able to eliminate some of these
                     // exitZeroWidth/escapeZeroWidth guards even
                     // when not building a DFA.
-                    if ((TransitionGuard.getKind(guard) == TransitionGuard.Kind.exitZeroWidth && !keptAlive) || (TransitionGuard.getKind(guard) == TransitionGuard.Kind.escapeZeroWidth && keptAlive)) {
+                    if ((TransitionGuard.is(guard, TransitionGuard.Kind.exitZeroWidth) && !keptAlive) || (TransitionGuard.is(guard, TransitionGuard.Kind.escapeZeroWidth) && keptAlive)) {
                         shouldRetreat = true;
                     }
                     return;
@@ -1134,8 +1136,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 // and there are no CG
                 // updates in between, then this new enterZeroWidth is redundant.
                 QuantifierGuardsLinkedList curGuard = quantifierGuards;
-                while (curGuard != null && (!ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() || TransitionGuard.getKind(curGuard.getGuard()) != TransitionGuard.Kind.updateCG)) {
-                    if (TransitionGuard.getKind(curGuard.getGuard()) == TransitionGuard.Kind.enterZeroWidth &&
+                while (curGuard != null && (!ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() || !TransitionGuard.is(curGuard.getGuard(), TransitionGuard.Kind.updateCG))) {
+                    if (TransitionGuard.is(curGuard.getGuard(), TransitionGuard.Kind.enterZeroWidth) &&
                                     TransitionGuard.getZeroWidthQuantifierIndex(curGuard.getGuard()) == TransitionGuard.getZeroWidthQuantifierIndex(guard)) {
                         return;
                     }
@@ -1150,7 +1152,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     int referencedGroupNumber = TransitionGuard.getIndex(guard);
                     boolean groupMatched = (getMatchedConditionGroups().get(referencedGroupNumber) && !getCaptureGroupClears().get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber))) ||
                                     getCaptureGroupUpdates().get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber));
-                    if ((TransitionGuard.getKind(guard) == TransitionGuard.Kind.checkGroupMatched) != groupMatched) {
+                    if ((TransitionGuard.is(guard, TransitionGuard.Kind.checkGroupMatched)) != groupMatched) {
                         shouldRetreat = true;
                     }
                     return;
@@ -1174,19 +1176,21 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     /// Visited set management
-    private void addToVisitedSet(StateSet<RegexAST, RegexASTNode> visitedSet) {
-        nodeVisitCount[cur.getId()]++;
-        visitedSet.add(cur);
+    private void addLookAroundToVisitedSet() {
+        LookAroundAssertion la = (LookAroundAssertion) cur;
+        lookAroundVisitiedCount[la.getGlobalSubTreeId()]++;
+        lookAroundsOnPath.add(la);
     }
 
-    private void removeFromVisitedSet(long pathElement, StateSet<RegexAST, RegexASTNode> visitedSet) {
-        if (--nodeVisitCount[pathGetNodeId(pathElement)] == 0) {
-            visitedSet.remove(pathGetNode(pathElement));
+    private void removeLookAroundFromVisitedSet(long pathElement) {
+        LookAroundAssertion la = (LookAroundAssertion) pathGetNode(pathElement);
+        if (--lookAroundVisitiedCount[la.getGlobalSubTreeId()] == 0) {
+            lookAroundsOnPath.remove(la);
         }
     }
 
     private boolean nodeVisitsEmpty() {
-        for (int i : nodeVisitCount) {
+        for (int i : lookAroundVisitiedCount) {
             if (i != 0) {
                 return false;
             }
@@ -1230,28 +1234,34 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private static final class DeduplicationKey {
-        private final StateSet<RegexAST, RegexASTNode> nodesInvolved;
+        private final int target;
+        private final StateSet<GlobalSubTreeIndex, RegexASTSubtreeRootNode> lookAroundsOnPath;
         private final boolean caretsOnPath;
         private final boolean dollarsOnPath;
         private final QuantifierGuardsLinkedList quantifierGuards;
-        private final StateSet<RegexAST, Group> insideEmptyGuardGroup;
+        private final StateSet<GroupsWithGuardsIndex, Group> insideEmptyGuardGroup;
         private final TBitSet captureGroupUpdates;
         private final TBitSet captureGroupClears;
-        private final int lastGroup;
         private final int hashCode;
 
-        DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, boolean caretsOnPath, boolean dollarsOnPath,
-                        QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
-            this.nodesInvolved = lookAroundsOnPath.copy();
-            this.nodesInvolved.add(targetNode);
+        DeduplicationKey(RegexASTNode targetNode, StateSet<GlobalSubTreeIndex, RegexASTSubtreeRootNode> lookAroundsOnPath, boolean caretsOnPath, boolean dollarsOnPath,
+                        QuantifierGuardsLinkedList quantifierGuards, StateSet<GroupsWithGuardsIndex, Group> insideEmptyGuardGroup, TBitSet captureGroupUpdates, TBitSet captureGroupClears,
+                        TBitSet referencedGroupBoundaries) {
+            this.target = targetNode.getId();
+            this.lookAroundsOnPath = lookAroundsOnPath.copy();
             this.caretsOnPath = caretsOnPath;
             this.dollarsOnPath = dollarsOnPath;
             this.quantifierGuards = quantifierGuards;
             this.insideEmptyGuardGroup = insideEmptyGuardGroup == null ? null : insideEmptyGuardGroup.copy();
             this.captureGroupUpdates = captureGroupUpdates == null ? null : captureGroupUpdates.copy();
             this.captureGroupClears = captureGroupClears == null ? null : captureGroupClears.copy();
-            this.lastGroup = lastGroup;
-            this.hashCode = Objects.hash(nodesInvolved, caretsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup, captureGroupUpdates, captureGroupClears, lastGroup);
+            if (captureGroupUpdates != null) {
+                this.captureGroupUpdates.intersect(referencedGroupBoundaries);
+            }
+            if (captureGroupClears != null) {
+                this.captureGroupClears.intersect(referencedGroupBoundaries);
+            }
+            this.hashCode = Objects.hash(target, lookAroundsOnPath, caretsOnPath, dollarsOnPath, quantifierGuards, insideEmptyGuardGroup, captureGroupUpdates, captureGroupClears);
         }
 
         @Override
@@ -1259,14 +1269,14 @@ public abstract class NFATraversalRegexASTVisitor {
             if (!(obj instanceof DeduplicationKey other)) {
                 return false;
             }
-            return this.nodesInvolved.equals(other.nodesInvolved) &&
+            return target == other.target &&
+                            lookAroundsOnPath.equals(other.lookAroundsOnPath) &&
                             caretsOnPath == other.caretsOnPath &&
                             dollarsOnPath == other.dollarsOnPath &&
-                            Objects.equals(this.quantifierGuards, other.quantifierGuards) &&
+                            Objects.equals(quantifierGuards, other.quantifierGuards) &&
                             Objects.equals(insideEmptyGuardGroup, other.insideEmptyGuardGroup) &&
                             Objects.equals(captureGroupUpdates, other.captureGroupUpdates) &&
-                            Objects.equals(captureGroupClears, other.captureGroupClears) &&
-                            this.lastGroup == other.lastGroup;
+                            Objects.equals(captureGroupClears, other.captureGroupClears);
         }
 
         @Override

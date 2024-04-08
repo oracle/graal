@@ -152,7 +152,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         transition.setMatchedConditionGroups(matchedConditionGroups);
         if (dollarsOnPath()) {
             assert target instanceof MatchFound;
-            transition.setTarget(getLastDollarOnPath());
+            transition.setTarget(target.getSubTreeParent().getAnchoredFinalState());
         } else {
             if (target instanceof CharacterClass) {
                 final CharacterClass charClass = (CharacterClass) target;
@@ -190,7 +190,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         // getGroupBoundaries and enterZeroWidth guards have no effect when exitZeroWidth and
         // escapeZeroWidth are removed already. Other guards shouldn't be used when building a DFA.
         for (long guard : quantifierGuards) {
-            if (TransitionGuard.getKind(guard) != TransitionGuard.Kind.updateCG && TransitionGuard.getKind(guard) != TransitionGuard.Kind.enterZeroWidth) {
+            if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateCG) && !TransitionGuard.is(guard, TransitionGuard.Kind.enterZeroWidth)) {
                 return false;
             }
         }
