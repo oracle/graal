@@ -47,7 +47,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     deploysArtifacts: true,
     packages+:
       if (self.os == 'linux') then
-        {maven: '>=3.3.9'}
+        {maven: '==3.3.9'}
       else
         {},
     environment+:
