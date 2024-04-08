@@ -80,7 +80,7 @@ jdk = mx.get_jdk(tag='default')
 
 
 class JavaLangRuntimeVersion(mx.Comparable):
-    """Wrapper for by java.lang.Runtime.Version"""
+    """Wrapper for java.lang.Runtime.Version"""
 
     _cmp_cache = {}
     _feature_re = re.compile('[1-9][0-9]*')
