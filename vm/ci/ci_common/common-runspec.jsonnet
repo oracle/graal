@@ -45,25 +45,9 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   local common_os_deploy = deploy + task_spec({
     deploysArtifacts: true,
-    packages+:
-      if (self.os == 'linux') then
-        {maven: '==3.3.9'}
-      else
-        {},
-    environment+:
-      if (self.os == 'darwin') then
-        {PATH: '$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH:/usr/local/bin'}
-      else if (self.os == 'windows') then
-        {PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',}
-      else
-        {},
-    downloads+:
-      if (self.os == 'darwin') then
-        {MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false}}
-      else if (self.os == 'windows') then
-        {MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false}}
-      else
-        {},
+    packages+: {
+      maven: '==3.3.9'
+    },
   }),
 
   local timelimit(t) = evaluate_late('999_time_limit', { // the key starts with 999 to be the last one evaluated
