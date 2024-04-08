@@ -49,7 +49,7 @@ import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 final class SVGSamplerOutput {
 
-    public static void printSamplingFlameGraph(PrintStream out, Map<Integer, CPUSamplerData> data) {
+    public static void printSamplingFlameGraph(PrintStream out, List<CPUSamplerData> data) {
         GraphOwner graph = new GraphOwner(new StringBuilder(), data);
 
         graph.addComponent(new SVGFlameGraph(graph));
@@ -214,7 +214,7 @@ final class SVGSamplerOutput {
     private static class GraphOwner implements SVGComponent {
 
         private final SVGSamplerOutput svg;
-        private final Map<Integer, CPUSamplerData> data;
+        private final List<CPUSamplerData> data;
         private ArrayList<SVGComponent> components;
         private Random random = new Random();
         private Map<GraphColorMap, String> languageColors;
@@ -232,7 +232,7 @@ final class SVGSamplerOutput {
         public final JSONArray sampleJsonKeys = new JSONArray();
         public final JSONArray sampleData = new JSONArray();
 
-        GraphOwner(StringBuilder output, Map<Integer, CPUSamplerData> data) {
+        GraphOwner(StringBuilder output, List<CPUSamplerData> data) {
             svg = new SVGSamplerOutput(output);
             this.data = data;
             components = new ArrayList<>();
@@ -328,7 +328,7 @@ final class SVGSamplerOutput {
             root.put("l", GraphColorMap.GRAY.ordinal());
             long totalSamples = 0;
             JSONArray children = new JSONArray();
-            for (CPUSamplerData value : data.values()) {
+            for (CPUSamplerData value : data) {
                 for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : value.getThreadData().entrySet()) {
                     Thread thread = node.getKey();
                     // Output the thread node itself...
