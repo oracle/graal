@@ -15,7 +15,7 @@
       "is_directory": {
         "type": "boolean",
         "default": false,
-        "title": "Describes whether the registered resource is directory or not"
+        "title": "Describes whether the registered resource is a directory or not"
       },
       "is_missing": {
         "type": "boolean",

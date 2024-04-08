@@ -218,6 +218,9 @@ Therefore, this can also include `byte[]` objects from application code.
 ##### <a name="glossary-embedded-resources"></a>Embedded Resources Stored in `byte[]`
 The total size of all `byte[]` objects used for storing resources (for example, files accessed via `Class.getResource()`) within the native binary.
 The number of resources is shown in the [Heap](#glossary-image-heap) section.
+A list of all resources including additional information such as their module, name, origin, and size are included in the [build reports](BuildOptions.md#build-output-and-build-report).
+This information can also be requested in the JSON format using the `-H:+GenerateEmbeddedResourcesFile` option.
+Such a JSON file validates against the JSON schema defined in [`embedded-resources-schema-v1.0.0.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/embedded-resources-schema-v1.0.0.json).
 
 ##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
 The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).
