@@ -819,9 +819,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         CompilerAsserts.partialEvaluationConstant(transition);
         if (isRecursiveBackreferences()) {
             /*
-             * Note: Updating the recursive back-reference boundaries before all other quantifier
-             * guards causes back-references to empty matches to fail. This is expected behavior in
-             * OracleDBFlavor.
+             * Recursive backreferences must be saved before capture groups bounds are overwritten
+             * by locals.apply
              */
             assert isForward();
             for (QuantifierGuard guard : transition.getQuantifierGuards()) {

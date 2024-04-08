@@ -152,13 +152,16 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges, Iterabl
         return subtract(o, createTempBuffer());
     }
 
+    /**
+     * Returns the result of the subtraction of {@code o} from this list. Uses
+     * {@link #getBuffer1(CompilationBuffer)}.
+     */
     default <T extends SortedListOfRanges> T subtract(T o, CompilationBuffer compilationBuffer) {
         return subtract(o, getBuffer1(compilationBuffer));
     }
 
     /**
-     * Returns the result of the subtraction of {@code o} from this list. Uses
-     * {@link #getBuffer1(CompilationBuffer)}.
+     * Returns the result of the subtraction of {@code o} from this list.
      */
     @SuppressWarnings("unchecked")
     default <T extends SortedListOfRanges> T subtract(T o, RangesBuffer subtractionRanges) {

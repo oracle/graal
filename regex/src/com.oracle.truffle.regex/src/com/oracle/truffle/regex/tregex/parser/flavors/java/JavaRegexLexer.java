@@ -61,7 +61,7 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
-public final class JavaLexer extends RegexLexer {
+public final class JavaRegexLexer extends RegexLexer {
 
     // 0x0009, CHARACTER TABULATION, <TAB>
     // 0x0020, SPACE, <SP>
@@ -140,10 +140,9 @@ public final class JavaLexer extends RegexLexer {
     final JavaUnicodeProperties unicode;
     private final Deque<JavaFlags> flagsStack = new ArrayDeque<>();
     private JavaFlags currentFlags;
-    private JavaFlags stagedFlags;
     private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
 
-    public JavaLexer(RegexSource source, JavaFlags flags, CompilationBuffer compilationBuffer) {
+    public JavaRegexLexer(RegexSource source, JavaFlags flags, CompilationBuffer compilationBuffer) {
         super(source, compilationBuffer);
         if (flags.isCanonEq()) {
             throw new UnsupportedRegexException("Canonical equivalence is not supported");
@@ -153,7 +152,6 @@ public final class JavaLexer extends RegexLexer {
         }
         this.unicode = JavaUnicodeProperties.create(source.getOptions());
         this.currentFlags = flags;
-        this.stagedFlags = flags;
     }
 
     @Override
@@ -171,11 +169,10 @@ public final class JavaLexer extends RegexLexer {
 
     public void popLocalFlags() {
         currentFlags = flagsStack.pop();
-        stagedFlags = currentFlags;
     }
 
-    public void applyFlags() {
-        currentFlags = stagedFlags;
+    public void setCurrentFlags(JavaFlags flags) {
+        currentFlags = flags;
     }
 
     @Override
@@ -205,12 +202,12 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledCharClassFirstBracketIsLiteral() {
-        return true;
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
     protected boolean featureEnabledCCRangeWithPredefCharClass() {
-        return true;
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -225,7 +222,7 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected CodePointSet getPOSIXCharClass(String name) {
-        return null;
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -293,20 +290,12 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected ClassSetContents caseFoldClassSetAtom(ClassSetContents classSetContents) {
-        if (getLocalFlags().isCaseInsensitive()) {
-            return classSetContents.caseFold(compilationBuffer.getCodePointSetAccumulator1());
-        } else {
-            return classSetContents;
-        }
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
     protected CodePointSet complementClassSet(CodePointSet codePointSet) {
-        if (getLocalFlags().isCaseInsensitive()) {
-            return codePointSet.createInverse(CaseFoldData.FOLDED_CHARACTERS, compilationBuffer);
-        } else {
-            return codePointSet.createInverse(source.getEncoding());
-        }
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -414,17 +403,17 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleCCRangeOutOfOrder(int startPos) {
-        return syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE);
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
     protected void handleCCRangeWithPredefCharClass(int startPos, ClassSetContents firstAtom, ClassSetContents secondAtom) {
-        throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE);
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
     protected RegexSyntaxException handleComplementOfStringSet() {
-        return syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE);
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -462,12 +451,12 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleMixedClassSetOperators(ClassSetOperator leftOperator, ClassSetOperator rightOperator) {
-        return null;
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
     protected RegexSyntaxException handleMissingClassSetOperand(ClassSetOperator operator) {
-        return null;
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -476,7 +465,7 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleRangeAsClassSetOperand(ClassSetOperator operator) {
-        return null;
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -496,7 +485,7 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleUnfinishedRangeInClassSet() {
-        return null;
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -919,14 +908,13 @@ public final class JavaLexer extends RegexLexer {
                 c = consumeChar();
             }
         }
-        stagedFlags = newFlags;
         if (c == ':') {
             if (firstCharPos == position) {
                 return null;
             }
-            return Token.createInlineFlags(stagedFlags, false);
+            return Token.createInlineFlags(newFlags, false);
         } else if (c == ')') {
-            return Token.createInlineFlags(stagedFlags, true);
+            return Token.createInlineFlags(newFlags, true);
         }
         return null;
     }

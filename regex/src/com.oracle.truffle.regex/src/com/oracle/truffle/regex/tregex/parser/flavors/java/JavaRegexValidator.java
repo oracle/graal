@@ -79,7 +79,7 @@ public class JavaRegexValidator implements RegexValidator {
      */
     private final RegexSource source;
 
-    private final JavaLexer lexer;
+    private final JavaRegexLexer lexer;
 
     public static JavaRegexValidator createValidator(RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         return new JavaRegexValidator(source, compilationBuffer);
@@ -87,7 +87,7 @@ public class JavaRegexValidator implements RegexValidator {
 
     public JavaRegexValidator(RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.source = source;
-        this.lexer = new JavaLexer(source, JavaFlags.parseFlags(source.getFlags()), compilationBuffer);
+        this.lexer = new JavaRegexLexer(source, JavaFlags.parseFlags(source.getFlags()), compilationBuffer);
     }
 
     @Override

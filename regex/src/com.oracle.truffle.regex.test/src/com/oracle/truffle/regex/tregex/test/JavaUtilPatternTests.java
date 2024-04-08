@@ -40,14 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
-import java.util.stream.Stream;
-
+import com.oracle.truffle.regex.charset.Range;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
+import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.util.EmptyArrays;
 import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -56,29 +53,31 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.truffle.regex.charset.Range;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.util.EmptyArrays;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import java.util.stream.Stream;
 
 public class JavaUtilPatternTests extends RegexTestBase {
 
-    public static final String ENGINE_OPTIONS = "Flavor=JavaUtilPattern,PythonMethod=search,JavaJDKVersion=" + Runtime.version().feature();
+    public static final String ENGINE_OPTIONS = "Flavor=JavaUtilPattern,MatchingMode=search,JavaJDKVersion=" + Runtime.version().feature();
 
     @Override
     String getEngineOptions() {
         return ENGINE_OPTIONS;
     }
 
-    @Test
-    public void lookbehindReluctantQuantifier() {
-        test("(?<=b{1,4}?)foo", 0, "%bbbbfoo");
-    }
-
     @Override
     Encodings.Encoding getTRegexEncoding() {
         return Encodings.UTF_16;
+    }
+
+    @Test
+    public void lookbehindReluctantQuantifier() {
+        test("(?<=b{1,4}?)foo", 0, "%bbbbfoo");
     }
 
     @Test
@@ -932,7 +931,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a\u00e0", Pattern.CASE_INSENSITIVE, "a\u00e0");
         test("aa", Pattern.CASE_INSENSITIVE, "aA");
         test("aa", Pattern.CASE_INSENSITIVE, "a\u00c0"); // should not match because
-                                                         // Pattern.UNICODE_CASE
+        // Pattern.UNICODE_CASE
         // is not set
         test("a\u00e0", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "a\u00c0");
 
@@ -1301,8 +1300,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
     private void expectSyntaxError(String pattern, String flags, PatternSyntaxException javaPatternException) {
         try {
             compileRegex(pattern, flags, "", getTRegexEncoding());
-        } catch (PolyglotException tRegexException) { // TODO why do we need PolyglotException
-            // instead of RegexSyntaxException?
+        } catch (PolyglotException tRegexException) {
             Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));
             return;
         }
