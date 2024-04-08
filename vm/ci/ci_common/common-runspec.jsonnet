@@ -19,28 +19,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   local weekly = target('weekly'),
   local deploy = target('deploy'),
 
-  common_vm: graal_common.build_base + vm.vm_setup + vm.custom_vm + {
-    python_version: "3",
-    logs+: [
-      '*/mxbuild/dists/stripped/*.map',
-      '**/install.packages.R.log',
-    ],
-  },
-
-  common_vm_linux: self.common_vm + {
-    capabilities+: ['manycores'],
-  },
-
-  common_vm_darwin: self.common_vm + {
-    environment+: {
-      LANG: 'en_US.UTF-8',
-      MACOSX_DEPLOYMENT_TARGET: '11.0',  # for compatibility with macOS BigSur
-    },
-    capabilities+: ['darwin_bigsur'],
-  },
-
-  common_vm_windows: self.common_vm,
-
   local common_os_deploy = deploy + task_spec({
     deploysArtifacts: true,
     packages+: {
@@ -168,24 +146,46 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   } else default_jdk(b),
 
   local default_os_arch(b) = {
+    local common_vm = graal_common.build_base + vm.vm_setup + vm.custom_vm + {
+      python_version: "3",
+      logs+: [
+        '*/mxbuild/dists/stripped/*.map',
+        '**/install.packages.R.log',
+      ],
+    },
+
+    local common_vm_linux = common_vm + {
+      capabilities+: ['manycores'],
+    },
+
+    local common_vm_darwin = common_vm + {
+      environment+: {
+        LANG: 'en_US.UTF-8',
+        MACOSX_DEPLOYMENT_TARGET: '11.0',  # for compatibility with macOS BigSur
+      },
+      capabilities+: ['darwin_bigsur'],
+    },
+
+    local common_vm_windows = common_vm + graal_common.windows_server_2016_amd64,
+
     "linux": {
-      "amd64": graal_common.linux_amd64 + $.common_vm_linux,
-      "aarch64": graal_common.linux_aarch64 + $.common_vm_linux,
+      "amd64": graal_common.linux_amd64 + common_vm_linux,
+      "aarch64": graal_common.linux_aarch64 + common_vm_linux,
     },
     "ubuntu": {
-      "amd64": graal_common.linux_amd64_ubuntu + $.common_vm_linux,
+      "amd64": graal_common.linux_amd64_ubuntu + common_vm_linux,
     },
     "darwin": {
-      "amd64": graal_common.darwin_amd64 + $.common_vm_darwin + {
+      "amd64": graal_common.darwin_amd64 + common_vm_darwin + {
         capabilities+: ['ram16gb'],
       },
-      "aarch64": graal_common.darwin_aarch64 + $.common_vm_darwin,
+      "aarch64": graal_common.darwin_aarch64 + common_vm_darwin,
     },
     "windows": {
       "amd64": if (b.jdk == "jdk-latest") then
-        graal_common.devkits['windows-jdkLatest'] + graal_common.windows_server_2016_amd64 + $.common_vm_windows
+        graal_common.devkits['windows-jdkLatest'] + common_vm_windows
       else
-        graal_common.devkits['windows-jdk21'] + graal_common.windows_server_2016_amd64 + $.common_vm_windows,
+        graal_common.devkits['windows-jdk21'] + common_vm_windows,
     },
   },
 
