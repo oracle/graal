@@ -222,10 +222,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final Class<? extends Tag> TRY_CATCH = StandardTags.TryBlockTag.class;
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT_BODY, ROOT, CONSTANT, TRY_CATCH};
-    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT_BODY", "ROOT", "CONSTANT",
+    public static final Set<String> TAG_NAMES = Set.of("EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT_BODY", "ROOT", "CONSTANT",
                     "VARIABLE", "ARGUMENT", "READ_VAR", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION",
                     "MATERIALIZE_CHILD_STMT_AND_EXPR", "MATERIALIZE_CHILD_STMT_AND_EXPR_NC", "MATERIALIZE_CHILD_STMT_AND_EXPR_SEPARATELY", "MATERIALIZE_CHILD_STATEMENT", "BLOCK_NO_SOURCE_SECTION",
-                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE", "EXIT", "CANCEL", "RETURN", "INVOKE_MEMBER", "CALL_SPLIT"};
+                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE", "EXIT", "CANCEL", "RETURN", "INVOKE_MEMBER", "CALL_SPLIT");
 
     public InstrumentationTestLanguage() {
     }
@@ -491,13 +491,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         private static boolean isValidTag(String tag) {
-            for (int i = 0; i < TAG_NAMES.length; i++) {
-                String allowedTag = TAG_NAMES[i];
-                if (tag == allowedTag) {
-                    return true;
-                }
-            }
-            return false;
+            return TAG_NAMES.contains(tag);
         }
 
         private static BaseNode createNode(String tag, String[] idents, boolean[] quotedIdents, SourceSection sourceSection, BaseNode[] childArray, List<String> multipleTags) throws AssertionError {
