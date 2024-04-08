@@ -47,7 +47,11 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -210,11 +214,13 @@ final class SafepointStackSampler {
 
     private class StackVisitor implements FrameInstanceVisitor<FrameInstance>, CollectionResult {
 
+        // filled from top to bottom of stack, i.e. inner to outer frame
         private final CallTarget[] targets;
         private final int[] tiers;
         private final boolean[] roots;
         private final SourceSectionFilter sourceSectionFilter;
         private Thread thread;
+        /** Next frame index and the number of captured entries. */
         private int nextFrameIndex;
         private long startTime;
         private long endTime;
@@ -249,16 +255,65 @@ final class SafepointStackSampler {
         }
 
         public FrameInstance visitFrame(FrameInstance frameInstance) {
-            tiers[nextFrameIndex] = frameInstance.getCompilationTier();
-            roots[nextFrameIndex] = frameInstance.isCompilationRoot();
-            targets[nextFrameIndex] = frameInstance.getCallTarget();
+            CallTarget callTarget = frameInstance.getCallTarget();
+            int compilationTier = frameInstance.getCompilationTier();
+            boolean compilationRoot = frameInstance.isCompilationRoot();
+            if (!addStackTraceEntry(callTarget, compilationTier, compilationRoot) ||
+                            !addAnyAsyncStackTraceEntries(callTarget, frameInstance.getFrame(FrameAccess.READ_ONLY))) {
+                // stop traversing
+                assert overflowed;
+                return frameInstance;
+            } else {
+                // continue traversing
+                assert !overflowed;
+                return null;
+            }
+        }
+
+        private boolean addStackTraceEntry(CallTarget callTarget, int compilationTier, boolean compilationRoot) {
+            assert !overflowed;
+            tiers[nextFrameIndex] = compilationTier;
+            roots[nextFrameIndex] = compilationRoot;
+            targets[nextFrameIndex] = callTarget;
             nextFrameIndex++;
             if (nextFrameIndex >= targets.length) {
-                // stop traversing
                 overflowed = true;
-                return frameInstance;
+                return false; // stop
+            } else {
+                return true; // continue
             }
-            return null;
+        }
+
+        private boolean addAnyAsyncStackTraceEntries(CallTarget callTarget, Frame frame) {
+            // Try to mix in async stack trace elements.
+            List<TruffleStackTraceElement> asyncStackTrace = TruffleStackTrace.getAsynchronousStackTrace(callTarget, frame);
+            if (asyncStackTrace != null && !asyncStackTrace.isEmpty()) {
+                List<TruffleStackTraceElement> nextAsyncStackTrace = asyncStackTrace;
+                do {
+                    asyncStackTrace = nextAsyncStackTrace;
+                    nextAsyncStackTrace = null;
+                    for (TruffleStackTraceElement element : asyncStackTrace) {
+                        RootCallTarget asyncTarget = element.getTarget();
+                        Frame asyncFrame = element.getFrame();
+                        if (!addStackTraceEntry(asyncTarget, 0, true)) {
+                            return false; // stop
+                        }
+                        // Include nested async stack frames at the end, e.g.
+                        // a <- b <- resume c (async trace: c <- d <- resume e)
+                        // c <- d <- resume e (async trace: e <- f <- start)
+                        // e <- f <- start
+                        // should be reconstructed as:
+                        // a <- b <- c <- d <- e <- start
+                        if (asyncFrame != null && nextAsyncStackTrace == null) {
+                            List<TruffleStackTraceElement> nestedAsyncStacktrace = TruffleStackTrace.getAsynchronousStackTrace(asyncTarget, asyncFrame);
+                            if (nestedAsyncStacktrace != null && !nestedAsyncStacktrace.isEmpty()) {
+                                nextAsyncStackTrace = nestedAsyncStacktrace;
+                            }
+                        }
+                    }
+                } while (nextAsyncStackTrace != null);
+            }
+            return true; // continue
         }
 
         void resetAndReturn() {
