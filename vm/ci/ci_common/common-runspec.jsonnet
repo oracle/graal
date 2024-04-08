@@ -27,11 +27,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ],
     environment+: if (self.os == 'darwin') then {
       LANG: 'en_US.UTF-8'
-    } else if(self.os == 'windows') then {
-      PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',
-    } else {},
-    downloads+: if (self.os == 'darwin') then {
-      MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
     } else {},
   },
 
@@ -49,14 +44,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     capabilities+: ['darwin_bigsur'],
   },
 
-  common_vm_windows: self.common_vm + {
-    downloads+: {
-      MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
-    },
-    environment+: {
-      PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',
-    },
-  },
+  common_vm_windows: self.common_vm,
 
   local common_os_deploy = deploy + task_spec({
     deploysArtifacts: true,
@@ -68,10 +56,14 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     environment+:
       if (self.os == 'darwin') then
         {PATH: '$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH:/usr/local/bin'}
+      else if (self.os == 'windows') then
+        {PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',}
       else
         {},
     downloads+:
       if (self.os == 'darwin') then
+        {MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false}}
+      else if (self.os == 'windows') then
         {MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false}}
       else
         {},
