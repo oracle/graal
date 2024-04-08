@@ -178,9 +178,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     "darwin": {
       "amd64": graal_common.darwin_amd64 + $.common_vm_darwin + {
         capabilities+: ['ram16gb'],
-        packages+: {
-          gcc: '==4.9.2',
-        },
       },
       "aarch64": graal_common.darwin_aarch64 + $.common_vm_darwin,
     },
