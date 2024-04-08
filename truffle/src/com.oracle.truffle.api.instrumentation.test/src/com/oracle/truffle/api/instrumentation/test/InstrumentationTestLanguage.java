@@ -304,14 +304,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         return lastParsed = new InstrumentationTestRootNode(this, "", outer, afterTarget, node).getCallTarget();
     }
 
-    public static RootNode parse(String code) {
-        InstrumentationTestLanguage testLanguage = InstrumentationTestLanguage.get(null);
-        Source source = Source.newBuilder(ID, code, "test").build();
-        SourceSection outer = source.createSection(0, source.getLength());
-        BaseNode base = testLanguage.parse(source);
-        return new InstrumentationTestRootNode(testLanguage, "", outer, base);
-    }
-
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
         Source code = request.getSource();
