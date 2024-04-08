@@ -63,6 +63,31 @@ public final class JVMCIVersionCheck {
      */
     private static final int JAVA_MIN_RELEASE = 21;
 
+    /**
+     * Convenience factory for the current version scheme that only uses the JDK version and the
+     * JVMCI build number.
+     */
+    public static Version createLabsJDKVersion(String jdkVersionString, int jvmciBuild) {
+        return new Version(jdkVersionString, jvmciBuild);
+    }
+
+    /**
+     * Convenience factory for the current version scheme that only uses the JDK version
+     * <em>without</em> a JVMCI build number. This is used when running on a plain OpenJDK, not a
+     * custom LabsJDK build.
+     */
+    public static Version createOpenJDKVersion(String jdkVersionString) {
+        return new Version(jdkVersionString);
+    }
+
+    /**
+     * Legacy factory for versions without JDK version. This force sets {@link Version#jdkVersion}
+     * to {@code 21}. While this is not entirely correct, it works for our purposes.
+     */
+    public static Version createLegacyVersion(int jvmciMajor, int jvmciMinor, int jvmciBuild) {
+        return new Version(jvmciMajor, jvmciMinor, jvmciBuild);
+    }
+
     public static class Version {
         private final Runtime.Version jdkVersion;
         private final int jvmciMajor;
@@ -79,12 +104,12 @@ public final class JVMCIVersionCheck {
                         assert m.group(4) == null : "if jvmciMajor is null jvmciMinor must also be null";
                         String jdkVersion = m.group(1);
                         int jvmciBuild = Integer.parseInt(m.group(5));
-                        return new Version(jdkVersion, jvmciBuild);
+                        return createLabsJDKVersion(jdkVersion, jvmciBuild);
                     } else {
                         int jvmciMajor = Integer.parseInt(m.group(3));
                         int jvmciMinor = Integer.parseInt(m.group(4));
                         int jvmciBuild = Integer.parseInt(m.group(5));
-                        return new Version(jvmciMajor, jvmciMinor, jvmciBuild);
+                        return createLegacyVersion(jvmciMajor, jvmciMinor, jvmciBuild);
                     }
 
                 } catch (NumberFormatException e) {
@@ -93,7 +118,7 @@ public final class JVMCIVersionCheck {
             } else {
                 try {
                     // assume OpenJDK version
-                    return new Version(stripVersion(vmVersion));
+                    return createOpenJDKVersion(stripVersion(vmVersion));
                 } catch (IllegalArgumentException e) {
                     // ignore
                 }
@@ -114,28 +139,15 @@ public final class JVMCIVersionCheck {
             return sb.toString();
         }
 
-        /**
-         * Convenience constructor for the current version scheme that only uses the JDK version and
-         * the JVMCI build number.
-         */
-        public Version(String jdkVersionString, int jvmciBuild) {
+        private Version(String jdkVersionString, int jvmciBuild) {
             this(jdkVersionString, NA, NA, jvmciBuild, false, false);
         }
 
-        /**
-         * Convenience constructor for the current version scheme that only uses the JDK version
-         * <em>without</em> a JVMCI build number. This is used when running on a plain OpenJDK, not
-         * a custom LabsJDK build.
-         */
-        public Version(String jdkVersionString) {
+        private Version(String jdkVersionString) {
             this(jdkVersionString, NA, NA, NA, false, true);
         }
 
-        /**
-         * Legacy construction for versions without JDK version. This force sets {@link #jdkVersion}
-         * to {@code 21}. While this is not entirely correct, it works for our purposes.
-         */
-        public Version(int jvmciMajor, int jvmciMinor, int jvmciBuild) {
+        private Version(int jvmciMajor, int jvmciMinor, int jvmciBuild) {
             this("21", jvmciMajor, jvmciMinor, jvmciBuild, true, false);
         }
 
