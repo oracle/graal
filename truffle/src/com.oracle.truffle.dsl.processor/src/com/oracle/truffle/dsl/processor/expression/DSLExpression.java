@@ -779,7 +779,7 @@ public abstract class DSLExpression {
                     }
                     DeclaredType declaredReceiverType = (DeclaredType) receiverType;
                     if (foundIndex != -1) {
-                        var typeArguments = declaredReceiverType.getTypeArguments();
+                        List<? extends TypeMirror> typeArguments = declaredReceiverType.getTypeArguments();
                         if (foundIndex < typeArguments.size()) {
                             return typeArguments.get(foundIndex);
                         }
