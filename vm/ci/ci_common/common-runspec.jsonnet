@@ -30,7 +30,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   common_vm_linux: self.common_vm,
 
   common_vm_linux_amd64: self.common_vm_linux + {
-    capabilities+: ['manycores', 'ram16gb', 'fast'],
+    capabilities+: ['manycores'],
   },
 
   common_vm_darwin: self.common_vm + {
