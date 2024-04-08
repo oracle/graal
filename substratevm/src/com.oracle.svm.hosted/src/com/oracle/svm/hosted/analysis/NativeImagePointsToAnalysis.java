@@ -28,13 +28,14 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -122,7 +123,12 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         postTask(d -> {
             type.getInitializeMetaDataTask().ensureDone();
             if (SubstrateOptions.includeAll()) {
-                Arrays.stream(OriginalClassProvider.getJavaClass(type).getDeclaredFields())
+                /*
+                 * Using getInstanceFields and getStaticFields allows to include the fields from the
+                 * substitution class.
+                 */
+                Stream.concat(Arrays.stream(type.getInstanceFields(true)), Arrays.stream(type.getStaticFields()))
+                                .map(OriginalFieldProvider::getJavaField)
                                 .filter(classInclusionPolicy::isFieldIncluded)
                                 .forEach(classInclusionPolicy::includeField);
             }
