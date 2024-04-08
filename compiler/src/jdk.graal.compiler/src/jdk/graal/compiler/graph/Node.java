@@ -239,7 +239,13 @@ public abstract class Node implements Cloneable, Formattable {
      * Marker interface for nodes that contain other nodes. When the inputs to {@code this} change,
      * users of {@code this} should also be placed on the work list for canonicalization.
      */
-    public interface IndirectCanonicalization {
+    public interface IndirectInputCanonicalization {
+    }
+
+    /**
+     * Same as {@link IndirectInputCanonicalization} except fur usages.
+     */
+    public interface IndirectUsageCanonicalization {
     }
 
     /**
