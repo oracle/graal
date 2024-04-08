@@ -143,6 +143,7 @@ public final class ReferenceInternals {
         return Target_java_lang_ref_Reference.nextFieldOffset;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getNextDiscoveredFieldOffset() {
         return Target_java_lang_ref_Reference.discoveredFieldOffset;
     }
