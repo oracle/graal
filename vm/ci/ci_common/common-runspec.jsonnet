@@ -27,9 +27,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ],
   },
 
-  common_vm_linux: self.common_vm,
-
-  common_vm_linux_amd64: self.common_vm_linux + {
+  common_vm_linux: self.common_vm + {
     capabilities+: ['manycores'],
   },
 
@@ -171,11 +169,11 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   local default_os_arch(b) = {
     "linux": {
-      "amd64": graal_common.linux_amd64 + $.common_vm_linux_amd64,
+      "amd64": graal_common.linux_amd64 + $.common_vm_linux,
       "aarch64": graal_common.linux_aarch64 + $.common_vm_linux,
     },
     "ubuntu": {
-      "amd64": graal_common.linux_amd64_ubuntu + $.common_vm_linux_amd64,
+      "amd64": graal_common.linux_amd64_ubuntu + $.common_vm_linux,
     },
     "darwin": {
       "amd64": graal_common.darwin_amd64 + $.common_vm_darwin + {
