@@ -60,10 +60,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 import com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
-/**
- * Implements the parsing and translating of java.util.regex.Pattern regular expressions to
- * ECMAScript regular expressions.
- */
 public final class JavaRegexParser implements RegexParser {
 
     /**
@@ -73,7 +69,7 @@ public final class JavaRegexParser implements RegexParser {
 
     private final RegexASTBuilder astBuilder;
 
-    private final JavaLexer lexer;
+    private final JavaRegexLexer lexer;
 
     private static RegexFlags makeTRegexFlags(boolean sticky) {
         // We need to set the Unicode flag to true so that character classes will treat the entire
@@ -87,7 +83,7 @@ public final class JavaRegexParser implements RegexParser {
     public JavaRegexParser(RegexSource source, RegexASTBuilder astBuilder, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.source = source;
         this.astBuilder = astBuilder;
-        this.lexer = new JavaLexer(source, JavaFlags.parseFlags(source.getFlags()), compilationBuffer);
+        this.lexer = new JavaRegexLexer(source, JavaFlags.parseFlags(source.getFlags()), compilationBuffer);
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
@@ -170,7 +166,7 @@ public final class JavaRegexParser implements RegexParser {
                         astBuilder.getCurGroup().setLocalFlags(true);
                         lexer.pushLocalFlags();
                     }
-                    lexer.applyFlags();
+                    lexer.setCurrentFlags((JavaFlags) ((Token.InlineFlags) token).getFlags());
                     break;
                 case captureGroupBegin:
                     lexer.pushLocalFlags();

@@ -124,7 +124,7 @@ final class JavaUnicodeProperties {
     // Character::isJavaIdentifierPart
     final CodePointSet javaIdentifierPart;
 
-    // Character::isJavaIdentifierStart
+    // Character::isUnicodeIdentifierStart
     final CodePointSet unicodeIdentifierStart;
 
     // Character::isUnicodeIdentifierPart
