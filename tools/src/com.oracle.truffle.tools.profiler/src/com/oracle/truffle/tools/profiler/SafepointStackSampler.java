@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,8 +59,8 @@ import com.oracle.truffle.api.source.SourceSection;
 final class SafepointStackSampler {
 
     private static final Set<Class<?>> VISITOR_TAGS = new HashSet<>(Arrays.asList(StandardTags.RootTag.class));
-    private final int stackLimit;
-    private final SourceSectionFilter sourceSectionFilter;
+    private volatile int stackLimit;
+    private volatile SourceSectionFilter sourceSectionFilter;
     private final ConcurrentLinkedQueue<StackVisitor> stackVisitorCache = new ConcurrentLinkedQueue<>();
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
     private final ThreadLocal<SyntheticFrame> syntheticFrameThreadLocal = ThreadLocal.withInitial(() -> null);
@@ -75,7 +75,7 @@ final class SafepointStackSampler {
     private StackVisitor fetchStackVisitor() {
         StackVisitor visitor = stackVisitorCache.poll();
         if (visitor == null) {
-            visitor = new StackVisitor(stackLimit);
+            visitor = new StackVisitor(stackLimit, sourceSectionFilter);
         }
         return visitor;
     }
@@ -165,6 +165,32 @@ final class SafepointStackSampler {
         }
     }
 
+    int getStackLimit() {
+        return stackLimit;
+    }
+
+    void setStackLimit(int stackLimit) {
+        this.stackLimit = stackLimit;
+        this.stackVisitorCache.clear();
+    }
+
+    SourceSectionFilter getSourceSectionFilter() {
+        return sourceSectionFilter;
+    }
+
+    void setSourceSectionFilter(SourceSectionFilter sourceSectionFilter) {
+        this.sourceSectionFilter = sourceSectionFilter;
+        this.stackVisitorCache.clear();
+    }
+
+    void resetSampling() {
+        // Note: synchronized on CPUSampler instance in the caller.
+        this.sampleIndex.set(0);
+        this.cachedAction.set(null);
+        this.overflowed = false;
+        this.stackVisitorCache.clear();
+    }
+
     static final class StackSample {
 
         final Thread thread;
@@ -187,17 +213,19 @@ final class SafepointStackSampler {
         private final CallTarget[] targets;
         private final int[] tiers;
         private final boolean[] roots;
+        private final SourceSectionFilter sourceSectionFilter;
         private Thread thread;
         private int nextFrameIndex;
         private long startTime;
         private long endTime;
         private boolean overflowed;
 
-        StackVisitor(int stackLimit) {
+        StackVisitor(int stackLimit, SourceSectionFilter sourceSectionFilter) {
             assert stackLimit > 0;
             this.tiers = new int[stackLimit];
             this.roots = new boolean[stackLimit];
             this.targets = new CallTarget[stackLimit];
+            this.sourceSectionFilter = sourceSectionFilter;
         }
 
         final void iterateFrames() {
