@@ -48,7 +48,7 @@ import tempfile
 import difflib
 import zipfile
 from argparse import Action, ArgumentParser, RawDescriptionHelpFormatter
-from os.path import exists, isdir, join, abspath
+from os.path import dirname, exists, isdir, join, abspath
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
 
 import mx
@@ -1217,12 +1217,12 @@ class _PolyglotIsolateResourceProject(mx.JavaProject):
     def __init__(self, language_suite, subDir, language_id, resource_id, os_name, cpu_architecture, placeholder):
         name = f'com.oracle.truffle.isolate.resource.{language_id}.{os_name}.{cpu_architecture}'
         javaCompliance = str(mx.distribution('truffle:TRUFFLE_API').javaCompliance) + '+'
-        dir = mx.join(language_suite.dir, subDir, name)
+        project_dir = os.path.join(language_suite.dir, subDir, name)
         deps = ['truffle:TRUFFLE_API']
         if placeholder:
             deps += ['sdk:NATIVEIMAGE']
         super(_PolyglotIsolateResourceProject, self).__init__(language_suite, name, subDir=subDir, srcDirs=[], deps=deps,
-                                             javaCompliance=javaCompliance, workingSets='Truffle', d=dir,
+                                             javaCompliance=javaCompliance, workingSets='Truffle', d=project_dir,
                                              theLicense=_suite.defaultLicense)
         src_gen_dir = self.source_gen_dir()
         self.srcDirs.append(src_gen_dir)
@@ -1308,7 +1308,7 @@ class _PolyglotIsolateResourceBuildTask(mx.JavaBuildTask):
                         .replace('${os}', prj.os_name)
                         .replace('${arch}', prj.cpu_architecture))
         target_file = _PolyglotIsolateResourceBuildTask._target_file(prj.source_gen_dir(), pkg_name)
-        mx.ensure_dir_exists(mx.dirname(target_file))
+        mx_util.ensure_dir_exists(dirname(target_file))
         with mx_util.SafeFileCreation(target_file) as sfc, open(sfc.tmpPath, 'w', encoding='utf-8') as f:
             f.write(file_content)
         super(_PolyglotIsolateResourceBuildTask, self).build()
@@ -1350,8 +1350,8 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     if mx.get_env('POLYGLOT_ISOLATE_LIBRARY', 'false') != 'true':
         return False
 
-    if type(language_license) is not list:
-        assert type(language_license) is str
+    if not isinstance(language_license, list):
+        assert isinstance(language_license, str)
         language_license = [language_license]
 
     def _qualname(distribution_name):
@@ -1378,6 +1378,8 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         build_for_current_platform = platform == current_platform
         resource_id = f'{language_id}-isolate-{platform}'
         os_name, cpu_architecture = platform.split('-')
+        os_name_upper_case = os_name.upper()
+        cpu_architecture_upper_case = cpu_architecture.upper()
         # 1. Register a project generating and building an internal resource for polyglot isolate library
         build_internal_resource = _PolyglotIsolateResourceProject(language_suite, subDir, language_id, resource_id,
                                                                   os_name, cpu_architecture, not build_for_current_platform)
@@ -1403,7 +1405,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
             }
             layout_dist = mx.LayoutDirDistribution(
                 suite=language_suite,
-                name=f'{language_id_upper_case}_ISOLATE_LAYOUT',
+                name=f'{language_id_upper_case}_ISOLATE_LAYOUT_{os_name_upper_case}_{cpu_architecture_upper_case}',
                 deps=[],
                 layout={
                     f'{resource_base_folder}/': f'dependency:{build_library.name}',
@@ -1412,7 +1414,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
                 path=None,
                 platformDependent=True,
                 theLicense=None,
-                platforms=platforms,
+                platforms=[platform],
                 **attrs
             )
             register_distribution(layout_dist)
@@ -1421,7 +1423,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
 
         # 4. Register Jar distribution containing the internal resource project and isolate library for current platform.
         # For other platforms, create a jar distribution with an internal resource only
-        resources_dist_name = f'{language_id_upper_case}_ISOLATE_RESOURCES_{platform.upper()}'
+        resources_dist_name = f'{language_id_upper_case}_ISOLATE_RESOURCES_{os_name_upper_case}_{cpu_architecture_upper_case}'
         maven_artifact_id = resource_id
         licenses = set(language_license)
         # The graal-enterprise suite may not be fully loaded.
@@ -1460,7 +1462,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         register_distribution(isolate_library_dist)
 
         # 5. Register meta POM distribution for the isolate library jar file for a specific platform.
-        isolate_dist_name = f'{language_id_upper_case}_ISOLATE_{platform.upper()}'
+        isolate_dist_name = f'{language_id_upper_case}_ISOLATE_{os_name_upper_case}_{cpu_architecture_upper_case}'
         attrs = {
             'description': f'The {language_id} polyglot isolate for {platform}.',
             'maven': {
@@ -1547,7 +1549,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
 
                 def getArchivableResults(self, use_relpath=True, single=False):
                     for file_path, archive_path in super(LibtoolNativeProject, self).getArchivableResults(use_relpath):
-                        path_in_lt_objdir = os.path.basename(os.path.dirname(file_path)) == '.libs'
+                        path_in_lt_objdir = os.path.basename(dirname(file_path)) == '.libs'
                         yield file_path, os.path.basename(archive_path) if path_in_lt_objdir else archive_path
                         if single:
                             assert path_in_lt_objdir, 'the first build result must be from LT_OBJDIR'

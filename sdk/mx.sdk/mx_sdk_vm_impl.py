@@ -2006,7 +2006,7 @@ class PolyglotIsolateLibrary(GraalVmLibrary):
             build_args_enterprise=build_args,
             language=language,
         )
-        super(PolyglotIsolateLibrary, self).__init__(None, os.path.basename(library_config.destination) + ".image",
+        super(PolyglotIsolateLibrary, self).__init__(None, f'{language}.isolate.image',
                                                      list(deps), library_config, **kw_args)
         self.suite = target_suite
         self.dir = target_suite.dir
