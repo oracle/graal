@@ -76,6 +76,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     private ArrayList<Sequence> alternatives = new ArrayList<>();
     private short visitorIterationIndex = 0;
     private short groupNumber = -1;
+    private short groupsWithGuardsIndex = -1;
     private short enclosedCaptureGroupsLow;
     private short enclosedCaptureGroupsHigh;
 
@@ -211,6 +212,19 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     public void setGroupNumber(int groupNumber) {
         assert groupNumber <= TRegexOptions.TRegexMaxNumberOfCaptureGroups;
         this.groupNumber = (short) groupNumber;
+    }
+
+    public boolean hasGroupWithGuardsIndex() {
+        return groupsWithGuardsIndex >= 0;
+    }
+
+    public int getGroupsWithGuardsIndex() {
+        return groupsWithGuardsIndex;
+    }
+
+    public void setGroupsWithGuardsIndex(int groupsWithGuardsIndex) {
+        assert groupsWithGuardsIndex <= Short.MAX_VALUE;
+        this.groupsWithGuardsIndex = (short) groupsWithGuardsIndex;
     }
 
     /**

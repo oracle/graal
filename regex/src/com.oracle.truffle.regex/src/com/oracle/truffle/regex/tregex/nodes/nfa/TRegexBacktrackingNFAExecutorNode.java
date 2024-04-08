@@ -840,7 +840,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             assert isForward();
             for (long guard : transition.getQuantifierGuards()) {
                 CompilerAsserts.partialEvaluationConstant(guard);
-                if (TransitionGuard.getKind(guard) == TransitionGuard.Kind.updateRecursiveBackrefPointer) {
+                if (TransitionGuard.is(guard, TransitionGuard.Kind.updateRecursiveBackrefPointer)) {
                     locals.saveRecursiveBackrefGroupStart(TransitionGuard.getIndex(guard));
                 } else {
                     break;

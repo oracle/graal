@@ -194,8 +194,16 @@ public final class TransitionGuard {
         return ((long) kind.ordinal()) << 32 | index;
     }
 
+    private static int getKindOrdinal(long guard) {
+        return (int) ((guard >>> 32) & 0xff);
+    }
+
     public static Kind getKind(long guard) {
-        return Kind.values()[(int) ((guard >>> 32) & 0xff)];
+        return Kind.values()[getKindOrdinal(guard)];
+    }
+
+    public static boolean is(long guard, Kind kind) {
+        return getKindOrdinal(guard) == kind.ordinal();
     }
 
     public static int getQuantifierIndex(long guard) {

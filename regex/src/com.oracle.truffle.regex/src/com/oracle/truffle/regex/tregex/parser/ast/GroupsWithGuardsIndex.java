@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,41 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
+package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
-import com.oracle.truffle.regex.tregex.parser.MultiCharacterCaseFolding;
-import com.oracle.truffle.regex.tregex.parser.RegexParser;
-import com.oracle.truffle.regex.tregex.parser.RegexValidator;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 
-/**
- * An implementation of the OracleDB regex flavor.
- */
-public final class OracleDBFlavor extends RegexFlavor {
+public final class GroupsWithGuardsIndex extends SimpleStateIndex<Group> {
 
-    public static final OracleDBFlavor INSTANCE = new OracleDBFlavor();
-
-    private OracleDBFlavor() {
-        super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | FAILING_EMPTY_CHECKS_DONT_BACKTRACK | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | SUPPORTS_RECURSIVE_BACKREFERENCES |
-                        EMPTY_CHECKS_ON_MANDATORY_LOOP_ITERATIONS);
+    @Override
+    protected int getStateId(Group group) {
+        return group.getGroupsWithGuardsIndex();
     }
 
     @Override
-    public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        return new OracleDBRegexParser(language, source, compilationBuffer);
-    }
-
-    @Override
-    public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
-        return (codePointA, codePointB, altMode) -> MultiCharacterCaseFolding.equalsIgnoreCase(CaseFoldData.CaseFoldAlgorithm.OracleDB, codePointA, codePointB);
+    protected void setStateId(Group group, int id) {
+        group.setGroupsWithGuardsIndex(id);
     }
 }

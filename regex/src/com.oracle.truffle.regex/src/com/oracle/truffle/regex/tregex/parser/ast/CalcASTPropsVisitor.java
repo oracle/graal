@@ -304,6 +304,9 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 group.getParent().setPrefixLengthMax(prefixLengthMax);
             }
         }
+        if (isForward() && (group.hasEmptyGuard() || group.isLoop())) {
+            ast.registerGroupWithGuards(group);
+        }
     }
 
     @Override
