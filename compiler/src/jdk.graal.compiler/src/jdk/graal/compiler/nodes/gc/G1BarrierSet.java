@@ -63,6 +63,9 @@ public class G1BarrierSet implements BarrierSet {
 
     @Override
     public BarrierType writeBarrierType(RawStoreNode store) {
+        if (store.object().isNullConstant()) {
+            return BarrierType.NONE;
+        }
         return store.needsBarrier() ? readWriteBarrier(store.object(), store.value()) : BarrierType.NONE;
     }
 
