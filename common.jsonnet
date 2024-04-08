@@ -117,8 +117,7 @@
 
   darwin:: deps.darwin + self.common + {
     os::"darwin",
-    # Run darwin jobs on Big Sur or later by excluding all older versions
-    capabilities+: [self.os, "!darwin_sierra", "!darwin_mojave", "!darwin_catalina"],
+    capabilities+: [self.os],
   },
 
   windows:: deps.windows + self.common + {

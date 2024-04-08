@@ -59,7 +59,7 @@ linux-amd64 : ${linux} {
 }
 
 darwin-amd64 : ${darwin} {
-  capabilities : [darwin, amd64, "!darwin_sierra", "!darwin_mojave", "!darwin_catalina"]
+  capabilities : [darwin, amd64]
 }
 
 windows-amd64 : ${windows} {
