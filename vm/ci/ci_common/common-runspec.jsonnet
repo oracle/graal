@@ -25,9 +25,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       '*/mxbuild/dists/stripped/*.map',
       '**/install.packages.R.log',
     ],
-    environment+: if (self.os == 'darwin') then {
-      LANG: 'en_US.UTF-8'
-    } else {},
   },
 
   common_vm_linux: self.common_vm,
