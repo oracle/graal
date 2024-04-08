@@ -1152,6 +1152,8 @@ include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
 CC=<path:LLVM_TOOLCHAIN>/bin/clang
 CXX=<path:LLVM_TOOLCHAIN>/bin/clang++
 AR=<path:LLVM_TOOLCHAIN>/bin/llvm-ar
+CFLAGS=
+CXXFLAGS=
 LDFLAGS=-fuse-ld=lld
 '''
             },
@@ -1169,6 +1171,9 @@ include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
 CC=xcrun <path:LLVM_TOOLCHAIN>/bin/clang
 CXX=xcrun <path:LLVM_TOOLCHAIN>/bin/clang++
 AR=xcrun <path:LLVM_TOOLCHAIN>/bin/llvm-ar
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
 '''
             },
           },
@@ -1186,6 +1191,9 @@ CL=<path:LLVM_TOOLCHAIN>\\bin\\clang-cl
 LINK=<path:LLVM_TOOLCHAIN>\\bin\\lld-link
 LIB=<path:LLVM_TOOLCHAIN>\\bin\\llvm-lib
 ML=<path:LLVM_TOOLCHAIN>\\bin\\llvm-ml
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
 '''
             },
           },
@@ -1221,6 +1229,9 @@ include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
 CC=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc
 CXX=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++
 AR=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
 '''
               },
             },
@@ -1238,6 +1249,9 @@ include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
 CC=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/gcc
 CXX=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/g++
 AR=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
 '''
               },
             },
