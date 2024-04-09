@@ -33,7 +33,6 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -632,16 +631,12 @@ public final class Deoptimizer {
      */
     @Fold
     static int savedBasePointerSize() {
-        if (Platform.includedIn(Platform.AMD64.class)) {
-            return SubstrateOptions.PreserveFramePointer.getValue() ? FrameAccess.wordSize() : 0;
-        } else if (Platform.includedIn(Platform.AARCH64.class)) {
-            // The base pointer is always saved with stp instruction on method entry
+        if (SubstrateOptions.hasFramePointer()) {
             return FrameAccess.wordSize();
-        } else if (Platform.includedIn(Platform.RISCV64.class)) {
-            // The base pointer is always pushed on the stack on method entry
-            return FrameAccess.wordSize();
+        } else {
+            VMError.guarantee(Platform.includedIn(Platform.AMD64.class));
+            return 0;
         }
-        throw VMError.shouldNotReachHere("Unexpected platform: " + ImageSingletons.lookup(Platform.class));
     }
 
     /**
