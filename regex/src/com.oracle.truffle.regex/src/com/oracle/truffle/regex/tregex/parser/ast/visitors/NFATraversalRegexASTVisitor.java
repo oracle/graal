@@ -191,7 +191,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * snapshots for the purposes of deduplication.
      */
     private final LongArrayBuffer transitionGuards = new LongArrayBuffer(8);
-    private long[] quantifierGuardsResult = null;
+    private long[] transitionGuardsResult = null;
 
     protected NFATraversalRegexASTVisitor(RegexAST ast) {
         this.ast = ast;
@@ -309,7 +309,7 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             RegexASTNode target = pathGetNode(curPath.peek());
             visit(target);
-            if (canPruneAfterUnconditionalFinalState() && target.isMatchFound() && !dollarsOnPath() && !caretsOnPath() && lookAroundsOnPath.isEmpty() && !hasQuantifierGuards()) {
+            if (canPruneAfterUnconditionalFinalState() && target.isMatchFound() && !dollarsOnPath() && !caretsOnPath() && lookAroundsOnPath.isEmpty() && !hasTransitionGuards()) {
                 /*
                  * Transitions after an unconditional final state transition will never be taken, so
                  * it is safe to prune them.
@@ -318,15 +318,15 @@ public abstract class NFATraversalRegexASTVisitor {
                 insideEmptyGuardGroup.clear();
                 curPath.clear();
                 clearCaptureGroupData();
-                clearQuantifierGuards();
-                quantifierGuardsResult = null;
+                clearTransitionGuards();
+                transitionGuardsResult = null;
                 /*
                  * no need to clear nodeVisitedCount here, because !dollarsOnPath() &&
                  * lookAroundsOnPath.isEmpty() implies nodeVisitsEmpty()
                  */
                 break;
             }
-            quantifierGuardsResult = null;
+            transitionGuardsResult = null;
             retreat();
             foundNextTarget = false;
             // If we have back-tracked into an empty-match transition, then we must continue by
@@ -336,8 +336,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 foundNextTarget = advanceTerm(cur.asGroup());
             }
         }
-        if (useQuantifierGuards()) {
-            clearQuantifierGuards();
+        if (useTransitionGuards()) {
+            clearTransitionGuards();
         }
         done = false;
     }
@@ -359,27 +359,27 @@ public abstract class NFATraversalRegexASTVisitor {
         return dollarsOnPath > 0;
     }
 
-    protected boolean hasQuantifierGuards() {
-        calcQuantifierGuards();
-        return quantifierGuardsResult.length > 0;
+    protected boolean hasTransitionGuards() {
+        calcTransitionGuardsResult();
+        return transitionGuardsResult.length > 0;
     }
 
-    protected long[] getQuantifierGuardsOnPath() {
-        calcQuantifierGuards();
-        return quantifierGuardsResult;
+    protected long[] getTransitionGuardsOnPath() {
+        calcTransitionGuardsResult();
+        return transitionGuardsResult;
     }
 
-    protected void calcQuantifierGuards() {
-        if (quantifierGuardsResult == null) {
-            assert useQuantifierGuards() || getQuantifierGuards().isEmpty();
-            quantifierGuardsResult = getQuantifierGuards().isEmpty() ? TransitionGuard.NO_GUARDS : getQuantifierGuards().toArray();
+    protected void calcTransitionGuardsResult() {
+        if (transitionGuardsResult == null) {
+            assert useTransitionGuards() || getTransitionGuards().isEmpty();
+            transitionGuardsResult = getTransitionGuards().isEmpty() ? TransitionGuard.NO_GUARDS : getTransitionGuards().toArray();
             if (ast.getOptions().getFlavor().supportsRecursiveBackreferences()) {
                 // Note: Updating the recursive back-reference boundaries before all other
                 // quantifier guards causes back-references to empty matches to fail. This
                 // is expected behavior in OracleDBFlavor.
-                long[] reordered = new long[quantifierGuardsResult.length];
+                long[] reordered = new long[transitionGuardsResult.length];
                 int i = 0;
-                for (long guard : quantifierGuardsResult) {
+                for (long guard : transitionGuardsResult) {
                     if (TransitionGuard.is(guard, TransitionGuard.Kind.updateRecursiveBackrefPointer)) {
                         reordered[i++] = guard;
                     }
@@ -387,13 +387,13 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (i == 0) {
                     return;
                 }
-                for (long guard : quantifierGuardsResult) {
+                for (long guard : transitionGuardsResult) {
                     if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateRecursiveBackrefPointer)) {
                         reordered[i++] = guard;
                     }
                 }
-                assert i == quantifierGuardsResult.length;
-                quantifierGuardsResult = reordered;
+                assert i == transitionGuardsResult.length;
+                transitionGuardsResult = reordered;
             }
         }
     }
@@ -714,7 +714,7 @@ public abstract class NFATraversalRegexASTVisitor {
             dedupKeyAddGroupBoundaries(getCaptureGroupUpdates());
             dedupKeyAddGroupBoundaries(getCaptureGroupClears());
         }
-        for (long guard : getQuantifierGuards()) {
+        for (long guard : getTransitionGuards()) {
             if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateCG)) {
                 dedupKey.add(guard);
             }
@@ -929,14 +929,14 @@ public abstract class NFATraversalRegexASTVisitor {
         return lastGroup;
     }
 
-    private LongArrayBuffer getQuantifierGuards() {
+    private LongArrayBuffer getTransitionGuards() {
         calcTransitionGuards();
         return transitionGuards;
     }
 
     private void calcTransitionGuards() {
         if (recalcTransitionGuards) {
-            if (useQuantifierGuards()) {
+            if (useTransitionGuards()) {
                 calculateTransitionGuards();
             } else {
                 calculateGroupBoundaries();
@@ -1007,21 +1007,21 @@ public abstract class NFATraversalRegexASTVisitor {
                         Quantifier quantifier = group.getQuantifier();
                         if (quantifier.hasIndex()) {
                             if (!quantifier.isInfiniteLoop() && boundedQuantifiersLoop.get(quantifier.getIndex()) && !boundedQuantifiersExited.get(quantifier.getIndex())) {
-                                pushQuantifierGuard(TransitionGuard.createLoop(quantifier));
+                                pushTransitionGuard(TransitionGuard.createLoop(quantifier));
                             } else {
-                                pushQuantifierGuard(TransitionGuard.createLoopInc(quantifier));
+                                pushTransitionGuard(TransitionGuard.createLoopInc(quantifier));
                             }
                         }
                         if (needsEmptyCheck(group)) {
-                            pushQuantifierGuard(TransitionGuard.createEnterZeroWidth(quantifier));
+                            pushTransitionGuard(TransitionGuard.createEnterZeroWidth(quantifier));
                         }
                     }
                     if (needsUpdateCGStepByStep(group) && !captureGroupUpdates.get(getBoundaryIndexStart(group))) {
-                        pushQuantifierGuard(TransitionGuard.createUpdateCG(getBoundaryIndexStart(group)));
+                        pushTransitionGuard(TransitionGuard.createUpdateCG(getBoundaryIndexStart(group)));
                     }
                     calcGroupBoundariesEnter(group);
                     if (group.isConditionalBackReferenceGroup()) {
-                        pushQuantifierGuard(getConditionalBackReferenceGroupQuantifierGuard(group, groupAltIndex));
+                        pushTransitionGuard(getConditionalBackReferenceGroupTransitionGuard(group, groupAltIndex));
                     }
                 } else if (pathIsGroupExitOrEscape(element)) {
                     if (pathIsGroupExit(element)) {
@@ -1031,7 +1031,7 @@ public abstract class NFATraversalRegexASTVisitor {
                                 boundedQuantifiersLoop.set(quantifier.getIndex());
                             }
                             if (needsEmptyCheck(group)) {
-                                pushQuantifierGuard(TransitionGuard.createExitZeroWidth(quantifier));
+                                pushTransitionGuard(TransitionGuard.createExitZeroWidth(quantifier));
                             }
                         }
                         pushRecursiveBackrefUpdates(group);
@@ -1042,12 +1042,12 @@ public abstract class NFATraversalRegexASTVisitor {
                                 boundedQuantifiersExited.set(quantifier.getIndex());
                             }
                             if (quantifier.hasZeroWidthIndex()) {
-                                pushQuantifierGuard(TransitionGuard.createEscapeZeroWidth(quantifier));
+                                pushTransitionGuard(TransitionGuard.createEscapeZeroWidth(quantifier));
                             }
                         }
                     }
                     if (needsUpdateCGStepByStep(group) && !captureGroupUpdates.get(getBoundaryIndexEnd(group))) {
-                        pushQuantifierGuard(TransitionGuard.createUpdateCG(getBoundaryIndexEnd(group)));
+                        pushTransitionGuard(TransitionGuard.createUpdateCG(getBoundaryIndexEnd(group)));
                     }
                     calcGroupBoundariesExit(group);
                 } else if (pathIsGroupPassThrough(element)) {
@@ -1057,9 +1057,9 @@ public abstract class NFATraversalRegexASTVisitor {
                         if (quantifier.hasIndex()) {
                             if (quantifier.getMin() > 0) {
                                 boundedQuantifiersExited.set(quantifier.getIndex());
-                                pushQuantifierGuard(TransitionGuard.createExit(quantifier));
+                                pushTransitionGuard(TransitionGuard.createExit(quantifier));
                             } else {
-                                pushQuantifierGuard(TransitionGuard.createExitReset(quantifier));
+                                pushTransitionGuard(TransitionGuard.createExitReset(quantifier));
                             }
                         } else {
                             assert quantifierGroup.isDead();
@@ -1092,7 +1092,7 @@ public abstract class NFATraversalRegexASTVisitor {
         return group.getQuantifier().hasZeroWidthIndex() && (ast.getOptions().getFlavor().emptyChecksOnMandatoryLoopIterations() || !group.isMandatoryUnrolledQuantifier());
     }
 
-    private static long getConditionalBackReferenceGroupQuantifierGuard(Group group, int groupAltIndex) {
+    private static long getConditionalBackReferenceGroupTransitionGuard(Group group, int groupAltIndex) {
         assert group.isConditionalBackReferenceGroup();
         int referencedGroupNumber = group.asConditionalBackReferenceGroup().getReferencedGroupNumber();
         if (groupAltIndex == 1) {
@@ -1106,13 +1106,13 @@ public abstract class NFATraversalRegexASTVisitor {
     private void pushRecursiveBackrefUpdates(Group group) {
         if (ast.getOptions().getFlavor().supportsRecursiveBackreferences() && ast.getProperties().hasRecursiveBackReferences()) {
             if (group.isCapturing() && ast.isGroupRecursivelyReferenced(group.getGroupNumber())) {
-                pushQuantifierGuard(TransitionGuard.createUpdateRecursiveBackref(group.getGroupNumber()));
+                pushTransitionGuard(TransitionGuard.createUpdateRecursiveBackref(group.getGroupNumber()));
             }
         }
     }
 
     /// Quantifier guard data handling
-    private boolean useQuantifierGuards() {
+    private boolean useTransitionGuards() {
         // In some flavors, we need to calculate quantifier guards even when building DFAs, since
         // these guards represent critical semantic details. While these guards would be ignored by
         // the DFA at runtime, they are all resolved statically during this traversal. This is
@@ -1120,12 +1120,12 @@ public abstract class NFATraversalRegexASTVisitor {
         return !isBuildingDFA() || ast.getOptions().getFlavor().canHaveEmptyLoopIterations();
     }
 
-    private void clearQuantifierGuards() {
+    private void clearTransitionGuards() {
         transitionGuards.clear();
     }
 
-    private void pushQuantifierGuard(long guard) {
-        assert useQuantifierGuards();
+    private void pushTransitionGuard(long guard) {
+        assert useTransitionGuards();
         // First, we check whether the guard can be resolved statically. If it is trivially true,
         // we ignore it (normalization). If it is impossible to satisfy, we backtrack.
         switch (TransitionGuard.getKind(guard)) {
@@ -1151,8 +1151,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 }
                 if (!enterFound) {
                     // We did not find any corresponding enterZeroWidth, so exitZeroWidth will
-                    // pass because of
-                    // input being consumed.
+                    // pass because of input being consumed.
                     keptAliveByConsumedInput = isBuildingDFA() || root.isCharacterClass();
                 }
                 boolean keptAlive = keptAliveByConsumedInput || keptAliveByCaptureGroups;
@@ -1186,7 +1185,7 @@ public abstract class NFATraversalRegexASTVisitor {
             case checkGroupNotMatched: {
                 assert (isBuildingDFA() && getMatchedConditionGroups() != null) == this instanceof ASTStepVisitor;
                 if (isBuildingDFA() && getMatchedConditionGroups() != null) {
-                    int referencedGroupNumber = TransitionGuard.getIndex(guard);
+                    int referencedGroupNumber = TransitionGuard.getGroupNumber(guard);
                     int groupEndIndex = Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber);
                     boolean groupMatched = (getMatchedConditionGroups().get(referencedGroupNumber) && !captureGroupClears.get(groupEndIndex)) || captureGroupUpdates.get(groupEndIndex);
                     if ((TransitionGuard.is(guard, TransitionGuard.Kind.checkGroupMatched)) != groupMatched) {
