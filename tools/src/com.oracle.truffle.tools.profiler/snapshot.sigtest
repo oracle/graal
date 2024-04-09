@@ -10,7 +10,9 @@ meth public boolean isCollecting()
 meth public boolean isGatherSelfHitTimes()
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter getFilter()
 meth public int getStackLimit()
+meth public java.util.List<com.oracle.truffle.tools.profiler.CPUSamplerData> getDataList()
 meth public java.util.Map<com.oracle.truffle.api.TruffleContext,com.oracle.truffle.tools.profiler.CPUSamplerData> getData()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public java.util.Map<java.lang.Thread,java.util.List<com.oracle.truffle.tools.profiler.StackTraceEntry>> takeSample()
 meth public java.util.Map<java.lang.Thread,java.util.List<com.oracle.truffle.tools.profiler.StackTraceEntry>> takeSample(long,java.util.concurrent.TimeUnit)
 meth public long getPeriod()
@@ -25,8 +27,8 @@ meth public void setPeriod(long)
 meth public void setSampleContextInitialization(boolean)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds COPY_PAYLOAD,DEFAULT_FILTER,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,processingThread,processingThreadRunnable,resultsToProcess,safepointStackSampler,sampleContextInitialization,samplerTask,samplerThread,stackLimit
-hcls MutableSamplerData,ResultProcessingRunnable,SamplingResult,SamplingTimerTask
+hfds COPY_PAYLOAD,DEFAULT_FILTER,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,nextContextIndex,period,processingExecutionService,processingThreadFuture,processingThreadRunnable,resultsToProcess,safepointStackSampler,sampleContextInitialization,samplerData,samplerExecutionService,samplerFuture,stackLimit
+hcls MutableSamplerData,ResultProcessingRunnable,SamplingResult,SamplingTask
 
 CLSS public final static com.oracle.truffle.tools.profiler.CPUSampler$Payload
  outer com.oracle.truffle.tools.profiler.CPUSampler
@@ -41,6 +43,8 @@ hfds selfHitTimes,selfTierCount,tierCount
 
 CLSS public final com.oracle.truffle.tools.profiler.CPUSamplerData
 meth public com.oracle.truffle.api.TruffleContext getContext()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+meth public int getContextIndex()
 meth public java.util.LongSummaryStatistics getSampleBias()
 meth public java.util.LongSummaryStatistics getSampleDuration()
 meth public java.util.Map<java.lang.Thread,java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>>> getThreadData()
@@ -48,7 +52,7 @@ meth public long getSampleInterval()
 meth public long getSamples()
 meth public long missedSamples()
 supr java.lang.Object
-hfds biasStatistics,context,durationStatistics,intervalMs,missedSamples,samplesTaken,threadData
+hfds biasStatistics,contextIndex,durationStatistics,intervalMs,missedSamples,samplesTaken,threadData
 
 CLSS public final com.oracle.truffle.tools.profiler.CPUTracer
 innr public final static Payload
@@ -87,7 +91,7 @@ meth public void clearData()
 meth public void close()
 meth public void setCollecting(boolean)
 supr java.lang.Object
-hfds CLEAN_INTERVAL,INTEROP,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceQueue,referenceThread,summaryData
+hfds CLEAN_INTERVAL,INTEROP,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceExecutorService,referenceFuture,referenceQueue,summaryData
 hcls Listener,ObjectWeakReference
 
 CLSS public final com.oracle.truffle.tools.profiler.HeapSummary
@@ -177,7 +181,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()

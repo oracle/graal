@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LongSummaryStatistics;
@@ -41,6 +42,7 @@ import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
 public final class CPUSamplerData {
 
     final int contextIndex;
+    final WeakReference<TruffleContext> contextRef;
     final Map<Thread, Collection<ProfilerNode<Payload>>> threadData;
     final LongSummaryStatistics biasStatistics;  // nanoseconds
     final LongSummaryStatistics durationStatistics;  // nanoseconds
@@ -48,10 +50,11 @@ public final class CPUSamplerData {
     final long intervalMs;
     final long missedSamples;
 
-    CPUSamplerData(int contextIndex, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
+    CPUSamplerData(int contextIndex, TruffleContext context, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
                     long samplesTaken,
                     long intervalMs, long missedSamples) {
         this.contextIndex = contextIndex;
+        this.contextRef = new WeakReference<>(context);
         this.threadData = threadData;
         this.biasStatistics = biasStatistics;
         this.durationStatistics = durationStatistics;
@@ -69,15 +72,14 @@ public final class CPUSamplerData {
     }
 
     /**
-     * @return The context this data applies to.
+     * @return The context this data applies to or null if the context was already collected.
      * @since 21.3.0
-     * @deprecated Contexts are no longer stored. Use {@link #getContextIndex()} to differentiate
-     *             sampler data for different contexts.
+     * @deprecated Contexts are no longer stored permanently. Use {@link #getContextIndex()} to
+     *             differentiate sampler data for different contexts.
      */
     @Deprecated
-    @SuppressWarnings("static-method")
     public TruffleContext getContext() {
-        return null;
+        return contextRef.get();
     }
 
     /**

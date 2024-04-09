@@ -334,16 +334,25 @@ public final class CPUSampler implements Closeable {
      * {@link #setCollecting(boolean)}. The collected data can be cleared from the cpusampler using
      * {@link #clearData()}
      *
-     * @return a map from {@link TruffleContext} to {@link CPUSamplerData}.
+     * @return a map from {@link TruffleContext} to {@link CPUSamplerData}. The contexts that were
+     *         already collected are not in the returned map even though data was collected for
+     *         them. All collected data can be obtained using {@link CPUSampler#getDataList()}
      * @since 21.3.0
      *
-     * @deprecated Contexts are no longer stored. Use {@link #getDataList()} to get per-context
-     *             sampler data.
+     * @deprecated Contexts are no longer stored permanently. Use {@link #getDataList()} to get
+     *             per-context sampler data.
      */
     @Deprecated
-    @SuppressWarnings("static-method")
-    public Map<TruffleContext, CPUSamplerData> getData() {
-        return Collections.emptyMap();
+    public synchronized Map<TruffleContext, CPUSamplerData> getData() {
+        List<CPUSamplerData> dataList = getDataList();
+        if (dataList.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<TruffleContext, CPUSamplerData> contextToData = new HashMap<>();
+        for (Map.Entry<TruffleContext, Integer> contextEntry : activeContexts.entrySet()) {
+            contextToData.put(contextEntry.getKey(), dataList.get(contextEntry.getValue()));
+        }
+        return Collections.unmodifiableMap(contextToData);
     }
 
     /**
@@ -361,6 +370,10 @@ public final class CPUSampler implements Closeable {
         if (samplerData.isEmpty()) {
             return Collections.emptyList();
         }
+        Map<Integer, TruffleContext> availableContexts = new HashMap<>();
+        for (Map.Entry<TruffleContext, Integer> contextEntry : activeContexts.entrySet()) {
+            availableContexts.put(contextEntry.getValue(), contextEntry.getKey());
+        }
         List<CPUSamplerData> dataList = new ArrayList<>();
         for (MutableSamplerData mutableSamplerData : this.samplerData) {
             Map<Thread, Collection<ProfilerNode<Payload>>> threads = new HashMap<>();
@@ -369,7 +382,8 @@ public final class CPUSampler implements Closeable {
                 copy.deepCopyChildrenFrom(threadEntry.getValue(), COPY_PAYLOAD);
                 threads.put(threadEntry.getKey(), copy.getChildren());
             }
-            dataList.add(new CPUSamplerData(mutableSamplerData.index, threads, mutableSamplerData.biasStatistic, mutableSamplerData.durationStatistic, mutableSamplerData.samplesTaken.get(), period,
+            dataList.add(new CPUSamplerData(mutableSamplerData.index, availableContexts.get(mutableSamplerData.index), threads, mutableSamplerData.biasStatistic, mutableSamplerData.durationStatistic,
+                            mutableSamplerData.samplesTaken.get(), period,
                             mutableSamplerData.missedSamples.get()));
         }
         return Collections.unmodifiableList(dataList);
@@ -804,7 +818,7 @@ public final class CPUSampler implements Closeable {
         final LongSummaryStatistics durationStatistic = new LongSummaryStatistics(); // nanoseconds
         final AtomicLong missedSamples = new AtomicLong(0);
 
-        public MutableSamplerData(int index) {
+        MutableSamplerData(int index) {
             this.index = index;
         }
     }
