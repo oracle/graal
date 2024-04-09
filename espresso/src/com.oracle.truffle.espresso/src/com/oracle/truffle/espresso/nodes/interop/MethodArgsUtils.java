@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -40,64 +38,140 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public class MethodArgsUtils {
 
-    @TruffleBoundary
+    /**
+     * Tries to match a given candidate with from a given arguments array. A match happens when all
+     * given arguments can be {@link ToEspressoNode converted to an espresso object} of the klass of
+     * their corresponding parameter's type in the method signature.
+     * <p>
+     * In case of a variable argument method, all parameters except the last (varargs argument) need
+     * to match, then, depending on what arguments are left to match:
+     * <ul>
+     * <li>If there is a single argument left, and it is an
+     * {@link InteropLibrary#hasArrayElements(Object)} interop array}, consider it to be containing
+     * the varargs, then append its elements into the returned
+     * {@link CandidateMethodWithArgs#getConvertedArgs()}, while trying to match each of its
+     * elements with the varargs component type..</li>
+     * <li>Else, every remaining parameter is matched with the component type of the varargs.</li>
+     * </ul>
+     * If at any point, matching an argument is not successful, this method returns {@code null}.
+     * <p>
+     * Here are a couple examples:
+     * <p>
+     * Trying to match method {@code int m(long, String)} with the argument types:
+     * <ul>
+     * <li>{@code [long l, String s]} -> {@code [l, s]}</li>
+     * <li>{@code [byte b, String s]} -> {@code [(long) b, s]}</li>
+     * <li>{@code [double d, String s]} -> fails</li>
+     * <li>{@code [long l, List s]} -> fails</li>
+     * <li>{@code [long l]} -> fails</li>
+     * </ul>
+     * <p>
+     * Trying to match method {@code int m(long, String...)} with the interop argument types:
+     * <ul>
+     * <li>{@code [long l, String s]} -> {@code [l, s]}</li>
+     * <li>{@code [byte b, String s]} -> {@code [(long) b, s]}</li>
+     * <li>{@code [double d, String s]} -> fails</li>
+     * <li>{@code [long l, String[](s1, s2, s3)]} -> [l, s1, s2, s3]</li>
+     * <li>{@code [long l, List(s1, s2, s3)]} -> [l, s1, s2, s3]</li>
+     * <li>{@code [long l]} -> [l]</li>
+     * <li>{@code [long l, NULL]} -> [l, NULL]</li>
+     * </ul>
+     */
     public static CandidateMethodWithArgs matchCandidate(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode.DynamicToEspresso toEspressoNode) {
-        boolean canConvert = true;
-        int paramLength = parameterKlasses.length;
-        Object[] convertedArgs = new Object[arguments.length];
-
-        for (int j = 0; j < arguments.length; j++) {
-            Klass paramType = null;
-            Object argument = arguments[j];
-            boolean checkNeeded = true;
-            try {
-                if (candidate.isVarargs() && j >= paramLength - 1) {
-                    paramType = ((ArrayKlass) parameterKlasses[paramLength - 1]).getComponentType();
-                    InteropLibrary library = InteropLibrary.getUncached();
-                    if (arguments.length == paramLength && j == paramLength - 1) {
-                        if (library.hasArrayElements(argument)) {
-                            long arraySize = library.getArraySize(argument);
-                            if (arraySize >= Integer.MAX_VALUE) {
-                                canConvert = false;
-                                break;
-                            }
-                            convertedArgs = Arrays.copyOf(convertedArgs, convertedArgs.length + (int) arraySize - 1);
-                            for (int l = 0; l < arraySize; l++) {
-                                if (library.isArrayElementReadable(argument, l)) {
-                                    Object element = library.readArrayElement(argument, l);
-                                    convertedArgs[j + l] = toEspressoNode.execute(element, paramType);
-                                } else {
-                                    canConvert = false;
-                                    break;
-                                }
-                            }
-                            checkNeeded = false;
-                        } else {
-                            if (library.isNull(argument)) {
-                                // null varargs array
-                                convertedArgs[j] = StaticObject.NULL;
-                                checkNeeded = false;
-                            }
-                        }
-                    }
-                }
-                if (checkNeeded) {
-                    if (paramType == null) {
-                        paramType = parameterKlasses[j];
-                    }
-                    convertedArgs[j] = toEspressoNode.execute(argument, paramType);
-                }
-            } catch (UnsupportedTypeException e) {
-                canConvert = false;
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                throw EspressoError.shouldNotReachHere();
-            }
+        Object[] convertedArgs = convertedArgs(candidate, arguments, parameterKlasses, toEspressoNode);
+        if (convertedArgs != null) {
+            return new CandidateMethodWithArgs(candidate, convertedArgs, parameterKlasses);
         }
-        return canConvert ? new CandidateMethodWithArgs(candidate, convertedArgs, parameterKlasses) : null;
+        return null;
     }
 
     @TruffleBoundary
+    private static Object[] convertedArgs(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode.DynamicToEspresso toEspressoNode) {
+        assert arguments.length == parameterKlasses.length || (candidate.isVarargs() && arguments.length >= parameterKlasses.length - 1);
+        int paramLength = parameterKlasses.length;
+        try {
+            // Determine if we need to expand a given vararg array
+            long expansionLength = 0;
+            boolean needsExpansion = false;
+            boolean isNullVararg = false;
+            if (candidate.isVarargs() && arguments.length == parameterKlasses.length) {
+                Object varargArray = arguments[paramLength - 1];
+                InteropLibrary lib = InteropLibrary.getUncached();
+                if (lib.hasArrayElements(varargArray)) {
+                    // Account for the additional array slot in the arguments array
+                    expansionLength = lib.getArraySize(varargArray) - 1;
+                    needsExpansion = true;
+                }
+                if (lib.isNull(varargArray)) {
+                    isNullVararg = true;
+                }
+            }
+
+            long arrayLen = arguments.length + expansionLength;
+            if (arrayLen > Integer.MAX_VALUE) {
+                return null;
+            }
+
+            Object[] convertedArgs = new Object[Math.toIntExact(arrayLen)];
+
+            // First, convert args up until the vararg array if any.
+            int nonVarargsLen = parameterKlasses.length + (candidate.isVarargs() ? -1 : 0);
+            for (int pos = 0; pos < nonVarargsLen; pos++) {
+                Klass paramType = parameterKlasses[pos];
+                convertedArgs[pos] = toEspressoNode.execute(arguments[pos], paramType);
+            }
+
+            if (candidate.isVarargs()) {
+                // Then, expand the given vararg array or collect the leftover arguments as the
+                // component type of the vararg.
+                Klass varargType = ((ArrayKlass) parameterKlasses[paramLength - 1]).getComponentType();
+                if (needsExpansion) {
+                    Object varargArray = arguments[paramLength - 1];
+                    InteropLibrary lib = InteropLibrary.getUncached();
+                    assert lib.hasArrayElements(varargArray);
+                    // Expand and convert given array.
+                    for (int varargPos = 0; varargPos <= expansionLength; varargPos++) {
+                        if (!lib.isArrayElementReadable(varargArray, varargPos)) {
+                            return null;
+                        }
+                        Object element = lib.readArrayElement(varargArray, varargPos);
+                        convertedArgs[nonVarargsLen + varargPos] = toEspressoNode.execute(element, varargType);
+                    }
+                } else if (isNullVararg) {
+                    convertedArgs[nonVarargsLen] = StaticObject.NULL;
+                } else {
+                    // Convert leftover arguments.
+                    for (int pos = nonVarargsLen; pos < arguments.length; pos++) {
+                        convertedArgs[pos] = toEspressoNode.execute(arguments[pos], varargType);
+                    }
+                }
+            }
+
+            return convertedArgs;
+        } catch (ArithmeticException // If expansion of the given vararg array overflows
+                        | OutOfMemoryError // If converted args array creation fails.
+                        | UnsupportedTypeException e) {
+            return null;
+        } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    /**
+     * From a given varargs method and expanded arguments (see {@link #matchCandidate}), creates a
+     * new arguments array containing the original arguments until the varargs argument, then
+     * collects the trailing varargs arguments in an array and prepend it. If the trailing arguments
+     * is a single {@code null}, then it is prepended instead.
+     * <p>
+     * For example, Trying to match method {@code int m(long, String...)} with the arguments:
+     * <ul>
+     * <li>{@code [long l, String s]} -> {@code [l, [s]]}</li>
+     * <li>{@code [long l, String s1, String s2, String s3] -> [l, [s1, s2, s3]]}</li>
+     * <li>{@code [long l]} -> [l, []]</li>
+     * <li>{@code [long l, NULL]} -> [l, NULL]</li>
+     */
     public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched) {
+        assert matched.getMethod().isVarargs();
         int varArgsIndex = matched.getParameterTypes().length - 1;
         Klass varArgsArrayType = matched.getParameterTypes()[varArgsIndex];
         Klass varArgsType = ((ArrayKlass) varArgsArrayType).getComponentType();
@@ -109,6 +183,12 @@ public class MethodArgsUtils {
             return matched;
         }
 
+        Object[] finalConvertedArgs = shrinkVarargs(matched, varArgsIndex, varArgsType, isPrimitive, varArgsLength);
+        return new CandidateMethodWithArgs(matched.getMethod(), finalConvertedArgs, matched.getParameterTypes());
+    }
+
+    @TruffleBoundary
+    private static Object[] shrinkVarargs(CandidateMethodWithArgs matched, int varArgsIndex, Klass varArgsType, boolean isPrimitive, int varArgsLength) {
         StaticObject varArgsArray = isPrimitive ? varArgsType.getAllocator().createNewPrimitiveArray(varArgsType, varArgsLength) : varArgsType.allocateReferenceArray(varArgsLength);
 
         int index = 0;
@@ -125,7 +205,7 @@ public class MethodArgsUtils {
         Object[] finalConvertedArgs = new Object[matched.getParameterTypes().length];
         System.arraycopy(matched.getConvertedArgs(), 0, finalConvertedArgs, 0, varArgsIndex);
         finalConvertedArgs[varArgsIndex] = varArgsArray;
-        return new CandidateMethodWithArgs(matched.getMethod(), finalConvertedArgs, matched.getParameterTypes());
+        return finalConvertedArgs;
     }
 
     public static PrimitiveKlass boxedTypeToPrimitiveType(Klass primitiveType) {
