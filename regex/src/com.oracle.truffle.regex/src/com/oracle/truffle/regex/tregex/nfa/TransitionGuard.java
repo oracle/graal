@@ -56,18 +56,14 @@ public final class TransitionGuard {
 
     public enum Kind {
         /**
-         * Transition is entering a quantified expression. Just increase the loop count.
-         */
-        enter,
-        /**
          * Transition represents a back-edge in the quantifier loop. Check if the loop count is
          * below {@link Quantifier#getMax()}, then increase loop count.
          */
         loop,
         /**
-         * Transition represents a back-edge in a quantifier loop without upper bound, i.e.
-         * quantifiers where {@link Quantifier#isInfiniteLoop()} is {@code true}. Just increase the
-         * loop count.
+         * Transition represents either a first entry into a quantified expression, or a back-edge
+         * in a quantifier loop without upper bound, i.e. quantifiers where
+         * {@link Quantifier#isInfiniteLoop()} is {@code true}. Just increase the loop count.
          */
         loopInc,
         /**
@@ -126,15 +122,11 @@ public final class TransitionGuard {
         checkGroupNotMatched
     }
 
-    private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.enter, Kind.loop, Kind.loopInc, Kind.exit, Kind.exitReset);
+    private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.loop, Kind.loopInc, Kind.exit, Kind.exitReset);
     private static final EnumSet<Kind> ZERO_WIDTH_QUANTIFIER_GUARDS = EnumSet.of(Kind.enterZeroWidth, Kind.exitZeroWidth, Kind.escapeZeroWidth);
     private static final EnumSet<Kind> GROUP_GUARDS = EnumSet.of(Kind.updateCG, Kind.updateRecursiveBackrefPointer, Kind.checkGroupMatched, Kind.checkGroupNotMatched);
 
     public static final long[] NO_GUARDS = {};
-
-    public static long createEnter(Quantifier quantifier) {
-        return create(Kind.enter, quantifier);
-    }
 
     public static long createLoop(Quantifier quantifier) {
         return create(Kind.loop, quantifier);
@@ -148,12 +140,16 @@ public final class TransitionGuard {
         return create(Kind.exit, quantifier);
     }
 
-    public static long createClear(Quantifier quantifier) {
+    public static long createExitReset(Quantifier quantifier) {
         return create(Kind.exitReset, quantifier);
     }
 
     public static long createEnterZeroWidth(Quantifier quantifier) {
         return createZeroWidth(Kind.enterZeroWidth, quantifier);
+    }
+
+    public static long createEnterZeroWidthFromExit(long guard) {
+        return create(Kind.enterZeroWidth, getZeroWidthQuantifierIndex(guard));
     }
 
     public static long createExitZeroWidth(Quantifier quantifier) {
