@@ -132,4 +132,9 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
             masm.ret(0);
         }
     }
+
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
+    }
 }
