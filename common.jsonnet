@@ -37,6 +37,9 @@
   weekly:: {
     targets+: ["weekly"],
   },
+  monthly:: {
+    targets+: ["monthly"],
+  },
 
   // Heap settings
   // *************
