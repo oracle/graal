@@ -851,7 +851,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         for (long guard : transition.getQuantifierGuards()) {
             CompilerAsserts.partialEvaluationConstant(guard);
             switch (TransitionGuard.getKind(guard)) {
-                case enter, loop, loopInc -> {
+                case loop, loopInc -> {
                     locals.incQuantifierCount(TransitionGuard.getQuantifierIndex(guard));
                 }
                 case exit, exitReset -> {
@@ -957,7 +957,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         }
         for (long guard : transition.getQuantifierGuards()) {
             switch (TransitionGuard.getKind(guard)) {
-                case enter:
                 case loopInc:
                     locals.incQuantifierCount(TransitionGuard.getQuantifierIndex(guard));
                     break;
