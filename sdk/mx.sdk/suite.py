@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.19.3",
+  "mxversion": "7.22.0",
   "name" : "sdk",
   "version" : "24.1.0",
   "release" : False,
@@ -1258,6 +1258,44 @@ LDFLAGS=
             "dependencies": [
               "MUSL_GCC_TOOLCHAIN",
               "mx:GCC_NINJA_TOOLCHAIN",
+            ],
+          },
+        },
+        "<others>": {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+      "maven" : False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "MUSL_CMAKE_TOOLCHAIN" : {
+      "native" : True,
+      "platformDependent" : True,
+      "native_toolchain" : {
+        "kind": "cmake",
+        "target": {
+          # host os/arch
+          "libc": "musl",
+        },
+      },
+      "os_arch": {
+        "linux": {
+          "amd64": {
+            "layout" : {
+              "toolchain.cmake" : {
+                "source_type": "string",
+                "value": '''
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc)
+set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++)
+set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar)
+'''
+              },
+            },
+            "dependencies": [
+              "MUSL_GCC_TOOLCHAIN",
             ],
           },
         },
