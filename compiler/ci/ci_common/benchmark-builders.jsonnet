@@ -7,40 +7,40 @@
 
   local main_builds = std.flattenArrays([
     [
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.dacapo + { unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time']}},
-    c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.dacapo_size_variants,
-    c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.dacapo_timing,
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo + {unicorn_pull_request_benchmarking:: 'libgraal'},
-    c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_size_variants,
-    c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_timing,
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.renaissance + {unicorn_pull_request_benchmarking:: 'libgraal'},
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.specjvm2008 + {unicorn_pull_request_benchmarking:: 'libgraal'},
-    c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.specjbb2015,
-    c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.specjbb2015_full_machine,
-    c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.renaissance_0_11,
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.awfy + {unicorn_pull_request_benchmarking:: 'libgraal'},
-    c.daily                    + hw.x52 + jdk + cc.libgraal + bench.microservice_benchmarks,
-    c.daily                    + hw.x52 + jdk + cc.libgraal + bench.renaissance_legacy,
-    c.daily                    + hw.x52 + jdk + cc.libgraal + bench.micros_graal_whitebox,
-    c.daily                    + hw.x52 + jdk + cc.libgraal + bench.micros_graal_dist,
-    c.daily                    + hw.x52 + jdk + cc.libgraal + bench.micros_misc_graal_dist,
-    c.daily                    + hw.x52 + jdk + cc.libgraal + bench.micros_shootout_graal_dist,
+    c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.dacapo + { unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time']}},
+    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.dacapo_size_variants,
+    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.dacapo_timing,
+    c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.scala_dacapo + {unicorn_pull_request_benchmarking:: 'libgraal'},
+    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.scala_dacapo_size_variants,
+    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.scala_dacapo_timing,
+    c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.renaissance + {unicorn_pull_request_benchmarking:: 'libgraal'},
+    c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.specjvm2008 + {unicorn_pull_request_benchmarking:: 'libgraal'},
+    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.specjbb2015,
+    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.specjbb2015_full_machine,
+    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.renaissance_0_11,
+    c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.awfy + {unicorn_pull_request_benchmarking:: 'libgraal'},
+    c.daily                    + hw.e3 + jdk + cc.libgraal + bench.microservice_benchmarks,
+    c.daily                    + hw.e3 + jdk + cc.libgraal + bench.renaissance_legacy,
+    c.daily                    + hw.e3 + jdk + cc.libgraal + bench.micros_graal_whitebox,
+    c.daily                    + hw.e3 + jdk + cc.libgraal + bench.micros_graal_dist,
+    c.daily                    + hw.e3 + jdk + cc.libgraal + bench.micros_misc_graal_dist,
+    c.daily                    + hw.e3 + jdk + cc.libgraal + bench.micros_shootout_graal_dist,
     ]
   for jdk in cc.bench_jdks
   ]),
 
   local profiling_builds = std.flattenArrays([
     [
-    c.weekly + hw.x52 + jdk + cc.libgraal + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
-    c.weekly + hw.x52 + jdk + cc.libgraal + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
+    c.monthly + hw.e3 + jdk + cc.libgraal + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
+    c.monthly + hw.e3 + jdk + cc.libgraal + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
     ]
   for jdk in cc.bench_jdks
   for suite in bench.groups.profiled_suites
   ]),
 
   local weekly_amd64_forks_builds = std.flattenArrays([
-    bc.generate_fork_builds(c.weekly  + hw.x52  + jdk + cc.libgraal + suite, subdir='compiler') +
-    bc.generate_fork_builds(c.monthly + hw.x52  + jdk + cc.jargraal + suite, subdir='compiler')
+    bc.generate_fork_builds(c.weekly  + hw.e3  + jdk + cc.libgraal + suite, subdir='compiler') +
+    bc.generate_fork_builds(c.monthly + hw.e3  + jdk + cc.jargraal + suite, subdir='compiler')
   for jdk in cc.bench_jdks
   for suite in bench.groups.weekly_forks_suites
   ]),
@@ -63,7 +63,7 @@
   ],
 
   local zgc_builds = [
-    c.weekly + hw.x52 + jdk + cc.libgraal + cc.zgc_mode + suite,
+    c.weekly + hw.e3 + jdk + cc.libgraal + cc.zgc_mode + suite,
   for jdk in cc.bench_jdks
   for suite in bench.groups.main_suites + [bench.specjbb2015]
   ],
@@ -76,13 +76,13 @@
   ],
 
   local no_tiered_builds = [
-    c.weekly + hw.x52 + jdk + cc.libgraal + cc.no_tiered_comp + suite,
+    c.monthly + hw.e3 + jdk + cc.libgraal + cc.no_tiered_comp + suite,
   for jdk in cc.bench_jdks
   for suite in bench.groups.main_suites
   ],
 
   local no_profile_info_builds = [
-    c.weekly + hw.x52 + jdk + cc.libgraal + cc.no_profile_info + suite,
+    c.monthly + hw.e3 + jdk + cc.libgraal + cc.no_profile_info + suite,
   for jdk in cc.bench_jdks
   for suite in bench.groups.main_suites
   ],

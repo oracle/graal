@@ -26,7 +26,7 @@
 
   // suite definitions
   // *****************
-  awfy: cc.compiler_benchmark + c.heap.small + {
+  awfy: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
     suite:: "awfy",
     run+: [
       self.benchmark_cmd + ["awfy:*", "--"] + self.extra_vm_args
@@ -38,7 +38,7 @@
     max_jdk_version:: null
   },
 
-  dacapo: cc.compiler_benchmark + c.heap.default + {
+  dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "dacapo",
     run+: [
       self.benchmark_cmd + ["dacapo:*", "--"] + self.extra_vm_args
@@ -50,7 +50,7 @@
     max_jdk_version:: null
   },
 
-  dacapo_size_variants: cc.compiler_benchmark + c.heap.default + {
+  dacapo_size_variants: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "dacapo-size-variants",
     run+: [
       self.benchmark_cmd + ["dacapo-small:*", "--"] + self.extra_vm_args,
@@ -76,7 +76,7 @@
     max_jdk_version:: null
   },
 
-  scala_dacapo: cc.compiler_benchmark + c.heap.default + {
+  scala_dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "scala-dacapo",
     run+: [
       self.benchmark_cmd + ["scala-dacapo:*", "--"] + self.extra_vm_args
@@ -88,7 +88,7 @@
     max_jdk_version:: null
   },
 
-  scala_dacapo_size_variants: cc.compiler_benchmark + c.heap.default + {
+  scala_dacapo_size_variants: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "scala-dacapo-size-variants",
     run+: [
       self.benchmark_cmd + ["scala-dacapo-tiny:*", "--"] + self.extra_vm_args,
@@ -119,7 +119,7 @@
     max_jdk_version:: null
   },
 
-  renaissance_template(suite_version=null, suite_name="renaissance", max_jdk_version=null):: cc.compiler_benchmark + c.heap.default + {
+  renaissance_template(suite_version=null, suite_name="renaissance", max_jdk_version=null):: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: suite_name,
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     run+: [
@@ -208,7 +208,7 @@
   },
 
   // Microservice benchmarks
-  microservice_benchmarks: cc.compiler_benchmark + {
+  microservice_benchmarks: cc.compiler_benchmark + bc.bench_no_thread_cap + {  # no thread cap here since hwloc is handled at the mx level for microservices
     suite:: "microservices",
     packages+: {
       "pip:psutil": "==5.8.0"
@@ -221,15 +221,7 @@
     local hwlocBind_16C_32T = ["--hwloc-bind=--cpubind node:0.core:0-15.pu:0-1 --membind node:0"],
     run+: [
       # shopcart-wrk
-      self.benchmark_cmd + ["shopcart-wrk:mixed-tiny"]                   + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms32m",   "-Xmx112m",  "-XX:ActiveProcessorCount=1",  "-XX:MaxDirectMemorySize=256m"],
-      bench_upload,
-      self.benchmark_cmd + ["shopcart-wrk:mixed-small"]                  + hwlocBind_2C_2T   + ["--"] + self.extra_vm_args + ["-Xms64m",   "-Xmx224m",  "-XX:ActiveProcessorCount=2",  "-XX:MaxDirectMemorySize=512m"],
-      bench_upload,
-      self.benchmark_cmd + ["shopcart-wrk:mixed-medium"]                 + hwlocBind_4C_4T   + ["--"] + self.extra_vm_args + ["-Xms128m",  "-Xmx512m",  "-XX:ActiveProcessorCount=4",  "-XX:MaxDirectMemorySize=1024m"],
-      bench_upload,
       self.benchmark_cmd + ["shopcart-wrk:mixed-large"]                  + hwlocBind_16C_16T + ["--"] + self.extra_vm_args + ["-Xms512m",  "-Xmx3072m", "-XX:ActiveProcessorCount=16", "-XX:MaxDirectMemorySize=4096m"],
-      bench_upload,
-      self.benchmark_cmd + ["shopcart-wrk:mixed-huge"]                   + hwlocBind_16C_32T + ["--"] + self.extra_vm_args + ["-Xms1024m", "-Xmx8192m", "-XX:ActiveProcessorCount=32", "-XX:MaxDirectMemorySize=8192m"],
       bench_upload,
 
       # tika-wrk odt
@@ -257,8 +249,6 @@
       bench_upload,
       self.benchmark_cmd + ["petclinic-wrk:mixed-large"]                 + hwlocBind_16C_16T + ["--"] + self.extra_vm_args + ["-Xms320m",  "-Xmx1280m", "-XX:ActiveProcessorCount=16"],
       bench_upload,
-      self.benchmark_cmd + ["petclinic-wrk:mixed-huge"]                  + hwlocBind_16C_32T + ["--"] + self.extra_vm_args + ["-Xms640m",  "-Xmx3072m", "-XX:ActiveProcessorCount=32"],
-      bench_upload,
 
       # helloworld-wrk
       self.benchmark_cmd + ["micronaut-helloworld-wrk:helloworld"]       + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms8m",    "-Xmx64m",   "-XX:ActiveProcessorCount=1", "-XX:MaxDirectMemorySize=256m"],
@@ -275,7 +265,7 @@
   },
 
   // JMH microbenchmarks
-  micros_graal_whitebox: cc.compiler_benchmark + c.heap.default + {
+  micros_graal_whitebox: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "micros-graal-whitebox",
     run+: [
       self.benchmark_cmd + ["jmh-whitebox:*", "--"] + self.extra_vm_args
@@ -285,7 +275,7 @@
     max_jdk_version:: null
   },
 
-  micros_graal_dist: cc.compiler_benchmark + c.heap.default + {
+  micros_graal_dist: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "micros-graal-dist",
     run+: [
       self.benchmark_cmd + ["jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS", "--"] + self.extra_vm_args
@@ -295,7 +285,7 @@
     max_jdk_version:: null
   },
 
-  micros_misc_graal_dist: cc.compiler_benchmark + c.heap.default + {
+  micros_misc_graal_dist: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "micros-misc-graal-dist",
     run+: [
       self.benchmark_cmd + ["jmh-dist:GRAAL_BENCH_MISC", "--"] + self.extra_vm_args
@@ -305,7 +295,7 @@
     max_jdk_version:: null
   },
 
-  micros_shootout_graal_dist: cc.compiler_benchmark + c.heap.default {
+  micros_shootout_graal_dist: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "micros-shootout-graal-dist",
     run+: [
       self.benchmark_cmd + ["jmh-dist:GRAAL_BENCH_SHOOTOUT", "--"] + self.extra_vm_args
