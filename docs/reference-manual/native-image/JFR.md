@@ -8,63 +8,33 @@ redirect_from: /reference-manual/native-image/JFR/
 
 # JDK Flight Recorder (JFR) with Native Image
 
-JDK Flight Recorder (JFR) is an event recorder for capturing information about a JVM, and an application running on the JVM. 
-GraalVM Native Image supports building a native executable with JFR events, and users can use [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/20/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
+JDK Flight Recorder (JFR) is an event recorder for capturing information about a JVM, and an application running on the JVM.
+GraalVM Native Image supports building a native executable with JFR events, and users can use [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
 
-To record JFR events when running a native executable, JFR support and JFR recording must be enabled. 
+## Include JFR Support at Build Time and Record Events at Runtime
 
-## Add JFR Support and Record Events at Run Time
+JFR support is disabled by default and must be explicitly enabled at build time.
 
-To build a native executable with the JFR events support, you first need to include JFR at build time, then enable the system, start a recording, and configure logging at native executable run time.
-
-To build a native executable with JFR, use the `--enable-monitoring=jfr` flag:
+> Note: JFR event recording is not yet available in GraalVM JDK on Windows.
+ 
+To build a native executable with JFR, use the `--enable-monitoring=jfr` option:
 ```shell
 native-image --enable-monitoring=jfr JavaApplication
 ```
-To enable the system, start a recording, and configure logging at run time, the following options are supported:
+The following options are supported to start a recording, and configure logging at runtime:
 
-* `-XX:+FlightRecorder`: use to enable JFR
-* `-XX:StartFlightRecording`: use to start a recording on application's startup
-* `-XX:FlightRecorderLogging`: use to configure the log output for the JFR system
+* `-XX:StartFlightRecording`: starts a recording on application startup
+* `-XX:FlightRecorderLogging`: configures the log output for the JFR
 
-To enable JFR and start a recording, simply use `-XX:StartFlightRecording`. 
+To start a JFR recording, simply use `-XX:StartFlightRecording` at runtime.
 For example:
 ```shell
 ./javaapplication -XX:StartFlightRecording="filename=recording.jfr"
 ```
 
-### Run a Demo
-
-Transform this very simple demo application into a native image and see how to use JFR events from it.
-Save the following code to the _Example.java_ file.
-
-```java
-import jdk.jfr.Event;
-import jdk.jfr.Description;
-import jdk.jfr.Label;
-
-public class Example {
-
-  @Label("Hello World")
-  @Description("Helps programmer getting started")
-  static class HelloWorldEvent extends Event {
-      @Label("Message")
-      String message;
-  }
-
-  public static void main(String... args) {
-      HelloWorldEvent event = new HelloWorldEvent();
-      event.message = "hello, world!";
-      event.commit();
-  }
-}
-```
-
-You can further configure the JFR recording or enable logging.
-
 ## Configure JFR Recording
 
-You can configure the JFR recording by passing a comma-separated list of key-value pairs to the `-XX:StartFlightRecording` option.
+Similar to how JFR recordings can be started on HotSpot, you start recording by passing a comma-separated list of key-value pairs to the `-XX:StartFlightRecording` option.
 For example:
 ```shell
 -XX:StartFlightRecording="filename=recording.jfr,dumponexit=true,duration=10s"
@@ -74,14 +44,14 @@ The following key-value pairs are supported:
 
 | Name       | Default Value | Description                                                                                                                                        |
 |------------|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| name       | none          | Name that can be used to identify the recording, for example, “name=MyRecording”                                                                          |
-| settings   | none          | Settings file (profile.jfc, default.jfc, and so on), for example, “settings=myprofile.jfc”                                                                     |
-| delay      | none          | Delay recording start with (s)econds, (m)inutes), (h)ours), or (d)ays, for example, “delay=5h”                                                            |
-| duration   | infinite (0)  | Duration of recording in (s)econds, (m)inutes, (h)ours, or (d)ays, for example, “duration=300s”                                                           |
-| filename   | none          | Resulting recording filename, for example, “filename=recording1.jfr”                                                                                      |
-| maxage     | no limit (0)  | Maximum time to keep the recorded data on disk in (s)econds, (m)inutes, (h)ours, or (d)ays, for example, 60m, or 0 for no limit. For example, “maxage=1d” |
-| maxsize    | no limit (0)  | Maximum amount of bytes to keep on disk in (k)B, (M)B or (G)B, for example, 500M, or 0 for no limit. For example, “maxsize=1G”                            |
-| dumponexit | false         | Whether to dump a running recording when the JVM shuts down, for example, “dumponexit=true”                                                               |
+| name       | none          | Name to identify the recording, for example, `name=MyRecording`                                                                          |
+| settings   | none          | Settings file (_profile.jfc_, _default.jfc_, and so on), for example, `settings=myprofile.jfc`                                                                     |
+| delay      | none          | Delay recording start with (s)econds, (m)inutes, (h)ours, or (d)ays, for example, `delay=5h`                                                            |
+| duration   | infinite (0)  | Duration of recording in (s)econds, (m)inutes, (h)ours, or (d)ays, for example, `duration=300s`                                                           |
+| filename   | none          | Resulting recording filename, for example, `filename=recording1.jfr`                                                                                      |
+| maxage     | no limit (0)  | Maximum time to keep the recorded data on disk in (s)econds, (m)inutes, (h)ours, or (d)ays, for example, 60m, or 0 for no limit. For example, `maxage=1d` |
+| maxsize    | no limit (0)  | Maximum amount of bytes to keep on disk in (k)B, (M)B or (G)B, for example, 500M, or 0 for no limit. For example, `maxsize=1G`                            |
+| dumponexit | false         | Whether to dump a running recording when the JVM shuts down, for example, `dumponexit=true`                                                               |
 
 ## Configure JFR System Logging
 
@@ -102,7 +72,7 @@ Available log levels are: `trace, debug, info, warning, error, off`.
 
 Available log tags are: `all, jfr, system, event, setting, bytecode, parser, metadata, dcmd`.
 
-Otherwise, this option expects a comma separated list of tag combinations, each with an optional wildcard (`*`) and level.
+Otherwise, this option expects a comma-separated list of tag combinations, each with an optional wildcard (`*`) and level.
 
 * A tag combination without a level is given a default level of `INFO`.
 * Messages with tags that match a given tag combination will be logged if they meet the tag combination's level.
@@ -111,20 +81,113 @@ Otherwise, this option expects a comma separated list of tag combinations, each 
 * Messages with tags that do not have any matching tag combinations are set to log at a default level of `WARNING`.
 * This option is case insensitive.
 
-### Related Documentation
+## Features and Limitations
 
-- [Debugging and Diagnostics](DebuggingAndDiagnostics.md)
+This section outlines the JFR features that are available in Native Image.
 
-## Current Limitations
+### Method Profiling and Stack Traces
 
-JFR support is currently incomplete: for example, few VM-internal events are present. 
-However, JFR currently includes the following features: custom and system events, disk-based recordings, and stack traces. 
-To see an exhaustive list of JFR events and features supported by Native Image, see [this GitHub issue](https://github.com/oracle/graal/issues/5410).
+Method profiling in JFR supports two types of sampling: safepoint and asynchronous sampling. 
+The asynchronous sampler is enabled by default, while the safepoint sampler is used only on demand. 
+Asynchronous sampling offers the advantage of avoiding safepoint bias, which happens if a profiler does not sample all points in the application with equal probability. 
+In this scenario, the sampler can only perform sampling at a safepoint, thereby introducing bias into the profiles.
 
-> Note: the GraalVM distribution for Windows does not include JFR event recording.
+Both samplers periodically produce the event `jdk.ExecutionSample` at specified frequencies. 
+These samples can be viewed in applications such as JDK Mission Control or VisualVM. 
+In addition, other JFR events that support stacktraces on HotSpot also support stacktraces in Native Image. 
+This means you can do interesting things such as viewing flamegraphs of `jdk.ObjectAllocationInNewTLAB` to diagnose where object allocations are frequently happening.
+
+### JFR Event Streaming
+
+[JFR Event Streaming](https://openjdk.org/jeps/349) is available with Native Image.
+Event streaming enables you to register callbacks for specific events at the application level.
+This introduces more flexibility and control over how recordings are managed.
+For example, you may dynamically increase the duration threshold of an event if it is found in the stream beyond a certain number times.
+Event streaming also enables the application to get continuous periodic JFR updates that are useful for monitoring purposes. 
+
+Currently, stacktraces are not yet available on streamed events.
+This means you cannot access the stacktrace of an event inside its callback method.
+However, this limitation does not affect stacktraces in the JFR snapshot file (_.jfr_), those will still work as usual.
+
+### Interaction with FlightRecorderMXBean via Remote JMX
+
+You can interact with Native Image JFR from out of a process via a remote JMX connection to `FlightRecorderMXBean`.
+This can be done using applications such as JDK Mission Control or VisualVM.
+Over JMX you can start, stop, and dump JFR recordings using the `FlightRecorderMXBean` API as an interface.
+
+> Note: Remote JMX connection support needs to be enabled separately at build time and is experimental. 
+
+### FlightRecorderOptions
+
+You can fine-tune JFR parameters by using `-XX:FlightRecorderOptions` at runtime.
+This is primarily for advanced users, and most people should be fine with the default parameters.
+
+### Leak Profiling
+
+Leak profiling implemented using the `jdk.OldObjectSample` event is partially available.
+Specifically, old object tracking is possible, but the path to the GC root information is unavailable.
+
+### Built-In Events
+
+Many of the VM-level built-in events are available in Native Image.
+Java-level events implemented by bytecode instrumentation on the HotSpot JVM are not yet available in Native Image.
+Such events include file I/O and exception built-in events.
+
+The following table lists JFR Events that can be collected with Native Image.
+Some of the events are available with [Serial GC](MemoryManagement.md) only, the default garbage collector in Native Image.
+ 
+| Event Name                          | 
+|-------------------------------------|
+| `jdk.ActiveRecording`               |
+| `jdk.ActiveSetting`                 |
+| `jdk.AllocationRequiringGC` <a href="#footnote-1">1)</a> |
+| `jdk.ClassLoadingStatistics`        |
+| `jdk.ContainerCPUThrottling`        |
+| `jdk.ContainerCPUUsage`             |
+| `jdk.ContainerConfiguration`        |
+| `jdk.ContainerIOUsage`              |
+| `jdk.ContainerMemoryUsage`          |
+| `jdk.DataLoss`                      |
+| `jdk.ExecutionSample`               |
+| `jdk.ExecuteVMOperation`            |
+| `jdk.GarbageCollection` <a href="#footnote-1">1)</a>         |
+| `jdk.GCHeapSummary` <a href="#footnote-1">1)</a>             |
+| `jdk.GCPhasePause` <a href="#footnote-1">1)</a>              |
+| `jdk.GCPhasePauseLevel1` <a href="#footnote-1">1)</a>        |
+| `jdk.GCPhasePauseLevel2` <a href="#footnote-1">1)</a>        |
+| `jdk.GCPhasePauseLevel3` <a href="#footnote-1">1)</a>        |
+| `jdk.GCPhasePauseLevel4` <a href="#footnote-1">1)</a>        |
+| `jdk.InitialEnvironmentVariable`    |
+| `jdk.InitialSystemProperty`         |
+| `jdk.JavaMonitorEnter`              |
+| `jdk.JavaMonitorInflate`            |
+| `jdk.JavaMonitorWait`               |
+| `jdk.JavaThreadStatistics`          |
+| `jdk.JVMInformation`                |
+| `jdk.ObjectAllocationSample` <a href="#footnote-1">1)</a>    |
+| `jdk.ObjectAllocationInNewTLAB` <a href="#footnote-1">1)</a> |
+| `jdk.OldObjectSample` <a href="#footnote-1">2)</a>           |
+| `jdk.OSInformation`                 |
+| `jdk.PhysicalMemory`                |
+| `jdk.SafepointBegin`                |
+| `jdk.SafepointEnd`                  |
+| `jdk.SocketRead`                    |
+| `jdk.SocketWrite`                   |
+| `jdk.SystemGC`  <a href="#footnote-1">1)</a>                 |
+| `jdk.ThreadAllocationStatistics`    |
+| `jdk.ThreadCPULoad`                 |
+| `jdk.ThreadEnd`                     |
+| `jdk.ThreadPark`                    |
+| `jdk.ThreadSleep`                   |
+| `jdk.ThreadStart`                   |
+| `jdk.VirtualThreadEnd`              |
+| `jdk.VirtualThreadPinned`           |
+| `jdk.VirtualThreadStart`            |
+
+<p id="footnote-1" style="margin-bottom: 0;"><i>1) Available if Serial GC is used.</i></p>
+<p id="footnote-2" style="margin-bottom: 0;"><i>2) Partially available if Serial GC is used.</i></p>
 
 ### Further Reading
 
-- [Practice how to enable JFR support with Native Image and record events at run time using a demo application](/guides/build-and-run-native-executable-with-jfr.md).
-
-- [Create and record your first event with Java](https://docs.oracle.com/en/java/javase/17/jfapi/creating-and-recording-your-first-event.html).
+- [Build and Run Native Executables with JFR](guides/build-and-run-native-executable-with-jfr.md)
+- [Use remote JMX with Native Image](guides/build-and-run-native-executable-with-remote-jmx.md)

@@ -936,7 +936,7 @@ public class SubstrateOptions {
     @Option(help = "Enable Java Flight Recorder.")//
     public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false, Immutable);
 
-    @Option(help = "Start flight recording with options.")//
+    @Option(help = "file:doc-files/StartFlightRecordingHelp.txt")//
     public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("", Immutable);
 
     @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
