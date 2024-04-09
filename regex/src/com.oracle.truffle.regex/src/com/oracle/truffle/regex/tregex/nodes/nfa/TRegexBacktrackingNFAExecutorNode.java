@@ -751,7 +751,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         if (transition.hasDollarGuard() && index < locals.getRegionTo()) {
             return false;
         }
-        for (long guard : transition.getQuantifierGuards()) {
+        for (long guard : transition.getGuards()) {
             CompilerAsserts.partialEvaluationConstant(guard);
             switch (TransitionGuard.getKind(guard)) {
                 case loop -> {
@@ -784,14 +784,14 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     }
                 }
                 case checkGroupMatched -> {
-                    if (getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(TransitionGuard.getIndex(guard)), index) == -1 ||
-                                    getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(TransitionGuard.getIndex(guard)), index) == -1) {
+                    if (getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(TransitionGuard.getGroupNumber(guard)), index) == -1 ||
+                                    getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(TransitionGuard.getGroupNumber(guard)), index) == -1) {
                         return false;
                     }
                 }
                 case checkGroupNotMatched -> {
-                    if (getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(TransitionGuard.getIndex(guard)), index) != -1 &&
-                                    getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(TransitionGuard.getIndex(guard)), index) != -1) {
+                    if (getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(TransitionGuard.getGroupNumber(guard)), index) != -1 &&
+                                    getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(TransitionGuard.getGroupNumber(guard)), index) != -1) {
                         return false;
                     }
                 }
@@ -838,17 +838,17 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
              * by locals.apply
              */
             assert isForward();
-            for (long guard : transition.getQuantifierGuards()) {
+            for (long guard : transition.getGuards()) {
                 CompilerAsserts.partialEvaluationConstant(guard);
                 if (TransitionGuard.is(guard, TransitionGuard.Kind.updateRecursiveBackrefPointer)) {
-                    locals.saveRecursiveBackrefGroupStart(TransitionGuard.getIndex(guard));
+                    locals.saveRecursiveBackrefGroupStart(TransitionGuard.getGroupNumber(guard));
                 } else {
                     break;
                 }
             }
         }
         locals.apply(transition, index);
-        for (long guard : transition.getQuantifierGuards()) {
+        for (long guard : transition.getGuards()) {
             CompilerAsserts.partialEvaluationConstant(guard);
             switch (TransitionGuard.getKind(guard)) {
                 case loop, loopInc -> {
@@ -955,7 +955,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
-        for (long guard : transition.getQuantifierGuards()) {
+        for (long guard : transition.getGuards()) {
             switch (TransitionGuard.getKind(guard)) {
                 case loopInc:
                     locals.incQuantifierCount(TransitionGuard.getQuantifierIndex(guard));
@@ -978,13 +978,13 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     locals.resetQuantifierCount(TransitionGuard.getQuantifierIndex(guard));
                     break;
                 case updateCG:
-                    locals.setCaptureGroupBoundary(TransitionGuard.getIndex(guard), index);
-                    if (isTrackLastGroup() && TransitionGuard.getIndex(guard) % 2 != 0 && TransitionGuard.getIndex(guard) > 1) {
-                        locals.setLastGroup(TransitionGuard.getIndex(guard) / 2);
+                    locals.setCaptureGroupBoundary(TransitionGuard.getGroupBoundaryIndex(guard), index);
+                    if (isTrackLastGroup() && TransitionGuard.getGroupBoundaryIndex(guard) % 2 != 0 && TransitionGuard.getGroupBoundaryIndex(guard) > 1) {
+                        locals.setLastGroup(TransitionGuard.getGroupBoundaryIndex(guard) / 2);
                     }
                     break;
                 case updateRecursiveBackrefPointer:
-                    locals.saveRecursiveBackrefGroupStart(TransitionGuard.getIndex(guard));
+                    locals.saveRecursiveBackrefGroupStart(TransitionGuard.getGroupNumber(guard));
                     break;
                 case enterZeroWidth:
                     locals.setZeroWidthQuantifierGuardIndex(TransitionGuard.getZeroWidthQuantifierIndex(guard));
@@ -1003,12 +1003,12 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     }
                     break;
                 case checkGroupMatched:
-                    if (locals.getCaptureGroupStart(TransitionGuard.getIndex(guard)) == -1 || locals.getCaptureGroupEnd(TransitionGuard.getIndex(guard)) == -1) {
+                    if (locals.getCaptureGroupStart(TransitionGuard.getGroupNumber(guard)) == -1 || locals.getCaptureGroupEnd(TransitionGuard.getGroupNumber(guard)) == -1) {
                         return false;
                     }
                     break;
                 case checkGroupNotMatched:
-                    if (locals.getCaptureGroupStart(TransitionGuard.getIndex(guard)) != -1 && locals.getCaptureGroupEnd(TransitionGuard.getIndex(guard)) != -1) {
+                    if (locals.getCaptureGroupStart(TransitionGuard.getGroupNumber(guard)) != -1 && locals.getCaptureGroupEnd(TransitionGuard.getGroupNumber(guard)) != -1) {
                         return false;
                     }
                     break;

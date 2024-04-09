@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
@@ -48,8 +50,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import java.util.Arrays;
 
 /**
  * Represents a transition of a {@link PureNFA}.
@@ -62,16 +62,16 @@ public final class PureNFATransition implements AbstractTransition<PureNFAState,
     private final GroupBoundaries groupBoundaries;
     private final boolean caretGuard;
     private final boolean dollarGuard;
-    @CompilationFinal(dimensions = 1) private final long[] quantifierGuards;
+    @CompilationFinal(dimensions = 1) private final long[] guards;
 
-    public PureNFATransition(int id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, boolean caretGuard, boolean dollarGuard, long[] quantifierGuards) {
+    public PureNFATransition(int id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, boolean caretGuard, boolean dollarGuard, long[] guards) {
         this.id = id;
         this.source = source;
         this.target = target;
         this.caretGuard = caretGuard;
         this.groupBoundaries = groupBoundaries;
         this.dollarGuard = dollarGuard;
-        this.quantifierGuards = quantifierGuards;
+        this.guards = guards;
     }
 
     @Override
@@ -110,12 +110,8 @@ public final class PureNFATransition implements AbstractTransition<PureNFAState,
         return dollarGuard;
     }
 
-    public long[] getQuantifierGuards() {
-        return quantifierGuards;
-    }
-
-    public boolean hasAnyGuards() {
-        return caretGuard || dollarGuard || quantifierGuards.length > 0;
+    public long[] getGuards() {
+        return guards;
     }
 
     @TruffleBoundary
@@ -125,6 +121,6 @@ public final class PureNFATransition implements AbstractTransition<PureNFAState,
                         Json.prop("target", target.getId()),
                         Json.prop("groupBoundaries", groupBoundaries),
                         Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson(ast)),
-                        Json.prop("quantifierGuards", Arrays.stream(quantifierGuards).mapToObj(TransitionGuard::toJson)));
+                        Json.prop("guards", Arrays.stream(guards).mapToObj(TransitionGuard::toJson)));
     }
 }

@@ -111,20 +111,21 @@ public final class TransitionGuard {
         /**
          * Transition is entering the then-branch (the first alternative) of a
          * {@link ConditionalBackReferenceGroup}. The capture group identified by
-         * {@link #getIndex(long)} must be matched in order to proceed.
+         * {@link #getGroupNumber(long)} must be matched in order to proceed.
          */
         checkGroupMatched,
         /**
          * Transition is entering the else-branch (the second alternative) of a
          * {@link ConditionalBackReferenceGroup}. The capture group identified by
-         * {@link #getIndex(long)} must be *not* matched in order to proceed.
+         * {@link #getGroupNumber(long)} must be *not* matched in order to proceed.
          */
         checkGroupNotMatched
     }
 
     private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.loop, Kind.loopInc, Kind.exit, Kind.exitReset);
     private static final EnumSet<Kind> ZERO_WIDTH_QUANTIFIER_GUARDS = EnumSet.of(Kind.enterZeroWidth, Kind.exitZeroWidth, Kind.escapeZeroWidth);
-    private static final EnumSet<Kind> GROUP_GUARDS = EnumSet.of(Kind.updateCG, Kind.updateRecursiveBackrefPointer, Kind.checkGroupMatched, Kind.checkGroupNotMatched);
+    private static final EnumSet<Kind> GROUP_NUMBER_GUARDS = EnumSet.of(Kind.updateRecursiveBackrefPointer, Kind.checkGroupMatched, Kind.checkGroupNotMatched);
+    private static final EnumSet<Kind> GROUP_BOUNDARY_INDEX_GUARDS = EnumSet.of(Kind.updateCG);
 
     public static final long[] NO_GUARDS = {};
 
@@ -215,8 +216,13 @@ public final class TransitionGuard {
     /**
      * Returns the capture group boundary index for {@code updateCG} guards.
      */
-    public static int getIndex(long guard) {
-        assert GROUP_GUARDS.contains(getKind(guard));
+    public static int getGroupNumber(long guard) {
+        assert GROUP_NUMBER_GUARDS.contains(getKind(guard));
+        return (int) guard;
+    }
+
+    public static int getGroupBoundaryIndex(long guard) {
+        assert GROUP_BOUNDARY_INDEX_GUARDS.contains(getKind(guard));
         return (int) guard;
     }
 
