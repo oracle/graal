@@ -64,7 +64,6 @@ import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
-import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -463,7 +462,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     // Fixed node usage: can never have a dead cycle
                     return false;
                 }
-                if (usage instanceof VirtualState || usage instanceof ProxyNode) {
+                if (usage instanceof VirtualState) {
                     // usages that still require the (potential) dead cycle to be alive
                     return false;
                 }
