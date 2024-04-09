@@ -93,6 +93,12 @@ public class LongArrayBuffer extends AbstractArrayBuffer implements Iterable<Lon
         buf[length++] = v;
     }
 
+    public void addAll(long[] v) {
+        ensureCapacity(length + v.length);
+        System.arraycopy(v, 0, buf, length, v.length);
+        length += v.length;
+    }
+
     public long pop() {
         return buf[--length];
     }

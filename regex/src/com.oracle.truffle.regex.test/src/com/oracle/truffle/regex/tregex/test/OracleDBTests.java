@@ -1114,7 +1114,6 @@ public class OracleDBTests extends RegexTestBase {
         test("a||b{1,5}", "", "aaaaa", 0, true, 0, 1);
         test("a|b{1,5}", "", "aaaaa", 0, true, 0, 1);
         test("[^]()|(())||()|u\\A\\6k()\\Z[\\(](|Z^|[[=A=]]|[[=k=]])", "", ":Z", 0, true, 0, 1, 1, 1);
-        // test("a*?*", "", "aaa", 0, true, 0, 1);
         test("(a*?)*", "", "aaa", 0, true, 0, 0, 0, 0);
         test("?a{1,2}||b", "", "ccc", 0, true, 0, 0);
         test("()?a{1,2}||b", "", "ccc", 0, true, 0, 0, -1, -1);
@@ -1131,8 +1130,8 @@ public class OracleDBTests extends RegexTestBase {
         test("[a-c-e]", "", "d", 0, false);
         test("[a-c-e]", "", "e", 0, true, 0, 1);
         test("a?a+?", "", "aaa", 0, true, 0, 2);
-        // test("()a\\1\\1", "", "a", 0, false);
-        // test("()\\1\\1a", "", "a", 0, false);
+        test("()a\\1\\1", "", "a", 0, true, 0, 1, 0, 0);
+        test("()\\1\\1a", "", "a", 0, true, 0, 1, 0, 0);
         test("(a)\\1\\1b", "", "aaab", 0, true, 0, 4, 0, 1);
         test("[[:space:]-y]", "", "empty", 0, true, 4, 5);
         test("[[:space:]-y]", "", "empt-y", 0, true, 4, 5);
@@ -1164,6 +1163,9 @@ public class OracleDBTests extends RegexTestBase {
         expectSyntaxError("[]", "", "", getTRegexEncoding(), "[]", 0, "unmatched bracket in regular expression");
         test("[]]", "", "[]", 0, true, 1, 2);
         expectSyntaxError("[[.a.b.]]", "", "", getTRegexEncoding(), "[[.a.b.]]", 0, "invalid collation class in regular expression");
+        test("\\z|((\\WV|))\\Z", "", "a", 0, true, 1, 1, -1, -1, -1, -1);
+        test("\\z|(\\WV|)\\Z", "", "a", 0, true, 1, 1, -1, -1);
+        test("\\z|(x|)\\Z", "", "a", 0, true, 1, 1, -1, -1);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }

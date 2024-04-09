@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicSet;
@@ -53,7 +52,6 @@ import com.oracle.truffle.regex.tregex.nfa.ASTStepVisitor;
 import com.oracle.truffle.regex.tregex.nfa.TransitionGuard;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.parser.ast.GlobalSubTreeIndex;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupsWithGuardsIndex;
@@ -64,7 +62,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.util.TBitSet;
@@ -140,7 +137,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * This set is needed to make sure that a quantified term cannot match the empty string, as is
      * specified in step 2a of RepeatMatcher from ECMAScript draft 2018, chapter 21.2.2.5.1.
      */
-    private final StateSet<GroupsWithGuardsIndex, Group> insideEmptyGuardGroup;
+    private final TBitSet insideEmptyGuardGroup;
     private RegexASTNode cur;
     private Set<LookBehindAssertion> traversableLookBehindAssertions;
     private boolean canTraverseCaret = false;
@@ -176,8 +173,9 @@ public abstract class NFATraversalRegexASTVisitor {
      * {@link #curPath}.
      */
     private final EconomicSet<DeduplicationKey> pathDeduplicationSet = EconomicSet.create();
+    private final LongArrayBuffer dedupKey = new LongArrayBuffer(8);
 
-    private final StateSet<GlobalSubTreeIndex, RegexASTSubtreeRootNode> lookAroundsOnPath;
+    private final TBitSet lookAroundsOnPath;
     private int dollarsOnPath = 0;
     private int caretsOnPath = 0;
     private final int[] lookAroundVisitiedCount;
@@ -198,8 +196,8 @@ public abstract class NFATraversalRegexASTVisitor {
     protected NFATraversalRegexASTVisitor(RegexAST ast) {
         this.ast = ast;
         this.insideLoops = StateSet.create(ast.getGroupsWithGuards());
-        this.insideEmptyGuardGroup = StateSet.create(ast.getGroupsWithGuards());
-        this.lookAroundsOnPath = StateSet.create(ast.getSubtrees());
+        this.insideEmptyGuardGroup = new TBitSet(ast.getGroupsWithGuards().size());
+        this.lookAroundsOnPath = new TBitSet(ast.getSubtrees().size());
         this.lookAroundVisitiedCount = new int[ast.getSubtrees().size()];
         this.captureGroupUpdates = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.captureGroupClears = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
@@ -450,7 +448,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 return retreat();
             }
             if (group.hasEmptyGuard()) {
-                insideEmptyGuardGroup.add(group);
+                insideEmptyGuardGroup.set(group.getGroupsWithGuardsIndex());
             }
             if (group.isLoop()) {
                 registerInsideLoop(group);
@@ -530,7 +528,8 @@ public abstract class NFATraversalRegexASTVisitor {
             // which are forbidden in the DFA,
             // and b) termination is ensured by resolving exitZeroWidth/escapeZeroWidth guards
             // statically.
-            if (curTerm.isGroupWithGuards() && insideEmptyGuardGroup.contains(curTerm.asGroup()) && !(ast.getOptions().getFlavor().canHaveEmptyLoopIterations() && isBuildingDFA())) {
+            if (curTerm.isGroupWithGuards() && insideEmptyGuardGroup.get(curTerm.asGroup().getGroupsWithGuardsIndex()) &&
+                            !(ast.getOptions().getFlavor().canHaveEmptyLoopIterations() && isBuildingDFA())) {
                 return advanceEmptyGuard(curTerm);
             }
             Sequence parentSeq = (Sequence) curTerm.getParent();
@@ -622,7 +621,7 @@ public abstract class NFATraversalRegexASTVisitor {
                             unregisterInsideLoop(group);
                         }
                         if (group.hasEmptyGuard()) {
-                            insideEmptyGuardGroup.remove(group);
+                            insideEmptyGuardGroup.clear(group.getGroupsWithGuardsIndex());
                         }
                     }
                 } else if (ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex()) {
@@ -679,6 +678,10 @@ public abstract class NFATraversalRegexASTVisitor {
      * @return {@code true} if a successor was found in this step
      */
     private boolean deduplicatePath(boolean internal) {
+        calcTransitionGuards();
+        if (shouldRetreat) {
+            return retreat();
+        }
         // interal == true means that this is being called during traversal, before reaching a
         // successor node (these calls are made in regular intervals, whenever a new Sequence is
         // entered).
@@ -693,18 +696,30 @@ public abstract class NFATraversalRegexASTVisitor {
         boolean captureGroupsMatter = !cur.isMatchFound() &&
                         ((ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() && ast.getProperties().hasBackReferences()) ||
                                         (isBuildingDFA() && ast.getProperties().hasConditionalBackReferences()));
-        DeduplicationKey key = new DeduplicationKey(cur,
-                        lookAroundsOnPath,
-                        caretsOnPath(),
-                        dollarsOnPath(),
-                        getQuantifierGuards().toArray(),
-                        internal ? insideEmptyGuardGroup : null,
-                        captureGroupsMatter ? getCaptureGroupUpdates() : null,
-                        captureGroupsMatter ? getCaptureGroupClears() : null,
-                        referencedGroupBoundaries);
-        if (shouldRetreat) {
-            return retreat();
+
+        long id = cur.getId();
+        if (caretsOnPath()) {
+            id |= 1L << 32;
         }
+        if (dollarsOnPath()) {
+            id |= 1L << 33;
+        }
+        dedupKey.clear();
+        dedupKey.add(id);
+        dedupKey.addAll(lookAroundsOnPath.getInternalArray());
+        if (internal) {
+            dedupKey.addAll(insideEmptyGuardGroup.getInternalArray());
+        }
+        if (captureGroupsMatter) {
+            dedupKeyAddGroupBoundaries(getCaptureGroupUpdates());
+            dedupKeyAddGroupBoundaries(getCaptureGroupClears());
+        }
+        for (long guard : getQuantifierGuards()) {
+            if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateCG)) {
+                dedupKey.add(guard);
+            }
+        }
+        DeduplicationKey key = new DeduplicationKey(dedupKey.toArray());
         boolean isDuplicate = !pathDeduplicationSet.add(key);
         if (isDuplicate) {
             return retreat();
@@ -714,6 +729,15 @@ public abstract class NFATraversalRegexASTVisitor {
             // When called at the end of traversal (internal == false), we can return true, since
             // the current target node is a valid successor.
             return !internal;
+        }
+    }
+
+    private void dedupKeyAddGroupBoundaries(TBitSet boundaries) {
+        long[] bitset = boundaries.getInternalArray();
+        long[] referenced = referencedGroupBoundaries.getInternalArray();
+        assert bitset.length == referenced.length;
+        for (int i = 0; i < bitset.length; i++) {
+            dedupKey.add(bitset[i] & referenced[i]);
         }
     }
 
@@ -1109,10 +1133,10 @@ public abstract class NFATraversalRegexASTVisitor {
             case escapeZeroWidth: {
                 boolean keptAliveByConsumedInput = false;
                 boolean keptAliveByCaptureGroups = false;
-                // Search for the last enterZeroWidth guard of the same group.
                 if (!transitionGuards.isEmpty() && transitionGuards.peek() == guard) {
                     return;
                 }
+                // Search for the last enterZeroWidth guard of the same group.
                 long enter = TransitionGuard.createEnterZeroWidthFromExit(guard);
                 boolean enterFound = false;
                 for (int i = transitionGuards.length() - 1; i >= 0; i--) {
@@ -1180,13 +1204,13 @@ public abstract class NFATraversalRegexASTVisitor {
     private void addLookAroundToVisitedSet() {
         LookAroundAssertion la = (LookAroundAssertion) cur;
         lookAroundVisitiedCount[la.getGlobalSubTreeId()]++;
-        lookAroundsOnPath.add(la);
+        lookAroundsOnPath.set(la.getGlobalSubTreeId());
     }
 
     private void removeLookAroundFromVisitedSet(long pathElement) {
         LookAroundAssertion la = (LookAroundAssertion) pathGetNode(pathElement);
         if (--lookAroundVisitiedCount[la.getGlobalSubTreeId()] == 0) {
-            lookAroundsOnPath.remove(la);
+            lookAroundsOnPath.clear(la.getGlobalSubTreeId());
         }
     }
 
@@ -1235,34 +1259,12 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private static final class DeduplicationKey {
-        private final int target;
-        private final StateSet<GlobalSubTreeIndex, RegexASTSubtreeRootNode> lookAroundsOnPath;
-        private final boolean caretsOnPath;
-        private final boolean dollarsOnPath;
-        private final long[] quantifierGuards;
-        private final StateSet<GroupsWithGuardsIndex, Group> insideEmptyGuardGroup;
-        private final TBitSet captureGroupUpdates;
-        private final TBitSet captureGroupClears;
+        private final long[] key;
         private final int hashCode;
 
-        DeduplicationKey(RegexASTNode targetNode, StateSet<GlobalSubTreeIndex, RegexASTSubtreeRootNode> lookAroundsOnPath, boolean caretsOnPath, boolean dollarsOnPath,
-                        long[] quantifierGuards, StateSet<GroupsWithGuardsIndex, Group> insideEmptyGuardGroup, TBitSet captureGroupUpdates, TBitSet captureGroupClears,
-                        TBitSet referencedGroupBoundaries) {
-            this.target = targetNode.getId();
-            this.lookAroundsOnPath = lookAroundsOnPath.copy();
-            this.caretsOnPath = caretsOnPath;
-            this.dollarsOnPath = dollarsOnPath;
-            this.quantifierGuards = quantifierGuards;
-            this.insideEmptyGuardGroup = insideEmptyGuardGroup == null ? null : insideEmptyGuardGroup.copy();
-            this.captureGroupUpdates = captureGroupUpdates == null ? null : captureGroupUpdates.copy();
-            this.captureGroupClears = captureGroupClears == null ? null : captureGroupClears.copy();
-            if (captureGroupUpdates != null) {
-                this.captureGroupUpdates.intersect(referencedGroupBoundaries);
-            }
-            if (captureGroupClears != null) {
-                this.captureGroupClears.intersect(referencedGroupBoundaries);
-            }
-            this.hashCode = Objects.hash(target, lookAroundsOnPath, caretsOnPath, dollarsOnPath, Arrays.hashCode(quantifierGuards), insideEmptyGuardGroup, captureGroupUpdates, captureGroupClears);
+        DeduplicationKey(long[] key) {
+            this.key = key;
+            this.hashCode = Arrays.hashCode(key);
         }
 
         @Override
@@ -1270,14 +1272,7 @@ public abstract class NFATraversalRegexASTVisitor {
             if (!(obj instanceof DeduplicationKey other)) {
                 return false;
             }
-            return target == other.target &&
-                            lookAroundsOnPath.equals(other.lookAroundsOnPath) &&
-                            caretsOnPath == other.caretsOnPath &&
-                            dollarsOnPath == other.dollarsOnPath &&
-                            Arrays.equals(quantifierGuards, other.quantifierGuards) &&
-                            Objects.equals(insideEmptyGuardGroup, other.insideEmptyGuardGroup) &&
-                            Objects.equals(captureGroupUpdates, other.captureGroupUpdates) &&
-                            Objects.equals(captureGroupClears, other.captureGroupClears);
+            return Arrays.equals(key, other.key);
         }
 
         @Override
