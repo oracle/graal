@@ -40,11 +40,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * the table.
  */
 public abstract sealed class Symbols permits SymbolsImpl {
-
-    static final int DEFAULT_CAPACITY = 1 << 12;
-
     public static Symbols fromExisting(Set<Symbol<?>> existingSymbols, int initialSymbolTable) {
-        return new SymbolsImpl(existingSymbols, initialSymbolTable);
+        return fromExisting(existingSymbols, initialSymbolTable, initialSymbolTable);
+    }
+
+    public static Symbols fromExisting(Set<Symbol<?>> existingSymbols, int initialStrongSize, int initialWeakSize) {
+        return new SymbolsImpl(existingSymbols, initialStrongSize, initialWeakSize);
     }
 
     /**

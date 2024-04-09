@@ -83,8 +83,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "sdk:COLLECTIONS",
-            ],
-            "buildDependencies": [
                 "truffle:TRUFFLE_API",
             ],
             "javaCompliance" : "17+",
@@ -102,6 +100,28 @@ suite = {
             "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso.classfile",
         },
+
+        # Shared code shaded for SVM
+        "com.oracle.svm.espresso": {
+            "class": "EspressoSVMShared",
+            "shadedProjects": [
+                "com.oracle.truffle.espresso.classfile",
+                "com.oracle.truffle.espresso.shared",
+            ],
+            "dependencies": [
+                "sdk:COLLECTIONS",
+            ],
+            "removeAnnotations": [
+                "com.oracle.truffle.api.CompilerDirectives.CompilationFinal",
+                "com.oracle.truffle.api.CompilerDirectives.TruffleBoundary",
+                "com.oracle.truffle.api.nodes.ExplodeLoop",
+            ],
+            "packageMap": {
+                "com.oracle.truffle.espresso": "com.oracle.svm.espresso",
+            },
+            "eclipseformat": False,
+            "javaCompliance" : "17+",
+        },
     },
 
     # ------------- distributions
@@ -111,14 +131,36 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.espresso.shared",
                 "exports": [
-                    "* to org.graalvm.espresso, org.graalvm.nativeimage.builder",
+                    "* to org.graalvm.espresso",
                 ],
             },
-            "description" : "Shared code runtime class loading",
+            "description" : "Espresso shared code for runtime class loading",
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso.classfile",
                 "com.oracle.truffle.espresso.shared",
+            ],
+            "distDependencies": [
+                "sdk:COLLECTIONS",
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+                "tag": ["default", "public"],
+            },
+            "useModulePath": True,
+            "noMavenJavadoc": True,
+        },
+        "ESPRESSO_SVM": {
+            "moduleInfo" : {
+                "name" : "org.graalvm.espresso.shared.svm",
+                "exports": [
+                    "* to org.graalvm.nativeimage.builder",
+                ],
+            },
+            "description" : "Espresso shared code for runtime class loading (shaded for SVM)",
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.svm.espresso",
             ],
             "distDependencies": [
                 "sdk:COLLECTIONS",

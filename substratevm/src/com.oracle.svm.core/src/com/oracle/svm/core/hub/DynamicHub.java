@@ -105,6 +105,7 @@ import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -114,6 +115,7 @@ import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
 import com.oracle.svm.core.graal.nodes.SubstrateNewDynamicHubNode;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
@@ -127,6 +129,7 @@ import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MethodDescriptor;
 import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -423,7 +426,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * {@code DynamicHub} must be fully initialized when it is used in an object header.
      */
     @NeverInline("Fields of DynamicHub are immutable. Immutable reads could float above ANY_LOCATION writes.")
-    public static DynamicHub allocate(String name, DynamicHub superHub, DynamicHub componentHub, String sourceFileName,
+    public static DynamicHub allocate(String name, DynamicHub superHub, Object interfacesEncoding, DynamicHub componentHub, String sourceFileName,
                     int modifiers, short flags, ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName,
                     Object declaringClass, String signature) {
         VMError.guarantee(RuntimeClassLoading.isSupported());
@@ -435,7 +438,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             hubType = HubType.REFERENCE_INSTANCE;
         }
 
-        // GR-59683
+        // GR-62339
         Module module = null;
 
         // GR-59683: Setup interpreter metadata at run-time.
@@ -463,8 +466,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         short numInterfacesTypes = 0;
         int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (numInterfacesTypes * 2)];
 
-        // GR-59683: Proper values needed.
-        companion.interfacesEncoding = null;
+        companion.interfacesEncoding = interfacesEncoding;
+        // GR-59683: Proper value needed.
         companion.enumConstantsReference = null;
 
         /*
@@ -1590,23 +1593,41 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     @NeverInlineTrivial(reason = "Used in dynamic access call usage analysis: DynamicAccessDetectionPhase", onlyWith = TrackDynamicAccessEnabled.class)
     @CallerSensitive
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
     private static Class<?> forName(String className) throws Throwable {
         return forName(className, Reflection.getCallerClass());
     }
 
+    @KeepOriginal
+    @CallerSensitive
+    @TargetElement(name = "forName", onlyWith = ClassForNameSupport.RespectsClassLoader.class)
+    private static native Class<?> forNameOriginal(String className) throws ClassNotFoundException;
+
     @Substitute
     @NeverInlineTrivial(reason = "Used in dynamic access call usage analysis: DynamicAccessDetectionPhase", onlyWith = TrackDynamicAccessEnabled.class)
     @CallerSensitiveAdapter
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
     private static Class<?> forName(String className, Class<?> caller) throws Throwable {
         return forName(className, true, caller == null ? ClassLoader.getSystemClassLoader() : caller.getClassLoader(), caller);
     }
 
+    @KeepOriginal
+    @CallerSensitiveAdapter
+    @TargetElement(name = "forName", onlyWith = ClassForNameSupport.RespectsClassLoader.class)
+    private static native Class<?> forNameOriginal(String className, Class<?> caller) throws ClassNotFoundException;
+
     @Substitute
     @NeverInlineTrivial(reason = "Used in dynamic access call usage analysis: DynamicAccessDetectionPhase", onlyWith = TrackDynamicAccessEnabled.class)
     @CallerSensitive
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
     private static Class<?> forName(Module module, String className) throws Throwable {
         return forName(module, className, Reflection.getCallerClass());
     }
+
+    @KeepOriginal
+    @CallerSensitive
+    @TargetElement(name = "forName", onlyWith = ClassForNameSupport.RespectsClassLoader.class)
+    private static native Class<?> forNameOriginal(Module module, String className);
 
     @CallerSensitiveAdapter
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
@@ -1624,9 +1645,15 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     @NeverInlineTrivial(reason = "Used in dynamic access call usage analysis: DynamicAccessDetectionPhase", onlyWith = TrackDynamicAccessEnabled.class)
     @CallerSensitive
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
         return forName(name, initialize, loader, Reflection.getCallerClass());
     }
+
+    @KeepOriginal
+    @CallerSensitive
+    @TargetElement(name = "forName", onlyWith = ClassForNameSupport.RespectsClassLoader.class)
+    private static native Class<?> forNameOriginal(String name, boolean initialize, ClassLoader loader);
 
     @CallerSensitiveAdapter
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
@@ -1643,6 +1670,24 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 throw e;
             }
         }
+        if (initialize) {
+            DynamicHub.fromClass(result).ensureInitialized();
+        }
+        return result;
+    }
+
+    @Substitute
+    @CallerSensitiveAdapter
+    @TargetElement(onlyWith = ClassForNameSupport.RespectsClassLoader.class)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/java.base/share/native/libjava/Class.c#L97-L144")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L803-L821")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3303-L3312")
+    private static Class<?> forName0(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws ClassNotFoundException {
+        // this accepts dot-names and arrays types (`[...`), it refuses slash-names
+        if (name.contains("/")) {
+            throw new ClassNotFoundException(name);
+        }
+        Class<?> result = ClassRegistries.forName(name, loader);
         if (initialize) {
             DynamicHub.fromClass(result).ensureInitialized();
         }
@@ -2130,6 +2175,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public boolean isReached() {
         return companion.classInitializationInfo.isTypeReached(this);
+    }
+
+    public boolean isRuntimeLoaded() {
+        return RuntimeClassLoading.isSupported() && getLayerId() == DynamicImageLayerInfo.CREMA_LAYER_ID;
     }
 
     private static final class ReflectionDataAccessors {

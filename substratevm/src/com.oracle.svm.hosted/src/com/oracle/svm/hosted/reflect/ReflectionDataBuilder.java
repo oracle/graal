@@ -88,6 +88,7 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
@@ -262,7 +263,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         if (allowForName) {
-            classForNameSupport.registerClass(condition, clazz);
+            classForNameSupport.registerClass(condition, clazz, ClassLoaderFeature.getRuntimeClassLoader(clazz.getClassLoader()));
 
             if (!MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 /*
@@ -927,7 +928,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             /*
              * Reflection signature parsing will try to instantiate classes via Class.forName().
              */
-            classForNameSupport.registerClass(clazz);
+            classForNameSupport.registerClass(clazz, ClassLoaderFeature.getRuntimeClassLoader(clazz.getClassLoader()));
         } else if (type instanceof TypeVariable<?>) {
             /* Bounds are reified lazily. */
             registerTypesForGenericSignature(queryGenericInfo(((TypeVariable<?>) type)::getBounds), dimension);

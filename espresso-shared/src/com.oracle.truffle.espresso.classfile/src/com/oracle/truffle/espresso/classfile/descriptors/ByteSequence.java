@@ -88,6 +88,31 @@ public abstract class ByteSequence {
         return ByteSequence.wrap(bytes, 0, bytes.length);
     }
 
+    public static ByteSequence create(String str, int start) {
+        byte[] bytes = ModifiedUTF8.fromJavaString(str, start, str.length() - start, false);
+        return ByteSequence.wrap(bytes, 0, bytes.length);
+    }
+
+    public static ByteSequence createTypeFromName(String str) {
+        byte[] bytes = ModifiedUTF8.fromJavaString(str, 0, str.length(), false, true);
+        for (int i = 0; i < bytes.length; i++) {
+            if (bytes[i] == '.') {
+                bytes[i] = '/';
+            }
+        }
+        return ByteSequence.wrap(bytes, 0, bytes.length);
+    }
+
+    public static ByteSequence createReplacingDot(String str, int start) {
+        byte[] bytes = ModifiedUTF8.fromJavaString(str, start, str.length() - start, false);
+        for (int i = 0; i < bytes.length; i++) {
+            if (bytes[i] == '.') {
+                bytes[i] = '/';
+            }
+        }
+        return ByteSequence.wrap(bytes, 0, bytes.length);
+    }
+
     public static ByteSequence from(ByteBuffer buffer) {
         int length = buffer.remaining();
         if (buffer.hasArray()) {

@@ -34,23 +34,26 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class SymbolsImpl extends Symbols {
-
     // Set generous initial capacity, these are going to be hit a lot.
     private final ConcurrentHashMap<ByteSequence, Symbol<?>> strongMap;
     private final WeakHashMap<ByteSequence, WeakReference<Symbol<?>>> weakMap;
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
-    SymbolsImpl(int initialCapacity) {
-        this.strongMap = new ConcurrentHashMap<>(initialCapacity);
-        this.weakMap = new WeakHashMap<>(initialCapacity);
+    SymbolsImpl(int initialStrongSize, int initialWeakSize) {
+        if (initialWeakSize > 0) {
+            this.strongMap = new ConcurrentHashMap<>(initialStrongSize);
+        } else {
+            this.strongMap = new ConcurrentHashMap<>();
+        }
+        if (initialWeakSize > 0) {
+            this.weakMap = new WeakHashMap<>(initialWeakSize);
+        } else {
+            this.weakMap = new WeakHashMap<>();
+        }
     }
 
-    SymbolsImpl() {
-        this(DEFAULT_CAPACITY);
-    }
-
-    SymbolsImpl(Set<Symbol<?>> existingSymbols, int initialCapacity) {
-        this(initialCapacity);
+    SymbolsImpl(Set<Symbol<?>> existingSymbols, int initialStrongSize, int initialWeakSize) {
+        this(initialStrongSize, initialWeakSize);
         for (Symbol<?> symbol : existingSymbols) {
             this.strongMap.put(symbol, symbol);
         }

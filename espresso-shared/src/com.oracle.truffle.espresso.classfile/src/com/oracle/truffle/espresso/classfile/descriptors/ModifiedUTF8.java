@@ -87,10 +87,17 @@ public sealed class ModifiedUTF8 permits Descriptor, Name {
     }
 
     public static byte[] fromJavaString(String str, int start, int len, boolean append0) {
+        return fromJavaString(str, start, len, append0, false);
+    }
+
+    static byte[] fromJavaString(String str, int start, int len, boolean append0, boolean addLSemi) {
         int utflen = utfLength(str, start, len);
-        byte[] bytearr = new byte[utflen + (append0 ? 1 : 0)]; // 0 terminated, even if empty.
+        byte[] bytearr = new byte[utflen + (append0 ? 1 : 0) + (addLSemi ? 2 : 0)];
 
         int count = 0;
+        if (addLSemi) {
+            bytearr[count++] = 'L';
+        }
         int i;
         for (i = 0; i < len; i++) {
             int c = str.charAt(start + i);
@@ -114,10 +121,15 @@ public sealed class ModifiedUTF8 permits Descriptor, Name {
                 bytearr[count++] = (byte) (0x80 | ((c >> 0) & 0x3F));
             }
         }
+        if (addLSemi) {
+            bytearr[count++] = ';';
+        }
 
         if (append0) {
-            bytearr[bytearr.length - 1] = (byte) 0;
+            assert count == bytearr.length - 1;
+            bytearr[count++] = (byte) 0;
         }
+        assert count == bytearr.length;
 
         return bytearr;
     }
