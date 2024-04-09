@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.meta;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
@@ -197,9 +198,15 @@ public final class StringConversion {
              * It will be used to create a new string again later, but PEA should be able to
              * optimize that away, both for host and guest compilations.
              */
-            String host = new String(extractGuestChars8(language, meta, guest));
+            char[] chars = extractGuestChars8(language, meta, guest);
+            String host = newHostString(chars);
             return new AlmostString(extractHostBytes(host), extractHostHash(host), extractHostCoder(host));
         };
+
+        @TruffleBoundary(allowInlining = true)
+        private static String newHostString(char[] chars) {
+            return new String(chars);
+        }
 
         AlmostString extract(StaticObject guest, EspressoLanguage language, Meta meta, MaybeCopy maybeCopy);
     }
@@ -221,9 +228,14 @@ public final class StringConversion {
             } else {
                 assert almostString.coder == HostConstants.LATIN1;
                 // Have to inflate from LATIN1.
-                return new String(almostString.bytes, StandardCharsets.ISO_8859_1 /*- LATIN1 */);
+                return newStringFromLatin1(almostString.bytes);
             }
         };
+
+        @TruffleBoundary(allowInlining = true)
+        private static String newStringFromLatin1(byte[] bytes) {
+            return new String(bytes, StandardCharsets.ISO_8859_1 /*- LATIN1 */);
+        }
 
         String toHost(AlmostString almostString);
     }
@@ -233,7 +245,12 @@ public final class StringConversion {
         // could have been compacted.
         ToGuest TO_COMPACT = (host, meta, maybeCopy) -> produceGuestString11(meta, maybeCopy.maybeCopy(extractHostBytes(host)), extractHostHash(host), extractHostCoder(host));
 
-        ToGuest TO_NOT_COMPACT = (host, meta, maybeCopy) -> produceGuestString8(meta, host.toCharArray(), extractHostHash(host));
+        ToGuest TO_NOT_COMPACT = (host, meta, maybeCopy) -> produceGuestString8(meta, getCharArray(host), extractHostHash(host));
+
+        @TruffleBoundary(allowInlining = true)
+        private static char[] getCharArray(String host) {
+            return host.toCharArray();
+        }
 
         StaticObject hostToGuest(String host, Meta meta, MaybeCopy maybeCopy);
     }
