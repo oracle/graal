@@ -20,6 +20,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-52534) Change the digest (used e.g. for symbol names) from SHA-1 encoded as a hex string (40 bytes) to 128-bit Murmur3 as a Base-62 string (22 bytes).
 * (GR-52578) Print information about embedded resources into `embedded-resources.json` using the `-H:+GenerateEmbeddedResourcesFile` option.
 * (GR-51172) Add support to catch OutOfMemoryError exceptions on native image if there is no memory left.
+* (GR-43837) `--report-unsupported-elements-at-runtime` is now enabled by default and the option is deprecated.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
