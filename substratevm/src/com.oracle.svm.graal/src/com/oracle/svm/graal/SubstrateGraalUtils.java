@@ -31,11 +31,13 @@ import java.io.PrintStream;
 import java.util.EnumMap;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
@@ -44,6 +46,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
@@ -62,6 +65,7 @@ import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.Suites;
@@ -103,6 +107,15 @@ public class SubstrateGraalUtils {
             @Override
             protected CompilationResult handleException(Throwable t) {
                 throw silenceThrowable(RuntimeException.class, t);
+            }
+
+            @Override
+            protected void parseRetryOptions(String[] options, EconomicMap<OptionKey<?>, Object> values) {
+                // Use name=value boolean format for compatibility with Graal options
+                CommonOptionParser.BooleanOptionFormat booleanFormat = CommonOptionParser.BooleanOptionFormat.NAME_VALUE;
+                for (String option : options) {
+                    RuntimeOptionParser.singleton().parseOptionAtRuntime(option, "", booleanFormat, values, false);
+                }
             }
 
             @SuppressWarnings("try")
