@@ -55,6 +55,7 @@ public class FrequencyEncoder<T> {
 
     protected final EconomicMap<T, Entry<T>> map;
     protected boolean containsNull;
+    protected boolean encoded;
 
     /**
      * Creates an encoder that uses object identity.
@@ -80,28 +81,27 @@ public class FrequencyEncoder<T> {
      * @return whether the object has been added for the first time.
      */
     public boolean addObject(T object) {
-        boolean first = false;
+        // assert !encoded; -- some users currently encode, add more objects, then re-encode.
         if (object == null) {
-            first = !containsNull;
+            boolean added = !containsNull;
             containsNull = true;
-            return first;
+            return added;
         }
-
         Entry<T> entry = map.get(object);
         if (entry == null) {
             entry = new Entry<>(object);
             map.put(object, entry);
-            first = true;
         }
         entry.frequency++;
-        return first;
+        return (entry.frequency == 1);
     }
 
     /**
-     * Returns the index of an object in the array. The object must have been
-     * {@link #addObject(Object) added} before.
+     * Returns the index of an object in the array. The object must have been {@linkplain #addObject
+     * added} and {@link #encodeAll} must have been called before.
      */
     public int getIndex(T object) {
+        assert encoded;
         if (object == null) {
             assert containsNull;
             return 0;
@@ -111,8 +111,12 @@ public class FrequencyEncoder<T> {
         return entry.index;
     }
 
-    /** Returns the index of an object in the array or -1 if it has not been added before. */
+    /**
+     * Returns the index of an object in the array or -1 if it has not been {@linkplain #addObject
+     * added}. {@link #encodeAll} must have been called before.
+     */
     public int findIndex(T object) {
+        assert encoded;
         if (object == null) {
             return containsNull ? 0 : -1;
         }
@@ -132,6 +136,7 @@ public class FrequencyEncoder<T> {
      * correct length}.
      */
     public T[] encodeAll(T[] allObjects) {
+        // assert !encoded; -- some users currently encode, add more objects, then re-encode.
         assert allObjects.length == getLength() : Assertions.errorMessage(allObjects, getLength());
         List<Entry<T>> sortedEntries = new ArrayList<>(allObjects.length);
         for (Entry<T> value : map.getValues()) {
@@ -151,6 +156,7 @@ public class FrequencyEncoder<T> {
             allObjects[index] = entry.object;
             assert entry.object != null;
         }
+        encoded = true;
         return allObjects;
     }
 }
