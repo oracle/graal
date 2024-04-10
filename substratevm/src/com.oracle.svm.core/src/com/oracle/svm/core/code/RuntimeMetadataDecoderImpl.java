@@ -259,7 +259,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     private static <T extends Throwable> void decodeAndThrowError(int index) throws T {
         assert isErrorIndex(index);
         int decodedIndex = FIRST_ERROR_INDEX - index;
-        throw (T) ImageSingletons.lookup(MetadataAccessor.class).getObject(decodedIndex);
+        throw (T) MetadataAccessor.singleton().getObject(decodedIndex);
     }
 
     /**
@@ -619,13 +619,13 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         if (classIndex == NO_METHOD_METADATA) {
             return null;
         }
-        return ImageSingletons.lookup(MetadataAccessor.class).getClass(classIndex);
+        return MetadataAccessor.singleton().getClass(classIndex);
     }
 
     /** Names are encoded as indices in the code info member names array. */
     private static String decodeMemberName(UnsafeArrayTypeReader buf) {
         int nameIndex = buf.getSVInt();
-        String name = ImageSingletons.lookup(MetadataAccessor.class).getMemberName(nameIndex);
+        String name = MetadataAccessor.singleton().getMemberName(nameIndex);
         /* Interning the string to ensure JDK8 method search succeeds */
         return name == null ? null : name.intern();
     }
@@ -633,7 +633,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     /** Strings other than member names are encoded as indices in the code info strings array. */
     private static String decodeOtherString(UnsafeArrayTypeReader buf) {
         int nameIndex = buf.getSVInt();
-        String name = ImageSingletons.lookup(MetadataAccessor.class).getOtherString(nameIndex);
+        String name = MetadataAccessor.singleton().getOtherString(nameIndex);
         /* Interning the string to ensure JDK8 method search succeeds */
         return name == null ? null : name.intern();
     }
@@ -647,7 +647,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         if (objectIndex == NULL_OBJECT) {
             return null;
         }
-        return ImageSingletons.lookup(MetadataAccessor.class).getObject(objectIndex);
+        return MetadataAccessor.singleton().getObject(objectIndex);
     }
 
     /**

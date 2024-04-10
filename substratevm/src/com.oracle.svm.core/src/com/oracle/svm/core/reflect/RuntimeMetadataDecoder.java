@@ -31,7 +31,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.hub.DynamicHub;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public interface RuntimeMetadataDecoder {
     int NO_DATA = -1;
@@ -144,6 +148,10 @@ public interface RuntimeMetadataDecoder {
     }
 
     interface MetadataAccessor {
+        @Fold
+        static MetadataAccessor singleton() {
+            return ImageSingletons.lookup(MetadataAccessor.class);
+        }
 
         <T> T getObject(int index);
 

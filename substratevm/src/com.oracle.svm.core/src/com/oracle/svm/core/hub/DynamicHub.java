@@ -112,8 +112,8 @@ import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.ConstructorDescriptor;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.FieldDescriptor;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MethodDescriptor;
-import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
+import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -1725,7 +1725,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     Target_jdk_internal_reflect_ConstantPool getConstantPool() {
-        return new Target_jdk_internal_reflect_ConstantPool();
+        return null;
     }
 
     @Substitute
