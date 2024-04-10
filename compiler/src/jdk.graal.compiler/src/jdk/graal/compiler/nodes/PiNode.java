@@ -598,7 +598,14 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
      * For the user of {@code baz} its not relevant to go over the first cast of {@code o} to
      * {@code A} since the condition of the second cast ({@code bar instanceof B}) already proves a
      * more concrete type than the first condition. We can skip the first cast of {@code o} to
-     * {@code A} and later {@link ConditionalEliminationPhase} can fully remove the first condition.
+     * {@code A} and later {@link ConditionalEliminationPhase} may be able to fully remove the first
+     * condition.
+     *
+     * Note on conditional elimination and guard pi skipping: this optimization of skipping PIs DOES
+     * NOT delete any guard nodes. So even if we skip pi nodes we are never removing guards. We are
+     * only skipping pis if a later condition proves more knowledge than an earlier one. Conditional
+     * elimination is the only phase that can prove that an earlier guard can be deleted because of
+     * a later one.
      */
     public static boolean guardTrySkipPi(GuardingNode guard, LogicNode condition, boolean negated, NodeView nodeView) {
         if (!(guard instanceof FixedGuardNode || guard instanceof GuardNode || guard instanceof BeginNode)) {
