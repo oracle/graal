@@ -47,7 +47,8 @@ import jdk.graal.compiler.graph.Graph.Mark;
 import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.Node.IndirectCanonicalization;
+import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
+import jdk.graal.compiler.graph.Node.InputsChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeFlood;
 import jdk.graal.compiler.graph.NodeWorkList;
@@ -319,12 +320,16 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             @Override
             public void inputChanged(Node node) {
                 tool.workList.add(node);
-                if (node instanceof IndirectCanonicalization) {
+                if (node instanceof IndirectInputChangedCanonicalization) {
                     for (Node usage : node.usages()) {
                         tool.workList.add(usage);
                     }
                 }
-
+                if (node instanceof InputsChangedCanonicalization) {
+                    for (Node input : node.inputs()) {
+                        tool.workList.add(input);
+                    }
+                }
                 if (node instanceof AbstractBeginNode) {
                     AbstractBeginNode abstractBeginNode = (AbstractBeginNode) node;
                     if (abstractBeginNode.predecessor() != null) {

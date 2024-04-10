@@ -26,32 +26,35 @@ package jdk.graal.compiler.nodes.memory;
 
 import static jdk.graal.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
+import jdk.graal.compiler.graph.Node.InputsChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.gc.WriteBarrier;
-import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
-import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodes.spi.Simplifiable;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.nodes.gc.WriteBarrier;
+import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.word.LocationIdentity;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
 @NodeInfo(nameTemplate = "Write#{p#location/s}")
-public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Simplifiable {
+public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Simplifiable, IndirectInputChangedCanonicalization, InputsChangedCanonicalization {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
 
