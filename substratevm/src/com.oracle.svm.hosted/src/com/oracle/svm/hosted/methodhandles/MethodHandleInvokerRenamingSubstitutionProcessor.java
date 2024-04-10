@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -121,7 +122,7 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     }
 
     private static boolean shouldReplace(ResolvedJavaType type) {
-        return !(type instanceof MethodHandleInvokerSubstitutionType) && isMethodHandleType(type);
+        return !(type instanceof MethodHandleInvokerSubstitutionType) && !(type instanceof BaseLayerType) && isMethodHandleType(type);
     }
 
     private MethodHandleInvokerSubstitutionType getSubstitution(ResolvedJavaType type, ResolvedJavaType original) {
@@ -375,6 +376,14 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
             uniqueTypeNames.add(name);
             return name;
         }
+    }
+
+    public boolean isNameAlwaysStable(String methodHandleName) {
+        int lastIndex = methodHandleName.lastIndexOf('_');
+        if (lastIndex < 0) {
+            return true;
+        }
+        return !uniqueTypeNames.contains(methodHandleName.substring(lastIndex) + "_1;");
     }
 
     boolean checkAllTypeNames() {

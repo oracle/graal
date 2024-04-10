@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -79,7 +80,7 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private static boolean shouldReplace(ResolvedJavaType type) {
-        return !(type instanceof ProxySubstitutionType) && isProxyType(type);
+        return !(type instanceof ProxySubstitutionType) && !(type instanceof BaseLayerType) && isProxyType(type);
     }
 
     private ProxySubstitutionType getSubstitution(ResolvedJavaType original) {
@@ -137,5 +138,9 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
             uniqueTypeNames.add(name);
             return name;
         }
+    }
+
+    public static boolean isNameAlwaysStable(String proxyName) {
+        return proxyName.lastIndexOf('_') < 0;
     }
 }

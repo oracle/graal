@@ -55,6 +55,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
@@ -470,7 +471,7 @@ public class HostedUniverse implements Universe {
         private static Optional<HostedType[]> proxyType(HostedType type) {
             HostedType baseType = type.getBaseType();
             boolean isProxy = Proxy.isProxyClass(baseType.getJavaClass());
-            assert isProxy == baseType.toJavaName(false).startsWith("$Proxy");
+            assert isProxy == (baseType.toJavaName(false).startsWith("$Proxy") && !(type.getWrapped().getWrapped() instanceof BaseLayerType));
             if (isProxy) {
                 return Optional.of(baseType.getInterfaces());
             } else {

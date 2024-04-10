@@ -237,19 +237,38 @@ public abstract class ImageHeapScanner {
         ScanReason nonNullReason = Objects.requireNonNull(reason);
         Object existingTask = imageHeap.getSnapshot(javaConstant);
         if (existingTask == null) {
-            checkSealed(reason, "Trying to create a new ImageHeapConstant for %s after the ImageHeapScanner is sealed.", javaConstant);
-            AnalysisFuture<ImageHeapConstant> newTask = new AnalysisFuture<>(() -> {
-                ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
-                /* When the image heap object is created replace the future in the map. */
-                imageHeap.setValue(javaConstant, imageHeapConstant);
-                return imageHeapConstant;
-            });
+            AnalysisFuture<ImageHeapConstant> newTask;
+            ImageLayerLoader imageLayerLoader = universe.getImageLayerLoader();
+            if (hostVM.useBaseLayer() && imageLayerLoader.hasValueForConstant(javaConstant)) {
+                ImageHeapConstant value = imageLayerLoader.getValueForConstant(javaConstant);
+                ensureFieldPositionsComputed(value, nonNullReason);
+                AnalysisError.guarantee(value.getHostedObject().equals(javaConstant));
+                newTask = new AnalysisFuture<>(() -> {
+                    imageHeap.setValue(javaConstant, value);
+                    return value;
+                });
+            } else {
+                checkSealed(reason, "Trying to create a new ImageHeapConstant for %s after the ImageHeapScanner is sealed.", javaConstant);
+                newTask = new AnalysisFuture<>(() -> {
+                    ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
+                    /* When the image heap object is created replace the future in the map. */
+                    imageHeap.setValue(javaConstant, imageHeapConstant);
+                    return imageHeapConstant;
+                });
+            }
             existingTask = imageHeap.setTask(javaConstant, newTask);
             if (existingTask == null) {
                 return newTask.ensureDone();
             }
         }
         return existingTask instanceof ImageHeapConstant ? (ImageHeapConstant) existingTask : ((AnalysisFuture<ImageHeapConstant>) existingTask).ensureDone();
+    }
+
+    private static void ensureFieldPositionsComputed(ImageHeapConstant baseLayerConstant, ScanReason reason) {
+        AnalysisType objectType = baseLayerConstant.getType();
+        objectType.registerAsReachable(reason);
+        objectType.getStaticFields();
+        objectType.getInstanceFields(true);
     }
 
     private void checkSealed(ScanReason reason, String format, Object... args) {
@@ -313,6 +332,60 @@ public abstract class ImageHeapScanner {
             array.setElementValues(elementValues);
         });
         return array;
+    }
+
+    public void linkBaseLayerValue(ImageHeapConstant constant, int idx, ImageHeapConstant baseLayerValue) {
+        if (constant instanceof ImageHeapObjectArray array) {
+            linkBaseLayerElementValue(array, idx, baseLayerValue);
+        } else if (constant instanceof ImageHeapInstance instance) {
+            AnalysisField field = (AnalysisField) instance.getType().getInstanceFields(true)[idx];
+            linkBaseLayerFieldValue(instance, field, baseLayerValue);
+        } else {
+            AnalysisError.shouldNotReachHere("unexpected constant: " + constant);
+        }
+    }
+
+    private void linkBaseLayerFieldValue(ImageHeapInstance instance, AnalysisField field, ImageHeapConstant baseLayerFieldValue) {
+        ValueSupplier<JavaConstant> rawFieldValue;
+        try {
+            JavaConstant hostedInstance = instance.getHostedObject();
+            AnalysisError.guarantee(hostedInstance != null);
+            rawFieldValue = readHostedFieldValue(field, hostedInstance);
+        } catch (InternalError | TypeNotPresentException | LinkageError e) {
+            /* Ignore missing type errors. */
+            return;
+        }
+        if (rawFieldValue != null) {
+            linkAndRegisterBaseLayerValue(baseLayerFieldValue, field, rawFieldValue.get());
+        }
+    }
+
+    private void linkAndRegisterBaseLayerValue(ImageHeapConstant baseLayerValue, Object reason, JavaConstant rawValue) {
+        JavaConstant hostedValue = baseLayerValue.getHostedObject();
+        if (hostedValue == null) {
+            baseLayerValue.setHostedObject(rawValue);
+            hostedValue = rawValue;
+        } else {
+            AnalysisError.guarantee(hostedValue.equals(rawValue));
+        }
+        Object existingSnapshot = imageHeap.getSnapshot(hostedValue);
+        if (existingSnapshot != null) {
+            AnalysisError.guarantee(existingSnapshot == baseLayerValue || existingSnapshot instanceof AnalysisFuture<?> task && task.ensureDone() == baseLayerValue,
+                            "Found unexpected snapshot value for base layer value. Reason: %s.", reason);
+        } else {
+            imageHeap.setValue(hostedValue, baseLayerValue);
+        }
+    }
+
+    private void linkBaseLayerElementValue(ImageHeapObjectArray array, int idx, ImageHeapConstant baseLayerElementValue) {
+        JavaConstant hostedArray = array.getHostedObject();
+        JavaConstant rawElementValue = null;
+        if (hostedArray != null) {
+            rawElementValue = hostedValuesProvider.readArrayElement(hostedArray, idx);
+        }
+        if (rawElementValue != null) {
+            linkAndRegisterBaseLayerValue(baseLayerElementValue, array, rawElementValue);
+        }
     }
 
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
@@ -631,6 +704,17 @@ public abstract class ImageHeapScanner {
                     ImageHeapInstance receiverObject = (ImageHeapInstance) toImageHeapObject(receiverConstant, reason);
                     JavaConstant fieldSnapshot = receiverObject.readFieldValue(field);
                     JavaConstant unwrappedSnapshot = ScanningObserver.maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant);
+
+                    if (fieldSnapshot instanceof ImageHeapConstant ihc && ihc.isInBaseLayer() && ihc.getHostedObject() == null) {
+                        /*
+                         * We cannot verify a base layer constant which doesn't have a backing
+                         * hosted object. Since the hosted object is missing the constant would be
+                         * replaced with the new hosted object reachable from the field, which would
+                         * be wrong.
+                         */
+                        return;
+                    }
+
                     if (!Objects.equals(unwrappedSnapshot, fieldValue)) {
                         AnalysisFuture<JavaConstant> fieldTask = patchInstanceField(receiverObject, field, fieldValue, reason, null);
                         if (field.isRead() || field.isFolded()) {

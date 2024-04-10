@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.heap;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -51,6 +52,8 @@ import jdk.vm.ci.meta.VMConstant;
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, CompressibleConstant, VMConstant {
 
+    private static final AtomicInteger currentId = new AtomicInteger(0);
+
     public static final VarHandle isReachableHandle = ReflectionUtil.unreflectField(ConstantData.class, "isReachable", MethodHandles.lookup());
 
     abstract static class ConstantData {
@@ -62,7 +65,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          * Stores the hosted object, already processed by the object transformers. It is null for
          * instances of partially evaluated classes.
          */
-        private final JavaConstant hostedObject;
+        private JavaConstant hostedObject;
         /**
          * The identity hash code for the heap object. This field is only used if
          * {@link #hostedObject} is null, i.e., for objects without a backing object in the heap of
@@ -71,6 +74,10 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          * unused object in the image builder VM.
          */
         private final int identityHashCode;
+        /**
+         * Unique id.
+         */
+        protected final int id;
         /**
          * A future that reads the hosted field or array elements values lazily only when the
          * receiver object is used. This way the shadow heap can contain hosted only objects, i.e.,
@@ -83,6 +90,11 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          * initially null, then it stores the reason why this constant became reachable.
          */
         @SuppressWarnings("unused") private volatile Object isReachable;
+        /**
+         * A boolean allowing to distinguish a constant that was persisted from a base layer and a
+         * constant created in the current layer.
+         */
+        private boolean isInBaseLayer;
 
         ConstantData(AnalysisType type, JavaConstant hostedObject) {
             Objects.requireNonNull(type);
@@ -101,6 +113,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
                 /* This value must never be used later on. */
                 this.identityHashCode = -1;
             }
+            this.id = currentId.getAndIncrement();
         }
 
         @Override
@@ -140,7 +153,8 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return constantData.hostedValuesReader == null || constantData.hostedValuesReader.isDone();
     }
 
-    public boolean markReachable(ObjectScanner.ScanReason reason) {
+    /** Intentionally package private. Should only be set via ImageHeapScanner.markReachable. */
+    boolean markReachable(ObjectScanner.ScanReason reason) {
         ensureReaderInstalled();
         return isReachableHandle.compareAndSet(constantData, null, reason);
     }
@@ -154,6 +168,13 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     }
 
     public boolean hasIdentityHashCode() {
+        /*
+         * GR-52121: Until the hash code can be injected in HotSpot, the hash code is computed as if
+         * the hosted object is null.
+         */
+        if (constantData.isInBaseLayer) {
+            return constantData.identityHashCode > 0 && constantData.hostedObject == null;
+        }
         return constantData.identityHashCode > 0;
     }
 
@@ -161,6 +182,18 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         AnalysisError.guarantee(constantData.hostedObject == null, "ImageHeapConstant only stores the identity hash code when there is no hosted object.");
         AnalysisError.guarantee(constantData.identityHashCode > 0, "The provided identity hashcode value must be a positive number to be on par with the Java HotSpot VM.");
         return constantData.identityHashCode;
+    }
+
+    public void markInBaseLayer() {
+        constantData.isInBaseLayer = true;
+    }
+
+    public boolean isInBaseLayer() {
+        return constantData.isInBaseLayer;
+    }
+
+    public void setHostedObject(JavaConstant hostedObject) {
+        constantData.hostedObject = hostedObject;
     }
 
     public JavaConstant getHostedObject() {
