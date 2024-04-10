@@ -81,7 +81,10 @@ public class EconomicSetNodeEventListener extends NodeEventListener {
             }
             if (node instanceof InputsChangedCanonicalization) {
                 for (Node input : node.inputs()) {
-                    add(input);
+                    // defend against listeners during clone
+                    if (input.graph() == node.graph()) {
+                        add(input);
+                    }
                 }
             }
 
