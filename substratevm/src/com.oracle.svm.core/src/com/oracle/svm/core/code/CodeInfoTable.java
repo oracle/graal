@@ -258,6 +258,11 @@ public class CodeInfoTable {
         return info;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isInAOTImageCode(CodePointer ip) {
+        return lookupImageCodeInfo(ip).isNonNull();
+    }
+
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.", callerMustBe = true)
     public static UntetheredCodeInfo lookupCodeInfo(CodePointer ip) {
         counters().lookupCodeInfoCount.inc();

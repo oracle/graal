@@ -119,15 +119,15 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
 
         int virtualFrameIndex = 0;
         do {
-            CodePointer method;
+            CodePointer deoptAddress;
             if (virtualFrame != null) {
                 assert deoptInfo == null : "must have either deoptimized or non-deoptimized frame information, but not both";
-                method = virtualFrame.getFrameInfo().getDeoptMethodAddress();
+                deoptAddress = virtualFrame.getFrameInfo().getDeoptMethodAddress();
             } else {
-                method = deoptInfo.getDeoptMethodAddress();
+                deoptAddress = deoptInfo.getDeoptMethodAddress();
             }
 
-            if (matches(method, curMatchingMethods)) {
+            if (matchesDeoptAddress(deoptAddress, curMatchingMethods)) {
                 if (skip > 0) {
                     skip--;
                 } else {
@@ -162,13 +162,13 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
 
     }
 
-    private static boolean matches(CodePointer needle, ResolvedJavaMethod[] haystack) {
-        if (haystack == null) {
+    private static boolean matchesDeoptAddress(CodePointer ip, ResolvedJavaMethod[] methods) {
+        if (methods == null) {
             return true;
         }
-        for (ResolvedJavaMethod method : haystack) {
+        for (ResolvedJavaMethod method : methods) {
             CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo((SharedMethod) method);
-            if (needle == CodeInfoAccess.absoluteIP(codeInfo, ((SharedMethod) method).getImageCodeDeoptOffset())) {
+            if (ip == CodeInfoAccess.absoluteIP(codeInfo, ((SharedMethod) method).getImageCodeDeoptOffset())) {
                 return true;
             }
         }

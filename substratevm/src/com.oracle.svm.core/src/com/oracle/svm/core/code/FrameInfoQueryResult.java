@@ -341,7 +341,8 @@ public class FrameInfoQueryResult {
     }
 
     public String getSourceClassName() {
-        return (getSourceClass() != null) ? getSourceClass().getName() : "";
+        Class<?> clazz = getSourceClass();
+        return (clazz != null) ? clazz.getName() : "";
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -394,7 +395,8 @@ public class FrameInfoQueryResult {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceFileName() {
-        return getSourceClass() != null ? DynamicHub.fromClass(getSourceClass()).getSourceFileName() : null;
+        Class<?> clazz = getSourceClass();
+        return (clazz != null) ? DynamicHub.fromClass(clazz).getSourceFileName() : null;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -402,11 +404,10 @@ public class FrameInfoQueryResult {
         return sourceLineNumber;
     }
 
-    /**
-     * Returns the name and source code location of the method.
-     */
+    /** Returns the name and source code location of the method. */
     public StackTraceElement getSourceReference() {
-        return getSourceReference(getSourceClass(), getSourceMethodName(), sourceLineNumber);
+        fillInSourceClassAndMethodNameIfMissing();
+        return getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
     }
 
     public static StackTraceElement getSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
@@ -435,8 +436,9 @@ public class FrameInfoQueryResult {
     }
 
     public Log log(Log log) {
-        String className = (getSourceClass() != null) ? getSourceClass().getName() : "";
-        String methodName = (getSourceMethodName() != null) ? getSourceMethodName() : "";
+        fillInSourceClassAndMethodNameIfMissing();
+        String className = (sourceClass != null) ? sourceClass.getName() : "";
+        String methodName = (sourceMethodName != null) ? sourceMethodName : "";
         log.string(className);
         if (!(className.isEmpty() || methodName.isEmpty())) {
             log.string(".");
@@ -450,7 +452,7 @@ public class FrameInfoQueryResult {
         if (isNativeMethod()) {
             log.string("Native Method");
         } else {
-            String sourceFileName = getSourceClass() != null ? DynamicHub.fromClass(getSourceClass()).getSourceFileName() : null;
+            String sourceFileName = sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
             if (sourceFileName != null) {
                 if (sourceLineNumber >= 0) {
                     log.string(sourceFileName).string(":").signed(sourceLineNumber);

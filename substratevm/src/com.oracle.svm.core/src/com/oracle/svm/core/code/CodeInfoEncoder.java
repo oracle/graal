@@ -72,6 +72,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.FrequencyEncoder;
 import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.TypeWriter;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.options.Option;
@@ -123,7 +124,19 @@ public class CodeInfoEncoder {
 
         public final FrequencyEncoder<JavaConstant> objectConstants;
         public final FrequencyEncoder<Class<?>> classes;
+        /**
+         * Own encoder for method and field name strings because they have different characteristics
+         * than most {@linkplain #otherStrings other strings} and can be separated from them without
+         * much duplication, which results in lower indexes for both kinds of strings that can in
+         * turn be {@linkplain TypeWriter#putUV encoded in fewer bytes}, also in the
+         * {@linkplain #encodeMethodTable() method table}.
+         */
         public final FrequencyEncoder<String> memberNames;
+        /**
+         * Encoder for strings other than {@linkplain #memberNames member names} such as class or
+         * variable names, signatures and messages. (These might also be separated like
+         * {@link #memberNames}, but with less benefit for the added complexity)
+         */
         public final FrequencyEncoder<String> otherStrings;
         private final FrequencyEncoder<Member> methods;
         private Member[] encodedMethods;
@@ -195,6 +208,14 @@ public class CodeInfoEncoder {
             return encoder.encodeAll(array);
         }
 
+        /**
+         * Encodes the table of {@link #methods} as a byte array. Each table entry has the same size
+         * to allow for indexes without gaps that can be {@linkplain TypeWriter#putUV encoded in
+         * fewer bytes}. Still, the fields of the entries are dimensioned to not be larger than
+         * necessary to index into another array such as {@link #classes}.
+         *
+         * @see CodeInfoDecoder#fillInSourceClassAndMethodName
+         */
         private NonmovableArray<Byte> encodeMethodTable() {
             if (methods == null) {
                 return NonmovableArrays.nullArray();

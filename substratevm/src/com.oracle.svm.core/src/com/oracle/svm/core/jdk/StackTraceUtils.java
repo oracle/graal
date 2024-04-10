@@ -392,7 +392,7 @@ final class BacktraceVisitor extends StackFrameVisitor {
                     return false;
                 }
             }
-        } else if (!isAOTCodePointer(ip)) {
+        } else if (!CodeInfoTable.isInAOTImageCode(ip)) {
             CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
             for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
                 if (!visitFrameInfo(frameInfo)) {
@@ -440,14 +440,6 @@ final class BacktraceVisitor extends StackFrameVisitor {
         index += entriesPerSourceReference();
         numFrames++;
         return numFrames != limit;
-    }
-
-    /**
-     * Determines whether a {@link CodePointer} refers to AOT compiled code that is stored in the
-     * image heap and therefore cannot be garbage collected.
-     */
-    public static boolean isAOTCodePointer(CodePointer ip) {
-        return CodeInfoTable.lookupImageCodeInfo(ip).isNonNull();
     }
 
     /**

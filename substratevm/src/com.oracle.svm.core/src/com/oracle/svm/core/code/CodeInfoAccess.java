@@ -263,7 +263,6 @@ public final class CodeInfoAccess {
     }
 
     public static long lookupDeoptimizationEntrypoint(CodeInfo info, long method, long encodedBci, CodeInfoQueryResult codeInfo, ConstantAccess constantAccess) {
-        assert isAOTImageCode(info);
         return CodeInfoDecoder.lookupDeoptimizationEntrypoint(info, method, encodedBci, codeInfo, constantAccess);
     }
 

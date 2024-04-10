@@ -188,6 +188,7 @@ public final class CodeInfoDecoder {
     }
 
     static long lookupDeoptimizationEntrypoint(CodeInfo info, long method, long encodedBci, CodeInfoQueryResult codeInfo, ConstantAccess constantAccess) {
+        assert CodeInfoAccess.isAOTImageCode(info);
 
         long sizeEncoding = initialSizeEncoding();
         long entryIP = lookupEntryIP(method);
@@ -414,19 +415,24 @@ public final class CodeInfoDecoder {
         return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), frameInfoIndex), info, constantAccess);
     }
 
+    /**
+     * Looks up the appropriate {@link CodeInfo} for {@link FrameInfoQueryResult#sourceMethodId} and
+     * reads its associated method table entry to resolve and fill the source class and method name
+     * using the respective other arrays.
+     *
+     * @see CodeInfoEncoder.Encoders#encodeMethodTable
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void fillInSourceClassAndMethodName(FrameInfoQueryResult result) {
         int methodId = result.sourceMethodId;
-        CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();
-        assert info.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(info);
-        for (;;) {
-            CodeInfo next = CodeInfoAccess.getNextImageCodeInfo(info);
-            assert next.isNull() || CodeInfoAccess.getMethodTableFirstId(next) >= CodeInfoAccess.getMethodTableFirstId(info);
-            if (next.isNull() || methodId < CodeInfoAccess.getMethodTableFirstId(next)) {
-                break;
-            }
+        CodeInfo info;
+        CodeInfo next = CodeInfoTable.getFirstImageCodeInfo();
+        assert next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next);
+        do {
             info = next;
-        }
+            next = CodeInfoAccess.getNextImageCodeInfo(info);
+            assert next.isNull() || CodeInfoAccess.getMethodTableFirstId(next) >= CodeInfoAccess.getMethodTableFirstId(info);
+        } while (next.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(next));
 
         boolean shortClass = NonmovableArrays.lengthOf(CodeInfoAccess.getClasses(info)) <= 0xffff;
         boolean shortName = NonmovableArrays.lengthOf(CodeInfoAccess.getMemberNames(info)) <= 0xffff;
