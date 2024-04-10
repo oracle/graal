@@ -32,7 +32,8 @@ import org.graalvm.collections.Equivalence;
 import jdk.graal.compiler.graph.Graph.NodeEvent;
 import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.Node.IndirectInputCanonicalization;
+import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
+import jdk.graal.compiler.graph.Node.InputsChangedCanonicalization;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 
 /**
@@ -73,9 +74,14 @@ public class EconomicSetNodeEventListener extends NodeEventListener {
     public void changed(NodeEvent e, Node node) {
         if (filter.contains(e)) {
             add(node);
-            if (node instanceof IndirectInputCanonicalization) {
+            if (node instanceof IndirectInputChangedCanonicalization) {
                 for (Node usage : node.usages()) {
                     add(usage);
+                }
+            }
+            if (node instanceof InputsChangedCanonicalization) {
+                for (Node input : node.inputs()) {
+                    add(input);
                 }
             }
 

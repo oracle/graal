@@ -34,8 +34,8 @@ import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.Node.IndirectInputCanonicalization;
-import jdk.graal.compiler.graph.Node.IndirectUsageCanonicalization;
+import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
+import jdk.graal.compiler.graph.Node.InputsChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -54,7 +54,7 @@ import jdk.graal.compiler.nodes.spi.SimplifierTool;
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
 @NodeInfo(nameTemplate = "Write#{p#location/s}")
-public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Simplifiable, IndirectInputCanonicalization, IndirectUsageCanonicalization {
+public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Simplifiable, IndirectInputChangedCanonicalization, InputsChangedCanonicalization {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
 
