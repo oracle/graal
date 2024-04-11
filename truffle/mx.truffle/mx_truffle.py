@@ -1347,7 +1347,8 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     assert maven_group_id
     assert language_license
 
-    if mx.get_env('POLYGLOT_ISOLATE_LIBRARY', 'false') != 'true':
+    polyglot_isolates_value = mx.get_opts().polyglot_isolates
+    if not polyglot_isolates_value or (polyglot_isolates_value != 'true' and language_id not in polyglot_isolates_value.split(',')):
         return False
 
     if not isinstance(language_license, list):
@@ -1502,6 +1503,10 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         **attrs)
     register_distribution(meta_pom_dist)
     return True
+
+
+mx.add_argument('--polyglot-isolates', action='store', help='Comma-separated list of languages for which the polyglot isolate library should be built. Setting the value to `true` builds all polyglot isolate libraries.')
+
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.
