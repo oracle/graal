@@ -646,6 +646,8 @@ public class NativeImageGenerator {
             var hConstantReflection = (HostedConstantReflectionProvider) runtimeConfiguration.getProviders().getConstantReflection();
             heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, hConstantReflection, ImageSingletons.lookup(ImageHeapLayouter.class));
 
+            ((SVMImageLayerWriter) aUniverse.getImageLayerWriter()).setNativeImageHeap(heap);
+
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtimeConfiguration, nativeLibraries);
             featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
 
@@ -697,10 +699,6 @@ public class NativeImageGenerator {
 
                         buildNativeImageHeap(heap, codeCache);
 
-                        if (SubstrateOptions.PersistImageLayer.getValue()) {
-                            persistImageLayer(imageName);
-                        }
-
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
@@ -711,6 +709,11 @@ public class NativeImageGenerator {
                         }
 
                         image.build(imageName, debug);
+
+                        if (SubstrateOptions.PersistImageLayer.getValue()) {
+                            persistImageLayer(imageName);
+                        }
+
                         if (NativeImageOptions.PrintUniverse.getValue()) {
                             /*
                              * This debug output must be printed _after_ and not _during_ image

@@ -78,6 +78,7 @@ public class ImageLayerSnapshotUtil {
     public static final String ENUM_NAME_TAG = "enum name";
     public static final String CLASS_ID_TAG = "class id";
     public static final String SIMULATED_TAG = "simulated";
+    public static final String OBJECT_OFFSET_TAG = "object offset";
 
     public String getTypeIdentifier(AnalysisType type) {
         String javaName = type.toJavaName(true);

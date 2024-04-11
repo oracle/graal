@@ -244,25 +244,29 @@ public class ImageLayerWriter {
     private void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantsMap) {
         if (imageHeapConstant.isReaderInstalled() && !constantsMap.containsKey(Integer.toString(imageHeapConstant.constantData.id))) {
             EconomicMap<String, Object> constantMap = EconomicMap.create();
-            constantsMap.put(Integer.toString(imageHeapConstant.constantData.id), constantMap);
-            constantMap.put(TID_TAG, imageHeapConstant.getType().getId());
-            if (imageHeapConstant.hasIdentityHashCode()) {
-                constantMap.put(IDENTITY_HASH_CODE_TAG, imageHeapConstant.getIdentityHashCode());
-            }
+            persistConstant(analysisUniverse, imageHeapConstant, constantMap, constantsMap);
+        }
+    }
 
-            switch (imageHeapConstant) {
-                case ImageHeapInstance imageHeapInstance -> {
-                    persistConstant(analysisUniverse, constantsMap, constantMap, INSTANCE_TAG, imageHeapInstance.getFieldValues());
-                    persistConstantRelinkingInfo(constantMap, imageHeapConstant, analysisUniverse.getBigbang());
-                }
-                case ImageHeapObjectArray imageHeapObjectArray ->
-                    persistConstant(analysisUniverse, constantsMap, constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
-                case ImageHeapPrimitiveArray imageHeapPrimitiveArray -> {
-                    constantMap.put(CONSTANT_TYPE_TAG, PRIMITIVE_ARRAY_TAG);
-                    constantMap.put(DATA_TAG, getString(imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray()));
-                }
-                default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
+    protected void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap, EconomicMap<String, Object> constantsMap) {
+        constantsMap.put(Integer.toString(imageHeapConstant.constantData.id), constantMap);
+        constantMap.put(TID_TAG, imageHeapConstant.getType().getId());
+        if (imageHeapConstant.hasIdentityHashCode()) {
+            constantMap.put(IDENTITY_HASH_CODE_TAG, imageHeapConstant.getIdentityHashCode());
+        }
+
+        switch (imageHeapConstant) {
+            case ImageHeapInstance imageHeapInstance -> {
+                persistConstant(analysisUniverse, constantsMap, constantMap, INSTANCE_TAG, imageHeapInstance.getFieldValues());
+                persistConstantRelinkingInfo(constantMap, imageHeapConstant, analysisUniverse.getBigbang());
             }
+            case ImageHeapObjectArray imageHeapObjectArray ->
+                persistConstant(analysisUniverse, constantsMap, constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
+            case ImageHeapPrimitiveArray imageHeapPrimitiveArray -> {
+                constantMap.put(CONSTANT_TYPE_TAG, PRIMITIVE_ARRAY_TAG);
+                constantMap.put(DATA_TAG, getString(imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray()));
+            }
+            default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
         }
     }
 
