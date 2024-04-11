@@ -271,7 +271,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected long boundedQuantifierMaxValue() {
-        return Integer.MAX_VALUE;
+        return 0xfffe;
     }
 
     @Override
