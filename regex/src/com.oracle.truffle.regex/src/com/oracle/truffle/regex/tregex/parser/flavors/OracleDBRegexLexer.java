@@ -112,6 +112,11 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledCCRangeWithPredefCharClass() {
+        return false;
+    }
+
+    @Override
     protected boolean featureEnabledNestedCharClasses() {
         return true;
     }
@@ -266,12 +271,12 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected long boundedQuantifierMaxValue() {
-        return 0xffff_ffffL;
+        return 0xfffe;
     }
 
     @Override
     protected RegexSyntaxException handleBoundedQuantifierOutOfOrder() {
-        return syntaxError(OracleDBErrorMessages.QUANTIFIER_OUT_OF_ORDER);
+        return syntaxError(OracleDBErrorMessages.INVALID_INTERVAL);
     }
 
     @Override
@@ -288,29 +293,15 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected Token handleBoundedQuantifierOverflow(long min, long max) {
-        if (min == -1 || max == -1) {
-            // bounded quantifiers outside uint32 range are treated as string literals
-            position = getLastTokenPosition() + 1;
-            return literalChar('{');
-        }
         if (Long.compareUnsigned(min, max) > 0) {
             throw handleBoundedQuantifierOutOfOrder();
         }
-        // oracledb quirk: values between 0x7fff_ffff and 0xffff_ffff are treated as uint32 in the
-        // quantifier order check, but are later "cast" to int32 by stripping the sign bit.
-        return new Token.Quantifier((int) (min & Integer.MAX_VALUE), (int) (max & Integer.MAX_VALUE), !consumingLookahead("?"));
+        throw syntaxError(OracleDBErrorMessages.INVALID_INTERVAL);
     }
 
     @Override
     protected Token handleBoundedQuantifierOverflowMin(long min, long max) {
-        if (min == -1) {
-            // bounded quantifiers outside uint32 range are treated as string literals
-            position = getLastTokenPosition() + 1;
-            return literalChar('{');
-        }
-        // oracledb quirk: values between 0x7fff_ffff and 0xffff_ffff are treated as uint32 in the
-        // quantifier order check, but are later "cast" to int32 by stripping the sign bit.
-        return new Token.Quantifier((int) (min & Integer.MAX_VALUE), (int) (max & Integer.MAX_VALUE), !consumingLookahead("?"));
+        throw syntaxError(OracleDBErrorMessages.INVALID_INTERVAL);
     }
 
     @Override
@@ -320,7 +311,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected void handleCCRangeWithPredefCharClass(int startPos, ClassSetContents firstAtom, ClassSetContents secondAtom) {
-        if (firstAtom.isAllowedInRange()) {
+        if ((firstAtom.isAllowedInRange() || !firstAtom.isCodePointSetOnly()) && secondAtom.isCodePointSetOnly()) {
             throw syntaxError(OracleDBErrorMessages.INVALID_RANGE);
         }
     }

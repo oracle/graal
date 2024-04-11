@@ -1166,6 +1166,28 @@ public class OracleDBTests extends RegexTestBase {
         test("\\z|((\\WV|))\\Z", "", "a", 0, true, 1, 1, -1, -1, -1, -1);
         test("\\z|(\\WV|)\\Z", "", "a", 0, true, 1, 1, -1, -1);
         test("\\z|(x|)\\Z", "", "a", 0, true, 1, 1, -1, -1);
+        test("a(|())\\2", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
+        test("a(|())\\2?", "", "a", 0, true, 0, 1, 1, 1, -1, -1);
+        test("a(|())\\2*", "", "a", 0, true, 0, 1, 1, 1, -1, -1);
+        test("a(|())\\2+", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
+        test("a(|())\\2{1}", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
+        test("a(|())\\2{1,2}", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
+        test("a(|())\\2{2,3}", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
+        test("a(b|()\\1|\\2){4}", "", "abb", 0, true, 0, 3, 3, 3, 2, 2);
+        test("\\D([[=O=]S[.f.]]|\\s|(())\\1|\\3(|)){27,222}?", "", "\"O f\u000b  OoOO O\r O", 0, true, 0, 16, 16, 16, 10, 10, 10, 10, 16, 16);
+        test("a??|", "", "a", 0, true, 0, 0);
+        test("b?a??|", "", "a", 0, true, 0, 0);
+        test("b??a??|", "", "a", 0, true, 0, 0);
+        test("a??a?|", "", "a", 0, true, 0, 1);
+        test("a??a??|", "", "a", 0, true, 0, 0);
+        test("(|a)a??|", "", "a", 0, true, 0, 0, 0, 0);
+        test("(|a)(|a)|", "", "a", 0, true, 0, 0, 0, 0, 0, 0);
+        test("a??a??a??|", "", "a", 0, true, 0, 0);
+        test("b??a??", "", "a", 0, true, 0, 0);
+        test("(a??)a??|", "", "a", 0, true, 0, 0, 0, 0);
+        test("(a??)(a??)|", "", "a", 0, true, 0, 0, 0, 0, 0, 0);
+        test("()b??a??|", "", "a", 0, true, 0, 0, 0, 0);
+        expectSyntaxError("a{2,71920}", "", "", getTRegexEncoding(), "aa", 0, "invalid interval in regular expression");
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
