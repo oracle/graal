@@ -113,14 +113,14 @@ public final class JVMCIVersionCheck {
                     }
 
                 } catch (NumberFormatException e) {
-                    // ignore
+                    // cannot parse JVMCI version numbers -> be on the safe side and ignore
                 }
             } else {
                 try {
                     // assume OpenJDK version
                     return createOpenJDKVersion(stripVersion(vmVersion));
                 } catch (IllegalArgumentException e) {
-                    // ignore
+                    // unexpected version string -> be on the safe side and ignore
                 }
             }
             return null;
