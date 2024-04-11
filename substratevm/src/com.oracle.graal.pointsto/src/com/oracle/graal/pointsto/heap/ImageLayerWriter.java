@@ -94,24 +94,32 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class ImageLayerWriter {
     public static final String TYPE_SWITCH_SUBSTRING = "$$TypeSwitch";
     private final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
-    private final ImageHeap imageHeap;
+    private ImageHeap imageHeap;
     /**
      * Contains the same array as StringInternSupport#imageInternedStrings, which is sorted.
      */
     private String[] imageInternedStrings;
 
-    public ImageLayerWriter(ImageHeap imageHeap) {
-        this.imageHeap = imageHeap;
+    protected EconomicMap<String, Object> jsonMap = EconomicMap.create();
+    FileInfo fileInfo;
+
+    private record FileInfo(Path layerSnapshotPath, String fileName, String suffix) {
+    }
+
+    public ImageLayerWriter() {
         this.imageLayerSnapshotUtil = new ImageLayerSnapshotUtil();
     }
 
-    public ImageLayerWriter(ImageHeap imageHeap, ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
-        this.imageHeap = imageHeap;
+    public ImageLayerWriter(ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
     }
 
     public void setImageInternedStrings(String[] imageInternedStrings) {
         this.imageInternedStrings = imageInternedStrings;
+    }
+
+    public void setImageHeap(ImageHeap heap) {
+        this.imageHeap = heap;
     }
 
     /**
@@ -129,10 +137,16 @@ public class ImageLayerWriter {
         return type.toJavaName().contains(TYPE_SWITCH_SUBSTRING);
     }
 
-    public void persist(Universe hostedUniverse, AnalysisUniverse analysisUniverse, Path layerSnapshotPath, String fileName, String suffix) {
-        EconomicMap<String, Object> jsonMap = EconomicMap.create();
+    public void setFileInfo(Path layerSnapshotPath, String fileName, String suffix) {
+        fileInfo = new FileInfo(layerSnapshotPath, fileName, suffix);
+    }
 
-        persistHook(hostedUniverse, analysisUniverse, jsonMap);
+    public void dumpFile() {
+        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> JSONFormatter.printJSON(jsonMap, writer));
+    }
+
+    public void persistAnalysisInfo(Universe hostedUniverse, AnalysisUniverse analysisUniverse) {
+        persistHook(hostedUniverse, analysisUniverse);
 
         jsonMap.put(NEXT_TYPE_ID_TAG, analysisUniverse.getNextTypeId());
         jsonMap.put(NEXT_METHOD_ID_TAG, analysisUniverse.getNextMethodId());
@@ -171,8 +185,6 @@ public class ImageLayerWriter {
             }
         }
         jsonMap.put(CONSTANTS_TAG, constantsMap);
-
-        FileDumpingUtil.dumpFile(layerSnapshotPath, fileName, suffix, writer -> JSONFormatter.printJSON(jsonMap, writer));
     }
 
     /**
@@ -180,7 +192,7 @@ public class ImageLayerWriter {
      * pointsto.
      */
     @SuppressWarnings("unused")
-    protected void persistHook(Universe hostedUniverse, AnalysisUniverse analysisUniverse, EconomicMap<String, Object> jsonMap) {
+    protected void persistHook(Universe hostedUniverse, AnalysisUniverse analysisUniverse) {
 
     }
 

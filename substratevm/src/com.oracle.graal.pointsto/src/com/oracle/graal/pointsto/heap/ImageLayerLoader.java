@@ -68,6 +68,10 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.VALUE_TAG;
 import static com.oracle.graal.pointsto.util.AnalysisError.guarantee;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -92,6 +96,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.util.json.JSONParser;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -163,7 +168,17 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *              (,"enum name": enumValue)
  *              (,"class id": cid)
  *          }
- *      }
+ *      },
+ *      "image singleton objects" : [
+ *          objectID,
+ *          "class name",
+ *          { (key_value_store) }
+ *      ],
+ *      "image singleton keys" : [
+ *          "key class name",
+ *          persist_flags,
+ *          objectID
+ *      ]
  * }
  * </pre>
  *
@@ -195,6 +210,7 @@ public class ImageLayerLoader {
     private final Set<Integer> processedFieldsIds = ConcurrentHashMap.newKeySet();
     protected final Map<Integer, AnalysisMethod> methods = new ConcurrentHashMap<>();
     private final Map<Integer, ImageHeapConstant> constants = new ConcurrentHashMap<>();
+    private final List<Path> loadPaths;
     /**
      * Map from a missing constant id to all the constants that depend on it. A constant is missing
      * if its {@link AnalysisType} was not created yet, but its parent constant was already created.
@@ -230,42 +246,65 @@ public class ImageLayerLoader {
     protected final Map<JavaConstant, ImageHeapConstant> relinkedConstants = new ConcurrentHashMap<>();
     protected final Map<Integer, Long> objectOffsets = new ConcurrentHashMap<>();
     protected final Map<AnalysisField, Integer> fieldLocations = new ConcurrentHashMap<>();
-    protected final AnalysisUniverse universe;
+    protected AnalysisUniverse universe;
     protected AnalysisMetaAccess metaAccess;
     protected HostedValuesProvider hostedValuesProvider;
 
     protected EconomicMap<String, Object> jsonMap;
 
-    public ImageLayerLoader(AnalysisUniverse universe) {
-        this(universe, new ImageLayerSnapshotUtil());
+    public ImageLayerLoader() {
+        this(new ImageLayerSnapshotUtil(), List.of());
     }
 
-    public ImageLayerLoader(AnalysisUniverse universe, ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
-        this.universe = universe;
+    public ImageLayerLoader(ImageLayerSnapshotUtil imageLayerSnapshotUtil, List<Path> loadPaths) {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
+        this.loadPaths = loadPaths;
+    }
+
+    public void setUniverse(AnalysisUniverse newUniverse) {
+        this.universe = newUniverse;
+    }
+
+    /**
+     * Note this code is not thread safe.
+     */
+    protected void loadJsonMap() {
+        assert loadPaths.size() == 1 : "Currently only one path is supported for image layer loading " + loadPaths;
+        if (jsonMap == null) {
+            for (Path layerPath : loadPaths) {
+                try (InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(layerPath.toFile()))) {
+                    Object json = new JSONParser(inputStreamReader).parse();
+                    jsonMap = cast(json);
+                } catch (IOException e) {
+                    throw AnalysisError.shouldNotReachHere("Error during image layer snapshot loading", e);
+                }
+            }
+        }
+    }
+
+    public void loadLayerAnalysis() {
+        loadJsonMap();
+        loadLayerAnalysis0();
     }
 
     /**
      * Initializes the {@link ImageLayerLoader}.
      */
-    public void loadLayerSnapshot(Object json) {
-        EconomicMap<String, Object> maps = cast(json);
-        jsonMap = maps;
-
+    private void loadLayerAnalysis0() {
         /*
          * The new ids of the extension image need to be different from the ones from the base
          * layer. The start id is set to the next id of the base layer.
          */
-        int nextTypeId = get(maps, NEXT_TYPE_ID_TAG);
+        int nextTypeId = get(jsonMap, NEXT_TYPE_ID_TAG);
         universe.setStartTypeId(nextTypeId);
 
-        int nextMethodId = get(maps, NEXT_METHOD_ID_TAG);
+        int nextMethodId = get(jsonMap, NEXT_METHOD_ID_TAG);
         universe.setStartMethodId(nextMethodId);
 
-        int nextFieldId = get(maps, NEXT_FIELD_ID_TAG);
+        int nextFieldId = get(jsonMap, NEXT_FIELD_ID_TAG);
         universe.setStartFieldId(nextFieldId);
 
-        /* This mapping allows to get the base layer information from a type id */
+        /* This mapping allows one to get the base layer information from a type id */
         EconomicMap<String, Object> typesMap = get(jsonMap, TYPES_TAG);
         MapCursor<String, Object> typesCursor = typesMap.getEntries();
         while (typesCursor.advance()) {
@@ -278,7 +317,7 @@ public class ImageLayerLoader {
          * The dependencies link between the constants is stored in typeToConstants allowing to
          * easily look it up when creating the constants.
          */
-        EconomicMap<String, Object> constantsMap = get(maps, CONSTANTS_TAG);
+        EconomicMap<String, Object> constantsMap = get(jsonMap, CONSTANTS_TAG);
         MapCursor<String, Object> constantsCursor = constantsMap.getEntries();
         while (constantsCursor.advance()) {
             String stringId = constantsCursor.getKey();
@@ -888,7 +927,7 @@ public class ImageLayerLoader {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> T cast(Object object) {
+    protected static <T> T cast(Object object) {
         return (T) object;
     }
 

@@ -25,19 +25,24 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LOCATION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_OFFSET_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJECT_FIELDS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_PRIMITIVE_FIELDS_TAG;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -47,6 +52,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -70,8 +77,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class SVMImageLayerWriter extends ImageLayerWriter {
     private NativeImageHeap nativeImageHeap;
 
-    public SVMImageLayerWriter(ImageHeap imageHeap) {
-        super(imageHeap, new SVMImageLayerSnapshotUtil());
+    public SVMImageLayerWriter() {
+        super(new SVMImageLayerSnapshotUtil());
     }
 
     public void setNativeImageHeap(NativeImageHeap nativeImageHeap) {
@@ -79,7 +86,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    protected void persistHook(Universe universe, AnalysisUniverse analysisUniverse, EconomicMap<String, Object> jsonMap) {
+    protected void persistHook(Universe universe, AnalysisUniverse analysisUniverse) {
         HostedUniverse hostedUniverse = (HostedUniverse) universe;
 
         ImageHeapConstant staticPrimitiveFields = (ImageHeapConstant) hostedUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticPrimitiveFields());
@@ -197,5 +204,50 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         } else {
             return analysisMethod.getId();
         }
+    }
+
+    record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int id, EconomicMap<String, Object> keyStore) {
+    }
+
+    public void writeImageSingletonInfo(List<Map.Entry<Class<?>, Object>> layeredImageSingletons) {
+        List<Object> singletonsList = new ArrayList<>();
+        Map<LayeredImageSingleton, SingletonPersistInfo> singletonInfoMap = new HashMap<>();
+        int nextID = 1;
+        for (var singletonInfo : layeredImageSingletons) {
+            LayeredImageSingleton singleton = (LayeredImageSingleton) singletonInfo.getValue();
+            String key = singletonInfo.getKey().getName();
+            if (!singletonInfoMap.containsKey(singleton)) {
+                var writer = new ImageSingletonWriterImpl();
+                var flags = singleton.preparePersist(writer);
+                boolean persistData = flags == LayeredImageSingleton.PersistFlags.CREATE;
+                var info = new SingletonPersistInfo(flags, persistData ? nextID++ : -1, persistData ? writer.getKeyValueStore() : null);
+                singletonInfoMap.put(singleton, info);
+            }
+            var info = singletonInfoMap.get(singleton);
+            singletonsList.add(List.of(key, info.flags.ordinal(), info.id));
+        }
+        jsonMap.put(IMAGE_SINGLETON_KEYS, singletonsList);
+
+        List<Object> objectList = new ArrayList<>();
+        var sortedByIDs = singletonInfoMap.entrySet().stream().filter(e -> e.getValue().flags == LayeredImageSingleton.PersistFlags.CREATE).sorted(Comparator.comparingInt(e -> e.getValue().id))
+                        .toList();
+        for (var entry : sortedByIDs) {
+            var info = entry.getValue();
+            objectList.add(List.of(info.id, entry.getKey().getClass().getName(), info.keyStore));
+        }
+        jsonMap.put(IMAGE_SINGLETON_OBJECTS, objectList);
+    }
+}
+
+class ImageSingletonWriterImpl implements ImageSingletonWriter {
+    private final EconomicMap<String, Object> keyValueStore = EconomicMap.create();
+
+    EconomicMap<String, Object> getKeyValueStore() {
+        return keyValueStore;
+    }
+
+    @Override
+    public void writeInt(String keyName, int value) {
+        keyValueStore.put(keyName, List.of("I", value));
     }
 }
