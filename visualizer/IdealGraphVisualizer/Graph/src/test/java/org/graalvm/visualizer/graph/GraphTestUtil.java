@@ -23,38 +23,27 @@
 
 package org.graalvm.visualizer.graph;
 
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_STATE;
+import static org.graalvm.visualizer.data.DataTestUtil.*;
+import static org.graalvm.visualizer.layout.LayoutTestUtil.assertPortEquals;
+import static org.graalvm.visualizer.layout.LayoutTestUtil.assertVertexEquals;
+import static org.graalvm.visualizer.settings.TestUtils.*;
+import static org.junit.Assert.*;
+
+import java.awt.*;
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+
 import org.graalvm.visualizer.data.DataTestUtil;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
 import org.graalvm.visualizer.hierarchicallayout.HierarchicalLayoutManager;
 import org.graalvm.visualizer.layout.LayoutGraph;
 import org.graalvm.visualizer.settings.TestUtils;
 import org.graalvm.visualizer.settings.layout.LayoutSettings;
 import org.graalvm.visualizer.settings.layout.LayoutSettings.LayoutSettingBean;
 
-import java.awt.Color;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
-
-import static org.graalvm.visualizer.data.DataTestUtil.assertInputBlockEquals;
-import static org.graalvm.visualizer.data.DataTestUtil.assertInputGraphEquals;
-import static org.graalvm.visualizer.data.DataTestUtil.assertInputNodeEquals;
-import static org.graalvm.visualizer.data.DataTestUtil.assertPropertiesEquals;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_STATE;
-import static org.graalvm.visualizer.layout.LayoutTestUtil.assertPortEquals;
-import static org.graalvm.visualizer.layout.LayoutTestUtil.assertVertexEquals;
-import static org.graalvm.visualizer.settings.TestUtils.assertCollections_NoOrder;
-import static org.graalvm.visualizer.settings.TestUtils.assertListEquals;
-import static org.graalvm.visualizer.settings.TestUtils.checkNotNulls;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
 /**
  * @author Ondřej Douda <ondrej.douda@oracle.com>

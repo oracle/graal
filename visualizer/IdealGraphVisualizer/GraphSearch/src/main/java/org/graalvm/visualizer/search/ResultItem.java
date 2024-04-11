@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.search;
 
-import org.graalvm.visualizer.data.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 /**
  * @author sdedic

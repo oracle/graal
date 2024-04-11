@@ -23,16 +23,16 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.FileContent;
-import org.openide.util.RequestProcessor;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+
+import org.openide.util.RequestProcessor;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
 
 /**
  * @author sdedic
@@ -58,7 +58,7 @@ public class LazySerDebugUtils {
         BinarySource scanSource = new BinarySource(null, fc);
         ScanningModelBuilder smb = new ScanningModelBuilder(
                 scanSource, fc, (i, p, g) -> fDoc,
-                null, null,
+                null,
                 RequestProcessor.getDefault());
         BinaryReader reader = new BinaryReader(scanSource, smb);
         reader.parse();

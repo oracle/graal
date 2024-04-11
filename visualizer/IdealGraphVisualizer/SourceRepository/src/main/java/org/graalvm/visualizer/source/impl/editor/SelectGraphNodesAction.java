@@ -23,13 +23,16 @@
 
 package org.graalvm.visualizer.source.impl.editor;
 
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.source.GraphSource;
-import org.graalvm.visualizer.source.Location;
-import org.graalvm.visualizer.source.NodeLocationContext;
-import org.graalvm.visualizer.source.NodeStack;
-import org.graalvm.visualizer.source.SourceLocationUtils;
-import org.graalvm.visualizer.source.SourceUtils;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.util.*;
+import java.util.List;
+
+import javax.swing.*;
+
+import org.graalvm.visualizer.source.*;
 import org.graalvm.visualizer.util.LookupHistory;
 import org.graalvm.visualizer.util.swing.DropdownButton;
 import org.graalvm.visualizer.view.api.DiagramViewer;
@@ -43,20 +46,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.actions.Presenter;
 import org.openide.util.lookup.ProxyLookup;
 
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.JEditorPane;
-import javax.swing.JMenuItem;
-import javax.swing.JPopupMenu;
-import java.awt.Component;
-import java.awt.event.ActionEvent;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
 /**
  * @author sdedic

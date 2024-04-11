@@ -22,8 +22,8 @@
  */
 package org.graalvm.visualizer.search;
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.openide.util.NbBundle;
 
 import java.util.Iterator;

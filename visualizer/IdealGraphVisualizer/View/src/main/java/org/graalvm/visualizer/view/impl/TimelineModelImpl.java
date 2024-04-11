@@ -23,11 +23,18 @@
 
 package org.graalvm.visualizer.view.impl;
 
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.services.GraphClassifier;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+import java.lang.reflect.InvocationTargetException;
+import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.function.BiConsumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.swing.*;
+
 import org.graalvm.visualizer.util.ListenerSupport;
 import org.graalvm.visualizer.util.RangeSliderModel;
 import org.graalvm.visualizer.view.api.TimelineEvent;
@@ -38,37 +45,17 @@ import org.openide.util.RequestProcessor;
 import org.openide.util.Task;
 import org.openide.util.TaskListener;
 
-import javax.swing.SwingUtilities;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.function.BiConsumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import jdk.graal.compiler.graphio.parsing.model.*;
 
 /**
  * Captures several "timelines" represented by different graph types
  * in a single {@link Group}. The Timeline contains several (currently 2) {@link RangeSliderModel}s
  * each representing one graph type filtered into a separate {@link GraphContainer}.
  * <p/>
- * Graphs which are not included in {@link GraphClassifier#KNOWN_TYPES} will be filtered out entirely
+ * Graphs which are not included in {@code classifier.getKnownTypes()} will be filtered out entirely
  * <p/>
  * Threading: all refreshes happen in EDT, so that events from RangeSliders are dispatched in EDT.
- * Changes to underlying {@link GraphContainers} are pooled (200ms) and then a refresh is
+ * Changes to underlying {@linkplain GraphContainer GraphContainers} are pooled (200ms) and then a refresh is
  * scheduled in EDT.
  *
  * @author sdedic
@@ -87,6 +74,11 @@ public class TimelineModelImpl implements TimelineModel, ChangedListener<Group>,
      * The underlying storage
      */
     private final Group storage;
+
+    /**
+     * Used to filter out graphs of an unknown type (i.e. not included in {@link GraphClassifier#knownGraphTypes()}).
+     */
+    private final GraphClassifier classifier;
 
     private final PropertyChangeSupport propSupport = new PropertyChangeSupport(this);
 
@@ -142,8 +134,9 @@ public class TimelineModelImpl implements TimelineModel, ChangedListener<Group>,
         }
     }
 
-    public TimelineModelImpl(Group storage, String primaryType) {
+    public TimelineModelImpl(Group storage, GraphClassifier classifier, String primaryType) {
         this.storage = storage;
+        this.classifier = classifier;
         this.primaryContainer = createContainer(primaryType);
         this.primaryModel = createSlider(primaryType);
         // initialize primaryType after the object creation, so model/container are
@@ -336,7 +329,7 @@ public class TimelineModelImpl implements TimelineModel, ChangedListener<Group>,
 
             if (t == null) {
                 t = TYPE_DEFAULT_LAST; // NOI18N
-            } else if (!GraphClassifier.KNOWN_TYPES.contains(t)) {
+            } else if (!classifier.knownGraphTypes().contains(t)) {
                 // do not include
                 it.remove();
                 continue;

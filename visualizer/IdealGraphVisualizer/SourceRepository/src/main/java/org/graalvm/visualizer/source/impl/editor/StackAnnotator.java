@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.source.impl.editor;
 
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.graalvm.visualizer.source.NodeLocationContext;
 import org.graalvm.visualizer.source.NodeLocationEvent;
 import org.graalvm.visualizer.source.NodeLocationListener;

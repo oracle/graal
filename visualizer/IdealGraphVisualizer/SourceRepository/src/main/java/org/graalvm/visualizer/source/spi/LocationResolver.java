@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.source.spi;
 
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.source.FileKey;
 import org.openide.filesystems.FileObject;
 

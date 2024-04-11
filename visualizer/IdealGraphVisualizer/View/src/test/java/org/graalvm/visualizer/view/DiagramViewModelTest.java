@@ -23,12 +23,20 @@
 
 package org.graalvm.visualizer.view;
 
-import junit.framework.AssertionFailedError;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_DUPLICATE;
+import static org.graalvm.visualizer.settings.TestUtils.assertNot;
+import static org.junit.Assert.*;
+
+import java.awt.*;
+import java.util.*;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import javax.swing.*;
+
 import org.graalvm.visualizer.data.DataTestUtil;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputEdge;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
 import org.graalvm.visualizer.difference.Difference;
 import org.graalvm.visualizer.filter.ColorFilter;
 import org.graalvm.visualizer.filter.FilterChain;
@@ -43,34 +51,14 @@ import org.graalvm.visualizer.view.api.TimelineModel;
 import org.graalvm.visualizer.view.impl.Colorizer;
 import org.graalvm.visualizer.view.impl.DiagramCache;
 import org.graalvm.visualizer.view.impl.TimelineModelImpl;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TestName;
 
-import javax.swing.SwingUtilities;
-import java.awt.Color;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_DUPLICATE;
-import static org.graalvm.visualizer.settings.TestUtils.assertNot;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputEdge;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import junit.framework.AssertionFailedError;
 
 /**
  * @author Ondřej Douda <ondrej.douda@oracle.com>
@@ -123,11 +111,11 @@ public class DiagramViewModelTest {
     @Rule
     public TestName name = new TestName();
 
-    private TimelineModel timeline;
+    private final TimelineModel timeline;
 
     public DiagramViewModelTest() throws Exception {
         DiagramCache.flush();
-        timeline = new TimelineModelImpl(initGroup, "testGraph");
+        timeline = new TimelineModelImpl(initGroup, new TestGraphClassifier(), TestGraphClassifier.TEST_TYPE);
         slider = timeline.getPrimaryRange();
         instance = new DiagramViewModel(timeline, initFilterChain, layoutSetting);
 
@@ -180,11 +168,11 @@ public class DiagramViewModelTest {
     public static void setUpClass() {
         initGroup = new Group(null);
 
-        emptyGraph = new InputGraph("emptyGraph");
+        emptyGraph = InputGraph.createTestGraph("emptyGraph");
         initGroup.addElement(emptyGraph);
         emptyGraph.ensureNodesInBlocks();
 
-        referenceGraph = new InputGraph("referenceGraph");
+        referenceGraph = InputGraph.createTestGraph("referenceGraph");
         initGroup.addElement(referenceGraph);
         referenceGraph.addNode(N1);
         referenceGraph.addNode(N2);
@@ -200,7 +188,7 @@ public class DiagramViewModelTest {
 
         referenceGraph.ensureNodesInBlocks();
 
-        duplicateGraph = new InputGraph("duplicateGraph");
+        duplicateGraph = InputGraph.createTestGraph("duplicateGraph");
         initGroup.addElement(duplicateGraph);
         duplicateGraph.addNode(N1);
         duplicateGraph.addNode(N2);
@@ -218,7 +206,7 @@ public class DiagramViewModelTest {
 
         duplicateGraph.getProperties().setProperty(PROPNAME_DUPLICATE, "true");
         for (InputGraph g : initGroup.getGraphs()) {
-            g.setGraphType("testGraph");
+            g.setGraphType(TestGraphClassifier.TEST_TYPE);
         }
     }
 
@@ -245,7 +233,7 @@ public class DiagramViewModelTest {
         // wait for the timeline to load the content (lazy-loaded initially)
         CountDownLatch w = new CountDownLatch(1);
         try {
-            timeline.whenStable().execute(() -> w.countDown());
+            timeline.whenStable().execute(w::countDown);
             w.await(500, TimeUnit.MILLISECONDS);
         } catch (Exception ex) {
             Error ase = new AssertionFailedError(ex.getMessage());
@@ -302,7 +290,7 @@ public class DiagramViewModelTest {
         // DiagramViewModel do not directly call the colorizer.
         instance.addPropertyChangeListener(DiagramViewModel.PROP_SELECTED_NODES,
                 (e) -> timelineColorizer.setTrackedNodes(
-                        instance.getSelectedNodes().stream().map((in) -> in.getId()).collect(Collectors.toSet())));
+                        instance.getSelectedNodes().stream().map(InputNode::getId).collect(Collectors.toSet())));
         Set<InputNode> expResultNodes = new HashSet<>();
         Set<Figure> expResultFigures = new HashSet<>();
         testGetSelectedNodes(expResultNodes);
@@ -337,7 +325,7 @@ public class DiagramViewModelTest {
 
         assertFired(0, 1, 0, 0, 1, 0);
 
-        instance.setSelectedFigures(expResultFigures.stream().collect(Collectors.toList()));
+        instance.setSelectedFigures(new ArrayList<>(expResultFigures));
 
         assertFired(0, 1, 0, 0, 2, 0);
 
@@ -400,7 +388,7 @@ public class DiagramViewModelTest {
         expResult.add(N1);
         expResult.add(N4);
 
-        instance.setHiddenNodes(expResult.stream().map(x -> x.getId()).collect(Collectors.toSet()));
+        instance.setHiddenNodes(expResult.stream().map(InputNode::getId).collect(Collectors.toSet()));
 
         assertFired(0, 0, 2, 1, 0, 0);
 
@@ -411,7 +399,7 @@ public class DiagramViewModelTest {
 
         assertFired(0, 0, 2, 1, 0, 0);
 
-        instance.setHiddenNodes(expResult.stream().map(x -> x.getId()).collect(Collectors.toSet()));
+        instance.setHiddenNodes(expResult.stream().map(InputNode::getId).collect(Collectors.toSet()));
 
         assertFired(0, 0, 4, 2, 0, 0);
 
@@ -530,7 +518,7 @@ public class DiagramViewModelTest {
      */
     @Test
     public void testGetGraphsForward() {
-        testGetGraphsForward(Arrays.asList(duplicateGraph));
+        testGetGraphsForward(Collections.singletonList(duplicateGraph));
         testEventFires();
     }
 
@@ -551,7 +539,7 @@ public class DiagramViewModelTest {
      */
     @Test
     public void testGetGraphsBackward() {
-        testGetGraphsBackward(Arrays.asList(emptyGraph));
+        testGetGraphsBackward(Collections.singletonList(emptyGraph));
         testEventFires();
     }
 
@@ -626,10 +614,12 @@ public class DiagramViewModelTest {
     public void testSetData() {
         Group group = new Group(initGroup);
 
-        InputGraph empty = new InputGraph("emptyGraph");
+        InputGraph empty = InputGraph.createTestGraph("emptyGraph");
+        empty.setGraphType(TestGraphClassifier.TEST_TYPE);
         group.addElement(empty);
 
-        InputGraph reference = new InputGraph("referenceGraph");
+        InputGraph reference = InputGraph.createTestGraph("referenceGraph");
+        reference.setGraphType(TestGraphClassifier.TEST_TYPE);
         reference.addNode(N1);
         reference.addNode(N2);
         reference.addNode(N3);
@@ -644,7 +634,8 @@ public class DiagramViewModelTest {
 
         group.addElement(reference);
 
-        InputGraph duplicate = new InputGraph("duplicateGraph");
+        InputGraph duplicate = InputGraph.createTestGraph("duplicateGraph");
+        duplicate.setGraphType(TestGraphClassifier.TEST_TYPE);
         duplicate.addNode(N1);
         duplicate.addNode(N2);
         duplicate.addNode(N3);
@@ -661,8 +652,8 @@ public class DiagramViewModelTest {
         group.addElement(duplicate);
 
         DiagramViewModel newModel = new DiagramViewModel(group, new FilterChain(initFilterChain), layoutSetting);
-        newModel.setSelectedNodes(new HashSet(Arrays.asList(N1, N2)));
-        newModel.setHiddenNodes(new HashSet(Arrays.asList(3, 4)));
+        newModel.setSelectedNodes(new HashSet<>(Arrays.asList(N1, N2)));
+        newModel.setHiddenNodes(new HashSet<>(Arrays.asList(3, 4)));
 
         instance.setData(newModel);
 

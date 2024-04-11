@@ -22,8 +22,8 @@
  */
 package org.graalvm.visualizer.filter;
 
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.openide.util.Lookup;
 
 /**

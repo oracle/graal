@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.shell.actions;
 
-import org.graalvm.visualizer.data.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
 import org.graalvm.visualizer.filter.DiagramFilters;
 import org.graalvm.visualizer.util.RangeSliderModel;
 import org.graalvm.visualizer.view.api.DiagramModel;
@@ -34,8 +34,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.actions.ActionPresenterProvider;
 import org.openide.util.actions.Presenter;
 
-import javax.swing.AbstractAction;
-import javax.swing.JMenuItem;
+import javax.swing.*;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -85,7 +84,7 @@ public class ResetDiagramGlobalAction extends AbstractAction implements ActionLi
     public void changed(RangeSliderModel source) {
         DiagramFilters m = refModel.get();
         if (m != null) {
-            setEnabled(m.getScriptFilters().isEmpty());
+            SwingUtilities.invokeLater(() -> setEnabled(m.getScriptFilters().isEmpty()));
         }
     }
 

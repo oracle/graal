@@ -23,32 +23,22 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Pair;
-import org.netbeans.junit.RandomlyFails;
-import org.openide.util.Exceptions;
-import org.openide.util.RequestProcessor.Task;
-
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletionService;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.Future;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.graalvm.visualizer.data.Pair;
+import org.netbeans.junit.RandomlyFails;
+import org.openide.util.Exceptions;
+import org.openide.util.RequestProcessor.Task;
+
+import jdk.graal.compiler.graphio.parsing.model.*;
 
 /**
  * @author sdedic
@@ -99,7 +89,7 @@ public class DelayedLoadTest extends BinaryDataTestBase {
 
         class K {
             Object keepRef;
-            List<Reference> refSiblings = new ArrayList<>();
+            final List<Reference> refSiblings = new ArrayList<>();
             Reference container;
         }
         Reference bait = null;

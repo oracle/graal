@@ -22,8 +22,8 @@
  */
 package org.graalvm.visualizer.util;
 
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Property;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Property;
 import org.openide.explorer.propertysheet.ExPropertyEditor;
 import org.openide.explorer.propertysheet.PropertyEnv;
 import org.openide.nodes.Node;

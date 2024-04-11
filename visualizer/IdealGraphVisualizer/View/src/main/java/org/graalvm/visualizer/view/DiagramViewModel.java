@@ -22,15 +22,31 @@
  */
 package org.graalvm.visualizer.view;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_DUPLICATE;
+import static org.graalvm.visualizer.settings.layout.LayoutSettings.NODE_TEXT;
+import static org.graalvm.visualizer.settings.layout.LayoutSettings.SHOW_BLOCKS;
+
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import javax.swing.*;
+
 import org.graalvm.visualizer.data.Source.Provider;
 import org.graalvm.visualizer.difference.Difference;
 import org.graalvm.visualizer.filter.DiagramFilters;
 import org.graalvm.visualizer.filter.Filter;
+import org.graalvm.visualizer.filter.FilterChain;
 import org.graalvm.visualizer.filter.FilterSequence;
 import org.graalvm.visualizer.graph.Diagram;
 import org.graalvm.visualizer.graph.Figure;
@@ -48,32 +64,7 @@ import org.openide.util.Lookup;
 import org.openide.util.Pair;
 import org.openide.util.Utilities;
 
-import javax.swing.SwingUtilities;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_DUPLICATE;
-import static org.graalvm.visualizer.settings.layout.LayoutSettings.NODE_TEXT;
-import static org.graalvm.visualizer.settings.layout.LayoutSettings.SHOW_BLOCKS;
+import jdk.graal.compiler.graphio.parsing.model.*;
 
 /**
  * Captures the model of several diagrams (phases) within a single group.
@@ -124,8 +115,8 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
      */
     private final RangeSliderModel graphPeerModel;
 
-    private PropertyChangeSupport propSupport = new PropertyChangeSupport(this);
-    private List<DiagramListener> listeners = new ArrayList<>();
+    private final PropertyChangeSupport propSupport = new PropertyChangeSupport(this);
+    private final List<DiagramListener> listeners = new ArrayList<>();
 
     public static final String PROP_SHOW_BLOCKS = "showBlocks"; // NOI18N
     public static final String PROP_SHOW_NODE_HULL = "showNodeHull"; // NOI18N
@@ -388,7 +379,6 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
                 List<InputGraph> graphs = graphContainer.getGraphs();
                 // Back up to the unhidden equivalent graph
                 int start = graphs.indexOf(currentGraph);
-                ;
                 int index = start;
                 while (index >= 0 && graphs.get(index).getProperties().get(PROPNAME_DUPLICATE) != null) {
                     index--;
@@ -410,16 +400,16 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
 
     private final TimelineModel timeline;
 
-    public DiagramViewModel(TimelineModel timeline, FilterSequence filterChain, LayoutSettingBean layoutSettingBean) {
+    public DiagramViewModel(TimelineModel timeline, FilterSequence<FilterChain> filterChain, LayoutSettingBean layoutSettingBean) {
         this(timeline, null, filterChain, layoutSettingBean);
     }
 
-    public DiagramViewModel(GraphContainer g, FilterSequence filterChain, LayoutSettingBean layoutSettingBean) {
+    public DiagramViewModel(GraphContainer g, FilterSequence<FilterChain> filterChain, LayoutSettingBean layoutSettingBean) {
         this(null, g, filterChain, layoutSettingBean);
     }
 
     @SuppressWarnings("LeakingThisInConstructor")
-    private DiagramViewModel(TimelineModel time, GraphContainer g, FilterSequence filterChain, LayoutSettingBean layoutSettingBean) {
+    private DiagramViewModel(TimelineModel time, GraphContainer g, FilterSequence<FilterChain> filterChain, LayoutSettingBean layoutSettingBean) {
         assert layoutSettingBean != null;
         if (time != null) {
             g = time.getPrimaryPartition();
@@ -690,7 +680,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
 
     private synchronized InputGraph createEmptyGraph() {
         if (emptyGraph == null) {
-            InputGraph ig = new InputGraph("");
+            InputGraph ig = InputGraph.createTestGraph("");
             ig.setParent(graphContainer.getContentOwner());
             emptyGraph = ig;
         }
@@ -846,7 +836,7 @@ public class DiagramViewModel implements ChangedListener<RangeSliderModel>, Diag
                     Diagram prev = previousDiagram.get();
                     if (prev != null) {
                         previousDiagram = new WeakReference<Diagram>(prev) {
-                            private Diagram keep = prev;
+                            private final Diagram keep = prev;
                         };
                     }
                     diagram = Diagram.createEmptyDiagram(inputGraph);

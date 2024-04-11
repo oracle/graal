@@ -22,22 +22,18 @@
  */
 package org.graalvm.visualizer.filter;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.Properties;
+import static org.junit.Assert.*;
+
+import java.util.concurrent.CancellationException;
+
 import org.graalvm.visualizer.graph.Diagram;
 import org.junit.Test;
 import org.openide.cookies.OpenCookie;
 import org.openide.util.Lookup;
 
-import java.util.concurrent.CancellationException;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 /**
  * @author sdedic
@@ -90,7 +86,7 @@ public class FilterExecutionTest {
     @Test
     public void testProcessIsolated() {
         FilterChain ch = new FilterChain();
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
 
         ch.addFilter(new F() {
@@ -117,7 +113,7 @@ public class FilterExecutionTest {
     @Test
     public void testProcessCommonEnvironment() {
         FilterChain ch = new FilterChain();
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
 
         ch.addFilter(new F() {
@@ -153,7 +149,7 @@ public class FilterExecutionTest {
     @Test
     public void testNestedFilterAccessesEnvironment() {
         FilterChain ch = new FilterChain();
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
 
         ch.addFilter(new F() {
@@ -190,7 +186,7 @@ public class FilterExecutionTest {
     @Test
     public void testCancelStopsChain() {
         FilterChain ch = new FilterChain();
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
 
         ch.addFilter(new F() {
@@ -225,6 +221,7 @@ public class FilterExecutionTest {
             execution.process();
             fail("execution should fail with FilterCancelledException");
         } catch (FilterCanceledException ex) {
+            // expected
         }
         assertEquals("All filters in chain should get cancel", 2, cancelCount);
     }
@@ -268,7 +265,7 @@ public class FilterExecutionTest {
         ch.addFilter(new CF(2));
         ch.addFilter(new CF(3));
 
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
 
         pos = 1;
@@ -288,7 +285,7 @@ public class FilterExecutionTest {
     @Test
     public void testCancelNestedFilter() {
         FilterChain ch = new FilterChain();
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
         Diagram d2 = Diagram.createDiagram(gr, "testDiagram");
         ch.addFilter(new F() {

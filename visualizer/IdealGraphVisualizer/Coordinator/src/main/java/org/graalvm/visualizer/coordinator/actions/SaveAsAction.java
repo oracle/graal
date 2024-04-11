@@ -24,7 +24,7 @@
 package org.graalvm.visualizer.coordinator.actions;
 
 import org.graalvm.visualizer.coordinator.impl.SessionManagerImpl;
-import org.graalvm.visualizer.data.Folder;
+import jdk.graal.compiler.graphio.parsing.model.Folder;
 import org.openide.nodes.Node;
 import org.openide.util.HelpCtx;
 import org.openide.util.Lookup;

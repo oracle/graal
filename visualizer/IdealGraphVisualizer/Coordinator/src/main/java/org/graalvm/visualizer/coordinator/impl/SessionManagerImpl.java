@@ -22,17 +22,13 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+
 import org.graalvm.visualizer.connection.Server;
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.KnownPropertyNames;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.ThreadedChange;
-import org.graalvm.visualizer.data.serialization.DocumentFactory;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
 import org.graalvm.visualizer.settings.graal.GraalSettings;
 import org.netbeans.api.io.IOProvider;
 import org.netbeans.api.io.InputOutput;
@@ -43,12 +39,9 @@ import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.openide.util.WeakSet;
 
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Executor;
+import jdk.graal.compiler.graphio.parsing.DocumentFactory;
+import jdk.graal.compiler.graphio.parsing.ParseMonitor;
+import jdk.graal.compiler.graphio.parsing.model.*;
 
 /**
  * Currently the class holds the one and only Document in IGV. It should evolve
@@ -58,17 +51,15 @@ import java.util.concurrent.Executor;
  */
 @OnStart
 public class SessionManagerImpl implements Folder, Runnable, DocumentFactory {
-    public static final Executor MODEL_EVENT_EXECUTOR = new RequestProcessor(SessionManagerImpl.class);
-
     private static SessionManagerImpl INSTANCE;
 
-    private final GraphDocument singleDocument = new ManagedSessionImpl((FileObject) null);
+    private final GraphDocument singleDocument = new ManagedSessionImpl(null);
 
     private Server binaryServer;
 
     private final List<GraphDocument> sessions = new ArrayList<>();
 
-    private final ChangedEvent<SessionManagerImpl> changedEvent = new ThreadedChange<>(this, MODEL_EVENT_EXECUTOR);
+    private final ChangedEvent<SessionManagerImpl> changedEvent = new ChangedEvent<>(this);
 
     /**
      * Documents closed forever. Current documents are added to the closed set if

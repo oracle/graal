@@ -22,10 +22,15 @@
  */
 package org.graalvm.visualizer.search.quicksearch;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NODE_SOURCE_POSITION;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_START;
+
+import java.lang.reflect.Constructor;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
 import org.graalvm.visualizer.filter.FilterChain;
 import org.graalvm.visualizer.settings.layout.LayoutSettings;
 import org.graalvm.visualizer.settings.layout.LayoutSettings.LayoutSettingBean;
@@ -37,14 +42,10 @@ import org.netbeans.spi.quicksearch.SearchRequest;
 import org.netbeans.spi.quicksearch.SearchResponse;
 import org.openide.util.Pair;
 
-import java.lang.reflect.Constructor;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NODE_SOURCE_POSITION;
-import static org.graalvm.visualizer.data.KnownPropertyValues.NAME_START;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
 /**
  * @author sdedic
@@ -144,5 +145,5 @@ public class NodeQuickSearchTest extends NbTestCase {
         assertTrue(foundNodes.second().isEmpty());
     }
 
-    private ScheduledExecutorService srv = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService srv = Executors.newSingleThreadScheduledExecutor();
 }

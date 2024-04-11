@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.selectioncoordinator;
 
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.Group;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.Group;
 import org.netbeans.junit.NbTestCase;
 
 import java.util.Collections;

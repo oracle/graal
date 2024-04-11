@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.view.impl;
 
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.graalvm.visualizer.filter.FilterExecution;
 import org.graalvm.visualizer.graph.Diagram;
 import org.graalvm.visualizer.graph.Figure;

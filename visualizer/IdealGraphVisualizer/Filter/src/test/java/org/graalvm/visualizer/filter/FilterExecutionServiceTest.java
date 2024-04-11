@@ -22,16 +22,15 @@
  */
 package org.graalvm.visualizer.filter;
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.graph.Diagram;
-import org.junit.Test;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
+import org.graalvm.visualizer.graph.Diagram;
+import org.junit.Test;
+
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * @author sdedic
@@ -73,7 +72,7 @@ public class FilterExecutionServiceTest {
     public void testBroadcastEvents() {
         FilterExecution.getExecutionService().addFilterListener(new FL());
         FilterChain ch = new FilterChain();
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
 
         ch.addFilter(new FilterExecutionTest.F() {
@@ -99,7 +98,7 @@ public class FilterExecutionServiceTest {
     public void testBroadcastFailure() {
         FilterExecution.getExecutionService().addFilterListener(new FL());
         FilterChain ch = new FilterChain();
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
 
         ch.addFilter(new FilterExecutionTest.F() {
@@ -126,7 +125,7 @@ public class FilterExecutionServiceTest {
     public void testFailureInMiddle() {
         FilterExecution.getExecutionService().addFilterListener(new FL());
         FilterChain ch = new FilterChain();
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
 
         ch.addFilter(new FilterExecutionTest.F() {

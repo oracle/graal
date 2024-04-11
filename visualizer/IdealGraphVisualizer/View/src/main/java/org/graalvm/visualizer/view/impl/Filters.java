@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.view.impl;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
 import org.graalvm.visualizer.filter.CustomFilter;
 import org.graalvm.visualizer.filter.Filter;
 import org.graalvm.visualizer.filter.FilterChain;

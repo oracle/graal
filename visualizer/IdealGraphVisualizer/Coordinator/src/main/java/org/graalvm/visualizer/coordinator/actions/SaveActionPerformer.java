@@ -22,8 +22,8 @@
  */
 package org.graalvm.visualizer.coordinator.actions;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.KnownPropertyNames;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
 import org.graalvm.visualizer.settings.graal.GraalSettings;
 import org.openide.awt.StatusDisplayer;
 import org.openide.util.NbBundle;

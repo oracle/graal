@@ -45,7 +45,7 @@ public interface GraphStructure<G, N, C, P> {
      * <code>null</code>
      *
      * @param currentGraph the currently processed graph
-     * @param obj          an object to check and view as a graph
+     * @param obj an object to check and view as a graph
      * @return appropriate graph object or <code>null</code> if the object doesn't represent a graph
      */
     G graph(G currentGraph, Object obj);
@@ -55,9 +55,9 @@ public interface GraphStructure<G, N, C, P> {
      * iterable which provides access to all of them - the number of nodes provided by the iterable
      * must match the number returned by {@link #nodesCount(java.lang.Object)} method.
      *
+     * @see #nodesCount(java.lang.Object)
      * @param graph the graph to query for nodes
      * @return iterable with all the graph's nodes
-     * @see #nodesCount(java.lang.Object)
      */
     Iterable<? extends N> nodes(G graph);
 
@@ -91,8 +91,8 @@ public interface GraphStructure<G, N, C, P> {
      * Collects node properties. Each node can be associated with additional properties identified
      * by their name. This method shall copy them into the provided map.
      *
-     * @param graph      the current graph
-     * @param node       the node to collect properties for
+     * @param graph the current graph
+     * @param node the node to collect properties for
      * @param properties the map to put the properties to
      */
     void nodeProperties(G graph, N node, Map<String, ? super Object> properties);
@@ -114,7 +114,7 @@ public interface GraphStructure<G, N, C, P> {
      *
      * @param obj an object to find node class for
      * @return appropriate graph object or <code>null</code> if the object doesn't represent a node
-     * class
+     *         class
      */
     C nodeClass(Object obj);
 
@@ -179,20 +179,20 @@ public interface GraphStructure<G, N, C, P> {
      * is an error to return more than one for such an edge from the
      * {@linkplain #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int) method}.
      *
-     * @param port  the port
+     * @param port the port
      * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
-     *              <code>1</code>
+     *            <code>1</code>
      * @return <code>true</code> if only one node can be returned from
-     * {@link #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int)} method
+     *         {@link #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int)} method
      */
     boolean edgeDirect(P port, int index);
 
     /**
      * The name of an edge.
      *
-     * @param port  the port
+     * @param port the port
      * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
-     *              <code>1</code>
+     *            <code>1</code>
      * @return the name of the edge
      */
     String edgeName(P port, int index);
@@ -205,7 +205,7 @@ public interface GraphStructure<G, N, C, P> {
      *
      * @param port
      * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
-     *              <code>1</code>
+     *            <code>1</code>
      * @return any {@link Enum} representing type of the edge
      */
     Object edgeType(P port, int index);
@@ -216,12 +216,12 @@ public interface GraphStructure<G, N, C, P> {
      * the returned collection must have exactly one element.
      *
      * @param graph the graph
-     * @param node  the node in the graph
-     * @param port  port of the node class
+     * @param node the node in the graph
+     * @param port port of the node class
      * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
-     *              <code>1</code>
+     *            <code>1</code>
      * @return <code>null</code> if there are no edges associated with given port or collection of
-     * nodes where to/from the edges lead to
+     *         nodes where to/from the edges lead to
      */
     Collection<? extends N> edgeNodes(G graph, N node, P port, int index);
 }

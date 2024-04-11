@@ -22,15 +22,22 @@
  */
 package org.graalvm.visualizer.coordinator.actions;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+
 import org.graalvm.visualizer.coordinator.impl.SessionManagerImpl;
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.KnownPropertyNames;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.serialization.DataBinaryWriter;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 import org.netbeans.api.progress.BaseProgressUtils;
 import org.netbeans.api.progress.ProgressHandle;
 import org.openide.DialogDescriptor;
@@ -42,30 +49,7 @@ import org.openide.util.Cancellable;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InterruptedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
+import jdk.graal.compiler.graphio.parsing.DataBinaryWriter;
 
 /**
  * @author sdedic
@@ -75,7 +59,7 @@ class SaveOperation {
      * Provides a path to save the document into.
      */
     public interface DocumentPathProvider {
-        public Path createPath(Path suggestedPath, GraphDocument document);
+        Path createPath(Path suggestedPath, GraphDocument document);
     }
 
     private final SessionManagerImpl sessionMgr;

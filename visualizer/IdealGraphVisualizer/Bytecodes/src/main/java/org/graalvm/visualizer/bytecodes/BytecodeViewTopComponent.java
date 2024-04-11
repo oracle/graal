@@ -22,8 +22,15 @@
  */
 package org.graalvm.visualizer.bytecodes;
 
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
+import java.awt.*;
+import java.io.Serializable;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
+
+import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
 import org.graalvm.visualizer.data.SuppressFBWarnings;
 import org.graalvm.visualizer.data.services.GraphViewer;
 import org.graalvm.visualizer.data.services.InputGraphProvider;
@@ -37,18 +44,13 @@ import org.openide.util.WeakListeners;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 
-import javax.swing.SwingUtilities;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import java.awt.BorderLayout;
-import java.io.Serializable;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 final class BytecodeViewTopComponent extends TopComponent implements ExplorerManager.Provider, ChangeListener {
     private static BytecodeViewTopComponent instance;
     private static final String PREFERRED_ID = "BytecodeViewTopComponent";
-    private static final InputGraph EMPTY = new InputGraph("");
+    private static final InputGraph EMPTY = new InputGraph(null, InputGraph.INVALID_INDEX, "", new Object[0]);
 
     private final ExplorerManager manager;
     private final BeanTreeView treeView;

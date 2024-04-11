@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.filter.profiles.impl;
 
-import org.graalvm.visualizer.data.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
 import org.graalvm.visualizer.filter.CustomFilter;
 import org.graalvm.visualizer.filter.Filter;
 import org.openide.filesystems.FileChangeAdapter;

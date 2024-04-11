@@ -22,20 +22,6 @@
  */
 package org.graalvm.visualizer.search;
 
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.FileContent;
-import org.graalvm.visualizer.data.serialization.GraphParser;
-import org.graalvm.visualizer.data.serialization.ModelBuilder;
-import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
-import org.netbeans.junit.NbTestCase;
-import org.openide.util.RequestProcessor;
-
 import java.io.File;
 import java.net.URL;
 import java.nio.channels.FileChannel;
@@ -43,6 +29,17 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.graalvm.visualizer.data.serialization.lazy.FileContent;
+import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
+import org.netbeans.junit.NbTestCase;
+import org.openide.util.RequestProcessor;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.GraphParser;
+import jdk.graal.compiler.graphio.parsing.ModelBuilder;
+import jdk.graal.compiler.graphio.parsing.model.*;
 
 /**
  * @author sdedic
@@ -104,8 +101,8 @@ public class SearchResultsModelTest extends NbTestCase implements SearchResultsL
                 src,
                 content,
                 targetDocument, null,
-                RequestProcessor.getDefault()).
-                setDocumentId("");
+                RequestProcessor.getDefault());
+        bld.setDocumentId("");
 
         GraphParser parser = new BinaryReader(src, bld);
         return parser.parse();
@@ -324,10 +321,10 @@ public class SearchResultsModelTest extends NbTestCase implements SearchResultsL
     private SearchResultsEvent parentsEvent;
     private SearchResultsEvent propertiesEvent;
 
-    private List<GraphItem> changedParents = new ArrayList<>();
-    private List<GraphItem> parents = new ArrayList<>();
-    private List<NodeResultItem> items = new ArrayList<>();
-    private List<String> names = new ArrayList<>();
+    private final List<GraphItem> changedParents = new ArrayList<>();
+    private final List<GraphItem> parents = new ArrayList<>();
+    private final List<NodeResultItem> items = new ArrayList<>();
+    private final List<String> names = new ArrayList<>();
 
     private int addedCount;
     private int removedCount;

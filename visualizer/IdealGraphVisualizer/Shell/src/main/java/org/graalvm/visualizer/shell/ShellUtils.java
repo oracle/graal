@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.shell;
 
-import org.graalvm.visualizer.data.Group;
+import jdk.graal.compiler.graphio.parsing.model.Group;
 import org.graalvm.visualizer.script.UserScriptEngine;
 import org.graalvm.visualizer.util.FileHelpers;
 import org.openide.filesystems.FileAttributeEvent;

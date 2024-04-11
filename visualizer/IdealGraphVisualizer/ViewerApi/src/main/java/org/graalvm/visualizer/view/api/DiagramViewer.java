@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.view.api;
 
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.graalvm.visualizer.data.services.GraphSelections;
 import org.graalvm.visualizer.data.services.InputGraphProvider;
 import org.graalvm.visualizer.graph.Figure;

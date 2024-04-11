@@ -24,14 +24,6 @@
 package org.graalvm.visualizer.source;
 
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.source.FileRegistry.FileRegistryListener;
-import org.junit.Ignore;
-import org.netbeans.api.java.classpath.ClassPath;
-import org.netbeans.api.java.platform.JavaPlatform;
-import org.netbeans.junit.NbTestCase;
-import org.openide.util.RequestProcessor;
-
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -40,6 +32,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import org.graalvm.visualizer.source.FileRegistry.FileRegistryListener;
+import org.junit.Ignore;
+import org.netbeans.api.java.classpath.ClassPath;
+import org.netbeans.api.java.platform.JavaPlatform;
+import org.netbeans.junit.NbTestCase;
+import org.openide.util.RequestProcessor;
+
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -65,8 +66,8 @@ public class FileRegistryTest extends NbTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         fregistry = FileRegistry.getInstance();
-        gr1 = new InputGraph("firstGraph");
-        gr2 = new InputGraph("secondGraph");
+        gr1 = InputGraph.createTestGraph("firstGraph");
+        gr2 = InputGraph.createTestGraph("secondGraph");
         platform = JavaPlatform.getDefault();
         sourcePath = platform.getSourceFolders();
 

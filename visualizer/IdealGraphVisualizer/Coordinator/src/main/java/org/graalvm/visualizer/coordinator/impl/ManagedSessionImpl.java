@@ -22,13 +22,14 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.KnownPropertyNames;
-import org.graalvm.visualizer.data.Properties;
 import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
+
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 /**
  * @author sdedic
@@ -56,7 +57,6 @@ public class ManagedSessionImpl extends GraphDocument implements Lookup.Provider
     }
 
     private ManagedSessionImpl(Object id, FileObject file) {
-        super(SessionManagerImpl.MODEL_EVENT_EXECUTOR);
         setDocumentId(id);
         this.savedAs = file;
         if (file != null) {

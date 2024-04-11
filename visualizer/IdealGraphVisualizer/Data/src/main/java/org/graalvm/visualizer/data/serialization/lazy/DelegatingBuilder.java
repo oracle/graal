@@ -23,20 +23,17 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.serialization.BinaryMap;
-import org.graalvm.visualizer.data.serialization.Builder;
-import org.graalvm.visualizer.data.serialization.ConstantPool;
-import org.netbeans.api.annotations.common.CheckForNull;
-import org.netbeans.api.annotations.common.NonNull;
+import static jdk.graal.compiler.graphio.parsing.BinaryReader.Method;
 
 import java.util.List;
 
-import static org.graalvm.visualizer.data.serialization.BinaryReader.Method;
+import org.netbeans.api.annotations.common.CheckForNull;
+import org.netbeans.api.annotations.common.NonNull;
+
+import jdk.graal.compiler.graphio.parsing.Builder;
+import jdk.graal.compiler.graphio.parsing.ConstantPool;
+import jdk.graal.compiler.graphio.parsing.NameTranslator;
+import jdk.graal.compiler.graphio.parsing.model.*;
 
 /**
  * Helper class which delegates to another builder. Used to switch processing
@@ -268,8 +265,8 @@ class DelegatingBuilder implements Builder {
     }
 
     @Override
-    public BinaryMap prepareBinaryMap() {
-        return delegate.prepareBinaryMap();
+    public NameTranslator prepareNameTranslator() {
+        return delegate.prepareNameTranslator();
     }
 
     @Override

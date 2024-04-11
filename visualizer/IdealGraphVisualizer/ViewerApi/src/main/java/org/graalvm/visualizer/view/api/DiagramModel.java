@@ -22,9 +22,9 @@
  */
 package org.graalvm.visualizer.view.api;
 
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.graalvm.visualizer.graph.Diagram;
 import org.openide.util.Lookup;
 

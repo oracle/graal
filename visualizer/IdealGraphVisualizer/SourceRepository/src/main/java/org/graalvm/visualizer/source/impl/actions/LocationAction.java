@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.source.impl.actions;
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.graalvm.visualizer.source.FileRegistry;
 import org.graalvm.visualizer.source.FileRegistry.FileRegistryListener;
 import org.openide.nodes.Node;

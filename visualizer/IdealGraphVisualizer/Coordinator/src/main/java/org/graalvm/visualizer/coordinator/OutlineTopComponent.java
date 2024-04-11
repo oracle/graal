@@ -31,10 +31,10 @@ import org.graalvm.visualizer.coordinator.actions.SaveAllAction;
 import org.graalvm.visualizer.coordinator.actions.SaveAsAction;
 import org.graalvm.visualizer.coordinator.impl.SessionManagerImpl;
 import org.graalvm.visualizer.coordinator.impl.SessionNode;
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.data.services.GraphViewer;
 import org.graalvm.visualizer.data.services.InputGraphProvider;
 import org.graalvm.visualizer.util.ExternalDropTarget;
@@ -63,8 +63,7 @@ import org.openide.util.actions.Presenter;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 
-import javax.swing.JComponent;
-import javax.swing.UIManager;
+import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -192,7 +191,7 @@ public final class OutlineTopComponent extends TopComponent implements ExplorerM
 
         @Override
         public void changed(SessionManagerImpl source) {
-            setKeys(impl.getSessions());
+            SwingUtilities.invokeLater(() -> setKeys(impl.getSessions()));
         }
 
         @Override

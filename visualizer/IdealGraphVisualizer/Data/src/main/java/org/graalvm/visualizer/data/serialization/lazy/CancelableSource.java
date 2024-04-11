@@ -23,15 +23,16 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.Group.Feedback;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.List;
+
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
+
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.ParseMonitor;
 
 /**
  * Simple data source, which checks for cancelled status and throws if the operation was cancelled

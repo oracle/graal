@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.source;
 
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.openide.filesystems.FileObject;
 
 import java.lang.ref.Reference;

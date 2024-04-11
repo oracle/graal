@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.graph;
 
-import org.graalvm.visualizer.data.InputBlock;
+import jdk.graal.compiler.graphio.parsing.model.InputBlock;
 import org.graalvm.visualizer.layout.Cluster;
 
 import java.awt.Point;

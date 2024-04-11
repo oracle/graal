@@ -23,8 +23,9 @@
 
 package org.graalvm.visualizer.graph;
 
-import org.graalvm.visualizer.data.InputNode;
 import org.graalvm.visualizer.data.Source;
+
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
 /**
  * Specialized version of Source, which invalidates data in Figure and/or Diagram upon modification.

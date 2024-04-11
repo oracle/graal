@@ -23,10 +23,15 @@
 
 package org.graalvm.visualizer.source.lang;
 
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.src.LocationStackFrame;
-import org.graalvm.visualizer.data.src.LocationStratum;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NODE_SOURCE_POSITION;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.graalvm.visualizer.source.FileKey;
 import org.graalvm.visualizer.source.Language;
 import org.graalvm.visualizer.source.Location;
@@ -36,14 +41,10 @@ import org.openide.filesystems.FileObject;
 import org.openide.filesystems.URLMapper;
 import org.openide.util.lookup.ServiceProvider;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NODE_SOURCE_POSITION;
+import jdk.graal.compiler.graphio.parsing.LocationStackFrame;
+import jdk.graal.compiler.graphio.parsing.LocationStratum;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 /**
  * Generic processor, which extracts just filename and line.

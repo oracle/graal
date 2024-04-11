@@ -22,21 +22,16 @@
  */
 package org.graalvm.visualizer.graal.filters;
 
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.filter.AbstractFilter;
-import org.graalvm.visualizer.graph.Connection;
-import org.graalvm.visualizer.graph.Diagram;
-import org.graalvm.visualizer.graph.Figure;
-import org.graalvm.visualizer.graph.InputSlot;
-import org.graalvm.visualizer.graph.OutputSlot;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.*;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.CLASS_ENDNODE;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_CLASS;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_HAS_PREDECESSOR;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_PREDECESSOR_COUNT;
-import static org.graalvm.visualizer.data.KnownPropertyValues.CLASS_ENDNODE;
+import org.graalvm.visualizer.filter.AbstractFilter;
+import org.graalvm.visualizer.graph.*;
+
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 public class GraalCFGFilter extends AbstractFilter {
 

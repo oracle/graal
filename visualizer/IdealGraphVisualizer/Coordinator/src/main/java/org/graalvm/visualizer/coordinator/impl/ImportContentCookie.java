@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
-import org.graalvm.visualizer.data.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
 
 /**
  * @author sdedic

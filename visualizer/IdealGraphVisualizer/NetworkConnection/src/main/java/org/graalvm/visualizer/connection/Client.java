@@ -22,23 +22,25 @@
  */
 package org.graalvm.visualizer.connection;
 
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.DocumentFactory;
-import org.graalvm.visualizer.data.serialization.NetworkStreamContent;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
-import org.openide.modules.Places;
-import org.openide.util.Exceptions;
-import org.openide.util.RequestProcessor;
-
-import javax.swing.SwingUtilities;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.swing.*;
+
+import org.graalvm.visualizer.data.serialization.lazy.NetworkStreamContent;
+import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
+import org.openide.modules.Places;
+import org.openide.util.Exceptions;
+import org.openide.util.RequestProcessor;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.DocumentFactory;
+import jdk.graal.compiler.graphio.parsing.ParseMonitor;
 
 public class Client implements Runnable {
     private static final Logger LOG = Logger.getLogger(Client.class.getName());
@@ -78,7 +80,7 @@ public class Client implements Runnable {
                 Object docId = captureChannel.getDumpFile();
                 BinarySource bs = new BinarySource(docId, captureChannel);
                 ScanningModelBuilder mb = new ScanningModelBuilder(
-                        bs, captureChannel, rootDocumentFactory, null,
+                        bs, captureChannel, rootDocumentFactory,
                         monitor,
                         loader);
                 mb.setDocumentId(docId);

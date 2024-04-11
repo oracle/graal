@@ -30,9 +30,10 @@
  * <b>nodes</b> and <b>edges</b> among them, creating a
  * {@link jdk.graal.compiler.graphio.GraphOutput} specialized for your data is a matter of
  * implementing a single interface:
- * <p>
- * {@link jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure}
- * <p>
+ *
+ * {@snippet file = "jdk/graal/compiler/graphio/GraphJavadocSnippets.java" region =
+ * "jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure"}
+ *
  * The {@link jdk.graal.compiler.graphio.GraphStructure} interface defines the set of operations
  * that are needed by the <em>graph protocol</em> to encode a graph into the <b>IGV</b> expected
  * format. The graph structure is implemented as a so called
@@ -44,17 +45,19 @@
  * {@link jdk.graal.compiler.graphio.GraphOutput}. To do so use the associated
  * {@link jdk.graal.compiler.graphio.GraphOutput.Builder builder} just like shown in the following
  * method:
- * <p>
- * {@link jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput}
- * <p>
+ *
+ * {@snippet file = "jdk/graal/compiler/graphio/GraphJavadocSnippets.java" region =
+ * "jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput"}
+ *
  * Now you are ready to dump your graph into <b>IGV</b>. Where to obtain the right channel? One
  * option is to create a {@link java.nio.channels.FileChannel} and dump the data into a file
  * (preferrably with <code>.bgv</code> extension). The other is to open a socket to port
  * <code>4445</code> (the default port <b>IGV</b> listens to) and dump the data there. Here is an
  * example:
- * <p>
- * {@link jdk.graal.compiler.graphio.GraphJavadocSnippets#dump}
- * <p>
+ *
+ * {@snippet file = "jdk/graal/compiler/graphio/GraphJavadocSnippets.java" region =
+ * "jdk.graal.compiler.graphio.GraphJavadocSnippets#dump"}
+ *
  * Call the {@code dump} method with pointer to file {@code diamond.bgv} and then you can open the
  * file in <b>IGV</b>. The result will look like this:
  * <p>
@@ -77,9 +80,10 @@
  * {@link jdk.graal.compiler.graphio.GraphTypes}) are optional - they don't have to be provided. As
  * such they can be specified via {@link jdk.graal.compiler.graphio.GraphOutput.Builder} instance
  * methods, which may, but need not be called at all. Here is an example:
- * <p>
- * {@link jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll}
- * <p>
+ *
+ * {@snippet file = "jdk/graal/compiler/graphio/GraphJavadocSnippets.java" region =
+ * "jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll"}
+ *
  * All these interfaces follow the
  * <a href="http://wiki.apidesign.org/wiki/Singletonizer">singletonizer</a> API pattern again - e.g.
  * no need to change your existing data structures, just implement the operations provided by the

@@ -22,12 +22,9 @@
  */
 package org.graalvm.visualizer.data;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
 /**
  * Holds a collection of represented {@link InputNodes}. The holder is optimized
@@ -197,7 +194,7 @@ public class Source {
 
     public interface Provider {
 
-        public Source getSource();
+        Source getSource();
     }
 
     public void addSourceNodes(Source s) {

@@ -22,15 +22,23 @@
  */
 package org.graalvm.visualizer.view;
 
-import org.graalvm.visualizer.data.InputBlock;
+import static org.graalvm.visualizer.view.DiagramScene.ANIMATION_LIMIT;
+import static org.graalvm.visualizer.view.DiagramScene.BORDER_SIZE;
+
+import java.awt.*;
+import java.util.*;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import javax.swing.*;
+
 import org.graalvm.visualizer.data.Pair;
-import org.graalvm.visualizer.graph.Block;
-import org.graalvm.visualizer.graph.Connection;
-import org.graalvm.visualizer.graph.Diagram;
-import org.graalvm.visualizer.graph.DiagramItem;
-import org.graalvm.visualizer.graph.Figure;
-import org.graalvm.visualizer.graph.OutputSlot;
-import org.graalvm.visualizer.graph.Slot;
+import org.graalvm.visualizer.graph.*;
 import org.graalvm.visualizer.settings.layout.LayoutSettings.LayoutSettingBean;
 import org.graalvm.visualizer.view.widgets.BlockWidget;
 import org.graalvm.visualizer.view.widgets.FigureWidget;
@@ -41,31 +49,7 @@ import org.netbeans.api.visual.widget.LayerWidget;
 import org.netbeans.api.visual.widget.Widget;
 import org.openide.util.RequestProcessor;
 
-import javax.swing.JViewport;
-import javax.swing.SwingUtilities;
-import java.awt.Dimension;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
-
-import static org.graalvm.visualizer.view.DiagramScene.ANIMATION_LIMIT;
-import static org.graalvm.visualizer.view.DiagramScene.BORDER_SIZE;
+import jdk.graal.compiler.graphio.parsing.model.InputBlock;
 
 /**
  * Task which recomputes the layout. Creates a snapshot of the original Diagram
@@ -124,8 +108,8 @@ abstract class SceneUpdaterTask implements Runnable {
      * Visible items materialized into Figures in the diagram. Does contain only
      * items for which widgets were created.
      */
-    private Set<Integer> oldMaterializedFigures = new HashSet<>();
-    private Set<InputBlock> oldMaterializedBlocks = new HashSet<>();
+    private final Set<Integer> oldMaterializedFigures = new HashSet<>();
+    private final Set<InputBlock> oldMaterializedBlocks = new HashSet<>();
 
     private static class CancelException extends RuntimeException {
         public CancelException() {
@@ -144,11 +128,11 @@ abstract class SceneUpdaterTask implements Runnable {
 
         private final boolean runInAWT;
 
-        private Phase() {
+        Phase() {
             this(true);
         }
 
-        private Phase(boolean runInAWT) {
+        Phase(boolean runInAWT) {
             this.runInAWT = runInAWT;
         }
 
@@ -191,7 +175,7 @@ abstract class SceneUpdaterTask implements Runnable {
      */
     protected Rectangle viewportBounds;
 
-    private Set<Integer> reachableFigureIDs = new HashSet<>();
+    private final Set<Integer> reachableFigureIDs = new HashSet<>();
 
     private int visibleFigureCount;
 

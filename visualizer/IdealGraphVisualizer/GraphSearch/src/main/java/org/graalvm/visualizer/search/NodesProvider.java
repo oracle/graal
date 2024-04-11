@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.search;
 
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * @author sdedic

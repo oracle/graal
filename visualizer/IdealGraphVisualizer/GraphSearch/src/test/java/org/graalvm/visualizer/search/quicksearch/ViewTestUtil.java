@@ -23,18 +23,19 @@
 
 package org.graalvm.visualizer.search.quicksearch;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.Builder;
-import org.graalvm.visualizer.data.serialization.FileContent;
-import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
-import org.openide.util.BaseUtilities;
-
 import java.io.File;
 import java.net.URL;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+
+import org.graalvm.visualizer.data.serialization.lazy.FileContent;
+import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
+import org.openide.util.BaseUtilities;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.Builder;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
 
 /**
  * @author odouda

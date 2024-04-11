@@ -22,11 +22,11 @@
  */
 package org.graalvm.visualizer.search;
 
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.PropertyMatcher;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.PropertyMatcher;
 import org.openide.util.Cancellable;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;

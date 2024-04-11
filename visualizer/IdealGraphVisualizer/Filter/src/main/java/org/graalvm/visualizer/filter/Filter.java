@@ -22,10 +22,10 @@
  */
 package org.graalvm.visualizer.filter;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedEventProvider;
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.Properties;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEventProvider;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 import org.graalvm.visualizer.graph.Diagram;
 import org.openide.cookies.OpenCookie;
 import org.openide.util.Lookup;

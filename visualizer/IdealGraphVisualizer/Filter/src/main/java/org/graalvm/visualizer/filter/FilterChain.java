@@ -22,9 +22,9 @@
  */
 package org.graalvm.visualizer.filter;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedEventProvider;
-import org.graalvm.visualizer.data.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEventProvider;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
 import org.graalvm.visualizer.graph.Diagram;
 import org.graalvm.visualizer.script.ScriptEnvironment;
 
@@ -35,13 +35,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
 
 public class FilterChain implements FilterSequence<FilterChain>, ChangedEventProvider<FilterChain> {
-    private static final Logger LOG = Logger.getLogger(FilterChain.class.getName());
-
     private final List<Filter> filters;
-    private transient ChangedEvent<FilterChain> changedEvent;
+    private final transient ChangedEvent<FilterChain> changedEvent;
     private final transient List<FilterListener> listeners = new ArrayList<>();
 
     private final ChangedListener<Filter> changedListener = new ChangedListener<Filter>() {

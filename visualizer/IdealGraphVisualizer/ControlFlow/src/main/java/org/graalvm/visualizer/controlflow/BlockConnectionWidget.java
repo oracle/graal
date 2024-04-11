@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.controlflow;
 
-import org.graalvm.visualizer.data.InputBlockEdge;
+import jdk.graal.compiler.graphio.parsing.model.InputBlockEdge;
 import org.graalvm.visualizer.layout.Link;
 import org.graalvm.visualizer.layout.Port;
 import org.netbeans.api.visual.widget.ConnectionWidget;

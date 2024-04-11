@@ -22,14 +22,15 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.KnownPropertyNames;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.serialization.DocumentFactory;
+import java.util.Objects;
+
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 import org.openide.util.lookup.ServiceProvider;
 
-import java.util.Objects;
+import jdk.graal.compiler.graphio.parsing.DocumentFactory;
 
 /**
  * @author sdedic
@@ -73,7 +74,7 @@ public class VmUuidSessionFactory implements DocumentFactory {
                 doc = sessionManager.getSingleDocument();
             }
         } else {
-            String cmdLineKey = Objects.toString(cmdLine) + ":" + jvmargs;
+            String cmdLineKey = cmdLine + ":" + jvmargs;
             GraphDocument candidate = null;
 
             for (GraphDocument gd : sessionManager.getAppendableSessions()) {
@@ -84,7 +85,7 @@ public class VmUuidSessionFactory implements DocumentFactory {
                         break;
                     }
                 } else if (cmdLine != null) {
-                    String c = Objects.toString(gd.getProperties().getString(KnownPropertyNames.PROPNAME_CMDLINE, null)) + ":" +
+                    String c = gd.getProperties().getString(KnownPropertyNames.PROPNAME_CMDLINE, null) + ":" +
                             gd.getProperties().getString(KnownPropertyNames.PROPNAME_JVM_ARGS, "");
                     if (cmdLineKey.equals(c)) {
                         // get the last one.

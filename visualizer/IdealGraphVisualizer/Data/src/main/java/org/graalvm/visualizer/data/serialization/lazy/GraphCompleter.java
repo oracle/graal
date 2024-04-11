@@ -23,15 +23,14 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group.Feedback;
-import org.graalvm.visualizer.data.InputGraph.GraphData;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
-import java.util.concurrent.Executor;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph.GraphData;
 
 /**
  * Completes lazy graph
@@ -53,8 +52,7 @@ final class GraphCompleter extends BaseCompleter<GraphData, LazyGraph> {
 
     @Override
     protected GraphData load(ReadableByteChannel channel, int majorVersion, int minorVersion, Feedback feedback) throws IOException {
-        Executor e = toComplete.getOwner().getEventRunner();
-        GraphDocument doc = new GraphDocument(e);
+        GraphDocument doc = new GraphDocument();
         BinarySource bs = new BinarySource(channel, majorVersion, minorVersion, entry.getStart());
         GraphBuilder builder = new GraphBuilder(doc,
                 toComplete, future(),

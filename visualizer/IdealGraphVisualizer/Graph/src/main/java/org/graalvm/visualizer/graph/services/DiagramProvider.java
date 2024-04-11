@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.graph.services;
 
-import org.graalvm.visualizer.data.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
 import org.graalvm.visualizer.graph.Diagram;
 
 import java.util.concurrent.Future;

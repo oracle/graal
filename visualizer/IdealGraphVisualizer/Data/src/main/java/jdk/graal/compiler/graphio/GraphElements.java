@@ -143,7 +143,7 @@ public interface GraphElements<M, F, S, P> {
      * Type name of a signature parameter.
      *
      * @param signature the signature
-     * @param index     index from 0 to {@link #signatureParameterCount(java.lang.Object)} - 1
+     * @param index index from 0 to {@link #signatureParameterCount(java.lang.Object)} - 1
      * @return the type name
      */
     String signatureParameterTypeName(S signature, int index);
@@ -195,8 +195,8 @@ public interface GraphElements<M, F, S, P> {
      * {@link GraphLocations} interface that gives more control over the provided location data.
      *
      * @param method the method
-     * @param bci    the index
-     * @param pos    the position
+     * @param bci the index
+     * @param pos the position
      * @return stack trace element for the method, index and position
      */
     StackTraceElement methodStackTraceElement(M method, int bci, P pos);

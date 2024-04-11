@@ -22,15 +22,7 @@
  */
 package org.graalvm.visualizer.connection;
 
-import org.graalvm.visualizer.data.serialization.DocumentFactory;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-import org.graalvm.visualizer.settings.graal.GraalSettings;
-import org.openide.DialogDisplayer;
-import org.openide.NotifyDescriptor;
-import org.openide.modules.Places;
-import org.openide.util.Exceptions;
-import org.openide.util.NbBundle;
-import org.openide.util.RequestProcessor;
+import static org.graalvm.visualizer.settings.graal.GraalSettings.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,9 +40,16 @@ import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 
-import static org.graalvm.visualizer.settings.graal.GraalSettings.ACCEPT_NETWORK;
-import static org.graalvm.visualizer.settings.graal.GraalSettings.CLEAN_CACHES;
-import static org.graalvm.visualizer.settings.graal.GraalSettings.PORT_BINARY;
+import org.graalvm.visualizer.settings.graal.GraalSettings;
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
+import org.openide.modules.Places;
+import org.openide.util.Exceptions;
+import org.openide.util.NbBundle;
+import org.openide.util.RequestProcessor;
+
+import jdk.graal.compiler.graphio.parsing.DocumentFactory;
+import jdk.graal.compiler.graphio.parsing.ParseMonitor;
 
 public class Server implements PreferenceChangeListener {
     private static final Logger LOG = Logger.getLogger(Server.class.getName());

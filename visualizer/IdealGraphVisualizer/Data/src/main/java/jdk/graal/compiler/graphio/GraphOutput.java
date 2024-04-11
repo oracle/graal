@@ -59,10 +59,11 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
     /**
      * Creates new builder to configure a future instance of {@link GraphOutput}.
      *
-     * @param <G>       the type of the graph
-     * @param <N>       the type of the nodes
-     * @param <C>       the type of the node classes
-     * @param <P>       the type of the ports
+     * @param <G> the type of the graph
+     * @param <N> the type of the nodes
+     * @param <C> the type of the node classes
+     * @param <P> the type of the ports
+     *
      * @param structure description of the structure of the graph
      * @return the builder to configure
      */
@@ -173,8 +174,8 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
 
         /**
          * Chooses which version of the protocol to use. The default version is <code>7.0</code>
-         * (when the {@link GraphOutput} & co. classes were introduced). The default can be changed
-         * to other known versions manually by calling this method.
+         * (when the {@link GraphOutput} &amp; co. classes were introduced). The default can be
+         * changed to other known versions manually by calling this method.
          * <p>
          * Note: the the default version is 7.0 since version 20.2. Previous versions used default
          * version 4.0
@@ -189,9 +190,9 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
             assert minorVersion >= 0 : "Minor must not be negative";
 
             if (!(explicitVersionSet ||
-                    (majorVersion == 0) ||
-                    (majorVersion > major) ||
-                    ((majorVersion == major) && (minorVersion >= minor)))) {
+                            (majorVersion == 0) ||
+                            (majorVersion > major) ||
+                            ((majorVersion == major) && (minorVersion >= minor)))) {
                 throw new IllegalArgumentException("Cannot downgrade from minimum required version " + (-major) + "." + minor);
             }
             this.major = majorVersion;
@@ -277,7 +278,7 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
          * Associates implementation of graph elements and an advanced way to interpret their
          * locations.
          *
-         * @param graphElements  the elements implementation
+         * @param graphElements the elements implementation
          * @param graphLocations the locations for the elements
          * @return this builder
          * @since 0.33 GraalVM 0.33
@@ -293,7 +294,7 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
          * Attaches metadata to the dump. The method may be called more times, subsequent calls will
          * overwrite previous values of matching keys.
          *
-         * @param name  key name
+         * @param name key name
          * @param value value for the key
          * @return this builder
          * @since 20.1.0

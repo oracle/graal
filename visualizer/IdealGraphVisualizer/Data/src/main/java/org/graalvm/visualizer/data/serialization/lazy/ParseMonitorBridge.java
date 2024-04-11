@@ -23,12 +23,13 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.Group.Feedback;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-
 import java.util.List;
+
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
+
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.ParseMonitor;
 
 /**
  * Bridge between ParseMonitor and Feedback. Derives the amount of work done from the datasource's

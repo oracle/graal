@@ -23,9 +23,9 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.serialization.ConstantPool;
-
 import java.util.Objects;
+
+import jdk.graal.compiler.graphio.parsing.ConstantPool;
 
 /**
  * Describes an entry in the data stream. For graphs, holds GraphMetadata
@@ -163,9 +163,6 @@ class StreamEntry {
         if (this.start != other.start) {
             return false;
         }
-        if (!Objects.equals(this.contentId, other.contentId)) {
-            return false;
-        }
-        return true;
+        return Objects.equals(this.contentId, other.contentId);
     }
 }

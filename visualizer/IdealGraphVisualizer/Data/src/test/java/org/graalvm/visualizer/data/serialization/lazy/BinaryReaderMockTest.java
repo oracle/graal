@@ -23,24 +23,8 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import jdk.graal.compiler.graphio.GraphElements;
-import jdk.graal.compiler.graphio.GraphLocations;
-import jdk.graal.compiler.graphio.GraphOutput;
-import jdk.graal.compiler.graphio.GraphStructure;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.serialization.BinaryMap;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinaryReader.Method;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.Builder;
-import org.graalvm.visualizer.data.serialization.Builder.Node;
-import org.graalvm.visualizer.data.serialization.ConstantPool;
-import org.graalvm.visualizer.data.src.LocationStackFrame;
-import org.netbeans.junit.NbTestCase;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_SHORT_NAME;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,15 +32,19 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_SHORT_NAME;
+import org.netbeans.junit.NbTestCase;
+
+import jdk.graal.compiler.graphio.GraphElements;
+import jdk.graal.compiler.graphio.GraphLocations;
+import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.graphio.GraphStructure;
+import jdk.graal.compiler.graphio.parsing.*;
+import jdk.graal.compiler.graphio.parsing.BinaryReader.Method;
+import jdk.graal.compiler.graphio.parsing.Builder.Node;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 public class BinaryReaderMockTest extends NbTestCase {
 
@@ -737,7 +725,7 @@ public class BinaryReaderMockTest extends NbTestCase {
         }
 
         @Override
-        public BinaryMap prepareBinaryMap() {
+        public NameTranslator prepareNameTranslator() {
             return null;
         }
 

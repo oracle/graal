@@ -22,10 +22,10 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.KnownPropertyNames;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.Folder;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
 import org.graalvm.visualizer.util.ListenerSupport;
 import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
@@ -34,6 +34,7 @@ import org.openide.util.LookupListener;
 import org.openide.util.NbBundle;
 import org.openide.util.WeakListeners;
 
+import javax.swing.*;
 import java.util.Collection;
 
 /**
@@ -66,7 +67,7 @@ public class SessionNode extends FolderNode implements ChangedListener<GraphDocu
 
     @Override
     public void changed(GraphDocument source) {
-        updateUI();
+        SwingUtilities.invokeLater(this::updateUI);
     }
 
     @NbBundle.Messages({
@@ -101,6 +102,4 @@ public class SessionNode extends FolderNode implements ChangedListener<GraphDocu
             return super.getHtmlDisplayName();
         }
     }
-
-
 }

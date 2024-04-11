@@ -22,21 +22,36 @@
  */
 package org.graalvm.visualizer.view;
 
-import org.graalvm.visualizer.data.ChangedListener;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
+import java.util.*;
+import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.undo.AbstractUndoableEdit;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+
 import org.graalvm.visualizer.data.ControllableChangedListener;
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
 import org.graalvm.visualizer.data.Source;
 import org.graalvm.visualizer.data.services.GraphSelections;
 import org.graalvm.visualizer.data.src.ImplementationClass;
-import org.graalvm.visualizer.graph.Diagram;
-import org.graalvm.visualizer.graph.Figure;
-import org.graalvm.visualizer.graph.InputSlot;
-import org.graalvm.visualizer.graph.OutputSlot;
-import org.graalvm.visualizer.graph.Slot;
+import org.graalvm.visualizer.graph.*;
 import org.graalvm.visualizer.selectioncoordinator.SelectionCoordinator;
 import org.graalvm.visualizer.settings.layout.LayoutSettings.LayoutSettingBean;
 import org.graalvm.visualizer.util.ColorIcon;
@@ -45,27 +60,14 @@ import org.graalvm.visualizer.util.PropertiesSheet;
 import org.graalvm.visualizer.view.api.DiagramViewer;
 import org.graalvm.visualizer.view.api.DiagramViewerEvent;
 import org.graalvm.visualizer.view.api.DiagramViewerListener;
-import org.graalvm.visualizer.view.widgets.BlockWidget;
-import org.graalvm.visualizer.view.widgets.FigureWidget;
-import org.graalvm.visualizer.view.widgets.FogWidget;
-import org.graalvm.visualizer.view.widgets.InputSlotWidget;
-import org.graalvm.visualizer.view.widgets.OutputSlotWidget;
-import org.graalvm.visualizer.view.widgets.SlotWidget;
+import org.graalvm.visualizer.view.widgets.*;
 import org.graalvm.visualizer.view.widgets.actions.CustomizablePanAction;
-import org.netbeans.api.visual.action.ActionFactory;
-import org.netbeans.api.visual.action.PopupMenuProvider;
-import org.netbeans.api.visual.action.RectangularSelectDecorator;
-import org.netbeans.api.visual.action.RectangularSelectProvider;
-import org.netbeans.api.visual.action.WidgetAction;
+import org.netbeans.api.visual.action.*;
 import org.netbeans.api.visual.animator.AnimatorEvent;
 import org.netbeans.api.visual.animator.AnimatorListener;
 import org.netbeans.api.visual.layout.Layout;
 import org.netbeans.api.visual.layout.LayoutFactory;
-import org.netbeans.api.visual.model.ObjectScene;
-import org.netbeans.api.visual.model.ObjectSceneEvent;
-import org.netbeans.api.visual.model.ObjectSceneEventType;
-import org.netbeans.api.visual.model.ObjectSceneListener;
-import org.netbeans.api.visual.model.ObjectState;
+import org.netbeans.api.visual.model.*;
 import org.netbeans.api.visual.widget.ComponentWidget;
 import org.netbeans.api.visual.widget.LayerWidget;
 import org.netbeans.api.visual.widget.Widget;
@@ -81,51 +83,8 @@ import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
 import org.openide.windows.TopComponent;
 
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.BorderFactory;
-import javax.swing.ImageIcon;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPopupMenu;
-import javax.swing.JScrollPane;
-import javax.swing.JViewport;
-import javax.swing.SwingUtilities;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import javax.swing.event.UndoableEditEvent;
-import javax.swing.undo.AbstractUndoableEdit;
-import javax.swing.undo.CannotRedoException;
-import javax.swing.undo.CannotUndoException;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Graphics2D;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 /**
  * DiagramScene creates and manages the widgets representing graph structures.
@@ -144,7 +103,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     private final WidgetAction hoverAction;
     private final WidgetAction selectAction;
     private final Lookup lookup;
-    private InstanceContent content;
+    private final InstanceContent content;
     private final JScrollPane scrollPane;
     private UndoRedo.Manager undoRedoManager;
 
@@ -235,7 +194,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
      * propagated to SelectionCoordinator, but API calls should, even during
      * rebuild.
      */
-    private ThreadLocal<SelMode> forceSelectionMode = new ThreadLocal<SelMode>() {
+    private final ThreadLocal<SelMode> forceSelectionMode = new ThreadLocal<SelMode>() {
         @Override
         protected SelMode initialValue() {
             return SelMode.DEFAULT;
@@ -267,7 +226,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     public static final int SLOT_OFFSET = 8;
     public static final int ANIMATION_LIMIT = 40;
 
-    private PopupMenuProvider popupMenuProvider = (Widget widget, Point localLocation) -> createPopupMenu();
+    private final PopupMenuProvider popupMenuProvider = (Widget widget, Point localLocation) -> createPopupMenu();
 
     /**
      * Helper instance that manages updates to layout and widgets
@@ -279,7 +238,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
      */
     private final ViewportCenteringBridge viewportCenteringBridge;
 
-    private RectangularSelectDecorator rectangularSelectDecorator = () -> {
+    private final RectangularSelectDecorator rectangularSelectDecorator = () -> {
         Widget widget = new Widget(DiagramScene.this);
         widget.setBorder(BorderFactory.createLineBorder(Color.black, 2));
         widget.setForeground(Color.red);
@@ -368,7 +327,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         setUndoRedoEnabled(b);
     }
 
-    private ControllableChangedListener<SelectionCoordinator> highlightedCoordinatorListener = new ControllableChangedListener<SelectionCoordinator>() {
+    private final ControllableChangedListener<SelectionCoordinator> highlightedCoordinatorListener = new ControllableChangedListener<SelectionCoordinator>() {
         @Override
         public void filteredChanged(SelectionCoordinator source) {
             assert source == selectionCoordinator;
@@ -376,7 +335,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             DiagramScene.this.validate();
         }
     };
-    private ControllableChangedListener<SelectionCoordinator> selectedCoordinatorListener = new ControllableChangedListener<SelectionCoordinator>() {
+    private final ControllableChangedListener<SelectionCoordinator> selectedCoordinatorListener = new ControllableChangedListener<SelectionCoordinator>() {
         @Override
         public void filteredChanged(SelectionCoordinator source) {
             assert source == selectionCoordinator;
@@ -385,7 +344,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         }
     };
 
-    private RectangularSelectProvider rectangularSelectProvider = (Rectangle rectangle) -> {
+    private final RectangularSelectProvider rectangularSelectProvider = (Rectangle rectangle) -> {
         if (rectangle.width < 0) {
             rectangle.x += rectangle.width;
             rectangle.width *= -1;
@@ -660,7 +619,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     /**
      * Bridge object from API to DiagramScene to be exposed in the Lookup
      */
-    private SceneViewport vp1 = new SceneViewport() {
+    private final SceneViewport vp1 = new SceneViewport() {
         @Override
         public Rectangle getSceneViewRect() {
             return DiagramScene.this.getScrollPane().getVisibleRect();
@@ -1000,7 +959,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         if (overall != null) {
             centerRectangle(overall, true);
         }
-        setSelection((Collection<Figure>) figuresToSelect);
+        setSelection(figuresToSelect);
     }
 
     private Rectangle union(Rectangle overall, Rectangle r2) {
@@ -1161,7 +1120,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         executeWithDiagramShown(() -> {
             Rectangle r = f.getBounds();
             centerRectangle(r, false);
-            setSelection(Arrays.asList(f));
+            setSelection(List.of(f));
         });
     }
 
@@ -1230,7 +1189,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         return undoRedoEnabled;
     }
 
-    private final ChangedListener<DiagramViewModel> diagramChange = new ChangedListener<DiagramViewModel>() {
+    private final ChangedListener<DiagramViewModel> diagramChange = new ChangedListener<>() {
         @Override
         public void changed(DiagramViewModel source) {
             assert source == model : "Receive only changed event from current model!";

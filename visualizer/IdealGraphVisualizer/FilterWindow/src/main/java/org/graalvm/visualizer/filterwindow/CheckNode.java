@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.filterwindow;
 
-import org.graalvm.visualizer.data.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
 import org.openide.nodes.AbstractNode;
 import org.openide.nodes.Children;
 import org.openide.util.Lookup;

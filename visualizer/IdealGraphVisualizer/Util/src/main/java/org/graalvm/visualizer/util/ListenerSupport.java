@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.util;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
 import org.openide.util.Utilities;
 
 import javax.swing.SwingUtilities;
@@ -57,24 +57,24 @@ public class ListenerSupport {
      * @param source   event source, will be called to unregister
      * @return listener for explicit listener removal
      */
-    public static <T> ChangedListener<T> addWeakListener(ChangedListener<T> delegate, ChangedEvent<? extends T> source) {
-        ChangedListener l = new CHLImpl(delegate, source);
+    public static <T, U extends T> ChangedListener<U> addWeakListener(ChangedListener<T> delegate, ChangedEvent<U> source) {
+        ChangedListener<U> l = new CHLImpl<>(delegate, source);
         source.addListener(l);
         return l;
     }
 
-    private static class CHLImpl extends WeakReference<ChangedListener> implements Runnable, ChangedListener {
-        private final ChangedEvent source;
+    private static class CHLImpl<T, U extends T> extends WeakReference<ChangedListener<T>> implements Runnable, ChangedListener<U> {
+        private final ChangedEvent<U> source;
         private Object sourceData;
 
-        public CHLImpl(ChangedListener delegate, ChangedEvent source) {
+        public CHLImpl(ChangedListener<T> delegate, ChangedEvent<U> source) {
             super(delegate, Utilities.activeReferenceQueue());
             this.source = source;
         }
 
         @Override
-        public void changed(Object eventData) {
-            ChangedListener l = get();
+        public void changed(U eventData) {
+            ChangedListener<T> l = get();
             if (l != null) {
                 synchronized (this) {
                     if (sourceData == null) {

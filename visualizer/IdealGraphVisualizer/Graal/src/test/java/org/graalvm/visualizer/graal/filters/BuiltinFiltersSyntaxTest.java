@@ -22,13 +22,17 @@
  */
 package org.graalvm.visualizer.graal.filters;
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.filter.CustomFilter;
-import org.graalvm.visualizer.filter.Filter;
-import org.graalvm.visualizer.filter.FilterChain;
-import org.graalvm.visualizer.filter.FilterEvent;
-import org.graalvm.visualizer.filter.FilterListener;
-import org.graalvm.visualizer.filter.Filters;
+import static org.junit.Assert.assertEquals;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.visualizer.filter.*;
 import org.graalvm.visualizer.graph.Diagram;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -37,17 +41,7 @@ import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.util.Exceptions;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * @author sdedic
@@ -62,7 +56,6 @@ public class BuiltinFiltersSyntaxTest {
         FileObject folder = FileUtil.getConfigRoot().getFileObject(FOLDER_ID);
         FileObject[] children = folder.getChildren();
 
-        HashMap<String, CustomFilter> map = new HashMap<>();
         List<Filter> result = new ArrayList<>();
         for (final FileObject fo : children) {
             InputStream is = null;
@@ -80,8 +73,6 @@ public class BuiltinFiltersSyntaxTest {
                     sb.append("\n");
                 }
                 code = sb.toString();
-            } catch (FileNotFoundException ex) {
-                Exceptions.printStackTrace(ex);
             } catch (IOException ex) {
                 Exceptions.printStackTrace(ex);
             } finally {
@@ -105,7 +96,7 @@ public class BuiltinFiltersSyntaxTest {
     @Ignore
     public void testFilterSyntax() throws Exception {
         List<Filter> customFilters = readFilters();
-        InputGraph ig = new InputGraph("test");
+        InputGraph ig = InputGraph.createTestGraph("test");
         Diagram dg = Diagram.createEmptyDiagram(ig, "root");
         List<Filter> failed = new ArrayList<>();
         for (Filter f : customFilters) {

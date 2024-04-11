@@ -23,20 +23,21 @@
 
 package org.graalvm.visualizer.view.impl;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.services.GraphClassifier;
+import static jdk.graal.compiler.graphio.parsing.model.GraphClassifier.DEFAULT_CLASSIFIER;
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import org.graalvm.visualizer.util.RangeSliderModel;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Executor;
-
-import static org.junit.Assert.assertEquals;
+import jdk.graal.compiler.graphio.parsing.model.GraphClassifier;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * @author sdedic
@@ -46,55 +47,53 @@ public class TimelineModelImplTest {
     private static final String TYPE_CALL_GRAPH = GraphClassifier.CALL_GRAPH;
 
     private List<InputGraph> graphs = new ArrayList<>();
-    private GraphDocument document = new GraphDocument(new Executor() {
-        @Override
-        public void execute(Runnable command) {
-            command.run();
-        }
-    });
+    private final GraphDocument document = new GraphDocument();
 
     @Before
     public void createGraphs() {
         InputGraph g;
 
-        g = new InputGraph("s1");
+        g = InputGraph.createTestGraph("s1");
         g.getProperties().setProperty("graph", "StructuredGraph:1");
         graphs.add(g);
-        g = new InputGraph("s2");
+        g = InputGraph.createTestGraph("s2");
         g.getProperties().setProperty("graph", "StructuredGraph:2");
         graphs.add(g);
-        g = new InputGraph("s3");
+        g = InputGraph.createTestGraph("s3");
         g.getProperties().setProperty("graph", "StructuredGraph:3");
         graphs.add(g);
-        g = new InputGraph("s4");
+        g = InputGraph.createTestGraph("s4");
         g.getProperties().setProperty("graph", "StructuredGraph:4");
         graphs.add(g);
-        g = new InputGraph("s5");
+        g = InputGraph.createTestGraph("s5");
         g.getProperties().setProperty("graph", "StructuredGraph:5");
         graphs.add(g);
-        g = new InputGraph("s6");
+        g = InputGraph.createTestGraph("s6");
         g.getProperties().setProperty("graph", "StructuredGraph:6");
         graphs.add(g);
 
-        g = new InputGraph("c11");
+        g = InputGraph.createTestGraph("c11");
         g.getProperties().setProperty("graph", "inline:1-1");
         graphs.add(indexOf("StructuredGraph:2"), g);
 
-        g = new InputGraph("c21");
+        g = InputGraph.createTestGraph("c21");
         g.getProperties().setProperty("graph", "inline:2-1");
         graphs.add(indexOf("StructuredGraph:4"), g);
-        g = new InputGraph("c22");
+        g = InputGraph.createTestGraph("c22");
         g.getProperties().setProperty("graph", "inline:2-2");
         graphs.add(indexOf("StructuredGraph:4"), g);
-        g = new InputGraph("c31");
+        g = InputGraph.createTestGraph("c31");
         g.getProperties().setProperty("graph", "inline:3-1");
         graphs.add(indexOf("StructuredGraph:6"), g);
-        g = new InputGraph("c32");
+        g = InputGraph.createTestGraph("c32");
         g.getProperties().setProperty("graph", "inline:3-2");
         graphs.add(indexOf("StructuredGraph:6"), g);
-        g = new InputGraph("c33");
+        g = InputGraph.createTestGraph("c33");
         g.getProperties().setProperty("graph", "inline:3-3");
         graphs.add(indexOf("StructuredGraph:6"), g);
+        for (InputGraph graph : graphs) {
+            graph.setGraphType(DEFAULT_CLASSIFIER.classifyGraphType(graph.getProperties()));
+        }
     }
 
     private int indexOf(String gn) {
@@ -115,7 +114,7 @@ public class TimelineModelImplTest {
     public void testCompleteGroupPartitioned() {
         createDefaultGroup();
 
-        TimelineModelImpl timeline = new TimelineModelImpl(g, TYPE_INTERMEDIATE_GRAPH);
+        TimelineModelImpl timeline = new TimelineModelImpl(g, DEFAULT_CLASSIFIER, TYPE_INTERMEDIATE_GRAPH);
         timeline._testCompleteRefresh();
 
         assertEquals(2, timeline.getPartitions().size());
@@ -149,7 +148,7 @@ public class TimelineModelImplTest {
     public void testGapsInSliders() {
         createDefaultGroup();
 
-        TimelineModelImpl timeline = new TimelineModelImpl(g, TYPE_INTERMEDIATE_GRAPH);
+        TimelineModelImpl timeline = new TimelineModelImpl(g, DEFAULT_CLASSIFIER, TYPE_INTERMEDIATE_GRAPH);
         timeline._testCompleteRefresh();
 
         RangeSliderModel mdl = timeline.getPartitionRange(TYPE_INTERMEDIATE_GRAPH);
@@ -165,7 +164,7 @@ public class TimelineModelImplTest {
         graphs.remove(1);   // remove c11
         createDefaultGroup();
 
-        TimelineModelImpl timeline = new TimelineModelImpl(g, TYPE_INTERMEDIATE_GRAPH);
+        TimelineModelImpl timeline = new TimelineModelImpl(g, DEFAULT_CLASSIFIER, TYPE_INTERMEDIATE_GRAPH);
         timeline._testCompleteRefresh();
 
         assertEquals(1, timeline.getPartitionTypes().size());
@@ -186,7 +185,7 @@ public class TimelineModelImplTest {
 
         createDefaultGroup();
 
-        TimelineModelImpl timeline = new TimelineModelImpl(g, TYPE_INTERMEDIATE_GRAPH);
+        TimelineModelImpl timeline = new TimelineModelImpl(g, DEFAULT_CLASSIFIER, TYPE_INTERMEDIATE_GRAPH);
         timeline._testCompleteRefresh();
 
         assertEquals(1, timeline.getPartitionTypes().size());
@@ -214,7 +213,7 @@ public class TimelineModelImplTest {
 
         createDefaultGroup();
 
-        TimelineModelImpl timeline = new TimelineModelImpl(g, TYPE_INTERMEDIATE_GRAPH);
+        TimelineModelImpl timeline = new TimelineModelImpl(g, DEFAULT_CLASSIFIER, TYPE_INTERMEDIATE_GRAPH);
         timeline._testCompleteRefresh();
 
         assertEquals(1, timeline.getPartitionTypes().size());

@@ -23,6 +23,14 @@
 
 package org.graalvm.visualizer.source.impl.ui;
 
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.io.IOException;
+
+import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+
 import org.graalvm.visualizer.data.SuppressFBWarnings;
 import org.graalvm.visualizer.source.impl.FileGroup;
 import org.graalvm.visualizer.source.impl.SourceRepositoryImpl;
@@ -30,13 +38,6 @@ import org.openide.DialogDisplayer;
 import org.openide.NotificationLineSupport;
 import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
-
-import javax.swing.AbstractAction;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import java.awt.Component;
-import java.awt.event.ActionEvent;
-import java.io.IOException;
 
 /**
  *

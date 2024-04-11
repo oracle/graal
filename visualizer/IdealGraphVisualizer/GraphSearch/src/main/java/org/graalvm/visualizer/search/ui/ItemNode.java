@@ -22,10 +22,10 @@
  */
 package org.graalvm.visualizer.search.ui;
 
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.KnownPropertyNames;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
 import org.graalvm.visualizer.data.services.GraphViewer;
 import org.graalvm.visualizer.data.services.InputGraphProvider;
 import org.graalvm.visualizer.data.services.NodeContext;

@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.filter.profiles.spi;
 
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.filter.profiles.FilterProfile;
 import org.openide.util.Lookup;
 

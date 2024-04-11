@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.filterwindow.impl;
 
-import org.graalvm.visualizer.data.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
 import org.graalvm.visualizer.filter.Filter;
 import org.graalvm.visualizer.filter.FilterCanceledException;
 import org.graalvm.visualizer.filter.FilterEvent;
@@ -55,7 +55,7 @@ import org.openide.util.lookup.ProxyLookup;
 import org.openide.windows.IOProvider;
 import org.openide.windows.InputOutput;
 
-import javax.swing.Action;
+import javax.swing.*;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collection;
@@ -91,7 +91,7 @@ public final class FilterNode extends CheckNode implements FilterListener {
     private final ChangedListener<Filter> changedL = new ChangedListener<Filter>() {
         @Override
         public void changed(Filter source) {
-            update();
+            SwingUtilities.invokeLater(() -> update());
         }
     };
 

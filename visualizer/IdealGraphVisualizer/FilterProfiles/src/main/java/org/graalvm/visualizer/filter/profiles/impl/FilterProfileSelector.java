@@ -22,11 +22,11 @@
  */
 package org.graalvm.visualizer.filter.profiles.impl;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.data.services.GraphViewer;
 import org.graalvm.visualizer.data.services.InputGraphProvider;
 import org.graalvm.visualizer.filter.DataFilterSelector;

@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.source;
 
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.source.spi.LocationResolver;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.openide.filesystems.FileObject;

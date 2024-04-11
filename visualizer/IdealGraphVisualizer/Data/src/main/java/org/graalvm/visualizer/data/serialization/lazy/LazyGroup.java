@@ -22,23 +22,14 @@
  */
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedEventProvider;
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import jdk.graal.compiler.graphio.parsing.model.*;
 
 /**
  * Lazy implementation of Group, which fetches its contents lazily, using {@link GroupCompleter}.
@@ -46,10 +37,8 @@ import java.util.stream.Collectors;
  * are not yet present through the {@link #completer}. The exact same data is then provided until
  * all the loaded items become unreachable; then they are GCed, and can be loaded again.
  */
-final class LazyGroup extends Group implements Group.LazyContent<List<? extends FolderElement>> {
-    private static final Logger LOG = Logger.getLogger(LazyGroup.class.getName());
-
-    private static final Reference EMPTY = new WeakReference(null);
+public final class LazyGroup extends Group implements Group.LazyContent<List<? extends FolderElement>> {
+    private static final Reference<List<InputGraph>> EMPTY = new WeakReference<>(null);
 
     /**
      * Filtered list of completed elements
@@ -68,7 +57,7 @@ final class LazyGroup extends Group implements Group.LazyContent<List<? extends 
     public LazyGroup(Folder parent, GroupCompleter completer, StreamEntry entry) {
         super(parent, entry);
         this.completer = completer;
-        this.cSupport = new LoadSupport<List<? extends FolderElement>>(completer) {
+        this.cSupport = new LoadSupport<>(completer) {
             @Override
             protected List<? extends FolderElement> emptyData() {
                 return new ArrayList<>();
@@ -185,7 +174,7 @@ final class LazyGroup extends Group implements Group.LazyContent<List<? extends 
      * as a whole.
      */
     static class LoadedGraph extends InputGraph implements ChangedEventProvider<Object> {
-        private final ChangedEvent ev = new ChangedEvent(this);
+        private final ChangedEvent<Object> ev = new ChangedEvent<>(this);
         private final GraphMetadata meta;
 
         public LoadedGraph(StreamEntry graphEntry, GraphMetadata meta, int dumpId, String format, Object[] args) {
@@ -219,13 +208,6 @@ final class LazyGroup extends Group implements Group.LazyContent<List<? extends 
         if (isComplete()) {
             return super.toString();
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append("Group ").append(getProperties()).append("\n");
-        return sb.toString();
-    }
-
-    // testing only
-    static StreamEntry lazyGroupEntry(LazyGroup g) {
-        return ((BaseCompleter) g.cSupport.completer).entry;
+        return "Group " + getProperties() + "\n";
     }
 }

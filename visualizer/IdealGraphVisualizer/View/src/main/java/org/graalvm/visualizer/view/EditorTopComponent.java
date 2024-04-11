@@ -25,21 +25,21 @@ package org.graalvm.visualizer.view;
 import org.apache.batik.dom.GenericDOMImplementation;
 import org.apache.batik.svggen.SVGGeneratorContext;
 import org.apache.batik.svggen.SVGGraphics2D;
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.DataCollectionEvent;
-import org.graalvm.visualizer.data.DataCollectionListener;
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.KnownPropertyNames;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.Entity;
-import org.graalvm.visualizer.data.Properties.MutableOwner;
-import org.graalvm.visualizer.data.Properties.PropertyMatcher;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.DataCollectionEvent;
+import jdk.graal.compiler.graphio.parsing.model.DataCollectionListener;
+import jdk.graal.compiler.graphio.parsing.model.Folder;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.Entity;
+import jdk.graal.compiler.graphio.parsing.model.Properties.MutableOwner;
+import jdk.graal.compiler.graphio.parsing.model.Properties.PropertyMatcher;
 import org.graalvm.visualizer.data.services.GraphSelections;
 import org.graalvm.visualizer.data.services.InputGraphProvider;
 import org.graalvm.visualizer.filter.DataFilterSelector;
@@ -781,7 +781,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
         return graphProvider = new EditorInputGraphProvider(this);
     }
 
-    private ChangedListener<DiagramViewModel> diagramChangedListener = new ChangedListener<DiagramViewModel>() {
+    private final ChangedListener<DiagramViewModel> diagramChangedListener = new ChangedListener<>() {
         // keep a reference
         @Override
         public void changed(DiagramViewModel source) {
@@ -954,7 +954,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
         }
     }
 
-    static class TitleUpdater implements ChangedListener<MutableOwner>, PropertyChangeListener {
+    static class TitleUpdater implements ChangedListener<MutableOwner<?>>, PropertyChangeListener {
         private final TimelineModel viewModel;
         private final DiagramViewModel diagramModel;
         private final EditorTopComponent target;
@@ -982,7 +982,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
         }
 
         @Override
-        public void changed(MutableOwner source) {
+        public void changed(MutableOwner<?> source) {
             refresh();
         }
 

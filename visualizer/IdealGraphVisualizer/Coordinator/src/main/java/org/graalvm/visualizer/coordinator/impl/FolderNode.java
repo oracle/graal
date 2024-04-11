@@ -22,19 +22,19 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.swing.*;
+
 import org.graalvm.visualizer.coordinator.actions.RemoveCookie;
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedEventProvider;
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.Group.LazyContent;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.serialization.ReaderErrors;
-import org.graalvm.visualizer.data.services.GraphClassifier;
+import org.graalvm.visualizer.data.serialization.lazy.ReaderErrors;
 import org.graalvm.visualizer.util.ListenerSupport;
 import org.graalvm.visualizer.util.PropertiesSheet;
 import org.netbeans.api.progress.ProgressHandle;
@@ -50,15 +50,8 @@ import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
 
-import javax.swing.SwingUtilities;
-import java.awt.Image;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Group.LazyContent;
 
 public class FolderNode extends AbstractOutlineNode {
     /**
@@ -73,13 +66,13 @@ public class FolderNode extends AbstractOutlineNode {
     private static final int POOL_THRESHOLD = Integer.getInteger(FolderNode.class.getName() + ".poolThreshold", 200);  // NOI18N
 
     private static final RequestProcessor REFRESH_RP = new RequestProcessor(FolderNode.class);
-    private InstanceContent content;
+    private final InstanceContent content;
     protected final Folder folder;
     private boolean error;
 
-    private final ChangedListener l = new ChangedListener() {
+    private final ChangedListener<FolderElement> l = new ChangedListener<>() {
         @Override
-        public void changed(Object source) {
+        public void changed(FolderElement source) {
             SwingUtilities.invokeLater(FolderNode.this::refreshError);
         }
     };
@@ -141,7 +134,7 @@ public class FolderNode extends AbstractOutlineNode {
 
             if (e == WAIT_KEY) {
                 n = new WaitNode();
-            } else if (e instanceof InputGraph && GraphClassifier.KNOWN_TYPES.contains(((InputGraph) e).getGraphType())) {
+            } else if (e instanceof InputGraph && GraphClassifier.DEFAULT_CLASSIFIER.knownGraphTypes().contains(((InputGraph) e).getGraphType())) {
                 n = new GraphNode((InputGraph) e);
             } else if (e instanceof Folder) {
                 n = new FolderNode((Folder) e);
@@ -163,7 +156,7 @@ public class FolderNode extends AbstractOutlineNode {
             if (l != null) {
                 folder.getChangedEvent().removeListener(l);
             }
-            setKeys(Collections.<FolderElement>emptyList());
+            setKeys(Collections.emptyList());
             super.removeNotify();
         }
 
@@ -195,7 +188,7 @@ public class FolderNode extends AbstractOutlineNode {
             int lastTotal;
 
             String name() {
-                return ((Group) folder).getName();
+                return folder.getName();
             }
 
             void setFuture(Future f) {
@@ -341,7 +334,7 @@ public class FolderNode extends AbstractOutlineNode {
             Sheet.Set versions = new Sheet.Set();
             versions.setName("versions"); // NOI18N
             versions.setDisplayName(Bundle.TITLE_Versions());
-            List<org.graalvm.visualizer.data.Property> versionProps = new ArrayList<>();
+            List<jdk.graal.compiler.graphio.parsing.model.Property<?>> versionProps = new ArrayList<>();
             pen.getProperties().forEach((p) -> {
                 if (p.getName().startsWith("igv.")) { // NOI18N
                     return;
@@ -356,7 +349,7 @@ public class FolderNode extends AbstractOutlineNode {
             s.put(props);
             if (!versionProps.isEmpty()) {
                 Collections.sort(versionProps, (a, b) -> a.getName().compareTo(b.getName()));
-                for (org.graalvm.visualizer.data.Property p : versionProps) {
+                for (jdk.graal.compiler.graphio.parsing.model.Property<?> p : versionProps) {
                     versions.put(PropertiesSheet.createSheetProperty(p.getName(),
                             p.getName().substring(PREFIX_VERSION.length()), pen.getProperties()));
                 }
@@ -395,7 +388,7 @@ public class FolderNode extends AbstractOutlineNode {
         this.folder = folder;
         this.content = content;
         if (folder != null) {
-            final FolderElement folderElement = (FolderElement) folder;
+            final FolderElement folderElement = folder;
             content.add(new RemoveCookie() {
                 @Override
                 public void remove() {
@@ -410,7 +403,7 @@ public class FolderNode extends AbstractOutlineNode {
             content.add(folder);
         }
         if (folder instanceof ChangedEventProvider) {
-            ChangedEvent ev = ((ChangedEventProvider) folder).getChangedEvent();
+            ChangedEvent<FolderElement> ev = ((ChangedEventProvider) folder).getChangedEvent();
             ListenerSupport.addWeakListener(l, ev);
         }
         setIconBaseWithExtension("org/graalvm/visualizer/coordinator/images/folder.png");
@@ -421,7 +414,7 @@ public class FolderNode extends AbstractOutlineNode {
         if (!(folder instanceof FolderElement)) {
             return;
         }
-        FolderElement el = (FolderElement) folder;
+        FolderElement el = folder;
         boolean newError = ReaderErrors.containsError(el, true);
         if (this.error != newError) {
             this.error = newError;

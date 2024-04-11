@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.filter.profiles;
 
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.filter.profiles.impl.BuiltinGraphMatcher;
 import org.graalvm.visualizer.filter.profiles.mgmt.SimpleProfileSelector;
 import org.graalvm.visualizer.filter.profiles.spi.ProfileGraphMatcher;

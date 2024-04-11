@@ -23,18 +23,17 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.serialization.Builder;
-import org.graalvm.visualizer.data.serialization.ModelBuilder;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-import org.graalvm.visualizer.data.services.GroupCallback;
-import org.openide.util.RequestProcessor.Task;
-
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.openide.util.RequestProcessor.Task;
+
+import jdk.graal.compiler.graphio.parsing.Builder;
+import jdk.graal.compiler.graphio.parsing.ParseMonitor;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * @author sdedic
@@ -45,7 +44,7 @@ public class BinaryReaderTest extends BinaryDataTestBase {
         super(name);
     }
 
-    class GroupCountingBuilder extends ModelBuilder {
+    class GroupCountingBuilder extends LazyModelBuilder {
         volatile int groupStart;
         volatile int groupEnd;
         volatile int groupContents;
@@ -55,8 +54,8 @@ public class BinaryReaderTest extends BinaryDataTestBase {
         volatile int graphContents;
         volatile boolean endCalled;
 
-        public GroupCountingBuilder(GraphDocument rootDocument, Executor modelExecutor, GroupCallback callback, ParseMonitor monitor) {
-            super(rootDocument, callback, monitor);
+        public GroupCountingBuilder(GraphDocument rootDocument, Executor modelExecutor, ParseMonitor monitor) {
+            super(rootDocument, monitor);
         }
 
         @Override
@@ -110,7 +109,7 @@ public class BinaryReaderTest extends BinaryDataTestBase {
         if (!countGroups) {
             return super.createScanningTestBuilder();
         }
-        return countingBuilder = new GroupCountingBuilder(checkDocument, this::run, null, null);
+        return countingBuilder = new GroupCountingBuilder(checkDocument, this::run, null);
     }
 
     /**

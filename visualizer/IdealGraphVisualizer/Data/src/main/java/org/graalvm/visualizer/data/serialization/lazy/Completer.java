@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.Group.Feedback;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
 
 import java.util.concurrent.Future;
 

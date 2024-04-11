@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.shell.actions;
 
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.shell.ShellUtils;
 import org.graalvm.visualizer.shell.impl.ScrapEditorController;
 import org.graalvm.visualizer.shell.ui.ScriptNavigatorTopComponent;

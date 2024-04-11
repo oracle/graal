@@ -23,8 +23,13 @@
 
 package org.graalvm.visualizer.filter.profiles.impl;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedListener;
+import java.io.IOException;
+import java.util.Collections;
+
+import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
 import org.graalvm.visualizer.filter.Filter;
 import org.graalvm.visualizer.filter.FilterEnvironment;
 import org.graalvm.visualizer.filter.FilterProvider;
@@ -33,22 +38,15 @@ import org.graalvm.visualizer.filter.profiles.FilterProfile;
 import org.graalvm.visualizer.filter.profiles.mgmt.ProfileService;
 import org.graalvm.visualizer.util.ListenerSupport;
 import org.openide.cookies.OpenCookie;
-import org.openide.filesystems.FileAttributeEvent;
-import org.openide.filesystems.FileChangeAdapter;
-import org.openide.filesystems.FileChangeListener;
-import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileRenameEvent;
-import org.openide.filesystems.FileStateInvalidException;
+import org.openide.filesystems.*;
 import org.openide.util.Lookup;
 import org.openide.util.WeakListeners;
 import org.openide.util.lookup.Lookups;
 import org.openide.util.lookup.ProxyLookup;
 
-import javax.swing.SwingUtilities;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import java.io.IOException;
-import java.util.Collections;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 /**
  * Bridges the filter implementation to a filter extracted from a file.
@@ -67,7 +65,7 @@ public class FilterBridge implements Filter, FilterDefinition, ChangedListener {
     private Filter lastDelegate;
     private final L l = new L();
     private ChangedListener weakCL;
-    private PL lookup = new PL();
+    private final PL lookup = new PL();
     int hashCode = -1;
 
     class PL extends ProxyLookup {
@@ -215,7 +213,7 @@ public class FilterBridge implements Filter, FilterDefinition, ChangedListener {
     }
 
     @Override
-    public org.graalvm.visualizer.data.Properties getProperties() {
+    public Properties getProperties() {
         return delegate().getProperties();
     }
 

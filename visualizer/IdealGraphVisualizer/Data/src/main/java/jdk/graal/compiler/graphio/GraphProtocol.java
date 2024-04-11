@@ -214,7 +214,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
      *
      * @param obj object to check
      * @return {@code null} if {@code obj} does not represent a NodeClass otherwise the NodeClass
-     * represented by {@code obj}
+     *         represented by {@code obj}
      */
     protected abstract NodeClass findNodeClass(Object obj);
 

@@ -65,7 +65,7 @@ public interface GraphTypes {
      *
      * @param maybeClass object representing the class
      * @return the type name of the class or <code>null</code> if the parameter doesn't represent a
-     * class
+     *         class
      */
     String typeName(Object maybeClass);
 }

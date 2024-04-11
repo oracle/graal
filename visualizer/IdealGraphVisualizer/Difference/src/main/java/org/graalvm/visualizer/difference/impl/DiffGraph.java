@@ -23,15 +23,16 @@
 
     package org.graalvm.visualizer.difference.impl;
 
-    import org.graalvm.visualizer.data.Group;
-    import org.graalvm.visualizer.data.InputGraph;
-    import org.graalvm.visualizer.data.InputNode;
-    import org.openide.util.Exceptions;
-
     import java.util.Collection;
     import java.util.concurrent.CompletableFuture;
     import java.util.concurrent.ExecutionException;
     import java.util.concurrent.Future;
+
+    import org.openide.util.Exceptions;
+
+    import jdk.graal.compiler.graphio.parsing.model.Group;
+    import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+    import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
     /**
      * @author odouda
@@ -45,8 +46,8 @@
             DiffGraph complete(InputGraph a, InputGraph b, DiffGraph c);
         }
 
-        public DiffGraph(InputGraph a, InputGraph b, DiffGraphCompletion completer) {
-            super(a, b);
+        public DiffGraph(Object id, String format, Object[] args, InputGraph a, InputGraph b, DiffGraphCompletion completer) {
+            super(id, INVALID_INDEX, format, args);
             assert completer != null;
             assert a.getGraphType().equals(b.getGraphType());
             setGraphType(a.getGraphType());

@@ -23,16 +23,28 @@
 
 package org.graalvm.visualizer.source.impl.ui;
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.beans.BeanInfo;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyVetoException;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
+import java.util.*;
+import java.util.List;
+import java.util.Queue;
+
+import javax.swing.*;
+import javax.swing.border.Border;
+
 import org.graalvm.visualizer.graph.Figure;
-import org.graalvm.visualizer.source.GraphSource;
-import org.graalvm.visualizer.source.Language;
-import org.graalvm.visualizer.source.Location;
-import org.graalvm.visualizer.source.NodeLocationContext;
-import org.graalvm.visualizer.source.NodeLocationEvent;
-import org.graalvm.visualizer.source.NodeLocationListener;
-import org.graalvm.visualizer.source.NodeStack;
+import org.graalvm.visualizer.source.*;
 import org.graalvm.visualizer.source.impl.actions.GoStackUpDownAction;
 import org.graalvm.visualizer.source.impl.actions.GotoNodeAction;
 import org.graalvm.visualizer.source.impl.actions.GotoSourceAction;
@@ -50,16 +62,8 @@ import org.openide.explorer.ExplorerManager;
 import org.openide.explorer.ExplorerUtils;
 import org.openide.explorer.view.ChoiceView;
 import org.openide.explorer.view.NodeListModel;
-import org.openide.nodes.AbstractNode;
-import org.openide.nodes.Children;
-import org.openide.nodes.FilterNode;
-import org.openide.nodes.Node;
-import org.openide.nodes.Sheet;
-import org.openide.util.ContextAwareAction;
-import org.openide.util.Exceptions;
-import org.openide.util.ImageUtilities;
-import org.openide.util.Lookup;
-import org.openide.util.NbBundle;
+import org.openide.nodes.*;
+import org.openide.util.*;
 import org.openide.util.NbBundle.Messages;
 import org.openide.util.actions.Presenter;
 import org.openide.util.lookup.AbstractLookup;
@@ -68,46 +72,8 @@ import org.openide.util.lookup.Lookups;
 import org.openide.util.lookup.ProxyLookup;
 import org.openide.windows.TopComponent;
 
-import javax.swing.Action;
-import javax.swing.ComboBoxModel;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.Icon;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JMenuItem;
-import javax.swing.JPopupMenu;
-import javax.swing.ListCellRenderer;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-import javax.swing.border.Border;
-import java.awt.BorderLayout;
-import java.awt.CardLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Rectangle;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.beans.BeanInfo;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyVetoException;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Queue;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
 /**
  * Top component which displays something.
@@ -136,7 +102,7 @@ import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
 public final class StackViewTopComponent extends TopComponent
         implements ExplorerManager.Provider, NodeLocationListener, PropertyChangeListener {
     private final NodeLocationContext locContext;
-    private ExplorerManager manager = new ExplorerManager();
+    private final ExplorerManager manager = new ExplorerManager();
 
     private final ChoiceView choiceView;
     private List<InputNode> orderedContextNodes = new ArrayList<>();
@@ -655,8 +621,8 @@ public final class StackViewTopComponent extends TopComponent
         if (o == null && nodeSelector.getItemCount() > 0) {
             o = nodeSelector.getModel().getElementAt(0);
         }
-        if (o instanceof org.graalvm.visualizer.data.Properties.Provider) {
-            final org.graalvm.visualizer.data.Properties.Provider provider = (org.graalvm.visualizer.data.Properties.Provider) o;
+        if (o instanceof jdk.graal.compiler.graphio.parsing.model.Properties.Provider) {
+            final jdk.graal.compiler.graphio.parsing.model.Properties.Provider provider = (jdk.graal.compiler.graphio.parsing.model.Properties.Provider) o;
             AbstractNode node = new AbstractNode(Children.LEAF, Lookup.EMPTY) {
                 @Override
                 protected Sheet createSheet() {
@@ -805,7 +771,6 @@ public final class StackViewTopComponent extends TopComponent
                 manager.setSelectedNodes(new Node[]{n});
             } catch (PropertyVetoException ex) {
                 Exceptions.printStackTrace(ex);
-                return;
             }
         }
     }

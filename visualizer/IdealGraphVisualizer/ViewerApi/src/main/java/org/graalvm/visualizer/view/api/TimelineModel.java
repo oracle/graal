@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.view.api;
 
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.util.RangeSliderModel;
 
 import java.beans.PropertyChangeListener;

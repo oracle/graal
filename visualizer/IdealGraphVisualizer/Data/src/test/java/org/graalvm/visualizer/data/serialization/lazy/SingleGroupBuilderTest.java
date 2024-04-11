@@ -22,11 +22,11 @@
  */
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Property;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Property;
 
 import java.util.ArrayDeque;
 import java.util.Collection;

@@ -23,13 +23,6 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.ChangedEventProvider;
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.Group.Feedback;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -38,6 +31,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+
+import jdk.graal.compiler.graphio.parsing.model.ChangedEventProvider;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.BinarySource;
 
 /**
  *
@@ -95,7 +96,7 @@ final class GroupCompleter extends BaseCompleter<List<? extends FolderElement>, 
             l = (ChangedListener) keepalive;
         } else {
             l = new ChangedListener() {
-                Object dataHook = keepalive;
+                final Object dataHook = keepalive;
 
                 @Override
                 public void changed(Object source) {

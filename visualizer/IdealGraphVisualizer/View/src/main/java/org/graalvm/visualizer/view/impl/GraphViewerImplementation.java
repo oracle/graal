@@ -22,11 +22,23 @@
  */
 package org.graalvm.visualizer.view.impl;
 
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.Group.Feedback;
-import org.graalvm.visualizer.data.InputGraph;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
+import java.util.*;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
 import org.graalvm.visualizer.data.services.GraphViewer;
 import org.graalvm.visualizer.data.services.InputGraphProvider;
 import org.graalvm.visualizer.graph.Figure;
@@ -45,26 +57,8 @@ import org.openide.util.lookup.ServiceProviders;
 import org.openide.windows.Mode;
 import org.openide.windows.TopComponent;
 
-import javax.swing.SwingUtilities;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
 
 @ServiceProviders({
         @ServiceProvider(service = DiagramViewerLocator.class),
@@ -248,7 +242,7 @@ public class GraphViewerImplementation implements DiagramViewerLocator, Property
     // For testing only
     static TimelineModel createTimeline(InputGraph graph) {
         String type = classifyGraphType(graph);
-        TimelineModel mdl = new TimelineModelImpl(graph.getGroup(), type);
+        TimelineModel mdl = new TimelineModelImpl(graph.getGroup(), GraphClassifier.DEFAULT_CLASSIFIER, type);
         return mdl;
     }
 

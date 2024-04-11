@@ -22,37 +22,20 @@
  */
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.Group.Feedback;
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.ArrayProperties;
-import org.graalvm.visualizer.data.serialization.BinaryMap;
-import org.graalvm.visualizer.data.serialization.BinaryReader.Method;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.Builder;
-import org.graalvm.visualizer.data.serialization.ConstantPool;
-import org.graalvm.visualizer.data.serialization.ModelBuilder;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-import org.graalvm.visualizer.data.serialization.SkipRootException;
-import org.netbeans.api.annotations.common.CheckForNull;
-import org.netbeans.api.annotations.common.NonNull;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.netbeans.api.annotations.common.CheckForNull;
+import org.netbeans.api.annotations.common.NonNull;
+
+import jdk.graal.compiler.graphio.parsing.*;
+import jdk.graal.compiler.graphio.parsing.BinaryReader.Method;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.ArrayProperties;
 
 /**
  * Builder to build a single Group. The Builder creates offspring Builders to
@@ -121,7 +104,7 @@ public class SingleGroupBuilder extends DelegatingBuilder {
      */
     private Map<Integer, Properties> nodeProperties = new HashMap<>();
 
-    private Map<Integer, List<ModelBuilder.EdgeInfo>> nodeEdges = new HashMap<>();
+    private final Map<Integer, List<ModelBuilder.EdgeInfo>> nodeEdges = new HashMap<>();
 
     private void registerNodeEdges(int nodeId, List<ModelBuilder.EdgeInfo> props) {
         List<ModelBuilder.EdgeInfo> oldProps = nodeEdges.get(nodeId);
@@ -138,7 +121,7 @@ public class SingleGroupBuilder extends DelegatingBuilder {
     /**
      * Saved context
      */
-    private Deque<NestedData> levels = new LinkedList<>();
+    private final Deque<NestedData> levels = new LinkedList<>();
 
     /**
      * If true, counts nodes and edges in graph. Valid only for graphLevel == 1
@@ -216,7 +199,7 @@ public class SingleGroupBuilder extends DelegatingBuilder {
         this.env = env;
         this.toComplete = toComplete;
         this.pool = entry.getInitialPool().copy();
-        this.rootDocument = new GraphDocument(toComplete.getOwner().getEventRunner());
+        this.rootDocument = new GraphDocument();
         this.streamIndex = streamIndex;
         this.dataSource = dataSource;
         this.startOffset = entry.getStart();
@@ -368,12 +351,12 @@ public class SingleGroupBuilder extends DelegatingBuilder {
      * as lazy. PENDING - maybe identify also large groups and load them as
      * lazy.
      */
-    class Root extends ModelBuilder {
+    class Root extends LazyModelBuilder {
 
         private final Properties trash = new ArrayProperties();
 
         public Root() {
-            super(rootDocument, null, new ParseMonitorBridge(entry, feedback, dataSource));
+            super(rootDocument, new ParseMonitorBridge(entry, feedback, dataSource));
         }
 
         @Override
@@ -390,7 +373,7 @@ public class SingleGroupBuilder extends DelegatingBuilder {
         @Override
         public void startGroupContent() {
             if (groupLevel > 1) {
-                instLog.log(Level.FINE, "Starting group {0}, ", ((Group) folder()).getName());
+                instLog.log(Level.FINE, "Starting group {0}, ", folder().getName());
             }
             super.startGroupContent();
             if (groupLevel > 1 && folder() instanceof LazyGroup) {
@@ -494,7 +477,7 @@ public class SingleGroupBuilder extends DelegatingBuilder {
             instLog.log(Level.FINER, "Start contents graph entry {0}", entry);
             waitEntryFinished();
             if (entry.size() > 1024 * 1024) {
-                reportState(InputGraph.makeGraphName(dumpId, format, args));
+                reportState(ModelBuilder.makeGraphName(dumpId, format, args));
             }
             gInfo = entry.getGraphMeta();
             collectCounts = false;
@@ -563,13 +546,13 @@ public class SingleGroupBuilder extends DelegatingBuilder {
      * Reads full graphs including the nested ones. Used to read small group
      * child graphs, or their nested children.
      */
-    class FullGraphBuilder extends ModelBuilder {
+    class FullGraphBuilder extends LazyModelBuilder {
 
         private final InputGraph parentGraph;
         private final InputNode parent;
 
         public FullGraphBuilder(InputNode parent, InputGraph parentGraph, Folder folder) {
-            super(rootDocument, null, rootBuilder.getMonitor());
+            super(rootDocument, rootBuilder.getMonitor());
             this.parent = parent;
             this.parentGraph = parentGraph;
             if (folder instanceof Group) {
@@ -586,7 +569,7 @@ public class SingleGroupBuilder extends DelegatingBuilder {
         @Override
         protected InputGraph createGraph(Properties.Entity parent, int dumpId, String format, Object[] args) {
             if (instLog.isLoggable(Level.FINE)) {
-                instLog.log(Level.FINE, "Create subgraph {0}:{1}, parent {2}, pos {3}", new Object[]{graphLevel, InputGraph.makeGraphName(dumpId, format, args), node().getId(), dataSource.getMark()});
+                instLog.log(Level.FINE, "Create subgraph {0}:{1}, parent {2}, pos {3}", new Object[]{graphLevel, ModelBuilder.makeGraphName(dumpId, format, args), node().getId(), dataSource.getMark()});
             }
             if (parent instanceof InputNode) {
                 // nested graph
@@ -646,16 +629,16 @@ public class SingleGroupBuilder extends DelegatingBuilder {
      * In subsequent reads, entire graphs are skipped just after their
      * properties are read.
      */
-    class ChildGraphBuilder extends ModelBuilder {
+    class ChildGraphBuilder extends LazyModelBuilder {
 
         private InputGraph nested;
         private final LazyGraph g;
-        private Map<Integer, Properties> stageProperties = new HashMap<>();
+        private final Map<Integer, Properties> stageProperties = new HashMap<>();
         private String blockName;
         private List<InputGraph> nestedStack;
 
         public ChildGraphBuilder(LazyGraph g, Folder folder) {
-            super(rootDocument, null, rootBuilder.getMonitor());
+            super(rootDocument, rootBuilder.getMonitor());
             this.g = g;
             pushGroup(toComplete, false);
             if (folder instanceof Group) {
@@ -983,7 +966,7 @@ public class SingleGroupBuilder extends DelegatingBuilder {
         }
 
         @Override
-        public BinaryMap prepareBinaryMap() {
+        public NameTranslator prepareNameTranslator() {
             return null;
         }
 

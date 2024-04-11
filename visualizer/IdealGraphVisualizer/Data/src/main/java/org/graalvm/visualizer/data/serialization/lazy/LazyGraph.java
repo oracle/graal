@@ -23,35 +23,26 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedEventProvider;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.Group.Feedback;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
+
 /**
  * Implementation which loads the data lazily
  */
 class LazyGraph extends InputGraph implements Group.LazyContent<Collection<InputNode>>, ChangedEventProvider<InputGraph> {
-    private final ChangedEvent<InputGraph> changedEvent = new ChangedEvent(this);
+    private final ChangedEvent<InputGraph> changedEvent = new ChangedEvent<>(this);
     private final LoadSupport<GraphData> cSupport;
     private final GraphMetadata meta;
 
     public LazyGraph(StreamEntry entry, GraphMetadata meta, Completer<GraphData> completer, int dumpId, String format, Object[] args) {
         super(entry, dumpId, format, args);
-        this.cSupport = new LoadSupport(completer);
+        this.cSupport = new LoadSupport<>(completer);
         this.meta = meta;
         cSupport.setName(getName());
     }

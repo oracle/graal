@@ -22,34 +22,25 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
-import org.graalvm.visualizer.coordinator.actions.CloneGraphAction;
-import org.graalvm.visualizer.coordinator.actions.DiffGraphAction;
-import org.graalvm.visualizer.coordinator.actions.DiffGraphCookie;
-import org.graalvm.visualizer.coordinator.actions.GraphCloneCookie;
-import org.graalvm.visualizer.coordinator.actions.GraphOpenCookie;
-import org.graalvm.visualizer.coordinator.actions.GraphRemoveCookie;
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.serialization.ReaderErrors;
+import java.awt.*;
+
+import javax.swing.*;
+
+import org.graalvm.visualizer.coordinator.actions.*;
+import org.graalvm.visualizer.data.serialization.lazy.ReaderErrors;
 import org.graalvm.visualizer.data.services.GraphViewer;
 import org.graalvm.visualizer.util.GraphTypes;
 import org.graalvm.visualizer.util.PropertiesSheet;
 import org.openide.actions.OpenAction;
-import org.openide.nodes.AbstractNode;
-import org.openide.nodes.Children;
-import org.openide.nodes.Node;
-import org.openide.nodes.NodeAdapter;
-import org.openide.nodes.NodeMemberEvent;
-import org.openide.nodes.Sheet;
+import org.openide.nodes.*;
 import org.openide.util.ImageUtilities;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
 
-import javax.swing.Action;
-import javax.swing.SwingUtilities;
-import java.awt.Image;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 public class GraphNode extends AbstractNode {
     private InputGraph graph;
@@ -147,13 +138,13 @@ public class GraphNode extends AbstractNode {
 
     @Override
     public Action[] getActions(boolean b) {
-        return new Action[]{(Action) DiffGraphAction.findObject(DiffGraphAction.class, true), (Action) CloneGraphAction.findObject(CloneGraphAction.class, true),
-                (Action) OpenAction.findObject(OpenAction.class, true)};
+        return new Action[]{DiffGraphAction.findObject(DiffGraphAction.class, true), CloneGraphAction.findObject(CloneGraphAction.class, true),
+                OpenAction.findObject(OpenAction.class, true)};
     }
 
     @Override
     public Action getPreferredAction() {
-        return (Action) OpenAction.findObject(OpenAction.class, true);
+        return OpenAction.findObject(OpenAction.class, true);
     }
 
     @Override

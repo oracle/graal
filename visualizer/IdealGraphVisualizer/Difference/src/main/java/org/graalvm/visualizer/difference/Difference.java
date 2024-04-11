@@ -22,27 +22,15 @@
  */
 package org.graalvm.visualizer.difference;
 
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputBlockEdge;
-import org.graalvm.visualizer.data.InputEdge;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.*;
+
+import java.util.*;
+
 import org.graalvm.visualizer.data.Pair;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Property;
 import org.graalvm.visualizer.difference.impl.DiffGraph;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_IDX;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_STATE;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 public class Difference {
     public static final String VALUE_NEW = "new";
@@ -54,7 +42,44 @@ public class Difference {
     public static final String[] IGNORE_PROPERTIES = new String[]{PROPNAME_IDX, "debug_idx"};
 
     public static InputGraph createDiffGraph(InputGraph a, InputGraph b) {
-        return associateGroup(a, b, new DiffGraph(a, b, Difference::completeDiffGraph));
+        /*
+         * Concatenate the two graphs' format strings and arguments,
+         * including their dump IDs if they are valid.
+         */
+        int argsSize = a.getArgs().length + b.getArgs().length;
+        int argsAStartIndex = 0;
+        int argsBStartIndex = a.getArgs().length;
+        StringBuilder format = new StringBuilder();
+        if (a.getDumpId() < 0) {
+            format.append(a.getFormat());
+        } else {
+            format.append("%s: ");
+            format.append(a.getFormat());
+            argsAStartIndex++;
+            argsBStartIndex++;
+            argsSize++;
+        }
+        if (b.getDumpId() < 0) {
+            format.append(", ");
+            format.append(b.getFormat());
+        } else {
+            format.append(", %s: ");
+            format.append(b.getFormat());
+            argsBStartIndex++;
+            argsSize++;
+        }
+        Object[] args = new Object[argsSize];
+        System.arraycopy(a.getArgs(), 0, args, argsAStartIndex, a.getArgs().length);
+        System.arraycopy(b.getArgs(), 0, args, argsBStartIndex, b.getArgs().length);
+        if (a.getDumpId() >= 0) {
+            args[argsAStartIndex - 1] = a.getDumpId();
+        }
+        if (b.getDumpId() >= 0) {
+            args[argsBStartIndex - 1] = b.getDumpId();
+        }
+        String id = a.getID().toString() + "/" + b.getID().toString();
+        DiffGraph diffGraph = new DiffGraph(id, format.toString(), args, a, b, Difference::completeDiffGraph);
+        return associateGroup(a, b, diffGraph);
     }
 
     private static DiffGraph completeDiffGraph(InputGraph a, InputGraph b, DiffGraph c) {

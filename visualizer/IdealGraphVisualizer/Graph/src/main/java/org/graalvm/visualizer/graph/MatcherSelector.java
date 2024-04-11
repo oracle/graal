@@ -22,8 +22,8 @@
  */
 package org.graalvm.visualizer.graph;
 
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.PropertyMatcher;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.PropertyMatcher;
 
 import java.util.List;
 

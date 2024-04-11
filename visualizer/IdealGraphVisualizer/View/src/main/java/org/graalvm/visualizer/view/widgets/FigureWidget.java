@@ -22,8 +22,18 @@
  */
 package org.graalvm.visualizer.view.widgets;
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.Properties;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.swing.*;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
+
 import org.graalvm.visualizer.data.services.GraphViewer;
 import org.graalvm.visualizer.graph.Diagram;
 import org.graalvm.visualizer.graph.Figure;
@@ -43,34 +53,17 @@ import org.openide.nodes.Node;
 import org.openide.nodes.Sheet;
 import org.openide.util.Lookup;
 
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.BorderFactory;
-import javax.swing.JMenu;
-import javax.swing.JPopupMenu;
-import javax.swing.event.MenuEvent;
-import javax.swing.event.MenuListener;
-import java.awt.AlphaComposite;
-import java.awt.Color;
-import java.awt.Composite;
-import java.awt.Font;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.event.ActionEvent;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 public final class FigureWidget extends Widget implements Properties.Provider, PopupMenuProvider, DoubleClickHandler {
     public static final boolean VERTICAL_LAYOUT = true;
     private static final double LABEL_ZOOM_FACTOR = 0.3;
 
-    private Figure figure;
-    private Widget middleWidget;
-    private ArrayList<LabelWidget> labelWidgets;
-    private DiagramScene diagramScene;
+    private final Figure figure;
+    private final Widget middleWidget;
+    private final ArrayList<LabelWidget> labelWidgets;
+    private final DiagramScene diagramScene;
     private boolean boundary;
     private final Node node;
 

@@ -22,27 +22,22 @@
  */
 package org.graalvm.visualizer.filter;
 
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.PropertyMatcher;
-import org.graalvm.visualizer.graph.Connection;
-import org.graalvm.visualizer.graph.Diagram;
-import org.graalvm.visualizer.graph.Figure;
-import org.graalvm.visualizer.graph.InputSlot;
-import org.graalvm.visualizer.graph.OutputSlot;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.*;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_DUMP_SPEC;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_SHORT_NAME;
+import org.graalvm.visualizer.graph.*;
+
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.PropertyMatcher;
 
 public class CombineFilter extends AbstractFilter {
 
-    private List<CombineRule> rules;
-    private String name;
+    private final List<CombineRule> rules;
+    private final String name;
 
     public CombineFilter(String name) {
         this.name = name;
@@ -190,10 +185,10 @@ public class CombineFilter extends AbstractFilter {
 
     public static class CombineRule {
 
-        private PropertyMatcher first;
-        private PropertyMatcher second;
-        private boolean reversed;
-        private String shortProperty;
+        private final PropertyMatcher first;
+        private final PropertyMatcher second;
+        private final boolean reversed;
+        private final String shortProperty;
 
         public CombineRule(PropertyMatcher first, PropertyMatcher second) {
             this(first, second, false);

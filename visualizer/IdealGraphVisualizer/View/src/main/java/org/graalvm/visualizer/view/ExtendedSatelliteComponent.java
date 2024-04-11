@@ -92,7 +92,7 @@ public final class ExtendedSatelliteComponent extends JComponent implements Mous
         // react on viewport 
         scene.getScrollPane().getViewport().addChangeListener((e) -> sceneViewportChanged());
         // listen for extraction, compilation phase changes
-        scene.getModel().getChangedEvent().addListener((e) -> update());
+        scene.getModel().getChangedEvent().addListener((e) -> SwingUtilities.invokeLater(this::update));
         sceneSize = scene.getSceneSize();
     }
 

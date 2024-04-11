@@ -23,22 +23,19 @@
 
 package org.graalvm.visualizer.view.editors;
 
-import org.graalvm.visualizer.data.src.LocationStackFrame;
-import org.graalvm.visualizer.data.src.LocationStratum;
+import java.awt.*;
+import java.beans.PropertyEditor;
+import java.beans.PropertyEditorManager;
+import java.beans.PropertyEditorSupport;
+import java.util.*;
+import java.util.List;
+
 import org.openide.explorer.propertysheet.ExPropertyEditor;
 import org.openide.explorer.propertysheet.PropertyEnv;
 import org.openide.nodes.PropertyEditorRegistration;
 
-import java.awt.Component;
-import java.beans.PropertyEditor;
-import java.beans.PropertyEditorManager;
-import java.beans.PropertyEditorSupport;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import jdk.graal.compiler.graphio.parsing.LocationStackFrame;
+import jdk.graal.compiler.graphio.parsing.LocationStratum;
 
 /**
  * @author sdedic

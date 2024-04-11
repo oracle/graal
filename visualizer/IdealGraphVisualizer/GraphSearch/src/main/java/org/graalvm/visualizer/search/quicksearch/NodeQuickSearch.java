@@ -22,11 +22,12 @@
  */
 package org.graalvm.visualizer.search.quicksearch;
 
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.RegexpPropertyMatcher;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.graalvm.visualizer.data.SuppressFBWarnings;
 import org.graalvm.visualizer.data.services.InputGraphProvider;
 import org.graalvm.visualizer.search.Criteria;
@@ -46,15 +47,11 @@ import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.Pair;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.RegexpPropertyMatcher;
 
 public class NodeQuickSearch implements SearchProvider {
     /**

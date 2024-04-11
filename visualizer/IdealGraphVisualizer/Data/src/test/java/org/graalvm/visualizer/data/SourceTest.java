@@ -23,6 +23,7 @@
 
 package org.graalvm.visualizer.data;
 
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

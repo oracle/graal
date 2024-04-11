@@ -22,26 +22,22 @@
  */
 package org.graalvm.visualizer.graph;
 
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Source;
-import org.graalvm.visualizer.layout.Port;
-import org.graalvm.visualizer.layout.Vertex;
-import org.graalvm.visualizer.util.StringUtils;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.*;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_CONNECTION_COUNT;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_FIGURE;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
+import org.graalvm.visualizer.data.Source;
+import org.graalvm.visualizer.layout.Port;
+import org.graalvm.visualizer.layout.Vertex;
+import org.graalvm.visualizer.util.StringUtils;
+
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 public abstract class Slot implements Port, Source.Provider, Properties.Provider {
 
@@ -134,7 +130,7 @@ public abstract class Slot implements Port, Source.Provider, Properties.Provider
         } else {
             BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
             Graphics g = image.getGraphics();
-            g.setFont(figure.getDiagram().getSlotFont().deriveFont(Font.BOLD));
+            g.setFont(Diagram.getSlotFont().deriveFont(Font.BOLD));
             FontMetrics metrics = g.getFontMetrics();
             return Math.max(Figure.SLOT_WIDTH, metrics.stringWidth(shortName) + 6);
         }

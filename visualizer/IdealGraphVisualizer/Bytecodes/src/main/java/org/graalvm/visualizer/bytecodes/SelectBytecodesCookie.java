@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.bytecodes;
 
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.openide.nodes.Node;
 
 import java.util.Collections;

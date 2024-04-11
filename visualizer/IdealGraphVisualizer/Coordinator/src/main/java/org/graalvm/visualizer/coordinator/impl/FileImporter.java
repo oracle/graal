@@ -22,35 +22,6 @@
  */
 package org.graalvm.visualizer.coordinator.impl;
 
-import org.graalvm.visualizer.coordinator.OutlineTopComponent;
-import org.graalvm.visualizer.coordinator.actions.ImportAction;
-import org.graalvm.visualizer.coordinator.actions.SaveAsAction;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.KnownPropertyNames;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.FileContent;
-import org.graalvm.visualizer.data.serialization.GraphParser;
-import org.graalvm.visualizer.data.serialization.ModelBuilder;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-import org.graalvm.visualizer.data.serialization.ZipFileContent;
-import org.graalvm.visualizer.data.serialization.lazy.CachedContent;
-import org.graalvm.visualizer.data.serialization.lazy.CancelableSource;
-import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
-import org.netbeans.api.progress.ProgressHandle;
-import org.netbeans.api.progress.ProgressHandleFactory;
-import org.openide.DialogDisplayer;
-import org.openide.NotifyDescriptor;
-import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileUtil;
-import org.openide.util.Cancellable;
-import org.openide.util.Exceptions;
-import org.openide.util.NbBundle;
-import org.openide.util.RequestProcessor;
-import org.openide.util.Utilities;
-
-import javax.swing.SwingUtilities;
-import javax.swing.filechooser.FileFilter;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.channels.Channel;
@@ -65,6 +36,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
+
+import org.graalvm.visualizer.coordinator.OutlineTopComponent;
+import org.graalvm.visualizer.coordinator.actions.ImportAction;
+import org.graalvm.visualizer.coordinator.actions.SaveAsAction;
+import org.graalvm.visualizer.data.serialization.lazy.*;
+import org.netbeans.api.progress.ProgressHandle;
+import org.netbeans.api.progress.ProgressHandleFactory;
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
+import org.openide.util.*;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.GraphParser;
+import jdk.graal.compiler.graphio.parsing.ModelBuilder;
+import jdk.graal.compiler.graphio.parsing.ParseMonitor;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
 
 /**
  * @author sdedic
@@ -195,7 +189,7 @@ public class FileImporter {
             // FIXME: report
             return null;
         }
-        final ProgressHandle handle = ProgressHandleFactory.createHandle("Opening file " + fname.toString(), monitor);
+        final ProgressHandle handle = ProgressHandleFactory.createHandle("Opening file " + fname, monitor);
         monitor.setHandle(handle);
         handle.start(WORKUNITS);
 
@@ -207,15 +201,15 @@ public class FileImporter {
                 src,
                 content,
                 targetDocument, monitor,
-                LOADER_RP).
-                setDocumentId(id);
+                LOADER_RP);
+        bld.setDocumentId(id);
 
         parser = new BinaryReader(src, bld);
 
         final long startTime = System.currentTimeMillis();
         return () -> {
             IOException exc = null;
-            try (GraphDocument.DocumentlLock lock = targetDocument.writeLock(null, null)) {
+            try (GraphDocument.DocumentLock lock = targetDocument.writeLock(null, null)) {
                 lock.trackModifications(false);
                 parser.parse();
             } catch (AssertionError e) {

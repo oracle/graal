@@ -22,18 +22,7 @@
  */
 package org.graalvm.visualizer.view;
 
-import org.graalvm.visualizer.data.Pair;
-import org.graalvm.visualizer.graph.Diagram;
-import org.openide.util.RequestProcessor;
-import org.openide.util.WeakListeners;
-import org.openide.windows.TopComponent;
-
-import javax.swing.SwingUtilities;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import java.awt.Dimension;
-import java.awt.Point;
-import java.awt.Rectangle;
+import java.awt.*;
 import java.awt.geom.Area;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
@@ -42,6 +31,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+import org.graalvm.visualizer.data.Pair;
+import org.graalvm.visualizer.graph.Diagram;
+import org.openide.util.RequestProcessor;
+import org.openide.util.WeakListeners;
+import org.openide.windows.TopComponent;
 
 /**
  * Organizes updates of the Scene. Each Updater maintains its own
@@ -128,7 +127,7 @@ class SceneUpdater {
         lastDiagram = model.getDiagramToView();
         // PENDING: remove listener, if the scene (topcomponent) closes
         scene.getScrollPane().getViewport().addChangeListener((e) -> refreshView(false));
-        model.getDiagramChangedEvent().addListener((e) -> forceViewRefresh());
+        model.getDiagramChangedEvent().addListener((e) -> SwingUtilities.invokeLater(this::forceViewRefresh));
         String sceneName = model.getContainer().getName();
         processor = new RequestProcessor("SceneUpdater - " + sceneName);
 
@@ -244,14 +243,13 @@ class SceneUpdater {
     }
 
     private String makeDiagramLog() {
-        StringBuilder sb = new StringBuilder("New Diagram for scene update:\n");
-        sb.append("Diagram: ").append(lastDiagram).append(".\n");
-        sb.append("\tGraph name: ").append(lastDiagram.getGraph().getName()).append(".\n");
-        sb.append("\tnodes count: ").append(lastDiagram.getGraph().getNodeCount()).append(".\n");
-        sb.append("\tfigures count: ").append(lastDiagram.getFigures().size()).append(".\n");
-        sb.append("\tvisible figures count: ").append(lastDiagram.getFigures().stream().filter((n) -> n.isVisible()).count()).append(".\n");
-        sb.append("\tboundary figures count: ").append(lastDiagram.getFigures().stream().filter((n) -> n.isBoundary()).count()).append(".");
-        return sb.toString();
+        String sb = "New Diagram for scene update:\n" + "Diagram: " + lastDiagram + ".\n" +
+                "\tGraph name: " + lastDiagram.getGraph().getName() + ".\n" +
+                "\tnodes count: " + lastDiagram.getGraph().getNodeCount() + ".\n" +
+                "\tfigures count: " + lastDiagram.getFigures().size() + ".\n" +
+                "\tvisible figures count: " + lastDiagram.getFigures().stream().filter((n) -> n.isVisible()).count() + ".\n" +
+                "\tboundary figures count: " + lastDiagram.getFigures().stream().filter((n) -> n.isBoundary()).count() + ".";
+        return sb;
     }
 
     private void processLayoutTasks(SceneUpdaterTask blocker) {

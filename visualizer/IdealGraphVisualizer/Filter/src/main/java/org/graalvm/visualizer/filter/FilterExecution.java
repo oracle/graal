@@ -22,10 +22,6 @@
  */
 package org.graalvm.visualizer.filter;
 
-import org.graalvm.visualizer.data.SuppressFBWarnings;
-import org.graalvm.visualizer.filter.impl.FilterExecutionServiceImpl;
-import org.graalvm.visualizer.graph.Diagram;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +29,10 @@ import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.graalvm.visualizer.data.SuppressFBWarnings;
+import org.graalvm.visualizer.filter.impl.FilterExecutionServiceImpl;
+import org.graalvm.visualizer.graph.Diagram;
 
 /**
  * The instance represents a single filter chain execution.
@@ -99,7 +99,7 @@ public class FilterExecution {
 
     private final boolean closeEnvironment;
 
-    private List<FilterListener> listeners = new ArrayList<>();
+    private final List<FilterListener> listeners = new ArrayList<>();
 
     public FilterExecution(List<Filter> orderedFilters, Diagram dg, FilterChain chain, FilterEnvironment env) {
         this.orderedFilters = new ArrayList<>(orderedFilters);

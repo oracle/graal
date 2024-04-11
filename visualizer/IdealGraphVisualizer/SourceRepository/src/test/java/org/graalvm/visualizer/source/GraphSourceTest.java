@@ -23,28 +23,22 @@
 
 package org.graalvm.visualizer.source;
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.serialization.lazy.LazySerDebugUtils;
-import org.junit.Ignore;
-import org.openide.filesystems.FileObject;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NODE_SOURCE_POSITION;
 
 import java.io.File;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NODE_SOURCE_POSITION;
+import org.graalvm.visualizer.data.serialization.lazy.LazySerDebugUtils;
+import org.junit.Ignore;
+import org.openide.filesystems.FileObject;
+
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
 /**
  * @author sdedic

@@ -22,8 +22,8 @@
  */
 package org.graalvm.visualizer.search.ui;
 
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.search.GraphItem;
 import org.graalvm.visualizer.search.SearchResultsEvent;
 import org.graalvm.visualizer.search.SearchResultsListener;

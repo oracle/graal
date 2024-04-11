@@ -37,6 +37,7 @@ import java.net.URISyntaxException;
  * @param <M> type representing methods
  * @param <P> type representing source code location
  * @param <L> represeting {@link StackTraceElement stack element} location
+ *
  * @since 0.33 part of GraalVM 0.33
  */
 public interface GraphLocations<M, P, L> {
@@ -46,8 +47,8 @@ public interface GraphLocations<M, P, L> {
      * different {@link #locationLanguage(java.lang.Object) language}.
      *
      * @param method the method
-     * @param bci    the index
-     * @param pos    the position
+     * @param bci the index
+     * @param pos the position
      * @return elements representing location for all language strata
      */
     Iterable<L> methodLocation(M method, int bci, P pos);

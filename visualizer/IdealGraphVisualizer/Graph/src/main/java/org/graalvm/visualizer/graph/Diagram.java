@@ -22,35 +22,24 @@
  */
 package org.graalvm.visualizer.graph;
 
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputEdge;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.EqualityPropertyMatcher;
-import org.graalvm.visualizer.data.Source;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_ROOT;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_START;
 
-import java.awt.Dimension;
-import java.awt.Font;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.awt.*;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
-import static org.graalvm.visualizer.data.KnownPropertyValues.NAME_ROOT;
-import static org.graalvm.visualizer.data.KnownPropertyValues.NAME_START;
+import org.graalvm.visualizer.data.Source;
+
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.EqualityPropertyMatcher;
 
 /**
  * Visual model of an {@link InputGraph}. Captures positions, sizes, routing
@@ -506,7 +495,7 @@ public class Diagram {
                 continue;
             }
             for (Source.Provider s : slots.getOrDefault(i, Collections.emptyList())) {
-                if (s != null && clazz.isInstance(s)) {
+                if (clazz.isInstance(s)) {
                     r.add(clazz.cast(s));
                 }
             }

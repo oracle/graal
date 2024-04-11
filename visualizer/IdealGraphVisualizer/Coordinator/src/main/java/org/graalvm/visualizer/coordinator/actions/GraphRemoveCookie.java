@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.coordinator.actions;
 
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 public class GraphRemoveCookie implements RemoveCookie {
     private final InputGraph graph;

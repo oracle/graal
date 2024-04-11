@@ -23,10 +23,13 @@
 
 package org.graalvm.visualizer.source.java.impl;
 
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.src.LocationStackFrame;
-import org.graalvm.visualizer.data.src.LocationStratum;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NODE_SOURCE_POSITION;
+
+import java.net.URL;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.graalvm.visualizer.source.FileKey;
 import org.graalvm.visualizer.source.Location;
 import org.graalvm.visualizer.source.ProcessorContext;
@@ -40,16 +43,10 @@ import org.openide.filesystems.URLMapper;
 import org.openide.util.NbBundle;
 import org.openide.util.lookup.ServiceProvider;
 
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NODE_SOURCE_POSITION;
+import jdk.graal.compiler.graphio.parsing.LocationStackFrame;
+import jdk.graal.compiler.graphio.parsing.LocationStratum;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 /**
  *
@@ -63,7 +60,7 @@ public class JavaStackProcessor2 implements StackProcessor {
 
     private final Map<String, Object> resolveCache = new HashMap<>();
 
-    private static final Object UNRESOLVED = new String("unresolved");
+    private static final Object UNRESOLVED = "unresolved";
 
     private ClassPath proxySource;
     private ClassPath proxyCompile;
@@ -152,7 +149,7 @@ public class JavaStackProcessor2 implements StackProcessor {
                 if (stratum == null) {
                     return;
                 }
-                filename = stratum.uri != null ? stratum.uri.toString() : stratum.file;
+                filename = stratum.uri != null ? stratum.uri : stratum.file;
                 lineno = stratum.line;
                 if (filename == null) {
                     return;

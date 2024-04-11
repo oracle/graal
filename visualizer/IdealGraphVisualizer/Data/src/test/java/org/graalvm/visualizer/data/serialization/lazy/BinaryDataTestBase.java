@@ -23,19 +23,6 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.Builder;
-import org.graalvm.visualizer.data.serialization.FileContent;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-import org.graalvm.visualizer.data.services.GroupCallback;
-import org.netbeans.junit.NbTestCase;
-import org.openide.util.Exceptions;
-import org.openide.util.RequestProcessor;
-
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -45,13 +32,24 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.netbeans.junit.NbTestCase;
+import org.openide.util.Exceptions;
+import org.openide.util.RequestProcessor;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.Builder;
+import jdk.graal.compiler.graphio.parsing.ParseMonitor;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * @author sdedic
@@ -76,8 +74,8 @@ public class BinaryDataTestBase extends NbTestCase {
             return super.index;
         }
 
-        public TestBuilder(BinarySource dataSource, CachedContent content, GraphDocument rootDocument, GroupCallback callback, ParseMonitor monitor, ScheduledExecutorService fetchExecutor, StreamPool initialPool) {
-            super(dataSource, content, rootDocument, callback, monitor, fetchExecutor, initialPool);
+        public TestBuilder(BinarySource dataSource, CachedContent content, GraphDocument rootDocument, ParseMonitor monitor, ScheduledExecutorService fetchExecutor, StreamPool initialPool) {
+            super(dataSource, content, rootDocument, monitor, fetchExecutor, initialPool);
             this.ds = dataSource;
         }
 
@@ -296,15 +294,9 @@ public class BinaryDataTestBase extends NbTestCase {
      */
     protected ScheduledExecutorService loadExecutor = RP;
 
-    /**
-     * Executor for dispatching events. null means default executor
-     */
-    protected Executor eventExecutor;
-
     protected Builder createScanningTestBuilder() {
         mb = new TestBuilder(scanSource, file, checkDocument,
-                null, null,
-                loadExecutor, streamPool);
+                null, loadExecutor, streamPool);
         return mb;
     }
 
@@ -316,7 +308,7 @@ public class BinaryDataTestBase extends NbTestCase {
 
     protected void loadData(File f) throws Exception {
         file = new TestFileContent(f.toPath(), null);
-        checkDocument = new GraphDocument(eventExecutor);
+        checkDocument = new GraphDocument();
         scanSource = new BinarySource(null, file);
         Builder b = createScanningTestBuilder();
         reader = new BinaryReader(scanSource, b);
@@ -330,12 +322,11 @@ public class BinaryDataTestBase extends NbTestCase {
         r.run();
     }
 
-    class FreezeChannel extends org.graalvm.visualizer.data.serialization.FreezeChannel {
+    class FreezeChannel extends org.graalvm.visualizer.data.serialization.lazy.FreezeChannel {
         public FreezeChannel(long start, long end, long freezeAt) throws IOException {
             super(file.superSubChannel(start, end), start, freezeAt);
         }
     }
 
     protected FreezeChannel freezeChannel;
-
 }

@@ -33,7 +33,7 @@ import java.util.Collection;
 import java.util.Map;
 
 final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, Location>
-        extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, Location> {
+                extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, Location> {
     private final GraphStructure<Graph, Node, NodeClass, Port> structure;
     private final GraphTypes types;
     private final GraphBlocks<Graph, Block, Node> blocks;
@@ -41,9 +41,9 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     private final GraphLocations<ResolvedJavaMethod, NodeSourcePosition, Location> locations;
 
     ProtocolImpl(int major, int minor, boolean embedded, GraphStructure<Graph, Node, NodeClass, Port> structure, GraphTypes enums, GraphBlocks<Graph, Block, Node> blocks,
-                 GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements,
-                 GraphLocations<ResolvedJavaMethod, NodeSourcePosition, Location> locs,
-                 WritableByteChannel channel) throws IOException {
+                    GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements,
+                    GraphLocations<ResolvedJavaMethod, NodeSourcePosition, Location> locs,
+                    WritableByteChannel channel) throws IOException {
         super(channel, major, minor, embedded);
         this.structure = structure;
         this.types = enums;
@@ -53,8 +53,8 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     }
 
     ProtocolImpl(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?, ?> parent, GraphStructure<Graph, Node, NodeClass, Port> structure, GraphTypes enums, GraphBlocks<Graph, Block, Node> blocks,
-                 GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements,
-                 GraphLocations<ResolvedJavaMethod, NodeSourcePosition, Location> locs) {
+                    GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements,
+                    GraphLocations<ResolvedJavaMethod, NodeSourcePosition, Location> locs) {
         super(parent);
         this.structure = structure;
         this.types = enums;

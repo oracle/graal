@@ -22,8 +22,8 @@
  */
 package org.graalvm.visualizer.util;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.ChangedEventProvider;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEventProvider;
 
 import java.awt.Color;
 import java.beans.PropertyChangeListener;

@@ -23,6 +23,8 @@
 
 package org.graalvm.visualizer.data;
 
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+
 public abstract class ControllableChangedListener<T> implements ChangedListener<T> {
 
     private boolean enabled;

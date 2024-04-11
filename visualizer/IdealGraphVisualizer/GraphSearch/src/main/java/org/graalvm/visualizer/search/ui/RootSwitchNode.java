@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.search.ui;
 
-import org.graalvm.visualizer.data.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
 import org.graalvm.visualizer.search.GraphItem;
 import org.graalvm.visualizer.search.NodeResultItem;
 import org.graalvm.visualizer.search.ResultItem;

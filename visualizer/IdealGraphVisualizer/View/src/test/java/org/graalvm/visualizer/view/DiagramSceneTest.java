@@ -22,23 +22,24 @@
  */
 package org.graalvm.visualizer.view;
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.src.ImplementationClass;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.graalvm.visualizer.data.src.ImplementationClass;
+import org.junit.Test;
+
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
 public class DiagramSceneTest {
     @Test
     public void testComputeSelectionContent() {
-        InputGraph graph = new InputGraph("empty");
+        InputGraph graph = InputGraph.createTestGraph("empty");
         final InputNode in = new InputNode(33);
         in.getProperties().setProperty("class", "java.lang.Long");
         Set<Object> selectedObjects = Collections.singleton(in);

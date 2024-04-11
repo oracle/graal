@@ -22,15 +22,16 @@
  */
 package org.graalvm.visualizer.search;
 
-import org.graalvm.visualizer.data.DataElementHandle;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.Group.Feedback;
-import org.graalvm.visualizer.data.Properties;
-
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+
+import org.graalvm.visualizer.data.DataElementHandle;
+
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 /**
  * @author sdedic
@@ -105,10 +106,7 @@ public class GraphItem implements ResultItem {
             return false;
         }
         final GraphItem other = (GraphItem) obj;
-        if (!Objects.equals(this.handle, other.handle)) {
-            return false;
-        }
-        return true;
+        return Objects.equals(this.handle, other.handle);
     }
 
     public FolderElement getData() {

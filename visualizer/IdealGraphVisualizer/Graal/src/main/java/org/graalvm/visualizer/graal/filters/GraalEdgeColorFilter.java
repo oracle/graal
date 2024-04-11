@@ -22,19 +22,19 @@
  */
 package org.graalvm.visualizer.graal.filters;
 
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_CLASS;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.CLASS_ENDNODE;
+
+import java.awt.*;
+import java.util.Collection;
+import java.util.HashMap;
+
 import org.graalvm.visualizer.filter.AbstractFilter;
 import org.graalvm.visualizer.graph.Connection;
 import org.graalvm.visualizer.graph.Connection.ConnectionStyle;
 import org.graalvm.visualizer.graph.Diagram;
 import org.graalvm.visualizer.graph.Figure;
 import org.graalvm.visualizer.graph.InputSlot;
-
-import java.awt.Color;
-import java.util.Collection;
-import java.util.HashMap;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_CLASS;
-import static org.graalvm.visualizer.data.KnownPropertyValues.CLASS_ENDNODE;
 
 /**
  * Filter that colors usage and successor edges differently.

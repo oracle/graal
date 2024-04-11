@@ -23,15 +23,15 @@
 
 package org.graalvm.visualizer.filter.profiles.impl;
 
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.GraphContainer;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.EqualityPropertyMatcher;
-import org.graalvm.visualizer.data.Properties.PropertyMatcher;
-import org.graalvm.visualizer.data.Properties.PropertySelector;
-import org.graalvm.visualizer.data.Properties.RegexpPropertyMatcher;
+import jdk.graal.compiler.graphio.parsing.model.Folder;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.EqualityPropertyMatcher;
+import jdk.graal.compiler.graphio.parsing.model.Properties.PropertyMatcher;
+import jdk.graal.compiler.graphio.parsing.model.Properties.PropertySelector;
+import jdk.graal.compiler.graphio.parsing.model.Properties.RegexpPropertyMatcher;
 import org.graalvm.visualizer.filter.profiles.FilterProfile;
 import org.graalvm.visualizer.filter.profiles.mgmt.ProfileService;
 import org.graalvm.visualizer.filter.profiles.mgmt.ProfileStorage;

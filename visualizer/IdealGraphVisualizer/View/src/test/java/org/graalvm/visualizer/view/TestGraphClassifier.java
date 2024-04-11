@@ -23,26 +23,22 @@
 
 package org.graalvm.visualizer.view;
 
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.services.GraphClassifier;
-
-import java.util.Collection;
 import java.util.Collections;
+import java.util.Set;
 
-/**
- * Must register `testGraph` type, so it is not removed form the timeline.
- *
- * @author sdedic
- */
-public class TestGraphClassifier implements GraphClassifier {
+import jdk.graal.compiler.graphio.parsing.model.GraphClassifier;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+
+public class TestGraphClassifier extends GraphClassifier {
+    public static final String TEST_TYPE = "testGraph";
+
     @Override
     public String classifyGraphType(Properties properties) {
         return null;
     }
 
     @Override
-    public Collection<String> knownGraphTypes() {
-        return Collections.singleton("testGraph");
+    public Set<String> knownGraphTypes() {
+        return Collections.singleton(TEST_TYPE);
     }
-
 }

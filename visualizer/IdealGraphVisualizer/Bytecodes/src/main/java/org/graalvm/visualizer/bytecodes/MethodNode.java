@@ -22,9 +22,9 @@
  */
 package org.graalvm.visualizer.bytecodes;
 
-import org.graalvm.visualizer.data.InputBytecode;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputMethod;
+import jdk.graal.compiler.graphio.parsing.model.InputBytecode;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputMethod;
 import org.openide.nodes.AbstractNode;
 import org.openide.nodes.Children;
 import org.openide.nodes.Node;

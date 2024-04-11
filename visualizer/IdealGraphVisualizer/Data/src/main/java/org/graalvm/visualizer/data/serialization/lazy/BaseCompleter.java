@@ -23,22 +23,19 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.ChangedEventProvider;
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.Group.Feedback;
-import org.graalvm.visualizer.data.serialization.ConstantPool;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.channels.ReadableByteChannel;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import jdk.graal.compiler.graphio.parsing.model.ChangedEventProvider;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
+
+import jdk.graal.compiler.graphio.parsing.ConstantPool;
 
 /**
  * Loads lazy-load contents. Loading runs in {@link #fetchExecutor}, after load process completes,

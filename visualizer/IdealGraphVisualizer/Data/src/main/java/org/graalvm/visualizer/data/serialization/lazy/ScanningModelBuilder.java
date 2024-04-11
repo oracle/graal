@@ -23,43 +23,23 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputEdge;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.ArrayProperties;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.ConstantPool;
-import org.graalvm.visualizer.data.serialization.DocumentFactory;
-import org.graalvm.visualizer.data.serialization.ModelBuilder;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-import org.graalvm.visualizer.data.services.GroupCallback;
-import org.netbeans.api.annotations.common.CheckForNull;
-import org.openide.util.WeakSet;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.netbeans.api.annotations.common.CheckForNull;
+import org.openide.util.WeakSet;
+
+import jdk.graal.compiler.graphio.parsing.*;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Group.LazyContent;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.ArrayProperties;
+
 /**
  * ModelBuilder which only scans the incoming stream and creates lazy-loaded Groups which implement
- * {@link Group#LazyContent} interface. The groups are initially empty, but can be asked to load its
+ * {@link LazyContent} interface. The groups are initially empty, but can be asked to load its
  * data.
  * <p/>
  * Data may load in a separate thread defined by `fetchExecutor', but since the whole data model is
@@ -68,7 +48,7 @@ import java.util.logging.Logger;
  * This class blocks most of the {@link ModelBuilder} functionality so it creates only a few objects
  * during initial stream reading. It loads just toplevel groups.
  */
-public class ScanningModelBuilder extends ModelBuilder {
+public class ScanningModelBuilder extends LazyModelBuilder {
     private static final Logger LOG = Logger.getLogger(ScanningModelBuilder.class.getName());
 
     private final CachedContent streamContent;
@@ -104,7 +84,7 @@ public class ScanningModelBuilder extends ModelBuilder {
             GraphDocument rootDocument,
             ParseMonitor monitor,
             ScheduledExecutorService fetchExecutor) {
-        this(dataSource, content, rootDocument, null, monitor, fetchExecutor,
+        this(dataSource, content, rootDocument, monitor, fetchExecutor,
                 new StreamPool());
     }
 
@@ -112,10 +92,9 @@ public class ScanningModelBuilder extends ModelBuilder {
             BinarySource dataSource,
             CachedContent content,
             DocumentFactory rootDocumentFactory,
-            GroupCallback callback,
             ParseMonitor monitor,
             ScheduledExecutorService fetchExecutor) {
-        this(dataSource, content, rootDocumentFactory, callback, monitor, fetchExecutor, new StreamPool());
+        this(dataSource, content, rootDocumentFactory, monitor, fetchExecutor, new StreamPool());
     }
 
     @SuppressWarnings("OverridableMethodCallInConstructor")
@@ -123,11 +102,10 @@ public class ScanningModelBuilder extends ModelBuilder {
             BinarySource dataSource,
             CachedContent content,
             GraphDocument rootDocument,
-            GroupCallback callback,
             ParseMonitor monitor,
             ScheduledExecutorService fetchExecutor,
             StreamPool initialPool) {
-        super(rootDocument, callback, monitor);
+        super(rootDocument, monitor);
         this.dataSource = dataSource;
         this.streamContent = content;
         replacePool(initialPool);
@@ -140,11 +118,10 @@ public class ScanningModelBuilder extends ModelBuilder {
             BinarySource dataSource,
             CachedContent content,
             DocumentFactory rootDocumentFactory,
-            GroupCallback callback,
             ParseMonitor monitor,
             ScheduledExecutorService fetchExecutor,
             StreamPool initialPool) {
-        super(rootDocumentFactory, callback, monitor);
+        super(rootDocumentFactory, monitor);
         this.dataSource = dataSource;
         this.streamContent = content;
         replacePool(initialPool);
@@ -392,7 +369,7 @@ public class ScanningModelBuilder extends ModelBuilder {
             super.endGroup();
             completer = null;
             synchronized (streamContent) {
-                if (cleaner.scannedGroups.keySet().contains(g)) {
+                if (cleaner.scannedGroups.containsKey(g)) {
                     // update to the end of the group
                     long e = entry.getEnd();
                     cleaner.bumpOffset(e);
@@ -461,7 +438,7 @@ public class ScanningModelBuilder extends ModelBuilder {
         graphLevel++;
         scanGraph = false;
         if (graphLevel == 1) {
-            tlGraphName = InputGraph.makeGraphName(dumpId, format, args);
+            tlGraphName = ModelBuilder.makeGraphName(dumpId, format, args);
             LOG.log(Level.FINER, "Starting graph {0} at {1}", new Object[]{tlGraphName, rootStartPos});
 
             scanGraph = true;
@@ -538,7 +515,7 @@ public class ScanningModelBuilder extends ModelBuilder {
     }
 
     GroupCompleter getCompleter(Group g) {
-        return (GroupCompleter) completors.get(g);
+        return completors.get(g);
     }
 
     GroupCompleter createCompleter(long start) {

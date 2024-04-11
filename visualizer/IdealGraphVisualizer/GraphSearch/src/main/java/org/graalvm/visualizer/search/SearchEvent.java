@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.search;
 
-import org.graalvm.visualizer.data.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
 
 import java.util.EventObject;
 

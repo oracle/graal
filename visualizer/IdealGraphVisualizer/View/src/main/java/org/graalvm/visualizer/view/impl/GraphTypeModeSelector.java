@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.view.impl;
 
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.view.api.TimelineModel;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;

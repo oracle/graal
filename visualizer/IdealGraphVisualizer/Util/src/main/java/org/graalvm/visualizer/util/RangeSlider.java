@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.util;
 
-import org.graalvm.visualizer.data.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
 
 import javax.swing.JComponent;
 import javax.swing.JViewport;

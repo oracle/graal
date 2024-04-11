@@ -22,11 +22,11 @@
  */
 package org.graalvm.visualizer.bytecodes;
 
-import org.graalvm.visualizer.data.InputBytecode;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.EqualityPropertyMatcher;
+import jdk.graal.compiler.graphio.parsing.model.InputBytecode;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.EqualityPropertyMatcher;
 import org.openide.nodes.AbstractNode;
 import org.openide.nodes.Children;
 import org.openide.nodes.Node;

@@ -22,29 +22,15 @@
  */
 package org.graalvm.visualizer;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputEdge;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Property;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.ModelBuilder;
-import org.graalvm.visualizer.data.serialization.StreamSource;
-import org.graalvm.visualizer.data.src.LocationStackFrame;
-import org.graalvm.visualizer.data.src.LocationStratum;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
+import jdk.graal.compiler.graphio.parsing.*;
+import jdk.graal.compiler.graphio.parsing.model.*;
 
 public class JSONExporter {
 
@@ -103,7 +89,7 @@ public class JSONExporter {
 
     @SuppressWarnings("deprecation")
     private static void fillGraphsList(URL url, List<InputGraph> graphs) throws IOException {
-        ModelBuilder mb = new ModelBuilder(new GraphDocument(), null, null) {
+        ModelBuilder mb = new ModelBuilder(new GraphDocument(), null) {
             @Override
             public InputGraph startGraph(int dumpId, String format, Object[] args) {
                 InputGraph g = super.startGraph(dumpId, format, args);

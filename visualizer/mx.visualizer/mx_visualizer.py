@@ -175,9 +175,9 @@ def test(args):
 
 @mx.command(_suite.name, 'verify-graal-graphio')
 def verify_graal_graphio(args):
-    """Verify org.graalvm.graphio is the unchanged"""
+    """Verify org.graalvm.graphio is unchanged between the compiler and visualizer folders"""
     parser = ArgumentParser(prog='mx verify-graal-graphio')
-    parser.add_argument('-s', '--sync', action='store_true', help='synchronize with graal configuration')
+    parser.add_argument('-s', '--sync-from', choices=['compiler', 'visualizer'], help='original source folder for synchronization')
     parser.add_argument('-q', '--quiet', action='store_true', help='Only produce output if something is changed')
     args = parser.parse_args(args)
 
@@ -192,15 +192,16 @@ def verify_graal_graphio(args):
         mx.abort(1)
 
     def _handle_error(msg, base_file, dest_file):
-        if args.sync:
+        if args.sync_from is not None:
             mx.log(f"Overriding {os.path.normpath(dest_file)} from {os.path.normpath(base_file)}")
+            os.makedirs(os.path.dirname(dest_file), exist_ok=True)
             shutil.copy(base_file, dest_file)
         else:
             mx.log(msg + ": " + os.path.normpath(dest_file))
             mx.log("Try synchronizing:")
-            mx.log("  " + base_file)
-            mx.log("  " + dest_file)
-            mx.log("Or execute 'mx verify-graal-graphio' with the  '--sync' option.")
+            mx.log("  " + os.path.normpath(base_file))
+            mx.log("  " + os.path.normpath(dest_file))
+            mx.log("Or execute 'mx verify-graal-graphio' with the  '--sync-from' option.")
             mx.abort(1)
 
     def _common_string_end(s1, s2):
@@ -216,14 +217,19 @@ def verify_graal_graphio(args):
             _handle_error('file mismatch', base_file, dest_file)
         mx.logv(f"File '{_common_string_end(base_file, dest_file)}' matches.")
 
+    source_dir = graal_dir
+    dest_dir = visualizer_dir
+    if args.sync_from == "visualizer":
+        # Reverse synchronization direction
+        dest_dir, source_dir = source_dir, dest_dir
 
     verified = 0
-    for root, _, files in os.walk(graal_dir):
-        rel_root = os.path.relpath(root, graal_dir)
+    for root, _, files in os.walk(source_dir):
+        rel_root = os.path.relpath(root, source_dir)
         for f in files:
-            graal_file = join(graal_dir, rel_root, f)
-            visualizer_file = join(visualizer_dir, rel_root, f)
-            _verify_file(graal_file, visualizer_file)
+            source_file = join(source_dir, rel_root, f)
+            dest_file = join(dest_dir, rel_root, f)
+            _verify_file(source_file, dest_file)
             verified += 1
 
     if verified == 0:

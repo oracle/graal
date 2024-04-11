@@ -23,33 +23,29 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputGraph.GraphData;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.serialization.ConstantPool;
-import org.graalvm.visualizer.data.serialization.ModelBuilder;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
+import java.util.Objects;
+
 import org.netbeans.api.annotations.common.NonNull;
 
-import java.util.Objects;
+import jdk.graal.compiler.graphio.parsing.ConstantPool;
+import jdk.graal.compiler.graphio.parsing.ModelBuilder;
+import jdk.graal.compiler.graphio.parsing.ParseMonitor;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph.GraphData;
 
 /**
  * Loads an individual graph + possible nested subgraphs.
  */
-final class GraphBuilder extends ModelBuilder {
+final class GraphBuilder extends LazyModelBuilder {
     private final InputGraph toComplete;
     private final DG dummyGraph = new DG(null, -1, "dummy", new Object[0]); // NOI18N
-    private Object keepData;
+    private final Object keepData;
     private final ConstantPool pool;
     private final StreamEntry graphEntry;
 
     public GraphBuilder(GraphDocument rootDocument, InputGraph toComplete, Object keepData,
                         StreamEntry entry, ParseMonitor monitor) {
-        super(rootDocument, null, monitor);
+        super(rootDocument, monitor);
         this.keepData = keepData;
         this.toComplete = toComplete;
         this.graphEntry = entry;
@@ -66,7 +62,7 @@ final class GraphBuilder extends ModelBuilder {
 
     @Override
     protected InputGraph createGraph(Properties.Entity parent, int dumpId, String format, Object[] args) {
-        if (parent == toComplete.getGroup() && toComplete.getName().equals(InputGraph.makeGraphName(dumpId, format, args))) {
+        if (parent == toComplete.getGroup() && toComplete.getName().equals(ModelBuilder.makeGraphName(dumpId, format, args))) {
             return dummyGraph;
         }
         if (parent instanceof InputNode) {
@@ -162,10 +158,7 @@ final class GraphBuilder extends ModelBuilder {
             if (!Objects.equals(this.property, other.property)) {
                 return false;
             }
-            if (!Objects.equals(this.outerGraph, other.outerGraph)) {
-                return false;
-            }
-            return true;
+            return Objects.equals(this.outerGraph, other.outerGraph);
         }
     }
 }

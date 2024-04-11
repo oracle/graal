@@ -21,6 +21,8 @@
                         <publicPackage>org.graalvm.visualizer.data.serialization.lazy</publicPackage>
                         <publicPackage>org.graalvm.visualizer.data.services</publicPackage>
                         <publicPackage>org.graalvm.visualizer.data.src</publicPackage>
+                        <publicPackage>jdk.graal.compiler.graphio.parsing</publicPackage>
+                        <publicPackage>jdk.graal.compiler.graphio.parsing.model</publicPackage>
                     </publicPackages>
                 </configuration>
             </plugin>

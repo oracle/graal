@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.Group.Feedback;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
 
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;

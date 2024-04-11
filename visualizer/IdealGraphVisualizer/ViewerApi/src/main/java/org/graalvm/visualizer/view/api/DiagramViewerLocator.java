@@ -22,8 +22,8 @@
  */
 package org.graalvm.visualizer.view.api;
 
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.data.services.GraphViewer;
 
 import java.util.List;

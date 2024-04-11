@@ -23,11 +23,11 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Folder;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 import org.openide.util.Exceptions;
 import org.openide.util.RequestProcessor;
 
@@ -44,9 +44,7 @@ import java.util.concurrent.Semaphore;
 public class LazyGroupTest extends BinaryDataTestBase {
     private Group parent;
     private LazyGroup lazyParent;
-    private long freezeAllChannels = 399038l;
-    private FreezeChannel groupReadChannel;
-    private RequestProcessor eventRP = new RequestProcessor(getName());
+    private final long freezeAllChannels = 399038L;
 
     public LazyGroupTest(String name) {
         super(name);
@@ -54,7 +52,6 @@ public class LazyGroupTest extends BinaryDataTestBase {
 
     private void prepareData() throws Exception {
         loadExecutor = PARALLEL_LOAD;
-        eventExecutor = eventRP;
         loadData("mega2.bgv");
         reader.parse();
         this.frozen = null;
@@ -65,7 +62,6 @@ public class LazyGroupTest extends BinaryDataTestBase {
 
     private void loadGroupStart() throws Exception {
         loadExecutor = PARALLEL_LOAD;
-        eventExecutor = eventRP;
         loadData("mega2.bgv");
         // let the scanning reader freeze in the middle of the group as if 
         // the producer did not supply enough data

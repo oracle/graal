@@ -23,28 +23,17 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.Group;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.Builder;
-import org.graalvm.visualizer.data.serialization.ConstantPool;
-import org.graalvm.visualizer.data.serialization.NetworkStreamContent;
-import org.graalvm.visualizer.data.serialization.ParseMonitor;
-import org.graalvm.visualizer.data.serialization.SkipRootException;
-import org.graalvm.visualizer.data.services.GroupCallback;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
+
+import jdk.graal.compiler.graphio.parsing.*;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * @author sdedic
@@ -71,8 +60,8 @@ public class ScanningBuilderTest extends BinaryDataTestBase {
         Semaphore blockScanning = new Semaphore(0);
         boolean next;
 
-        public PosTestBuilder(BinarySource dataSource, CachedContent content, GraphDocument rootDocument, GroupCallback callback, ParseMonitor monitor, ScheduledExecutorService fetchExecutor, StreamPool initialPool) {
-            super(dataSource, content, rootDocument, callback, monitor, fetchExecutor, initialPool);
+        public PosTestBuilder(BinarySource dataSource, CachedContent content, GraphDocument rootDocument, ParseMonitor monitor, ScheduledExecutorService fetchExecutor, StreamPool initialPool) {
+            super(dataSource, content, rootDocument, monitor, fetchExecutor, initialPool);
             this.dataSource = dataSource;
         }
 
@@ -104,7 +93,7 @@ public class ScanningBuilderTest extends BinaryDataTestBase {
     protected Builder createScanningTestBuilder() {
         switch (builderType) {
             case 1:
-                return posBuilder = new PosTestBuilder(scanSource, file, checkDocument, null, null, PARALLEL_LOAD, streamPool);
+                return posBuilder = new PosTestBuilder(scanSource, file, checkDocument, null, PARALLEL_LOAD, streamPool);
         }
         return super.createScanningTestBuilder();
     }
@@ -188,9 +177,7 @@ public class ScanningBuilderTest extends BinaryDataTestBase {
         public Object get(int index, long where) {
             Object x = super.get(index, where);
             Object prev = values.put(index, x);
-            if (prev != null && prev != x) {
-                assert modified();
-            }
+            assert prev == null || prev == x || modified();
             return x;
         }
     }

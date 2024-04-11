@@ -22,17 +22,17 @@
  */
 package org.graalvm.visualizer.controlflow;
 
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputBlockEdge;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.swing.*;
+
 import org.graalvm.visualizer.data.services.InputGraphProvider;
-import org.netbeans.api.visual.action.ActionFactory;
-import org.netbeans.api.visual.action.MoveProvider;
-import org.netbeans.api.visual.action.RectangularSelectDecorator;
-import org.netbeans.api.visual.action.RectangularSelectProvider;
-import org.netbeans.api.visual.action.SelectProvider;
-import org.netbeans.api.visual.action.WidgetAction;
+import org.netbeans.api.visual.action.*;
 import org.netbeans.api.visual.anchor.AnchorFactory;
 import org.netbeans.api.visual.anchor.AnchorShape;
 import org.netbeans.api.visual.graph.GraphScene;
@@ -42,18 +42,14 @@ import org.netbeans.api.visual.widget.ConnectionWidget;
 import org.netbeans.api.visual.widget.LayerWidget;
 import org.netbeans.api.visual.widget.Widget;
 
-import javax.swing.BorderFactory;
-import java.awt.Color;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
+import jdk.graal.compiler.graphio.parsing.model.InputBlock;
+import jdk.graal.compiler.graphio.parsing.model.InputBlockEdge;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 
 public class ControlFlowScene extends GraphScene<InputBlock, InputBlockEdge> implements SelectProvider, MoveProvider, RectangularSelectDecorator, RectangularSelectProvider {
-    private static final InputGraph EMPTY = new InputGraph("");
+    private static final InputGraph EMPTY = new InputGraph(null, InputGraph.INVALID_INDEX, "", new Object[0]);
+    
     private final HashSet<BlockWidget> selection;
     private InputGraphProvider provider;
     private final LayerWidget edgeLayer;

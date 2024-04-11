@@ -22,6 +22,19 @@
  */
 package org.graalvm.visualizer.data.serialization;
 
+import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+
 import org.graalvm.visualizer.settings.graal.GraalSettings;
 import org.openide.util.NbBundle;
 import org.xml.sax.Attributes;
@@ -29,30 +42,9 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.ext.DefaultHandler2;
 
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.StringReader;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.MissingResourceException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.prefs.PreferenceChangeEvent;
-import java.util.prefs.PreferenceChangeListener;
+import jdk.graal.compiler.graphio.parsing.NameTranslator;
 
-public final class BinaryMap implements PreferenceChangeListener {
+public final class BinaryMap implements NameTranslator, PreferenceChangeListener {
     private static final Logger LOG = Logger.getLogger(BinaryMap.class.getName());
     private static final BinaryMap INSTANCE = new BinaryMap();
 
@@ -74,7 +66,8 @@ public final class BinaryMap implements PreferenceChangeListener {
         this.cache = cache;
     }
 
-    String translate(String fqn) {
+    @Override
+    public String translate(String fqn) {
         Map<String, String> m = map();
         return m.get(fqn);
     }
@@ -162,7 +155,7 @@ public final class BinaryMap implements PreferenceChangeListener {
                     continue;
                 }
                 String before = line.substring(0, arrow).trim();
-                String after = line.substring(arrow + 2, line.length()).trim();
+                String after = line.substring(arrow + 2).trim();
                 fillIn.put(after, before);
             }
             return fillIn;

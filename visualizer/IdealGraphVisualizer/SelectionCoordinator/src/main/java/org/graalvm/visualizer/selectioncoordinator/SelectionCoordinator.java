@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.selectioncoordinator;
 
-import org.graalvm.visualizer.data.ChangedEvent;
-import org.graalvm.visualizer.data.GraphContainer;
+import jdk.graal.compiler.graphio.parsing.model.ChangedEvent;
+import jdk.graal.compiler.graphio.parsing.model.GraphContainer;
 
 import java.util.Collections;
 import java.util.HashSet;

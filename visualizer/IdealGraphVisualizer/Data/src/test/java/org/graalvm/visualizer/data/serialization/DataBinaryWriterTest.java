@@ -23,19 +23,8 @@
 
 package org.graalvm.visualizer.data.serialization;
 
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.serialization.lazy.DelayedLoadTest;
-import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-import org.openide.util.BaseUtilities;
-import org.openide.util.RequestProcessor;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,9 +34,22 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Collection;
 
-import static org.graalvm.visualizer.data.DataTestUtil.assertGraphDocumentEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.graalvm.visualizer.data.DataTestUtil;
+import org.graalvm.visualizer.data.serialization.lazy.DelayedLoadTest;
+import org.graalvm.visualizer.data.serialization.lazy.FileContent;
+import org.graalvm.visualizer.data.serialization.lazy.LazyModelBuilder;
+import org.graalvm.visualizer.data.serialization.lazy.ScanningModelBuilder;
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+import org.openide.util.BaseUtilities;
+import org.openide.util.RequestProcessor;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.DataBinaryWriter;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
 
 /**
  * @author Ondrej Douda <ondrej.douda@oracle.com>
@@ -133,14 +135,14 @@ public class DataBinaryWriterTest {
         GraphDocument exported = lazy ? loadFileLazy(exportFile) : loadFile(exportFile);
         assertFalse("No loaded exported groups.", exported.getElements().isEmpty());
 
-        assertGraphDocumentEquals(source, exported);
+        DataTestUtil.assertGraphDocumentEquals(source, exported);
     }
 
     private static GraphDocument loadFile(File sourceFile) {
         try {
             return new BinaryReader(
                     new BinarySource(null, FileChannel.open(sourceFile.toPath(), StandardOpenOption.READ)),
-                    new ModelBuilder(new GraphDocument(), null, null))
+                    new LazyModelBuilder(new GraphDocument(), null))
                     .parse();
         } catch (IOException ex) {
             return new GraphDocument();

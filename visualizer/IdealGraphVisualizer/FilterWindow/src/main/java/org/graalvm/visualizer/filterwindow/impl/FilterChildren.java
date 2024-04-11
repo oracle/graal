@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.filterwindow.impl;
 
-import org.graalvm.visualizer.data.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
 import org.graalvm.visualizer.filter.Filter;
 import org.graalvm.visualizer.filter.FilterSequence;
 import org.graalvm.visualizer.filter.profiles.FilterProfile;
@@ -32,6 +32,7 @@ import org.graalvm.visualizer.util.ListenerSupport;
 import org.openide.nodes.Children;
 import org.openide.nodes.Node;
 
+import javax.swing.*;
 import java.util.HashMap;
 
 /**
@@ -42,8 +43,8 @@ public class FilterChildren extends Children.Keys<Filter> {
     private final FilterProfile profile;
     private final HashMap<Filter, Node> nodeHash = new HashMap<>();
 
-    private ChangedListener seqL;
-    private ChangedListener keep;
+    private ChangedListener<FilterSequence<?>> seqL;
+    private ChangedListener<FilterSequence<?>> keep;
 
     @Override
     protected Node[] createNodes(Filter filter) {
@@ -63,12 +64,7 @@ public class FilterChildren extends Children.Keys<Filter> {
 
     @Override
     protected void addNotify() {
-        seqL = ListenerSupport.addWeakListener(keep = new ChangedListener<FilterSequence>() {
-            @Override
-            public void changed(FilterSequence source) {
-                makeRefresh();
-            }
-        }, profile.getAllFilters().getChangedEvent());
+        seqL = ListenerSupport.addWeakListener(keep = source -> makeRefresh(), profile.getAllFilters().getChangedEvent());
         makeRefresh();
     }
 
@@ -78,6 +74,6 @@ public class FilterChildren extends Children.Keys<Filter> {
     }
 
     private void makeRefresh() {
-        setKeys(profile.getProfileFilters());
+        SwingUtilities.invokeLater(() -> setKeys(profile.getProfileFilters()));
     }
 }

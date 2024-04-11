@@ -23,11 +23,11 @@
 
 package org.graalvm.visualizer.data.serialization.lazy;
 
-import org.graalvm.visualizer.data.serialization.ConstantPool;
-
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+
+import jdk.graal.compiler.graphio.parsing.ConstantPool;
 
 /**
  * Stream constant pool. Performs a snapshot before data is overwritten in the pool. Later the pool

@@ -23,8 +23,6 @@
 
 package org.graalvm.visualizer.data;
 
-import org.graalvm.visualizer.data.Group.Feedback;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -33,6 +31,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+
+import jdk.graal.compiler.graphio.parsing.model.Folder;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.Group.Feedback;
 
 /**
  * Represents handle to a dumped data element. The handle identifies a specific
@@ -63,7 +67,7 @@ public class DataElementHandle {
         List<Object> ll = new ArrayList<>();
         ll.add(fe.getID());
         for (Folder ff = fe.getParent(); ff != null && ff != document; ) {
-            FolderElement fc = (FolderElement) ff;
+            FolderElement fc = ff;
             ll.add(0, fc.getID());
             ff = fc.getParent();
         }
@@ -93,10 +97,7 @@ public class DataElementHandle {
         if (!Objects.equals(this.document, other.document)) {
             return false;
         }
-        if (!Objects.equals(this.path, other.path)) {
-            return false;
-        }
-        return true;
+        return Objects.equals(this.path, other.path);
     }
 
     /**

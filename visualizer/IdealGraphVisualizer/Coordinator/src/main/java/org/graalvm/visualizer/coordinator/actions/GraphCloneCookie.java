@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.coordinator.actions;
 
-import org.graalvm.visualizer.data.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import org.graalvm.visualizer.data.services.GraphViewer;
 import org.openide.nodes.Node;
 

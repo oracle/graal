@@ -37,8 +37,14 @@ import java.util.Set;
 
 final class GraphJavadocSnippets {
     static GraphStructure<AcmeGraph, AcmeNode, AcmeNodeType, AcmePorts> acmeGraphStructure() {
-        // @formatter:off
-        // BEGIN: jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure
+        /*
+         * The "replace" tag usage below clears what is before it on the line in a javadoc snippet.
+         * Even though the line is not a part of the region included in any snippet, javadoc command
+         * still picks it up and issues a warning about a spurious formatter tag and the replacement
+         * gets rid of the warning.
+         */
+        // @formatter:off // @replace regex='.*' replacement=''
+        // @start region="jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure"
         class AcmeGraphStructure implements
         GraphStructure<AcmeGraph, AcmeNode, AcmeNodeType, AcmePorts> {
 
@@ -142,12 +148,12 @@ final class GraphJavadocSnippets {
             }
         }
 
-        // END: jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure
+        // @end region="jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure"
 
         return new AcmeGraphStructure();
     }
 
-    // BEGIN: jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput
+    // @start region="jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput"
     static GraphOutput<AcmeGraph, ?> buildOutput(WritableByteChannel channel)
     throws IOException {
         return GraphOutput.newBuilder(acmeGraphStructure()).
@@ -155,9 +161,9 @@ final class GraphJavadocSnippets {
             protocolVersion(6, 0).
             build(channel);
     }
-    // END: jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput
+    // @end region="jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput"
 
-    // BEGIN: jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll
+    // @start region="jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll"
     static GraphOutput<AcmeGraph, ?> buildAll(WritableByteChannel channel)
     throws IOException {
         GraphBlocks<AcmeGraph, AcmeBlocks, AcmeNode> graphBlocks = acmeBlocks();
@@ -172,7 +178,7 @@ final class GraphJavadocSnippets {
             types(graphTypes).
             build(channel);
     }
-    // END: jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll
+    // @end region="jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll"
 
     private static GraphTypes acmeTypes() {
         GraphTypes graphTypes = null;
@@ -259,7 +265,7 @@ final class GraphJavadocSnippets {
     private static class AcmeCodePosition {
     }
 
-    // BEGIN: jdk.graal.compiler.graphio.GraphJavadocSnippets#dump
+    // @start region="jdk.graal.compiler.graphio.GraphJavadocSnippets#dump"
     static void dump(File toFile) throws IOException {
         try (
             FileChannel ch = new FileOutputStream(toFile).getChannel();
@@ -282,6 +288,6 @@ final class GraphJavadocSnippets {
             output.endGroup();
         }
     }
-    // END: jdk.graal.compiler.graphio.GraphJavadocSnippets#dump
+    // @end region="jdk.graal.compiler.graphio.GraphJavadocSnippets#dump"
 
 }

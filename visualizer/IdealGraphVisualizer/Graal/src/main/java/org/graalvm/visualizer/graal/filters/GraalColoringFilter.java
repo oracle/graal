@@ -22,7 +22,7 @@
  */
 package org.graalvm.visualizer.graal.filters;
 
-import org.graalvm.visualizer.data.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 import org.graalvm.visualizer.filter.AbstractFilter;
 import org.graalvm.visualizer.graph.Diagram;
 import org.graalvm.visualizer.graph.Figure;

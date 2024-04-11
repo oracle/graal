@@ -22,19 +22,17 @@
  */
 package org.graalvm.visualizer.filter;
 
-import org.graalvm.visualizer.data.ChangedListener;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.graph.Diagram;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import org.graalvm.visualizer.graph.Diagram;
+import org.junit.Before;
+import org.junit.Test;
+
+import jdk.graal.compiler.graphio.parsing.model.ChangedListener;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * @author sdedic
@@ -47,7 +45,7 @@ public class FilterChainTest {
     @Before
     public void setup() {
         FilterChain ch = new FilterChain();
-        InputGraph gr = new InputGraph("Ahoj");
+        InputGraph gr = InputGraph.createTestGraph("Ahoj");
         Diagram d = Diagram.createDiagram(gr, "testDiagram");
 
         this.graph = gr;
@@ -89,7 +87,7 @@ public class FilterChainTest {
                 changeCount++;
             }
         });
-        assertTrue(!chain.containsFilter(f));
+        assertFalse(chain.containsFilter(f));
 
         chain.addFilter(f);
         assertTrue(chain.containsFilter(f));
@@ -97,7 +95,7 @@ public class FilterChainTest {
 
         chain.removeFilter(f);
         assertEquals(1, changeCount);
-        assertTrue(!chain.containsFilter(f));
+        assertFalse(chain.containsFilter(f));
     }
 
     private FilterEvent startEvent;
@@ -131,8 +129,8 @@ public class FilterChainTest {
         assertNotNull(stopEvent);
     }
 
-    private List<FilterEvent> startEvents = new ArrayList<>();
-    private List<FilterEvent> endEvents = new ArrayList<>();
+    private final List<FilterEvent> startEvents = new ArrayList<>();
+    private final List<FilterEvent> endEvents = new ArrayList<>();
 
     /**
      * Checks that events are generated from filter processing

@@ -23,28 +23,24 @@
 
 package org.graalvm.visualizer.data;
 
-import org.graalvm.visualizer.data.serialization.DataBinaryWriter;
+import static jdk.graal.compiler.graphio.parsing.model.InputBlock.NO_BLOCK_NAME;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.*;
+import static org.graalvm.visualizer.settings.TestUtils.checkNotNulls;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
-import javax.swing.SwingUtilities;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_DUPLICATE;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NODE_SOURCE_POSITION;
-import static org.graalvm.visualizer.data.impl.Defaults.NO_BLOCK_NAME;
-import static org.graalvm.visualizer.settings.TestUtils.checkNotNulls;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import javax.swing.*;
+
+import jdk.graal.compiler.graphio.parsing.DataBinaryWriter;
+import jdk.graal.compiler.graphio.parsing.model.*;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 public class DataTestUtil {
     public static void assertGraphDocumentEquals(GraphDocument a, GraphDocument b) {
@@ -99,8 +95,8 @@ public class DataTestUtil {
 
     public static void assertGroupEquals(Group a, Group b) {
         if (checkNotNulls(a, b)) {
-            Future<?> af = completeGroup(a);
-            Future<?> bf = completeGroup(b);
+            completeGroup(a);
+            completeGroup(b);
             assertEquals(a.getType(), b.getType());
             assertEquals(a.getMethod(), b.getMethod());
             assertPropertiesEquals(a.getProperties(), b.getProperties(), null);
@@ -112,8 +108,8 @@ public class DataTestUtil {
 
     public static void assertInputGraphEquals(InputGraph a, InputGraph b) {
         if (checkNotNulls(a, b)) {
-            Future<?> af = completeGraph(a);
-            Future<?> bf = completeGraph(b);
+            completeGraph(a);
+            completeGraph(b);
             assertEquals(a.getDumpId(), b.getDumpId());
             assertEquals(a.getFormat(), b.getFormat());
             assertArrayEquals(a.getArgs(), b.getArgs());
@@ -159,14 +155,14 @@ public class DataTestUtil {
         }
     }
 
-    public static void assertPropertiesEquals(Properties a, Properties b) {
+    public static void assertPropertiesEquals(jdk.graal.compiler.graphio.parsing.model.Properties a, jdk.graal.compiler.graphio.parsing.model.Properties b) {
         if (checkNotNulls(a, b)) {
             assertPropertiesEqualsSimple(a, b);
             assertPropertiesEqualsSimple(b, a);
         }
     }
 
-    public static void assertPropertiesEquals(Properties a, Properties b, Collection<String> exclude) {
+    public static void assertPropertiesEquals(jdk.graal.compiler.graphio.parsing.model.Properties a, jdk.graal.compiler.graphio.parsing.model.Properties b, Collection<String> exclude) {
         if (checkNotNulls(a, b)) {
             if (exclude == null || exclude.isEmpty()) {
                 assertPropertiesEqualsSimple(a, b);
@@ -178,8 +174,8 @@ public class DataTestUtil {
         }
     }
 
-    private static void assertPropertiesEqualsSimple(Properties a, Properties b, Collection<String> exclude) {
-        for (Property p : b) {
+    private static void assertPropertiesEqualsSimple(jdk.graal.compiler.graphio.parsing.model.Properties a, jdk.graal.compiler.graphio.parsing.model.Properties b, Collection<String> exclude) {
+        for (Property<?> p : b) {
             final String name = p.getName();
             if (!exclude.contains(name)) {
                 assertPropertyValueEquals(p.getValue(), a.get(name), name);
@@ -187,10 +183,10 @@ public class DataTestUtil {
         }
     }
 
-    private static void assertPropertiesEqualsSimple(Properties a, Properties b) {
-        for (Property p : a) {
+    private static void assertPropertiesEqualsSimple(jdk.graal.compiler.graphio.parsing.model.Properties a, Properties b) {
+        for (Property<?> p : a) {
             final String name = p.getName();
-            assertPropertyValueEquals(p.getValue(), a.get(name), name);
+            assertPropertyValueEquals(p.getValue(), b.get(name), name);
         }
     }
 
@@ -223,6 +219,7 @@ public class DataTestUtil {
             try {
                 fContents.get();
             } catch (ExecutionException | InterruptedException e) {
+                // ignore
             }
             return fContents;
         }
@@ -239,8 +236,10 @@ public class DataTestUtil {
                     SwingUtilities.invokeAndWait(() -> {
                     });
                 } catch (InvocationTargetException ex) {
+                    // ignore
                 }
             } catch (ExecutionException | InterruptedException e) {
+                // ignore
             }
             return fContents;
         }

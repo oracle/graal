@@ -23,9 +23,9 @@
 
 package org.graalvm.visualizer.coordinator.impl;
 
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.KnownPropertyNames;
-import org.graalvm.visualizer.data.Properties;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 import org.openide.actions.RenameAction;
 import org.openide.nodes.AbstractNode;
 import org.openide.nodes.Children;

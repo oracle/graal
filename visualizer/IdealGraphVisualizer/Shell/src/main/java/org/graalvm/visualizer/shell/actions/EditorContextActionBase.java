@@ -22,20 +22,18 @@
  */
 package org.graalvm.visualizer.shell.actions;
 
+import java.awt.*;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.swing.*;
+
 import org.graalvm.visualizer.data.SuppressFBWarnings;
 import org.netbeans.spi.editor.AbstractEditorAction;
 import org.openide.util.ContextAwareAction;
 import org.openide.util.ImageUtilities;
 import org.openide.util.actions.ActionPresenterProvider;
 import org.openide.util.actions.Presenter;
-
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.Icon;
-import javax.swing.JMenuItem;
-import java.awt.Component;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Basis for Editor actions, which need a context, for example Lookup from the

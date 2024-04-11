@@ -22,9 +22,9 @@
  */
 package org.graalvm.visualizer.search;
 
-import org.graalvm.visualizer.data.KnownPropertyNames;
-import org.graalvm.visualizer.data.Properties;
-import org.graalvm.visualizer.data.Properties.PropertyMatcher;
+import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
+import jdk.graal.compiler.graphio.parsing.model.Properties.PropertyMatcher;
 import org.openide.util.NbBundle;
 
 /**

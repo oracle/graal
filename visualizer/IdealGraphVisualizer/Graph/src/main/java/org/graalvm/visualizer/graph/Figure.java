@@ -22,31 +22,22 @@
  */
 package org.graalvm.visualizer.graph;
 
-import org.graalvm.visualizer.data.InputBlock;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
-import org.graalvm.visualizer.data.Properties;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_ROOT;
+
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.*;
+import java.util.List;
+
 import org.graalvm.visualizer.data.Source;
 import org.graalvm.visualizer.layout.Cluster;
 import org.graalvm.visualizer.layout.Vertex;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
-import static org.graalvm.visualizer.data.KnownPropertyValues.NAME_ROOT;
+import jdk.graal.compiler.graphio.parsing.model.InputBlock;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 public class Figure extends Properties.Entity implements Source.Provider, Vertex, DiagramItem {
     public static final int INSET = 8;

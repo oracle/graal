@@ -23,8 +23,8 @@
 
 package org.graalvm.visualizer.source;
 
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.graalvm.visualizer.source.spi.LocationServices;
 import org.graalvm.visualizer.source.spi.StackProcessor;
 import org.openide.filesystems.FileObject;

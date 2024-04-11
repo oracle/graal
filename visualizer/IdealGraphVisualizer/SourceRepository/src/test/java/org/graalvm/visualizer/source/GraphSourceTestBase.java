@@ -23,24 +23,25 @@
 
 package org.graalvm.visualizer.source;
 
-import org.graalvm.visualizer.data.Folder;
-import org.graalvm.visualizer.data.FolderElement;
-import org.graalvm.visualizer.data.GraphDocument;
-import org.graalvm.visualizer.data.InputGraph;
-import org.graalvm.visualizer.data.serialization.BinaryReader;
-import org.graalvm.visualizer.data.serialization.BinarySource;
-import org.graalvm.visualizer.data.serialization.FileContent;
-import org.graalvm.visualizer.data.serialization.ModelBuilder;
-import org.graalvm.visualizer.data.serialization.lazy.LazySerDebugUtils;
-import org.netbeans.api.java.classpath.ClassPath;
-import org.netbeans.api.java.platform.JavaPlatform;
-import org.netbeans.junit.NbTestCase;
-
 import java.io.File;
 import java.net.URL;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.StringTokenizer;
+
+import org.graalvm.visualizer.data.serialization.lazy.FileContent;
+import org.graalvm.visualizer.data.serialization.lazy.LazySerDebugUtils;
+import org.netbeans.api.java.classpath.ClassPath;
+import org.netbeans.api.java.platform.JavaPlatform;
+import org.netbeans.junit.NbTestCase;
+
+import jdk.graal.compiler.graphio.parsing.BinaryReader;
+import jdk.graal.compiler.graphio.parsing.BinarySource;
+import jdk.graal.compiler.graphio.parsing.ModelBuilder;
+import jdk.graal.compiler.graphio.parsing.model.Folder;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * @author sdedic
@@ -60,7 +61,7 @@ public class GraphSourceTestBase extends NbTestCase {
         File f = new File(bigv.toURI());
 
         BinarySource src = new BinarySource(null, new FileContent(f.toPath(), FileChannel.open(f.toPath(), StandardOpenOption.READ)));
-        ModelBuilder bld = new ModelBuilder(rootDocument, null, null);
+        ModelBuilder bld = new ModelBuilder(rootDocument, null);
         BinaryReader r = new BinaryReader(src, bld);
         r.parse();
     }
@@ -123,7 +124,7 @@ public class GraphSourceTestBase extends NbTestCase {
             }
             f = (Folder) child;
         }
-        assertTrue(f != rootDocument);
+        assertNotSame(f, rootDocument);
         return (T) f;
     }
 

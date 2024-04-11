@@ -23,7 +23,7 @@
 
 package org.graalvm.visualizer.source.spi;
 
-import org.graalvm.visualizer.data.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import org.graalvm.visualizer.source.Location;
 import org.graalvm.visualizer.source.ProcessorContext;
 
