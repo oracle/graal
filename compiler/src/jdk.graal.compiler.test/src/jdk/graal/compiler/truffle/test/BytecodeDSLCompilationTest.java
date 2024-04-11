@@ -44,7 +44,6 @@ import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInter
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
-import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 @RunWith(Parameterized.class)
 public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
@@ -60,14 +59,13 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Before
     @Override
     public void before() {
-        setupContext("engine.MultiTier", "false");
+        super.before();
         // TODO without eager loading, the first compilation on some tests fails because this type
         // is not loaded
         try {
             Class.forName(BasicInterpreter.EarlyReturnException.class.getName());
         } catch (ClassNotFoundException ex) {
         }
-
     }
 
     @Test
@@ -86,11 +84,10 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         });
 
         OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
-        final int compilationThreshold = target.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
-        for (int i = 0; i < compilationThreshold; i++) {
-            assertNotCompiled(target);
-            target.call();
-        }
+        assertEquals(42L, target.call());
+        target.compile(true);
+        assertCompiled(target);
+        assertEquals(42L, target.call());
         assertCompiled(target);
     }
 
@@ -112,11 +109,8 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         });
 
         OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
-        final int compilationThreshold = target.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
-        for (int i = 0; i < compilationThreshold; i++) {
-            assertNotCompiled(target);
-            assertEquals(42L, target.call());
-        }
+        assertEquals(42L, target.call());
+        target.compile(true);
         assertCompiled(target);
 
         // Instrumentation should invalidate the compiled code.
@@ -125,6 +119,8 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
         // The instrumented interpreter should be recompiled.
         assertEquals(43L, target.call());
+        target.compile(true);
+        assertCompiled(target);
         assertEquals(43L, target.call());
         assertCompiled(target);
     }
@@ -147,16 +143,24 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         });
 
         OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
-        OptimizedCallTarget continuationCallTarget = null;
-        final int compilationThreshold = target.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
-        for (int i = 0; i < compilationThreshold; i++) {
-            assertNotCompiled(target);
-            ContinuationResult cont = (ContinuationResult) target.call();
-            assertEquals(123L, cont.getResult());
-            continuationCallTarget = (OptimizedCallTarget) cont.getContinuationCallTarget();
-            assertNotCompiled(continuationCallTarget);
-            assertEquals(42L, cont.continueWith(22L));
-        }
+        ContinuationResult cont = (ContinuationResult) target.call();
+        assertEquals(123L, cont.getResult());
+        OptimizedCallTarget continuationCallTarget = (OptimizedCallTarget) cont.getContinuationCallTarget();
+        assertEquals(42L, cont.continueWith(22L));
+        assertNotCompiled(target);
+        assertNotCompiled(continuationCallTarget);
+
+        target.compile(true);
+        cont = (ContinuationResult) target.call();
+        continuationCallTarget = (OptimizedCallTarget) cont.getContinuationCallTarget();
+        assertEquals(40L, cont.continueWith(20L));
+        assertCompiled(target);
+        assertNotCompiled(continuationCallTarget);
+
+        continuationCallTarget.compile(true);
+        cont = (ContinuationResult) target.call();
+        continuationCallTarget = (OptimizedCallTarget) cont.getContinuationCallTarget();
+        assertEquals(44L, cont.continueWith(24L));
         assertCompiled(target);
         assertCompiled(continuationCallTarget);
     }
@@ -182,15 +186,16 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
         OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
         OptimizedCallTarget continuationCallTarget = null;
-        final int compilationThreshold = target.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
-        for (int i = 0; i < compilationThreshold; i++) {
-            assertNotCompiled(target);
-            ContinuationResult cont = (ContinuationResult) target.call();
-            assertEquals(123L, cont.getResult());
-            continuationCallTarget = (OptimizedCallTarget) cont.getContinuationCallTarget();
-            assertNotCompiled(continuationCallTarget);
-            assertEquals(42L, cont.continueWith(22L));
-        }
+
+        ContinuationResult cont = (ContinuationResult) target.call();
+        assertEquals(123L, cont.getResult());
+        continuationCallTarget = (OptimizedCallTarget) cont.getContinuationCallTarget();
+        assertEquals(42L, cont.continueWith(22L));
+        assertNotCompiled(target);
+        assertNotCompiled(continuationCallTarget);
+
+        target.compile(true);
+        continuationCallTarget.compile(true);
         assertCompiled(target);
         assertCompiled(continuationCallTarget);
 
@@ -201,6 +206,10 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
         // The instrumented interpreter should be recompiled.
         assertEquals(43L, ((ContinuationResult) target.call()).continueWith(22L));
+        target.compile(true);
+        continuationCallTarget.compile(true);
+        assertCompiled(target);
+        assertCompiled(continuationCallTarget);
         assertEquals(43L, ((ContinuationResult) target.call()).continueWith(22L));
         assertCompiled(target);
         assertCompiled(continuationCallTarget);
