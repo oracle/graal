@@ -336,11 +336,11 @@ public final class CPUSampler implements Closeable {
      *
      * @return a map from {@link TruffleContext} to {@link CPUSamplerData}. The contexts that were
      *         already collected are not in the returned map even though data was collected for
-     *         them. All collected data can be obtained using {@link CPUSampler#getDataList()}
+     *         them. All collected data can be obtained using {@link CPUSampler#getDataList()}.
      * @since 21.3.0
      *
-     * @deprecated Contexts are no longer stored permanently. Use {@link #getDataList()} to get
-     *             per-context sampler data.
+     * @deprecated in 24.1.0. Contexts are no longer stored permanently. Use {@link #getDataList()}
+     *             to get all sampler data.
      */
     @Deprecated
     public synchronized Map<TruffleContext, CPUSamplerData> getData() {
@@ -582,7 +582,7 @@ public final class CPUSampler implements Closeable {
     }
 
     private synchronized TruffleContext[] contexts() {
-        return activeContexts.keySet().toArray(new TruffleContext[0]);
+        return activeContexts.keySet().toArray(TruffleContext[]::new);
     }
 
     /**

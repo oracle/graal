@@ -64,7 +64,9 @@ public final class CPUSamplerData {
     }
 
     /**
-     * @return The context index this data applies to.
+     * @return The index of the context this data applies to. It is the index of this data in the
+     *         {@link CPUSampler#getDataList() data list}. The index is zero based and corresponds
+     *         to the order of context creations on the engine.
      * @since 24.1.0
      */
     public int getContextIndex() {
@@ -74,7 +76,8 @@ public final class CPUSamplerData {
     /**
      * @return The context this data applies to or null if the context was already collected.
      * @since 21.3.0
-     * @deprecated Contexts are no longer stored permanently. Use {@link #getContextIndex()} to
+     * @deprecated in 24.1.0. Contexts are no longer stored permanently. This method will return
+     *             null if the context was already collected. Use {@link #getContextIndex()} to
      *             differentiate sampler data for different contexts.
      */
     @Deprecated

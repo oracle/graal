@@ -26,7 +26,6 @@ package com.oracle.truffle.tools.profiler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -263,7 +262,6 @@ final class SafepointStackSampler {
 
     private class SampleAction extends ThreadLocalAction {
 
-        final Set<Thread> started = Collections.newSetFromMap(new ConcurrentHashMap<>());
         final ConcurrentHashMap<Thread, CollectionResult> completed = new ConcurrentHashMap<>();
         boolean useSyntheticFrames = true;
 
@@ -276,7 +274,7 @@ final class SafepointStackSampler {
 
         @Override
         protected void perform(Access access) {
-            if (!started.add(access.getThread())) {
+            if (completed.containsKey(access.getThread())) {
                 return;
             }
             if (useSyntheticFrames) {
@@ -301,7 +299,6 @@ final class SafepointStackSampler {
         }
 
         void reset() {
-            started.clear();
             completed.clear();
         }
     }

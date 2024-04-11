@@ -43,6 +43,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -333,20 +334,22 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testTiers() {
         Assume.assumeFalse(Truffle.getRuntime().getClass().toString().contains("Default"));
         Context.Builder builder = Context.newBuilder().option("engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD)).option("engine.LastTierCompilationThreshold",
                         Integer.toString(2 * FIRST_TIER_THRESHOLD)).option("engine.BackgroundCompilation", "false");
-        List<CPUSamplerData> data;
+        Map<TruffleContext, CPUSamplerData> data;
         try (Context c = builder.build()) {
             CPUSampler cpuSampler = CPUSampler.find(c.getEngine());
             cpuSampler.setCollecting(true);
             for (int i = 0; i < 3 * FIRST_TIER_THRESHOLD; i++) {
                 c.eval(defaultSourceForSampling);
             }
-            data = cpuSampler.getDataList();
+            // Intentionally kept one usage of the deprecated API
+            data = cpuSampler.getData();
         }
-        CPUSamplerData samplerData = data.iterator().next();
+        CPUSamplerData samplerData = data.values().iterator().next();
         Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = samplerData.getThreadData().values().iterator().next();
         ProfilerNode<CPUSampler.Payload> root = profilerNodes.iterator().next();
         for (ProfilerNode<CPUSampler.Payload> child : root.getChildren()) {
