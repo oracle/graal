@@ -503,4 +503,81 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         assertEquals(21L, cont.getResult());
         assertEquals(42L, cont.continueWith(20L));
     }
+
+    @Test
+    public void testYieldFromFinallyInstrumented() {
+        // @formatter:off
+        // try {
+        //   yield 1;
+        //   if (arg0) {
+        //     return 2;
+        //   } else {
+        //     return 3;
+        //   }
+        // } finally {
+        //   yield 4;
+        // }
+        // @formatter:on
+
+        BasicInterpreter rootNode = parseNode("yieldFromFinally", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry(b.createLocal());
+
+            b.beginYield();
+            b.beginIncrementValue();
+            b.emitLoadConstant(4L);
+            b.endIncrementValue();
+            b.endYield();
+
+            b.beginBlock();
+
+            b.beginYield();
+            b.beginIncrementValue();
+            b.emitLoadConstant(1L);
+            b.endIncrementValue();
+            b.endYield();
+
+            b.beginIfThenElse();
+
+            b.emitLoadArgument(0);
+
+            emitReturn(b, 2);
+
+            emitReturn(b, 3);
+
+            b.endIfThenElse();
+
+            b.endBlock();
+            b.endFinallyTry();
+
+            b.endRoot();
+        });
+
+        ContinuationResult r1 = (ContinuationResult) rootNode.getCallTarget().call(true);
+        assertEquals(1L, r1.getResult());
+        ContinuationResult r2 = (ContinuationResult) r1.continueWith(3L);
+        assertEquals(4L, r2.getResult());
+        assertEquals(2L, r2.continueWith(4L));
+
+        r1 = (ContinuationResult) rootNode.getCallTarget().call(false);
+        assertEquals(1L, r1.getResult());
+        r2 = (ContinuationResult) r1.continueWith(3L);
+        assertEquals(4L, r2.getResult());
+        assertEquals(3L, r2.continueWith(4L));
+
+        rootNode.getRootNodes().update(createBytecodeConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build());
+
+        r1 = (ContinuationResult) rootNode.getCallTarget().call(true);
+        assertEquals(2L, r1.getResult());
+        r2 = (ContinuationResult) r1.continueWith(3L);
+        assertEquals(5L, r2.getResult());
+        assertEquals(2L, r2.continueWith(4L));
+
+        r1 = (ContinuationResult) rootNode.getCallTarget().call(false);
+        assertEquals(2L, r1.getResult());
+        r2 = (ContinuationResult) r1.continueWith(3L);
+        assertEquals(5L, r2.getResult());
+        assertEquals(3L, r2.continueWith(4L));
+    }
 }
