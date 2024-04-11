@@ -88,7 +88,7 @@ public final class JVMCIVersionCheck {
         return new Version(jvmciMajor, jvmciMinor, jvmciBuild);
     }
 
-    public static class Version {
+    public static final class Version {
         private final Runtime.Version jdkVersion;
         private final int jvmciMajor;
         private final int jvmciMinor;
