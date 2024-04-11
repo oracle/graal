@@ -96,6 +96,7 @@ import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
+import com.sun.management.OperatingSystemMXBean;
 
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
@@ -474,7 +475,12 @@ public class ProgressReporter {
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
         String actualFormat = "%,9d ";
         String totalFormat = " (%4.1f%% of %,8d total)";
-        long reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).count();
+        long reachableTypes;
+        if (universe.hostVM().useBaseLayer()) {
+            reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).filter(t -> !t.isInBaseLayer()).count();
+        } else {
+            reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).count();
+        }
         long totalTypes = universe.getTypes().size();
         recordJsonMetric(AnalysisResults.TYPES_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_TOTAL, totalTypes);
@@ -483,14 +489,24 @@ public class ProgressReporter {
         l().a(actualFormat, reachableTypes).doclink("reachable types", "#glossary-reachability").a("  ")
                         .a(totalFormat, Utils.toPercentage(reachableTypes, totalTypes), totalTypes).println();
         Collection<AnalysisField> fields = universe.getFields();
-        long reachableFields = fields.stream().filter(AnalysisField::isAccessed).count();
+        long reachableFields;
+        if (universe.hostVM().useBaseLayer()) {
+            reachableFields = fields.stream().filter(AnalysisField::isAccessed).filter(f -> !f.isInBaseLayer()).count();
+        } else {
+            reachableFields = fields.stream().filter(AnalysisField::isAccessed).count();
+        }
         int totalFields = fields.size();
         recordJsonMetric(AnalysisResults.FIELD_TOTAL, totalFields);
         recordJsonMetric(AnalysisResults.FIELD_REACHABLE, reachableFields);
         l().a(actualFormat, reachableFields).doclink("reachable fields", "#glossary-reachability").a(" ")
                         .a(totalFormat, Utils.toPercentage(reachableFields, totalFields), totalFields).println();
         Collection<AnalysisMethod> methods = universe.getMethods();
-        long reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).count();
+        long reachableMethods;
+        if (universe.hostVM().useBaseLayer()) {
+            reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).filter(m -> !m.isInBaseLayer()).count();
+        } else {
+            reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).count();
+        }
         int totalMethods = methods.size();
         recordJsonMetric(AnalysisResults.METHOD_TOTAL, totalMethods);
         recordJsonMetric(AnalysisResults.METHOD_REACHABLE, reachableMethods);
@@ -859,8 +875,8 @@ public class ProgressReporter {
         return TimerCollection.singleton().get(type);
     }
 
-    private static com.sun.management.OperatingSystemMXBean getOperatingSystemMXBean() {
-        return (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    private static OperatingSystemMXBean getOperatingSystemMXBean() {
+        return (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     }
 
     private static class Utils {
