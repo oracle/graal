@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -56,7 +57,7 @@ public class InjectedInvokerRenamingSubstitutionProcessor extends SubstitutionPr
     }
 
     private static boolean shouldReplace(ResolvedJavaType type) {
-        return !(type instanceof InjectedInvokerSubstitutionType) && isInjectedInvokerType(type);
+        return !(type instanceof InjectedInvokerSubstitutionType) && !(type instanceof BaseLayerType) && isInjectedInvokerType(type);
     }
 
     private InjectedInvokerSubstitutionType getSubstitution(ResolvedJavaType original) {

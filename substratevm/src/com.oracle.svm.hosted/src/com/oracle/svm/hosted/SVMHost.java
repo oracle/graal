@@ -176,6 +176,8 @@ public class SVMHost extends HostVM {
 
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
 
+    private final boolean useBaseLayer;
+
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions) {
         super(options, loader.getClassLoader());
@@ -202,6 +204,12 @@ public class SVMHost extends HostVM {
         }
         fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
+        useBaseLayer = SubstrateOptions.LoadImageLayer.hasBeenSet();
+    }
+
+    @Override
+    public boolean useBaseLayer() {
+        return useBaseLayer;
     }
 
     protected InlineBeforeAnalysisPolicyUtils getInlineBeforeAnalysisPolicyUtils() {
@@ -768,6 +776,42 @@ public class SVMHost extends HostVM {
         if (field.getType().equals(CGlobalData.class)) {
             return false;
         }
+
+        /*
+         * These fields need to be folded as they are used in snippets, and they must be accessed
+         * without producing reads with side effects.
+         */
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "arrayHub"))) {
+            return false;
+        }
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "additionalFlags"))) {
+            return false;
+        }
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "layoutEncoding"))) {
+            return false;
+        }
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "numClassTypes"))) {
+            return false;
+        }
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "numInterfaceTypes"))) {
+            return false;
+        }
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldTypeCheckSlots"))) {
+            return false;
+        }
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "typeIDDepth"))) {
+            return false;
+        }
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "typeID"))) {
+            return false;
+        }
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "monitorOffset"))) {
+            return false;
+        }
+        if (field.equals(ReflectionUtil.lookupField(DynamicHub.class, "hubType"))) {
+            return false;
+        }
+
         /*
          * Including this field makes ThreadLocalAllocation.getTlabDescriptorSize reachable through
          * ThreadLocalAllocation.regularTLAB which is accessed with
