@@ -57,6 +57,16 @@ public final class BeginNode extends AbstractBeginNode implements Simplifiable {
             tool.addToWorkList(next());
             graph().removeFixed(this);
         }
+
+        if (this.isAlive() && this.predecessor() instanceof IfNode ifNode) {
+            if (PiNode.guardTrySkipPi(this, ifNode.condition(), ifNode.falseSuccessor() == this, NodeView.from(tool))) {
+                /*
+                 * Return here and be defensive against a future false branch being added: after a
+                 * transform in guardTrySkipPi we should stop simplification.
+                 */
+                return;
+            }
+        }
     }
 
     @SuppressWarnings("try")
