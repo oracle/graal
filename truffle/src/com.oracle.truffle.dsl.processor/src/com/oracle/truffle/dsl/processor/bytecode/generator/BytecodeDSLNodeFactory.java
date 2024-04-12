@@ -2012,11 +2012,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     result.add(createDataClass(model.tagOperation,
                                     field(context.getType(boolean.class), "producedValue"),
                                     field(context.getType(int.class), "childBci"),
-                                    field(context.getType(int.class), "nodeId"),
-                                    field(context.getType(boolean.class), "handlerReachable"),
-                                    field(context.getType(int.class), "startStackHeight"),
+                                    field(context.getType(int.class), "nodeId").asFinal(),
+                                    field(context.getType(boolean.class), "operationReachable").asFinal(),
+                                    field(context.getType(int.class), "startStackHeight").asFinal(),
                                     field(generic(type(List.class), tagNode.asType()), "children").withInitializer("null"),
-                                    field(tagNode.asType(), "node")));
+                                    field(tagNode.asType(), "node").asFinal()));
                 }
 
                 result.add(createDataClass(model.sourceSectionOperation,
@@ -2080,14 +2080,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 field(context.getType(int.class), "tryEndBci"),
                                 field(context.getType(int.class), "catchStartBci"),
                                 field(context.getType(int.class), "endBranchFixupBci"),
-                                field(context.getType(boolean.class), "handlerReachable"),
+                                field(context.getType(boolean.class), "operationReachable").asFinal(),
                                 field(context.getType(boolean.class), "tryReachable"),
                                 field(context.getType(boolean.class), "catchReachable")));
 
                 result.add(createDataClass(model.finallyTryOperation,
                                 field(types.BytecodeLocal, "exceptionLocal").asFinal(),
                                 field(context.getDeclaredType(Object.class), "finallyTryContext").asFinal(),
-                                field(context.getType(boolean.class), "handlerReachable").asFinal(),
+                                field(context.getType(boolean.class), "operationReachable").asFinal(),
                                 field(context.getType(boolean.class), "finallyReachable"),
                                 field(context.getType(boolean.class), "tryReachable")));
 
@@ -2097,7 +2097,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 result.add(createDataClass("CustomShortCircuitOperationData",
                                 field(context.getType(int.class), "childBci"),
-                                field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)")));
+                                field(generic(List.class, Integer.class), "branchFixupBcis").asFinal().withInitializer("new ArrayList<>(4)")));
 
                 return result;
             }
@@ -2239,7 +2239,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 List<CodeVariableElement> handlerFields = new ArrayList<>(List.of(
                                 new CodeVariableElement(context.getType(short[].class), "handlerBc"),
-                                new CodeVariableElement(context.getType(int.class), "handlermaxStackHeight"),
+                                new CodeVariableElement(context.getType(int.class), "handlerMaxStackHeight"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerSourceInfo"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerExHandlers"),
                                 new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel), "handlerUnresolvedBranchLabels"),
@@ -2494,7 +2494,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 builder.add(createAllocateContinuationConstant());
             }
             builder.add(createInFinallyTryHandler());
-            builder.add(createGetFinallyTryHandlerSequenceNumber());
             if (model.enableSerialization) {
                 builder.add(createSerialize());
                 builder.add(createDeserialize());
@@ -3638,9 +3637,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case FINALLY_TRY, FINALLY_TRY_NO_EXCEPT -> {
                     // set finallyTryContext inside createFinallyTry before calling beginOperation
                     b.startAssign("finallyTryContext").startNew(finallyTryContext.asType());
-                    for (
-
-                    CodeVariableElement field : builderContextSensitiveState) {
+                    for (CodeVariableElement field : builderContextSensitiveState) {
                         b.string(field.getName());
                     }
                     b.string("operationSequenceNumber");
@@ -3886,7 +3883,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("BytecodeLocalImpl exceptionLocal = (BytecodeLocalImpl) operationData.exceptionLocal");
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData.finallyTryContext");
 
-                    b.startIf().string("operationData.handlerReachable").end().startBlock();
+                    b.startIf().string("operationData.operationReachable").end().startBlock();
                     b.lineComment("exception handler may be reachable");
                     b.statement("exceptionIndex = (short) exceptionLocal.index");
                     b.statement("exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, currentStackHeight, exceptionIndex)");
@@ -3999,7 +3996,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         args = new String[]{"operationData.nodeId", "operationData.childBci"};
                     }
 
-                    b.startIf().string("operationData.handlerReachable").end().startBlock();
+                    b.startIf().string("operationData.operationReachable").end().startBlock();
                     /*
                      * Leaving the tag leave is always reachable, because probes may decide to
                      * return at any point and we need a point where we can continue.
@@ -4018,7 +4015,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                     b.end().startElseBlock();
 
-                    b.startIf().string("operationData.handlerReachable").end().startBlock();
+                    b.startIf().string("operationData.operationReachable").end().startBlock();
                     /*
                      * Leaving the tag leave is always reachable, because probes may decide to
                      * return at any point and we need a point where we can continue.
@@ -5058,7 +5055,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case TRY_CATCH:
                         emitCastOperationData(b, op, "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
-                        b.startIf().string("operationData.handlerReachable").end().startBlock();
+                        b.startIf().string("operationData.operationReachable").end().startBlock();
                         b.statement("operationData.tryEndBci = bci");
 
                         b.startIf().string("operationData.tryReachable").end().startBlock();
@@ -5068,7 +5065,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end(); // if tryReachable
                         b.statement("operationData.catchStartBci = bci");
 
-                        b.end(); // if handlerReachable
+                        b.end(); // if operationReachable
                         b.end();
 
                         b.startElseIf().string("childIndex == 1").end().startBlock();
@@ -5076,7 +5073,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
                         b.end();
-                        b.startIf().string("operationData.handlerReachable").end().startBlock();
+                        b.startIf().string("operationData.operationReachable").end().startBlock();
                         b.statement("doCreateExceptionHandler(operationData.tryStartBci, operationData.tryEndBci, operationData.catchStartBci, operationData.startStackHeight, operationData.exceptionLocalIndex)");
                         b.end();
                         b.end();
@@ -5339,8 +5336,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.statement("bci += handlerBc.length");
 
-            b.startIf().string("currentStackHeight + context.handlermaxStackHeight > maxStackHeight").end().startBlock();
-            b.statement("maxStackHeight = currentStackHeight + context.handlermaxStackHeight");
+            b.startIf().string("currentStackHeight + context.handlerMaxStackHeight > maxStackHeight").end().startBlock();
+            b.statement("maxStackHeight = currentStackHeight + context.handlerMaxStackHeight");
             b.end();
 
             b.startIf().string("parseSources").end().startBlock();
@@ -5966,18 +5963,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startReturn();
             b.string("context != null && (!context.handlerIsSet() || inFinallyTryHandler(context.parentContext))");
-            b.end();
-
-            return ex;
-        }
-
-        private CodeExecutableElement createGetFinallyTryHandlerSequenceNumber() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "getFinallyTryHandlerSequenceNumber");
-            ex.addParameter(new CodeVariableElement(finallyTryContext.asType(), "context"));
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.startReturn();
-            b.string("inFinallyTryHandler(context) ? context.finallyTrySequenceNumber : -1");
             b.end();
 
             return ex;
