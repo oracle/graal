@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.sampler;
+package com.oracle.svm.core.reflect.target;
 
-import com.oracle.svm.core.code.FrameInfoQueryResult;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 
 /**
- * Encode method data to identify methods in {@link FrameInfoQueryResult}.
+ * All usages of ConstantPool are substituted to go through
+ * {@link com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MetadataAccessor}.
  */
-public interface CallStackFrameMethodData {
-
-    /* Returns a unique id for the given method. The returned id is always greater than 0. */
-    int getMethodId(ResolvedJavaMethod method);
+@TargetClass(className = "jdk.internal.reflect.ConstantPool")
+@Substitute
+public final class Target_jdk_internal_reflect_ConstantPool {
 }

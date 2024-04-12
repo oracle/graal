@@ -22,17 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.reflect.target;
 
-package com.oracle.svm.core.code;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-/**
- * Encode method data to identify methods in {@link FrameInfoQueryResult}.
- */
-public interface FrameInfoMethodData {
-    /**
-     * Returns the unique identification number for the method.
-     */
-    int getMethodId(ResolvedJavaMethod method);
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface EncodedRuntimeMetadataSupplier {
+    byte[] getAnnotationsEncoding(AccessibleObject object);
+
+    byte[] getParameterAnnotationsEncoding(Executable object);
+
+    byte[] getAnnotationDefaultEncoding(Method object);
+
+    byte[] getTypeAnnotationsEncoding(AccessibleObject object);
+
+    byte[] getReflectParametersEncoding(Executable object);
 }

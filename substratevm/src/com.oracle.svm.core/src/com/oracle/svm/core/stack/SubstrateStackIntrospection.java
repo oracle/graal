@@ -26,7 +26,6 @@ package com.oracle.svm.core.stack;
 
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -34,6 +33,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -46,6 +46,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -118,15 +119,15 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
 
         int virtualFrameIndex = 0;
         do {
-            int method;
+            CodePointer deoptAddress;
             if (virtualFrame != null) {
                 assert deoptInfo == null : "must have either deoptimized or non-deoptimized frame information, but not both";
-                method = virtualFrame.getFrameInfo().getDeoptMethodOffset();
+                deoptAddress = virtualFrame.getFrameInfo().getDeoptMethodAddress();
             } else {
-                method = deoptInfo.getDeoptMethodOffset();
+                deoptAddress = deoptInfo.getDeoptMethodAddress();
             }
 
-            if (matches(method, curMatchingMethods)) {
+            if (matchesDeoptAddress(deoptAddress, curMatchingMethods)) {
                 if (skip > 0) {
                     skip--;
                 } else {
@@ -161,12 +162,13 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
 
     }
 
-    private static boolean matches(int needle, ResolvedJavaMethod[] haystack) {
-        if (haystack == null) {
+    private static boolean matchesDeoptAddress(CodePointer ip, ResolvedJavaMethod[] methods) {
+        if (methods == null) {
             return true;
         }
-        for (ResolvedJavaMethod method : haystack) {
-            if (((SharedMethod) method).getDeoptOffsetInImage() == needle) {
+        for (ResolvedJavaMethod method : methods) {
+            CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo((SharedMethod) method);
+            if (ip == CodeInfoAccess.absoluteIP(codeInfo, ((SharedMethod) method).getImageCodeDeoptOffset())) {
                 return true;
             }
         }
@@ -337,7 +339,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
     @Override
     public boolean isMethod(ResolvedJavaMethod method) {
         checkDeoptimized();
-        return ((SharedMethod) method).getDeoptOffsetInImage() == frameInfo.getDeoptMethodOffset();
+        return ((SharedMethod) method).getImageCodeDeoptOffset() == frameInfo.getDeoptMethodOffset();
     }
 
     @Override

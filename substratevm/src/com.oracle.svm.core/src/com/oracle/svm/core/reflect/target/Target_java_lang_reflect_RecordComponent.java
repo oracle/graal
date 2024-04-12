@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect;
+package com.oracle.svm.core.reflect.target;
 
 import java.lang.reflect.Method;
 
@@ -30,18 +30,18 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(java.lang.reflect.RecordComponent.class)
-public final class Target_java_lang_reflect_RecordComponent {
-    @Alias public Class<?> clazz;
+final class Target_java_lang_reflect_RecordComponent {
+    @Alias Class<?> clazz;
 
-    @Alias public String name;
+    @Alias String name;
 
-    @Alias public Class<?> type;
+    @Alias Class<?> type;
 
-    @Alias public Method accessor;
+    @Alias Method accessor;
 
-    @Alias public String signature;
+    @Alias String signature;
 
-    @Alias public byte[] annotations;
+    @Alias byte[] annotations;
 
-    @Alias public byte[] typeAnnotations;
+    @Alias byte[] typeAnnotations;
 }

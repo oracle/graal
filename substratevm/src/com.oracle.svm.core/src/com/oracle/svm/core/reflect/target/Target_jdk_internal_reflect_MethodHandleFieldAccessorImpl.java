@@ -36,5 +36,5 @@ import com.oracle.svm.core.annotate.TargetClass;
  */
 @TargetClass(className = "jdk.internal.reflect.MethodHandleFieldAccessorImpl")
 @Delete
-public final class Target_jdk_internal_reflect_MethodHandleFieldAccessorImpl {
+final class Target_jdk_internal_reflect_MethodHandleFieldAccessorImpl {
 }

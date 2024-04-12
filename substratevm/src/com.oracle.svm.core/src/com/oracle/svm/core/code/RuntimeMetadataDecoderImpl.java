@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.core.code;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.function.Function;
 
@@ -40,26 +41,23 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
-import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Executable;
 import com.oracle.svm.core.util.ByteArrayReader;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
 
 /**
- * This class performs the parsing of reflection metadata at runtime. The encoding formats are
- * specified as comments above each parsing method.
+ * This class parses the runtime metadata at image runtime. The encoding formats are specified as
+ * comments above each parsing method.
  *
  * See {@code ReflectionMetadataEncoderImpl} for details about the emission of the metadata.
  */
-@AutomaticallyRegisteredImageSingleton(ReflectionMetadataDecoder.class)
-public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder {
+@AutomaticallyRegisteredImageSingleton(RuntimeMetadataDecoder.class)
+public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     /**
      * Error indices are less than {@link #NO_DATA}.
      */
@@ -94,7 +92,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     public static final int CLASS_ACCESS_FLAGS_MASK = 0x1FFF;
 
     static byte[] getEncoding() {
-        return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding();
+        return ImageSingletons.lookup(RuntimeMetadataEncoding.class).getEncoding();
     }
 
     /**
@@ -175,9 +173,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * </pre>
      */
     @Override
-    public Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index) {
+    public RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Target_java_lang_reflect_RecordComponent.class, (i) -> decodeRecordComponent(reader, DynamicHub.toClass(declaringType)));
+        return decodeArray(reader, RecordComponent.class, (i) -> decodeRecordComponent(reader, DynamicHub.toClass(declaringType)));
     }
 
     /**
@@ -212,7 +210,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * <pre>
      * EnclosingMethodInfo {
      *     ClassIndex  declaringClass
-     *     StringIndex name
+     *     MembNameIdx name
      *     StringIndex descriptor
      * }
      * </pre>
@@ -224,8 +222,8 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         }
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         Class<?> declaringClass = decodeType(reader);
-        String name = decodeName(reader);
-        String descriptor = decodeName(reader);
+        String name = decodeMemberName(reader);
+        String descriptor = decodeOtherString(reader);
         return new Object[]{declaringClass, name, descriptor};
     }
 
@@ -247,7 +245,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
 
     @Override
     public int getMetadataByteLength() {
-        return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding().length;
+        return ImageSingletons.lookup(RuntimeMetadataEncoding.class).getEncoding().length;
     }
 
     public static boolean isErrorIndex(int index) {
@@ -261,7 +259,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     private static <T extends Throwable> void decodeAndThrowError(int index) throws T {
         assert isErrorIndex(index);
         int decodedIndex = FIRST_ERROR_INDEX - index;
-        throw (T) ImageSingletons.lookup(MetadataAccessor.class).getObject(decodedIndex);
+        throw (T) MetadataAccessor.singleton().getObject(decodedIndex);
     }
 
     /**
@@ -270,7 +268,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * <pre>
      * CompleteFieldMetadata : FieldMetadata {
      *     int         modifiers               (including COMPLETE flag)
-     *     StringIndex name
+     *     MembNameIdx name
      *     ClassIndex  type
      *     boolean     trustedFinal            (only on JDK 17 and later)
      *     StringIndex signature
@@ -295,7 +293,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * <pre>
      * HidingFieldMetadata : FieldMetadata {
      *     int         modifiers (including HIDING flag)
-     *     StringIndex name
+     *     MembNameIdx name
      *     ClassIndex  type
      * }
      * </pre>
@@ -305,7 +303,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * <pre>
      * ReachableFieldEncoding : FieldMetadata {
      *     int         modifiers (including EXISTS flag)
-     *     StringIndex name
+     *     MembNameIdx name
      * }
      * </pre>
      *
@@ -314,7 +312,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * <pre>
      * NegativeQueryFieldEncoding : FieldMetadata {
      *     int         modifiers (always zero)
-     *     StringIndex name
+     *     MembNameIdx name
      * }
      * </pre>
      */
@@ -329,9 +327,8 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                  * Generate negative copy of the field. Finding a non-public field when looking for
                  * a public one should not result in a missing registration exception.
                  */
-                Target_java_lang_reflect_Field negativeField = new Target_java_lang_reflect_Field();
-                negativeField.constructor(declaringClass, field.getName(), Object.class, field.getModifiers() | NEGATIVE_FLAG_MASK, false, -1, null, null);
-                field = SubstrateUtil.cast(negativeField, Field.class);
+                return ReflectionObjectFactory.newField(declaringClass, field.getName(), Object.class, field.getModifiers() | NEGATIVE_FLAG_MASK, false,
+                                null, null, ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null);
             }
             if (reflectOnly) {
                 return complete ? field : null;
@@ -345,7 +342,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         assert !(negative && (complete || hiding));
         modifiers &= ~COMPLETE_FLAG_MASK;
 
-        String name = decodeName(buf);
+        String name = decodeMemberName(buf);
         Class<?> type = (complete || hiding) ? decodeType(buf) : null;
         if (!complete) {
             if (reflectOnly != (hiding || negative)) {
@@ -359,26 +356,19 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
             if (!reflectOnly) {
                 return new FieldDescriptor(declaringClass, name);
             }
-            Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
-            field.constructor(declaringClass, name, negative ? Object.class : type, modifiers, false, -1, null, null);
-            return SubstrateUtil.cast(field, Field.class);
+            return ReflectionObjectFactory.newField(declaringClass, name, negative ? Object.class : type, modifiers, false, null, null, ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null);
         }
         boolean trustedFinal = buf.getU1() == 1;
-        String signature = decodeName(buf);
+        String signature = decodeOtherString(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
         int offset = buf.getSVInt();
-        String deletedReason = decodeName(buf);
+        String deletedReason = decodeOtherString(buf);
         if (publicOnly && !Modifier.isPublic(modifiers)) {
             modifiers |= NEGATIVE_FLAG_MASK;
         }
 
-        Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
-        field.constructor(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
-        field.offset = offset;
-        field.deletedReason = deletedReason;
-        SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
-        Field reflectField = SubstrateUtil.cast(field, Field.class);
+        Field reflectField = ReflectionObjectFactory.newField(declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset, deletedReason, typeAnnotations);
         return reflectOnly ? reflectField : new FieldDescriptor(reflectField);
     }
 
@@ -388,9 +378,10 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * <pre>
      * CompleteMethodMetadata : MethodMetadata {
      *     int          modifiers                    (including COMPLETE flag)
-     *     StringIndex  name
+     *     MembNameIdx  name
      *     ClassIndex[] parameterTypes
      *     ClassIndex   returnType
+     *     ClassIndex[] exceptionTypes
      *     StringIndex  signature
      *     byte[]       annotationsEncoding
      *     byte[]       parameterAnnotationsEncoding
@@ -415,7 +406,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * <pre>
      * HidingMethodMetadata : MethodMetadata {
      *     int          modifiers      (including HIDING flag)
-     *     StringIndex  name
+     *     MembNameIdx  name
      *     ClassIndex[] parameterTypes
      *     ClassIndex   returnType
      * }
@@ -425,9 +416,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *
      * <pre>
      * ReachableMethodMetadata : MethodMetadata {
-     *     int          modifiers      (including EXISTS flag)
-     *     StringIndex  name
-     *     ClassIndex[] parameterTypes
+     *     int           modifiers      (including EXISTS flag)
+     *     MembNameIdx   name
+     *     StringIndex[] parameterTypes
      * }
      * </pre>
      *
@@ -436,7 +427,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * <pre>
      * NegativeQueryMethodMetadata : MethodMetadata {
      *     int          modifiers      (always zero)
-     *     StringIndex  name
+     *     MembNameIdx  name
      *     ClassIndex[] parameterTypes
      * }
      * </pre>
@@ -447,6 +438,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * CompleteConstructorMetadata : ConstructorMetadata {
      *     int          modifiers                    (including COMPLETE flag)
      *     ClassIndex[] parameterTypes
+     *     ClassIndex[] exceptionTypes
      *     StringIndex  signature
      *     byte[]       annotationsEncoding
      *     byte[]       parameterAnnotationsEncoding
@@ -495,13 +487,10 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                  * looking for a public one should not result in a missing registration exception.
                  */
                 if (isMethod) {
-                    Target_java_lang_reflect_Method negativeMethod = new Target_java_lang_reflect_Method();
-                    negativeMethod.constructor(declaringClass, executable.getName(), executable.getParameterTypes(), Object.class, null, modifiers | NEGATIVE_FLAG_MASK, -1, null, null, null, null);
-                    executable = SubstrateUtil.cast(negativeMethod, Executable.class);
+                    executable = ReflectionObjectFactory.newMethod(declaringClass, executable.getName(), executable.getParameterTypes(), Object.class, null, modifiers | NEGATIVE_FLAG_MASK,
+                                    null, null, null, null, null, null, null);
                 } else {
-                    Target_java_lang_reflect_Constructor negativeConstructor = new Target_java_lang_reflect_Constructor();
-                    negativeConstructor.constructor(declaringClass, executable.getParameterTypes(), null, modifiers | NEGATIVE_FLAG_MASK, -1, null, null, null);
-                    executable = SubstrateUtil.cast(negativeConstructor, Executable.class);
+                    executable = ReflectionObjectFactory.newConstructor(declaringClass, executable.getParameterTypes(), null, modifiers | NEGATIVE_FLAG_MASK, null, null, null, null, null, null);
                 }
             }
             if (reflectOnly) {
@@ -522,12 +511,12 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         assert !(negative && (complete || hiding));
         modifiers &= ~COMPLETE_FLAG_MASK;
 
-        String name = isMethod ? decodeName(buf) : null;
+        String name = isMethod ? decodeMemberName(buf) : null;
         Object[] parameterTypes;
         if (complete || hiding || negative) {
             parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf));
         } else {
-            parameterTypes = decodeArray(buf, String.class, (i) -> decodeName(buf));
+            parameterTypes = decodeArray(buf, String.class, (i) -> decodeOtherString(buf));
         }
         Class<?> returnType = isMethod && (complete || hiding) ? decodeType(buf) : null;
         if (!complete) {
@@ -543,20 +532,17 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                 if (!reflectOnly) {
                     return new MethodDescriptor(declaringClass, name, (String[]) parameterTypes);
                 }
-                Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
-                method.constructor(declaringClass, name, (Class<?>[]) parameterTypes, negative ? Object.class : returnType, null, modifiers, -1, null, null, null, null);
-                return SubstrateUtil.cast(method, Executable.class);
+                return ReflectionObjectFactory.newMethod(declaringClass, name, (Class<?>[]) parameterTypes, negative ? Object.class : returnType, null, modifiers,
+                                null, null, null, null, null, null, null);
             } else {
                 if (!reflectOnly) {
                     return new ConstructorDescriptor(declaringClass, (String[]) parameterTypes);
                 }
-                Target_java_lang_reflect_Constructor constructor = new Target_java_lang_reflect_Constructor();
-                constructor.constructor(declaringClass, (Class<?>[]) parameterTypes, null, modifiers, -1, null, null, null);
-                return SubstrateUtil.cast(constructor, Executable.class);
+                return ReflectionObjectFactory.newConstructor(declaringClass, (Class<?>[]) parameterTypes, null, modifiers, null, null, null, null, null, null);
             }
         }
         Class<?>[] exceptionTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf));
-        String signature = decodeName(buf);
+        String signature = decodeOtherString(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] parameterAnnotations = decodeByteArray(buf);
         byte[] annotationDefault = isMethod && declaringClass.isAnnotation() ? decodeByteArray(buf) : null;
@@ -569,24 +555,20 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
 
         Target_java_lang_reflect_Executable executable;
         if (isMethod) {
-            Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
-            method.constructor(declaringClass, name, (Class<?>[]) parameterTypes, returnType, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations, annotationDefault);
-            method.methodAccessor = (Target_jdk_internal_reflect_MethodAccessor) accessor;
+            Method method = ReflectionObjectFactory.newMethod(declaringClass, name, (Class<?>[]) parameterTypes, returnType, exceptionTypes, modifiers,
+                            signature, annotations, parameterAnnotations, annotationDefault, accessor, reflectParameters, typeAnnotations);
             if (!reflectOnly) {
-                return new MethodDescriptor(SubstrateUtil.cast(method, Method.class));
+                return new MethodDescriptor(method);
             }
             executable = SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class);
         } else {
-            Target_java_lang_reflect_Constructor constructor = new Target_java_lang_reflect_Constructor();
-            constructor.constructor(declaringClass, (Class<?>[]) parameterTypes, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations);
-            constructor.constructorAccessor = (Target_jdk_internal_reflect_ConstructorAccessor) accessor;
+            Constructor<?> constructor = ReflectionObjectFactory.newConstructor(declaringClass, (Class<?>[]) parameterTypes, exceptionTypes,
+                            modifiers, signature, annotations, parameterAnnotations, accessor, reflectParameters, typeAnnotations);
             if (!reflectOnly) {
-                return new ConstructorDescriptor(SubstrateUtil.cast(constructor, Constructor.class));
+                return new ConstructorDescriptor(constructor);
             }
             executable = SubstrateUtil.cast(constructor, Target_java_lang_reflect_Executable.class);
         }
-        executable.rawParameters = reflectParameters;
-        SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
         return SubstrateUtil.cast(executable, Executable.class);
     }
 
@@ -595,35 +577,22 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *
      * <pre>
      * RecordComponentMetadata {
-     *     StringIndex name
+     *     MembNameIdx name
      *     ClassIndex  type
      *     StringIndex signature
-     *     ObjectIndex accessor
      *     byte[]      annotations
      *     byte[]      typeAnnotations
      * }
      * </pre>
      */
-    private static Target_java_lang_reflect_RecordComponent decodeRecordComponent(UnsafeArrayTypeReader buf, Class<?> declaringClass) {
-        String name = decodeName(buf);
+    private static RecordComponent decodeRecordComponent(UnsafeArrayTypeReader buf, Class<?> declaringClass) {
+        String name = decodeMemberName(buf);
         Class<?> type = decodeType(buf);
-        String signature = decodeName(buf);
+        String signature = decodeOtherString(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
 
-        Target_java_lang_reflect_RecordComponent recordComponent = new Target_java_lang_reflect_RecordComponent();
-        recordComponent.clazz = declaringClass;
-        recordComponent.name = name;
-        recordComponent.type = type;
-        recordComponent.signature = signature;
-        try {
-            recordComponent.accessor = declaringClass.getDeclaredMethod(name);
-        } catch (NoSuchMethodException e) {
-            throw VMError.shouldNotReachHere("Record component accessors should have been registered by the analysis.");
-        }
-        recordComponent.annotations = annotations;
-        recordComponent.typeAnnotations = typeAnnotations;
-        return recordComponent;
+        return ReflectionObjectFactory.newRecordComponent(declaringClass, name, type, signature, annotations, typeAnnotations);
     }
 
     /**
@@ -638,45 +607,47 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      */
 
     private static Parameter decodeReflectParameter(UnsafeArrayTypeReader buf, Executable executable, int i) {
-        String name = decodeName(buf);
+        String name = decodeOtherString(buf);
         int modifiers = buf.getUVInt();
 
-        Target_java_lang_reflect_Parameter parameter = new Target_java_lang_reflect_Parameter();
-        parameter.constructor(name, modifiers, executable, i);
-        return SubstrateUtil.cast(parameter, Parameter.class);
+        return ReflectionObjectFactory.newParameter(executable, i, name, modifiers);
     }
 
-    /**
-     * Types are encoded as indices in the frame info source classes array.
-     */
+    /** Types are encoded as indices in the code info classes array. */
     private static Class<?> decodeType(UnsafeArrayTypeReader buf) {
         int classIndex = buf.getSVInt();
         if (classIndex == NO_METHOD_METADATA) {
             return null;
         }
-        return ImageSingletons.lookup(MetadataAccessor.class).getClass(classIndex);
+        return MetadataAccessor.singleton().getClass(classIndex);
     }
 
-    /**
-     * Names are encoded as indices in the frame info source method names array.
-     */
-    private static String decodeName(UnsafeArrayTypeReader buf) {
+    /** Names are encoded as indices in the code info member names array. */
+    private static String decodeMemberName(UnsafeArrayTypeReader buf) {
         int nameIndex = buf.getSVInt();
-        String name = ImageSingletons.lookup(MetadataAccessor.class).getString(nameIndex);
+        String name = MetadataAccessor.singleton().getMemberName(nameIndex);
+        /* Interning the string to ensure JDK8 method search succeeds */
+        return name == null ? null : name.intern();
+    }
+
+    /** Strings other than member names are encoded as indices in the code info strings array. */
+    private static String decodeOtherString(UnsafeArrayTypeReader buf) {
+        int nameIndex = buf.getSVInt();
+        String name = MetadataAccessor.singleton().getOtherString(nameIndex);
         /* Interning the string to ensure JDK8 method search succeeds */
         return name == null ? null : name.intern();
     }
 
     /**
      * Objects (method accessors and reflection objects in the heap) are encoded as indices in the
-     * frame info object constants array.
+     * code info object constants array.
      */
     private static Object decodeObject(UnsafeArrayTypeReader buf) {
         int objectIndex = buf.getSVInt();
         if (objectIndex == NULL_OBJECT) {
             return null;
         }
-        return ImageSingletons.lookup(MetadataAccessor.class).getObject(objectIndex);
+        return MetadataAccessor.singleton().getObject(objectIndex);
     }
 
     /**
@@ -722,24 +693,30 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         @SuppressWarnings("unchecked")
         public <T> T getObject(int index) {
             CodeInfo info = getCodeInfo();
-            return (T) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), index);
+            return (T) NonmovableArrays.getObject(CodeInfoAccess.getObjectConstants(info), index);
         }
 
         @Override
         public Class<?> getClass(int index) {
             CodeInfo info = getCodeInfo();
-            return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), index);
+            return NonmovableArrays.getObject(CodeInfoAccess.getClasses(info), index);
         }
 
         @Override
-        public String getString(int index) {
+        public String getMemberName(int index) {
             CodeInfo info = getCodeInfo();
-            String name = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), index);
-            return name;
+            return NonmovableArrays.getObject(CodeInfoAccess.getMemberNames(info), index);
         }
 
+        @Override
+        public String getOtherString(int index) {
+            CodeInfo info = getCodeInfo();
+            return NonmovableArrays.getObject(CodeInfoAccess.getOtherStrings(info), index);
+        }
+
+        /** @see com.oracle.svm.core.code.RuntimeMetadataEncoding */
         private static CodeInfo getCodeInfo() {
-            return CodeInfoTable.getImageCodeInfo();
+            return CodeInfoTable.getFirstImageCodeInfo();
         }
     }
 }
