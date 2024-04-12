@@ -47,8 +47,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
-import java.util.function.BiPredicate;
-
 /**
  * An implementation of a dialect (flavor) of regular expressions other than ECMAScript. It provides
  * support for validating and parsing (building the AST) of regular expressions.
@@ -76,7 +74,12 @@ public abstract class RegexFlavor {
 
     public abstract RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer);
 
-    public abstract BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast);
+    @FunctionalInterface
+    public interface EqualsIgnoreCasePredicate {
+        boolean test(int a, int b, boolean alternativeMode);
+    }
+
+    public abstract EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast);
 
     private boolean hasTrait(int traitMask) {
         return (traits & traitMask) != 0;

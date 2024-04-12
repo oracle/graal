@@ -83,7 +83,7 @@ public final class PythonRegexParser implements RegexParser {
     }
 
     private static RegexFlags createECMAScriptFlags(RegexSource source) {
-        boolean sticky = source.getOptions().getPythonMethod() == PythonMethod.match || source.getOptions().getPythonMethod() == PythonMethod.fullmatch;
+        boolean sticky = source.getOptions().getMatchingMode() == MatchingMode.match || source.getOptions().getMatchingMode() == MatchingMode.fullmatch;
         return RegexFlags.builder().dotAll(true).unicode(true).sticky(sticky).build();
     }
 
@@ -105,7 +105,7 @@ public final class PythonRegexParser implements RegexParser {
     @TruffleBoundary
     public RegexAST parse() throws RegexSyntaxException {
         astBuilder.pushRootGroup(true);
-        if (lexer.source.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
+        if (lexer.source.getOptions().getMatchingMode() == MatchingMode.fullmatch) {
             astBuilder.pushGroup();
         }
         List<Token.BackReference> conditionalBackReferences = new ArrayList<>();
@@ -277,7 +277,7 @@ public final class PythonRegexParser implements RegexParser {
                     break;
             }
         }
-        if (lexer.source.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
+        if (lexer.source.getOptions().getMatchingMode() == MatchingMode.fullmatch) {
             astBuilder.popGroup();
             astBuilder.addDollar();
         }

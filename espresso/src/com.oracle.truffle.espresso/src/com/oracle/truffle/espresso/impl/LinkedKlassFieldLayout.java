@@ -222,6 +222,23 @@ final class LinkedKlassFieldLayout {
                         }),
                         entry(Type.java_lang_Module, new HiddenField[]{
                                         new HiddenField(Name.HIDDEN_MODULE_ENTRY)
+                        }),
+                        entry(Type.java_util_regex_Pattern, new HiddenField[]{
+                                        new HiddenField(Name.HIDDEN_TREGEX_MATCH),
+                                        new HiddenField(Name.HIDDEN_TREGEX_FULLMATCH),
+                                        new HiddenField(Name.HIDDEN_TREGEX_SEARCH),
+                                        new HiddenField(Name.HIDDEN_TREGEX_UNSUPPORTED)
+                        }),
+                        entry(Type.java_util_regex_Matcher, new HiddenField[]{
+                                        new HiddenField(Name.HIDDEN_TREGEX_TSTRING),
+                                        new HiddenField(Name.HIDDEN_TREGEX_OLD_LAST_BACKUP),
+                                        new HiddenField(Name.HIDDEN_TREGEX_MOD_COUNT_BACKUP),
+                                        new HiddenField(Name.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP),
+                                        new HiddenField(Name.HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP),
+                                        new HiddenField(Name.HIDDEN_TREGEX_FROM_BACKUP),
+                                        new HiddenField(Name.HIDDEN_TREGEX_TO_BACKUP),
+                                        new HiddenField(Name.HIDDEN_TREGEX_SEARCH_FROM_BACKUP),
+                                        new HiddenField(Name.HIDDEN_TREGEX_MATCHING_MODE_BACKUP)
                         }));
 
         private final Symbol<Name> name;

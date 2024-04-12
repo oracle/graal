@@ -55,7 +55,7 @@ public final class PureNFAGenerator {
 
     private final RegexAST ast;
     private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxPureNFASize, "PureNFA explosion");
-    private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxPureNFATransitions, "NFA transition explosion");
+    private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxPureNFATransitions, "PureNFA transition explosion");
     private PureNFAState anchoredInitialState;
     private PureNFAState unAnchoredInitialState;
     private PureNFAState anchoredFinalState;

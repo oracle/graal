@@ -75,6 +75,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     static final int FLAG_HAS_LOOK_AHEADS = 1 << 21;
     static final int FLAG_HAS_BACK_REFERENCES = 1 << 22;
     static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 23;
+    static final int FLAG_BACK_REFERENCE_IS_IGNORE_CASE_ALTERNATIVE_MODE = 1 << 24;
 
     private int id = -1;
     private RegexASTNode parent;
