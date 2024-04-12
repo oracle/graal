@@ -35,6 +35,7 @@ import java.lang.reflect.Modifier;
 import java.nio.charset.CharsetDecoder;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.security.AccessControlContext;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -376,6 +377,15 @@ class ForkJoinPoolCommonAccessor {
         }
         return result;
     }
+}
+
+@TargetClass(value = java.util.concurrent.ForkJoinPool.class, innerClass = "DefaultForkJoinWorkerThreadFactory", onlyWith = JDK23OrLater.class)
+@SuppressWarnings("removal")
+final class Target_java_util_concurrent_ForkJoinPool_DefaultForkJoinWorkerThreadFactory {
+    @Alias @RecomputeFieldValue(kind = Reset) //
+    static AccessControlContext regularACC;
+    @Alias @RecomputeFieldValue(kind = Reset) //
+    static AccessControlContext commonACC;
 }
 
 /** Dummy class to have a class with the file's name. */
