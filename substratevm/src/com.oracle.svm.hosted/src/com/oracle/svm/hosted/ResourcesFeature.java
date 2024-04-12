@@ -61,6 +61,7 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
+import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
 import com.oracle.svm.core.MissingRegistrationUtils;
@@ -553,6 +554,8 @@ public final class ResourcesFeature implements InternalFeature {
             } catch (IOException e) {
                 throw VMError.shouldNotReachHere("Json writer cannot write to: " + reportLocation, e);
             }
+
+            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, reportLocation);
         }
     }
 
