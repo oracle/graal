@@ -50,6 +50,10 @@ public class SubstrateMethodPointerStamp extends AbstractPointerStamp {
         return METHOD_NON_NULL;
     }
 
+    public static SubstrateMethodPointerStamp methodAlwaysNull() {
+        return METHOD_ALWAYS_NULL;
+    }
+
     @Override
     protected AbstractPointerStamp copyWith(boolean newNonNull, boolean newAlwaysNull) {
         if (newNonNull) {

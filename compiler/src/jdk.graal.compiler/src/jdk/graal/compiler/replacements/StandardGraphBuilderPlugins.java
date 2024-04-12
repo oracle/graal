@@ -521,7 +521,9 @@ public class StandardGraphBuilderPlugins {
 
                 ValueNode array;
                 if (isArrayGuard != null) {
-                    AbstractObjectStamp alwaysArrayStamp = ((AbstractObjectStamp) objectNonNull.stamp(NodeView.DEFAULT)).asAlwaysArray();
+                    // The ObjectIsArrayNode only proves the array property for the stamp and not
+                    // the nullness property, so properly record that and not the nullness.
+                    AbstractObjectStamp alwaysArrayStamp = ((AbstractObjectStamp) StampFactory.object()).asAlwaysArray();
                     array = b.add(new PiNode(objectNonNull, alwaysArrayStamp, isArrayGuard.asNode()));
                 } else {
                     array = objectNonNull;
