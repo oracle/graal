@@ -28,6 +28,7 @@ import static com.oracle.svm.core.jdk.Resources.NEGATIVE_QUERY_MARKER;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +42,7 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.util.LogUtils;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class EmbeddedResourceExporter {
@@ -94,6 +96,14 @@ public class EmbeddedResourceExporter {
     }
 
     private static List<ResourceReportEntry> getResourceReportEntryList(ConcurrentHashMap<Resources.ModuleResourceKey, List<String>> collection) {
+        if (collection.isEmpty()) {
+            LogUtils.warning("Attempting to write information about resources without data being collected. " +
+                            "Either the GenerateEmbeddedResourcesFile hosted option is disabled " +
+                            "or the application doesn't have any resource registered");
+
+            return Collections.emptyList();
+        }
+
         List<ResourceReportEntry> resourceInfoList = new ArrayList<>();
         EconomicMap<Resources.ModuleResourceKey, ResourceStorageEntryBase> resourceStorage = Resources.singleton().getResourceStorage();
         resourceStorage.getKeys().forEach(key -> {
