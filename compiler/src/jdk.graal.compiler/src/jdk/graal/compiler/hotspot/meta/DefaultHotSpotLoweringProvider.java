@@ -153,13 +153,13 @@ import jdk.graal.compiler.nodes.extended.OSRLockNode;
 import jdk.graal.compiler.nodes.extended.OSRMonitorEnterNode;
 import jdk.graal.compiler.nodes.extended.OSRStartNode;
 import jdk.graal.compiler.nodes.extended.StoreHubNode;
-import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1PostWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1PreWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrier;
-import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
-import jdk.graal.compiler.nodes.gc.SerialWriteBarrier;
+import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1PostWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1PreWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrierNode;
+import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
@@ -470,20 +470,26 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             lowerCheckcastArrayCopyCallNode((CheckcastArrayCopyCallNode) n, tool);
         } else if (n instanceof ArrayCopyWithDelayedLoweringNode) {
             arraycopySnippets.lower((ArrayCopyWithDelayedLoweringNode) n, tool);
-        } else if (n instanceof G1PreWriteBarrier) {
-            g1WriteBarrierSnippets.lower((G1PreWriteBarrier) n, tool);
-        } else if (n instanceof G1PostWriteBarrier) {
-            g1WriteBarrierSnippets.lower((G1PostWriteBarrier) n, tool);
-        } else if (n instanceof G1ReferentFieldReadBarrier) {
-            g1WriteBarrierSnippets.lower((G1ReferentFieldReadBarrier) n, tool);
-        } else if (n instanceof SerialWriteBarrier) {
-            serialWriteBarrierSnippets.lower((SerialWriteBarrier) n, tool);
-        } else if (n instanceof SerialArrayRangeWriteBarrier) {
-            serialWriteBarrierSnippets.lower((SerialArrayRangeWriteBarrier) n, tool);
-        } else if (n instanceof G1ArrayRangePreWriteBarrier) {
-            g1WriteBarrierSnippets.lower((G1ArrayRangePreWriteBarrier) n, tool);
-        } else if (n instanceof G1ArrayRangePostWriteBarrier) {
-            g1WriteBarrierSnippets.lower((G1ArrayRangePostWriteBarrier) n, tool);
+        } else if (n instanceof G1PreWriteBarrierNode) {
+            if (!GraalOptions.AssemblyGCBarriers.getValue(n.getOptions())) {
+                g1WriteBarrierSnippets.lower((G1PreWriteBarrierNode) n, tool);
+            }
+        } else if (n instanceof G1PostWriteBarrierNode) {
+            if (!GraalOptions.AssemblyGCBarriers.getValue(n.getOptions())) {
+                g1WriteBarrierSnippets.lower((G1PostWriteBarrierNode) n, tool);
+            }
+        } else if (n instanceof G1ReferentFieldReadBarrierNode) {
+            if (!GraalOptions.AssemblyGCBarriers.getValue(n.getOptions())) {
+                g1WriteBarrierSnippets.lower((G1ReferentFieldReadBarrierNode) n, tool);
+            }
+        } else if (n instanceof SerialWriteBarrierNode) {
+            serialWriteBarrierSnippets.lower((SerialWriteBarrierNode) n, tool);
+        } else if (n instanceof SerialArrayRangeWriteBarrierNode) {
+            serialWriteBarrierSnippets.lower((SerialArrayRangeWriteBarrierNode) n, tool);
+        } else if (n instanceof G1ArrayRangePreWriteBarrierNode) {
+            g1WriteBarrierSnippets.lower((G1ArrayRangePreWriteBarrierNode) n, tool);
+        } else if (n instanceof G1ArrayRangePostWriteBarrierNode) {
+            g1WriteBarrierSnippets.lower((G1ArrayRangePostWriteBarrierNode) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 getAllocationSnippets().lower((NewMultiArrayNode) n, tool);

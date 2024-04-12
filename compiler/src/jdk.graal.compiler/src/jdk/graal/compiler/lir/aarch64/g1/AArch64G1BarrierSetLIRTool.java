@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.amd64;
+package jdk.graal.compiler.lir.aarch64.g1;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
-
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.lir.gen.G1BarrierSetLIRTool;
+import jdk.vm.ci.code.Register;
 
 /**
- * AMD64 specific LIR generation for GC barriers.
+ * Platform dependent code generation for G1 barrier operations.
  */
-public abstract class AMD64BarrierSetLIRGenerator extends BarrierSetLIRGenerator {
+public interface AArch64G1BarrierSetLIRTool extends G1BarrierSetLIRTool {
 
     /**
-     * Emit an atomic read-and-write instruction with any required GC barriers.
+     * Return the current thread in a register. Usually this is a fixed register which can't be
+     * changed.
      */
-    public abstract Value emitAtomicReadAndWrite(LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
+    Register getThread(AArch64MacroAssembler masm);
 
     /**
-     * Emit an atomic compare and swap with any required GC barriers.
+     * Compute the card address into {@code cardAddress}.
      */
-    public abstract void emitCompareAndSwapOp(LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue,
-                    BarrierType barrierType);
+    void computeCard(Register cardAddress, Register storeAddress, Register cardtable, AArch64MacroAssembler masm);
+
+    /**
+     * Load an object field from {@code immediateAddress} into value.
+     */
+    void loadObject(AArch64MacroAssembler masm, Register value, Register immediateAddress);
+
+    /**
+     * Perform some lightweight validation that {@code value} is a valid object.
+     */
+    void verifyOop(AArch64MacroAssembler masm, Register value, Register tmp, Register tmp2, boolean compressed, boolean nonNull);
 }

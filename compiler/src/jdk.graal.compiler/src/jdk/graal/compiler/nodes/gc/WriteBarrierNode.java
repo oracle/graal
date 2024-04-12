@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,29 +24,40 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 
 @NodeInfo
-public abstract class ObjectWriteBarrier extends WriteBarrier {
+public abstract class WriteBarrierNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<ObjectWriteBarrier> TYPE = NodeClass.create(ObjectWriteBarrier.class);
-    @OptionalInput protected ValueNode value;
-    protected final boolean precise;
+    public static final NodeClass<WriteBarrierNode> TYPE = NodeClass.create(WriteBarrierNode.class);
+    @Input(InputType.Association) AddressNode address;
 
-    protected ObjectWriteBarrier(NodeClass<? extends ObjectWriteBarrier> c, AddressNode address, ValueNode value, boolean precise) {
-        super(c, address);
-        this.value = value;
-        this.precise = precise;
+    public enum Kind {
+        PRE_BARRIER,
+        POST_BARRIER
     }
 
-    public ValueNode getValue() {
-        return value;
+    protected WriteBarrierNode(NodeClass<? extends WriteBarrierNode> c, AddressNode address) {
+        super(c, StampFactory.forVoid());
+        this.address = address;
     }
 
-    public boolean usePrecise() {
-        return precise;
+    @Override
+    public void lower(LoweringTool tool) {
+        assert graph().getGuardsStage().areFrameStatesAtDeopts();
+        tool.getLowerer().lower(this, tool);
     }
+
+    public AddressNode getAddress() {
+        return address;
+    }
+
+    public abstract Kind getKind();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,22 @@
  */
 package jdk.graal.compiler.lir.gen;
 
-public abstract class BarrierSetLIRGenerator implements BarrierSetLIRGeneratorTool {
-    protected LIRGenerator lirGen;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.Variable;
+import jdk.vm.ci.meta.Value;
 
-    public LIRGenerator getLIRGen() {
-        return lirGen;
-    }
+/**
+ * The platform independent base class for LIR generation for garbage collectors that need read
+ * barriers. Platform dependent operations are added in subinterfaces.
+ */
+public interface ReadBarrierSetLIRGeneratorTool extends BarrierSetLIRGeneratorTool {
+
+    /**
+     * Emit a read of a memory location along with the required read barrier.. {@code barrierType}
+     * will always be something besides {@link BarrierType#NONE}.
+     */
+    Variable emitBarrieredLoad(LIRGeneratorTool tool, LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, BarrierType barrierType);
 }

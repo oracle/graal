@@ -28,18 +28,19 @@ package jdk.graal.compiler.core.common.memory;
  * The types of write and read barriers attached to memory operations.
  */
 public enum BarrierType {
+
     /**
      * Primitive access which does not require a barrier.
      */
     NONE,
 
     /**
-     * Array object access.
+     * Array object write.
      */
     ARRAY,
 
     /**
-     * Field object access.
+     * Field object write.
      */
     FIELD,
 
@@ -58,7 +59,7 @@ public enum BarrierType {
      * access decorated with {@code ON_WEAK_OOP_REF}. Depending on the particular garbage collector
      * this might do something different than {@link #READ}.
      */
-    REFERENCE_GET,
+    REFERENCE_GET(false),
 
     /**
      * Read of {@link java.lang.ref.Reference}{@code .referent} in the context of
@@ -67,7 +68,7 @@ public enum BarrierType {
      * particular garbage collector this might do something different than {@link #READ}.
      */
 
-    WEAK_REFERS_TO,
+    WEAK_REFERS_TO(false),
 
     /**
      * Read of {@link java.lang.ref.Reference}{@code .referent} in the context of
@@ -76,5 +77,26 @@ public enum BarrierType {
      * Depending on the particular garbage collector this might do something different than
      * {@link #READ}.
      */
-    PHANTOM_REFERS_TO
+    PHANTOM_REFERS_TO(false);
+
+    private final boolean canReadEliminate;
+
+    BarrierType(boolean canReadEliminate) {
+        this.canReadEliminate = canReadEliminate;
+    }
+
+    BarrierType() {
+        this.canReadEliminate = true;
+    }
+
+    /**
+     * Returns true if accssses using the {@link BarrierType} are permitted to be folded by the
+     * optimizer. Accesses by {@link java.lang.ref.Reference#get},
+     * {@link java.lang.ref.WeakReference}{@code .refersTo0}, and
+     * {@link java.lang.ref.PhantomReference}{@code .refersTo0} shouldn't be optimized as those
+     * particular reads have special GC semantics.
+     */
+    public boolean canReadEliminate() {
+        return canReadEliminate;
+    }
 }

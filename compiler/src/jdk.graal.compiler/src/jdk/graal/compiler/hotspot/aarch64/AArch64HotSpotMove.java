@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.hotspot.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
@@ -40,7 +40,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -160,14 +159,14 @@ public class AArch64HotSpotMove {
             Register inputRegister = asRegister(input);
             Register resultRegister = asRegister(result);
             Register base = encoding.hasBase() ? asRegister(baseRegister) : null;
-            emitUncompressCode(masm, inputRegister, resultRegister, base, encoding.getShift(), nonNull);
+            emitUncompressCode(masm, inputRegister, resultRegister, base, encoding, nonNull);
         }
 
-        public static void emitUncompressCode(AArch64MacroAssembler masm, Register inputRegister, Register resReg, Register baseReg, int shift, boolean nonNull) {
+        public static void emitUncompressCode(AArch64MacroAssembler masm, Register inputRegister, Register resReg, Register baseReg, CompressEncoding encoding, boolean nonNull) {
             // result = ptr << shift
-            if (baseReg == null) {
-                if (shift != 0) {
-                    masm.lsl(64, resReg, inputRegister, shift);
+            if (!encoding.hasBase()) {
+                if (encoding.getShift() != 0) {
+                    masm.lsl(64, resReg, inputRegister, encoding.getShift());
                 } else if (!resReg.equals(inputRegister)) {
                     masm.mov(64, resReg, inputRegister);
                 }
@@ -176,7 +175,7 @@ public class AArch64HotSpotMove {
 
             // result = base + (ptr << shift)
             if (nonNull) {
-                masm.add(64, resReg, baseReg, inputRegister, AArch64Assembler.ShiftType.LSL, shift);
+                masm.add(64, resReg, baseReg, inputRegister, AArch64Assembler.ShiftType.LSL, encoding.getShift());
             } else {
                 // if ptr is null it has to be null after decompression
                 Label done = new Label();
@@ -184,7 +183,7 @@ public class AArch64HotSpotMove {
                     masm.mov(32, resReg, inputRegister);
                 }
                 masm.cbz(32, resReg, done);
-                masm.add(64, resReg, baseReg, resReg, AArch64Assembler.ShiftType.LSL, shift);
+                masm.add(64, resReg, baseReg, resReg, AArch64Assembler.ShiftType.LSL, encoding.getShift());
                 masm.bind(done);
             }
         }

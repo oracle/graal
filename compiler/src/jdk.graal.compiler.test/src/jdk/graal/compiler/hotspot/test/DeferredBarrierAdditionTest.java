@@ -26,15 +26,18 @@ package jdk.graal.compiler.hotspot.test;
 
 import static org.junit.Assume.assumeTrue;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
-import jdk.graal.compiler.nodes.gc.G1PostWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1PreWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrier;
-import jdk.graal.compiler.nodes.gc.SerialWriteBarrier;
+import jdk.graal.compiler.nodes.gc.G1PostWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1PreWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrierNode;
+import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
@@ -47,9 +50,6 @@ import jdk.graal.compiler.phases.common.inlining.policy.InlineEverythingPolicy;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -98,10 +98,10 @@ public class DeferredBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
             int barriers = 0;
             if (config.useG1GC()) {
-                barriers = graph.getNodes().filter(G1ReferentFieldReadBarrier.class).count() + graph.getNodes().filter(G1PreWriteBarrier.class).count() +
-                                graph.getNodes().filter(G1PostWriteBarrier.class).count();
+                barriers = graph.getNodes().filter(G1ReferentFieldReadBarrierNode.class).count() + graph.getNodes().filter(G1PreWriteBarrierNode.class).count() +
+                                graph.getNodes().filter(G1PostWriteBarrierNode.class).count();
             } else {
-                barriers = graph.getNodes().filter(SerialWriteBarrier.class).count();
+                barriers = graph.getNodes().filter(SerialWriteBarrierNode.class).count();
             }
             if (expectedBarriers != barriers) {
                 Assert.assertEquals(getScheduledGraphString(graph), expectedBarriers, barriers);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package jdk.graal.compiler.lir.gen;
 
-package jdk.graal.compiler.nodes.gc;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
+/**
+ * The platform independent base class for LIR generation for garbage collectors that need write
+ * barriers. Platform dependent operations are added in subinterfaces.
+ */
+public interface WriteBarrierSetLIRGeneratorTool extends BarrierSetLIRGeneratorTool {
 
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.memory.address.AddressNode;
+    /**
+     * @param address the location being updated
+     * @param expectedObject the expected pre-value if known
+     * @param nonNull true if expectedObject is known to non-null
+     */
+    void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean nonNull);
 
-@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class G1ArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<G1ArrayRangePreWriteBarrier> TYPE = NodeClass.create(G1ArrayRangePreWriteBarrier.class);
-
-    public G1ArrayRangePreWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
-        super(TYPE, address, length, elementStride);
-    }
-
-    @Override
-    public Kind getKind() {
-        return Kind.PRE_BARRIER;
-    }
+    /**
+     * @param address the location being updated
+     * @param value the value being written
+     * @param nonNull true if {@code value} is known to be non-null
+     */
+    void emitPostWriteBarrier(LIRGeneratorTool lirTool, Value address, Value value, boolean nonNull);
 }
