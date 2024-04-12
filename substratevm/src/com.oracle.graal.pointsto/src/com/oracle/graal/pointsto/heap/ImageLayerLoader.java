@@ -387,8 +387,7 @@ public class ImageLayerLoader {
     }
 
     public int getBaseLayerTypeId(AnalysisType type) {
-        Class<?> clazz = type.getJavaClass();
-        String typeIdentifier = imageLayerSnapshotUtil.getTypeIdentifier(type, clazz.getModule().getName());
+        String typeIdentifier = imageLayerSnapshotUtil.getTypeIdentifier(type);
         if (type.getWrapped() instanceof BaseLayerType) {
             /*
              * If the type is from the base layer, we remove the BASE_LAYER_SUFFIX from the
@@ -533,8 +532,7 @@ public class ImageLayerLoader {
     }
 
     private EconomicMap<String, Object> getMethodData(AnalysisMethod analysisMethod) {
-        Class<?> clazz = analysisMethod.getDeclaringClass().getJavaClass();
-        String name = imageLayerSnapshotUtil.getMethodIdentifier(analysisMethod, clazz.getModule().getName());
+        String name = imageLayerSnapshotUtil.getMethodIdentifier(analysisMethod);
         return getElementData(METHODS_TAG, name);
     }
 

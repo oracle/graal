@@ -29,6 +29,7 @@ import static com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSub
 import static com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor.isProxyType;
 import static jdk.graal.compiler.java.LambdaUtils.isLambdaType;
 
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,9 +46,12 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
+import com.oracle.svm.hosted.code.FactoryMethod;
+import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     private static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
@@ -66,14 +70,14 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     protected final Map<AnalysisType, Set<Integer>> fieldsToRelink = new HashMap<>();
 
     @Override
-    public String getTypeIdentifier(AnalysisType type, String moduleName) {
+    public String getTypeIdentifier(AnalysisType type) {
         if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
             getGeneratedSerializationName(type);
         }
         if (isProxyType(type)) {
             return type.toJavaName(true);
         }
-        return super.getTypeIdentifier(type, moduleName);
+        return super.getTypeIdentifier(type);
     }
 
     private static String generatedSerializationClassName(SerializationSupport.SerializationLookupKey serializationLookupKey) {
@@ -81,22 +85,33 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     }
 
     @Override
-    public String getMethodIdentifier(AnalysisMethod method, String moduleName) {
+    public String getMethodIdentifier(AnalysisMethod method) {
         AnalysisType declaringClass = method.getDeclaringClass();
+        String moduleName = declaringClass.getJavaClass().getModule().getName();
         if (declaringClass.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
             return getGeneratedSerializationName(declaringClass) + ":" + method.getName();
         }
+        if (method.wrapped instanceof FactoryMethod factoryMethod) {
+            ResolvedJavaMethod targetConstructor = factoryMethod.getTargetConstructor();
+            return addModuleName(targetConstructor.getDeclaringClass().toJavaName(true) + getQualifiedName(method), moduleName);
+        }
+        if (method.wrapped instanceof IncompatibleClassChangeFallbackMethod) {
+            Executable originalMethod = method.getJavaMethod();
+            if (originalMethod != null) {
+                return addModuleName(method.getQualifiedName() + " " + method.getJavaMethod().toString(), moduleName);
+            }
+        }
         if (!(method.wrapped instanceof HotSpotResolvedJavaMethod)) {
-            return addModuleName(method.getQualifiedName(), moduleName);
+            return addModuleName(getQualifiedName(method), moduleName);
         }
         /*
          * Those methods cannot use the name of the wrapped method as it would not use the name of
          * the SubstitutionType
          */
         if (isLambdaType(declaringClass) || isInjectedInvokerType(declaringClass) || isMethodHandleType(declaringClass) || isProxyType(declaringClass)) {
-            return method.getQualifiedName();
+            return getQualifiedName(method);
         }
-        return super.getMethodIdentifier(method, moduleName);
+        return super.getMethodIdentifier(method);
     }
 
     /*
