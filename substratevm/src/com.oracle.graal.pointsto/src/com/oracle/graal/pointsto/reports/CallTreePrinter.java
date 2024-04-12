@@ -144,12 +144,16 @@ public final class CallTreePrinter {
     }
 
     static class InvokeNode {
+        static int invokeId = 0;
+
+        private final int id;
         private final AnalysisMethod targetMethod;
         private final List<Node> callees;
         private final boolean isDirectInvoke;
         private final SourceReference[] sourceReferences;
 
         InvokeNode(AnalysisMethod targetMethod, boolean isDirectInvoke, SourceReference[] sourceReferences) {
+            this.id = invokeId++;
             this.targetMethod = targetMethod;
             this.isDirectInvoke = isDirectInvoke;
             this.sourceReferences = sourceReferences;
@@ -366,22 +370,17 @@ public final class CallTreePrinter {
         Map<Integer, Set<BciEndEdge>> virtualEdges = new HashMap<>();
         Map<Integer, Set<Integer>> overridenByEdges = new HashMap<>();
 
-        final Iterator<MethodNode> iterator = methodToNode.values().stream().filter(n -> n.isEntryPoint).iterator();
-        while (iterator.hasNext()) {
-            final MethodNode node = iterator.next();
+        List<MethodNode> nodes = methodToNode.values().stream().filter(n -> n.isEntryPoint).toList();
+        for (MethodNode node : nodes) {
             entryPointIds.add(node.id);
-            walkNodes(node, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId);
+            walkNodes(node, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId, methodToNode);
         }
 
         String msgPrefix = "call tree csv file for ";
         String timeStamp = ReportUtils.getTimeStampString();
-        toCsvFile(msgPrefix + "vm entry point", reportsPath, "call_tree_vm", reportName, timeStamp, CallTreePrinter::printVMEntryPoint);
         toCsvFile(msgPrefix + "methods", reportsPath, "call_tree_methods", reportName, timeStamp, writer -> printMethodNodes(methodToNode.values(), writer));
-        toCsvFile(msgPrefix + "virtual methods", reportsPath, "call_tree_virtual_methods", reportName, timeStamp, writer -> printVirtualNodes(virtualNodes, writer));
-        toCsvFile(msgPrefix + "entry points", reportsPath, "call_tree_entry_points", reportName, timeStamp, writer -> printEntryPointIds(entryPointIds, writer));
-        toCsvFile(msgPrefix + "direct edges", reportsPath, "call_tree_direct_edges", reportName, timeStamp, writer -> printBciEdges(directEdges, writer));
-        toCsvFile(msgPrefix + "overriden by edges", reportsPath, "call_tree_override_by_edges", reportName, timeStamp, writer -> printNonBciEdges(overridenByEdges, writer));
-        toCsvFile(msgPrefix + "virtual edges", reportsPath, "call_tree_virtual_edges", reportName, timeStamp, writer -> printBciEdges(virtualEdges, writer));
+        toCsvFile(msgPrefix + "invokes", reportsPath, "call_tree_invokes", reportName, timeStamp, writer -> printInvokeNodes(methodToNode, writer));
+        toCsvFile(msgPrefix + "targets", reportsPath, "call_tree_targets", reportName, timeStamp, writer -> printCallTargets(methodToNode, writer));
     }
 
     private static void toCsvFile(String description, String reportsPath, String prefix, String reportName, String timeStamp, Consumer<PrintWriter> reporter) {
@@ -410,26 +409,64 @@ public final class CallTreePrinter {
     }
 
     private static void printMethodNodes(Collection<MethodNode> methods, PrintWriter writer) {
-        writer.println(convertToCSV("Id", "Name", "Type", "Parameters", "Return", "Display", "Flags"));
+        writer.println(convertToCSV("Id", "Name", "Type", "Parameters", "Return", "Display", "Flags", "IsEntryPoint"));
         methods.stream()
                         .map(CallTreePrinter::methodNodeInfo)
                         .map(CallTreePrinter::convertToCSV)
                         .forEach(writer::println);
     }
 
+    private static void printInvokeNodes(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
+        writer.println(convertToCSV("Id", "MethodId", "BytecodeIndexes", "TargetId", "IsDirect"));
+        methodToNode.values().stream()
+                .flatMap(node -> node.invokes.stream()
+                        .filter(invoke -> !invoke.callees.isEmpty())
+                        .map(invoke -> invokeNodeInfo(methodToNode, node, invoke)))
+                .map(CallTreePrinter::convertToCSV)
+                .forEach(writer::println);
+    }
+
+    private static void printCallTargets(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
+        writer.println(convertToCSV("InvokeId", "TargetId"));
+        methodToNode.values().stream()
+                .flatMap(node -> node.invokes.stream()
+                        .filter(invoke -> !invoke.callees.isEmpty())
+                        .flatMap(invoke -> invoke.callees.stream()
+                                .map(callee -> callTargetInfo(invoke, callee))))
+                .map(CallTreePrinter::convertToCSV)
+                .forEach(writer::println);
+    }
+
     private static List<String> methodNodeInfo(MethodNode method) {
         return resolvedJavaMethodInfo(method.id, method.method);
     }
 
+    private static List<String> invokeNodeInfo(Map<AnalysisMethod, MethodNode> methodToNode, MethodNode method, InvokeNode invoke) {
+        return Arrays.asList(
+                String.valueOf(invoke.id),
+                String.valueOf(method.id),
+                showBytecodeIndexes(bytecodeIndexes(invoke)),
+                String.valueOf(methodToNode.get(invoke.targetMethod).id),
+                String.valueOf(invoke.isDirectInvoke));
+    }
+
+    private static List<String> callTargetInfo(InvokeNode invoke, Node callee) {
+        if (callee instanceof MethodNodeReference) {
+            callee = ((MethodNodeReference) callee).methodNode;
+        }
+        return Arrays.asList(String.valueOf(invoke.id), String.valueOf(((MethodNode) callee).id));
+    }
+
     private static void walkNodes(MethodNode methodNode, Map<Integer, Set<BciEndEdge>> directEdges, Map<Integer, Set<BciEndEdge>> virtualEdges, Map<Integer, Set<Integer>> overridenByEdges,
-                    Map<List<String>, Integer> virtualNodes, Set<MethodNode> nonVirtualNodes, AtomicInteger virtualNodeId) {
+                    Map<List<String>, Integer> virtualNodes, Set<MethodNode> nonVirtualNodes, AtomicInteger virtualNodeId, Map<AnalysisMethod, MethodNode> methodToNode) {
         for (InvokeNode invoke : methodNode.invokes) {
+            methodToNode.computeIfAbsent(invoke.targetMethod, MethodNode::new);
             if (invoke.isDirectInvoke) {
                 if (invoke.callees.size() > 0) {
                     Node calleeNode = invoke.callees.get(0);
                     addDirectEdge(methodNode.id, invoke, calleeNode, directEdges, nonVirtualNodes);
                     if (calleeNode instanceof MethodNode) {
-                        walkNodes((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId);
+                        walkNodes((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId, methodToNode);
                     }
                 }
             } else {
@@ -438,7 +475,7 @@ public final class CallTreePrinter {
                 for (Node calleeNode : invoke.callees) {
                     addOverridenByEdge(nodeId, calleeNode, overridenByEdges, nonVirtualNodes);
                     if (calleeNode instanceof MethodNode) {
-                        walkNodes((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId);
+                        walkNodes((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId, methodToNode);
                     }
                 }
             }
@@ -552,7 +589,8 @@ public final class CallTreePrinter {
                         parameters,
                         method.getSignature().getReturnType().toJavaName(true),
                         display(method),
-                        flags(method));
+                        flags(method),
+                        String.valueOf(method.isEntryPoint()));
     }
 
     private static String display(AnalysisMethod method) {
