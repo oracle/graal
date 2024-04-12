@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.charset;
+package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import org.graalvm.collections.EconomicMap;
-
-/**
- * This class hosts lookup tables for case insensitive Unicode properties. Those are used by the
- * Ruby flavor, which does case insensitive matching on property names. This class was created in
- * order to separate the data from {@link UnicodePropertyData}, which is machine generated, and from
- * {@link UnicodeProperties}, so that the tables are filled in only when needed (i.e. when this
- * class is accessed).
- */
-class UnicodePropertyDataRuby {
-    static final EconomicMap<String, String> PROPERTY_ALIASES_LOWERCASE = EconomicMap.create(UnicodePropertyData.PROPERTY_ALIASES.size());
-    static final EconomicMap<String, String> GENERAL_CATEGORY_ALIASES_LOWERCASE = EconomicMap.create(UnicodePropertyData.GENERAL_CATEGORY_ALIASES.size());
-    static final EconomicMap<String, String> SCRIPT_ALIASES_LOWERCASE = EconomicMap.create(UnicodePropertyData.SCRIPT_ALIASES.size());
-
-    static {
-        for (String propertyAlias : UnicodePropertyData.PROPERTY_ALIASES.getKeys()) {
-            PROPERTY_ALIASES_LOWERCASE.put(propertyAlias.toLowerCase(), propertyAlias);
-        }
-        for (String generalCategoryAlias : UnicodePropertyData.GENERAL_CATEGORY_ALIASES.getKeys()) {
-            GENERAL_CATEGORY_ALIASES_LOWERCASE.put(generalCategoryAlias.toLowerCase(), generalCategoryAlias);
-        }
-        for (String scriptAlias : UnicodePropertyData.SCRIPT_ALIASES.getKeys()) {
-            SCRIPT_ALIASES_LOWERCASE.put(scriptAlias.toLowerCase(), scriptAlias);
-        }
-    }
+public enum MatchingMode {
+    /**
+     * Scans for the first location matching the regular expression.
+     */
+    search,
+    /**
+     * Anchor the match to the beginning of the string (implicit <code>^</code>).
+     */
+    match,
+    /**
+     * Anchor the match to the beginning and end of the string (implicit <code>^</code> and
+     * <code>$</code>).
+     */
+    fullmatch;
 }

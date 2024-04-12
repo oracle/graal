@@ -91,7 +91,7 @@ import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.SafetyGu
                 name = EspressoLanguage.NAME, //
                 implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
-                dependentLanguages = "nfi", //
+                dependentLanguages = {"nfi"}, //
                 website = "https://www.graalvm.org/dev/reference-manual/java-on-truffle/")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {

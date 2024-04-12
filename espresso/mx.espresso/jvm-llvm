@@ -1,5 +1,5 @@
 # mx --dynamicimports=/vm,/compiler --components="Espresso Launcher,GraalVM compiler,Java on Truffle LLVM Java libraries,suite:tools" --disable-installables=true graalvm-show
 
-DYNAMIC_IMPORTS=/vm,/compiler
-COMPONENTS=Espresso Launcher,GraalVM compiler,Java on Truffle LLVM Java libraries,suite:tools
+DYNAMIC_IMPORTS=/vm,/compiler,/regex
+COMPONENTS=Espresso Launcher,GraalVM compiler,Java on Truffle LLVM Java libraries,suite:tools,rgx
 DISABLE_INSTALLABLES=true

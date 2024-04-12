@@ -45,7 +45,6 @@ import static com.oracle.truffle.api.CompilerDirectives.LIKELY_PROBABILITY;
 import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 
 import java.util.List;
-import java.util.function.BiPredicate;
 
 import org.graalvm.collections.Pair;
 
@@ -77,6 +76,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -108,7 +108,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     @CompilationFinal(dimensions = 1) private final CharMatcher[] matchers;
     private final int[] zeroWidthTermEnclosedCGLow;
     private final int[] zeroWidthQuantifierCGOffsets;
-    private final BiPredicate<Integer, Integer> equalsIgnoreCase;
+    private final RegexFlavor.EqualsIgnoreCasePredicate equalsIgnoreCase;
 
     @Child TruffleString.RegionEqualByteIndexNode regionMatchesNode;
     @Child TruffleString.ByteIndexOfStringNode indexOfNode;
@@ -817,6 +817,21 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     @ExplodeLoop
     protected void updateState(TRegexBacktrackingNFAExecutorLocals locals, PureNFATransition transition, int index) {
         CompilerAsserts.partialEvaluationConstant(transition);
+        if (isRecursiveBackreferences()) {
+            /*
+             * Recursive backreferences must be saved before capture groups bounds are overwritten
+             * by locals.apply
+             */
+            assert isForward();
+            for (QuantifierGuard guard : transition.getQuantifierGuards()) {
+                CompilerAsserts.partialEvaluationConstant(guard);
+                if (guard.getKind() == QuantifierGuard.Kind.updateRecursiveBackrefPointer) {
+                    locals.saveRecursiveBackrefGroupStart(guard.getIndex());
+                } else {
+                    break;
+                }
+            }
+        }
         locals.apply(transition, index);
         for (QuantifierGuard guard : transition.getQuantifierGuards()) {
             CompilerAsserts.partialEvaluationConstant(guard);
@@ -1073,7 +1088,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
      */
     private boolean canInlineBackReferenceIntoTransition(PureNFAState backRef) {
         assert backRef.isBackReference();
-        return !(backRef.isIgnoreCaseReference() || isLoneSurrogates());
+        return !(backRef.isIgnoreCaseReference() || isLoneSurrogates() || isRecursiveBackreferences());
     }
 
     private boolean matchBackReferenceSimple(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference, PureNFATransition transition, int index) {
@@ -1120,7 +1135,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             iBR = locals.getNextIndex();
             int codePointI = inputReadAndDecode(locals, i, codeRange);
             i = locals.getNextIndex();
-            if (injectBranchProbability(EXIT_PROBABILITY, !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI) : codePointBR == codePointI))) {
+            if (injectBranchProbability(EXIT_PROBABILITY,
+                            !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI, backReference.isIgnoreCaseReferenceAlternativeMode()) : codePointBR == codePointI))) {
                 locals.setNextIndex(saveNextIndex);
                 return -1;
             }
@@ -1154,8 +1170,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     }
 
     @TruffleBoundary
-    private boolean equalsIgnoreCase(int a, int b) {
-        return equalsIgnoreCase.test(a, b);
+    private boolean equalsIgnoreCase(int a, int b, boolean alternativeMode) {
+        return equalsIgnoreCase.test(a, b, alternativeMode);
     }
 
     private static int setFlag(int flags, int flag, boolean value) {

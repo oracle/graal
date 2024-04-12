@@ -50,7 +50,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.PythonMethod;
+import com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.RegexOptions;
@@ -93,9 +93,12 @@ public class RegexOptionsTest {
         assertTrue(opt.isAlwaysEager());
         assertTrue(opt.isDumpAutomata());
         assertTrue(opt.isRegressionTestMode());
-        assertEquals(PythonMethod.match, parse(setVal(RegexOptions.PYTHON_METHOD_NAME, RegexOptions.PYTHON_METHOD_MATCH)).getPythonMethod());
-        assertEquals(PythonMethod.fullmatch, parse(setVal(RegexOptions.PYTHON_METHOD_NAME, RegexOptions.PYTHON_METHOD_FULLMATCH)).getPythonMethod());
-        assertEquals(PythonMethod.search, parse(setVal(RegexOptions.PYTHON_METHOD_NAME, RegexOptions.PYTHON_METHOD_SEARCH)).getPythonMethod());
+        assertEquals(MatchingMode.match, parse(setVal(RegexOptions.PYTHON_METHOD_NAME, RegexOptions.MATCHING_MODE_MATCH)).getMatchingMode());
+        assertEquals(MatchingMode.fullmatch, parse(setVal(RegexOptions.PYTHON_METHOD_NAME, RegexOptions.MATCHING_MODE_FULLMATCH)).getMatchingMode());
+        assertEquals(MatchingMode.search, parse(setVal(RegexOptions.PYTHON_METHOD_NAME, RegexOptions.MATCHING_MODE_SEARCH)).getMatchingMode());
+        assertEquals(MatchingMode.match, parse(setVal(RegexOptions.MATCHING_MODE_NAME, RegexOptions.MATCHING_MODE_MATCH)).getMatchingMode());
+        assertEquals(MatchingMode.fullmatch, parse(setVal(RegexOptions.MATCHING_MODE_NAME, RegexOptions.MATCHING_MODE_FULLMATCH)).getMatchingMode());
+        assertEquals(MatchingMode.search, parse(setVal(RegexOptions.MATCHING_MODE_NAME, RegexOptions.MATCHING_MODE_SEARCH)).getMatchingMode());
         assertEquals("abc", parse(setVal(RegexOptions.PYTHON_LOCALE_NAME, "abc")).getPythonLocale());
         assertEquals(123, parse(RegexOptions.MAX_DFA_SIZE_NAME + "=123").getMaxDFASize());
         assertEquals(123, parse(RegexOptions.MAX_BACK_TRACKER_SIZE_NAME + "=123").getMaxBackTrackerCompileSize());

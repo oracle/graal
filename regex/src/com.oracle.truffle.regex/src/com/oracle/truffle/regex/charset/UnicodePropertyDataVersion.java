@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,21 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
 
-public enum PythonMethod {
-    /**
-     * The {@code search} method scans for the first location matching the regular expression.
-     */
-    search,
-    /**
-     * The {@code match} method returns a match if the beginning of the string matches the regular
-     * expression.
-     */
-    match,
-    /**
-     * The {@code fullmatch} method returns a match if the whole string matches the regular
-     * expression.
-     */
-    fullmatch;
+package com.oracle.truffle.regex.charset;
+
+public final class UnicodePropertyDataVersion {
+
+    /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+    public static final UnicodePropertyData UNICODE_15_0_0 = UnicodePropertyData.INSTANCE;
+    public static final UnicodePropertyData UNICODE_15_1_0 = UnicodePropertyData.populateUNICODE_15_1_0(UNICODE_15_0_0);
+
+    /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 }

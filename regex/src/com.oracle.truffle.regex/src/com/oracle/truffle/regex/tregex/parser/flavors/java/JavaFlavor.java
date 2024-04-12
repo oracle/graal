@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,49 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
+package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.charset.UnicodeProperties;
-import com.oracle.truffle.regex.charset.UnicodePropertyDataVersion;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
-import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
-import com.oracle.truffle.regex.tregex.parser.JSRegexValidator;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 
-public final class ECMAScriptFlavor extends RegexFlavor {
+/**
+ * An implementation of the java.util.regex.Pattern regex flavor.
+ */
+public final class JavaFlavor extends RegexFlavor {
 
-    public static final ECMAScriptFlavor INSTANCE = new ECMAScriptFlavor();
-    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_15_1_0, 0);
+    public static final JavaFlavor INSTANCE = new JavaFlavor();
 
-    private ECMAScriptFlavor() {
-        super(0);
-    }
-
-    @Override
-    public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        return new JSRegexValidator(language, source, compilationBuffer);
+    private JavaFlavor() {
+        super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | EMPTY_CHECKS_ON_MANDATORY_LOOP_ITERATIONS | FAILING_EMPTY_CHECKS_DONT_BACKTRACK |
+                        SUPPORTS_RECURSIVE_BACKREFERENCES);
     }
 
     @Override
     public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        return new JSRegexParser(language, source, compilationBuffer);
+        return JavaRegexParser.createParser(language, source, compilationBuffer);
+    }
+
+    @Override
+    public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        return JavaRegexValidator.createValidator(source, compilationBuffer);
     }
 
     @Override
     public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
-        if (ast.getFlags().isEitherUnicode()) {
-            return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode.getEqualsPredicate().test(a, b);
+        return (a, b, altMode) -> getCaseFoldingAlgorithm(altMode).getEqualsPredicate().test(a, b);
+    }
+
+    public static CaseFoldData.CaseFoldUnfoldAlgorithm getCaseFoldingAlgorithm(boolean isUnicodeCase) {
+        if (isUnicodeCase) {
+            return CaseFoldData.CaseFoldUnfoldAlgorithm.JavaUnicode;
         } else {
-            return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate().test(a, b);
+            return CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii;
         }
     }
 }
