@@ -5451,8 +5451,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("short branchTarget = " + readHandlerBc("branchIdx"));
                     if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
                         // Backward branches are only used internally by while
-                        // loops. They
-                        // should be resolved when the while loop ends.
+                        // loops. They should be resolved when the while loop ends.
                         b.startAssert().string("branchTarget != " + UNINIT).end();
                     } else {
                         // Mark branch target as unresolved, if necessary.
@@ -5471,15 +5470,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.newLine();
 
                     // Adjust relative branch targets.
-                    b.startIf().string("context.finallyRelativeBranches.contains(branchIdx)").end().startBlock();
+                    if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
+                        // Backward branches are only used for While. The While must be nested
+                        // within the handler, and so the branch should always be handler-relative.
+                        b.startAssert().string("context.finallyRelativeBranches.contains(branchIdx)").end();
+                    } else {
+                        b.startIf().string("context.finallyRelativeBranches.contains(branchIdx)").end().startBlock();
+                    }
                     b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
                     b.startIf().string("inFinallyTryHandler(context.parentContext)").end().startBlock();
                     b.lineComment("If we're currently nested inside some other finally handler, the branch will also need to be relocated in that handler.");
                     b.statement("context.parentContext.finallyRelativeBranches.add(offsetBci + branchIdx)");
                     b.end();
-                    b.end().startElseBlock();
-                    b.statement(writeBc("offsetBci + branchIdx", "branchTarget"));
-                    b.end();
+
+                    if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
+                        // do nothing
+                    } else {
+                        b.end().startElseBlock();
+                        b.statement(writeBc("offsetBci + branchIdx", "branchTarget"));
+                        b.end();
+                    }
                     b.end();
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
