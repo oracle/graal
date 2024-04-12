@@ -3921,10 +3921,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement(writeBc("endBranchIndex", "(short) bci"));
                     b.end();
 
-                    b.startIf().string("!operationData.finallyReachable || !operationData.tryReachable").end().startBlock();
-                    b.statement("markReachable(false)");
-                    b.end().startElseBlock();
-                    b.statement("updateReachable()");
+                    b.statement("markReachable(operationData.finallyReachable && operationData.tryReachable)").end();
                     b.end();
                     break;
                 case FINALLY_TRY_NO_EXCEPT:
