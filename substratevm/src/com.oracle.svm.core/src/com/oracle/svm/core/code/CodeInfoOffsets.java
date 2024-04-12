@@ -47,16 +47,16 @@ public final class CodeInfoOffsets {
         return OffsetOf.get(CodeInfoImpl.class, "GCData");
     }
 
-    public static long frameInfoObjectConstants() {
-        return OffsetOf.get(CodeInfoImpl.class, "FrameInfoObjectConstants");
+    public static long objectConstants() {
+        return OffsetOf.get(CodeInfoImpl.class, "ObjectConstants");
     }
 
-    public static long frameInfoSourceClasses() {
-        return OffsetOf.get(CodeInfoImpl.class, "FrameInfoSourceClasses");
+    public static long classes() {
+        return OffsetOf.get(CodeInfoImpl.class, "Classes");
     }
 
-    public static long frameInfoSourceMethodNames() {
-        return OffsetOf.get(CodeInfoImpl.class, "FrameInfoSourceMethodNames");
+    public static long memberNames() {
+        return OffsetOf.get(CodeInfoImpl.class, "MemberNames");
     }
 
     public static long deoptimizationObjectConstants() {

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.reflect;
+package com.oracle.svm.hosted.code;
 
 import static com.oracle.svm.core.meta.SharedField.LOC_UNINITIALIZED;
 
@@ -33,7 +33,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-public class ReflectionMetadata {
+final class ReflectionRuntimeMetadata {
 
     static class AnnotatedElementMetadata {
         final AnnotationValue[] annotations;
@@ -249,5 +249,8 @@ public class ReflectionMetadata {
             this.name = name;
             this.modifiers = modifiers;
         }
+    }
+
+    private ReflectionRuntimeMetadata() {
     }
 }

@@ -51,6 +51,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -261,17 +262,22 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public boolean hasCodeOffsetInImage() {
+    public ImageCodeInfo getImageCodeInfo() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
-    public int getCodeOffsetInImage() {
+    public boolean hasImageCodeOffset() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
-    public int getDeoptOffsetInImage() {
+    public int getImageCodeOffset() {
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public int getImageCodeDeoptOffset() {
         int result = 0;
         HostedMethod deoptTarget = getMultiMethod(DEOPT_TARGET_METHOD);
         if (deoptTarget != null && deoptTarget.isCodeAddressOffsetValid()) {

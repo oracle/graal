@@ -44,7 +44,7 @@ import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import sun.reflect.generics.repository.ConstructorRepository;
 
 @TargetClass(value = Constructor.class)
-public final class Target_java_lang_reflect_Constructor {
+final class Target_java_lang_reflect_Constructor {
     /** Generic info is created on demand at run time. */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private ConstructorRepository genericInfo;
@@ -62,7 +62,7 @@ public final class Target_java_lang_reflect_Constructor {
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
     @SuppressWarnings("hiding")
-    public native void constructor(Class<?> declaringClass, Class<?>[] parameterTypes, Class<?>[] checkedExceptions, int modifiers, int slot, String signature, byte[] annotations,
+    native void constructor(Class<?> declaringClass, Class<?>[] parameterTypes, Class<?>[] checkedExceptions, int modifiers, int slot, String signature, byte[] annotations,
                     byte[] parameterAnnotations);
 
     @Alias
@@ -79,14 +79,14 @@ public final class Target_java_lang_reflect_Constructor {
     static class AnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getAnnotationsEncoding((AccessibleObject) receiver);
+            return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getAnnotationsEncoding((AccessibleObject) receiver);
         }
     }
 
     static class ParameterAnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getParameterAnnotationsEncoding((Executable) receiver);
+            return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getParameterAnnotationsEncoding((Executable) receiver);
         }
     }
 }

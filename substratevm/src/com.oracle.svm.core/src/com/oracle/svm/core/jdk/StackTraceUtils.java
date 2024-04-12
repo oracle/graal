@@ -45,7 +45,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -393,7 +392,7 @@ final class BacktraceVisitor extends StackFrameVisitor {
                     return false;
                 }
             }
-        } else if (!isAOTCodePointer(ip)) {
+        } else if (!CodeInfoTable.isInAOTImageCode(ip)) {
             CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
             for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
                 if (!visitFrameInfo(frameInfo)) {
@@ -441,14 +440,6 @@ final class BacktraceVisitor extends StackFrameVisitor {
         index += entriesPerSourceReference();
         numFrames++;
         return numFrames != limit;
-    }
-
-    /**
-     * Determines whether a {@link CodePointer} refers to AOT compiled code that is stored in the
-     * image heap and therefore cannot be garbage collected.
-     */
-    public static boolean isAOTCodePointer(CodePointer ip) {
-        return CodeInfoAccess.contains(CodeInfoTable.getImageCodeInfo(), ip);
     }
 
     /**
