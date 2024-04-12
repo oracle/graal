@@ -122,13 +122,13 @@ public class G1BarrierSet implements BarrierSet {
             addReadNodeBarriers((ReadNode) n);
         } else if (n instanceof WriteNode) {
             WriteNode write = (WriteNode) n;
-            addWriteBarriers(write, write.value(), null, true, write.getUsedAsNullCheck());
+            addWriteBarriers(write, write.value(), null, true);
         } else if (n instanceof LoweredAtomicReadAndWriteNode) {
             LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
-            addWriteBarriers(atomic, atomic.getNewValue(), null, true, atomic.getUsedAsNullCheck());
+            addWriteBarriers(atomic, atomic.getNewValue(), null, true);
         } else if (n instanceof AbstractCompareAndSwapNode) {
             AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
-            addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false, false);
+            addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false);
         } else if (n instanceof ArrayRangeWrite) {
             addArrayRangeBarriers((ArrayRangeWrite) n);
         } else {
@@ -136,15 +136,23 @@ public class G1BarrierSet implements BarrierSet {
         }
     }
 
-    private static void addReadNodeBarriers(ReadNode node) {
+    private void addReadNodeBarriers(ReadNode node) {
         if (node.getBarrierType() == BarrierType.REFERENCE_GET) {
             StructuredGraph graph = node.graph();
-            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), node));
+            G1ReferentFieldReadBarrierNode barrier = graph.add(new G1ReferentFieldReadBarrierNode(node.getAddress(), maybeUncompressExpectedValue(node)));
             graph.addAfterFixed(node, barrier);
         }
     }
 
-    private void addWriteBarriers(FixedAccessNode node, ValueNode writtenValue, ValueNode expectedValue, boolean doLoad, boolean nullCheck) {
+    /**
+     * The expected value argument might be in compressed form so allow subclasses to uncompress the
+     * value if that's the preferred form by the backend implementation of the barrier.
+     */
+    protected ValueNode maybeUncompressExpectedValue(ValueNode value) {
+        return value;
+    }
+
+    private void addWriteBarriers(FixedAccessNode node, ValueNode writtenValue, ValueNode expectedValue, boolean doLoad) {
         BarrierType barrierType = node.getBarrierType();
         switch (barrierType) {
             case NONE:
@@ -159,13 +167,17 @@ public class G1BarrierSet implements BarrierSet {
                     if (!init) {
                         // The pre barrier does nothing if the value being read is null, so it can
                         // be explicitly skipped when this is an initializing store.
-                        addG1PreWriteBarrier(node, node.getAddress(), expectedValue, doLoad, nullCheck, graph);
+                        addG1PreWriteBarrier(node, node.getAddress(), expectedValue, doLoad, graph);
                     }
                     if (writeRequiresPostBarrier(node, writtenValue)) {
                         // Use a precise barrier for everything that might be an array write. Being
                         // too precise with the barriers does not cause any correctness issues.
-                        boolean precise = barrierType != BarrierType.FIELD;
-                        addG1PostWriteBarrier(node, node.getAddress(), writtenValue, precise, graph);
+                        ValueNode object = null;
+                        if (barrierType == BarrierType.FIELD) {
+                            object = node.getAddress().getBase();
+                            assert object != null;
+                        }
+                        addG1PostWriteBarrier(node, node.getAddress(), writtenValue, object, graph);
                     }
                 }
                 break;
@@ -188,11 +200,11 @@ public class G1BarrierSet implements BarrierSet {
             if (!write.isInitialization()) {
                 // The pre barrier does nothing if the value being read is null, so it can
                 // be explicitly skipped when this is an initializing store.
-                G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
+                G1ArrayRangePreWriteBarrierNode g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrierNode(write.getAddress(), write.getLength(), write.getElementStride()));
                 graph.addBeforeFixed(write.preBarrierInsertionPosition(), g1ArrayRangePreWriteBarrier);
             }
             if (arrayRangeWriteRequiresPostBarrier(write)) {
-                G1ArrayRangePostWriteBarrier g1ArrayRangePostWriteBarrier = graph.add(new G1ArrayRangePostWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
+                G1ArrayRangePostWriteBarrierNode g1ArrayRangePostWriteBarrier = graph.add(new G1ArrayRangePostWriteBarrierNode(write.getAddress(), write.getLength(), write.getElementStride()));
                 graph.addAfterFixed(write.postBarrierInsertionPosition(), g1ArrayRangePostWriteBarrier);
             }
         }
@@ -203,17 +215,16 @@ public class G1BarrierSet implements BarrierSet {
         return true;
     }
 
-    private static void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
-        G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(address, value, doLoad, nullCheck));
-        preBarrier.setStateBefore(node.stateBefore());
-        node.setUsedAsNullCheck(false);
+    private void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, StructuredGraph graph) {
+        G1PreWriteBarrierNode preBarrier = graph.add(new G1PreWriteBarrierNode(address, maybeUncompressExpectedValue(value), doLoad));
+        GraalError.guarantee(!node.getUsedAsNullCheck(), "trapping null checks are inserted after write barrier insertion: ", node);
         node.setStateBefore(null);
         graph.addBeforeFixed(node, preBarrier);
     }
 
-    private static void addG1PostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
+    private void addG1PostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, ValueNode object, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
-        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(address, value, precise, alwaysNull)));
+        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrierNode(address, maybeUncompressExpectedValue(value), object, alwaysNull)));
     }
 
     private static boolean isObjectValue(ValueNode value) {

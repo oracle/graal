@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,43 +24,24 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import jdk.graal.compiler.core.common.type.StampFactory;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
+
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.spi.Lowerable;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
-import jdk.vm.ci.meta.JavaKind;
+@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
+public final class SerialArrayRangeWriteBarrierNode extends ArrayRangeWriteBarrierNode {
+    public static final NodeClass<SerialArrayRangeWriteBarrierNode> TYPE = NodeClass.create(SerialArrayRangeWriteBarrierNode.class);
 
-@NodeInfo
-public abstract class ArrayRangeWriteBarrier extends WriteBarrier implements Lowerable {
-
-    public static final NodeClass<ArrayRangeWriteBarrier> TYPE = NodeClass.create(ArrayRangeWriteBarrier.class);
-    @Input ValueNode length;
-
-    private final int elementStride;
-
-    protected ArrayRangeWriteBarrier(NodeClass<? extends ArrayRangeWriteBarrier> c, AddressNode address, ValueNode length, int elementStride) {
-        super(c, address);
-        this.length = length;
-        this.elementStride = elementStride;
+    public SerialArrayRangeWriteBarrierNode(AddressNode address, ValueNode length, int elementStride) {
+        super(TYPE, address, length, elementStride);
     }
 
-    public ValueNode getLength() {
-        return length;
-    }
-
-    public int getElementStride() {
-        return elementStride;
-    }
-
-    /**
-     * Returns this barrier's length, extended to {@code long} if needed.
-     */
-    public ValueNode getLengthAsLong() {
-        return IntegerConvertNode.convert(length, StampFactory.forKind(JavaKind.Long), graph(), NodeView.DEFAULT);
+    @Override
+    public Kind getKind() {
+        return Kind.POST_BARRIER;
     }
 }

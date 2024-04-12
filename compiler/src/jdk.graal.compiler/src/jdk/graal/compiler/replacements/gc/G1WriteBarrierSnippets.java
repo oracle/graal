@@ -28,6 +28,11 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_P
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -43,12 +48,11 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.nodes.extended.NullCheckNode;
-import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1PostWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1PreWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrier;
+import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1PostWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1PreWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrierNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
@@ -60,11 +64,6 @@ import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -109,21 +108,18 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     }
 
     @Snippet
-    public void g1PreWriteBarrier(Address address, Object object, Object expectedObject, @ConstantParameter boolean doLoad, @ConstantParameter boolean nullCheck,
+    public void g1PreWriteBarrier(Address address, Object object, Object expectedObject, @ConstantParameter boolean doLoad,
                     @ConstantParameter int traceStartCycle, @ConstantParameter Counters counters) {
-        satbBarrier(address, object, expectedObject, doLoad, nullCheck, traceStartCycle, counters);
+        satbBarrier(address, object, expectedObject, doLoad, traceStartCycle, counters);
     }
 
     @Snippet
     public void g1ReferentReadBarrier(Address address, Object object, Object expectedObject, @ConstantParameter int traceStartCycle, @ConstantParameter Counters counters) {
-        satbBarrier(address, object, expectedObject, false, false, traceStartCycle, counters);
+        satbBarrier(address, object, expectedObject, false, traceStartCycle, counters);
     }
 
-    private void satbBarrier(Address address, Object object, Object expectedObject, boolean doLoad, boolean nullCheck,
+    private void satbBarrier(Address address, Object object, Object expectedObject, boolean doLoad,
                     int traceStartCycle, Counters counters) {
-        if (nullCheck) {
-            NullCheckNode.nullCheck(address);
-        }
         Word thread = getThread();
         verifyOop(object);
         Word field = Word.fromAddress(address);
@@ -435,7 +431,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             this.counters = new Counters(factory);
         }
 
-        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1PreWriteBarrier barrier, LoweringTool tool) {
+        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1PreWriteBarrierNode barrier, LoweringTool tool) {
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             AddressNode address = barrier.getAddress();
             args.add("address", address);
@@ -452,14 +448,13 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             args.add("expectedObject", expected);
 
             args.addConst("doLoad", barrier.doLoad());
-            args.addConst("nullCheck", barrier.getNullCheck());
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
-        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1ReferentFieldReadBarrier barrier, LoweringTool tool) {
+        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1ReferentFieldReadBarrierNode barrier, LoweringTool tool) {
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             // This is expected to be lowered before address lowering
             OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
@@ -478,7 +473,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
-        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1PostWriteBarrier barrier, LoweringTool tool) {
+        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1PostWriteBarrierNode barrier, LoweringTool tool) {
             if (barrier.alwaysNull()) {
                 barrier.graph().removeFixed(barrier);
                 return;
@@ -507,7 +502,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
-        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1ArrayRangePreWriteBarrier barrier, LoweringTool tool) {
+        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1ArrayRangePreWriteBarrierNode barrier, LoweringTool tool) {
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
             args.add("length", barrier.getLengthAsLong());
@@ -516,7 +511,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
-        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1ArrayRangePostWriteBarrier barrier, LoweringTool tool) {
+        public void lower(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, G1ArrayRangePostWriteBarrierNode barrier, LoweringTool tool) {
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
             args.add("length", barrier.getLengthAsLong());

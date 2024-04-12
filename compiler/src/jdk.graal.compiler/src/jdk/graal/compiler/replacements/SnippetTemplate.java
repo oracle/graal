@@ -2019,21 +2019,23 @@ public class SnippetTemplate {
      */
     @SuppressWarnings("try")
     public UnmodifiableEconomicMap<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args, boolean killReplacee) {
-        if (!(replacee instanceof ControlSinkNode)) {
-            /*
-             * For all use cases of this, the replacee is killed sooner ({@code killReplacee ==
-             * true}) or later (by the caller of this method). However, we cannot do that if the
-             * snippet does not have a return node we because that means we kill the {@code
-             * replacee.next()} which might be connected to a merge whose next node has not yet been
-             * lowered [GR-33909].
-             */
-            GraalError.guarantee(this.returnNode != null, "Cannot kill %s because snippet %s does not have a return node", replacee, this);
-        }
-
         DebugContext debug = replacee.getDebug();
-        assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start(debug);
-                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
+                        DebugCloseable b = totalInstantiationTimer.start(debug);
+                        DebugContext.Scope s = debug.withContext(snippet)) {
+            if (!(replacee instanceof ControlSinkNode)) {
+                /*
+                 * For all use cases of this, the replacee is killed sooner ({@code killReplacee ==
+                 * true}) or later (by the caller of this method). However, we cannot do that if the
+                 * snippet does not have a return node we because that means we kill the {@code
+                 * replacee.next()} which might be connected to a merge whose next node has not yet
+                 * been lowered [GR-33909].
+                 */
+                GraalError.guarantee(this.returnNode != null, "Cannot kill %s because snippet %s does not have a return node", replacee, this);
+            }
+
+            assert assertSnippetKills(replacee);
+
             args.info.instantiationCounter.increment(debug);
             totalInstantiationCounter.increment(debug);
             // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -2193,6 +2195,8 @@ public class SnippetTemplate {
 
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
             return duplicates;
+        } catch (Throwable e) {
+            throw debug.handle(e);
         }
     }
 
@@ -2313,9 +2317,11 @@ public class SnippetTemplate {
     @SuppressWarnings("try")
     public ValueNode instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
         DebugContext debug = replacee.getDebug();
-        assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start(debug);
-                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
+                        DebugCloseable b = totalInstantiationTimer.start(debug);
+                        DebugContext.Scope s = debug.withContext(snippet)) {
+            assert assertSnippetKills(replacee);
+
             args.info.instantiationCounter.increment(debug);
             totalInstantiationCounter.increment(debug);
 
@@ -2358,6 +2364,8 @@ public class SnippetTemplate {
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
 
             return returnValue;
+        } catch (Throwable e) {
+            throw debug.handle(e);
         }
     }
 
@@ -2374,9 +2382,11 @@ public class SnippetTemplate {
     @SuppressWarnings("try")
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, Arguments args) {
         DebugContext debug = replacee.getDebug();
-        assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start(debug);
-                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
+                        DebugCloseable b = totalInstantiationTimer.start(debug);
+                        DebugContext.Scope s = debug.withContext(snippet)) {
+            assert assertSnippetKills(replacee);
+
             args.info.instantiationCounter.increment(debug);
             totalInstantiationCounter.increment(debug);
 
@@ -2410,6 +2420,8 @@ public class SnippetTemplate {
             replacer.replace(replacee, returnValue);
 
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
+        } catch (Throwable e) {
+            throw debug.handle(e);
         }
     }
 

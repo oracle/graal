@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.nodes.gc;
+package jdk.graal.compiler.lir.gen;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.vm.ci.meta.InvokeTarget;
 
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.memory.address.AddressNode;
+public interface G1BarrierSetLIRTool {
 
-@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<SerialArrayRangeWriteBarrier> TYPE = NodeClass.create(SerialArrayRangeWriteBarrier.class);
+    int satbQueueMarkingActiveOffset();
 
-    public SerialArrayRangeWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
-        super(TYPE, address, length, elementStride);
-    }
+    int satbQueueBufferOffset();
 
-    @Override
-    public Kind getKind() {
-        return Kind.POST_BARRIER;
-    }
+    int satbQueueIndexOffset();
+
+    int cardQueueBufferOffset();
+
+    int cardQueueIndexOffset();
+
+    byte dirtyCardValue();
+
+    byte youngCardValue();
+
+    long cardTableAddress();
+
+    int logOfHeapRegionGrainBytes();
+
+    ForeignCallDescriptor preWriteBarrierDescriptor();
+
+    ForeignCallDescriptor postWriteBarrierDescriptor();
+
+    InvokeTarget getCallTarget(ForeignCallLinkage callTarget);
 }

@@ -28,7 +28,6 @@ import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.stubs.Stub;
-
 import jdk.vm.ci.meta.InvokeTarget;
 
 /**
@@ -55,8 +54,7 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
         COMPUTES_REGISTERS_KILLED,
 
         /**
-         * Uses a stack based calling convention and saves and restores all registers around
-         * internal foreign calls.
+         * Uses a stack based calling convention and all registers are treated as callee saved.
          */
         KILLS_NO_REGISTERS
     }

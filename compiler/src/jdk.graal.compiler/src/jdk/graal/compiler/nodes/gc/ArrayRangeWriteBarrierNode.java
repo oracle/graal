@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,34 +24,42 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
-
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.vm.ci.meta.JavaKind;
 
-/**
- * The {@code G1ReferentFieldReadBarrier} is added when a read access is performed to the referent
- * field of a {@link java.lang.ref.Reference} object (through a {@code LoadFieldNode} or an
- * {@code UnsafeLoadNode}). The return value of the read is passed to the snippet implementing the
- * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
- */
-@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier {
-    public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.create(G1ReferentFieldReadBarrier.class);
+@NodeInfo
+public abstract class ArrayRangeWriteBarrierNode extends WriteBarrierNode implements Lowerable {
 
-    public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject) {
-        super(TYPE, address, expectedObject, true);
+    public static final NodeClass<ArrayRangeWriteBarrierNode> TYPE = NodeClass.create(ArrayRangeWriteBarrierNode.class);
+    @Input ValueNode length;
+
+    private final int elementStride;
+
+    protected ArrayRangeWriteBarrierNode(NodeClass<? extends ArrayRangeWriteBarrierNode> c, AddressNode address, ValueNode length, int elementStride) {
+        super(c, address);
+        this.length = length;
+        this.elementStride = elementStride;
     }
 
-    public ValueNode getExpectedObject() {
-        return getValue();
+    public ValueNode getLength() {
+        return length;
     }
 
-    @Override
-    public Kind getKind() {
-        return Kind.PRE_BARRIER;
+    public int getElementStride() {
+        return elementStride;
+    }
+
+    /**
+     * Returns this barrier's length, extended to {@code long} if needed.
+     */
+    public ValueNode getLengthAsLong() {
+        return IntegerConvertNode.convert(length, StampFactory.forKind(JavaKind.Long), graph(), NodeView.DEFAULT);
     }
 }

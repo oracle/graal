@@ -378,7 +378,7 @@ public abstract class GraalCompilerState {
 
         LIR lir = new LIR(cfg, linearScanOrder, getGraphOptions(), getGraphDebug());
         LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend;
-        RegisterAllocationConfig registerAllocationConfig = request.backend.newRegisterAllocationConfig(registerConfig, null);
+        RegisterAllocationConfig registerAllocationConfig = request.backend.newRegisterAllocationConfig(registerConfig, null, stub);
         lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, request.graph, stub);
         lirGenTool = lirBackend.newLIRGenerator(lirGenRes);
         nodeLirGen = lirBackend.newNodeLIRBuilder(request.graph, lirGenTool);

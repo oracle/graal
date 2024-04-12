@@ -151,7 +151,7 @@ public class LIRCompilerBackend {
             }
 
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
-            RegisterAllocationConfig registerAllocationConfig = backend.newRegisterAllocationConfig(registerConfig, allocationRestrictedTo);
+            RegisterAllocationConfig registerAllocationConfig = backend.newRegisterAllocationConfig(registerConfig, allocationRestrictedTo, stub);
             LIRGenerationResult lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, graph, stub);
             LIRGeneratorTool lirGen = lirBackend.newLIRGenerator(lirGenRes);
             NodeLIRBuilderTool nodeLirGen = lirBackend.newNodeLIRBuilder(graph, lirGen);

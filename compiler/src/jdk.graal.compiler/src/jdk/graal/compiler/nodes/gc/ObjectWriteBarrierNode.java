@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,37 +24,29 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
-
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
-@NodeInfo(cycles = CYCLES_8, size = SIZE_4)
-public class SerialWriteBarrier extends ObjectWriteBarrier {
-    public static final NodeClass<SerialWriteBarrier> TYPE = NodeClass.create(SerialWriteBarrier.class);
+@NodeInfo
+public abstract class ObjectWriteBarrierNode extends WriteBarrierNode {
 
-    protected boolean verifyOnly;
+    public static final NodeClass<ObjectWriteBarrierNode> TYPE = NodeClass.create(ObjectWriteBarrierNode.class);
+    @OptionalInput protected ValueNode value;
+    protected final boolean precise;
 
-    public SerialWriteBarrier(AddressNode address, boolean precise) {
-        this(TYPE, address, precise);
+    protected ObjectWriteBarrierNode(NodeClass<? extends ObjectWriteBarrierNode> c, AddressNode address, ValueNode value, boolean precise) {
+        super(c, address);
+        this.value = value;
+        this.precise = precise;
     }
 
-    protected SerialWriteBarrier(NodeClass<? extends SerialWriteBarrier> c, AddressNode address, boolean precise) {
-        super(c, address, null, precise);
+    public ValueNode getValue() {
+        return value;
     }
 
-    public void setVerifyOnly(boolean value) {
-        this.verifyOnly = value;
-    }
-
-    public boolean getVerifyOnly() {
-        return verifyOnly;
-    }
-
-    @Override
-    public Kind getKind() {
-        return Kind.POST_BARRIER;
+    public boolean usePrecise() {
+        return precise;
     }
 }
