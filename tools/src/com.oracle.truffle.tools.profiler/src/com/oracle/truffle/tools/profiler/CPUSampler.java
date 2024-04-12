@@ -472,6 +472,25 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
+     * @return Whether or not async stack trace information for each sample is gathered.
+     * @since 24.1
+     */
+    public boolean isGatherAsyncStackTrace() {
+        return safepointStackSampler.isIncludeAsyncStackTrace();
+    }
+
+    /**
+     * Sets whether or not to try to gather async stack trace information for each sample.
+     *
+     * @param asyncStackTrace new value for whether or not to include async stack trace elements
+     * @since 24.1
+     */
+    public synchronized void setGatherAsyncStackTrace(boolean asyncStackTrace) {
+        enterChangeConfig();
+        safepointStackSampler.setIncludeAsyncStackTrace(asyncStackTrace);
+    }
+
+    /**
      * Sample all threads and gather their current stack trace entries with a default time out.
      * Short hand for: {@link #takeSample(long, TimeUnit) takeSample}(this.getPeriod(),
      * TimeUnit.MILLISECONDS).

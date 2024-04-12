@@ -125,6 +125,8 @@ public class AsyncStackSamplingTest extends AbstractPolyglotTest {
                         });
 
         sampler = CPUSampler.find(context.getEngine());
+        sampler.setGatherAsyncStackTrace(true);
+        Assert.assertTrue(sampler.isGatherAsyncStackTrace());
 
         // Filter out any unavailable source section to deliberately exclude ASYNC_RESUME RootNode.
         if (includeInternal) {

@@ -69,6 +69,7 @@ final class SafepointStackSampler {
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
     private final ThreadLocal<SyntheticFrame> syntheticFrameThreadLocal = ThreadLocal.withInitial(() -> null);
     private volatile boolean overflowed;
+    private volatile boolean includeAsyncStackTrace;
     private final AtomicLong sampleIndex = new AtomicLong(0);
 
     SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter) {
@@ -79,7 +80,7 @@ final class SafepointStackSampler {
     private StackVisitor fetchStackVisitor() {
         StackVisitor visitor = stackVisitorCache.poll();
         if (visitor == null) {
-            visitor = new StackVisitor(stackLimit, sourceSectionFilter);
+            visitor = new StackVisitor(stackLimit, sourceSectionFilter, includeAsyncStackTrace);
         }
         return visitor;
     }
@@ -187,6 +188,14 @@ final class SafepointStackSampler {
         this.stackVisitorCache.clear();
     }
 
+    boolean isIncludeAsyncStackTrace() {
+        return includeAsyncStackTrace;
+    }
+
+    void setIncludeAsyncStackTrace(boolean includeAsyncStackTrace) {
+        this.includeAsyncStackTrace = includeAsyncStackTrace;
+    }
+
     void resetSampling() {
         // Note: synchronized on CPUSampler instance in the caller.
         this.sampleIndex.set(0);
@@ -219,6 +228,7 @@ final class SafepointStackSampler {
         private final int[] tiers;
         private final boolean[] roots;
         private final SourceSectionFilter sourceSectionFilter;
+        private final boolean includeAsyncStackTrace;
         private Thread thread;
         /** Next frame index and the number of captured entries. */
         private int nextFrameIndex;
@@ -226,12 +236,13 @@ final class SafepointStackSampler {
         private long endTime;
         private boolean overflowed;
 
-        StackVisitor(int stackLimit, SourceSectionFilter sourceSectionFilter) {
+        StackVisitor(int stackLimit, SourceSectionFilter sourceSectionFilter, boolean includeAsyncStackTrace) {
             assert stackLimit > 0;
             this.tiers = new int[stackLimit];
             this.roots = new boolean[stackLimit];
             this.targets = new CallTarget[stackLimit];
             this.sourceSectionFilter = sourceSectionFilter;
+            this.includeAsyncStackTrace = includeAsyncStackTrace;
         }
 
         final void iterateFrames() {
@@ -258,15 +269,15 @@ final class SafepointStackSampler {
             CallTarget callTarget = frameInstance.getCallTarget();
             int compilationTier = frameInstance.getCompilationTier();
             boolean compilationRoot = frameInstance.isCompilationRoot();
-            if (!addStackTraceEntry(callTarget, compilationTier, compilationRoot) ||
-                            !addAnyAsyncStackTraceEntries(callTarget, frameInstance.getFrame(FrameAccess.READ_ONLY))) {
-                // stop traversing
-                assert overflowed;
-                return frameInstance;
-            } else {
+            if (addStackTraceEntry(callTarget, compilationTier, compilationRoot) &&
+                            (!includeAsyncStackTrace || addAnyAsyncStackTraceEntries(callTarget, frameInstance.getFrame(FrameAccess.READ_ONLY)))) {
                 // continue traversing
                 assert !overflowed;
                 return null;
+            } else {
+                // stop traversing
+                assert overflowed;
+                return frameInstance;
             }
         }
 
