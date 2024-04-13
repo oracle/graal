@@ -16,6 +16,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-47832) Experimental support for upcalls from foreign code and other improvements to our implementation of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 454](https://openjdk.org/jeps/454)) on AMD64. Must be enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
 * (GR-52314) `-XX:MissingRegistrationReportingMode` can now be used on program invocation instead of as a build option, to avoid a rebuild when debugging missing registration errors.
 * (GR-51086) Introduce a new `--static-nolibc` API option as a replacement for the experimental `-H:±StaticExecutableWithDynamicLibC` option.
+* (GR-52578) Print information about embedded resources into `embedded-resources.json` using the `-H:+GenerateEmbeddedResourcesFile` option.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.

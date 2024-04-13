@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,7 +85,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.jdk.Resources;
@@ -657,9 +656,9 @@ public class NativeImageResourceFileSystem extends FileSystem {
     }
 
     private void readAllEntries() {
-        MapCursor<Pair<Module, String>, ResourceStorageEntryBase> entries = Resources.singleton().getResourceStorage().getEntries();
+        MapCursor<Resources.ModuleResourceKey, ResourceStorageEntryBase> entries = Resources.singleton().getResourceStorage().getEntries();
         while (entries.advance()) {
-            byte[] name = getBytes(entries.getKey().getRight());
+            byte[] name = getBytes(entries.getKey().resource());
             ResourceStorageEntryBase entry = entries.getValue();
             if (entry.hasData()) {
                 IndexNode newIndexNode = new IndexNode(name, entry.isDirectory(), true);

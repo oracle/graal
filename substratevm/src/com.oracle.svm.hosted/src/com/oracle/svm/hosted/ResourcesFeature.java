@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -48,24 +46,22 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
+import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
 import com.oracle.svm.core.MissingRegistrationUtils;
@@ -84,15 +80,18 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
+import com.oracle.svm.hosted.util.ResourcesUtils;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -147,6 +146,11 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+        private static final String EMBEDDED_RESOURCES_FILE_NAME = "embedded-resources.json";
+        @Option(help = "Create a " + EMBEDDED_RESOURCES_FILE_NAME + " file in the build directory. The output conforms to the JSON schema located at: " +
+                        "docs/reference-manual/native-image/assets/embedded-resources-schema-v1.0.0.json", type = OptionType.User)//
+        public static final HostedOptionKey<Boolean> GenerateEmbeddedResourcesFile = new HostedOptionKey<>(false);
     }
 
     private boolean sealed = false;
@@ -159,6 +163,7 @@ public final class ResourcesFeature implements InternalFeature {
 
     private Set<ConditionalPattern> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
@@ -193,6 +198,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, "INJECTED");
             Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
 
@@ -268,11 +274,17 @@ public final class ResourcesFeature implements InternalFeature {
 
                 boolean isDirectory = Files.isDirectory(Path.of(resourcePath));
                 if (isDirectory) {
-                    String content = getDirectoryContent(resourcePath, false);
+                    String content = ResourcesUtils.getDirectoryContent(resourcePath, false);
                     Resources.singleton().registerDirectoryResource(module, resourcePath, content, false);
                 } else {
                     InputStream is = module.getResourceAsStream(resourcePath);
                     registerResource(module, resourcePath, false, is);
+                }
+
+                var resolvedModule = module.getLayer().configuration().findModule(module.getName());
+                if (resolvedModule.isPresent()) {
+                    Optional<URI> location = resolvedModule.get().reference().location();
+                    location.ifPresent(uri -> EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, uri.toString()));
                 }
             } catch (IOException e) {
                 Resources.singleton().registerIOException(module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
@@ -303,14 +315,17 @@ public final class ResourcesFeature implements InternalFeature {
                 alreadyProcessedResources.add(url.toString());
                 try {
                     boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
-                    boolean isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
+                    boolean isDirectory = ResourcesUtils.resourceIsDirectory(url, fromJar, resourcePath);
                     if (isDirectory) {
-                        String content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
+                        String content = ResourcesUtils.getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
                         Resources.singleton().registerDirectoryResource(null, resourcePath, content, fromJar);
                     } else {
                         InputStream is = url.openStream();
                         registerResource(null, resourcePath, fromJar, is);
                     }
+
+                    String source = ResourcesUtils.getResourceSource(url, resourcePath, fromJar);
+                    EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(null, resourcePath, source);
                 } catch (IOException e) {
                     Resources.singleton().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
                     return;
@@ -322,6 +337,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         private void registerResource(Module module, String resourcePath, boolean fromJar, InputStream is) {
             if (is == null) {
+                Resources.singleton().registerNegativeQuery(module, resourcePath);
                 return;
             }
 
@@ -333,74 +349,6 @@ public final class ResourcesFeature implements InternalFeature {
                 throw new RuntimeException(e);
             }
         }
-
-        /* Util functions for resource attributes calculations */
-        private String urlToJarPath(URL url) {
-            try {
-                return ((JarURLConnection) url.openConnection()).getJarFileURL().toURI().getPath();
-            } catch (IOException | URISyntaxException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        private boolean resourceIsDirectory(URL url, boolean fromJar, String resourcePath) throws IOException, URISyntaxException {
-            if (fromJar) {
-                try (JarFile jf = new JarFile(urlToJarPath(url))) {
-                    return jf.getEntry(resourcePath).isDirectory();
-                }
-            } else {
-                return Files.isDirectory(Path.of(url.toURI()));
-            }
-        }
-
-        private String getDirectoryContent(String path, boolean fromJar) throws IOException {
-            Set<String> content = new TreeSet<>();
-            if (fromJar) {
-                try (JarFile jf = new JarFile(urlToJarPath(URI.create(path).toURL()))) {
-                    String pathSeparator = FileSystems.getDefault().getSeparator();
-                    String directoryPath = path.split("!")[1];
-
-                    // we are removing leading slash because jar entry names don't start with slash
-                    if (directoryPath.startsWith(pathSeparator)) {
-                        directoryPath = directoryPath.substring(1);
-                    }
-
-                    Enumeration<JarEntry> entries = jf.entries();
-                    while (entries.hasMoreElements()) {
-                        String entry = entries.nextElement().getName();
-                        if (entry.startsWith(directoryPath)) {
-                            String contentEntry = entry.substring(directoryPath.length());
-
-                            // remove the leading slash
-                            if (contentEntry.startsWith(pathSeparator)) {
-                                contentEntry = contentEntry.substring(1);
-                            }
-
-                            // prevent adding empty strings as a content
-                            if (!contentEntry.isEmpty()) {
-                                // get top level content only
-                                int firstSlash = contentEntry.indexOf(pathSeparator);
-                                if (firstSlash != -1) {
-                                    content.add(contentEntry.substring(0, firstSlash));
-                                } else {
-                                    content.add(contentEntry);
-                                }
-                            }
-                        }
-                    }
-
-                }
-            } else {
-                try (Stream<Path> contentStream = Files.list(Path.of(path))) {
-                    content = new TreeSet<>(contentStream
-                                    .map(Path::getFileName)
-                                    .map(Path::toString)
-                                    .toList());
-                }
-            }
-
-            return String.join(System.lineSeparator(), content);
-        }
     }
 
     @Override
@@ -410,6 +358,8 @@ public final class ResourcesFeature implements InternalFeature {
         ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl();
         ImageSingletons.add(ResourcesRegistry.class, resourcesRegistry);
         ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
+        EmbeddedResourcesInfo embeddedResourcesInfo = new EmbeddedResourcesInfo();
+        ImageSingletons.add(EmbeddedResourcesInfo.class, embeddedResourcesInfo);
     }
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
@@ -442,7 +392,7 @@ public final class ResourcesFeature implements InternalFeature {
                 includePatterns.stream()
                                 .map(pattern -> pattern.compiledPattern)
                                 .forEach(resourcePattern -> {
-                                    Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
+                                    Resources.singleton().registerIncludePattern(resourcePattern.moduleName(), resourcePattern.pattern.pattern());
                                 });
             }
             ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
@@ -556,6 +506,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
+            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourceName, "");
             Resources.singleton().registerNegativeQuery(module, resourceName);
         }
     }
@@ -596,6 +547,16 @@ public final class ResourcesFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         sealed = true;
+        if (Options.GenerateEmbeddedResourcesFile.getValue()) {
+            Path reportLocation = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(Options.EMBEDDED_RESOURCES_FILE_NAME);
+            try (JsonWriter writer = new JsonWriter(reportLocation)) {
+                EmbeddedResourceExporter.printReport(writer);
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere("Json writer cannot write to: " + reportLocation, e);
+            }
+
+            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, reportLocation);
+        }
     }
 
     @Override
