@@ -2088,6 +2088,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached BranchProfile exceptionProfile) {
+            if (StaticObject.isNull(targetClass)) {
+                exceptionProfile.enter();
+                throw meta.throwNullPointerException();
+            }
             assert InteropLibrary.getUncached().isString(member);
             String hostMember = getMeta().toHostString(member);
             try {
