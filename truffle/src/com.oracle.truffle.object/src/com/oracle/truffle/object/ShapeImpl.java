@@ -426,6 +426,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static TransitionMap<Transition, ShapeImpl> newTransitionMap() {
+        transitionMapsCreated.inc();
         return TransitionMap.create();
     }
 
@@ -447,6 +448,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static Object newSingleEntry(Transition transition, ShapeImpl successor) {
+        transitionSingleEntriesCreated.inc();
         Object key = transition;
         if (transition.hasConstantLocation()) {
             key = new WeakKey<>(transition);
@@ -1368,5 +1370,7 @@ public abstract class ShapeImpl extends Shape {
     static final DebugCounter shapeCacheWeakKeys = DebugCounter.create("Shape cache weak keys");
     static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
     static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
+    static final DebugCounter transitionSingleEntriesCreated = DebugCounter.create("Transition single-entry maps created");
+    static final DebugCounter transitionMapsCreated = DebugCounter.create("Transition multi-entry maps created");
 
 }
