@@ -1,10 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
-  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.1.0.json",
+  "$id": "https://raw.githubusercontent.com/oracle/graal/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.1.0.json",
   "default": {
     "types": [],
-    "lambdaCapturingTypes": [],
-    "proxies": []
+    "lambdaCapturingTypes": []
   },
   "properties": {
     "types": {
@@ -64,6 +63,7 @@
       "type": "array"
     },
     "proxies": {
+      "deprecated": true,
       "default": [],
       "items": {
         "properties": {
@@ -102,8 +102,7 @@
   },
   "required": [
     "types",
-    "lambdaCapturingTypes",
-    "proxies"
+    "lambdaCapturingTypes"
   ],
   "additionalProperties": false,
   "type": "object",
