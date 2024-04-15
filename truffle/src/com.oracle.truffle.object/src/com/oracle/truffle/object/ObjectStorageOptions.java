@@ -59,6 +59,7 @@ final class ObjectStorageOptions {
     public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
 
     static final boolean TriePropertyMap = booleanOption(OPTION_PREFIX + "TriePropertyMap", true);
+    static final boolean TrieTransitionMap = booleanOption(OPTION_PREFIX + "TrieTransitionMap", true);
 
     // Debug options (should be final)
     public static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);

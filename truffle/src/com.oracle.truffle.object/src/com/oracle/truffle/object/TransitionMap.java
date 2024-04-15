@@ -54,7 +54,7 @@ import java.util.function.BiConsumer;
  * strongly by the weak value (i.e. the shape), so that the key will stay alive as long at least as
  * long as the value, and that they will eventually be expunged together after the weak value dies.
  */
-abstract sealed class TransitionMap<K, V> permits EconomicTransitionMap {
+abstract sealed class TransitionMap<K, V> permits EconomicTransitionMap, TrieTransitionMap {
 
     protected final ReferenceQueue<V> queue;
 
@@ -63,7 +63,11 @@ abstract sealed class TransitionMap<K, V> permits EconomicTransitionMap {
     }
 
     public static <K, V> TransitionMap<K, V> create() {
-        return new EconomicTransitionMap<>();
+        if (ObjectStorageOptions.TrieTransitionMap) {
+            return new TrieTransitionMap<>();
+        } else {
+            return new EconomicTransitionMap<>();
+        }
     }
 
     public final boolean containsKey(Object key) {
