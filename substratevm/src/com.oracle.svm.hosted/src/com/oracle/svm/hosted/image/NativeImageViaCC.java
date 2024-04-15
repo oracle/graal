@@ -70,10 +70,6 @@ public abstract class NativeImageViaCC extends NativeImage {
             potentialCauses.add("Native Image is using a linker that appears to be incompatible with the tool chain used to build the JDK static libraries. " +
                             "The latter is typically shown in the output of `java -Xinternalversion`.");
         }
-        if (SubstrateOptions.ForceNoROSectionRelocations.getValue() && (linkerOutput.contains("fatal error: cannot find ") ||
-                        linkerOutput.contains("error: invalid linker name in argument"))) {
-            potentialCauses.add(SubstrateOptions.ForceNoROSectionRelocations.getName() + " option cannot be used if ld.gold linker is missing from the host system");
-        }
 
         Pattern p = Pattern.compile(".*cannot find -l([^\\s]+)\\s.*", Pattern.DOTALL);
         Matcher m = p.matcher(linkerOutput);

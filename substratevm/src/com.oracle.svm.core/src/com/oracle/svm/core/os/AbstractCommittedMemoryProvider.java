@@ -52,24 +52,21 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
         if (Heap.getHeap().getImageHeapOffsetInAddressSpace() != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
-        if (!SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
-            /*
-             * Set strict read-only and read+write permissions for the image heap (the entire image
-             * heap should already be read-only, but the linker/loader can place it in a segment
-             * that has the executable bit set unnecessarily)
-             *
-             * If ForceNoROSectionRelocations is set, however, the image heap is writable and should
-             * remain so.
-             */
-            UnsignedWord heapSize = IMAGE_HEAP_END.get().subtract(heapBegin);
-            if (VirtualMemoryProvider.get().protect(heapBegin, heapSize, VirtualMemoryProvider.Access.READ) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-            Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
-            UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
-            if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
+
+        /*
+         * Set strict read-only and read+write permissions for the image heap (the entire image heap
+         * should already be read-only, but the linker/loader can place it in a segment that has the
+         * executable bit set unnecessarily)
+         */
+        UnsignedWord heapSize = IMAGE_HEAP_END.get().subtract(heapBegin);
+        if (VirtualMemoryProvider.get().protect(heapBegin, heapSize, VirtualMemoryProvider.Access.READ) != 0) {
+            return CEntryPointErrors.PROTECT_HEAP_FAILED;
+        }
+
+        Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
+        UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
+        if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
+            return CEntryPointErrors.PROTECT_HEAP_FAILED;
         }
 
         return CEntryPointErrors.NO_ERROR;
