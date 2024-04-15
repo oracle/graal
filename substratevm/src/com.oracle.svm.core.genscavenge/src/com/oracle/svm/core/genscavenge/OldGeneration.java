@@ -159,8 +159,6 @@ public final class OldGeneration extends Generation {
         space.walkAlignedHeapChunks(planningVisitor);
     }
 
-    @Uninterruptible(reason = "Required by called JavaStackWalker methods.")
-    @NeverInline("Starting a stack walk in the caller frame.")
     void fixupReferencesBeforeCompaction(ChunkReleaser chunkReleaser, Timers timers) {
         // Phase 2: Fix object references
         timers.tenuredFixingAlignedChunks.open();
@@ -196,17 +194,7 @@ public final class OldGeneration extends Generation {
         }
         timers.tenuredFixingThreadLocal.close();
 
-        /*
-         * Fix object references located on the stack.
-         */
-        timers.tenuredFixingStack.open();
-        try {
-            Pointer sp = readCallerStackPointer();
-            CodePointer ip = readReturnAddress();
-            GCImpl.walkStackRoots(refFixupVisitor, sp, ip, false);
-        } finally {
-            timers.tenuredFixingStack.close();
-        }
+        fixupStackReferences(timers);
 
         /*
          * Check unaligned objects. Fix its contained references if the object is marked.
@@ -242,6 +230,21 @@ public final class OldGeneration extends Generation {
             RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheFixupWalker);
         }
         timers.tenuredFixingRuntimeCodeCache.close();
+    }
+
+    @NeverInline("Starting a stack walk in the caller frame. " +
+                    "Note that we could start the stack frame also further down the stack, because GC stack frames must not access any objects that are processed by the GC. " +
+                    "But we don't store stack frame information for the first frame we would need to process.")
+    @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.")
+    private void fixupStackReferences(Timers timers) {
+        timers.tenuredFixingStack.open();
+        try {
+            Pointer sp = readCallerStackPointer();
+            CodePointer ip = readReturnAddress();
+            GCImpl.walkStackRoots(refFixupVisitor, sp, ip, false);
+        } finally {
+            timers.tenuredFixingStack.close();
+        }
     }
 
     void compact(Timers timers) {

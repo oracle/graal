@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge.tenured;
 
-import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -173,7 +172,6 @@ public class RelocationInfo {
      * @see HeapChunk#walkObjectsFrom
      * @see AlignedHeapChunk#walkObjects
      */
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public static void walkObjects(AlignedHeapChunk.AlignedHeader chunkHeader, ObjectVisitor visitor) {
         Pointer cursor = AlignedHeapChunk.getObjectsStart(chunkHeader);
         Pointer top = HeapChunk.getTopPointer(chunkHeader); // top cannot move in this case
