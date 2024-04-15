@@ -1188,6 +1188,10 @@ public class OracleDBTests extends RegexTestBase {
         test("(a??)(a??)|", "", "a", 0, true, 0, 0, 0, 0, 0, 0);
         test("()b??a??|", "", "a", 0, true, 0, 0, 0, 0);
         expectSyntaxError("a{2,71920}", "", "", getTRegexEncoding(), "aa", 0, "invalid interval in regular expression");
+        test("()\\1\\z", "", "a", 0, true, 1, 1, 1, 1);
+        test("()\\1\\1\\z", "", "a", 0, true, 1, 1, 1, 1);
+        expectSyntaxError("[]\\\\", "", "", getTRegexEncoding(), "g", 0, "unmatched bracket in regular expression");
+        test("[[:print:][.j.]]\\S;[0-HB]t", "", "$*iAt\u0005;;Et", 0, false);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
