@@ -43,7 +43,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -70,17 +69,18 @@ public class CompilationAlarmTest extends GraalCompilerTest {
                     int msWaited = 0;
                     int callsToCheckProgress = 0;
                     if (LOG) {
-                        TTY.printf("Starting to wait %s seconds - graph event counter %s %n", waitSeconds * 1000, graph.getEventCounter());
+                        TTY.printf("Starting to wait %s seconds - graph event counter %s %n", waitSeconds, graph.getEventCounter());
                     }
                     while (true) {
                         if (msWaited >= waitSeconds * 1000) {
                             if (LOG) {
-                                TTY.printf("Finished waiting %s seconds - graph event counter %s, calls to check progress %s %n", waitSeconds * 1000, graph.getEventCounter(), callsToCheckProgress);
+                                TTY.printf("Finished waiting %s seconds - graph event counter %s, calls to check progress %s %n", waitSeconds, graph.getEventCounter(), callsToCheckProgress);
                             }
                             return;
                         }
                         try {
                             Thread.sleep(1);
+                            CompilationAlarm.current().checkExpiration();
                             CompilationAlarm.checkProgress(graph);
                             callsToCheckProgress++;
                             msWaited += 1;
@@ -99,7 +99,13 @@ public class CompilationAlarmTest extends GraalCompilerTest {
             super(runnable);
         }
 
-        boolean success;
+        AssertionError failure;
+
+        void check() {
+            if (failure != null) {
+                throw new AssertionError(failure);
+            }
+        }
 
     }
 
@@ -108,31 +114,25 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
             @Override
             public void run() {
+                TestThread testThread = (TestThread) Thread.currentThread();
+                StructuredGraph graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.YES, opt);
+                ResolvedJavaMethod codeOwner = graph.method();
+                CompilationIdentifier compilationId = getOrCreateCompilationId(codeOwner, graph);
+                Request<CompilationResult> request = new Request<>(graph, codeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
+                                graph.getProfilingInfo(), getSuites(waitSeconds, opt), createLIRSuites(opt), new CompilationResult(compilationId), CompilationResultBuilderFactory.Default, null,
+                                true);
                 try {
-                    StructuredGraph graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.YES, opt);
-                    ResolvedJavaMethod codeOwner = graph.method();
-                    CompilationIdentifier compilationId = getOrCreateCompilationId(codeOwner, graph);
-                    Request<CompilationResult> request = new Request<>(graph, codeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
-                                    graph.getProfilingInfo(), getSuites(waitSeconds, opt), createLIRSuites(opt), new CompilationResult(compilationId), CompilationResultBuilderFactory.Default, null,
-                                    true);
-                    try {
-                        GraalCompiler.compile(request);
-                        if (expectedExceptionText != null) {
-                            Assert.fail("Must throw exception");
-                        }
-                    } catch (Throwable t1) {
-                        if (expectedExceptionText == null) {
-                            Assert.fail("Must except exception but found no excepted exception but " + t1.getMessage());
-                        }
-                        if (!t1.getMessage().contains(expectedExceptionText)) {
-                            Assert.fail("Excepted exception to contain text:" + expectedExceptionText + " but exception did not contain text " + t1.getMessage());
-                            throw t1;
-                        }
+                    GraalCompiler.compile(request);
+                    if (expectedExceptionText != null) {
+                        testThread.failure = new AssertionError("Expected an exception");
                     }
-                } catch (Throwable tt) {
-                    throw tt;
+                } catch (Throwable t1) {
+                    if (expectedExceptionText == null) {
+                        testThread.failure = new AssertionError("Unexpected exception", t1);
+                    } else if (!t1.getMessage().contains(expectedExceptionText)) {
+                        testThread.failure = new AssertionError("Expected exception message to contain \"" + expectedExceptionText + "\"", t1);
+                    }
                 }
-                ((TestThread) Thread.currentThread()).success = true;
             }
         });
         return t;
@@ -154,7 +154,7 @@ public class CompilationAlarmTest extends GraalCompilerTest {
         t1.start();
         t1.join();
 
-        assert t1.success;
+        t1.check();
     }
 
     @Test
@@ -163,7 +163,17 @@ public class CompilationAlarmTest extends GraalCompilerTest {
         t1.start();
         t1.join();
 
-        assert t1.success;
+        t1.check();
+    }
+
+    @Test
+    public void testSingleThreadAlarmExpiration() throws InterruptedException {
+        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationExpirationPeriod, (double) 2);
+        TestThread t1 = getCompilationThreadWithWait(10, "snippet", opt, "Compilation exceeded");
+        t1.start();
+        t1.join();
+
+        t1.check();
     }
 
     @Test
@@ -175,8 +185,8 @@ public class CompilationAlarmTest extends GraalCompilerTest {
         t1.join();
         t2.join();
 
-        assert t1.success;
-        assert t2.success;
+        t1.check();
+        t2.check();
     }
 
     @Test
@@ -185,13 +195,13 @@ public class CompilationAlarmTest extends GraalCompilerTest {
         t1.start();
         t1.join();
 
-        assert t1.success;
+        t1.check();
 
         TestThread t2 = getCompilationThreadWithWait(10 * 2, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for");
         t2.start();
         t2.join();
 
-        assert t2.success;
+        t2.check();
     }
 
     @Test
@@ -199,12 +209,12 @@ public class CompilationAlarmTest extends GraalCompilerTest {
         TestThread t1 = getCompilationThreadWithWait(20 * 2, "snippet", getOptionsWithTimeOut(9, 3), "Observed identical stack traces for");
         t1.start();
         t1.join();
-        assert t1.success;
+        t1.check();
 
         TestThread t2 = getCompilationThreadWithWait(20 * 2, "snippet", getOptionsWithTimeOut(5, 3), "Observed identical stack traces for");
         t2.start();
         t2.join();
-        assert t2.success;
+        t2.check();
     }
 
 }

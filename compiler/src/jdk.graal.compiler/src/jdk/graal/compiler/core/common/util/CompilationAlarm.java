@@ -58,8 +58,9 @@ public final class CompilationAlarm implements AutoCloseable {
 
     private static final boolean LOG_PROGRESS_DETECTION = false;
 
-    private CompilationAlarm(long expiration) {
-        this.expiration = expiration;
+    private CompilationAlarm(double period) {
+        this.period = period;
+        this.expiration = period == 0.0D ? 0L : System.currentTimeMillis() + (long) (period * 1000);
     }
 
     /**
@@ -79,15 +80,29 @@ public final class CompilationAlarm implements AutoCloseable {
     }
 
     /**
-     * Determines if this alarm has expired. A compilation expires if it takes longer than
-     * {@linkplain CompilationAlarm.Options#CompilationExpirationPeriod}.
+     * Gets the period after which this compilation alarm expires.
+     */
+    public double getPeriod() {
+        return period;
+    }
+
+    /**
+     * Determines if this alarm has expired.
      *
-     * @return {@code true} if the current compilation already takes longer than
-     *         {@linkplain CompilationAlarm.Options#CompilationExpirationPeriod}, {@code false}
-     *         otherwise
+     * @return {@code true} if this alarm has been active for more than {@linkplain #getPeriod()
+     *         period} seconds, {@code false} otherwise
      */
     public boolean hasExpired() {
         return this != NEVER_EXPIRES && System.currentTimeMillis() > expiration;
+    }
+
+    /**
+     * Checks whether this alarm {@link #hasExpired()} and if so, raises a bailout exception.
+     */
+    public void checkExpiration() {
+        if (hasExpired()) {
+            throw new PermanentBailoutException("Compilation exceeded %.3f seconds", period);
+        }
     }
 
     @Override
@@ -97,6 +112,11 @@ public final class CompilationAlarm implements AutoCloseable {
             resetProgressDetection();
         }
     }
+
+    /**
+     * Expiration period (in seconds) of this alarm.
+     */
+    private final double period;
 
     /**
      * The time at which this alarm expires.
@@ -123,8 +143,7 @@ public final class CompilationAlarm implements AutoCloseable {
             }
             CompilationAlarm current = currentAlarm.get();
             if (current == null) {
-                long expiration = System.currentTimeMillis() + (long) (period * 1000);
-                current = new CompilationAlarm(expiration);
+                current = new CompilationAlarm(period);
                 currentAlarm.set(current);
                 return current;
             }
@@ -162,11 +181,9 @@ public final class CompilationAlarm implements AutoCloseable {
         if (LOG_PROGRESS_DETECTION) {
             TTY.printf("CompilationAlarm: Progress detection %s; event counter overflown %n", counter.eventCounterToString());
         }
-        if (CompilationAlarm.current().hasExpired()) {
-            compilationAlarmExpired(opt);
-        } else {
-            assertProgress(opt, counter);
-        }
+        CompilationAlarm current = CompilationAlarm.current();
+        current.checkExpiration();
+        assertProgress(opt, counter);
     }
 
     /**
@@ -273,15 +290,6 @@ public final class CompilationAlarm implements AutoCloseable {
         lastUniqueStackTraceForThread.set(null);
         lastCounterForThread.set(null);
         noProgressStartPeriod.set(null);
-    }
-
-    public static void compilationAlarmExpired(Graph graph) {
-        compilationAlarmExpired(graph.getOptions());
-    }
-
-    public static void compilationAlarmExpired(OptionValues options) {
-        double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(options);
-        throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);
     }
 
     private static final ThreadLocal<StackTraceElement[]> lastStackTraceForThread = new ThreadLocal<>();
