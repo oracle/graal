@@ -106,18 +106,25 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
             return;
         }
 
-        Optional<String> targetSerializationClass;
+        Optional<ConfigurationTypeDescriptor> targetSerializationClass;
         targetSerializationClass = parseType(data);
         if (targetSerializationClass.isEmpty()) {
             return;
         }
 
         if (lambdaCapturingType) {
-            serializationSupport.registerLambdaCapturingClass(condition.get(), targetSerializationClass.get());
+            String className = ((NamedConfigurationTypeDescriptor) targetSerializationClass.get()).name();
+            serializationSupport.registerLambdaCapturingClass(condition.get(), className);
         } else {
             Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            serializationSupport.registerWithTargetConstructorClass(condition.get(), targetSerializationClass.get(), customTargetConstructorClass);
+            if (targetSerializationClass.get() instanceof NamedConfigurationTypeDescriptor namedClass) {
+                serializationSupport.registerWithTargetConstructorClass(condition.get(), namedClass.name(), customTargetConstructorClass);
+            } else if (targetSerializationClass.get() instanceof ProxyConfigurationTypeDescriptor proxyClass) {
+                serializationSupport.registerProxyClass(condition.get(), Arrays.asList(proxyClass.interfaceNames()));
+            } else {
+                throw new JSONParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
+            }
         }
     }
 }

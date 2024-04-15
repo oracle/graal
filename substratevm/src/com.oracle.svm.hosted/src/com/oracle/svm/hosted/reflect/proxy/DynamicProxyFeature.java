@@ -25,11 +25,8 @@
 package com.oracle.svm.hosted.reflect.proxy;
 
 import java.lang.reflect.Field;
-import java.util.Collections;
-import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 
@@ -48,17 +45,11 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
-import com.oracle.svm.hosted.reflect.ReflectionFeature;
 
 @AutomaticallyRegisteredFeature
 public final class DynamicProxyFeature implements InternalFeature {
     private int loadedConfigurations;
     private Field proxyCacheField;
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(ReflectionFeature.class);
-    }
 
     @Override
     public void duringSetup(DuringSetupAccess a) {

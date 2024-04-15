@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.core.util.VMError;
 
@@ -43,10 +44,10 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, String typeName, boolean allowPrimitives, boolean includeAllElements) {
-        ConfigurationType type = configuration.get(condition, typeName);
-        ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeName, includeAllElements);
-        return TypeResult.forType(typeName, result);
+    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean includeAllElements) {
+        ConfigurationType type = configuration.get(condition, typeDescriptor);
+        ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeDescriptor, includeAllElements);
+        return TypeResult.forType(typeDescriptor.toString(), result);
     }
 
     @Override

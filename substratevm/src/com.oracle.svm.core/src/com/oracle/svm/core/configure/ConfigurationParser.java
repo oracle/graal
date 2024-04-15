@@ -68,6 +68,7 @@ public abstract class ConfigurationParser {
     public static final String CONDITIONAL_KEY = "condition";
     public static final String NAME_KEY = "name";
     public static final String TYPE_KEY = "type";
+    public static final String PROXY_KEY = "proxy";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final boolean strictSchema;
 
@@ -134,7 +135,7 @@ public abstract class ConfigurationParser {
         }
     }
 
-    protected void checkHasExactlyOneAttribute(EconomicMap<String, Object> map, String type, Collection<String> alternativeAttributes) {
+    public static void checkHasExactlyOneAttribute(EconomicMap<String, Object> map, String type, Collection<String> alternativeAttributes) {
         boolean attributeFound = false;
         for (String key : map.getKeys()) {
             if (alternativeAttributes.contains(key)) {
@@ -216,13 +217,15 @@ public abstract class ConfigurationParser {
                 Object object = conditionObject.get(TYPE_REACHED_KEY);
                 var condition = parseTypeContents(object);
                 if (condition.isPresent()) {
-                    return UnresolvedConfigurationCondition.create(condition.get(), true);
+                    String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
+                    return UnresolvedConfigurationCondition.create(className, true);
                 }
             } else if (conditionObject.containsKey(TYPE_REACHABLE_KEY)) {
                 Object object = conditionObject.get(TYPE_REACHABLE_KEY);
                 var condition = parseTypeContents(object);
                 if (condition.isPresent()) {
-                    return UnresolvedConfigurationCondition.create(condition.get(), TreatAllReachableConditionsAsReached.getValue());
+                    String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
+                    return UnresolvedConfigurationCondition.create(className, TreatAllReachableConditionsAsReached.getValue());
                 }
             }
         }
@@ -233,28 +236,38 @@ public abstract class ConfigurationParser {
         throw new JSONParserException(message);
     }
 
-    protected static Optional<String> parseType(EconomicMap<String, Object> data) {
+    protected static Optional<ConfigurationTypeDescriptor> parseType(EconomicMap<String, Object> data) {
         Object typeObject = data.get(TYPE_KEY);
         Object name = data.get(NAME_KEY);
         if (typeObject != null) {
             return parseTypeContents(typeObject);
         } else if (name != null) {
-            return Optional.of(asString(name));
+            return Optional.of(new NamedConfigurationTypeDescriptor(asString(name)));
         } else {
             throw failOnSchemaError("must have type or name specified for an element");
         }
     }
 
-    protected static Optional<String> parseTypeContents(Object typeObject) {
+    protected static Optional<ConfigurationTypeDescriptor> parseTypeContents(Object typeObject) {
         if (typeObject instanceof String stringValue) {
-            return Optional.of(stringValue);
+            return Optional.of(new NamedConfigurationTypeDescriptor(stringValue));
         } else {
+            EconomicMap<String, Object> type = asMap(typeObject, "type descriptor should be a string or object");
+            if (type.containsKey(PROXY_KEY)) {
+                checkHasExactlyOneAttribute(type, "type descriptor object", Set.of(PROXY_KEY));
+                return Optional.of(getProxyDescriptor(type.get(PROXY_KEY)));
+            }
             /*
              * We return if we find a future version of a type descriptor (as a JSON object) instead
              * of failing parsing.
              */
-            asMap(typeObject, "type descriptor should be a string or object");
             return Optional.empty();
         }
+    }
+
+    private static ProxyConfigurationTypeDescriptor getProxyDescriptor(Object proxyObject) {
+        List<Object> proxyInterfaces = asList(proxyObject, "proxy interface content should be an interface list");
+        String[] proxyInterfaceNames = proxyInterfaces.stream().map(obj -> asString(obj, "proxy")).toArray(String[]::new);
+        return new ProxyConfigurationTypeDescriptor(proxyInterfaceNames);
     }
 }
