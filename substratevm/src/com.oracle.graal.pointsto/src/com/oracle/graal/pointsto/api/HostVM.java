@@ -163,6 +163,10 @@ public abstract class HostVM {
         return false;
     }
 
+    public boolean partialPointsToAnalysis() {
+        return false;
+    }
+
     /**
      * Check if an {@link AnalysisType} is initialized.
      */

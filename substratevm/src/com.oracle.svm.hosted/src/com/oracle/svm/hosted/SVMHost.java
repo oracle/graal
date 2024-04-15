@@ -178,6 +178,7 @@ public class SVMHost extends HostVM {
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
 
     private final boolean useBaseLayer;
+    private final boolean partialPointsToAnalysis;
     private Set<Field> excludedFields;
 
     @SuppressWarnings("this-escape")
@@ -207,6 +208,7 @@ public class SVMHost extends HostVM {
         fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
         useBaseLayer = SubstrateOptions.LoadImageLayer.hasBeenSet();
+        partialPointsToAnalysis = SubstrateOptions.PartialPointsToAnalysis.hasBeenSet();
         if (SubstrateOptions.includeAll()) {
             initializeExcludedFields();
         }
@@ -215,6 +217,11 @@ public class SVMHost extends HostVM {
     @Override
     public boolean useBaseLayer() {
         return useBaseLayer;
+    }
+
+    @Override
+    public boolean partialPointsToAnalysis() {
+        return partialPointsToAnalysis;
     }
 
     protected InlineBeforeAnalysisPolicyUtils getInlineBeforeAnalysisPolicyUtils() {
