@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -53,5 +54,22 @@ final class ExtensionLayerImageFeature implements InternalFeature {
          */
         access.registerAsInHeap(BoxedRelocatedPointer.class);
         access.registerAsAccessed(ReflectionUtil.lookupField(BoxedRelocatedPointer.class, "pointer"));
+
+        /*
+         * ImageCodeInfo.codeStart, used by KnownOffsetsFeature, is not normally reachable for a
+         * minimal extension layer.
+         */
+        access.registerAsAccessed(ReflectionUtil.lookupField(ImageCodeInfo.class, "codeStart"));
+
+        /*
+         * In an extension layer build ConcurrentHashMap$CounterCell is not marked as allocated by
+         * the analysis since ConcurrentHashMap.fullAddCount() is not analyzed. However, an instance
+         * of this type may still be reachable when scanning ClassLoader.packages, but its
+         * allocation is non-deterministic, and it depends on the contention on the map. This can
+         * lead to
+         * "image heap writing found an object whose type was not marked as instantiated by the static analysis"
+         * transient errors when writing the heap of the extension image.
+         */
+        access.registerAsInHeap(ReflectionUtil.lookupClass(false, "java.util.concurrent.ConcurrentHashMap$CounterCell"));
     }
 }
