@@ -32,7 +32,6 @@ import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -76,21 +75,9 @@ public final class SerialAndEpsilonGCOptions {
     private SerialAndEpsilonGCOptions() {
     }
 
-    /** Query these options only through an appropriate method. */
-    public static class ConcealedOptions {
-
-        @Option(help = "Determines if a remembered sets is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert)
-        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
-    }
-
     public static void serialOrEpsilonGCOnly(OptionKey<?> optionKey) {
         if (!SubstrateOptions.UseSerialGC.getValue() && !SubstrateOptions.UseEpsilonGC.getValue()) {
             throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial ('--gc=serial') or the epsilon garbage collector ('--gc=epsilon').");
         }
-    }
-
-    @Fold
-    public static boolean useRememberedSet() {
-        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
     }
 }

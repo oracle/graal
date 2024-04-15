@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.genscavenge.tenured.RelocationInfo;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.genscavenge.tenured.RelocationInfo;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -109,12 +109,13 @@ public final class SerialGCOptions {
     @Option(help = "Ignore the maximum heap size while a VM operation is executed.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMOperation = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
+        @Option(help = "Collect old generation by compacting in-place instead of copying.", type = OptionType.Expert) //
+        public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
 
-        @Option(help = "Compacting old generation.", type = OptionType.Expert)
-        public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly); // TODO: change default value to false
+        @Option(help = "Determines if a remembered set is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
+        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
     }
 
     private SerialGCOptions() {
@@ -127,21 +128,22 @@ public final class SerialGCOptions {
     }
 
     @Fold
+    public static boolean useRememberedSet() {
+        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
+    }
+
+    @Fold
     public static boolean useCompactingOldGen() {
         if (ConcealedOptions.CompactingOldGen.getValue()) {
-            if (!SerialAndEpsilonGCOptions.useRememberedSet()) {
-                throw UserError.abort(
-                        "%s requires %s",
-                        SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
-                        SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.ConcealedOptions.UseRememberedSet, "+")
-                );
+            if (!useRememberedSet()) {
+                throw UserError.abort("%s requires %s",
+                                SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
+                                SubstrateOptionsParser.commandArgument(ConcealedOptions.UseRememberedSet, "+"));
             }
             if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue() > RelocationInfo.MAX_CHUNK_SIZE) {
-                throw UserError.abort(
-                        "%s does not allow %s",
-                        SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
-                        SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value larger than " + RelocationInfo.MAX_CHUNK_SIZE + ">")
-                );
+                throw UserError.abort("%s does not allow %s",
+                                SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
+                                SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value larger than " + RelocationInfo.MAX_CHUNK_SIZE + ">"));
             }
             return true;
         }
