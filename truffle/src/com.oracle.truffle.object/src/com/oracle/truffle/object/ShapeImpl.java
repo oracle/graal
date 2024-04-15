@@ -426,7 +426,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static TransitionMap<Transition, ShapeImpl> newTransitionMap() {
-        return new TransitionMap<>();
+        return TransitionMap.create();
     }
 
     @SuppressWarnings("unchecked")
