@@ -682,7 +682,7 @@ public final class DFAGenerator implements JsonConvertible {
             visited.set(unanchoredInitialState.getId());
             bfsTraversalCur.clear();
             bfsTraversalCur.add(unanchoredInitialState.getSuccessors());
-            while (!bfsTraversalCur.isEmpty()) {
+            outer: while (!bfsTraversalCur.isEmpty()) {
                 bfsTraversalNext.clear();
                 for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
                     for (DFAStateTransitionBuilder t : cur) {
@@ -698,7 +698,7 @@ public final class DFAGenerator implements JsonConvertible {
                         if (targetStateSet.contains(literalLastState)) {
                             literalLastDFAState = target;
                             bfsTraversalNext.clear();
-                            break;
+                            break outer;
                         }
                         bfsExpand(target);
                     }

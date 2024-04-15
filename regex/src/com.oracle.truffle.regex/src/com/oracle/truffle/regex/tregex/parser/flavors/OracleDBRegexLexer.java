@@ -76,6 +76,9 @@ public final class OracleDBRegexLexer extends RegexLexer {
         boolean hasNext = super.hasNext();
         // trailing back-slashes are ignored
         if (position == pattern.length() - 1 && pattern.charAt(pattern.length() - 1) == '\\') {
+            if (inCharacterClass()) {
+                throw handleUnmatchedLeftBracket();
+            }
             return false;
         }
         return hasNext;
