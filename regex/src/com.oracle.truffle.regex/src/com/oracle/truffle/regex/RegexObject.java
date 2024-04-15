@@ -63,24 +63,28 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.literal.LiteralRegexExecNode;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexCompilationRequest;
+import com.oracle.truffle.regex.tregex.parser.flavors.OracleDBFlags;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlags;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
+import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
  * {@link RegexObject} represents a compiled regular expression that can be used to match against
  * input strings. It is the result of a call to
- * {@link RegexLanguage#parse(TruffleLanguage.ParsingRequest)}. It exposes the following three
- * properties:
+ * {@link RegexLanguage#parse(TruffleLanguage.ParsingRequest)}. It exposes the following properties:
  * <ol>
  * <li>{@link String} {@code pattern}: the source of the compiled regular expression</li>
  * <li>{@link TruffleObject} {@code flags}: the set of flags passed to the regular expression
  * compiler. The type differs based on the flavor of regular expressions used:
  * <ul>
  * <li>{@link RegexFlags} if the flavor was {@code ECMAScript}</li>
+ * <li>{@link JavaFlags} if the flavor was {@code JavaUtilPattern}</li>
+ * <li>{@link OracleDBFlags} if the flavor was {@code OracleDB}</li>
  * <li>{@link PythonFlags} if the flavor was {@code Python}</li>
  * <li>{@link RubyFlags} if the flavor was {@code Ruby}</li>
  * </ul>
@@ -88,17 +92,37 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * <li>{@code int groupCount}: number of capture groups present in the regular expression, including
  * group 0.</li>
  * <li>{@link RegexObjectExecMethod} {@code exec}: an executable method that matches the compiled
- * regular expression against a string. The method accepts two parameters:
+ * regular expression against a string. The method has two signatures:
  * <ol>
- * <li>{@link Object} {@code input}: the character sequence to search in. This may either be a
- * {@link String} or a {@link TruffleObject} that responds to
- * {@link InteropLibrary#hasArrayElements(Object)} and returns {@link Character}s on indexed
- * {@link InteropLibrary#readArrayElement(Object, long)} requests.</li>
- * <li>{@link Number} {@code fromIndex}: the position to start searching from. This argument will be
- * cast to {@code int}, since a {@link String} can not be longer than {@link Integer#MAX_VALUE}. If
- * {@code fromIndex} is greater than {@link Integer#MAX_VALUE}, this method will immediately return
- * NO_MATCH.</li>
+ * <li>{@code exec(TruffleString,int)}(</li>
+ * <li>{@code exec(TruffleString,int,int,int,int)}(</li>
  * </ol>
+ * <ol>
+ * Their respective parameters are:
+ * <li>{@link TruffleString} {@code input}: the string to search in. Its encoding must match the
+ * encoding selected via {@link RegexOptions}.</li>
+ * <li>{@link Number} {@code fromIndex}: the position to start searching from, i.e. the minimum
+ * starting index of capture group 0. Look-behind assertions are allowed to move past this index up
+ * to {@code regionFrom}. If {@code fromIndex} is greater than {@link Integer#MAX_VALUE}, this
+ * method will immediately return NO_MATCH.</li>
+ * <li>{@link Number} {@code toIndex}: the position to stop searching at, i.e. the maximum end index
+ * of capture group 0. Look-ahead assertions are allowed to move past this index up to
+ * {@code regionTo}. This parameter is not yet supported, but was added for future API
+ * compatibility. For now, this parameter must be equal to {@code regionTo}. Defaults to the input
+ * string's length.</li>
+ * <li>{@link Number} {@code regionFrom}: Hard string starting boundary. TRegex will not read any
+ * character preceding this index, and treat it as the string's start in respect to position
+ * assertions ({@code ^} and {@code \A} will match this index). Defaults to 0. Using
+ * {@code regionFrom} and {@code regionTo}, the caller can effectively restrict the search to a
+ * substring of {@code input}.</li>
+ * <li>{@link Number} {@code regionTo}: Hard string end boundary. TRegex will not read any character
+ * past this index, and treat it as the string's end in respect to position assertions ({@code $},
+ * {@code \Z} and {@code \z} will match this index). Defaults to the input string's length. Using
+ * {@code regionFrom} and {@code regionTo}, the caller can effectively restrict the search to a
+ * substring of {@code input}.</li>
+ * </ol>
+ * All index arguments will be converted to {@code int}, since a {@link TruffleString} can not be
+ * longer than {@link Integer#MAX_VALUE}. <br>
  * The return value is a {@link RegexResult}. The contents of the {@code exec} can be compiled
  * lazily and so its first invocation might involve a longer delay as the regular expression is
  * compiled on the fly.

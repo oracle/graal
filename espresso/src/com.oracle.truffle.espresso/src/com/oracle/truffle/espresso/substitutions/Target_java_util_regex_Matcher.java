@@ -437,7 +437,6 @@ public final class Target_java_util_regex_Matcher {
 
         @Specialization
         static boolean doDefault(Node node, Object regexObject, StaticObject self, int from, Meta meta,
-                        @Cached TruffleString.SubstringByteIndexNode substringNode,
                         @CachedLibrary(limit = "3") InteropLibrary regexObjectInterop,
                         @CachedLibrary(limit = "3") InteropLibrary integerInterop,
                         @CachedLibrary(limit = "3") InteropLibrary booleanInterop,
