@@ -57,12 +57,6 @@ public class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
     @Override
     public boolean visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        return visitChunkInline(chunk);
-    }
-
-    @Override
-    @AlwaysInline("GC performance")
-    public boolean visitChunkInline(AlignedHeapChunk.AlignedHeader chunk) {
         Pointer cursor = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer top = HeapChunk.getTopPointer(chunk); // top can't move here, therefore it's fine to read once
 

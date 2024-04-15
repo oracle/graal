@@ -89,6 +89,7 @@ public final class AlignedHeapChunk {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initialize(AlignedHeader chunk, UnsignedWord chunkSize) {
+        assert chunkSize.equal(HeapParameters.getAlignedHeapChunkSize()) : "expecting all aligned chunks to be the same size";
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
         chunk.setShouldSweepInsteadOfCompact(false);
     }
@@ -104,12 +105,6 @@ public final class AlignedHeapChunk {
 
     public static Pointer getObjectsEnd(AlignedHeader that) {
         return HeapChunk.getEndPointer(that);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getSizeUsableForObjects() {
-        // TODO: This assumes that all aligned heap chunks are of equal size
-        return HeapParameters.getAlignedHeapChunkSize().subtract(getObjectsStartOffset());
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */
@@ -161,33 +156,19 @@ public final class AlignedHeapChunk {
         return RememberedSet.get().getHeaderSizeOfAlignedChunk();
     }
 
-    /**
-     * Supply a closure to be applied to {@link AlignedHeapChunk}s.
-     */
-    public interface Visitor {
+    @Fold
+    public static UnsignedWord getUsableSizeForObjects() {
+        return HeapParameters.getAlignedHeapChunkSize().subtract(getObjectsStartOffset());
+    }
 
+    public interface Visitor {
         /**
          * Visit an {@link AlignedHeapChunk}.
          *
          * @param chunk The {@link AlignedHeapChunk} to be visited.
          * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
          */
-        @RestrictHeapAccess(
-                access = RestrictHeapAccess.Access.NO_ALLOCATION,
-                reason = "Must not allocate while visiting the heap."
-        )
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
         boolean visitChunk(AlignedHeapChunk.AlignedHeader chunk);
-
-        /**
-         * Visit an {@link AlignedHeapChunk} like {@link #visitChunk}, but inlined for performance.
-         *
-         * @param chunk The {@link AlignedHeapChunk} to be visited.
-         * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
-         */
-        @RestrictHeapAccess(
-                access = RestrictHeapAccess.Access.NO_ALLOCATION,
-                reason = "Must not allocate while visiting the heap."
-        )
-        boolean visitChunkInline(AlignedHeapChunk.AlignedHeader chunk);
     }
 }

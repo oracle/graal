@@ -26,9 +26,6 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -53,6 +50,10 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.word.Word;
+
 final class AlignedChunkRememberedSet {
     private AlignedChunkRememberedSet() {
     }
@@ -66,8 +67,7 @@ final class AlignedChunkRememberedSet {
     public static UnsignedWord getHeaderSize() {
         UnsignedWord headerSize = getFirstObjectTableLimitOffset();
         if (SerialGCOptions.useCompactingOldGen()) {
-            // Our Mark-and-Compact algorithm requires memory space before the first object
-            // for storing relocation info data during complete collections.
+            // Compaction needs room for a RelocationInfo structure before the first object.
             headerSize = headerSize.add(RelocationInfo.getSize());
         }
         UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());

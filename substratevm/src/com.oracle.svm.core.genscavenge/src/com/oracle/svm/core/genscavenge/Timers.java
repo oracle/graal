@@ -114,8 +114,8 @@ final class Timers {
     final Timer blackenImageHeapRoots = new Timer("blackenImageHeapRoots");
     final Timer blackenDirtyCardRoots = new Timer("blackenDirtyCardRoots");
     final Timer blackenStackRoots = new Timer("blackenStackRoots");
-    final Timer cheneyScanFromRoots = new Timer("cheneyScanFromRoots");
-    final Timer cheneyScanFromDirtyRoots = new Timer("cheneyScanFromDirtyRoots");
+    final Timer scanFromRoots = new Timer("scanFromRoots");
+    final Timer scanFromDirtyRoots = new Timer("scanFromDirtyRoots");
     final Timer collection = new Timer("collection");
     final Timer cleanCodeCache = new Timer("cleanCodeCache");
     final Timer referenceObjects = new Timer("referenceObjects");
@@ -150,8 +150,8 @@ final class Timers {
         verifyBefore.reset();
         collection.reset();
         rootScan.reset();
-        cheneyScanFromRoots.reset();
-        cheneyScanFromDirtyRoots.reset();
+        scanFromRoots.reset();
+        scanFromDirtyRoots.reset();
         promotePinnedObjects.reset();
         blackenStackRoots.reset();
         walkThreadLocals.reset();
@@ -160,17 +160,19 @@ final class Timers {
         blackenImageHeapRoots.reset();
         blackenDirtyCardRoots.reset();
         scanGreyObjects.reset();
-        tenuredPlanning.reset();
-        tenuredFixing.reset();
-        tenuredFixingAlignedChunks.reset();
-        tenuredFixingImageHeap.reset();
-        tenuredFixingThreadLocal.reset();
-        tenuredFixingRuntimeCodeCache.reset();
-        tenuredFixingStack.reset();
-        tenuredFixingUnalignedChunks.reset();
-        tenuredCompacting.reset();
-        tenuredCompactingChunks.reset();
-        tenuredCompactingUpdatingRemSet.reset();
+        if (SerialGCOptions.useCompactingOldGen()) {
+            tenuredPlanning.reset();
+            tenuredFixing.reset();
+            tenuredFixingAlignedChunks.reset();
+            tenuredFixingImageHeap.reset();
+            tenuredFixingThreadLocal.reset();
+            tenuredFixingRuntimeCodeCache.reset();
+            tenuredFixingStack.reset();
+            tenuredFixingUnalignedChunks.reset();
+            tenuredCompacting.reset();
+            tenuredCompactingChunks.reset();
+            tenuredCompactingUpdatingRemSet.reset();
+        }
         cleanCodeCache.reset();
         referenceObjects.reset();
         releaseSpaces.reset();
@@ -186,8 +188,8 @@ final class Timers {
             logOneTimer(log, "    ", collection);
             logOneTimer(log, "      ", verifyBefore);
             logOneTimer(log, "      ", rootScan);
-            logOneTimer(log, "        ", cheneyScanFromRoots);
-            logOneTimer(log, "        ", cheneyScanFromDirtyRoots);
+            logOneTimer(log, "        ", scanFromRoots);
+            logOneTimer(log, "        ", scanFromDirtyRoots);
             logOneTimer(log, "          ", promotePinnedObjects);
             logOneTimer(log, "          ", blackenStackRoots);
             logOneTimer(log, "          ", walkThreadLocals);
@@ -196,17 +198,19 @@ final class Timers {
             logOneTimer(log, "          ", blackenImageHeapRoots);
             logOneTimer(log, "          ", blackenDirtyCardRoots);
             logOneTimer(log, "          ", scanGreyObjects);
-            logOneTimer(log, "      ", tenuredPlanning);
-            logOneTimer(log, "      ", tenuredFixing);
-            logOneTimer(log, "          ", tenuredFixingAlignedChunks);
-            logOneTimer(log, "          ", tenuredFixingImageHeap);
-            logOneTimer(log, "          ", tenuredFixingThreadLocal);
-            logOneTimer(log, "          ", tenuredFixingRuntimeCodeCache);
-            logOneTimer(log, "          ", tenuredFixingStack);
-            logOneTimer(log, "          ", tenuredFixingUnalignedChunks);
-            logOneTimer(log, "      ", tenuredCompacting);
-            logOneTimer(log, "          ", tenuredCompactingChunks);
-            logOneTimer(log, "          ", tenuredCompactingUpdatingRemSet);
+            if (SerialGCOptions.useCompactingOldGen()) {
+                logOneTimer(log, "      ", tenuredPlanning);
+                logOneTimer(log, "      ", tenuredFixing);
+                logOneTimer(log, "          ", tenuredFixingAlignedChunks);
+                logOneTimer(log, "          ", tenuredFixingImageHeap);
+                logOneTimer(log, "          ", tenuredFixingThreadLocal);
+                logOneTimer(log, "          ", tenuredFixingRuntimeCodeCache);
+                logOneTimer(log, "          ", tenuredFixingStack);
+                logOneTimer(log, "          ", tenuredFixingUnalignedChunks);
+                logOneTimer(log, "      ", tenuredCompacting);
+                logOneTimer(log, "          ", tenuredCompactingChunks);
+                logOneTimer(log, "          ", tenuredCompactingUpdatingRemSet);
+            }
             logOneTimer(log, "      ", cleanCodeCache);
             logOneTimer(log, "      ", referenceObjects);
             logOneTimer(log, "      ", releaseSpaces);

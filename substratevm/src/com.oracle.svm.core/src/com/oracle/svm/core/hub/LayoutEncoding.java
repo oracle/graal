@@ -356,7 +356,6 @@ public class LayoutEncoding {
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectWithoutOptionalIdHashFieldInGC(Object obj) {
         return getSizeFromObjectInline(obj, false);
     }

@@ -153,7 +153,7 @@ public final class YoungGeneration extends Generation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void prepareForPromotion() {
+    void beginPromotion() {
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             assert getSurvivorToSpaceAt(i).isEmpty() : "SurvivorToSpace should be empty.";
             getSurvivorGreyObjectsWalker(i).setScanStart(getSurvivorToSpaceAt(i));
@@ -263,7 +263,7 @@ public final class YoungGeneration extends Generation {
         // survivor space. If it does not, we return null here to tell the caller.
         int age = originalSpace.getNextAgeForPromotion();
         Space toSpace = getSurvivorToSpaceAt(age - 1);
-        return toSpace.promoteAlignedObject(original, originalSpace);
+        return toSpace.copyAlignedObject(original, originalSpace);
     }
 
     @AlwaysInline("GC performance")
@@ -284,7 +284,7 @@ public final class YoungGeneration extends Generation {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
+    protected boolean promotePinnedObject(Object obj, HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
         assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
         if (!fitsInSurvivors(originalChunk, isAligned)) {
@@ -329,5 +329,10 @@ public final class YoungGeneration extends Generation {
             return WordFactory.nullPointer();
         }
         return HeapImpl.getChunkProvider().produceAlignedChunk();
+    }
+
+    @Override
+    public void checkSanityAfterCollection() {
+        assert eden.isEmpty() : "eden should be empty after a collection.";
     }
 }

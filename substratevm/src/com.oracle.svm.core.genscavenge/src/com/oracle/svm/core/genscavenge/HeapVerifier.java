@@ -112,12 +112,10 @@ public class HeapVerifier {
     }
 
     private static boolean verifyOldGeneration() {
-        OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();
-        Space space = oldGeneration.getSpace();
-        return verifySpace(space);
+        return HeapImpl.getHeapImpl().getOldGeneration().verifySpaces();
     }
 
-    protected boolean verifyRememberedSets() {
+    private static boolean verifyRememberedSets() {
         /*
          * After we are done with all other verifications, it is guaranteed that the heap is in a
          * reasonable state. Now, we can verify the remembered sets without having to worry about
@@ -145,14 +143,18 @@ public class HeapVerifier {
             success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
 
-        OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();
-        Space space = oldGeneration.getSpace();
-        success &= rememberedSet.verify(space.getFirstAlignedHeapChunk());
-        success &= rememberedSet.verify(space.getFirstUnalignedHeapChunk());
+        success &= HeapImpl.getHeapImpl().getOldGeneration().verifyRememberedSets();
         return success;
     }
 
-    private static boolean verifySpace(Space space) {
+    static boolean verifyRememberedSet(Space space) {
+        boolean success = true;
+        success &= RememberedSet.get().verify(space.getFirstAlignedHeapChunk());
+        success &= RememberedSet.get().verify(space.getFirstUnalignedHeapChunk());
+        return success;
+    }
+
+    static boolean verifySpace(Space space) {
         boolean success = true;
         success &= verifyChunkList(space, "aligned", space.getFirstAlignedHeapChunk(), space.getLastAlignedHeapChunk());
         success &= verifyChunkList(space, "unaligned", space.getFirstUnalignedHeapChunk(), space.getLastUnalignedHeapChunk());

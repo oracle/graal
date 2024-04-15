@@ -100,7 +100,7 @@ public final class HeapImpl extends Heap {
 
     // Singleton instances, created during image generation.
     private final YoungGeneration youngGeneration = new YoungGeneration("YoungGeneration");
-    private final OldGeneration oldGeneration = new OldGeneration("OldGeneration");
+    private final OldGeneration oldGeneration;
     private final HeapChunkProvider chunkProvider = new HeapChunkProvider();
     private final ObjectHeaderImpl objectHeaderImpl = new ObjectHeaderImpl();
     private final GCImpl gcImpl;
@@ -125,6 +125,8 @@ public final class HeapImpl extends Heap {
     public HeapImpl() {
         this.gcImpl = new GCImpl();
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
+        this.oldGeneration = SerialGCOptions.useCompactingOldGen() ? new CompactingOldGeneration("OldGeneration")
+                        : new CopyingOldGeneration("OldGeneration");
         HeapParameters.initialize();
         DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
         DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
@@ -789,11 +791,11 @@ public final class HeapImpl extends Heap {
 
     @Uninterruptible(reason = "Prevent that chunks are freed.")
     private boolean isInOldGen(Pointer ptr) {
-        return findPointerInSpace(oldGeneration.getSpace(), ptr);
+        return oldGeneration.isInSpace(ptr);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean findPointerInSpace(Space space, Pointer p) {
+    static boolean findPointerInSpace(Space space, Pointer p) {
         AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
             Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);

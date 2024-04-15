@@ -136,14 +136,12 @@ public final class SerialGCOptions {
     public static boolean useCompactingOldGen() {
         if (ConcealedOptions.CompactingOldGen.getValue()) {
             if (!useRememberedSet()) {
-                throw UserError.abort("%s requires %s",
-                                SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
+                throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
                                 SubstrateOptionsParser.commandArgument(ConcealedOptions.UseRememberedSet, "+"));
             }
             if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue() > RelocationInfo.MAX_CHUNK_SIZE) {
-                throw UserError.abort("%s does not allow %s",
-                                SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
-                                SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value larger than " + RelocationInfo.MAX_CHUNK_SIZE + ">"));
+                throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
+                                SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value below or equal to " + RelocationInfo.MAX_CHUNK_SIZE + ">"));
             }
             return true;
         }
