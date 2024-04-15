@@ -156,15 +156,6 @@ final class TransitionMap<K, V> {
         }
     }
 
-    public void clear() {
-        synchronized (queue) {
-            while (queue.poll() != null) {
-                // clear out ref queue.
-            }
-            map.clear();
-        }
-    }
-
     public void forEach(BiConsumer<? super K, ? super V> consumer) {
         synchronized (queue) {
             MapCursor<Object, StrongKeyWeakValueEntry<Object, V>> cursor = map.getEntries();
