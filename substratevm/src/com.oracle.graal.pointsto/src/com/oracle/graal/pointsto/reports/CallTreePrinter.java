@@ -42,15 +42,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -404,22 +401,22 @@ public final class CallTreePrinter {
     private static void printInvokeNodes(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
         writer.println(convertToCSV("Id", "MethodId", "BytecodeIndexes", "TargetId", "IsDirect"));
         methodToNode.values().stream()
-                .flatMap(node -> node.invokes.stream()
-                        .filter(invoke -> !invoke.callees.isEmpty())
-                        .map(invoke -> invokeNodeInfo(methodToNode, node, invoke)))
-                .map(CallTreePrinter::convertToCSV)
-                .forEach(writer::println);
+                        .flatMap(node -> node.invokes.stream()
+                                        .filter(invoke -> !invoke.callees.isEmpty())
+                                        .map(invoke -> invokeNodeInfo(methodToNode, node, invoke)))
+                        .map(CallTreePrinter::convertToCSV)
+                        .forEach(writer::println);
     }
 
     private static void printCallTargets(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
         writer.println(convertToCSV("InvokeId", "TargetId"));
         methodToNode.values().stream()
-                .flatMap(node -> node.invokes.stream()
-                        .filter(invoke -> !invoke.callees.isEmpty())
-                        .flatMap(invoke -> invoke.callees.stream()
-                                .map(callee -> callTargetInfo(invoke, callee))))
-                .map(CallTreePrinter::convertToCSV)
-                .forEach(writer::println);
+                        .flatMap(node -> node.invokes.stream()
+                                        .filter(invoke -> !invoke.callees.isEmpty())
+                                        .flatMap(invoke -> invoke.callees.stream()
+                                                        .map(callee -> callTargetInfo(invoke, callee))))
+                        .map(CallTreePrinter::convertToCSV)
+                        .forEach(writer::println);
     }
 
     private static List<String> methodNodeInfo(MethodNode method) {
@@ -428,11 +425,11 @@ public final class CallTreePrinter {
 
     private static List<String> invokeNodeInfo(Map<AnalysisMethod, MethodNode> methodToNode, MethodNode method, InvokeNode invoke) {
         return Arrays.asList(
-                String.valueOf(invoke.id),
-                String.valueOf(method.id),
-                showBytecodeIndexes(bytecodeIndexes(invoke)),
-                String.valueOf(methodToNode.get(invoke.targetMethod).id),
-                String.valueOf(invoke.isDirectInvoke));
+                        String.valueOf(invoke.id),
+                        String.valueOf(method.id),
+                        showBytecodeIndexes(bytecodeIndexes(invoke)),
+                        String.valueOf(methodToNode.get(invoke.targetMethod).id),
+                        String.valueOf(invoke.isDirectInvoke));
     }
 
     private static List<String> callTargetInfo(InvokeNode invoke, Node callee) {
