@@ -359,21 +359,11 @@ public final class CallTreePrinter {
     }
 
     private static void printCsvFiles(Map<AnalysisMethod, MethodNode> methodToNode, String reportsPath, String reportName) {
-        // Set virtual node at next available method id
-        final AtomicInteger virtualNodeId = new AtomicInteger(MethodNode.methodId);
+        Set<MethodNode> nodes = new HashSet<>();
 
-        Set<Integer> entryPointIds = new HashSet<>();
-        Set<MethodNode> nonVirtualNodes = new HashSet<>();
-        Map<List<String>, Integer> virtualNodes = new HashMap<>();
-
-        Map<Integer, Set<BciEndEdge>> directEdges = new HashMap<>();
-        Map<Integer, Set<BciEndEdge>> virtualEdges = new HashMap<>();
-        Map<Integer, Set<Integer>> overridenByEdges = new HashMap<>();
-
-        List<MethodNode> nodes = methodToNode.values().stream().filter(n -> n.isEntryPoint).toList();
-        for (MethodNode node : nodes) {
-            entryPointIds.add(node.id);
-            walkNodes(node, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId, methodToNode);
+        List<MethodNode> entrypoints = methodToNode.values().stream().filter(n -> n.isEntryPoint).toList();
+        for (MethodNode entrypoint : entrypoints) {
+            walkNodes((MethodNode) entrypoint, nodes, methodToNode);
         }
 
         String msgPrefix = "call tree csv file for ";
@@ -457,38 +447,32 @@ public final class CallTreePrinter {
         return Arrays.asList(String.valueOf(invoke.id), String.valueOf(((MethodNode) callee).id));
     }
 
-    private static void walkNodes(MethodNode methodNode, Map<Integer, Set<BciEndEdge>> directEdges, Map<Integer, Set<BciEndEdge>> virtualEdges, Map<Integer, Set<Integer>> overridenByEdges,
-                    Map<List<String>, Integer> virtualNodes, Set<MethodNode> nonVirtualNodes, AtomicInteger virtualNodeId, Map<AnalysisMethod, MethodNode> methodToNode) {
+    private static void walkNodes(MethodNode methodNode, Set<MethodNode> nodes, Map<AnalysisMethod, MethodNode> methodToNode) {
         for (InvokeNode invoke : methodNode.invokes) {
             methodToNode.computeIfAbsent(invoke.targetMethod, MethodNode::new);
             if (invoke.isDirectInvoke) {
                 if (invoke.callees.size() > 0) {
                     Node calleeNode = invoke.callees.get(0);
-                    addDirectEdge(methodNode.id, invoke, calleeNode, directEdges, nonVirtualNodes);
+                    addNode(calleeNode, nodes);
                     if (calleeNode instanceof MethodNode) {
-                        walkNodes((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId, methodToNode);
+                        walkNodes((MethodNode) calleeNode, nodes, methodToNode);
                     }
                 }
             } else {
-                final int nodeId = addVirtualNode(invoke, virtualNodes, virtualNodeId);
-                addVirtualMethodEdge(methodNode.id, invoke, nodeId, virtualEdges);
                 for (Node calleeNode : invoke.callees) {
-                    addOverridenByEdge(nodeId, calleeNode, overridenByEdges, nonVirtualNodes);
                     if (calleeNode instanceof MethodNode) {
-                        walkNodes((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId, methodToNode);
+                        walkNodes((MethodNode) calleeNode, nodes, methodToNode);
                     }
                 }
             }
         }
     }
 
-    private static void addDirectEdge(int nodeId, InvokeNode invoke, Node calleeNode, Map<Integer, Set<BciEndEdge>> edges, Set<MethodNode> nodes) {
-        Set<BciEndEdge> nodeEdges = edges.computeIfAbsent(nodeId, k -> new HashSet<>());
+    private static void addNode(Node calleeNode, Set<MethodNode> nodes) {
         MethodNode methodNode = calleeNode instanceof MethodNode
                         ? (MethodNode) calleeNode
                         : ((MethodNodeReference) calleeNode).methodNode;
         nodes.add(methodNode);
-        nodeEdges.add(new BciEndEdge(methodNode.id, bytecodeIndexes(invoke)));
     }
 
     private static List<Integer> bytecodeIndexes(InvokeNode node) {
