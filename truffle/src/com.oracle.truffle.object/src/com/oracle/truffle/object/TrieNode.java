@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -149,7 +149,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
     }
 
     @SuppressWarnings("unchecked")
-    final void forEachEntry(Consumer<E> consumer) {
+    final void forEachEntry(Consumer<? super E> consumer) {
         for (Object entry : entries()) {
             if (entry == null) {
                 continue;
@@ -225,7 +225,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         }
     }
 
-    static class BitmapNode<K, V, E extends Map.Entry<K, V>> extends TrieNode<K, V, E> {
+    static final class BitmapNode<K, V, E extends Map.Entry<K, V>> extends TrieNode<K, V, E> {
         private final int bitmap;
         private final Object[] entries;
 
@@ -359,7 +359,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         }
     }
 
-    static class HashCollisionNode<K, V, E extends Map.Entry<K, V>> extends TrieNode<K, V, E> {
+    static final class HashCollisionNode<K, V, E extends Map.Entry<K, V>> extends TrieNode<K, V, E> {
         private final int hashcode;
         private final Object[] entries;
 
@@ -373,7 +373,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         private int findIndex(K key) {
             for (int i = 0; i < entries.length; i++) {
                 E entry = (E) entries[i];
-                if (key.equals(key(entry))) {
+                if (key(entry).equals(key)) {
                     return i;
                 }
             }
