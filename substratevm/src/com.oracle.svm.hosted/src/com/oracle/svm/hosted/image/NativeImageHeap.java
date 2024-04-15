@@ -215,7 +215,8 @@ public final class NativeImageHeap implements ImageHeap {
         // Process any remaining objects on the worklist, especially that might intern strings.
         processAddObjectWorklist();
 
-        boolean usesInternedStrings = hMetaAccess.lookupJavaField(StringInternSupport.getInternedStringsField()).isAccessed();
+        HostedField hostedField = hMetaAccess.optionalLookupJavaField(StringInternSupport.getInternedStringsField());
+        boolean usesInternedStrings = hostedField != null && hostedField.isAccessed();
         if (usesInternedStrings) {
             /*
              * Ensure that the hub of the String[] array (used for the interned objects) is written.
@@ -274,6 +275,9 @@ public final class NativeImageHeap implements ImageHeap {
          * fields manually.
          */
         for (HostedField field : hUniverse.getFields()) {
+            if (field.wrapped.isInBaseLayer()) {
+                continue;
+            }
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 addConstant(readConstantField(field, null), false, field);
@@ -339,6 +343,14 @@ public final class NativeImageHeap implements ImageHeap {
 
     public void addConstant(final JavaConstant constant, boolean immutableFromParent, final Object reason) {
         assert addObjectsPhase.isAllowed() : "Objects cannot be added at phase: " + addObjectsPhase.toString() + " with reason: " + reason;
+
+        if (constant instanceof ImageHeapConstant hc && hc.isInBaseLayer() && !hMetaAccess.isInstanceOf(constant, Class.class)) {
+            /*
+             * Skip base layer constants, but not the hubs. We need the object info in
+             * NativeImageHeapWriter.writeObjectHeader()
+             */
+            return;
+        }
 
         if (constant.getJavaKind().isPrimitive() || constant.isNull() || hMetaAccess.isInstanceOf(constant, WordBase.class)) {
             return;

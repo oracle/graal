@@ -36,6 +36,7 @@ import java.util.stream.StreamSupport;
 import org.graalvm.collections.Pair;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -355,6 +356,10 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 } else if (codeAnnotation instanceof HostedImageHeapConstantPatch) {
                     HostedImageHeapConstantPatch patch = (HostedImageHeapConstantPatch) codeAnnotation;
 
+                    if (patch.constant instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
+                        // TODO use object offset in base layer heap [GR-52911]
+                        continue;
+                    }
                     ObjectInfo objectInfo = imageHeap.getConstantInfo(patch.constant);
                     long objectAddress = objectInfo.getOffset();
 

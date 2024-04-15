@@ -57,6 +57,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -666,6 +667,10 @@ public abstract class NativeImageCodeCache {
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getByteBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
+            if (constant instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
+                // TODO use object offset in base layer heap [GR-52911]
+                return;
+            }
             writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant);
         });
     }
