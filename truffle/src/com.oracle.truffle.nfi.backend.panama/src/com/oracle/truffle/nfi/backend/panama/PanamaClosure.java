@@ -43,6 +43,7 @@ package com.oracle.truffle.nfi.backend.panama;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -250,6 +251,7 @@ final class PanamaClosure implements TruffleObject {
                 }
                 return toJavaRet.execute(ret);
             } catch (Throwable t) {
+                TruffleStackTrace.fillIn(t);
                 PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
                 try {
                     return toJavaRet.execute("");
@@ -287,6 +289,7 @@ final class PanamaClosure implements TruffleObject {
             try {
                 callClosure.execute(frame);
             } catch (Throwable t) {
+                TruffleStackTrace.fillIn(t);
                 PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
             }
             return null;
@@ -328,6 +331,7 @@ final class PanamaClosure implements TruffleObject {
                 }
                 return toJavaRet.execute(ret);
             } catch (Throwable t) {
+                TruffleStackTrace.fillIn(t);
                 PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
                 try {
                     return toJavaRet.execute(0);

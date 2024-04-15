@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -63,6 +64,7 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
     final ContextThreadLocal<NFIState> nfiState = locals.createContextThreadLocal((ctx, thread) -> new NFIState());
 
     protected void setPendingException(Throwable pendingException) {
+        TruffleStackTrace.fillIn(pendingException);
         NFIState state = nfiState.get();
         state.setPendingException(pendingException);
     }
