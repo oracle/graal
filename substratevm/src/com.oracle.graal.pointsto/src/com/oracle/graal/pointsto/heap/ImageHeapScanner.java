@@ -346,57 +346,14 @@ public abstract class ImageHeapScanner {
         return array;
     }
 
-    public void linkBaseLayerValue(ImageHeapConstant constant, int idx, ImageHeapConstant baseLayerValue) {
-        if (constant instanceof ImageHeapObjectArray array) {
-            linkBaseLayerElementValue(array, idx, baseLayerValue);
-        } else if (constant instanceof ImageHeapInstance instance) {
-            AnalysisField field = (AnalysisField) instance.getType().getInstanceFields(true)[idx];
-            linkBaseLayerFieldValue(instance, field, baseLayerValue);
-        } else {
-            AnalysisError.shouldNotReachHere("unexpected constant: " + constant);
-        }
-    }
-
-    private void linkBaseLayerFieldValue(ImageHeapInstance instance, AnalysisField field, ImageHeapConstant baseLayerFieldValue) {
-        ValueSupplier<JavaConstant> rawFieldValue;
-        try {
-            JavaConstant hostedInstance = instance.getHostedObject();
-            AnalysisError.guarantee(hostedInstance != null);
-            rawFieldValue = readHostedFieldValue(field, hostedInstance);
-        } catch (InternalError | TypeNotPresentException | LinkageError e) {
-            /* Ignore missing type errors. */
-            return;
-        }
-        if (rawFieldValue != null) {
-            linkAndRegisterBaseLayerValue(baseLayerFieldValue, field, rawFieldValue.get());
-        }
-    }
-
-    private void linkAndRegisterBaseLayerValue(ImageHeapConstant baseLayerValue, Object reason, JavaConstant rawValue) {
-        JavaConstant hostedValue = baseLayerValue.getHostedObject();
-        if (hostedValue == null) {
-            baseLayerValue.setHostedObject(rawValue);
-            hostedValue = rawValue;
-        } else {
-            AnalysisError.guarantee(hostedValue.equals(rawValue));
-        }
+    public void linkBaseLayerValue(ImageHeapConstant constant, Object reason) {
+        JavaConstant hostedValue = constant.getHostedObject();
         Object existingSnapshot = imageHeap.getSnapshot(hostedValue);
         if (existingSnapshot != null) {
-            AnalysisError.guarantee(existingSnapshot == baseLayerValue || existingSnapshot instanceof AnalysisFuture<?> task && task.ensureDone() == baseLayerValue,
+            AnalysisError.guarantee(existingSnapshot == constant || existingSnapshot instanceof AnalysisFuture<?> task && task.ensureDone() == constant,
                             "Found unexpected snapshot value for base layer value. Reason: %s.", reason);
         } else {
-            imageHeap.setValue(hostedValue, baseLayerValue);
-        }
-    }
-
-    private void linkBaseLayerElementValue(ImageHeapObjectArray array, int idx, ImageHeapConstant baseLayerElementValue) {
-        JavaConstant hostedArray = array.getHostedObject();
-        JavaConstant rawElementValue = null;
-        if (hostedArray != null) {
-            rawElementValue = hostedValuesProvider.readArrayElement(hostedArray, idx);
-        }
-        if (rawElementValue != null) {
-            linkAndRegisterBaseLayerValue(baseLayerElementValue, array, rawElementValue);
+            imageHeap.setValue(hostedValue, constant);
         }
     }
 
