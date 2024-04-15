@@ -41,7 +41,9 @@
 package com.oracle.truffle.object;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
@@ -169,6 +171,10 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
             }
         });
         return true;
+    }
+
+    final Iterator<E> entryIterator() {
+        return new EntryIterator<>(entries());
     }
 
     @Override
@@ -434,6 +440,58 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         @Override
         Object[] entries() {
             return entries;
+        }
+    }
+
+    static final class EntryIterator<E> implements Iterator<E> {
+        int nextIndex;
+        final Object[] entries;
+        E nextEntry;
+        EntryIterator<E> nestedIterator;
+
+        EntryIterator(Object[] entries) {
+            this.entries = entries;
+            this.nextEntry = advance();
+        }
+
+        @SuppressWarnings("unchecked")
+        private E advance() {
+            do {
+                if (nestedIterator != null) {
+                    if (nestedIterator.hasNext()) {
+                        return nestedIterator.next();
+                    } else {
+                        nestedIterator = null;
+                    }
+                }
+                while (nextIndex < entries.length) {
+                    Object entry = entries[nextIndex++];
+                    if (entry == null) {
+                        continue;
+                    } else if (entry instanceof TrieNode<?, ?, ?> branch) {
+                        nestedIterator = new EntryIterator<>(branch.entries());
+                        break;
+                    } else {
+                        return (E) entry;
+                    }
+                }
+            } while (nestedIterator != null);
+            return null;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return nextEntry != null;
+        }
+
+        @Override
+        public E next() {
+            E current = nextEntry;
+            if (current == null) {
+                throw new NoSuchElementException();
+            }
+            nextEntry = advance();
+            return current;
         }
     }
 }
