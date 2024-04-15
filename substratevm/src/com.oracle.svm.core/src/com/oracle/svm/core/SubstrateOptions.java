@@ -110,6 +110,8 @@ public class SubstrateOptions {
             LayeredBaseImageAnalysis.update(values, newValue);
             ClosedTypeWorld.update(values, !newValue);
             PersistImageLayer.update(values, newValue);
+            DeleteLocalSymbols.update(values, !newValue);
+            StripDebugInfo.update(values, !newValue);
         }
     };
 
