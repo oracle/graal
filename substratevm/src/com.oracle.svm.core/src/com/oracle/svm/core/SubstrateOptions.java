@@ -188,6 +188,7 @@ public class SubstrateOptions {
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
+    private static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
 
     @Fold
     public static boolean getSourceLevelDebug() {
@@ -336,8 +337,16 @@ public class SubstrateOptions {
         void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T newValue);
     }
 
+    public interface OptionEnabledHandler<T> {
+        void onOptionEnabled(EconomicMap<OptionKey<?>, Object> values);
+    }
+
     public static void setOptimizeValueUpdateHandler(ValueUpdateHandler<OptimizationLevel> updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
+    }
+
+    public static void setImageLayerEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {
+        SubstrateOptions.imageLayerEnabledHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
@@ -1124,6 +1133,9 @@ public class SubstrateOptions {
             super.update(values, boxedValue);
             PartialPointsToAnalysis.update(values, true);
             ClosedTypeWorld.update(values, false);
+            if (imageLayerEnabledHandler != null) {
+                imageLayerEnabledHandler.onOptionEnabled(values);
+            }
         }
     };
 
