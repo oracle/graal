@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Objects;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -179,25 +178,6 @@ final class TransitionMap<K, V> {
                 }
             }
         }
-    }
-
-    public <R> R iterateEntries(BiFunction<? super K, ? super V, R> consumer) {
-        synchronized (queue) {
-            MapCursor<Object, StrongKeyWeakValueEntry<Object, V>> cursor = map.getEntries();
-            while (cursor.advance()) {
-                V value = cursor.getValue().get();
-                if (value != null) {
-                    K key = unwrapKey(cursor.getKey());
-                    if (key != null) {
-                        R result = consumer.apply(key, value);
-                        if (result != null) {
-                            return result;
-                        }
-                    }
-                }
-            }
-        }
-        return null;
     }
 
     @SuppressWarnings("unchecked")
