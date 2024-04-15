@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -98,6 +99,7 @@ abstract class CallSignatureNode extends Node {
             }
         }
 
+        @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "doOptimizedDirect", guards = "signature.cachedState != null")
         Object doOptimizedIndirect(NFISignature signature, Object function, Object[] args,
                         @Cached IndirectCallNode call) {
@@ -109,6 +111,7 @@ abstract class CallSignatureNode extends Node {
             }
         }
 
+        @ReportPolymorphism.Megamorphic
         @Specialization(guards = "signature.cachedState == null")
         static Object doSlowPath(NFISignature signature, Object function, Object[] args,
                         @Bind("this") Node node,
