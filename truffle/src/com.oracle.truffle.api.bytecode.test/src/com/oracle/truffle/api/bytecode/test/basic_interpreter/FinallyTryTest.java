@@ -1355,6 +1355,122 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testFinallyTryHandlerNotGuarded() {
+        /**
+         * A finally handler should not be guarded by itself. If it throws, the throw should go uncaught.
+         */
+        // try {
+        //   arg0.append(1);
+        //   if (arg1) return 0
+        //   arg0.append(2);
+        //   if (arg2) goto lbl
+        //   arg0.append(3);
+        // } finally ex {
+        //   arg0.append(4);
+        //   throw MyException(123);
+        // }
+        // lbl:
+
+        RootCallTarget root = parse("finallyTryHandlerNotGuarded", b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLocal ex = b.createLocal();
+            BytecodeLabel lbl = b.createLabel();
+            b.beginFinallyTry(ex);
+                b.beginBlock();
+                    emitAppend(b, 4L);
+                    emitThrow(b, 123);
+                b.endBlock();
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    b.beginIfThen();
+                        b.emitLoadArgument(1);
+                        b.beginReturn();
+                            b.emitLoadConstant(0L);
+                        b.endReturn();
+                    b.endIfThen();
+                    emitAppend(b, 2);
+                    b.beginIfThen();
+                        b.emitLoadArgument(2);
+                        b.emitBranch(lbl);
+                    b.endIfThen();
+                    emitAppend(b, 3);
+                b.endBlock();
+            b.endFinallyTry();
+            b.emitLabel(lbl);
+
+            b.endRoot();
+        });
+
+        testOrderingWithArguments(true, root,  new Object[] {false, false}, 1L, 2L, 3L, 4L);
+        testOrderingWithArguments(true, root,  new Object[] {true, false}, 1L, 4L);
+        testOrderingWithArguments(true, root,  new Object[] {false, true}, 1L, 2L, 4L);
+    }
+
+    @Test
+    public void testFinallyTryOuterHandlerNotGuarded() {
+        /**
+         * A finally handler should not guard an outer handler. If the outer throws, the inner should not catch it.
+         */
+        // try {
+        //   arg0.append(1);
+        //   try {
+        //      if (arg1) return 0;
+        //      arg0.append(2);
+        //      if (arg2) goto lbl;
+        //      arg0.append(3);
+        //   } finally {
+        //      arg0.append(4);
+        //   }
+        // } finally {
+        //   arg0.append(5);
+        //   throw MyException(123);
+        // }
+        // lbl:
+
+        RootCallTarget root = parse("finallyTryOuterHandlerNotGuarded", b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLabel lbl = b.createLabel();
+            b.beginFinallyTry(b.createLocal());
+                b.beginBlock();
+                    emitAppend(b, 5);
+                    emitThrow(b, 123);
+                b.endBlock();
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    b.beginFinallyTry(b.createLocal());
+                        emitAppend(b, 4);
+
+                        b.beginBlock();
+                            b.beginIfThen();
+                                b.emitLoadArgument(1);
+                                b.beginReturn();
+                                    b.emitLoadConstant(0L);
+                                b.endReturn();
+                            b.endIfThen();
+                            emitAppend(b, 2);
+                            b.beginIfThen();
+                                b.emitLoadArgument(2);
+                                b.emitBranch(lbl);
+                            b.endIfThen();
+                            emitAppend(b, 3);
+                        b.endBlock();
+                    b.endFinallyTry();
+                b.endBlock();
+            b.endFinallyTry();
+            b.emitLabel(lbl);
+
+            b.endRoot();
+        });
+
+        testOrderingWithArguments(true, root,  new Object[] {false, false}, 1L, 2L, 3L, 4L, 5L);
+        testOrderingWithArguments(true, root,  new Object[] {true, false}, 1L, 4L, 5L);
+        testOrderingWithArguments(true, root,  new Object[] {false, true}, 1L, 2L, 4L, 5L);
+    }
+
+
+    @Test
     public void testFinallyTryNoExceptReturn() {
         // try {
         //   arg0.append(1);

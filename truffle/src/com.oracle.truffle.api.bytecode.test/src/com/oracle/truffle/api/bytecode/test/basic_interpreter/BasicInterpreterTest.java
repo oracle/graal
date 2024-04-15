@@ -1080,6 +1080,106 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testIntrospectionDataFinallyEarlyReturnExceptionHandlers() {
+        BasicInterpreter node = parseNode("introspectionDataFinallyExceptionHandlers", b -> {
+            // @formatter:off
+            b.beginRoot(LANGUAGE);
+            BytecodeLabel lbl = b.createLabel();
+                b.beginBlock();
+                    b.beginFinallyTry(b.createLocal());
+                        b.emitVoidOperation();
+
+                        b.beginBlock();
+                            b.emitVoidOperation();
+                            b.beginIfThen();
+                                b.emitLoadArgument(0);
+                                b.beginReturn();
+                                    b.emitLoadConstant(42L);
+                                b.endReturn();
+                            b.endIfThen();
+                            b.emitVoidOperation();
+                            b.beginIfThen();
+                                b.emitLoadArgument(1);
+                                b.emitBranch(lbl);
+                            b.endIfThen();
+                            b.emitVoidOperation();
+                        b.endBlock();
+                    b.endFinallyTry();
+                b.endBlock();
+                b.emitLabel(lbl);
+            b.endRoot();
+            // @formatter:on
+        });
+
+        BytecodeIntrospection data = node.getIntrospectionData();
+        List<ExceptionHandler> handlers = data.getExceptionHandlers();
+
+        /**
+         * The Finally handler should guard three ranges: from the start to the early return, from
+         * the early return to the branch, and from the branch to the end.
+         */
+        assertEquals(3, handlers.size());
+        ExceptionHandler h1 = handlers.get(0);
+        ExceptionHandler h2 = handlers.get(1);
+        ExceptionHandler h3 = handlers.get(2);
+
+        assertEquals(h1.getHandlerIndex(), h2.getHandlerIndex());
+        assertEquals(h1.getHandlerIndex(), h3.getHandlerIndex());
+        assertTrue(h1.getEndIndex() < h2.getStartIndex());
+        assertTrue(h2.getEndIndex() < h3.getStartIndex());
+
+        // Optimization: if early return is the last instruction, don't emit an empty range after.
+        node = parseNode("introspectionDataFinallyExceptionHandlers", b -> {
+            // @formatter:off
+            b.beginRoot(LANGUAGE);
+                b.beginBlock();
+                    b.beginFinallyTry(b.createLocal());
+                        b.emitVoidOperation();
+
+                        b.beginBlock();
+                            b.emitVoidOperation();
+                            b.beginIfThen();
+                                b.emitLoadArgument(0);
+                                b.beginReturn();
+                                    b.emitLoadConstant(42L);
+                                b.endReturn();
+                            b.endIfThen();
+                            // nothing
+                        b.endBlock();
+                    b.endFinallyTry();
+                b.endBlock();
+            b.endRoot();
+            // @formatter:on
+        });
+        assertEquals(1, node.getIntrospectionData().getExceptionHandlers().size());
+
+        // Optimization: if branch is the last instruction, don't emit an empty range after.
+        node = parseNode("introspectionDataFinallyExceptionHandlers", b -> {
+            // @formatter:off
+            b.beginRoot(LANGUAGE);
+            BytecodeLabel lbl = b.createLabel();
+                b.beginBlock();
+                    b.beginFinallyTry(b.createLocal());
+                        b.emitVoidOperation();
+
+                        b.beginBlock();
+                            b.emitVoidOperation();
+                            b.beginIfThen();
+                                b.emitLoadArgument(0);
+                                b.emitBranch(lbl);
+                            b.endIfThen();
+                            // nothing
+                        b.endBlock();
+                    b.endFinallyTry();
+                b.endBlock();
+                b.emitLabel(lbl);
+            b.endRoot();
+            // @formatter:on
+        });
+        assertEquals(1, node.getIntrospectionData().getExceptionHandlers().size());
+    }
+
+    @Test
     public void testIntrospectionDataSourceInformation() {
         Source source = Source.newBuilder("test", "return 1 + 2", "test.test").build();
         BasicInterpreter node = parseNodeWithSource("introspectionDataSourceInformation", b -> {
