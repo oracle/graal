@@ -393,11 +393,6 @@ public final class CallTreePrinter {
         }
     }
 
-    private static void printVMEntryPoint(PrintWriter writer) {
-        writer.println(convertToCSV("Id", "Name"));
-        writer.println(convertToCSV("0", "VM"));
-    }
-
     private static void printMethodNodes(Collection<MethodNode> methods, PrintWriter writer) {
         writer.println(convertToCSV("Id", "Name", "Type", "Parameters", "Return", "Display", "Flags", "IsEntryPoint"));
         methods.stream()
@@ -481,78 +476,10 @@ public final class CallTreePrinter {
                         .collect(Collectors.toList());
     }
 
-    private static int addVirtualNode(InvokeNode node, Map<List<String>, Integer> virtualNodes, AtomicInteger virtualNodeId) {
-        final List<String> virtualMethodInfo = virtualMethodInfo(node.targetMethod);
-        return virtualNodes.computeIfAbsent(virtualMethodInfo, k -> virtualNodeId.getAndIncrement());
-    }
-
-    private static void addVirtualMethodEdge(int startId, InvokeNode invoke, int endId, Map<Integer, Set<BciEndEdge>> edges) {
-        Set<BciEndEdge> nodeEdges = edges.computeIfAbsent(startId, k -> new HashSet<>());
-        nodeEdges.add(new BciEndEdge(endId, bytecodeIndexes(invoke)));
-    }
-
-    private static void printVirtualNodes(Map<List<String>, Integer> virtualNodes, PrintWriter writer) {
-        writer.println(convertToCSV("Id", "Name", "Type", "Parameters", "Return", "Display", "Flags"));
-        virtualNodes.entrySet().stream()
-                        .map(CallTreePrinter::virtualMethodAndIdInfo)
-                        .map(CallTreePrinter::convertToCSV)
-                        .forEach(writer::println);
-    }
-
-    private static List<String> virtualMethodAndIdInfo(Map.Entry<List<String>, Integer> entry) {
-        final List<String> methodInfo = entry.getKey();
-        final List<String> result = new ArrayList<>(methodInfo.size() + 1);
-        result.add(String.valueOf(entry.getValue()));
-        for (int i = 1; i < methodInfo.size(); i++) {
-            result.add(i, methodInfo.get(i));
-        }
-        return result;
-    }
-
-    private static void printEntryPointIds(Set<Integer> entryPoints, PrintWriter writer) {
-        writer.println(convertToCSV("Id"));
-        entryPoints.forEach(writer::println);
-    }
-
-    private static void addOverridenByEdge(int nodeId, Node calleeNode, Map<Integer, Set<Integer>> edges, Set<MethodNode> nodes) {
-        Set<Integer> nodeEdges = edges.computeIfAbsent(nodeId, k -> new HashSet<>());
-        MethodNode methodNode = calleeNode instanceof MethodNode
-                        ? (MethodNode) calleeNode
-                        : ((MethodNodeReference) calleeNode).methodNode;
-        nodes.add(methodNode);
-        nodeEdges.add(methodNode.id);
-    }
-
-    private static void printBciEdges(Map<Integer, Set<BciEndEdge>> edges, PrintWriter writer) {
-        final Set<BciEdge> idEdges = edges.entrySet().stream()
-                        .flatMap(entry -> entry.getValue().stream().map(endId -> new BciEdge(entry.getKey(), endId)))
-                        .collect(Collectors.toSet());
-
-        writer.println(convertToCSV("StartId", "EndId", "BytecodeIndexes"));
-        idEdges.stream()
-                        .map(edge -> convertToCSV(String.valueOf(edge.startId), String.valueOf(edge.endEdge.id), showBytecodeIndexes(edge.endEdge.bytecodeIndexes)))
-                        .forEach(writer::println);
-    }
-
     private static String showBytecodeIndexes(List<Integer> bytecodeIndexes) {
         return bytecodeIndexes.stream()
                         .map(String::valueOf)
                         .collect(Collectors.joining("->"));
-    }
-
-    private static void printNonBciEdges(Map<Integer, Set<Integer>> edges, PrintWriter writer) {
-        final Set<NonBciEdge> idEdges = edges.entrySet().stream()
-                        .flatMap(entry -> entry.getValue().stream().map(endId -> new NonBciEdge(entry.getKey(), endId)))
-                        .collect(Collectors.toSet());
-
-        writer.println(convertToCSV("StartId", "EndId"));
-        idEdges.stream()
-                        .map(edge -> convertToCSV(String.valueOf(edge.startId), String.valueOf(edge.endId)))
-                        .forEach(writer::println);
-    }
-
-    private static List<String> virtualMethodInfo(AnalysisMethod method) {
-        return resolvedJavaMethodInfo(null, method);
     }
 
     private static List<String> resolvedJavaMethodInfo(Integer id, AnalysisMethod method) {
@@ -635,54 +562,5 @@ public final class CallTreePrinter {
 
     private static String convertToCSV(List<String> data) {
         return String.join(",", data);
-    }
-
-    private static final class NonBciEdge {
-
-        final int startId;
-        final int endId;
-
-        private NonBciEdge(int startId, int endId) {
-            this.startId = startId;
-            this.endId = endId;
-        }
-    }
-
-    private static final class BciEdge {
-        final int startId;
-        final BciEndEdge endEdge;
-
-        private BciEdge(int startId, BciEndEdge endEdge) {
-            this.startId = startId;
-            this.endEdge = endEdge;
-        }
-    }
-
-    private static final class BciEndEdge {
-        final int id;
-        final List<Integer> bytecodeIndexes;
-
-        private BciEndEdge(int id, List<Integer> bytecodeIndexes) {
-            this.id = id;
-            this.bytecodeIndexes = bytecodeIndexes;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            BciEndEdge endEdge = (BciEndEdge) o;
-            return id == endEdge.id &&
-                            bytecodeIndexes.equals(endEdge.bytecodeIndexes);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(id, bytecodeIndexes);
-        }
     }
 }
