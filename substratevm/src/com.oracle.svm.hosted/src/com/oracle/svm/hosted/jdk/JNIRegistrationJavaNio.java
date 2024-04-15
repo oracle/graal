@@ -105,7 +105,6 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerIocpInitIDs, method(a, "sun.nio.ch.Iocp", "initIDs"));
         }
 
-        a.registerReachabilityHandler(JNIRegistrationJavaNio::registerConnectionCreateInetSocketAddress, method(a, "com.sun.jndi.ldap.Connection", "createInetSocketAddress", String.class, int.class));
 
         Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
         if (JavaVersionUtil.JAVA_SPEC < 9) {
@@ -212,8 +211,4 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(fields(a, "sun.nio.ch.Iocp$CompletionStatus", "error", "bytesTransferred", "completionKey", "overlapped"));
     }
 
-    private static void registerConnectionCreateInetSocketAddress(DuringAnalysisAccess a) {
-        RuntimeReflection.register(clazz(a, "java.net.InetSocketAddress"));
-        RuntimeReflection.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
-    }
 }
