@@ -1192,6 +1192,7 @@ public class OracleDBTests extends RegexTestBase {
         test("()\\1\\1\\z", "", "a", 0, true, 1, 1, 1, 1);
         expectSyntaxError("[]\\\\", "", "", getTRegexEncoding(), "g", 0, "unmatched bracket in regular expression");
         test("[[:print:][.j.]]\\S;[0-HB]t", "", "$*iAt\u0005;;Et", 0, false);
+        test("\\s\\Dz()[[.o.][:blank:][:upper:][=c=]'[.0.][:blank:]<-M}-}[=r=][.h.][=e=]]", "", " &zzh", 0, false);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
