@@ -358,18 +358,18 @@ public abstract class CCompilerInvoker {
         }
 
         public String getShortDescription() {
-            return String.format("%s (%s, %s, %d.%d.%s)", compilerPath.toFile().getName(), vendor, targetArch, versionMajor, versionMinor0, versionMinor1);
+            return String.format("%s (%s, %s, %s.%s.%s)", compilerPath.toFile().getName(), vendor, targetArch, versionMajor, versionMinor0, versionMinor1);
         }
 
         public String toCGlobalDataString() {
             return String.join("|", Arrays.asList(shortName, vendor, targetArch,
-                            String.format("%d.%d.%s", versionMajor, versionMinor0, versionMinor1)));
+                            String.format("%s.%s.%s", versionMajor, versionMinor0, versionMinor1)));
         }
 
         public void dump(Consumer<String> sink) {
             sink.accept("Name: " + name + " (" + shortName + ")");
             sink.accept("Vendor: " + vendor);
-            sink.accept(String.format("Version: %d.%d.%s", versionMajor, versionMinor0, versionMinor1));
+            sink.accept(String.format("Version: %s.%s.%s", versionMajor, versionMinor0, versionMinor1));
             sink.accept("Target architecture: " + targetArch);
             sink.accept("Path: " + compilerPath);
         }
