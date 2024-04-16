@@ -92,4 +92,12 @@ public abstract class SubstrateAccessor {
     public ResolvedJavaMethod getTargetMethod() {
         return targetMethod;
     }
+
+    public Object invokeSpecial(Object obj, Object[] args) {
+        CFunctionPointer target = directTarget;
+        if (target.isNull()) {
+            throw new IllegalArgumentException("Cannot do invokespecial for an abstract method");
+        }
+        return ((ReflectionAccessorHolder.MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, target);
+    }
 }

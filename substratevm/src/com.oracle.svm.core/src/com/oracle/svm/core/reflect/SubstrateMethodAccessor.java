@@ -156,16 +156,12 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
         }
     }
 
+    @Override
     public Object invokeSpecial(Object obj, Object[] args) {
         if (callerSensitiveAdapter) {
             throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
         }
         preInvoke(obj);
-
-        CFunctionPointer target = directTarget;
-        if (target.isNull()) {
-            throw new IllegalArgumentException("Cannot do invokespecial for an abstract method");
-        }
-        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, target);
+        return super.invokeSpecial(obj, args);
     }
 }

@@ -44,7 +44,7 @@ import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import sun.reflect.generics.repository.ConstructorRepository;
 
 @TargetClass(value = Constructor.class)
-final class Target_java_lang_reflect_Constructor {
+public final class Target_java_lang_reflect_Constructor {
     /** Generic info is created on demand at run time. */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private ConstructorRepository genericInfo;
@@ -69,7 +69,7 @@ final class Target_java_lang_reflect_Constructor {
     native Target_java_lang_reflect_Constructor copy();
 
     @Substitute
-    Target_jdk_internal_reflect_ConstructorAccessor acquireConstructorAccessor() {
+    public Target_jdk_internal_reflect_ConstructorAccessor acquireConstructorAccessor() {
         if (constructorAccessor == null) {
             throw MissingReflectionRegistrationUtils.errorForQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
         }
