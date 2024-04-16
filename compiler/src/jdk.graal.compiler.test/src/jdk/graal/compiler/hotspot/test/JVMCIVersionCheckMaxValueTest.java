@@ -54,7 +54,7 @@ public class JVMCIVersionCheckMaxValueTest extends GraalCompilerTest {
 
     private static void testVersion(String javaVmVersion) {
         try {
-            JVMCIVersionCheck.Version minVersion = new JVMCIVersionCheck.Version(20, 0, 1);
+            JVMCIVersionCheck.Version minVersion = JVMCIVersionCheck.createLegacyVersion(20, 0, 1);
             // Use a javaSpecVersion that will likely not fail in the near future
             String javaSpecVersion = "99";
             var props = JVMCIVersionCheckTest.createTestProperties(javaSpecVersion, javaVmVersion, null);
