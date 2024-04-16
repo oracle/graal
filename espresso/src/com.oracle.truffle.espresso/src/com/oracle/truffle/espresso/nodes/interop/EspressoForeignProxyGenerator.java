@@ -39,7 +39,6 @@ import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.DRETURN;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.DUP;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.FLOAD;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.FRETURN;
-import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.GETSTATIC;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ICONST_0;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ILOAD;
 import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.INVOKESPECIAL;
@@ -750,7 +749,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                     invokeSig = "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;" +
                                     "[Ljava/lang/Object;)Ljava/lang/Object;";
                 } else {
-                    mv.visitFieldInsn(GETSTATIC, dotToSlash(kind.toBoxedJavaClass().getName()), "TYPE", "Ljava/lang/Class;");
                     invokeName = "invokeMember";
                     invokeSig = "(Ljava/lang/Object;Ljava/lang/String;" +
                                     "[Ljava/lang/Object;)Ljava/lang/Object;";
