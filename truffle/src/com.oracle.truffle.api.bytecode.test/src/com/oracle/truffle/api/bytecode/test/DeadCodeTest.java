@@ -67,7 +67,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableRoot() {
-        // return - (arg0)
+        // return 42
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -87,7 +87,14 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableIfThenElse() {
-        // return - (arg0)
+        // @formatter:off
+        // if (false) {
+        //   return 41;
+        // } else {
+        //   return 42;
+        // }
+        // <dead>
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -119,7 +126,16 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableFinallyTryNoExcept1() {
-        // return - (arg0)
+        // @formatter:off
+        // try {
+        //   return 41;
+        //   <dead>
+        // } finally noexcept {
+        //   return 42;
+        //   <dead>
+        // }
+        // <dead>
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -156,7 +172,15 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableFinallyTryNoExcept2() {
-        // return - (arg0)
+        // @formatter:off
+        // try {
+        //   42;
+        // } finally noexcept {
+        //   return 42;
+        //   <dead>
+        // }
+        // <dead>
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -192,7 +216,16 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testReachableInFinallyTryNoExcept1() {
-        // return - (arg0)
+        // @formatter:off
+        // try {
+        //   if (false) {
+        //     return 40;
+        //   }
+        // } finally noexcept {
+        //   41;
+        // }
+        // return 42;
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -240,7 +273,15 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableFinallyTry1() {
-        // return - (arg0)
+        // @formatter:off
+        // try {
+        //   throw();
+        // } finally ex {
+        //   return 42;
+        //   <dead>
+        // }
+        // <dead>
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -275,8 +316,232 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testUnreachableFinallyTryCatch1() {
+        // @formatter:off
+        // try {
+        //   throw();
+        // } finally {
+        //   return 42;
+        //   <dead>
+        // } catch ex {
+        //   return 41;
+        //   <dead>
+        // }
+        // <dead>
+        // @formatter:on
+        DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            var local = b.createLocal();
+            b.beginFinallyTryCatch(local);
+
+            b.beginBlock(); // finally
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            emitUnreachableCode(b);
+            b.endBlock();
+
+            b.emitThrow(); // try
+
+            b.beginBlock(); // catch
+            b.beginReturn();
+            b.emitLoadConstant(41);
+            b.endReturn();
+            emitUnreachableCode(b);
+            b.endBlock();
+
+            b.endFinallyTryCatch();
+
+            emitUnreachableCode(b);
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "c.Throw",
+                        "pop",
+                        "load.constant",
+                        "return",
+                        "load.constant",
+                        "return");
+
+        assertEquals(41, node.getCallTarget().call(42));
+    }
+
+    @Test
+    public void testUnreachableFinallyTryCatch2() {
+        // @formatter:off
+        // return 42;
+        // try {
+        //   throw
+        // } finally {
+        //   return 41;
+        //   <dead>
+        // } catch ex {
+        //   return 41;
+        //   <dead>
+        // }
+        // <dead>
+        // @formatter:on
+        DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+
+            var local = b.createLocal();
+            b.beginFinallyTryCatch(local);
+
+            b.beginBlock(); // finally
+            b.beginReturn();
+            b.emitLoadConstant(41);
+            b.endReturn();
+            emitUnreachableCode(b);
+            b.endBlock();
+
+            b.emitThrow(); // try
+
+            b.beginBlock(); // catch
+            b.beginReturn();
+            b.emitLoadConstant(41);
+            b.endReturn();
+            emitUnreachableCode(b);
+            b.endBlock();
+
+            b.endFinallyTryCatch();
+
+            emitUnreachableCode(b);
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.constant",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call(42));
+    }
+
+    @Test
+    public void testReachableFinallyTryCatch1() {
+        // @formatter:off
+        // try {
+        //   41;
+        // } finally {
+        //   return 42;
+        //   <dead>
+        // } catch ex {
+        //   43;
+        // }
+        // return 44;
+        // @formatter:on
+        DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            var local = b.createLocal();
+            b.beginFinallyTryCatch(local);
+
+            b.beginBlock(); // finally
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            emitUnreachableCode(b);
+            b.endBlock();
+
+            b.emitLoadConstant(41); // try
+
+            b.emitLoadConstant(43); // catch
+
+            b.endFinallyTryCatch();
+
+            b.beginReturn();
+            b.emitLoadConstant(44);
+            b.endReturn();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.constant",
+                        "pop",
+                        "load.constant",
+                        "return",
+                        "load.constant",
+                        "pop",
+                        "load.constant",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call(42));
+    }
+
+    @Test
+    public void testReachableFinallyTryCatch2() {
+        // @formatter:off
+        // try {
+        //   throw();
+        // } finally {
+        //   41;
+        // } catch ex {
+        //   return 42;
+        //   <dead>
+        // }
+        // return 44;
+        // @formatter:on
+        DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            var local = b.createLocal();
+            b.beginFinallyTryCatch(local);
+
+            b.emitLoadConstant(41); // finally
+
+            b.emitThrow(); // try
+
+            b.beginBlock(); // catch
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            emitUnreachableCode(b);
+            b.endBlock();
+
+            b.endFinallyTryCatch();
+
+            b.beginReturn();
+            b.emitLoadConstant(44);
+            b.endReturn();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "c.Throw",
+                        "pop",
+                        "load.constant",
+                        "pop",
+                        "branch",
+                        "load.constant",
+                        "return",
+                        "load.constant",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call(42));
+    }
+
+    @Test
     public void testUnreachableTryCatch1() {
-        // return - (arg0)
+        // @formatter:off
+        // try {
+        //   throw();
+        //   return 41;
+        //   <dead>
+        // } catch ex {
+        //   return 42;
+        //   <dead>
+        // }
+        // <dead>
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -318,7 +583,11 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableWhile1() {
-        // return - (arg0)
+        // @formatter:off
+        // while (true) {
+        //   return 42;
+        // }
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -349,7 +618,10 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableConditional1() {
-        // return - (arg0)
+        // @formatter:off
+        // true ? return 42 : return 41;
+        // <dead>
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -385,7 +657,18 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableBranch() {
-        // return - (arg0)
+        // @formatter:off
+        // goto lbl;
+        // if (true) {
+        //   return 41;
+        //   <dead>
+        // } else {
+        //   return 41;
+        //   <dead>
+        // }
+        // lbl:
+        // return 42;
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -420,8 +703,6 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.endRoot();
         }).getRootNode();
 
-        // while loops always have a fallthrough
-        // even if the body does not
         assertInstructions(node,
                         "branch",
                         "load.constant",
@@ -432,7 +713,10 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableConditionConditional() {
-        // return - (arg0)
+        // @formatter:off
+        // (return 42) ? 41: 41;
+        // <dead>
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -460,7 +744,12 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableConditionIfThen() {
-        // return - (arg0)
+        // @formatter:off
+        // if (return 42) {
+        //   false;
+        // }
+        // return 41;
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -487,7 +776,12 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableConditionWhile() {
-        // return - (arg0)
+        // @formatter:off
+        // while (return 42) {
+        //  false;
+        // }
+        // return 41;
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -515,7 +809,13 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableConditionIfThenElse() {
-        // return - (arg0)
+        // @formatter:off
+        // if (return 42) {
+        //   41;
+        // } else {
+        //   41;
+        // }
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -540,6 +840,14 @@ public class DeadCodeTest extends AbstractInstructionTest {
 
     @Test
     public void testUnreachableFinallyWithLabel() {
+        // @formatter:off
+        // return 42;
+        // try {
+        //   lbl:
+        // } finally {
+        //   arg0;
+        // }
+        // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 

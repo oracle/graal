@@ -1528,4 +1528,405 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         testOrdering(true, root, 1L);
     }
 
+
+    @Test
+    public void testFinallyTryCatchBasic() {
+        // try {
+        //   arg0.append(1);
+        // } finally {
+        //   arg0.append(2);
+        // } catch ex {
+        //   arg0.append(3);
+        // }
+
+        RootCallTarget root = parse("finallyTryCatchBasic", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginFinallyTryCatch(b.createLocal());
+            emitAppend(b, 2);
+
+            emitAppend(b, 1);
+
+            emitAppend(b, 3);
+            b.endFinallyTryCatch();
+
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 2L);
+    }
+
+    @Test
+    public void testFinallyTryCatchException() {
+        // try {
+        //   arg0.append(1);
+        //   throw 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        // } catch ex {
+        //   arg0.append(4);
+        // }
+
+        RootCallTarget root = parse("finallyTryCatchException", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginFinallyTryCatch(b.createLocal());
+                emitAppend(b, 3);
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    emitThrow(b, 0);
+                    emitAppend(b, 2);
+                b.endBlock();
+
+                emitAppend(b, 4);
+            b.endFinallyTryCatch();
+
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 4L);
+    }
+
+    @Test
+    public void testFinallyTryCatchReturn() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        // } finally {
+        //   arg0.append(2);
+        // } catch ex {
+        //   arg0.append(3);
+        // }
+        // arg0.append(4);
+
+        RootCallTarget root = parse("finallyTryCatchReturn", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginFinallyTryCatch(b.createLocal());
+                emitAppend(b, 2);
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    emitReturn(b, 0);
+                b.endBlock();
+
+                emitAppend(b, 3);
+            b.endFinallyTryCatch();
+
+            emitAppend(b, 4);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 2L);
+    }
+
+    @Test
+    public void testFinallyTryCatchBindException() {
+        // try {
+        //   arg0.append(1);
+        //   throw arg1
+        // } finally {
+        //   arg0.append(2);
+        // } catch ex {
+        //   arg0.append(ex.value);
+        // }
+
+        RootCallTarget root = parse("finallyTryCatchBindBasic", b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLocal ex = b.createLocal();
+            b.beginFinallyTryCatch(ex);
+            emitAppend(b, 2);
+
+            b.beginBlock();
+            emitAppend(b, 1);
+            b.beginThrowOperation();
+            b.emitLoadArgument(1);
+            b.endThrowOperation();
+            b.endBlock();
+
+            b.beginAppenderOperation();
+                b.emitLoadArgument(0);
+                b.beginReadExceptionOperation();
+                b.emitLoadLocal(ex);
+                b.endReadExceptionOperation();
+            b.endAppenderOperation();
+
+            b.endFinallyTryCatch();
+
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrderingWithArguments(false, root, new Object[] {42L}, 1L, 42L);
+        testOrderingWithArguments(false, root, new Object[] {33L}, 1L, 33L);
+    }
+
+    @Test
+    public void testFinallyTryCatchBranchOut() {
+        // try {
+        //   arg0.append(1);
+        //   goto lbl;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        // } catch ex {
+        //   arg0.append(4);
+        // }
+        // arg0.append(5)
+        // lbl:
+        // arg0.append(6);
+
+        RootCallTarget root = parse("finallyTryCatchBranchOut", b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginFinallyTryCatch(b.createLocal());
+                emitAppend(b, 3);
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    b.emitBranch(lbl);
+                    emitAppend(b, 2);
+                b.endBlock();
+
+                emitAppend(b, 4);
+            b.endFinallyTryCatch();
+
+            emitAppend(b, 5);
+            b.emitLabel(lbl);
+            emitAppend(b, 6);
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 6L);
+    }
+
+    @Test
+    public void testFinallyTryCatchBranchOutOfCatch() {
+        // try {
+        //   arg0.append(1);
+        //   throw 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        // } catch ex {
+        //   arg0.append(4);
+        //   goto lbl
+        //   arg0.append(5);
+        // }
+        // arg0.append(6)
+        // lbl:
+        // arg0.append(7);
+
+        RootCallTarget root = parse("finallyTryCatchBranchOutOfCatch", b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginFinallyTryCatch(b.createLocal());
+                emitAppend(b, 3);
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    emitThrow(b, 0);
+                    emitAppend(b, 2);
+                b.endBlock();
+
+                b.beginBlock();
+                    emitAppend(b, 4);
+                    b.emitBranch(lbl);
+                    emitAppend(b, 5);
+                b.endBlock();
+            b.endFinallyTryCatch();
+
+            emitAppend(b, 6);
+            b.emitLabel(lbl);
+            emitAppend(b, 7);
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 4L, 7L);
+    }
+
+    @Test
+    public void testFinallyTryCatchBranchWithinHandler() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        //   goto lbl;
+        //   arg0.append(4);
+        //   lbl:
+        //   arg0.append(5);
+        // } catch ex {
+        //   arg0.append(6);
+        // }
+        // arg0.append(7);
+
+        RootCallTarget root = parse("finallyTryCatchBranchWithinHandler", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTryCatch(b.createLocal());
+                b.beginBlock();
+                    BytecodeLabel lbl = b.createLabel();
+                    emitAppend(b, 3);
+                    b.emitBranch(lbl);
+                    emitAppend(b, 4);
+                    b.emitLabel(lbl);
+                    emitAppend(b, 5);
+                b.endBlock();
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    emitReturn(b, 0);
+                    emitAppend(b, 2);
+                b.endBlock();
+
+                emitAppend(b, 6);
+            b.endFinallyTryCatch();
+
+            emitAppend(b, 7);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 5L);
+    }
+
+    @Test
+    public void testFinallyTryCatchBranchWithinCatchHandler() {
+        // try {
+        //   arg0.append(1);
+        //   throw 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        // } catch ex {
+        //   arg0.append(4);
+        //   goto lbl;
+        //   arg0.append(5);
+        //   lbl:
+        //   arg0.append(6);
+        // }
+        // arg0.append(7);
+
+        RootCallTarget root = parse("finallyTryCatchBranchWithinCatchHandler", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTryCatch(b.createLocal());
+                emitAppend(b, 3);
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    emitThrow(b, 0);
+                    emitAppend(b, 2);
+                b.endBlock();
+
+                b.beginBlock();
+                    BytecodeLabel lbl = b.createLabel();
+                    emitAppend(b, 4);
+                    b.emitBranch(lbl);
+                    emitAppend(b, 5);
+                    b.emitLabel(lbl);
+                    emitAppend(b, 6);
+                b.endBlock();
+            b.endFinallyTryCatch();
+
+            emitAppend(b, 7);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 4L, 6L, 7L);
+    }
+
+    @Test
+    public void testFinallyTryCatchExceptionInCatch() {
+        // try {
+        //   arg0.append(1);
+        //   throw 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        // } catch ex {
+        //   arg0.append(4);
+        //   throw 1;
+        //   arg0.append(5);
+        // }
+
+        RootCallTarget root = parse("finallyTryCatchException", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginFinallyTryCatch(b.createLocal());
+                emitAppend(b, 3);
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    emitThrow(b, 0);
+                    emitAppend(b, 2);
+                b.endBlock();
+
+                b.beginBlock();
+                    emitAppend(b, 4);
+                    emitThrow(b, 1);
+                    emitAppend(b, 5);
+                b.endBlock();
+            b.endFinallyTryCatch();
+
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrdering(true, root, 1L, 4L);
+    }
+
+    @Test
+    public void testFinallyTryCatchExceptionInFinally() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        //   throw 0;
+        //   arg0.append(4);
+        // } catch ex {
+        //   arg0.append(5);
+        // }
+
+        RootCallTarget root = parse("finallyTryCatchExceptionInFinally", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginFinallyTryCatch(b.createLocal());
+                b.beginBlock();
+                    emitAppend(b, 3);
+                    emitThrow(b, 0);
+                    emitAppend(b, 4);
+                b.endBlock();
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    emitReturn(b, 0);
+                    emitAppend(b, 2);
+                b.endBlock();
+
+                emitAppend(b, 5);
+            b.endFinallyTryCatch();
+
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrdering(true, root, 1L, 3L);
+    }
 }
