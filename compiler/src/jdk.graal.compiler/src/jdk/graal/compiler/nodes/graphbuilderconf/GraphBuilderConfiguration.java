@@ -170,6 +170,26 @@ public final class GraphBuilderConfiguration {
     private final Plugins plugins;
     private final boolean replaceLocalsWithConstants;
     private final boolean usePreciseUnresolvedDeopts;
+    private final ExplicitOOMEExceptionEdges oomeExceptionEdges;
+
+    /**
+     * Constants controlling if exception edges are used in the scope of a try block with a catch
+     * clause for {@link OutOfMemoryError}.
+     */
+    public enum ExplicitOOMEExceptionEdges {
+        /**
+         * In this mode, allocation exception edges will be used if OOME handlers are found.
+         */
+        Default,
+        /**
+         * In this mode, allocation exception edges are unconditionally disabled.
+         */
+        DisableOOMEExceptionEdges,
+        /**
+         * In this mode, allocation exception edges are unconditionally enabled.
+         */
+        ForceOOMEExceptionEdges
+    }
 
     public enum BytecodeExceptionMode {
         /**
@@ -200,6 +220,7 @@ public final class GraphBuilderConfiguration {
                     boolean retainLocalVariables,
                     boolean replaceLocalsWithConstants,
                     boolean usePreciseUnresolvedDeopts,
+                    ExplicitOOMEExceptionEdges oomeExceptionEdges,
                     List<ResolvedJavaType> skippedExceptionTypes,
                     Plugins plugins) {
         this.eagerResolving = eagerResolving;
@@ -211,6 +232,7 @@ public final class GraphBuilderConfiguration {
         this.retainLocalVariables = retainLocalVariables;
         this.replaceLocalsWithConstants = replaceLocalsWithConstants;
         this.usePreciseUnresolvedDeopts = usePreciseUnresolvedDeopts;
+        this.oomeExceptionEdges = oomeExceptionEdges;
         this.skippedExceptionTypes = skippedExceptionTypes;
         this.plugins = plugins;
     }
@@ -231,6 +253,7 @@ public final class GraphBuilderConfiguration {
                         retainLocalVariables,
                         replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
                         skippedExceptionTypes,
                         newPlugins);
         return result;
@@ -253,6 +276,7 @@ public final class GraphBuilderConfiguration {
                         retainLocalVariables,
                         replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -268,6 +292,7 @@ public final class GraphBuilderConfiguration {
                         retainLocalVariables,
                         replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -283,6 +308,7 @@ public final class GraphBuilderConfiguration {
                         retainLocalVariables,
                         replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
                         Collections.unmodifiableList(Arrays.asList(newSkippedExceptionTypes)),
                         plugins);
     }
@@ -297,6 +323,7 @@ public final class GraphBuilderConfiguration {
                         retainLocalVariables,
                         replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -312,6 +339,7 @@ public final class GraphBuilderConfiguration {
                         retainLocalVariables,
                         replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -327,6 +355,7 @@ public final class GraphBuilderConfiguration {
                         retainLocalVariables,
                         replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -342,6 +371,7 @@ public final class GraphBuilderConfiguration {
                         retainLocalVariables,
                         replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -357,6 +387,7 @@ public final class GraphBuilderConfiguration {
                         newRetainLocalVariables,
                         replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -372,6 +403,23 @@ public final class GraphBuilderConfiguration {
                         retainLocalVariables,
                         replaceLocalsWithConstants,
                         newUsePreciseUnresolvedDeopts,
+                        oomeExceptionEdges,
+                        skippedExceptionTypes,
+                        plugins);
+    }
+
+    public GraphBuilderConfiguration withOOMEExceptionEdges(ExplicitOOMEExceptionEdges newOomeExceptionEdges) {
+        return new GraphBuilderConfiguration(
+                        eagerResolving,
+                        unresolvedIsError,
+                        bytecodeExceptionMode,
+                        omitAssertions,
+                        insertFullInfopoints,
+                        trackNodeSourcePosition,
+                        retainLocalVariables,
+                        replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        newOomeExceptionEdges,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -408,6 +456,10 @@ public final class GraphBuilderConfiguration {
         return this.replaceLocalsWithConstants;
     }
 
+    public ExplicitOOMEExceptionEdges oomeExceptionEdges() {
+        return this.oomeExceptionEdges;
+    }
+
     /**
      * Returns {@code true} if a graph must not contain {@link DeoptimizationReason#Unresolved}
      * deopts that can float or may otherwise have an imprecise frame state.
@@ -427,6 +479,7 @@ public final class GraphBuilderConfiguration {
                         /* retainLocalVariables */ false,
                         /* replaceLocalsWithConstants */ false,
                         /* usePreciseUnresolvedDeopts */ false,
+                        /* withoutOOMEExceptionEdges */ ExplicitOOMEExceptionEdges.Default,
                         Collections.emptyList(),
                         plugins);
     }
@@ -442,6 +495,7 @@ public final class GraphBuilderConfiguration {
                         /* retainLocalVariables */ false,
                         /* replaceLocalsWithConstants */ false,
                         /* usePreciseUnresolvedDeopts */ false,
+                        /* withoutOOMEExceptionEdges */ ExplicitOOMEExceptionEdges.DisableOOMEExceptionEdges,
                         Collections.emptyList(),
                         plugins);
     }

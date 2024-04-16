@@ -85,6 +85,7 @@ import jdk.graal.compiler.nodes.extended.AnchoringNode;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.extended.GuardedNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MemoryMapNode;
@@ -103,6 +104,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -310,33 +312,35 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
      * could be lowered in the current {@link LoweringPhase}. Such nodes must be recursively lowered
      * as part of lowering {@code node}.
      *
-     * @param node a node that was just lowered
+     * @param justLoweredNode a node that was just lowered
      * @param preLoweringMark the graph mark before {@code node} was lowered
      * @param unscheduledUsages set of {@code node}'s usages that were unscheduled before it was
      *            lowered
      * @throws AssertionError if the check fails
      */
-    private static boolean checkPostNodeLowering(Node node, LoweringToolImpl loweringTool, Mark preLoweringMark, Collection<Node> unscheduledUsages) {
-        StructuredGraph graph = (StructuredGraph) node.graph();
+    private static boolean checkPostNodeLowering(Node justLoweredNode, LoweringToolImpl loweringTool, Mark preLoweringMark, Collection<Node> unscheduledUsages) {
+        StructuredGraph graph = (StructuredGraph) justLoweredNode.graph();
         Mark postLoweringMark = graph.getMark();
         NodeIterable<Node> newNodesAfterLowering = graph.getNewNodes(preLoweringMark);
-        if (node instanceof FloatingNode) {
+        if (justLoweredNode instanceof FloatingNode) {
             if (!unscheduledUsages.isEmpty()) {
                 for (Node n : newNodesAfterLowering) {
-                    assert !(n instanceof FixedNode) : node.graph() + ": cannot lower floatable node " + node + " as it introduces fixed node(s) but has the following unscheduled usages: " +
+                    assert !(n instanceof FixedNode) : justLoweredNode.graph() + ": cannot lower floatable node " + justLoweredNode +
+                                    " as it introduces fixed node(s) but has the following unscheduled usages: " +
                                     unscheduledUsages;
                 }
             }
         }
 
-        final boolean wasMemoryAccessBefore = node instanceof MemoryAccess;
-        final boolean wasMemoryKillBefore = MemoryKill.isMemoryKill(node);
+        final boolean wasMemoryAccessBefore = justLoweredNode instanceof MemoryAccess;
+        final boolean wasMemoryKillBefore = MemoryKill.isMemoryKill(justLoweredNode);
 
-        for (Node n : newNodesAfterLowering) {
-            if (n instanceof Lowerable) {
-                ((Lowerable) n).lower(loweringTool);
+        for (Node newNodeAfterLowering : newNodesAfterLowering) {
+            if (newNodeAfterLowering instanceof Lowerable) {
+                ((Lowerable) newNodeAfterLowering).lower(loweringTool);
                 Mark mark = graph.getMark();
-                assert postLoweringMark.equals(mark) : graph + ": lowering of " + node + " produced lowerable " + n + " that should have been recursively lowered as it introduces these new nodes: " +
+                assert postLoweringMark.equals(mark) : graph + ": lowering of " + justLoweredNode + " produced lowerable " + newNodeAfterLowering +
+                                " that should have been recursively lowered as it introduces these new nodes: " +
                                 graph.getNewNodes(postLoweringMark).snapshot();
             }
             if (!graph.isSubstitution()) {
@@ -362,13 +366,14 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                      * kill or not, after lowering the deleted node no longer has inputs TODO solve
                      * more generically?
                      */
-                    if (!(n instanceof ForeignCall || n instanceof UnreachableBeginNode || node instanceof WithExceptionNode || n instanceof MemoryMapNode || node instanceof CommitAllocationNode ||
-                                    n instanceof SideEffectFreeWriteNode) &&
-                                    MemoryKill.isMemoryKill(n)) {
+                    if (!(newNodeAfterLowering instanceof ForeignCall || newNodeAfterLowering instanceof UnreachableBeginNode || justLoweredNode instanceof WithExceptionNode ||
+                                    newNodeAfterLowering instanceof MemoryMapNode || justLoweredNode instanceof CommitAllocationNode ||
+                                    newNodeAfterLowering instanceof SideEffectFreeWriteNode) &&
+                                    MemoryKill.isMemoryKill(newNodeAfterLowering)) {
 
                         // lowered to a kill verify the original node was a kill
-                        if (MemoryKill.isSingleMemoryKill(n)) {
-                            SingleMemoryKill singleKill = (SingleMemoryKill) n;
+                        if (MemoryKill.isSingleMemoryKill(newNodeAfterLowering)) {
+                            SingleMemoryKill singleKill = (SingleMemoryKill) newNodeAfterLowering;
                             if (!singleKill.getKilledLocationIdentity().equals(NO_LOCATION)) {
                                 if (!wasMemoryKillBefore) {
                                     // Kills to ININT_LOCATION are excluded above. We would like to
@@ -376,30 +381,31 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                                     // single and multi kills however we have special nodes like a
                                     // side effect free write which use init location writes which
                                     // we ignore for verification purposes
-                                    throw GraalError.shouldNotReachHere(String.format("Original node %s was not a kill but %s is", node, n)); // ExcludeFromJacocoGeneratedReport
+                                    throw GraalError.shouldNotReachHere(String.format("Original node %s was not a kill but %s is", justLoweredNode, newNodeAfterLowering)); // ExcludeFromJacocoGeneratedReport
                                 }
-                                if (!(MemoryKill.isSingleMemoryKill(node))) {
-                                    throw GraalError.shouldNotReachHere(String.format("Original node %s was not a single kill but %s is", node, n)); // ExcludeFromJacocoGeneratedReport
+                                if (!(MemoryKill.isSingleMemoryKill(justLoweredNode))) {
+                                    throw GraalError.shouldNotReachHere(String.format("Original node %s was not a single kill but %s is", justLoweredNode, newNodeAfterLowering)); // ExcludeFromJacocoGeneratedReport
                                 }
-                                SingleMemoryKill oldKill = (SingleMemoryKill) node;
+                                SingleMemoryKill oldKill = (SingleMemoryKill) justLoweredNode;
                                 if (!oldKill.getKilledLocationIdentity().isSingle() && singleKill.getKilledLocationIdentity().isSingle()) {
                                     // fine, high level node killed any, new nodes have more precise
                                     // kills
                                 } else if (!oldKill.getKilledLocationIdentity().equals(singleKill.getKilledLocationIdentity())) {
-                                    throw GraalError.shouldNotReachHere(String.format("Original node %s kills %s while new node %s kills %s", node, oldKill.getKilledLocationIdentity(), singleKill,
-                                                    singleKill.getKilledLocationIdentity())); // ExcludeFromJacocoGeneratedReport
+                                    throw GraalError.shouldNotReachHere(
+                                                    String.format("Original node %s kills %s while new node %s kills %s", justLoweredNode, oldKill.getKilledLocationIdentity(), singleKill,
+                                                                    singleKill.getKilledLocationIdentity())); // ExcludeFromJacocoGeneratedReport
                                 }
                             }
-                        } else if (MemoryKill.isMultiMemoryKill(n)) {
+                        } else if (MemoryKill.isMultiMemoryKill(newNodeAfterLowering)) {
                             if (!wasMemoryKillBefore) {
                                 // INIT_LOCATION special case: context above
-                                throw GraalError.shouldNotReachHere(String.format("Original node %s was not a kill but %s is", node, n)); // ExcludeFromJacocoGeneratedReport
+                                throw GraalError.shouldNotReachHere(String.format("Original node %s was not a kill but %s is", justLoweredNode, newNodeAfterLowering)); // ExcludeFromJacocoGeneratedReport
                             }
-                            if (!(MemoryKill.isMultiMemoryKill(node))) {
-                                throw GraalError.shouldNotReachHere(String.format("Original node %s was not a multi kill but %s is", node, n)); // ExcludeFromJacocoGeneratedReport
+                            if (!(MemoryKill.isMultiMemoryKill(justLoweredNode))) {
+                                throw GraalError.shouldNotReachHere(String.format("Original node %s was not a multi kill but %s is", justLoweredNode, newNodeAfterLowering)); // ExcludeFromJacocoGeneratedReport
                             }
-                            MultiMemoryKill newKill = (MultiMemoryKill) n;
-                            MultiMemoryKill oldKill = (MultiMemoryKill) node;
+                            MultiMemoryKill newKill = (MultiMemoryKill) newNodeAfterLowering;
+                            MultiMemoryKill oldKill = (MultiMemoryKill) justLoweredNode;
                             EconomicSet<LocationIdentity> killed = EconomicSet.create();
                             for (LocationIdentity loc : newKill.getKilledLocationIdentities()) {
                                 killed.add(loc);
@@ -415,90 +421,106 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                                 throw GraalError.shouldNotReachHere(String.format("New kill %s kills location %s while old kill %s does not", newKill, newLoc, oldKill)); // ExcludeFromJacocoGeneratedReport
                             }
                         } else {
-                            throw GraalError.shouldNotReachHere("Unknown memory kill " + n); // ExcludeFromJacocoGeneratedReport
+                            throw GraalError.shouldNotReachHere("Unknown memory kill " + newNodeAfterLowering); // ExcludeFromJacocoGeneratedReport
                         }
-                    } else if (n instanceof MemoryAccess) {
+                    } else if (newNodeAfterLowering instanceof MemoryAccess) {
                         // lowered to a memory access, verify high level node accesses same
                         // locations
-                        MemoryAccess access = (MemoryAccess) n;
+                        MemoryAccess access = (MemoryAccess) newNodeAfterLowering;
                         if (access.getLocationIdentity().isMutable()) {
                             if (wasMemoryKillBefore && !wasMemoryAccessBefore) {
-                                if (MemoryKill.isSingleMemoryKill(node)) {
-                                    if (!((SingleMemoryKill) node).getKilledLocationIdentity().overlaps(access.getLocationIdentity())) {
-                                        GraalError.shouldNotReachHere(String.format("Node %s was a memory kill killing %s but lowered to a memory access %s which accesses %s", node,
-                                                        ((SingleMemoryKill) node).getKilledLocationIdentity(), n, access.getLocationIdentity())); // ExcludeFromJacocoGeneratedReport
+                                if (MemoryKill.isSingleMemoryKill(justLoweredNode)) {
+                                    if (!((SingleMemoryKill) justLoweredNode).getKilledLocationIdentity().overlaps(access.getLocationIdentity())) {
+                                        GraalError.shouldNotReachHere(String.format("Node %s was a memory kill killing %s but lowered to a memory access %s which accesses %s", justLoweredNode,
+                                                        ((SingleMemoryKill) justLoweredNode).getKilledLocationIdentity(), newNodeAfterLowering, access.getLocationIdentity())); // ExcludeFromJacocoGeneratedReport
                                     }
-                                } else if (MemoryKill.isMultiMemoryKill(node)) {
+                                } else if (MemoryKill.isMultiMemoryKill(justLoweredNode)) {
                                     boolean found = false;
-                                    for (LocationIdentity ident : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
+                                    for (LocationIdentity ident : ((MultiMemoryKill) justLoweredNode).getKilledLocationIdentities()) {
                                         if (ident.overlaps(access.getLocationIdentity())) {
                                             found = true;
                                             break;
                                         }
                                     }
                                     if (!found) {
-                                        GraalError.shouldNotReachHere(String.format("Node %s was a memory kill not killing the location accessed by the lowered node: %s which accesses %s", node, n,
+                                        GraalError.shouldNotReachHere(String.format("Node %s was a memory kill not killing the location accessed by the lowered node: %s which accesses %s",
+                                                        justLoweredNode, newNodeAfterLowering,
                                                         access.getLocationIdentity())); // ExcludeFromJacocoGeneratedReport
                                     }
                                 } else {
-                                    throw GraalError.shouldNotReachHere("Unknown type of memory kill " + node); // ExcludeFromJacocoGeneratedReport
+                                    throw GraalError.shouldNotReachHere("Unknown type of memory kill " + justLoweredNode); // ExcludeFromJacocoGeneratedReport
                                 }
 
                             } else if (wasMemoryAccessBefore) {
-                                if (!access.getLocationIdentity().overlaps(((MemoryAccess) node).getLocationIdentity())) {
+                                if (!access.getLocationIdentity().overlaps(((MemoryAccess) justLoweredNode).getLocationIdentity())) {
                                     GraalError.shouldNotReachHere(
-                                                    String.format("Node %s was a memory access (%s) but lowered to a memory access %s %s", node, ((MemoryAccess) node).getLocationIdentity(),
-                                                                    n, access.getLocationIdentity())); // ExcludeFromJacocoGeneratedReport
+                                                    String.format("Node %s was a memory access (%s) but lowered to a memory access %s %s", justLoweredNode,
+                                                                    ((MemoryAccess) justLoweredNode).getLocationIdentity(),
+                                                                    newNodeAfterLowering, access.getLocationIdentity())); // ExcludeFromJacocoGeneratedReport
                                 }
                             } else {
-                                GraalError.shouldNotReachHere(String.format("Node %s was not a memory access but lowered to a memory access %s", node, n)); // ExcludeFromJacocoGeneratedReport
+                                GraalError.shouldNotReachHere(String.format("Node %s was not a memory access but lowered to a memory access %s", justLoweredNode, newNodeAfterLowering)); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     }
                 }
             }
 
-            if (MemoryKill.isMemoryKill(n) && !(n instanceof MemoryMapNode) && !(wasMemoryKillBefore) && !(node instanceof ControlSinkNode)) {
-                /*
-                 * The lowering introduced a MemoryCheckpoint but the current node isn't a
-                 * checkpoint. This is only OK if the locations involved don't affect the memory
-                 * graph or if the new kill location doesn't connect into the existing graph.
-                 */
-                boolean isAny = false;
-                if (MemoryKill.isSingleMemoryKill(n)) {
-                    isAny = ((SingleMemoryKill) n).getKilledLocationIdentity().isAny();
-                } else if (MemoryKill.isMultiMemoryKill(n)) {
-                    for (LocationIdentity ident : ((MultiMemoryKill) n).getKilledLocationIdentities()) {
-                        if (ident.isAny()) {
-                            isAny = true;
-                        }
-                    }
-                } else {
-                    throw GraalError.shouldNotReachHere("Unknown type of memory kill " + n); // ExcludeFromJacocoGeneratedReport
-                }
-                if (isAny && n instanceof FixedWithNextNode) {
+            if (MemoryKill.isMemoryKill(newNodeAfterLowering) && !(newNodeAfterLowering instanceof MemoryMapNode) && !(wasMemoryKillBefore) && !(justLoweredNode instanceof ControlSinkNode)) {
+                if (!replaceeWithExceptionHandler(justLoweredNode, newNodeAfterLowering)) {
                     /*
-                     * Check if the next kill location leads directly to a ControlSinkNode in the
-                     * new part of the graph. This is a fairly conservative test that could be made
-                     * more general if required.
+                     * The lowering introduced a MemoryCheckpoint but the current node isn't a
+                     * checkpoint. This is only OK if the locations involved don't affect the memory
+                     * graph or if the new kill location doesn't connect into the existing graph.
                      */
-                    FixedWithNextNode cur = (FixedWithNextNode) n;
-                    while (cur != null && graph.isNew(preLoweringMark, cur)) {
-                        if (cur.next() instanceof ControlSinkNode) {
-                            isAny = false;
-                            break;
+                    boolean isAny = false;
+                    if (MemoryKill.isSingleMemoryKill(newNodeAfterLowering)) {
+                        isAny = ((SingleMemoryKill) newNodeAfterLowering).getKilledLocationIdentity().isAny();
+                    } else if (MemoryKill.isMultiMemoryKill(newNodeAfterLowering)) {
+                        for (LocationIdentity ident : ((MultiMemoryKill) newNodeAfterLowering).getKilledLocationIdentities()) {
+                            if (ident.isAny()) {
+                                isAny = true;
+                            }
                         }
-                        if (cur.next() instanceof FixedWithNextNode) {
-                            cur = (FixedWithNextNode) cur.next();
-                        } else {
-                            break;
+                    } else {
+                        throw GraalError.shouldNotReachHere("Unknown type of memory kill " + newNodeAfterLowering); // ExcludeFromJacocoGeneratedReport
+                    }
+                    if (isAny && newNodeAfterLowering instanceof FixedWithNextNode) {
+                        /*
+                         * Check if the next kill location leads directly to a ControlSinkNode in
+                         * the new part of the graph. This is a fairly conservative test that could
+                         * be made more general if required.
+                         */
+                        FixedWithNextNode cur = (FixedWithNextNode) newNodeAfterLowering;
+                        while (cur != null && graph.isNew(preLoweringMark, cur)) {
+                            if (cur.next() instanceof ControlSinkNode) {
+                                isAny = false;
+                                break;
+                            }
+                            if (cur.next() instanceof FixedWithNextNode) {
+                                cur = (FixedWithNextNode) cur.next();
+                            } else {
+                                break;
+                            }
                         }
                     }
+                    assert !isAny : justLoweredNode + " " + newNodeAfterLowering;
                 }
-                assert !isAny : node + " " + n;
             }
         }
         return true;
+    }
+
+    /**
+     * Determine if the replacee was a {@link WithExceptionNode} that is lowered to another
+     * {@code WithExceptionNode}, in this case there will be memory map nodes for the killing
+     * of{@link LocationIdentity#ANY_LOCATION}.
+     */
+    private static boolean replaceeWithExceptionHandler(Node n, Node newNodeAfterLowering) {
+        if (n instanceof WithExceptionNode && !n.isAlive() && newNodeAfterLowering instanceof FixedNode f) {
+            return SnippetTemplate.walkBackToExceptionEdgeStart(f) instanceof ExceptionObjectNode.LoweredExceptionObjectBegin;
+        }
+        return false;
     }
 
     private enum LoweringMode {

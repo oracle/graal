@@ -322,6 +322,35 @@ public final class CompilerDirectives {
     }
 
     /**
+     * Prevents the compiler from moving an allocation, enabling precise {@link OutOfMemoryError}
+     * exception locations. This intrinsic ensures the allocation's immobility and guarantees that
+     * the compiler's optimizations do not eliminate the allocation. Imposing such a restriction can
+     * hinder certain compiler optimizations, potentially degrading performance. If the intrinsic
+     * does not find an allocation as its argument, it causes a runtime compilation failure,
+     * invoking {@link CompilerDirectives#bailout(String)}.
+     *
+     * <b>Example usage:</b>
+     *
+     * <pre>{@code
+     * int[] tryAllocateArray() {
+     *     int[] array;
+     *     try {
+     *         array = CompilerDirectives.ensureAllocatedHere(new int[42]);
+     *     } catch (OutOfMemoryError e) {
+     *         // handle out of memory errors to maintain consistency
+     *         array = null;
+     *     }
+     *     return array;
+     * }
+     * }</pre>
+     *
+     * @since 24.1.0
+     */
+    public static <T> T ensureAllocatedHere(T object) {
+        return object;
+    }
+
+    /**
      * Ensures that the given object will be virtual (escape analyzed) at all points that are
      * dominated by the current position.
      *
