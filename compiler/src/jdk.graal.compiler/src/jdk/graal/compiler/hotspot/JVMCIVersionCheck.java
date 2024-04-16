@@ -324,12 +324,14 @@ public final class JVMCIVersionCheck {
                 // Allow local builds
                 return;
             }
-            var rv = Runtime.Version.parse(vmVersion);
-            if (rv.pre().isPresent() && !"ea".equals(rv.pre().get())) {
-                // Not a release or early access OpenJDK version
-                return;
+            if (!vmVersion.contains("-jvmci-")) {
+                var rv = Runtime.Version.parse(vmVersion);
+                if (rv.pre().isPresent() && !"ea".equals(rv.pre().get())) {
+                    // Not a release or early access OpenJDK version
+                    return;
+                }
             }
-            // A "labsjdk"
+            // A "labsjdk" or a known OpenJDK
             if (minVersion == null) {
                 failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
             }
