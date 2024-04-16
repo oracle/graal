@@ -25,6 +25,10 @@
   local use_musl = sg.use_musl,
   local add_quickbuild = sg.add_quickbuild,
 
+  local use_oraclejdk_latest = task_spec(run_spec.evaluate_late({
+    "use_oraclejdk_latest": common.oraclejdkLatest + galahad.exclude
+  })),
+
   local maven = task_spec(evaluate_late('05_add_maven', function(b)
   if b.os == 'windows' then {
     downloads+: {
@@ -127,6 +131,9 @@
       "java-compiler:ecj": {
         "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
       },
+    }),
+    "oraclejdk-helloworld": mxgate("build,helloworld,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk-latest": gate + use_oraclejdk_latest + t("30:00"),
     }),
   },
   // END MAIN BUILD DEFINITION
