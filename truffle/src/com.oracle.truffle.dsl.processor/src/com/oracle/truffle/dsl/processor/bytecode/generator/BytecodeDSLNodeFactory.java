@@ -2185,6 +2185,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 ex.addParameter(new CodeVariableElement(type(int.class), "handlerIndex"));
                 CodeTreeBuilder b = ex.createBuilder();
 
+                // handlerIndex can be UNINIT if the range is empty; don't add it.
+                b.startIf().string("handlerIndex == " + UNINIT).end().startBlock();
+                b.returnStatement();
+                b.end();
+
                 b.startIf().string("exceptionTableEntries == null").end().startBlock();
                 b.statement("exceptionTableEntries = new ArrayList<>(4)");
                 b.end();
@@ -3920,7 +3925,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.declaration(type(int.class), "exHandlerIndex", UNINIT);
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData.finallyTryContext");
 
-                    b.startIf().string("operationData.operationReachable && operationData.guardedStartBci != bci").end().startBlock();
+                    b.startIf().string("operationData.operationReachable").end().startBlock();
                     b.lineComment("register exception table entry if the bci range is non-empty");
                     b.statement("exHandlerIndex = doCreateExceptionHandler(operationData.guardedStartBci, bci, " + UNINIT + " /* handler start */, handlerSp, exceptionIndex)");
                     b.end();
@@ -3977,7 +3982,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case FINALLY_TRY_NO_EXCEPT:
                     emitCastCurrentOperationData(b, operation);
-                    b.statement("BytecodeLocalImpl exceptionLocal = (BytecodeLocalImpl) operationData.exceptionLocal");
+                    b.statement("BytecodeLocalImpl exceptionLocal = operationData.exceptionLocal");
 
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData.finallyTryContext");
                     b.statement("doEmitFinallyHandler(ctx)");
@@ -5801,6 +5806,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "exceptionLocal"));
 
             CodeTreeBuilder b = ex.createBuilder();
+
+            // Don't create empty handler ranges.
+            b.startIf().string("startBci >= endBci").end().startBlock();
+            b.startReturn().string(UNINIT).end();
+            b.end();
 
             b.startIf().string("exHandlers.length <= exHandlerCount + 5").end().startBlock();
             b.statement("exHandlers = Arrays.copyOf(exHandlers, exHandlers.length * 2)");
