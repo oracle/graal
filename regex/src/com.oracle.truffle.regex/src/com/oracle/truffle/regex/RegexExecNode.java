@@ -87,15 +87,16 @@ public abstract class RegexExecNode extends RegexBodyNode {
             }
             if (regionToLong < regionFromLong || regionToLong > length) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalArgumentException(String.format("got illegal regionTo value: %d. regionTo must be >= 0 and <= input length (%d)", regionToLong, length));
+                throw new IllegalArgumentException(String.format("got illegal regionTo value: %d. regionTo must be >= regionFrom (%d) and <= input length (%d)", regionToLong, regionFromLong, length));
             }
             if (fromIndex < regionFromLong || fromIndex > regionToLong) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= regionFrom and <= regionTo (%d)", fromIndex, length));
+                throw new IllegalArgumentException(
+                                String.format("got illegal fromIndex value: %d. fromIndex must be >= regionFrom (%d) and <= regionTo (%d)", fromIndex, regionFromLong, regionToLong));
             }
             if (toIndexLong < fromIndex || toIndexLong > regionToLong) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalArgumentException(String.format("got illegal toIndex value: %d. toIndex must be >= fromIndex and <= regionTo (%d)", toIndexLong, length));
+                throw new IllegalArgumentException(String.format("got illegal toIndex value: %d. toIndex must be >= fromIndex (%d) and <= regionTo (%d)", toIndexLong, fromIndex, regionToLong));
             }
             if (toIndexLong != regionToLong) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
