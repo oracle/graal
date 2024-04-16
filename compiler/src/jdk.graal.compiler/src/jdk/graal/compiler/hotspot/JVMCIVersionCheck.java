@@ -322,6 +322,10 @@ public final class JVMCIVersionCheck {
                 // Allow local builds
                 return;
             }
+            if (vmVersion.contains("galahad")) {
+                // galahad CI builds use wrong build number [GR-53458]
+                return;
+            }
             // A "labsjdk"
             if (minVersion == null) {
                 failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
