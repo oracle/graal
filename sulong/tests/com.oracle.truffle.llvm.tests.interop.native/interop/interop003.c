@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,7 @@ int main() {
     float f = polyglot_as_float(polyglot_get_member(obj, "valueF"));   // 32 bit
     double d = polyglot_as_double(polyglot_get_member(obj, "valueD")); // 64 bit
 
-    double sum = i + c + l + f + d;                                    // 215
+    double sum = i + c + l + f + d; // 215
     if (b) {
         return (int) sum;
     } else {
