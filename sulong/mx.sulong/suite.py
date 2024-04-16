@@ -955,6 +955,7 @@ suite = {
       "cmakeConfig" : {
         "LIBCXXABI_INCLUDE_TESTS": "NO",
         "LIBCXXABI_ENABLE_STATIC" : "NO",
+        "LIBCXXABI_USE_LLVM_UNWINDER": "NO",
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
         "LIBCXX_ENABLE_STATIC" : "NO",
