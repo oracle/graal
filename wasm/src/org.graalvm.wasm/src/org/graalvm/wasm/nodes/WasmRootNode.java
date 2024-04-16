@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -240,7 +240,7 @@ public class WasmRootNode extends RootNode {
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         int paramCount = functionNode.paramCount();
-        assert WasmArguments.getArgumentCount(args) == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
+        assert WasmArguments.getArgumentCount(args) == paramCount : "Expected number of params " + paramCount + ", actual " + WasmArguments.getArgumentCount(args);
         for (int i = 0; i != paramCount; ++i) {
             final Object arg = WasmArguments.getArgument(args, i);
             byte type = functionNode.localType(i);
