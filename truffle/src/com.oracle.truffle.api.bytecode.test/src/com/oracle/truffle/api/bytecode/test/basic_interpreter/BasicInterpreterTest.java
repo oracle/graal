@@ -1080,8 +1080,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testIntrospectionDataFinallyEarlyReturnExceptionHandlers() {
-        BasicInterpreter node = parseNode("introspectionDataFinallyExceptionHandlers", b -> {
+    public void testIntrospectionDataFinallyEarlyExitExceptionHandlers() {
+        BasicInterpreter node = parseNode("introspectionDataFinallyEarlyExitExceptionHandlers", b -> {
             // @formatter:off
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
@@ -1127,9 +1127,17 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals(h1.getHandlerIndex(), h3.getHandlerIndex());
         assertTrue(h1.getEndIndex() < h2.getStartIndex());
         assertTrue(h2.getEndIndex() < h3.getStartIndex());
+    }
 
-        // Optimization: if early return is the last instruction, don't emit an empty range after.
-        node = parseNode("introspectionDataFinallyExceptionHandlers", b -> {
+    @Test
+    public void testIntrospectionDataEmptyHandlers() {
+        /**
+         * When the guarded ranges are split into multiple ranges, some may be empty. We should skip
+         * exception table entries for empty bytecode ranges.
+         */
+
+        // test case: early return
+        BasicInterpreter node = parseNode("introspectionDataEmptyHandlers", b -> {
             // @formatter:off
             b.beginRoot(LANGUAGE);
                 b.beginBlock();
@@ -1151,10 +1159,11 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
             // @formatter:on
         });
+        // one range (everything up until the return)
         assertEquals(1, node.getIntrospectionData().getExceptionHandlers().size());
 
-        // Optimization: if branch is the last instruction, don't emit an empty range after.
-        node = parseNode("introspectionDataFinallyExceptionHandlers", b -> {
+        // test case: branch out
+        node = parseNode("introspectionDataEmptyHandlers", b -> {
             // @formatter:off
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
@@ -1176,7 +1185,45 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
             // @formatter:on
         });
+        // one range (everything up until the branch)
         assertEquals(1, node.getIntrospectionData().getExceptionHandlers().size());
+
+        // test case: early return with branch, and instrumentation in the middle.
+        node = parseNode("introspectionDataEmptyHandlers", b -> {
+            // @formatter:off
+            b.beginRoot(LANGUAGE);
+            BytecodeLabel lbl = b.createLabel();
+                b.beginBlock();
+                    b.beginFinallyTry(b.createLocal());
+                        b.emitVoidOperation();
+
+                        b.beginBlock();
+                            b.emitVoidOperation();
+                            b.beginIfThen();
+                                b.emitLoadArgument(0);
+                                b.beginReturn();
+                                    b.emitLoadConstant(42L);
+                                b.endReturn();
+                            b.endIfThen();
+                            b.emitPrintHere(); // instrumentation instruction
+                            b.emitBranch(lbl);
+                        b.endBlock();
+                    b.endFinallyTry();
+                b.endBlock();
+                b.emitLabel(lbl);
+            b.endRoot();
+            // @formatter:on
+        });
+        // without instrumentation, one range (everything up until the return)
+        assertEquals(1, node.getIntrospectionData().getExceptionHandlers().size());
+
+        // with instrumentation, two ranges (everything up until the return, and the instrumentation
+        // instruction)
+        node.getRootNodes().update(createBytecodeConfigBuilder().addInstrumentation(BasicInterpreter.PrintHere.class).build());
+        List<ExceptionHandler> handlers = node.getIntrospectionData().getExceptionHandlers();
+        assertEquals(2, handlers.size());
+        assertEquals(handlers.get(0).getHandlerIndex(), handlers.get(1).getHandlerIndex());
+        assertTrue(handlers.get(0).getEndIndex() < handlers.get(1).getStartIndex());
     }
 
     @Test

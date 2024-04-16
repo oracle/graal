@@ -435,6 +435,14 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Instrumentation
+    public static final class PrintHere {
+        @Specialization
+        public static void perform() {
+            System.out.println("here!");
+        }
+    }
+
+    @Instrumentation
     public static final class IncrementValue {
         @Specialization
         public static long doIncrement(long value) {
