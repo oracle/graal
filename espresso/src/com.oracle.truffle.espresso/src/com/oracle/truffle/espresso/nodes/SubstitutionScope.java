@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 final class SubstitutionScope implements TruffleObject {
     private final Object[] args;
 
-    public SubstitutionScope(Object[] arguments) {
+    SubstitutionScope(Object[] arguments) {
         this.args = arguments;
     }
 
