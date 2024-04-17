@@ -79,20 +79,27 @@ public class ImageLayerSnapshotUtil {
     public static final String CLASS_ID_TAG = "class id";
     public static final String SIMULATED_TAG = "simulated";
 
-    public String getTypeIdentifier(AnalysisType type, String moduleName) {
-        return addModuleName(type.toJavaName(true), moduleName);
+    public String getTypeIdentifier(AnalysisType type) {
+        String javaName = type.toJavaName(true);
+        return addModuleName(javaName, type.getJavaClass().getModule().getName());
     }
 
-    public String getMethodIdentifier(AnalysisMethod method, String moduleName) {
+    public String getMethodIdentifier(AnalysisMethod method) {
+        AnalysisType declaringClass = method.getDeclaringClass();
         Executable originalMethod = OriginalMethodProvider.getJavaMethod(method);
+        String moduleName = declaringClass.getJavaClass().getModule().getName();
         if (originalMethod != null) {
             return addModuleName(originalMethod.toString(), moduleName);
         }
-        return addModuleName(method.getQualifiedName(), moduleName);
+        return addModuleName(getQualifiedName(method), moduleName);
     }
 
     protected static String addModuleName(String elementName, String moduleName) {
         return moduleName + ":" + elementName;
+    }
+
+    protected static String getQualifiedName(AnalysisMethod method) {
+        return method.getSignature().getReturnType().toJavaName(true) + " " + method.getQualifiedName();
     }
 
     @SuppressWarnings("unused")
