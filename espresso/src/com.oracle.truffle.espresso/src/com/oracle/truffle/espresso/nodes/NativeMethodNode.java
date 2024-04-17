@@ -163,6 +163,7 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
         return new SubstitutionScope(frame.getArguments());
     }

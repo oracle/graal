@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(NodeLibrary.class)
 final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeImpl {
-    @Child private CallableFromNative nativeMethod;
+    @Child private final CallableFromNative nativeMethod;
     private final Object env;
 
     IntrinsifiedNativeMethodNode(Method.MethodVersion methodVersion, CallableFromNative.Factory factory, Object env) {
@@ -70,6 +70,7 @@ final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeI
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
         return new SubstitutionScope(frame.getArguments());
     }

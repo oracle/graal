@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -65,7 +65,7 @@ final class SubstitutionScope implements TruffleObject {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     Object readMember(String member) throws UnknownIdentifierException {
         try {
             int index = Integer.parseInt(member);
@@ -76,6 +76,7 @@ final class SubstitutionScope implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
@@ -91,6 +92,7 @@ final class SubstitutionScope implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return "<intrinsified>";
     }
