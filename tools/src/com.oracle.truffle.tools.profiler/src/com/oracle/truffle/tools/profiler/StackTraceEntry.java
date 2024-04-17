@@ -166,10 +166,8 @@ public final class StackTraceEntry {
      * in a parent stack entry at the time when the stack trace was captured, else
      * <code>false</code>.
      *
-     * @deprecated Use {@link #isCompilationRoot()}
      * @since 19.0
      */
-    @Deprecated
     public boolean isInlined() {
         return !compilationRoot;
     }
