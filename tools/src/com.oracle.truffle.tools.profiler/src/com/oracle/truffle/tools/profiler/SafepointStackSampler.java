@@ -269,14 +269,14 @@ final class SafepointStackSampler {
             CallTarget callTarget = frameInstance.getCallTarget();
             int compilationTier = frameInstance.getCompilationTier();
             boolean compilationRoot = frameInstance.isCompilationRoot();
-            if (addStackTraceEntry(callTarget, compilationTier, compilationRoot) &&
-                            (!includeAsyncStackTrace || addAnyAsyncStackTraceEntries(callTarget, frameInstance.getFrame(FrameAccess.READ_ONLY)))) {
-                // continue traversing
-                assert !overflowed;
+            boolean continueVisiting = addStackTraceEntry(callTarget, compilationTier, compilationRoot);
+            if (continueVisiting && includeAsyncStackTrace) {
+                continueVisiting = addAnyAsyncStackTraceEntries(callTarget, frameInstance.getFrame(FrameAccess.READ_ONLY));
+            }
+            if (continueVisiting) {
                 return null;
             } else {
-                // stop traversing
-                assert overflowed;
+                overflowed = true;
                 return frameInstance;
             }
         }
@@ -287,15 +287,11 @@ final class SafepointStackSampler {
             roots[nextFrameIndex] = compilationRoot;
             targets[nextFrameIndex] = callTarget;
             nextFrameIndex++;
-            if (nextFrameIndex >= targets.length) {
-                overflowed = true;
-                return false; // stop
-            } else {
-                return true; // continue
-            }
+            return nextFrameIndex < targets.length; // continue?
         }
 
         private boolean addAnyAsyncStackTraceEntries(CallTarget callTarget, Frame frame) {
+            assert !overflowed;
             // Try to mix in async stack trace elements.
             List<TruffleStackTraceElement> asyncStackTrace = TruffleStackTrace.getAsynchronousStackTrace(callTarget, frame);
             if (asyncStackTrace != null && !asyncStackTrace.isEmpty()) {
