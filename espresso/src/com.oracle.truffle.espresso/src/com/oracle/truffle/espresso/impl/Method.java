@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_0;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETSTATIC;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITORENTER;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITOREXIT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
@@ -1154,9 +1152,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @CompilationFinal private int vtableIndex = -1;
         @CompilationFinal private int itableIndex = -1;
 
-        // Whether we need to use an additional frame slot for monitor unlock on kill.
-        @CompilationFinal private byte usesMonitors = -1;
-
         @CompilationFinal(dimensions = 1) //
         private volatile byte[] code = null;
 
@@ -1605,27 +1600,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public boolean usesMonitors() {
-            if (usesMonitors != -1) {
-                return usesMonitors != 0;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (isSynchronized()) {
-                    return (usesMonitors = 1) != 0;
-                }
-                if (codeAttribute != null) {
-                    BytecodeStream bs = new BytecodeStream(codeAttribute.getOriginalCode());
-                    int bci = 0;
-                    while (bci < bs.endBCI()) {
-                        int opcode = bs.currentBC(bci);
-                        if (opcode == MONITORENTER || opcode == MONITOREXIT) {
-                            return (usesMonitors = 1) != 0;
-                        }
-                        bci = bs.nextBCI(bci);
-                    }
-                    return (usesMonitors = 0) != 0;
-                }
-                return false;
-            }
+            // Whether we need to use an additional frame slot for monitor unlock on kill.
+            return codeAttribute.usesMonitors();
+        }
+
+        public boolean hasJsr() {
+            return codeAttribute.hasJsr();
         }
 
         public int getRefKind() {

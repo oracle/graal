@@ -334,7 +334,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
@@ -758,18 +757,28 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return transferToInterpreterAndResumeContinuation(frame.materialize(), hostFrameRecord);
         } else {
             int startTop = startingStackOffset(getMethodVersion().getMaxLocals());
-            return executeBodyFromBCI(frame, 0, startTop, 0, false, false);
+            if (methodVersion.hasJsr()) {
+                getLanguage().getThreadLocalState().blockContinuationSuspension();
+            }
+            try {
+                return executeBodyFromBCI(frame, 0, startTop, 0, false, false);
+            } finally {
+                if (methodVersion.hasJsr()) {
+                    getLanguage().getThreadLocalState().unblockContinuationSuspension();
+                }
+            }
         }
     }
 
     @TruffleBoundary
     private Object transferToInterpreterAndResumeContinuation(MaterializedFrame frame, ContinuationSupport.HostFrameRecord hostFrameRecord) {
+        assert !methodVersion.hasJsr();
         return executeBodyFromBCI(frame,
-                getBCI(frame),
-                hostFrameRecord.sp,
-                hostFrameRecord.statementIndex,
-                false, // isOSR
-                true   // isContinuationResume
+                        getBCI(frame),
+                        hostFrameRecord.sp,
+                        hostFrameRecord.statementIndex,
+                        false, // isOSR
+                        true   // isContinuationResume
         );
     }
 
@@ -1697,13 +1706,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         // Extend the linked list of frame records as we unwind.
         unwindRequest.head = new ContinuationSupport.HostFrameRecord(
-                localRefsStaticObj,
-                materializedFrame.getIndexedPrimitiveLocals(),
-                slotTags,
-                top,
-                statementIndex,
-                methodVersion,
-                unwindRequest.head);
+                        localRefsStaticObj,
+                        materializedFrame.getIndexedPrimitiveLocals(),
+                        slotTags,
+                        top,
+                        statementIndex,
+                        methodVersion,
+                        unwindRequest.head);
     }
 
     @Override
