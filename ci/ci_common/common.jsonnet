@@ -42,6 +42,9 @@ common + common.frequencies + {
           "<graal>/.devcontainer/**",
           "<graal>/.github/**",
           "<graal>/vm/ce-release-artifacts.json"
+        ],
+        includes+: ["<graal>/tools/profiling.md",
+          "<graal>/truffle/docs/Options.md"
         ]
       }
     } else {}
