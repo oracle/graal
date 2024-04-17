@@ -87,7 +87,7 @@ public class ByteArrayAccessCloneBenchmark extends TruffleBenchmark {
     @Benchmark
     public byte[] unsafeCopyMemory() {
         byte[] copy = new byte[array.length];
-        UNSAFE.copyMemory(array, 0, copy, 0, array.length);
+        UNSAFE.copyMemory(array, Unsafe.ARRAY_BYTE_BASE_OFFSET, copy, Unsafe.ARRAY_BYTE_BASE_OFFSET, array.length);
         return copy;
     }
 
