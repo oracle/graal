@@ -145,9 +145,11 @@ public class DebugOptions {
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
     @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
-    @Option(help = "Specify the dump level if CompilationFailureAction#Diagnose is used." +
-                    "See CompilationFailureAction for details. file:doc-files/CompilationFailureActionHelp.txt", type = OptionType.Debug)
-    public static final OptionKey<String> DiagnoseDumpLevel = new OptionKey<>(":" + DebugContext.VERBOSE_LEVEL);
+    @Option(help = "Option values to use during a retry compilation triggered by CompilationFailureAction=Diagnose " +
+                   "or CompilationFailureAction=ExitVM. If the value starts with a non-letter character, that " +
+                   "character is used as the separator between options instead of a space. For example: " +
+                   "\\\"DiagnoseOptions=@Log=Inlining@LogFile=/path/with space.\\\"", type = OptionType.User)
+    public static final OptionKey<String> DiagnoseOptions = new OptionKey<>("Dump=:" + DebugContext.VERBOSE_LEVEL);
     @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DisableIntercept = new OptionKey<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
@@ -155,7 +157,7 @@ public class DebugOptions {
     @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
     public static final OptionKey<Boolean> LogVerbose = new OptionKey<>(false);
 
-    @Option(help = "The directory where various Graal dump files are written.")
+    @Option(help = "The directory where various Graal dump files are written.", type = OptionType.User)
     public static final OptionKey<String> DumpPath = new OptionKey<>("graal_dumps");
     @Option(help = "Print the name of each dump file path as it's created.")
     public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);

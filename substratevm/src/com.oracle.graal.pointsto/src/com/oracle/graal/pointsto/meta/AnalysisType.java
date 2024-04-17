@@ -139,6 +139,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     AnalysisType superClass;
 
     private final int id;
+    /** Marks a type loaded from a base layer. */
+    private final boolean isInBaseLayer;
 
     private final JavaKind storageKind;
     private final boolean isCloneableWithAllocation;
@@ -293,7 +295,27 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         /* Set id after accessing super types, so that all these types get a lower id number. */
-        this.id = universe.nextTypeId.getAndIncrement();
+        if (wrapped instanceof BaseLayerType baseLayerType) {
+            this.id = baseLayerType.getId();
+            this.isInBaseLayer = true;
+        } else if (universe.hostVM().useBaseLayer()) {
+            int tid = universe.getImageLayerLoader().lookupHostedTypeInBaseLayer(this);
+            if (tid != -1) {
+                /*
+                 * This id is the actual link between the corresponding type from the base layer and
+                 * this new type.
+                 */
+                this.id = tid;
+                this.isInBaseLayer = true;
+            } else {
+                this.id = universe.computeNextTypeId();
+                this.isInBaseLayer = false;
+            }
+        } else {
+            this.id = universe.computeNextTypeId();
+            this.isInBaseLayer = false;
+        }
+
         /*
          * Only after setting the id, the hashCode and compareTo methods work properly. So only now
          * it is allowed to put the type into a hashmap, e.g., invoke addSubType.
@@ -369,6 +391,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public int getId() {
         return id;
+    }
+
+    public boolean isInBaseLayer() {
+        return isInBaseLayer;
     }
 
     public AnalysisObject getContextInsensitiveAnalysisObject() {
@@ -600,6 +626,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
         if (futures.size() > 0) {
             scheduledTypeReachableNotifications = futures;
+        }
+
+        if (isInBaseLayer && !(wrapped instanceof BaseLayerType)) {
+            /*
+             * Since the analysis of the type is skipped, the fields have to be created manually to
+             * ensure their flags are loaded from the base layer. Not creating the fields would
+             * cause inconsistency issues between the size of objects from the base and the
+             * extension layers.
+             */
+            getInstanceFields(true);
+            getStaticFields();
         }
 
         universe.notifyReachableType();

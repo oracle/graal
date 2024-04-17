@@ -46,9 +46,9 @@ import jdk.vm.ci.code.CodeUtil;
 /**
  * The {@code SignExtendNode} converts an integer to a wider integer using sign extension.
  *
- * On all supported architectures, sub-word (<32 bit) operations generally do not yield performance
- * improvements. They can even be slower than 32 bit operations. Thus, nodes extending <32 bit
- * values to 32 bit or more should usually not be removed.
+ * On all supported architectures, sub-word (&lt;32 bit) operations generally do not yield
+ * performance improvements. They can even be slower than 32 bit operations. Thus, nodes extending
+ * &lt;32 bit values to 32 bit or more should usually not be removed.
  */
 @NodeInfo(cycles = CYCLES_1)
 public final class SignExtendNode extends IntegerConvertNode<SignExtend> {

@@ -158,7 +158,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      * assert N == 16;
      *
      * int result = initialValue;
-     * int bound = data.length & ~(N - 1);
+     * int bound = data.length &amp; ~(N - 1);
      * // UNROLLED (x16) VECTOR LOOP
      * if (data.length >= N) {
      *     var vresult1 = IntVector.zero(I128);
@@ -167,7 +167,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      *     var vresult4 = IntVector.zero(I128);
      *     int inext = 31 ** N;
      *     var vnext = IntVector.broadcast(I128, inext);
-     *     for (int i = 0; i < bound; i += N) {
+     *     for (int i = 0; i &lt; bound; i += N) {
      *         result *= inext;
      *         // load 4x4 zero-extended-to-32-bit int values
      *         var vtmp1 = IntVector.fromArray(I128, data, i + 0 * vlen);
@@ -188,7 +188,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      * }
      * // UNROLLED (x2) SCALAR LOOP
      * int i = 1;
-     * for (; i < data.length - bound; i += 2) {
+     * for (; i &lt; data.length - bound; i += 2) {
      *     result *= 31 * 31;
      *     result += data[i - 1] * 31 + data[i];
      * }

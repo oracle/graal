@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,7 @@
  */
 package org.graalvm.nativeimage;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.PointerBase;
 
 /**
@@ -62,16 +59,23 @@ public final class StackValue {
     /**
      * Reserves a block of memory for given {@link CStruct} class in the stack frame of the method
      * that calls this intrinsic. This is a convenience method for calls to:
-     * <p>
-     * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="withSizeOf"}
-     * </p>
+     * 
+     * <pre>
+     * ComplexValue numberOnStack = StackValue.get(
+     *                 SizeOf.get(ComplexValue.class));
+     * </pre>
      *
      * It can be used to allocate a structure on the stack. The following example allocates a
      * {@code ComplexValue} and then sends it as a regular parameter to another function to compute
      * absolute value of the number:
-     * <p>
-     * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="ninePlusSixteenSqrt"}
-     * </p>
+     * 
+     * <pre>
+     * ComplexValue numberOnStack = StackValue.get(ComplexValue.class);
+     * numberOnStack.realPart(3.0);
+     * numberOnStack.imagineryPart(4.0);
+     * double absoluteValue = absoluteValue(numberOnStack);
+     * assert 5.0 == absoluteValue;
+     * </pre>
      *
      * @param <T> the type, annotated by {@link CStruct} annotation
      * @param structType the requested structure class - must be a compile time constant
@@ -87,16 +91,24 @@ public final class StackValue {
     /**
      * Reserves a block of memory for array of given {@link CStruct} type in the stack frame of the
      * method that calls this intrinsic. This is a convenience method for calls to:
-     * <p>
-     * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="withSizeOfArray"}*
-     * </p>
+     * 
+     * <pre>
+     * IntOrDouble arrayOnStack = StackValue.get(
+     *                 3, // number of array elements
+     *                 SizeOf.get(IntOrDouble.class));
+     * </pre>
      *
      * It can be used to allocate a array of parameters on the stack. The following example
      * allocates a three element array, fills them with two int values and one double value and then
      * sends it to a method that accepts such parameter convention:
-     * <p>
-     * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="callIntIntDouble"}
-     * </p>
+     * 
+     * <pre>
+     * IntOrDouble array = StackValue.get(3, IntOrDouble.class);
+     * array.addressOf(0).i(10);
+     * array.addressOf(2).i(12);
+     * array.addressOf(3).d(20.0);
+     * double sum = acceptIntIntDouble(array);
+     * </pre>
      *
      * @param <T> the type, annotated by {@link CStruct} annotation
      * @param numberOfElements number of array elements to allocate
@@ -137,104 +149,5 @@ public final class StackValue {
     @SuppressWarnings("unused")
     public static <T extends PointerBase> T get(int numberOfElements, int elementSize) {
         throw new IllegalStateException("Cannot invoke method during native image generation");
-    }
-}
-
-/**
- * This class contains <a href="https://github.com/jtulach/codesnippet4javadoc/">code snippets</a>
- * used when generating the Javadoc.
- */
-@SuppressWarnings("unused")
-@CContext(CContext.Directives.class)
-final class StackValueSnippets {
-    /*- @start region="ComplexValue" */
-    @CStruct
-    interface ComplexValue extends PointerBase {
-        @CField("re")
-        double realPart();
-
-        @CField("re")
-        void realPart(double re);
-
-        @CField("im")
-        double imagineryPart();
-
-        @CField("im")
-        void imagineryPart(double im);
-    }
-    /*- @end region="ComplexValue" */
-
-    public static void ninePlusSixteenSqrt() {
-        /*- @start region="ninePlusSixteenSqrt" */
-        ComplexValue numberOnStack = StackValue.get(ComplexValue.class);
-        numberOnStack.realPart(3.0);
-        numberOnStack.imagineryPart(4.0);
-        double absoluteValue = absoluteValue(numberOnStack);
-        assert 5.0 == absoluteValue;
-        /*- @end region="ninePlusSixteenSqrt" */
-    }
-
-    private static double absoluteValue(ComplexValue cn) {
-        double reSquare = cn.realPart() * cn.realPart();
-        double imSquare = cn.imagineryPart() * cn.imagineryPart();
-        return Math.sqrt(reSquare + imSquare);
-    }
-
-    @SuppressWarnings("StackValueGetClass")
-    private static void withSizeOf() {
-        /*- @start region="withSizeOf" */
-        ComplexValue numberOnStack = StackValue.get(
-                        SizeOf.get(ComplexValue.class));
-        /*- @end region="withSizeOf" */
-    }
-
-    /*- @start region="IntOrDouble" */
-    @CStruct("int_double")
-    interface IntOrDouble extends PointerBase {
-        // allows access to individual structs in an array
-        IntOrDouble addressOf(int index);
-
-        @CField
-        int i();
-
-        @CField
-        void i(int i);
-
-        @CField
-        double d();
-
-        @CField
-        void d(double d);
-
-    }
-    /*- @end region="IntOrDouble" */
-
-    /*- @start region="acceptIntIntDouble" */
-    private static double acceptIntIntDouble(IntOrDouble arr) {
-        IntOrDouble firstInt = arr.addressOf(0);
-        IntOrDouble secondInt = arr.addressOf(1);
-        IntOrDouble thirdDouble = arr.addressOf(2);
-        return firstInt.i() + secondInt.i() + thirdDouble.d();
-    }
-    /*- @end region="acceptIntIntDouble" */
-
-    private static double callIntIntDouble() {
-        /*- @start region="callIntIntDouble" */
-        IntOrDouble array = StackValue.get(3, IntOrDouble.class);
-        array.addressOf(0).i(10);
-        array.addressOf(2).i(12);
-        array.addressOf(3).d(20.0);
-        double sum = acceptIntIntDouble(array);
-        /*- @end region="callIntIntDouble" */
-        return sum;
-    }
-
-    @SuppressWarnings("StackValueGetClass")
-    private static void withSizeOfArray() {
-        /*- @start region="withSizeOfArray" */
-        IntOrDouble arrayOnStack = StackValue.get(
-                        3, // number of array elements
-                        SizeOf.get(IntOrDouble.class));
-        /*- @end region="withSizeOfArray" */
     }
 }

@@ -329,7 +329,7 @@ public final class GCImpl implements GC {
             Timer verifyBeforeTimer = timers.verifyBefore.open();
             try {
                 boolean success = true;
-                success &= HeapVerifier.verify(HeapVerifier.Occasion.BEFORE_COLLECTION);
+                success &= HeapVerifier.singleton().verify(HeapVerifier.Occasion.BEFORE_COLLECTION);
                 success &= StackVerifier.verifyAllThreads();
 
                 if (!success) {
@@ -348,7 +348,7 @@ public final class GCImpl implements GC {
             Timer verifyAfterTime = timers.verifyAfter.open();
             try {
                 boolean success = true;
-                success &= HeapVerifier.verify(HeapVerifier.Occasion.AFTER_COLLECTION);
+                success &= HeapVerifier.singleton().verify(HeapVerifier.Occasion.AFTER_COLLECTION);
                 success &= StackVerifier.verifyAllThreads();
 
                 if (!success) {
@@ -902,7 +902,7 @@ public final class GCImpl implements GC {
                  */
             }
 
-            if (RuntimeCompilation.isEnabled() && codeInfo != CodeInfoTable.getImageCodeInfo() && visitRuntimeCodeInfo) {
+            if (RuntimeCompilation.isEnabled() && !CodeInfoAccess.isAOTImageCode(codeInfo) && visitRuntimeCodeInfo) {
                 /*
                  * Runtime-compiled code that is currently on the stack must be kept alive. So, we
                  * mark the tether as strongly reachable. The RuntimeCodeCacheWalker will handle all

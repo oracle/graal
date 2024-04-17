@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 
@@ -67,7 +68,7 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
 
     @Override
     public ResolvedJavaType lookup(ResolvedJavaType type) {
-        if (LambdaUtils.isLambdaType(type) && !type.getClass().equals(LambdaSubstitutionType.class)) {
+        if (LambdaUtils.isLambdaType(type) && !type.getClass().equals(LambdaSubstitutionType.class) && !(type.getClass().equals(BaseLayerType.class))) {
             return getSubstitution(type);
         } else {
             return type;
@@ -107,4 +108,7 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
         }
     }
 
+    public boolean isNameAlwaysStable(String lambdaTargetName) {
+        return !uniqueLambdaProxyNames.contains(lambdaTargetName.substring(0, lambdaTargetName.length() - 1) + "1;");
+    }
 }

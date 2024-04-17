@@ -28,25 +28,28 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.graal.compiler.java.LambdaUtils;
-
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+
+import jdk.graal.compiler.java.LambdaUtils;
 
 /**
  * @see LambdaProxyRenamingSubstitutionProcessor
  */
 @AutomaticallyRegisteredFeature
-final class StableLambdaProxyNameFeature implements InternalFeature {
+public final class StableLambdaProxyNameFeature implements InternalFeature {
+
+    private LambdaProxyRenamingSubstitutionProcessor lSubst;
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        LambdaProxyRenamingSubstitutionProcessor lSubst = new LambdaProxyRenamingSubstitutionProcessor(access.getBigBang());
+        lSubst = new LambdaProxyRenamingSubstitutionProcessor(access.getBigBang());
         access.registerSubstitutionProcessor(lSubst);
     }
 
@@ -55,12 +58,16 @@ final class StableLambdaProxyNameFeature implements InternalFeature {
         assert checkLambdaNames(((AfterAnalysisAccessImpl) access).getUniverse().getTypes());
     }
 
+    public LambdaProxyRenamingSubstitutionProcessor getLambdaSubstitutionProcessor() {
+        return lSubst;
+    }
+
     private static boolean checkLambdaNames(List<AnalysisType> types) {
         if (!SubstrateUtil.assertionsEnabled()) {
             throw new AssertionError("Expensive check: should only run with assertions enabled.");
         }
         /* There should be no random lambda names visible to the analysis. */
-        if (types.stream().anyMatch(type -> LambdaUtils.isLambdaType(type) && type.getWrapped().getClass() != LambdaSubstitutionType.class)) {
+        if (types.stream().anyMatch(type -> LambdaUtils.isLambdaType(type) && type.getWrapped().getClass() != LambdaSubstitutionType.class && type.getWrapped().getClass() != BaseLayerType.class)) {
             throw new AssertionError("All lambda proxies should be substituted.");
         }
 

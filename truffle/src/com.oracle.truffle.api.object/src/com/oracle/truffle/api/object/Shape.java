@@ -227,7 +227,6 @@ public abstract class Shape {
          * {@inheritDoc}
          *
          * @throws NullPointerException {@inheritDoc}
-         * @throws IllegalArgumentException {@inheritDoc}
          * @see DynamicObjectLibrary#getDynamicType(DynamicObject)
          * @see DynamicObjectLibrary#setDynamicType(DynamicObject, Object)
          * @since 20.2.0
@@ -430,7 +429,6 @@ public abstract class Shape {
          * {@inheritDoc}
          *
          * @throws NullPointerException {@inheritDoc}
-         * @throws IllegalArgumentException {@inheritDoc}
          * @see DynamicObjectLibrary#getDynamicType(DynamicObject)
          * @see DynamicObjectLibrary#setDynamicType(DynamicObject, Object)
          * @since 20.2.0

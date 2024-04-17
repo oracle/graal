@@ -109,7 +109,7 @@ public class TRegexOptions {
      * <pre>
      *     [\u1000-\u1020], [\u1030-\u1040], [\u1050-\u1060]
      *     are three ranges that have the same high byte (0x10).
-     *     if TRegexRangeToBitSetConversionThreshold is <= 3, they will be converted to a
+     *     if TRegexRangeToBitSetConversionThreshold is &lt;= 3, they will be converted to a
      *     bit set if they appear in a RangeList or RangeTree matcher.
      * </pre>
      */
@@ -231,7 +231,7 @@ public class TRegexOptions {
      * Maximum number of {@link PureNFA} states allowed to be exploded in
      * {@link TRegexBacktrackingNFAExecutorNode}.
      */
-    public static final int TRegexMaxBackTrackerMergeExplodeSize = 300;
+    public static final int TRegexMaxBackTrackerMergeExplodeSize = 200;
 
     /**
      * Maximum number of {@link TRegexExecutorNode#getNumberOfTransitions() transitions} for a

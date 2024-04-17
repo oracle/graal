@@ -37,7 +37,6 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
@@ -367,7 +366,7 @@ public abstract class NonSnippetLowerings {
 
                     if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = createDirectCall(graph, callTarget, parameters, signature, callType, invokeKind, targetMethod, node);
-                    } else if (!targetMethod.hasCodeOffsetInImage()) {
+                    } else if (!targetMethod.hasImageCodeOffset()) {
                         /*
                          * The target method is not included in the image. This means that it was
                          * also not needed for the deoptimization entry point. Thus, we are certain
@@ -383,7 +382,7 @@ public abstract class NonSnippetLowerings {
                          * In runtime-compiled code, we emit indirect calls via the respective heap
                          * objects to avoid patching and creating trampolines.
                          */
-                        JavaConstant codeInfo = SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache());
+                        JavaConstant codeInfo = SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo());
                         ValueNode codeInfoConstant = ConstantNode.forConstant(codeInfo, tool.getMetaAccess(), graph);
                         ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), knownOffsets.getImageCodeInfoCodeStartOffset(), graph);
                         AddressNode codeStartField = graph.unique(new OffsetAddressNode(codeInfoConstant, codeStartFieldOffset));
@@ -392,7 +391,7 @@ public abstract class NonSnippetLowerings {
                          * loaded in a process where image code is located elsewhere.
                          */
                         ReadNode codeStart = graph.add(new ReadNode(codeStartField, LocationIdentity.ANY_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
-                        ValueNode offset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), targetMethod.getCodeOffsetInImage(), graph);
+                        ValueNode offset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), targetMethod.getImageCodeOffset(), graph);
                         AddressNode address = graph.unique(new OffsetAddressNode(codeStart, offset));
 
                         loweredCallTarget = graph.add(new IndirectCallTargetNode(

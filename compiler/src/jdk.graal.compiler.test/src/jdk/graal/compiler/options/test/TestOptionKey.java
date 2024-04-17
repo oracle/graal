@@ -197,6 +197,23 @@ public class TestOptionKey {
             // Expected
         }
 
+        Assert.assertArrayEquals(OptionsParser.splitOptions("MyOption=a  MyLongOption=42"),
+                        new String[]{"MyOption=a", "MyLongOption=42"});
+        Assert.assertArrayEquals(OptionsParser.splitOptions("@MyOption=a string with spaces@MyLongOption=51@MyBooleanOption=false"),
+                        new String[]{"MyOption=a string with spaces", "MyLongOption=51", "MyBooleanOption=false"});
+
+        // Single option also works
+        Assert.assertArrayEquals(OptionsParser.splitOptions("MyIntegerOption=1001"),
+                        new String[]{"MyIntegerOption=1001"});
+
+        // Contiguous repeats of delimiters throw IllegalArgumentException
+        try {
+            OptionsParser.splitOptions("#MyIntegerOption=1001##SomeOtherOption=false");
+            Assert.fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
+
         EconomicMap<String, String> optionSettings = EconomicMap.create();
         optionSettings.put("MyOption", "value 1");
         optionSettings.put("MyIntegerOption", "1001");

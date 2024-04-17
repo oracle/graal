@@ -43,7 +43,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.util.JavaConstantFormatter;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -75,7 +74,7 @@ interface GraphPrinter extends Closeable, JavaConstantFormatter {
     void close();
 
     /**
-     * Classes whose {@link #toString()} method does not run any untrusted code.
+     * Classes whose {@code toString()} method does not run any untrusted code.
      */
     List<Class<?>> TRUSTED_CLASSES = Arrays.asList(
                     String.class,
@@ -109,7 +108,7 @@ interface GraphPrinter extends Closeable, JavaConstantFormatter {
 
     /**
      * Use the real {@link Object#toString()} method for {@link JavaConstant JavaConstants} that are
-     * wrapping trusted types, otherwise just return the result of {@link JavaConstant#toString()}.
+     * wrapping trusted types, otherwise just return the result of {@code JavaConstant#toString()}.
      */
     @Override
     default String format(JavaConstant constant) {

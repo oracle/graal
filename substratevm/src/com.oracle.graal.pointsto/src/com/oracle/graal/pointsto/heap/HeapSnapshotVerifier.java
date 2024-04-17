@@ -179,6 +179,9 @@ public class HeapSnapshotVerifier {
                 verifyStaticFieldValue(typeData, field, fieldSnapshot, fieldValue, reason);
             } else {
                 ImageHeapInstance receiverObject = (ImageHeapInstance) getSnapshot(receiver, reason);
+                if (receiverObject == null || (receiverObject.isInBaseLayer() && !bb.getUniverse().getImageLayerLoader().getRelinkedFields(receiverObject.getType()).contains(field.getPosition()))) {
+                    return false;
+                }
                 JavaConstant fieldSnapshot = receiverObject.readFieldValue(field);
                 verifyInstanceFieldValue(field, receiver, receiverObject, fieldSnapshot, fieldValue, reason);
             }
@@ -200,6 +203,14 @@ public class HeapSnapshotVerifier {
         }
 
         private void verifyInstanceFieldValue(AnalysisField field, JavaConstant receiver, ImageHeapInstance receiverObject, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
+            if (fieldSnapshot instanceof ImageHeapConstant ihc && ihc.isInBaseLayer() && ihc.getHostedObject() == null) {
+                /*
+                 * We cannot verify a base layer constant which doesn't have a backing hosted
+                 * object. Since the hosted object is missing the constant would be replaced with
+                 * the new hosted object reachable from the field, which would be wrong.
+                 */
+                throw AnalysisError.shouldNotReachHere("Trying to verify a constant from the base layer that was not relinked.");
+            }
             JavaConstant result = fieldSnapshot;
             JavaConstant unwrappedSnapshot = maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant);
             if (!Objects.equals(unwrappedSnapshot, fieldValue)) {
@@ -239,6 +250,9 @@ public class HeapSnapshotVerifier {
 
         private boolean verifyArrayElementValue(JavaConstant elementValue, int index, ScanReason reason, JavaConstant array) {
             ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getSnapshot(array, reason);
+            if (arrayObject == null) {
+                return false;
+            }
             /*
              * We don't care if an array element in the shadow heap was not yet read, i.e., the
              * future is not yet materialized. This can happen with values originating from lazy
@@ -246,6 +260,14 @@ public class HeapSnapshotVerifier {
              * the future, then compare the produced value.
              */
             JavaConstant elementSnapshot = arrayObject.readElementValue(index);
+            if (elementSnapshot instanceof ImageHeapConstant ihc && ihc.isInBaseLayer() && ihc.getHostedObject() == null) {
+                /*
+                 * We cannot verify a base layer constant which doesn't have a backing hosted
+                 * object. Since the hosted object is missing the constant would be replaced with
+                 * the new hosted object reachable from the field, which would be wrong.
+                 */
+                throw AnalysisError.shouldNotReachHere("Trying to verify a constant from the base layer that was not relinked.");
+            }
             JavaConstant result = elementSnapshot;
             if (!Objects.equals(maybeUnwrapSnapshot(elementSnapshot, elementValue instanceof ImageHeapConstant), elementValue)) {
                 String format = "Value mismatch for array element at index %s of %s %n snapshot:  %s %n new value: %s %n";
@@ -303,6 +325,18 @@ public class HeapSnapshotVerifier {
                 result = (ImageHeapConstant) constant;
             } else {
                 Object task = imageHeap.getSnapshot(constant);
+                if (task == null && bb.getUniverse().hostVM().useBaseLayer() && bb.getUniverse().getImageLayerLoader().hasValueForConstant(constant)) {
+                    /* The constant might not have been accessed in the extension image yet */
+                    task = bb.getUniverse().getImageLayerLoader().getValueForConstant(constant);
+                }
+                if (task == null && bb.getUniverse().hostVM().useBaseLayer()) {
+                    /*
+                     * This does not distinguish between base and extension layer constants at the
+                     * moment. Doing so would require some refactoring to determine earlier if the
+                     * constant is from the base layer.
+                     */
+                    return null;
+                }
                 if (task == null) {
                     throw error(reason, "Task is null for constant %s.", constant);
                 } else if (task instanceof ImageHeapConstant) {

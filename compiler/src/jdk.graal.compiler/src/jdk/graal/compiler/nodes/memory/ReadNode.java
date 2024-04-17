@@ -43,6 +43,7 @@ import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.ReadBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.CanonicalizableLocation;
@@ -123,9 +124,9 @@ public class ReadNode extends FloatableAccessNode
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
-        if (getBarrierType() != BarrierType.NONE && gen.getLIRGeneratorTool().getBarrierSet() != null) {
+        if (getBarrierType() != BarrierType.NONE && gen.getLIRGeneratorTool().getBarrierSet() instanceof ReadBarrierSetLIRGeneratorTool barrierSet) {
             assert extendKind == MemoryExtendKind.DEFAULT : Assertions.errorMessage(this, extendKind);
-            gen.setResult(this, gen.getLIRGeneratorTool().getBarrierSet().emitBarrieredLoad(readKind, gen.operand(address), gen.state(this), memoryOrder, getBarrierType()));
+            gen.setResult(this, barrierSet.emitBarrieredLoad(gen.getLIRGeneratorTool(), readKind, gen.operand(address), gen.state(this), memoryOrder, getBarrierType()));
         } else {
             gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this), memoryOrder, extendKind));
         }

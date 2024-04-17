@@ -55,10 +55,8 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryIteratorException;
-import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
@@ -1077,7 +1075,8 @@ public final class TruffleFile {
      * is deleted not its target.
      *
      * @throws NoSuchFileException if the file does not exist
-     * @throws DirectoryNotEmptyException if the {@link TruffleFile} denotes a non empty directory
+     * @throws java.nio.file.DirectoryNotEmptyException if the {@link TruffleFile} denotes a non
+     *             empty directory
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 19.0
@@ -1103,10 +1102,10 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException if {@code options} contains unsupported option
      * @throws FileAlreadyExistsException if the target path already exists and the {@code options}
      *             don't contain {@link StandardCopyOption#REPLACE_EXISTING} option
-     * @throws DirectoryNotEmptyException if the {@code options} contain
+     * @throws java.nio.file.DirectoryNotEmptyException if the {@code options} contain
      *             {@link StandardCopyOption#REPLACE_EXISTING} but the {@code target} is a non empty
      *             directory
-     * @throws AtomicMoveNotSupportedException if the {@code options} contain
+     * @throws java.nio.file.AtomicMoveNotSupportedException if the {@code options} contain
      *             {@link StandardCopyOption#ATOMIC_MOVE} but file cannot be moved atomically
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
@@ -1392,7 +1391,7 @@ public final class TruffleFile {
      * Reads the target of a symbolic link.
      * 
      * @return the {@link TruffleFile} representing the target of the symbolic link
-     * @throws NotLinkException if the {@link TruffleFile} is not a symbolic link
+     * @throws java.nio.file.NotLinkException if the {@link TruffleFile} is not a symbolic link
      * @throws IOException in case of IO error
      * @throws UnsupportedOperationException if the {@link FileSystem} implementation does not
      *             support symbolic links
@@ -1597,7 +1596,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException if {@code options} contains unsupported option
      * @throws FileAlreadyExistsException if the target path already exists and the {@code options}
      *             don't contain {@link StandardCopyOption#REPLACE_EXISTING} option
-     * @throws DirectoryNotEmptyException if the {@code options} contain
+     * @throws java.nio.file.DirectoryNotEmptyException if the {@code options} contain
      *             {@link StandardCopyOption#REPLACE_EXISTING} but the {@code target} is a non empty
      *             directory
      * @throws IOException in case of IO error
@@ -1628,6 +1627,7 @@ public final class TruffleFile {
      */
     @TruffleBoundary
     @Deprecated(since = "20.2")
+    @SuppressWarnings("unused")
     public String getMimeType() throws IOException {
         return detectMimeType(null);
     }

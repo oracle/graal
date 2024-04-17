@@ -27,10 +27,10 @@ package com.oracle.graal.pointsto.meta;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -49,6 +49,8 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -124,6 +126,8 @@ public class AnalysisUniverse implements Universe {
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
     private ImageHeapScanner heapScanner;
+    private ImageLayerLoader imageLayerLoader;
+    private ImageLayerWriter imageLayerWriter;
     private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
     private DuringAnalysisAccess concurrentAnalysisAccess;
@@ -164,6 +168,10 @@ public class AnalysisUniverse implements Universe {
 
     public int getNextMethodId() {
         return nextMethodId.get();
+    }
+
+    public int getNextFieldId() {
+        return nextFieldId.get();
     }
 
     public void seal() {
@@ -216,6 +224,13 @@ public class AnalysisUniverse implements Universe {
         AnalysisType result = optionalLookup(type);
         if (result == null) {
             result = createType(type);
+        }
+        if (result.isInBaseLayer()) {
+            /*
+             * The constants can only be relinked after the type is registered as the dynamic hub is
+             * not available otherwise.
+             */
+            getImageLayerLoader().loadAndRelinkTypeConstants(result);
         }
         assert typesById[result.getId()].equals(result) : result;
         return result;
@@ -370,6 +385,9 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisField newValue = analysisFactory.createField(this, field);
         AnalysisField oldValue = fields.putIfAbsent(field, newValue);
+        if (oldValue == null && newValue.isInBaseLayer()) {
+            getImageLayerLoader().loadFieldFlags(newValue);
+        }
         return oldValue != null ? oldValue : newValue;
     }
 
@@ -413,6 +431,9 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
+        if (oldValue == null && newValue.isInBaseLayer()) {
+            getImageLayerLoader().patchBaseLayerMethod(newValue);
+        }
         return oldValue != null ? oldValue : newValue;
     }
 
@@ -484,8 +505,16 @@ public class AnalysisUniverse implements Universe {
         return heapScanner.createImageHeapConstant(getHostedValuesProvider().interceptHosted(constant), ObjectScanner.OtherReason.UNKNOWN);
     }
 
+    public boolean isTypeCreated(int typeId) {
+        return typesById.length > typeId && typesById[typeId] != null;
+    }
+
     public List<AnalysisType> getTypes() {
-        return Collections.unmodifiableList(Arrays.asList(typesById).subList(0, getNextTypeId()));
+        /*
+         * The typesById array can contain null values because the ids from the base layers are
+         * reserved when they are loaded in a new layer.
+         */
+        return Arrays.asList(typesById).subList(0, getNextTypeId()).stream().filter(Objects::nonNull).toList();
     }
 
     public AnalysisType getType(int typeId) {
@@ -695,6 +724,22 @@ public class AnalysisUniverse implements Universe {
         return heapScanner;
     }
 
+    public void setImageLayerLoader(ImageLayerLoader imageLayerLoader) {
+        this.imageLayerLoader = imageLayerLoader;
+    }
+
+    public ImageLayerLoader getImageLayerLoader() {
+        return imageLayerLoader;
+    }
+
+    public ImageLayerWriter getImageLayerWriter() {
+        return imageLayerWriter;
+    }
+
+    public void setImageLayerWriter(ImageLayerWriter imageLayerWriter) {
+        this.imageLayerWriter = imageLayerWriter;
+    }
+
     public HostedValuesProvider getHostedValuesProvider() {
         return heapScanner.getHostedValuesProvider();
     }
@@ -713,5 +758,38 @@ public class AnalysisUniverse implements Universe {
 
     public int getReachableTypes() {
         return numReachableTypes.get();
+    }
+
+    public void setStartTypeId(int startTid) {
+        /* No type was created yet, so the array can be overwritten without any concurrency issue */
+        typesById = new AnalysisType[startTid];
+
+        setStartId(nextTypeId, startTid, 0);
+    }
+
+    public void setStartMethodId(int startMid) {
+        setStartId(nextMethodId, startMid, 1);
+    }
+
+    public void setStartFieldId(int startFid) {
+        setStartId(nextFieldId, startFid, 1);
+    }
+
+    private static void setStartId(AtomicInteger nextId, int startFid, int expectedStartValue) {
+        if (nextId.compareAndExchange(expectedStartValue, startFid) != expectedStartValue) {
+            throw AnalysisError.shouldNotReachHere("An id was assigned before the start id was set.");
+        }
+    }
+
+    public int computeNextTypeId() {
+        return nextTypeId.getAndIncrement();
+    }
+
+    public int computeNextMethodId() {
+        return nextMethodId.getAndIncrement();
+    }
+
+    public int computeNextFieldId() {
+        return nextFieldId.getAndIncrement();
     }
 }

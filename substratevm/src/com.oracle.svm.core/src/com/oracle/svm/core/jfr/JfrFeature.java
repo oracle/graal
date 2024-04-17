@@ -27,7 +27,6 @@ package com.oracle.svm.core.jfr;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.sampler.SamplerStatistics;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -43,6 +42,7 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.sampler.SamplerJfrStackTraceSerializer;
 import com.oracle.svm.core.sampler.SamplerStackTraceSerializer;
 import com.oracle.svm.core.sampler.SamplerStackWalkVisitor;
+import com.oracle.svm.core.sampler.SamplerStatistics;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.UserError;
@@ -172,6 +172,9 @@ public class JfrFeature implements InternalFeature {
         JfrSerializerSupport.get().register(new JfrGCNameSerializer());
         JfrSerializerSupport.get().register(new JfrVMOperationNameSerializer());
         JfrSerializerSupport.get().register(new JfrGCWhenSerializer());
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            JfrSerializerSupport.get().register(new JfrNmtCategorySerializer());
+        }
 
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 

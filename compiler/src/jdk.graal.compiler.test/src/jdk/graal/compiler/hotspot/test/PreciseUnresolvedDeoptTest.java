@@ -34,43 +34,12 @@ import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class PreciseUnresolvedDeoptTest extends GraalCompilerTest {
 
-    public static void deoptUnresolved() {
-
-    }
-
-    @Override
-    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        super.registerInvocationPlugins(invocationPlugins);
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(invocationPlugins, PreciseUnresolvedDeoptTest.class);
-        r.register(new InvocationPlugin.InlineOnlyInvocationPlugin("deoptUnresolved") {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                /*
-                 * Simulate the HotSpot bytecode parser's -Xcomp behavior when encountering an
-                 * unresolved deopt: The deopt should be preceded by a state split proxy and should
-                 * never be converted to a guard. Even conversion to a fixed, non-floatable guard
-                 * could skip side effects and thus end up with an imprecise frame state.
-                 */
-                b.add(new StateSplitProxyNode());
-                DeoptimizeNode deopt = b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved));
-                deopt.mayConvertToGuard(false);
-                return true;
-            }
-        });
-    }
-
     public static boolean doNotConvertToGuardSnippet(boolean condition) {
         if (GraalDirectives.injectBranchProbability(0.5, condition)) {
-            deoptUnresolved();
+            GraalDirectives.preciseDeoptimize();
         }
         return condition;
     }

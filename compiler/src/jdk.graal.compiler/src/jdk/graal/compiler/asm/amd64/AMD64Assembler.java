@@ -82,6 +82,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
@@ -94,9 +96,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
-import org.graalvm.collections.EconomicSet;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -1080,7 +1079,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         return register.getRegisterCategory().equals(category) || (category instanceof UnionRegisterCategory && ((UnionRegisterCategory) category).contains(register));
     }
 
-    private enum VEXOpAssertion {
+    public enum VEXOpAssertion {
         AVX1(CPUFeature.AVX, CPUFeature.AVX, null),
         AVX1_2(CPUFeature.AVX, CPUFeature.AVX2, null),
         AVX2(CPUFeature.AVX2, CPUFeature.AVX2, null),
@@ -1107,6 +1106,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AVX1_128ONLY_AVX512F_128ONLY(CPUFeature.AVX, null, EVEXFeatureAssertion.AVX512F_128ONLY),
         AVX1_AVX2_AVX512F_BW(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_ALL),
         AVX1_AVX2_AVX512BW_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
+        AVX1_AVX2_AVX512DQ_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_DQ_VL),
         AVX1_AVX2_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
         AVX2_AVX512BW_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
         AVX2_AVX512F_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
@@ -2670,6 +2670,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void cmpb(Register dst, Register src) {
         CMP.byteRmOp.emit(this, OperandSize.BYTE, dst, src);
+    }
+
+    public final void cmpb(AMD64Address dst, int imm) {
+        CMP.byteImmOp.emit(this, OperandSize.BYTE, dst, imm);
     }
 
     public final void cmpw(Register dst, Register src) {
@@ -5795,7 +5799,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
          * <ul>
          * <li>it is a relative jmp or jcc with a 4 byte displacement</li>
          * <li>it is a forward jump</li>
-         * <li>it has an actual jump distance < (127 -
+         * <li>it has an actual jump distance &lt; (127 -
          * {@link JumpInfo#ALIGNMENT_COMPENSATION_HEURISTIC})</li>
          * </ul>
          * The jump distance of replaceable jumps is reduced by

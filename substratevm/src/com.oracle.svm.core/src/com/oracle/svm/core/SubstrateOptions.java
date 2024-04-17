@@ -410,9 +410,6 @@ public class SubstrateOptions {
     @Option(help = "Deprecated, has no effect.", deprecated = true) //
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
 
-    @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
-    public static final HostedOptionKey<Boolean> ForceNoROSectionRelocations = new HostedOptionKey<>(false);
-
     @Option(help = "Force no direct relocations to be present in the text section of the generated image", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
 
@@ -627,6 +624,12 @@ public class SubstrateOptions {
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
+    @Fold
+    public static boolean hasFramePointer() {
+        /* We always push a frame pointer to a stack on AArch64 and RISCV64. */
+        return SubstrateOptions.PreserveFramePointer.getValue() || Platform.includedIn(Platform.AARCH64.class) || Platform.includedIn(Platform.RISCV64.class);
+    }
+
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
@@ -714,10 +717,6 @@ public class SubstrateOptions {
 
     @Option(help = "Check if native-toolchain is known to work with native-image", type = Expert)//
     public static final HostedOptionKey<Boolean> CheckToolchain = new HostedOptionKey<>(true);
-
-    @APIOption(name = "install-exit-handlers")//
-    @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
-    public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
@@ -881,6 +880,16 @@ public class SubstrateOptions {
         /** Use {@link SubstrateOptions#getPageSize()} instead. */
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
         protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
+
+        /** Use {@link SubstrateOptions#needsExitHandlers()} instead. */
+        @APIOption(name = "install-exit-handlers")//
+        @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
+        protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
+    }
+
+    @Fold
+    public static final boolean needsExitHandlers() {
+        return ConcealedOptions.InstallExitHandlers.getValue() || VMInspectionOptions.hasJfrSupport() || VMInspectionOptions.hasNativeMemoryTrackingSupport();
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -922,7 +931,7 @@ public class SubstrateOptions {
     @Option(help = "Enable Java Flight Recorder.")//
     public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false, Immutable);
 
-    @Option(help = "Start flight recording with options.")//
+    @Option(help = "file:doc-files/StartFlightRecordingHelp.txt")//
     public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("", Immutable);
 
     @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
@@ -980,6 +989,9 @@ public class SubstrateOptions {
 
     @Option(help = "Determines if implicit exceptions are fatal if they don't have a stack trace.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> ImplicitExceptionWithoutStacktraceIsFatal = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Determines if frame anchors are verified at run-time.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> VerifyFrameAnchors = new HostedOptionKey<>(false);
 
     @SuppressWarnings("unused")//
     @APIOption(name = "configure-reflection-metadata")//
@@ -1074,6 +1086,15 @@ public class SubstrateOptions {
     public static boolean closedTypeWorld() {
         return ClosedTypeWorld.getValue();
     }
+
+    @Option(help = "Persist the image heap and the AnalysisUniverse (types, methods and fields) of the current build", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> PersistImageLayer = new HostedOptionKey<>(false);
+
+    @Option(help = "Throws an exception on potential type conflict during heap persisting if enabled", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> AbortOnNameConflict = new HostedOptionKey<>(false);
+
+    @Option(help = "Names of layer snapshots produced by PersistImageLayer", type = OptionType.Debug) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
     public static class TruffleStableOptions {
 

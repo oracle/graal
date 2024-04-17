@@ -2270,7 +2270,11 @@ public final class VM extends NativeEnv {
         final Map<String, String> map = new HashMap<>();
 
         public void set(String key, String value, String provenance) {
-            if (map.put(key, value) != null) {
+            set(key, value, provenance, false);
+        }
+
+        public void set(String key, String value, String provenance, boolean ignoreOverwrite) {
+            if (map.put(key, value) != null && !ignoreOverwrite) {
                 LOGGER.severe(() -> "Overwriting property " + key);
             }
             LOGGER.finer(() -> "initial properties[" + provenance + "]: " + key + "=" + value);
@@ -2318,13 +2322,6 @@ public final class VM extends NativeEnv {
         PropertiesMap map = new PropertiesMap();
         OptionValues options = getContext().getEnv().getOptions();
 
-        // Set user-defined system properties.
-        for (Map.Entry<String, String> entry : options.get(EspressoOptions.Properties).entrySet()) {
-            if (!entry.getKey().equals("sun.nio.MaxDirectMemorySize")) {
-                map.set(entry.getKey(), entry.getValue(), "Properties");
-            }
-        }
-
         EspressoProperties props = getContext().getVmProperties();
 
         // Boot classpath setup requires special handling depending on the version.
@@ -2366,6 +2363,21 @@ public final class VM extends NativeEnv {
         map.set("jdk.debug", "release", "VM");
 
         map.set("sun.nio.MaxDirectMemorySize", Long.toString(options.get(EspressoOptions.MaxDirectMemorySize)), "MaxDirectMemorySize");
+
+        boolean warnInternalModuleProp = false;
+        // Set user-defined system properties.
+        for (Map.Entry<String, String> entry : options.get(EspressoOptions.Properties).entrySet()) {
+            String key = entry.getKey();
+            if ("sun.nio.MaxDirectMemorySize".equals(key)) {
+                // ignore this
+                continue;
+            }
+            map.set(key, entry.getValue(), "Properties", true);
+        }
+
+        if (warnInternalModuleProp) {
+            LOGGER.warning("Ignoring system property options whose names match the '-Djdk.module.*'. names that are reserved for internal use.");
+        }
 
         return map;
     }

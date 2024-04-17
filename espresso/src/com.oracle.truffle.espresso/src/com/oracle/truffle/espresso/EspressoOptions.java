@@ -300,6 +300,12 @@ public final class EspressoOptions {
     ) //
     public static final OptionKey<VerifyMode> Verify = new OptionKey<>(VerifyMode.REMOTE, VERIFY_MODE_OPTION_TYPE);
 
+    @Option(help = "Replace regular expression engine with a TRegex implementation.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> UseTRegex = new OptionKey<>(false);
+
     @Option(help = "Speculatively inline field accessors.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //

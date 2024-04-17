@@ -74,6 +74,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                     .newUpdater(AnalysisField.class, "unsafeFrozenTypeState");
 
     private final int id;
+    /** Marks a field loaded from a base layer. */
+    private final boolean isInBaseLayer;
 
     public final ResolvedJavaField wrapped;
 
@@ -132,7 +134,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         this.position = -1;
 
         this.wrapped = wrappedField;
-        this.id = universe.nextFieldId.getAndIncrement();
 
         boolean trackAccessChain = PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options());
         readBy = trackAccessChain ? new ConcurrentHashMap<>() : null;
@@ -149,6 +150,24 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             this.canBeNull = !getStorageKind().isPrimitive();
             this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
+        }
+
+        if (universe.hostVM().useBaseLayer()) {
+            int fid = universe.getImageLayerLoader().lookupHostedFieldInBaseLayer(this);
+            if (fid != -1) {
+                /*
+                 * This id is the actual link between the corresponding field from the base layer
+                 * and this new field.
+                 */
+                id = fid;
+                isInBaseLayer = true;
+            } else {
+                id = universe.computeNextFieldId();
+                isInBaseLayer = false;
+            }
+        } else {
+            id = universe.computeNextFieldId();
+            isInBaseLayer = false;
         }
     }
 
@@ -180,6 +199,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public int getId() {
         return id;
+    }
+
+    public boolean isInBaseLayer() {
+        return isInBaseLayer;
     }
 
     @Override

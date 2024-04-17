@@ -101,8 +101,8 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * <pre>
  * public static int sumInts(int[] ints, Integer negAdjust) {
  *     int sum = 0;
- *     for (int i = 0; i < ints.length; i++) {
- *         if (ints[i] < 0) {
+ *     for (int i = 0; i &lt; ints.length; i++) {
+ *         if (ints[i] &lt; 0) {
  *             sum += negAdjust; // guard: negAdjust != null
  *         }
  *         sum += ints[i];

@@ -142,8 +142,10 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
                 handshakeThread.start();
             }
         } catch (IOException e) {
-            printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
-            printStackTrace(e);
+            if (!isResetting()) {
+                printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
+                printStackTrace(e);
+            }
         }
     }
 

@@ -75,7 +75,7 @@ def javadoc(args):
         projectNames = []
         for p in mx.projects(True, True):
             projectNames.append(p.name)
-        mx.javadoc(['--unified', '--projects', ','.join(projectNames)], includeDeps=False)
+        mx.javadoc(['--unified', '--disallow-all-warnings', '--projects', ','.join(projectNames)], includeDeps=False)
     else:
         mx.javadoc(['--unified'] + args)
     javadocDir = os.sep.join([_suite.dir, 'javadoc'])
@@ -125,6 +125,8 @@ def checkLinks(javadocDir):
             content = open(referencedfile, 'r').read()
             for path, s in sections:
                 if not s is None:
+                    s = s.replace("%3C", "&lt;")
+                    s = s.replace("%3E", "&gt;")
                     whereName = content.find('name="' + s + '"')
                     whereId = content.find('id="' + s + '"')
                     if whereName == -1 and whereId == -1:

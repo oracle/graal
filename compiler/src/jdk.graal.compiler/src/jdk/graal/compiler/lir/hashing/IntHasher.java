@@ -30,7 +30,7 @@ import java.util.Optional;
 /**
  * Generates an injective hash function for the provided keys. The cardinality is the next power of
  * two of the length of the keys array. The hash can be obtained by calling the `hash` method or
- * using: (value * factor) >> shift & (cardinality - 1) If `factor` is 1, it can be omitted. If
+ * using: (value * factor) >> shift &amp; (cardinality - 1) If `factor` is 1, it can be omitted. If
  * `shift` is 0, it can be omitted.
  */
 public final class IntHasher {

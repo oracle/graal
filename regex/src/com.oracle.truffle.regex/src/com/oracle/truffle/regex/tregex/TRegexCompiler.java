@@ -92,7 +92,11 @@ public final class TRegexCompiler {
 
     @TruffleBoundary
     public static TRegexDFAExecutorNode compileEagerDFAExecutor(RegexLanguage language, RegexSource source) {
-        return new TRegexCompilationRequest(language, source).compileEagerDFAExecutor();
+        TRegexDFAExecutorNode executor = new TRegexCompilationRequest(language, source).compileEagerDFAExecutor();
+        if (executor.getCGTrackingCost() > TRegexOptions.TRegexMaxEagerCGDFACost) {
+            throw new UnsupportedRegexException("Too much additional capture group tracking overhead");
+        }
+        return executor;
     }
 
     @TruffleBoundary

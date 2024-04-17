@@ -394,11 +394,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      *
      * <pre>
      *
-     *   <-- locksSize --> <-- stackSize --> <----- localsSize ---->
+     *   &lt;-- locksSize --> &lt;-- stackSize --> &lt;----- localsSize ---->
      *  +-----------------+-----------------+---------+-------------+
      *  |      locks      |      stack      | locals  | null locals |
      *  +-----------------+-----------------+---------+-------------+
-     *   <-------------- values.size() -------------->
+     *   &lt;-------------- values.size() -------------->
      * </pre>
      */
     public NodeInputList<ValueNode> values() {

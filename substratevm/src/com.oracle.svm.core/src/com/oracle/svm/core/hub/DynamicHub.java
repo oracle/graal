@@ -27,20 +27,20 @@ package com.oracle.svm.core.hub;
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
-import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CLASSES_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_DECLARED_CLASSES_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_DECLARED_CONSTRUCTORS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_DECLARED_FIELDS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_DECLARED_METHODS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_FIELDS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_METHODS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_SIGNERS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CLASSES_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_CLASSES_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_CONSTRUCTORS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_FIELDS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_METHODS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_FIELDS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_METHODS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
+import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 import java.io.InputStream;
 import java.io.Serializable;
@@ -61,6 +61,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.net.URL;
@@ -107,13 +108,12 @@ import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder.ConstructorDescriptor;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder.FieldDescriptor;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder.MethodDescriptor;
-import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
-import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.ConstructorDescriptor;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.FieldDescriptor;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MethodDescriptor;
 import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
+import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -1124,7 +1124,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
              */
             throw new NoSuchFieldException(fieldName);
         } else {
-            ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
+            RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
             int fieldModifiers = field.getModifiers();
             boolean negative = decoder.isNegative(fieldModifiers);
             boolean hiding = decoder.isHiding(fieldModifiers);
@@ -1174,7 +1174,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
              */
             throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
         } else {
-            ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
+            RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
             int methodModifiers = method.getModifiers();
             boolean negative = decoder.isNegative(methodModifiers);
             boolean hiding = decoder.isHiding(methodModifiers);
@@ -1285,17 +1285,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     native Method[] privateGetPublicMethods();
 
     @KeepOriginal
-    private native Target_java_lang_reflect_RecordComponent[] getRecordComponents();
+    private native RecordComponent[] getRecordComponents();
 
     @Substitute
-    private Target_java_lang_reflect_RecordComponent[] getRecordComponents0() {
+    private RecordComponent[] getRecordComponents0() {
         checkClassFlag(ALL_RECORD_COMPONENTS_FLAG, "getRecordComponents");
         if (reflectionMetadata == null || reflectionMetadata.recordComponentsEncodingIndex == NO_DATA) {
             /* See ReflectionDataBuilder.buildRecordComponents() for details. */
             throw VMError.unsupportedFeature("Record components not available for record class " + getTypeName() + ". " +
                             "All record component accessor methods of this record class must be included in the reflection configuration at image build time, then this method can be called.");
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseRecordComponents(this, reflectionMetadata.recordComponentsEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(this, reflectionMetadata.recordComponentsEncodingIndex);
     }
 
     @KeepOriginal
@@ -1543,7 +1543,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.signersEncodingIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseObjects(hubMetadata.signersEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseObjects(hubMetadata.signersEncodingIndex);
     }
 
     @Substitute
@@ -1676,7 +1676,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.enclosingMethodInfoIndex == NO_DATA) {
             return null;
         }
-        Object[] enclosingMethod = ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseEnclosingMethod(hubMetadata.enclosingMethodInfoIndex);
+        Object[] enclosingMethod = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseEnclosingMethod(hubMetadata.enclosingMethodInfoIndex);
         if (enclosingMethod != null) {
             PredefinedClassesSupport.throwIfUnresolvable((Class<?>) enclosingMethod[0], getClassLoader0());
         }
@@ -1712,7 +1712,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.annotationsIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseByteArray(hubMetadata.annotationsIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.annotationsIndex);
     }
 
     @Substitute
@@ -1720,12 +1720,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.typeAnnotationsIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseByteArray(hubMetadata.typeAnnotationsIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.typeAnnotationsIndex);
     }
 
     @Substitute
     Target_jdk_internal_reflect_ConstantPool getConstantPool() {
-        return new Target_jdk_internal_reflect_ConstantPool();
+        return null;
     }
 
     @Substitute
@@ -1733,7 +1733,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (reflectionMetadata == null || reflectionMetadata.fieldsEncodingIndex == NO_DATA) {
             return new Field[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseFields(this, reflectionMetadata.fieldsEncodingIndex, publicOnly);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseFields(this, reflectionMetadata.fieldsEncodingIndex, publicOnly);
     }
 
     @Substitute
@@ -1741,7 +1741,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (reflectionMetadata == null || reflectionMetadata.methodsEncodingIndex == NO_DATA) {
             return new Method[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseMethods(this, reflectionMetadata.methodsEncodingIndex, publicOnly);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseMethods(this, reflectionMetadata.methodsEncodingIndex, publicOnly);
     }
 
     @Substitute
@@ -1749,7 +1749,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (reflectionMetadata == null || reflectionMetadata.constructorsEncodingIndex == NO_DATA) {
             return new Constructor<?>[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseConstructors(this, reflectionMetadata.constructorsEncodingIndex, publicOnly);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseConstructors(this, reflectionMetadata.constructorsEncodingIndex, publicOnly);
     }
 
     @Substitute
@@ -1757,7 +1757,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.classesEncodingIndex == NO_DATA) {
             return new Class<?>[0];
         }
-        Class<?>[] declaredClasses = ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseClasses(hubMetadata.classesEncodingIndex);
+        Class<?>[] declaredClasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.classesEncodingIndex);
         for (Class<?> clazz : declaredClasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
@@ -1776,7 +1776,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.nestMembersEncodingIndex == NO_DATA) {
             return new Class<?>[]{DynamicHub.toClass(this)};
         }
-        Class<?>[] nestMembers = ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseClasses(hubMetadata.nestMembersEncodingIndex);
+        Class<?>[] nestMembers = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.nestMembersEncodingIndex);
         for (Class<?> clazz : nestMembers) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
@@ -1828,7 +1828,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.permittedSubclassesEncodingIndex == NO_DATA) {
             return new Class<?>[0];
         }
-        Class<?>[] permittedSubclasses = ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseClasses(hubMetadata.permittedSubclassesEncodingIndex);
+        Class<?>[] permittedSubclasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.permittedSubclassesEncodingIndex);
         for (Class<?> clazz : permittedSubclasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
@@ -1878,7 +1878,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      */
     private static Field[] filterFields(Field... fields) {
         List<Field> filtered = new ArrayList<>();
-        ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
+        RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
         for (Field field : fields) {
             int modifiers = field.getModifiers();
             if (!decoder.isHiding(modifiers) && !decoder.isNegative(modifiers)) {
@@ -1890,7 +1890,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private static Method[] filterMethods(Method... methods) {
         List<Method> filtered = new ArrayList<>();
-        ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
+        RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
         for (Method method : methods) {
             int modifiers = method.getModifiers();
             if (!decoder.isHiding(modifiers) && !decoder.isNegative(modifiers)) {
@@ -1902,7 +1902,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private static Constructor<?>[] filterConstructors(Constructor<?>... constructors) {
         List<Constructor<?>> filtered = new ArrayList<>();
-        ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
+        RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
         for (Constructor<?> constructor : constructors) {
             if (!decoder.isNegative(constructor.getModifiers())) {
                 filtered.add(constructor);
@@ -2029,21 +2029,21 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (reflectionMetadata == null || reflectionMetadata.fieldsEncodingIndex == NO_DATA) {
             return new FieldDescriptor[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReachableFields(this, reflectionMetadata.fieldsEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReachableFields(this, reflectionMetadata.fieldsEncodingIndex);
     }
 
     public MethodDescriptor[] getReachableMethods() {
         if (reflectionMetadata == null || reflectionMetadata.methodsEncodingIndex == NO_DATA) {
             return new MethodDescriptor[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReachableMethods(this, reflectionMetadata.methodsEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReachableMethods(this, reflectionMetadata.methodsEncodingIndex);
     }
 
     public ConstructorDescriptor[] getReachableConstructors() {
         if (reflectionMetadata == null || reflectionMetadata.constructorsEncodingIndex == NO_DATA) {
             return new ConstructorDescriptor[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReachableConstructors(this, reflectionMetadata.constructorsEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReachableConstructors(this, reflectionMetadata.constructorsEncodingIndex);
     }
 }
 

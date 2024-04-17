@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -81,16 +81,19 @@ public final class Resources {
     }
 
     /**
-     * The hosted map used to collect registered resources. Using a {@link Pair} of (module,
-     * resourceName) provides implementations for {@code hashCode()} and {@code equals()} needed for
-     * the map keys. Hosted module instances differ to runtime instances, so the map that ends up in
-     * the image heap is computed after the runtime module instances have been computed {see
-     * com.oracle.svm.hosted.ModuleLayerFeature}.
+     * The hosted map used to collect registered resources. Using a {@link ModuleResourceKey} of
+     * (module, resourceName) provides implementations for {@code hashCode()} and {@code equals()}
+     * needed for the map keys. Hosted module instances differ to runtime instances, so the map that
+     * ends up in the image heap is computed after the runtime module instances have been computed
+     * {see com.oracle.svm.hosted.ModuleLayerFeature}.
      */
-    private final EconomicMap<Pair<Module, String>, ResourceStorageEntryBase> resources = ImageHeapMap.create();
-    private final EconomicMap<ModuleResourcePair, Boolean> includePatterns = ImageHeapMap.create();
+    private final EconomicMap<ModuleResourceKey, ResourceStorageEntryBase> resources = ImageHeapMap.create();
+    private final EconomicMap<RequestedPattern, Boolean> requestedPatterns = ImageHeapMap.create();
 
-    public record ModuleResourcePair(String module, String resource) {
+    public record RequestedPattern(String module, String resource) {
+    }
+
+    public record ModuleResourceKey(Module module, String resource) {
     }
 
     /**
@@ -118,7 +121,7 @@ public final class Resources {
     Resources() {
     }
 
-    public EconomicMap<Pair<Module, String>, ResourceStorageEntryBase> getResourceStorage() {
+    public EconomicMap<ModuleResourceKey, ResourceStorageEntryBase> getResourceStorage() {
         return resources;
     }
 
@@ -138,14 +141,19 @@ public final class Resources {
         return module == null ? null : module.getName();
     }
 
-    private static Pair<Module, String> createStorageKey(Module module, String resourceName) {
+    public static ModuleResourceKey createStorageKey(Module module, String resourceName) {
         Module m = module != null && module.isNamed() ? module : null;
-        return Pair.create(m, resourceName);
+        if (ImageInfo.inImageBuildtimeCode()) {
+            if (m != null) {
+                m = RuntimeModuleSupport.instance().getRuntimeModuleForHostedModule(m);
+            }
+        }
+        return new ModuleResourceKey(m, resourceName);
     }
 
     public static Set<String> getIncludedResourcesModules() {
         return StreamSupport.stream(singleton().resources.getKeys().spliterator(), false)
-                        .map(Pair::getLeft)
+                        .map(ModuleResourceKey::module)
                         .filter(Objects::nonNull)
                         .map(Module::getName)
                         .collect(Collectors.toSet());
@@ -169,11 +177,8 @@ public final class Resources {
     private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
-        if (m != null) {
-            m = RuntimeModuleSupport.instance().getRuntimeModuleForHostedModule(m);
-        }
         synchronized (resources) {
-            Pair<Module, String> key = createStorageKey(m, resourceName);
+            ModuleResourceKey key = createStorageKey(m, resourceName);
             ResourceStorageEntryBase entry = resources.get(key);
             if (isNegativeQuery) {
                 if (entry == null) {
@@ -187,14 +192,14 @@ public final class Resources {
                 entry = new ResourceStorageEntry(isDirectory, fromJar);
                 resources.put(key, entry);
             } else {
-                if (key.getLeft() != null) {
+                if (key.module() != null) {
                     // if the entry already exists, and it comes from a module, it is the same entry
                     // that we registered at some point before
                     return;
                 }
             }
 
-            entry.getData().add(data);
+            entry.addData(data);
         }
     }
 
@@ -232,7 +237,7 @@ public final class Resources {
                 LogUtils.warning("Resource " + resourceName + " from module " + moduleName(module) + " produced the following IOException: " + e.getClass().getTypeName() + ": " + e.getMessage());
             }
         }
-        Pair<Module, String> key = createStorageKey(module, resourceName);
+        ModuleResourceKey key = createStorageKey(module, resourceName);
         synchronized (resources) {
             updateTimeStamp();
             resources.put(key, new ResourceExceptionEntry(e));
@@ -257,9 +262,9 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerIncludePattern(String module, String pattern) {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
-        synchronized (includePatterns) {
+        synchronized (requestedPatterns) {
             updateTimeStamp();
-            includePatterns.put(new ModuleResourcePair(module, handleEscapedCharacters(pattern)), Boolean.TRUE);
+            requestedPatterns.put(new RequestedPattern(module, handleEscapedCharacters(pattern)), Boolean.TRUE);
         }
     }
 
@@ -318,9 +323,9 @@ public final class Resources {
         ResourceStorageEntryBase entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                MapCursor<ModuleResourcePair, Boolean> cursor = includePatterns.getEntries();
+                MapCursor<RequestedPattern, Boolean> cursor = requestedPatterns.getEntries();
                 while (cursor.advance()) {
-                    ModuleResourcePair moduleResourcePair = cursor.getKey();
+                    RequestedPattern moduleResourcePair = cursor.getKey();
                     if (Objects.equals(moduleName, moduleResourcePair.module) &&
                                     (matchResource(moduleResourcePair.resource, resourceName) || matchResource(moduleResourcePair.resource, canonicalResourceName))) {
                         return null;

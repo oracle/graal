@@ -54,7 +54,8 @@ import com.oracle.truffle.api.nodes.Node;
  * <p>
  * Example:
  *
- * {@codesnippet com.oracle.truffle.api.dsl.ExecuteTracingSupportSnippets.Operation1Node}
+ * {@snippet file="com/oracle/truffle/api/dsl/ExecuteTracingSupport.java"
+ * region="com.oracle.truffle.api.dsl.ExecuteTracingSupportSnippets.Operation1Node"}
  *
  * @since 21.3
  */
@@ -106,7 +107,7 @@ public interface ExecuteTracingSupport {
 @SuppressWarnings("unused")
 class ExecuteTracingSupportSnippets {
 
-    // BEGIN: com.oracle.truffle.api.dsl.ExecuteTracingSupportSnippets.Operation1Node
+    // @start region = "com.oracle.truffle.api.dsl.ExecuteTracingSupportSnippets.Operation1Node"
     abstract static class BaseNode extends Node implements ExecuteTracingSupport {
 
         static final TruffleLogger LOGGER = TruffleLogger.getLogger("id", "trace");
@@ -142,5 +143,5 @@ class ExecuteTracingSupportSnippets {
             return a + b;
         }
     }
-    // END: com.oracle.truffle.api.dsl.ExecuteTracingSupportSnippets.Operation1Node
+    // @end region = "com.oracle.truffle.api.dsl.ExecuteTracingSupportSnippets.Operation1Node"
 }

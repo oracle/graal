@@ -80,7 +80,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  * the file. File content is <em>read eagerly</em> and may be optionally <em>cached</em>. Sample
  * usage: <br>
  *
- * {@link SourceSnippets#fromFile}
+ * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromFile"}
  *
  * The starting point is {@link Source#newBuilder(String, TruffleFile)} method.
  *
@@ -89,7 +89,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  * One can read remote or in JAR resources using the {@link Source#newBuilder(String, java.net.URL)}
  * factory: <br>
  *
- * {@link SourceSnippets#fromURL}
+ * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromURL"}
  *
  * Each URL source is represented as a canonical object, indexed by the URL. Contents are <em>read
  * eagerly</em> once the {@link SourceBuilder#build()} method is called.
@@ -99,14 +99,14 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  * An anonymous immutable code snippet can be created from a string via the
  * {@link Source#newBuilder(String, CharSequence, String) } factory method: <br>
  *
- * {@link SourceSnippets#fromAString}
+ * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromAString"}
  *
  * <h3>Reading from a stream</h3>
  *
  * If one has a {@link Reader} one can convert its content into a {@link Source} via
  * {@link Source#newBuilder(String, java.io.Reader, String)} method: <br>
  *
- * {@link SourceSnippets#fromReader}
+ * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromReader"}
  *
  * the content is <em>read eagerly</em> once the {@link SourceBuilder#build()} method is called.
  *
@@ -114,6 +114,8 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  *
  * Sources can be created from bytes. Please note that all character related methods will throw an
  * {@link UnsupportedOperationException} if that is the case.
+ *
+ * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromBytes"}
  *
  * <h2>Attributes</h2>
  *
@@ -408,10 +410,10 @@ public abstract class Source {
      * MIME type by default. If the MIME type is <code>null</code> then the
      * {@link Language#getDefaultMimeType() default MIME type} of the language will be used to
      * interpret the source. If set explicitly then the language needs to
-     * {@link Language#getMimeTypes() support} the MIME type in order to {@link Context#eval(Source)
-     * evaluate} the source. If not <code>null</code> the MIME type is already verified containing
-     * no spaces and a '/' between group and sub-group. An example for a valid MIME type is:
-     * <code>text/javascript</code>.
+     * {@link Language#getMimeTypes() support} the MIME type in order to
+     * {@link Context#eval(org.graalvm.polyglot.Source)} evaluate} the source. If not
+     * <code>null</code> the MIME type is already verified containing no spaces and a '/' between
+     * group and sub-group. An example for a valid MIME type is: <code>text/javascript</code>.
      * <p>
      * The MIME type can be guessed by the system based on {@link #findMimeType(TruffleFile) files}
      * or {@link #findMimeType(URL) urls}
@@ -650,7 +652,7 @@ public abstract class Source {
      * @return newly created object representing the specified region
      * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
      *             characters}.
-     * @throws IllegalArgumentException if charIndex < 0 or length < 0; in case assertions are
+     * @throws IllegalArgumentException if charIndex &lt; 0 or length &lt; 0; in case assertions are
      *             enabled also if the given bounds are out of the source bounds.
      * @since 0.17
      */
@@ -787,7 +789,8 @@ public abstract class Source {
      * Use this method for sources that do originate from a literal. For file or URL sources use the
      * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
-     * Example usage: {@link SourceSnippets#fromAString}
+     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
+     * region="SourceSnippets#fromAString"}
      *
      * @param language the language id, must not be <code>null</code>
      * @param characters the character sequence or string, must not be <code>null</code>
@@ -806,7 +809,8 @@ public abstract class Source {
      * Use this method for sources that do originate from a literal. For file or URL sources use the
      * appropriate builder constructor and {@link SourceBuilder#content(ByteSequence)}.
      * <p>
-     * Example usage: {@link SourceSnippets#fromBytes}
+     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
+     * region="SourceSnippets#fromBytes"}
      *
      * @param language the language id, must not be <code>null</code>
      * @param bytes the byte sequence or string, must not be <code>null</code>
@@ -826,7 +830,8 @@ public abstract class Source {
      * {@link SourceBuilder#mimeType(String) MIME type}. A language may be detected from an existing
      * file using {@link #findLanguage(TruffleFile)}.
      * <p>
-     * Example usage: {@link SourceSnippets#fromFile}
+     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
+     * region="SourceSnippets#fromFile"}
      *
      * @param language the language id, must not be <code>null</code>
      * @param file the file to use and load, must not be <code>null</code>
@@ -851,7 +856,8 @@ public abstract class Source {
      * {@link SourceBuilder#mimeType(String) MIME type}. A language may be detected from an existing
      * file using {@link #findLanguage(URL)}.
      * <p>
-     * Example usage: {@link SourceSnippets#fromURL}
+     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
+     * region="SourceSnippets#fromURL"}
      *
      * @param language the language id, must not be <code>null</code>
      * @param url the URL to use and load, must not be <code>null</code>
@@ -867,7 +873,8 @@ public abstract class Source {
      * Use this method for sources that do originate from a literal. For file or URL sources use the
      * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
-     * Example usage: {@link SourceSnippets#fromReader}
+     * Example usage: {@snippet file="com/oracle/truffle/api/source/Source.java"
+     * region="SourceSnippets#fromReader"}
      *
      * @since 19.0
      */
@@ -940,6 +947,7 @@ public abstract class Source {
      * @see #findLanguage(TruffleFile)
      * @since 19.0
      */
+    @SuppressWarnings("unused")
     public static String findMimeType(TruffleFile file) throws IOException {
         return file.detectMimeType();
     }
@@ -1321,23 +1329,25 @@ public abstract class Source {
      *
      * To load a source from disk one can use:
      * <p>
-     * {@link SourceSnippets#fromFile}
+     * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromFile"}
      * <p>
      * To load source from a {@link URL} one can use:
      * <p>
-     * {@link SourceSnippets#fromURL}
+     * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromURL"}
      * <p>
      * To create a source representing characters:
      * <p>
-     * {@link SourceSnippets#fromAString}
+     * {@snippet file="com/oracle/truffle/api/source/Source.java"
+     * region="SourceSnippets#fromAString"}
      * <p>
      * or read a source from a {@link Reader}:
      * <p>
-     * {@link SourceSnippets#fromReader}
+     * {@snippet file="com/oracle/truffle/api/source/Source.java"
+     * region="SourceSnippets#fromReader"}
      * <p>
      * To create a source representing bytes:
      * <p>
-     * {@link SourceSnippets#fromBytes}
+     * {@snippet file="com/oracle/truffle/api/source/Source.java" region="SourceSnippets#fromBytes"}
      *
      * Once your builder is configured, call {@link #build()} to perform the loading and
      * construction of new {@link Source}.
@@ -1389,7 +1399,8 @@ public abstract class Source {
          * {@link Source#hasCharacters()} will be <code>false</code> then. The given characters must
          * not mutate after they were accessed for the first time. Example:
          *
-         * {@link SourceSnippets#fromURLWithOwnContent}
+         * {@snippet file="com/oracle/truffle/api/source/Source.java"
+         * region="SourceSnippets#fromURLWithOwnContent"}
          *
          * @param characters the code to be available via {@link Source#getCharacters()}, or
          *            {@link #CONTENT_NONE}
@@ -1408,7 +1419,8 @@ public abstract class Source {
          * completely different one. The given bytes must not mutate after they were accessed for
          * the first time. Example:
          *
-         * {@link SourceSnippets#fromURLWithOwnContent}
+         * {@snippet file = "com/oracle/truffle/api/source/Source.java" region =
+         * "SourceSnippets#fromURLWithOwnContent"}
          *
          * @param bytes the code to be available via {@link Source#getBytes()}
          * @return instance of this builder - which's {@link #build()} method no longer throws an
@@ -1753,7 +1765,7 @@ public abstract class Source {
 
     /**
      * Resets cached sources after native image generation.
-     *
+     * <p>
      * NOTE: this method is called reflectively by downstream projects
      * {@code com.oracle.svm.truffle.TruffleBaseFeature}.
      */
@@ -1768,11 +1780,11 @@ public abstract class Source {
     }
 }
 
-// @formatter:off
+// @formatter:off // @replace regex='.*' replacement=''
 // Checkstyle: stop
 class SourceSnippets {
     public static Source fromFile(TruffleFile file) throws IOException {
-        // BEGIN: SourceSnippets#fromFile
+        // @start region="SourceSnippets#fromFile"
         assert file.getName().endsWith(".java") :
             "Imagine 'c:\\sources\\Example.java' file";
 
@@ -1782,34 +1794,24 @@ class SourceSnippets {
         assert file.getName().equals(source.getName());
         assert file.getPath().equals(source.getPath());
         assert file.toUri().equals(source.getURI());
-        // END: SourceSnippets#fromFile
-        return source;
-    }
-
-    public static Source likeFileName(TruffleFile file) throws IOException {
-        // BEGIN: SourceSnippets#likeFileName
-        String language = Source.findLanguage(file);
-        Source source = Source.newBuilder(language, file.getCanonicalFile()).
-            name(file.getPath()).
-            build();
-        // END: SourceSnippets#likeFileName
+        // @end region="SourceSnippets#fromFile"
         return source;
     }
 
     public static Source fromURL(Class<?> relativeClass) throws IOException, URISyntaxException {
-        // BEGIN: SourceSnippets#fromURL
+        // @start region="SourceSnippets#fromURL"
         URL resource = relativeClass.getResource("sample.js");
         Source source = Source.newBuilder("js", resource)
                         .build();
         assert resource.toExternalForm().equals(source.getPath());
         assert "sample.js".equals(source.getName());
         assert resource.toURI().equals(source.getURI());
-        // END: SourceSnippets#fromURL
+        // @end region="SourceSnippets#fromURL"
         return source;
     }
 
     public static Source fromURLWithOwnContent(Class<?> relativeClass) {
-        // BEGIN: SourceSnippets#fromURLWithOwnContent
+        // @start region="SourceSnippets#fromURLWithOwnContent"
         URL resource = relativeClass.getResource("sample.js");
         Source source = Source.newBuilder("js", resource)
             .content("{}")
@@ -1818,42 +1820,42 @@ class SourceSnippets {
         assert "sample.js".equals(source.getName());
         assert resource.toExternalForm().equals(source.getURI().toString());
         assert "{}".equals(source.getCharacters());
-        // END: SourceSnippets#fromURLWithOwnContent
+        // @end region="SourceSnippets#fromURLWithOwnContent"
         return source;
     }
 
     public static Source fromReader(Class<?> relativeClass) throws IOException {
-        // BEGIN: SourceSnippets#fromReader
+        // @start region="SourceSnippets#fromReader"
         Reader stream = new InputStreamReader(
                         relativeClass.getResourceAsStream("sample.js")
         );
         Source source = Source.newBuilder("js", stream, "sample.js")
             .build();
         assert "sample.js".equals(source.getName());
-        // END: SourceSnippets#fromReader
+        // @end region="SourceSnippets#fromReader"
         return source;
     }
 
     public static Source fromAString() {
-        // BEGIN: SourceSnippets#fromAString
+        // @start region="SourceSnippets#fromAString"
         Source source = Source.newBuilder("js", "function() {\n"
                         + "  return 'Hi';\n"
                         + "}\n", "hi.js").build();
         assert "hi.js".equals(source.getName());
-        // END: SourceSnippets#fromAString
+        // @end region="SourceSnippets#fromAString"
         return source;
     }
 
     public static Source fromBytes() {
-        // BEGIN: SourceSnippets#fromBytes
+        // @start region="SourceSnippets#fromBytes"
         byte[] bytes = new byte[] {/* Binary */};
         Source source = Source.newBuilder("llvm",
                         ByteSequence.create(bytes),
                         "<literal>").build();
-        // END: SourceSnippets#fromBytes
+        // @end region="SourceSnippets#fromBytes"
         return source;
     }
 
     public static boolean loaded = true;
 }
-// @formatter:on
+// @formatter:on // @replace regex='.*' replacement=''

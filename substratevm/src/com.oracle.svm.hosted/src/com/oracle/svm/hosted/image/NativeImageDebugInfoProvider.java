@@ -770,7 +770,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
         @Override
         public int size() {
-            return structFieldInfo.getSizeInfo().getProperty();
+            return structFieldInfo.getSizeInBytes();
         }
 
         @Override

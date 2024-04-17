@@ -37,14 +37,19 @@ import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.gen.DebugInfoBuilder;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.hotspot.HotSpotDebugInfoBuilder;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
+import jdk.graal.compiler.hotspot.HotSpotLIRGenerationResult;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
 import jdk.graal.compiler.hotspot.HotSpotNodeLIRBuilder;
+import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import jdk.graal.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
+import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.aarch64.AArch64BreakpointOp;
+import jdk.graal.compiler.lir.aarch64.AArch64SaveRegistersOp;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
@@ -56,7 +61,6 @@ import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeValueMap;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
@@ -94,6 +98,17 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
     @Override
     protected void emitPrologue(StructuredGraph graph) {
         CallingConvention incomingArguments = gen.getResult().getCallingConvention();
+
+        HotSpotLIRGenerationResult result = getGen().getResult();
+        Stub stub = result.getStub();
+        if (stub != null && stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS) {
+            assert stub.getLinkage().getDescriptor().getTransition() != HotSpotForeignCallDescriptor.Transition.SAFEPOINT : stub;
+            Register[] savedRegisters = getGen().getRegisterConfig().getAllocatableRegisters().toArray();
+            AArch64SaveRegistersOp saveOp = getGen().emitSaveAllRegisters(savedRegisters);
+            append(saveOp);
+            result.setSaveOnEntry(saveOp);
+        }
+
         Value[] params = new Value[incomingArguments.getArgumentCount() + 2];
 
         prologAssignParams(incomingArguments, params);

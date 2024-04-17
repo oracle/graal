@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,21 +99,21 @@ import jdk.vm.ci.meta.SpeculationLog;
  *              OptimizedRuntimeSupport#callProfiled                    OptimizedRuntimeSupport#callInlined
  *                                |                                               |
  *                                |                                               V
- *  PUBLIC   call -> callIndirect | callOSR   callDirect <================> callInlined
+ *  PUBLIC   call -> callIndirect | callOSR   callDirect &lt;================> callInlined
  *                           |  +-+    |           |             ^                |
  *                           |  |  +---+           |     substituted by the       |
  *                           V  V  V               |     compiler if inlined      |
- *  PROTECTED               doInvoke <-------------+                              |
+ *  PROTECTED               doInvoke &lt;-------------+                              |
  *                             |                                                  |
- *                             | <= Jump to installed code                        |
+ *                             | &lt;= Jump to installed code                        |
  *                             V                                                  |
  *  PROTECTED              callBoundary                                           |
  *                             |                                                  |
- *                             | <= Tail jump to installed code in Int.           |
+ *                             | &lt;= Tail jump to installed code in Int.           |
  *                             V                                                  |
  *  PROTECTED           profiledPERoot                                            |
  *                             |                                                  |
- *  PRIVATE                    +----------> executeRootNode <---------------------+
+ *  PRIVATE                    +----------> executeRootNode &lt;---------------------+
  *                                                 |
  *                                                 V
  *                                         rootNode.execute()
@@ -1125,7 +1125,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     /**
      * Intrinsifiable compiler directive for creating a frame.
      */
-    public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
+    public static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
         return new FrameWithoutBoxing(descriptor, args);
     }
 

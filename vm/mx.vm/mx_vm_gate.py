@@ -730,16 +730,26 @@ def gate_truffle_native_tck_python(tasks):
 
 def gate_truffle_jvm(tasks):
     truffle_suite = mx.suite('truffle')
-    with Task('Truffle ModulePath Unit Tests', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
+    with Task('Truffle ModulePath Unit Tests Optimized', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
         if t:
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.truffle_jvm_module_path_unit_tests_gate()
-    with Task('Truffle ClassPath Unit Tests', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
+            mx_truffle.truffle_jvm_module_path_optimized_unit_tests_gate()
+    with Task('Truffle ModulePath Unit Tests Fallback', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
         if t:
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.truffle_jvm_class_path_unit_tests_gate()
+            mx_truffle.truffle_jvm_module_path_fallback_unit_tests_gate()
+    with Task('Truffle ClassPath Unit Tests Optimized', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_jvm_class_path_optimized_unit_tests_gate()
+    with Task('Truffle ClassPath Unit Tests Fallback', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_jvm_class_path_fallback_unit_tests_gate()
     with Task('Truffle SL JVM', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
         if t:
             if not truffle_suite:
