@@ -1601,11 +1601,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public boolean usesMonitors() {
             // Whether we need to use an additional frame slot for monitor unlock on kill.
-            return codeAttribute.usesMonitors();
+            return codeAttribute != null && codeAttribute.usesMonitors();
         }
 
         public boolean hasJsr() {
-            return codeAttribute.hasJsr();
+            return codeAttribute != null && codeAttribute.hasJsr();
         }
 
         public int getRefKind() {
