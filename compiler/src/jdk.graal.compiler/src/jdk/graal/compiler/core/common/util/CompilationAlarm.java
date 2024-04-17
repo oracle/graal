@@ -44,20 +44,21 @@ public final class CompilationAlarm implements AutoCloseable {
     public static class Options {
         // @formatter:off
         @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit). " +
-                       "A non-zero value for this option is doubled if assertions are enabled and quadrupled if DetailedAsserts is true.",
+                       "A non-zero value for this option is doubled if assertions are enabled and quadrupled if DetailedAsserts is true. " +
+                       "Must be 0 or >= 0.001.",
                 type = OptionType.Debug)
         public static final OptionKey<Double> CompilationExpirationPeriod = new OptionKey<>(300d);
         @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit) because no progress was " +
-                       "made in the compiler.",
-                 type = OptionType.Debug)
+                       "made in the compiler. Must be 0 or >= 0.001.",
+                type = OptionType.Debug)
         public static final OptionKey<Double> CompilationNoProgressPeriod = new OptionKey<>(30d);
-        @Option(help = "Delay in seconds before compilation progress detection starts.",
-                 type = OptionType.Debug)
+        @Option(help = "Delay in seconds before compilation progress detection starts. Must be 0 or >= 0.001.",
+                type = OptionType.Debug)
         public static final OptionKey<Double> CompilationNoProgressStartTrackingProgressPeriod = new OptionKey<>(10d);
         // @formatter:on
     }
 
-    private static final boolean LOG_PROGRESS_DETECTION = !Services.IS_IN_NATIVE_IMAGE &&
+    public static final boolean LOG_PROGRESS_DETECTION = !Services.IS_IN_NATIVE_IMAGE &&
                     Boolean.parseBoolean(Services.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
 
     private CompilationAlarm(double period) {
@@ -207,21 +208,20 @@ public final class CompilationAlarm implements AutoCloseable {
                 assertProgressNoTracking(opt, counter);
                 return;
             } else {
-                final long noProgressStartDetectionPeriod = noProgressStartPeriodMS.get();
-                final long currentTimeStamp = System.currentTimeMillis();
-                final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
-                final boolean noProgressForPeriodStartDetection = timeDiff > noProgressStartDetectionPeriod;
-                if (!noProgressForPeriodStartDetection) {
+                final long delay = noProgressStartPeriodMS.get();
+                final long now = System.currentTimeMillis();
+                final long elapsed = now - lastUniqueStackTraceTimeStamp;
+                if (elapsed <= delay) {
                     /*
-                     * Still not enough no-progress before we start doing something.
+                     * Still not enough lack of progress before we start doing something.
                      */
                     if (LOG_PROGRESS_DETECTION) {
-                        TTY.printf("CompilationAlarm: Progress detection %s; time diff of %d ms not long enough to take stack trace yet%n", counter.eventCounterToString(), timeDiff);
+                        TTY.printf("CompilationAlarm: Progress detection %s; time diff of %d ms not long enough to take stack trace yet%n", counter.eventCounterToString(), elapsed);
                     }
                     return;
                 } else {
                     if (LOG_PROGRESS_DETECTION) {
-                        TTY.printf("CompilationAlarm: Progress detection %s; time diff of %d ms long enough to take stack trace%n", counter.eventCounterToString(), timeDiff);
+                        TTY.printf("CompilationAlarm: Progress detection %s; time diff of %d ms long enough to take stack trace%n", counter.eventCounterToString(), elapsed);
                     }
                 }
             }
@@ -255,11 +255,11 @@ public final class CompilationAlarm implements AutoCloseable {
         /*
          * We perform this check inside here since its cheaper to take the last stack trace (last
          * will be null for the first in the current compile) than actually checking the option
-         * below. In normal compiles we dont often get into this branch in the first place, most is
+         * below. In normal compiles we don't often get into this branch in the first place, most is
          * captured above, and the thread local is very fast.
          */
-        final long maxNoProgressPeriodMS = (long) (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
-        if (maxNoProgressPeriodMS == 0) {
+        final long stuckThreshold = (long) (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
+        if (stuckThreshold == 0) {
             // Feature is disabled, do nothing.
             return;
         }
@@ -269,21 +269,19 @@ public final class CompilationAlarm implements AutoCloseable {
          * We have a similar stack trace - fail once the period is longer than the no progress
          * period.
          */
-        final long lastUniqueStackTraceTimeStamp = lastUniqueStackTraceForThreadMS.get();
-        final long currentTimeStamp = System.currentTimeMillis();
-        final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
-        boolean noProgressForPeriod = timeDiff > maxNoProgressPeriodMS;
+        final long lastUniqueStackTraceTime = lastUniqueStackTraceForThreadMS.get();
+        final long now = System.currentTimeMillis();
+        final long elapsed = now - lastUniqueStackTraceTime;
+        boolean stuck = elapsed > stuckThreshold;
 
         if (LOG_PROGRESS_DETECTION) {
-            if (timeDiff >= 1000) {
-                TTY.printf("CompilationAlarm: Progress detection %s; no progress for %d ms - progress %s - max no progress period %s%n", lastCounter, timeDiff, noProgressForPeriod,
-                                maxNoProgressPeriodMS);
-            }
+            TTY.printf("CompilationAlarm: Progress detection %s; no progress for %d ms; stuck? %s; stuck threshold %d ms%n",
+                            lastCounter, elapsed, stuck, stuckThreshold);
         }
 
-        if (noProgressForPeriod) {
-            throw new PermanentBailoutException("Observed identical stack traces for %d ms, indicating a stuck compilation, counter = %s, stack is:%n%s", timeDiff, lastCounter,
-                            Util.toString(lastStackTrace));
+        if (stuck) {
+            throw new PermanentBailoutException("Observed identical stack traces for %d ms, indicating a stuck compilation, counter = %s, stack is:%n%s",
+                            elapsed, lastCounter, Util.toString(lastStackTrace));
         }
     }
 

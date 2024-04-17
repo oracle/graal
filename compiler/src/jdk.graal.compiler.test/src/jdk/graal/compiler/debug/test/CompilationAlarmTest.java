@@ -33,8 +33,6 @@ import jdk.graal.compiler.core.GraalCompiler.Request;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -49,49 +47,41 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CompilationAlarmTest extends GraalCompilerTest {
 
-    public static final boolean LOG = false;
+    /**
+     * Creates a suite with a single phase that loops for {@code workSeconds}.
+     *
+     * @param withProgressCounterEvents if true, a graph event is generated each loop iteration
+     */
+    private Suites getSuites(TestThread testThread, double workSeconds, boolean withProgressCounterEvents, OptionValues opt) {
+        assert workSeconds >= 0.001D;
+        Suites s = createSuites(opt).copy();
+        s.getLowTier().appendPhase(new BasePhase<>() {
 
-    private Suites getSuites(int waitSeconds, OptionValues opt) {
-        if (waitSeconds == 0) {
-            return createSuites(opt);
-        } else {
-            Suites s = createSuites(opt);
-            s = s.copy();
-            s.getLowTier().appendPhase(new BasePhase<LowTierContext>() {
+            @Override
+            public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+                return ALWAYS_APPLICABLE;
+            }
 
-                @Override
-                public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-                    return ALWAYS_APPLICABLE;
-                }
-
-                @Override
-                protected void run(StructuredGraph graph, LowTierContext context) {
-                    int msWaited = 0;
-                    int callsToCheckProgress = 0;
-                    if (LOG) {
-                        TTY.printf("Starting to wait %s seconds - graph event counter %s %n", waitSeconds, graph.getEventCounter());
-                    }
-                    while (true) {
-                        if (msWaited >= waitSeconds * 1000) {
-                            if (LOG) {
-                                TTY.printf("Finished waiting %s seconds - graph event counter %s, calls to check progress %s %n", waitSeconds, graph.getEventCounter(), callsToCheckProgress);
-                            }
-                            return;
-                        }
-                        try {
-                            Thread.sleep(1);
-                            CompilationAlarm.current().checkExpiration();
+            @Override
+            protected void run(StructuredGraph graph, LowTierContext context) {
+                long end = (long) (workSeconds * 1000);
+                long start = System.currentTimeMillis();
+                try {
+                    while (System.currentTimeMillis() - start < end) {
+                        CompilationAlarm.current().checkExpiration();
+                        if (withProgressCounterEvents) {
                             CompilationAlarm.checkProgress(graph);
-                            callsToCheckProgress++;
-                            msWaited += 1;
-                        } catch (InterruptedException e) {
-                            GraalError.shouldNotReachHere(e);
+                            testThread.events++;
                         }
                     }
+                } finally {
+                    if (CompilationAlarm.LOG_PROGRESS_DETECTION) {
+                        System.out.printf("CompilationAlarmTest: %d events after %d ms of work%n", testThread.events, System.currentTimeMillis() - start);
+                    }
                 }
-            });
-            return s;
-        }
+            }
+        });
+        return s;
     }
 
     private static class TestThread extends Thread {
@@ -100,6 +90,7 @@ public class CompilationAlarmTest extends GraalCompilerTest {
         }
 
         AssertionError failure;
+        int events;
 
         void check() {
             if (failure != null) {
@@ -109,28 +100,28 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     }
 
-    private TestThread getCompilationThreadWithWait(int waitSeconds, String snippet, OptionValues opt, String expectedExceptionText) {
+    private TestThread newCompilationThread(double workSeconds, boolean withProgressCounterEvents, String snippet, OptionValues opt, String expectedExceptionText) {
         TestThread t = new TestThread(new Runnable() {
 
             @Override
             public void run() {
-                TestThread testThread = (TestThread) Thread.currentThread();
+                TestThread thread = (TestThread) Thread.currentThread();
                 StructuredGraph graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.YES, opt);
                 ResolvedJavaMethod codeOwner = graph.method();
                 CompilationIdentifier compilationId = getOrCreateCompilationId(codeOwner, graph);
                 Request<CompilationResult> request = new Request<>(graph, codeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
-                                graph.getProfilingInfo(), getSuites(waitSeconds, opt), createLIRSuites(opt), new CompilationResult(compilationId), CompilationResultBuilderFactory.Default, null,
-                                true);
+                                graph.getProfilingInfo(), getSuites(thread, workSeconds, withProgressCounterEvents, opt), createLIRSuites(opt), new CompilationResult(compilationId),
+                                CompilationResultBuilderFactory.Default, null, true);
                 try {
                     GraalCompiler.compile(request);
                     if (expectedExceptionText != null) {
-                        testThread.failure = new AssertionError("Expected an exception");
+                        thread.failure = new AssertionError(String.format("[events: %d] Expected an exception", thread.events));
                     }
                 } catch (Throwable t1) {
                     if (expectedExceptionText == null) {
-                        testThread.failure = new AssertionError("Unexpected exception", t1);
+                        thread.failure = new AssertionError(String.format("[events: %d] Unexpected exception", thread.events), t1);
                     } else if (!t1.getMessage().contains(expectedExceptionText)) {
-                        testThread.failure = new AssertionError("Expected exception message to contain \"" + expectedExceptionText + "\"", t1);
+                        thread.failure = new AssertionError(String.format("[events: %d] Expected exception message to contain \"%s\"", thread.events, expectedExceptionText), t1);
                     }
                 }
             }
@@ -142,15 +133,31 @@ public class CompilationAlarmTest extends GraalCompilerTest {
         GraalDirectives.sideEffect();
     }
 
-    private static OptionValues getOptionsWithTimeOut(int seconds, int secondsStartDetection) {
-        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationNoProgressPeriod, (double) seconds,
-                        CompilationAlarm.Options.CompilationNoProgressStartTrackingProgressPeriod, (double) secondsStartDetection);
+    @Test
+    public void testSingleThreadAlarmExpiration() throws InterruptedException {
+        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationExpirationPeriod, 0.5D);
+        TestThread t1 = newCompilationThread(5, false, "snippet", opt, "Compilation exceeded");
+        t1.start();
+        t1.join();
+
+        t1.check();
+    }
+
+    /**
+     * Gets options with {@code CompilationAlarm.Options#CompilationNoProgressPeriod} set to
+     * {@code seconds} and {@code CompilationNoProgressStartTrackingProgressPeriod} set to 1
+     * millisecond.
+     */
+    private static OptionValues withNoProgress(double seconds) {
+        OptionValues opt = new OptionValues(getInitialOptions(),
+                        CompilationAlarm.Options.CompilationNoProgressPeriod, seconds,
+                        CompilationAlarm.Options.CompilationNoProgressStartTrackingProgressPeriod, 0.001);
         return opt;
     }
 
     @Test
     public void testSingleThreadNoTimeout() throws InterruptedException {
-        TestThread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
+        TestThread t1 = newCompilationThread(0.5D, true, "snippet", withNoProgress(3), null);
         t1.start();
         t1.join();
 
@@ -159,17 +166,7 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     @Test
     public void testSingleThreadTimeOut() throws InterruptedException {
-        TestThread t1 = getCompilationThreadWithWait(10 * 2, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for");
-        t1.start();
-        t1.join();
-
-        t1.check();
-    }
-
-    @Test
-    public void testSingleThreadAlarmExpiration() throws InterruptedException {
-        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationExpirationPeriod, (double) 2);
-        TestThread t1 = getCompilationThreadWithWait(10, "snippet", opt, "Compilation exceeded");
+        TestThread t1 = newCompilationThread(2D, true, "snippet", withNoProgress(0.001), "Observed identical stack traces for");
         t1.start();
         t1.join();
 
@@ -178,8 +175,8 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     @Test
     public void testMultiThreadNoTimeout() throws InterruptedException {
-        TestThread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
-        TestThread t2 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
+        TestThread t1 = newCompilationThread(0.5D, true, "snippet", withNoProgress(3), null);
+        TestThread t2 = newCompilationThread(0.5D, true, "snippet", withNoProgress(3), null);
         t1.start();
         t2.start();
         t1.join();
@@ -191,13 +188,13 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     @Test
     public void testMultiThreadOneTimeout() throws InterruptedException {
-        TestThread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
+        TestThread t1 = newCompilationThread(0.5D, true, "snippet", withNoProgress(3), null);
         t1.start();
         t1.join();
 
         t1.check();
 
-        TestThread t2 = getCompilationThreadWithWait(10 * 2, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for");
+        TestThread t2 = newCompilationThread(2D, true, "snippet", withNoProgress(0.001), "Observed identical stack traces for");
         t2.start();
         t2.join();
 
@@ -206,15 +203,14 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     @Test
     public void testMultiThreadMultiTimeout() throws InterruptedException {
-        TestThread t1 = getCompilationThreadWithWait(20 * 2, "snippet", getOptionsWithTimeOut(9, 3), "Observed identical stack traces for");
+        TestThread t1 = newCompilationThread(2D, true, "snippet", withNoProgress(0.001), "Observed identical stack traces for");
         t1.start();
         t1.join();
         t1.check();
 
-        TestThread t2 = getCompilationThreadWithWait(20 * 2, "snippet", getOptionsWithTimeOut(5, 3), "Observed identical stack traces for");
+        TestThread t2 = newCompilationThread(2D, true, "snippet", withNoProgress(0.001), "Observed identical stack traces for");
         t2.start();
         t2.join();
         t2.check();
     }
-
 }
