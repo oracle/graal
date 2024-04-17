@@ -397,11 +397,14 @@ public class NativeImageGeneratorRunner {
                 NativeImageKind imageKind;
                 boolean isStaticExecutable = SubstrateOptions.StaticExecutable.getValue(parsedHostedOptions);
                 boolean isSharedLibrary = SubstrateOptions.SharedLibrary.getValue(parsedHostedOptions);
-                if (isStaticExecutable && isSharedLibrary) {
-                    throw UserError.abort("Cannot pass both option: %s and %s", SubstrateOptionsParser.commandArgument(SubstrateOptions.SharedLibrary, "+"),
-                                    SubstrateOptionsParser.commandArgument(SubstrateOptions.StaticExecutable, "+"));
+                boolean isImageLayer = SubstrateOptions.ImageLayer.getValue(parsedHostedOptions);
+                if ((isStaticExecutable && isSharedLibrary) || (isStaticExecutable && isImageLayer) || (isSharedLibrary && isImageLayer)) {
+                    throw UserError.abort("Cannot pass multiple options: %s, %s, %s", SubstrateOptionsParser.commandArgument(SubstrateOptions.SharedLibrary, "+"),
+                                    SubstrateOptionsParser.commandArgument(SubstrateOptions.StaticExecutable, "+"), SubstrateOptionsParser.commandArgument(SubstrateOptions.ImageLayer, "+"));
                 } else if (isSharedLibrary) {
                     imageKind = NativeImageKind.SHARED_LIBRARY;
+                } else if (isImageLayer) {
+                    imageKind = NativeImageKind.IMAGE_LAYER;
                 } else if (isStaticExecutable) {
                     imageKind = NativeImageKind.STATIC_EXECUTABLE;
                 } else {
