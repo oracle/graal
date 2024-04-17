@@ -476,7 +476,8 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
     #endif
 
     /* Handle launcher default vm arguments. We apply these first, so they can
-       be overridden by explicit arguments on the commandline. */
+       be overridden by explicit arguments on the commandline.
+       These should be added even if relaunch is true because they are not passed to preprocessArguments(). */
     #ifdef LAUNCHER_DEFAULT_VM_ARGS
     const char *launcherDefaultVmArgs[] = LAUNCHER_DEFAULT_VM_ARGS;
     for (int i = 0; i < sizeof(launcherDefaultVmArgs)/sizeof(char*); i++) {
@@ -486,15 +487,43 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
     }
     #endif
 
-    /* handle CLI arguments */
-    if (!vmArgInfo) {
+
+    if (!relaunch) {
+        /* handle CLI arguments */
         for (int i = 0; i < argc; i++) {
             parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, std::string(argv[i]));
         }
-    }
 
-    /* handle relaunch arguments */
-    else {
+        /* handle optional vm args from LanguageLibraryConfig.option_vars */
+        #ifdef LAUNCHER_OPTION_VARS
+        for (int i = 0; i < sizeof(launcherOptionVars)/sizeof(char*); i++) {
+            char *optionVar = getenv(launcherOptionVars[i]);
+            if (!optionVar) {
+                continue;
+            }
+            if (debug) {
+                std::cout << "Launcher option_var found: " << launcherOptionVars[i] << "=" << optionVar << std::endl;
+            }
+            // we split on spaces
+            std::string optionLine(optionVar);
+            size_t last = 0;
+            size_t next = 0;
+            std::string option;
+            while ((next = optionLine.find(" ", last)) != std::string::npos) {
+                option = optionLine.substr(last, next-last);
+                optionVarsArgs.push_back(option);
+                parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, option);
+                last = next + 1;
+            };
+            option = optionLine.substr(last);
+            optionVarsArgs.push_back(option);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, option);
+        }
+        #endif
+    } else {
+        /* Handle relaunch arguments. In that case GRAALVM_LANGUAGE_LAUNCHER_VMARGS_* contain all --vm.* arguments
+           returned by preprocessArguments(), so we should not look at CLI args and option_vars as that would cause
+           to add extra duplicate --vm.* arguments. */
         if (debug) {
             std::cout << "Relaunch environment variable detected" << std::endl;
         }
@@ -512,33 +541,6 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
             setenv(envKey, "");
         }
     }
-
-    /* handle optional vm args from LanguageLibraryConfig.option_vars */
-    #ifdef LAUNCHER_OPTION_VARS
-    for (int i = 0; i < sizeof(launcherOptionVars)/sizeof(char*); i++) {
-        char *optionVar = getenv(launcherOptionVars[i]);
-        if (!optionVar) {
-            continue;
-        }
-        if (debug) {
-            std::cout << "Launcher option_var found: " << launcherOptionVars[i] << "=" << optionVar << std::endl;
-        }
-        // we split on spaces
-        std::string optionLine(optionVar);
-        size_t last = 0;
-        size_t next = 0;
-        std::string option;
-        while ((next = optionLine.find(" ", last)) != std::string::npos) {
-            option = optionLine.substr(last, next-last);
-            optionVarsArgs.push_back(option);
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, option);
-            last = next + 1;
-        };
-        option = optionLine.substr(last);
-        optionVarsArgs.push_back(option);
-        parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, option);
-    }
-    #endif
 
     /* set classpath and module path arguments - only needed for jvm mode */
     if (jvmMode) {
