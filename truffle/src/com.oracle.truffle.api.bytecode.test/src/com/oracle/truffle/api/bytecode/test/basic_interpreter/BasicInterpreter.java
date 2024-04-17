@@ -398,16 +398,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    public static final class AppendInstructionIndex {
-        @SuppressWarnings("unchecked")
-        @Specialization
-        @TruffleBoundary
-        public static void doAppend(List<?> indices, @Bind("$location") BytecodeLocation location) {
-            ((List<Integer>) indices).add(location.getInstructionIndex());
-        }
-    }
-
-    @Operation
     public static final class ContinueNode {
         public static final int LIMIT = 3;
 

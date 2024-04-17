@@ -92,17 +92,6 @@ public final class BytecodeLocation {
     }
 
     /**
-     * Computes a logical instruction index. Unlike the bytecode index, the instruction index is
-     * stable for a given point in the program across different bytecode configurations. Thus, the
-     * instruction index is the recommended way to expose a logical "location" to the user.
-     *
-     * @since 24.1
-     */
-    public int getInstructionIndex() {
-        return bytecodes.findInstructionIndex(bci);
-    }
-
-    /**
      * @since 24.1
      */
     @Override
