@@ -1348,6 +1348,8 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     assert language_license
 
     polyglot_isolates_value = mx.get_opts().polyglot_isolates
+    if polyglot_isolates_value is None:
+        polyglot_isolates_value = os.getenv('POLYGLOT_ISOLATES')
     if not polyglot_isolates_value or (polyglot_isolates_value != 'true' and language_id not in polyglot_isolates_value.split(',')):
         return False
 
