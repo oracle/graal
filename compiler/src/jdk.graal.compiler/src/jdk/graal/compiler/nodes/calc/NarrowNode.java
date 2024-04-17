@@ -189,7 +189,7 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
                 } else if (other instanceof ZeroExtendNode) {
                     // xxxx -(zero-extend)-> 00000000 0000xxxx -(narrow)-> 0000xxxx
                     // ==> xxxx -(zero-extend)-> 0000xxxx
-                    return new ZeroExtendNode(other.getValue(), other.getInputBits(), getResultBits(), ((ZeroExtendNode) other).isInputAlwaysPositive());
+                    return new ZeroExtendNode(other.getValue(), other.getInputBits(), getResultBits());
                 }
             }
         } else if (forValue instanceof AndNode) {
