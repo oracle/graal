@@ -39,7 +39,7 @@ import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(NodeLibrary.class)
 public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl {
-    @Child private final JavaSubstitution substitution;
+    @Child private JavaSubstitution substitution;
 
     // Truffle does not want to report split on first call. Delay until the second.
     private final DebugCounter nbSplits;
