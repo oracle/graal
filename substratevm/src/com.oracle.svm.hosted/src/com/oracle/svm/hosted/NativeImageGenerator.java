@@ -793,7 +793,7 @@ public class NativeImageGenerator {
         String fileName = ImageLayerSnapshotUtil.FILE_NAME_PREFIX + imageName.substring(imageNameStart);
         String filePath = imageName.substring(0, imageNameStart) + fileName;
         Path layerSnapshotPath = generatedFiles(HostedOptionValues.singleton()).resolve(filePath + ImageLayerSnapshotUtil.FILE_EXTENSION);
-        bb.getUniverse().getImageLayerWriter().persist(bb.getUniverse(), layerSnapshotPath, fileName, ImageLayerSnapshotUtil.FILE_EXTENSION);
+        bb.getUniverse().getImageLayerWriter().persist(hUniverse, bb.getUniverse(), layerSnapshotPath, fileName, ImageLayerSnapshotUtil.FILE_EXTENSION);
         BuildArtifacts.singleton().add(ArtifactType.LAYER_SNAPSHOT, layerSnapshotPath);
     }
 

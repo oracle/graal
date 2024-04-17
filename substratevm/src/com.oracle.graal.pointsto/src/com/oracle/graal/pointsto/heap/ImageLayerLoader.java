@@ -46,6 +46,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_ENUM_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INTERFACE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_LINKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LOCATION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHODS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.MODIFIERS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_FIELD_ID_TAG;
@@ -59,6 +60,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SIMULATED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SOURCE_FILE_NAME_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJECT_FIELDS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_PRIMITIVE_FIELDS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SUPER_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
@@ -103,6 +106,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *      "next type id": nextTypeId,
  *      "next method id": nextMethodId,
  *      "next field id": nextFieldId,
+ *      "static primitive fields": staticPrimitiveFields.id,
+ *      "static object fields": staticObjectFields.id,
  *      "types": {
  *          typeIdentifier: {
  *              "id": id,
@@ -136,6 +141,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *                  "read": read,
  *                  "written": written,
  *                  "folded": folded
+ *                  (,"location": location)
  *              },
  *              ...
  *          },
@@ -223,6 +229,7 @@ public class ImageLayerLoader {
     private final Map<AnalysisType, Set<ImageHeapConstant>> baseLayerImageHeap = new ConcurrentHashMap<>();
     protected final Map<JavaConstant, ImageHeapConstant> relinkedConstants = new ConcurrentHashMap<>();
     protected final Map<Integer, Long> objectOffsets = new ConcurrentHashMap<>();
+    protected final Map<AnalysisField, Integer> fieldLocations = new ConcurrentHashMap<>();
     protected final AnalysisUniverse universe;
     protected AnalysisMetaAccess metaAccess;
     protected HostedValuesProvider hostedValuesProvider;
@@ -562,6 +569,11 @@ public class ImageLayerLoader {
             if (fieldData == null) {
                 /* The field was not reachable in the base image */
                 return;
+            }
+
+            Integer location = get(fieldData, LOCATION_TAG);
+            if (location != null) {
+                fieldLocations.put(analysisField, location);
             }
 
             boolean isAccessed = get(fieldData, FIELD_ACCESSED_TAG);
@@ -912,5 +924,22 @@ public class ImageLayerLoader {
     public Long getObjectOffset(JavaConstant javaConstant) {
         ImageHeapConstant imageHeapConstant = (ImageHeapConstant) javaConstant;
         return objectOffsets.get(imageHeapConstant.constantData.id);
+    }
+
+    public int getFieldLocation(AnalysisField field) {
+        return fieldLocations.get(field);
+    }
+
+    public ImageHeapConstant getBaseLayerStaticPrimitiveFields() {
+        return getTaggedImageHeapConstant(STATIC_PRIMITIVE_FIELDS_TAG);
+    }
+
+    public ImageHeapConstant getBaseLayerStaticObjectFields() {
+        return getTaggedImageHeapConstant(STATIC_OBJECT_FIELDS_TAG);
+    }
+
+    private ImageHeapConstant getTaggedImageHeapConstant(String tag) {
+        int id = get(jsonMap, tag);
+        return constants.get(id);
     }
 }
