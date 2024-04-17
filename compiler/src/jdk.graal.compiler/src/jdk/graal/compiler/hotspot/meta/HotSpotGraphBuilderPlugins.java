@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -132,6 +132,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
@@ -523,7 +524,11 @@ public class HotSpotGraphBuilderPlugins {
                  * check. Such a DynamicNewInstanceNode is also never constant folded to a
                  * NewInstanceNode.
                  */
-                DynamicNewInstanceNode.createAndPush(b, clazz);
+                if (b.currentBlockCatchesOOM()) {
+                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazz);
+                } else {
+                    DynamicNewInstanceNode.createAndPush(b, clazz);
+                }
                 return true;
             }
         });

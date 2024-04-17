@@ -44,6 +44,10 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
  * This is used to capture a state for deoptimization when a node has side effects which aren't
  * easily represented. The anchored value is usually part of the FrameState since this forces uses
  * of the value below this node so they will consume this frame state instead of an earlier one.
+ *
+ * When this node is used without a value the only effect it has is to force a {@link FrameState}
+ * because it implements {@link StateSplit}. Thus, this node can be used to force a precise
+ * framestate at certain BCIs.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class StateSplitProxyNode extends FixedValueAnchorNode implements Canonicalizable, StateSplit {
