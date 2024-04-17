@@ -83,6 +83,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.FileDumpingUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.json.JSONFormatter;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -143,16 +144,14 @@ public class ImageLayerWriter {
         EconomicMap<String, Object> typesMap = EconomicMap.create();
         for (AnalysisType type : analysisUniverse.getTypes().stream().filter(t -> t.isReachable() && !isTypeSwitch(t)).toList()) {
             checkTypeStability(type);
-            Class<?> clazz = type.getJavaClass();
-            String typeIdentifier = imageLayerSnapshotUtil.getTypeIdentifier(type, clazz.getModule().getName());
+            String typeIdentifier = imageLayerSnapshotUtil.getTypeIdentifier(type);
             persistType(typesMap, type, typeIdentifier);
         }
         jsonMap.put(TYPES_TAG, typesMap);
 
         EconomicMap<String, Object> methodsMap = EconomicMap.create();
         for (AnalysisMethod method : analysisUniverse.getMethods().stream().filter(m -> m.isReachable() && !isTypeSwitch(m.getDeclaringClass())).toList()) {
-            Class<?> clazz = method.getDeclaringClass().getJavaClass();
-            persistMethod(methodsMap, method, clazz);
+            persistMethod(methodsMap, method);
         }
         jsonMap.put(METHODS_TAG, methodsMap);
 
@@ -199,6 +198,9 @@ public class ImageLayerWriter {
             typeMap.put(SUPER_CLASS_TAG, type.getSuperclass().getId());
         }
         typeMap.put(INTERFACES_TAG, Arrays.stream(type.getInterfaces()).map(AnalysisType::getId).toList());
+        if (typesMap.containsKey(typeIdentifier)) {
+            throw GraalError.shouldNotReachHere("The type identifier should be unique, but " + typeIdentifier + " got added twice.");
+        }
         typesMap.put(typeIdentifier, typeMap);
     }
 
@@ -211,10 +213,13 @@ public class ImageLayerWriter {
         /* Do not need to check anything here */
     }
 
-    public void persistMethod(EconomicMap<String, Object> methodsMap, AnalysisMethod method, Class<?> clazz) {
+    public void persistMethod(EconomicMap<String, Object> methodsMap, AnalysisMethod method) {
         EconomicMap<String, Object> methodMap = EconomicMap.create();
         methodMap.put(ID_TAG, method.getId());
-        String name = imageLayerSnapshotUtil.getMethodIdentifier(method, clazz.getModule().getName());
+        String name = imageLayerSnapshotUtil.getMethodIdentifier(method);
+        if (methodsMap.containsKey(name)) {
+            throw GraalError.shouldNotReachHere("The method identifier should be unique, but " + name + " got added twice.");
+        }
         methodsMap.put(name, methodMap);
     }
 
