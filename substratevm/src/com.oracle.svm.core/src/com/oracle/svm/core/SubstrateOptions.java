@@ -1105,9 +1105,6 @@ public class SubstrateOptions {
     @Option(help = "Run layered image base layer open-world analysis. Includes all public types and methods that can be reached using normal Java access rules.")//
     public static final HostedOptionKey<Boolean> LayeredBaseImageAnalysis = new HostedOptionKey<>(false);
 
-    @Option(help = "Enable partial points-to analysis starting from results of base layer analysis.")//
-    public static final HostedOptionKey<Boolean> PartialPointsToAnalysis = new HostedOptionKey<>(false);
-
     @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
     public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(false);
 
@@ -1131,7 +1128,6 @@ public class SubstrateOptions {
         @Override
         public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
             super.update(values, boxedValue);
-            PartialPointsToAnalysis.update(values, true);
             ClosedTypeWorld.update(values, false);
             if (imageLayerEnabledHandler != null) {
                 imageLayerEnabledHandler.onOptionEnabled(values);

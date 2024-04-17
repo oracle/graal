@@ -620,22 +620,20 @@ public class MethodTypeFlowBuilder {
         assert !processed : "can only call apply once per MethodTypeFlowBuilder";
         processed = true;
 
-        if (bb.getHostVM().useBaseLayer() && bb.getHostVM().partialPointsToAnalysis()) {
-            if (method.isInBaseLayer()) {
-                /*
-                 * We don't need to analyze this method. We already know it's return type state from
-                 * the open world analysis. We just install a return flow to link it with its uses.
-                 */
-                AnalysisType returnType = TypeFlow.filterUncheckedInterface(method.getSignature().getReturnType());
-                if (returnType.getJavaKind().isObject()) {
-                    // TODO the return type state should not be all-instantiated, it should be the
-                    // persisted result of the open-world analysis [GR-52421]
-                    insertAllInstantiatedTypesReturn();
-                }
-                // TODO verify that tracked parameter state is subset of persisted state [GR-52421]
-                insertPlaceholderParamAndReturnFlows();
-                return;
+        if (bb.getHostVM().useBaseLayer() && method.isInBaseLayer()) {
+            /*
+             * We don't need to analyze this method. We already know it's return type state from the
+             * open world analysis. We just install a return flow to link it with its uses.
+             */
+            AnalysisType returnType = TypeFlow.filterUncheckedInterface(method.getSignature().getReturnType());
+            if (returnType.getJavaKind().isObject()) {
+                // TODO the return type state should not be all-instantiated, it should be the
+                // persisted result of the open-world analysis [GR-52421]
+                insertAllInstantiatedTypesReturn();
             }
+            // TODO verify that tracked parameter state is subset of persisted state [GR-52421]
+            insertPlaceholderParamAndReturnFlows();
+            return;
         }
 
         // assert method.getAnnotation(Fold.class) == null : method;
