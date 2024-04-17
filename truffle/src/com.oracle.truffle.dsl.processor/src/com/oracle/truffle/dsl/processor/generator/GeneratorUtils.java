@@ -430,9 +430,14 @@ public class GeneratorUtils {
         if (method == null) {
             return null;
         }
+        return overrideImplement(method);
+    }
+
+    public static CodeExecutableElement overrideImplement(ExecutableElement method) {
         CodeExecutableElement result = CodeExecutableElement.clone(method);
         result.getModifiers().remove(Modifier.ABSTRACT);
         result.getModifiers().remove(Modifier.DEFAULT);
+        addOverride(result);
         return result;
     }
 
