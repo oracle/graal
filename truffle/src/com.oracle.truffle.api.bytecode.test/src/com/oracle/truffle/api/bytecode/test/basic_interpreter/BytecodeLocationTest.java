@@ -183,11 +183,6 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
         BasicInterpreter baz = nodeList.get(1);
         assert baz.getName().equals("baz");
 
-        // Check that the start locations map to the first instruction.
-        assertEquals(0, foo.getStartLocation().getInstructionIndex());
-        assertEquals(0, bar.getStartLocation().getInstructionIndex());
-        assertEquals(0, baz.getStartLocation().getInstructionIndex());
-
         for (boolean fooArgument : List.of(true, false)) {
             Object result = foo.getCallTarget().call(fooArgument);
             assertTrue(result instanceof List<?>);
@@ -389,56 +384,6 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             SourceSection fooSourceSection = fooLocation.getSourceLocation();
             assertEquals(fooSource, fooSourceSection.getSource());
             assertEquals("continue(c, arg0)", fooSourceSection.getCharacters());
-        }
-    }
-
-    @Test
-    public void testInstructionIndex() {
-        /**
-         * @formatter:off
-         * def collectInstructionIndices(arg0) {
-         *   arg0.append(<current_instruction_index>);
-         *   arg0.append(<current_instruction_index>);
-         *   ...
-         *   arg0.append(<current_instruction_index>);
-         * }
-         * @formatter:on
-         */
-        BasicInterpreter rootNode = parseNode("collectInstructionIndices", b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginBlock();
-            for (int i = 0; i < 10; i++) {
-                b.beginAppendInstructionIndex();
-                b.emitLoadArgument(0);
-                b.endAppendInstructionIndex();
-            }
-            b.beginReturn();
-            b.emitLoadConstant(42L);
-            b.endReturn();
-            b.endBlock();
-
-            b.endRoot();
-        });
-
-        List<Integer> indices = new ArrayList<>();
-        assertEquals(42L, rootNode.getCallTarget().call(indices));
-
-        // Check that the instruction indices are sorted.
-        assertTrue(indices.size() != 0);
-        int prev = indices.get(0);
-        for (int i = 1; i < indices.size(); i++) {
-            int curr = indices.get(i);
-            assertTrue("Instruction indices are not sorted: " + indices, prev < curr);
-            prev = curr;
-        }
-
-        // Check that mapping between instruction index and bci produces the same result.
-        BytecodeNode bytecodeNode = rootNode.getBytecodeNode();
-        for (int expectedIndex : indices) {
-            BytecodeLocation location = bytecodeNode.getBytecodeLocationFromInstructionIndex(expectedIndex);
-            int actualIndex = location.getInstructionIndex();
-            assertEquals(expectedIndex, actualIndex);
         }
     }
 }

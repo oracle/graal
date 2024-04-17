@@ -59,10 +59,6 @@ public abstract class Instruction {
 
     public abstract int getBytecodeIndex();
 
-    public final int getInstructionIndex() {
-        return getLocation().getInstructionIndex();
-    }
-
     public final BytecodeLocation getLocation() {
         return getBytecodeNode().getBytecodeLocation(getBytecodeIndex());
     }

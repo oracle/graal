@@ -7363,8 +7363,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createFindSourceLocations());
             type.add(createFindSourceLocationsBeginEnd());
             type.add(createCreateSourceSection());
-            type.add(createFindInstructionIndex());
-            type.add(createFindBciFromInstructionIndex());
             type.add(createFindInstruction());
 
             if (model.isBytecodeUpdatable()) {
@@ -8220,24 +8218,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(2);
 
             return withTruffleBoundary(ex);
-        }
-
-        private CodeExecutableElement createFindInstructionIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findInstructionIndex");
-            ex.renameArguments("searchBci");
-            CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
-            emitStableBytecodeSearch(b, "searchBci", "instructionIndex", g -> 1, true);
-            return ex;
-        }
-
-        private CodeExecutableElement createFindBciFromInstructionIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBciFromInstructionIndex");
-            ex.renameArguments("searchIndex");
-            CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
-            emitStableBytecodeSearch(b, "searchIndex", "instructionIndex", g -> 1, false);
-            return ex;
         }
 
         private CodeExecutableElement createFindInstruction() {

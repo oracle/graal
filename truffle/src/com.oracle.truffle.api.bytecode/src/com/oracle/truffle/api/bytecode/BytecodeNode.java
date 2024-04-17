@@ -120,18 +120,6 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Computes a {@link BytecodeLocation} using the given instruction index.
-     * <p>
-     * This method can be used to map the result of {@link #getInstructionIndex()} back to a
-     * location.
-     *
-     * @since 24.1
-     */
-    public final BytecodeLocation getBytecodeLocationFromInstructionIndex(int instructionIndex) {
-        return getBytecodeLocation(findBciFromInstructionIndex(instructionIndex));
-    }
-
-    /**
      * Gets the most concrete {@link SourceSection source location} associated with a particular
      * location. Returns {@code null} if the node was not parsed {@link BytecodeConfig#WITH_SOURCE
      * with sources} or if there is no associated source section for the given location. A location
@@ -373,20 +361,6 @@ public abstract class BytecodeNode extends Node {
     public abstract SourceSection[] findSourceLocations(int bci);
 
     public abstract SourceSection[] findSourceLocations(int beginBci, int endBci);
-
-    /**
-     * Finds the instruction index associated with the given bytecode index.
-     *
-     * @since 24.1
-     */
-    protected abstract int findInstructionIndex(int bci);
-
-    /**
-     * Finds the bytecode location associated with the given instruction index.
-     *
-     * @since 24.1
-     */
-    protected abstract int findBciFromInstructionIndex(int instructionIndex);
 
     /**
      * Finds the instruction associated with the given bytecode index.
