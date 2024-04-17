@@ -61,7 +61,7 @@ public class JVMCIVersionCheckOpenJDKTest extends GraalCompilerTest {
                         expectPass("99+99-jvmci-b02", "99-ea+99"),
                         expectPass("99+99-jvmci-b02", "99-ea+100"),
                         /*
-                         * OpenJDK version sith unknown $PRE value are ignored.
+                         * OpenJDK version with unknown $PRE value are ignored.
                          */
                         expectPass("99+99-jvmci-b02", "99-something+98"),
                         expectPass("99+99-jvmci-b02", "99-something+99"),
