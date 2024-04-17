@@ -517,7 +517,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod() || AtomicUtils.isSet(this, isImplementationInvokedUpdater));
     }
 
-    protected Object getImplementationInvokedReason() {
+    public Object getImplementationInvokedReason() {
         return isImplementationInvoked;
     }
 
