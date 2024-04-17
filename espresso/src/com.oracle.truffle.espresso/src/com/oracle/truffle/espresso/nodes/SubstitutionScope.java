@@ -69,8 +69,11 @@ final class SubstitutionScope implements TruffleObject {
     Object readMember(String member) throws UnknownIdentifierException {
         try {
             int index = Integer.parseInt(member);
+            if (index < 0 || index >= args.length) {
+                throw UnknownIdentifierException.create(member);
+            }
             return args[index];
-        } catch (NumberFormatException | ArrayIndexOutOfBoundsException ex) {
+        } catch (NumberFormatException e) {
             throw UnknownIdentifierException.create(member);
         }
     }
@@ -85,8 +88,8 @@ final class SubstitutionScope implements TruffleObject {
     boolean isMemberReadable(@SuppressWarnings("unused") String member) {
         try {
             int index = Integer.parseInt(member);
-            return index > -1 && index < args.length;
-        } catch (NumberFormatException | ArrayIndexOutOfBoundsException ex) {
+            return 0 <= index && index < args.length;
+        } catch (NumberFormatException e) {
             return false;
         }
     }
