@@ -54,6 +54,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUppe
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
+import static javax.lang.model.element.Modifier.PROTECTED;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.SEALED;
 import static javax.lang.model.element.Modifier.STATIC;
@@ -11300,6 +11301,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             continuationRootNodeImpl.add(createCreateContinuation());
             continuationRootNodeImpl.add(createToString());
 
+            // RootNode overrides.
+            continuationRootNodeImpl.add(createIsCloningAllowed());
+            continuationRootNodeImpl.add(createIsCloneUninitializedSupported());
+            // Should appear last. Uses current method set to determine which methods need to be
+            // implemented.
+            continuationRootNodeImpl.addAll(createRootNodeProxyMethods());
+
             return continuationRootNodeImpl;
         }
 
@@ -11406,6 +11414,74 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("location");
             b.end(2);
             return ex;
+        }
+
+        private CodeExecutableElement createIsCloningAllowed() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "isCloningAllowed");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.lineComment("Continuations are one-to-one with root nodes.");
+            b.startReturn();
+            b.string("false");
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createIsCloneUninitializedSupported() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "isCloneUninitializedSupported");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.lineComment("Continuations are one-to-one with root nodes.");
+            b.startReturn();
+            b.string("false");
+            b.end();
+            return ex;
+        }
+
+        private List<CodeExecutableElement> createRootNodeProxyMethods() {
+            List<CodeExecutableElement> result = new ArrayList<>();
+
+            List<ExecutableElement> existing = ElementFilter.methodsIn(continuationRootNodeImpl.getEnclosedElements());
+
+            List<ExecutableElement> excludes = List.of(
+                            ElementUtils.findMethod(types.RootNode, "copy"),
+                            ElementUtils.findMethod(types.RootNode, "cloneUninitialized"));
+
+            outer: for (ExecutableElement method : ElementFilter.methodsIn(types.RootNode.asElement().getEnclosedElements())) {
+                Set<Modifier> mods = method.getModifiers();
+                if (mods.contains(FINAL) || mods.contains(STATIC) || !(mods.contains(PUBLIC) || mods.contains(PROTECTED))) {
+                    continue;
+                }
+                for (ExecutableElement implemented : existing) {
+                    if (ElementUtils.signatureEquals(implemented, method)) {
+                        continue outer;
+                    }
+                }
+                for (ExecutableElement exclude : excludes) {
+                    if (ElementUtils.signatureEquals(exclude, method)) {
+                        continue outer;
+                    }
+                }
+
+                CodeExecutableElement proxyMethod = GeneratorUtils.overrideImplement(method);
+                CodeTreeBuilder b = proxyMethod.createBuilder();
+
+                boolean isVoid = ElementUtils.isVoid(proxyMethod.getReturnType());
+                if (isVoid) {
+                    b.startStatement();
+                } else {
+                    b.startReturn();
+                }
+
+                b.startCall("root", method.getSimpleName().toString());
+                for (VariableElement param : method.getParameters()) {
+                    b.variable(param);
+                }
+                b.end(); // call
+                b.end(); // statement / return
+
+                result.add(proxyMethod);
+            }
+
+            return result;
         }
     }
 
