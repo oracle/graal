@@ -583,7 +583,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 case "INVOKE_MEMBER":
                     return new ExecuteMemberNode(idents[0], childArray);
                 case "ASYNC_CALL":
-                    return new AsyncCallNode(idents[0], childArray, sourceSection);
+                    return AsyncCallNode.create(idents[0], childArray, sourceSection);
                 case "ASYNC_RESUME":
                     return new AsyncResumeNode(idents[0], childArray);
                 default:
@@ -2168,12 +2168,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             this.resumeCallTarget = resumeCallTarget;
         }
 
-        AsyncCallNode(String identifier, BaseNode[] children, SourceSection sourceSection) {
-            this(new InstrumentationTestRootNode(
+        static AsyncCallNode create(String identifier, BaseNode[] children, SourceSection callSourceSection) {
+            SourceSection sourceSectionAsInternal = Source.newBuilder(callSourceSection.getSource()).internal(true).build().createSection(
+                            callSourceSection.getCharIndex(), callSourceSection.getCharLength());
+            FunctionRootNode functionRoot = new FunctionRootNode(new BaseNode[]{new CallNode(identifier, children)});
+            CallTarget resumeCallTarget = new InstrumentationTestRootNode(
                             InstrumentationTestLanguage.get(null),
-                            inferName(sourceSection, identifier),
-                            Source.newBuilder(sourceSection.getSource()).internal(true).build().createSection(sourceSection.getCharIndex(), sourceSection.getCharLength()),
-                            new FunctionRootNode(new BaseNode[]{new CallNode(identifier, children)})).getCallTarget());
+                            inferName(callSourceSection, identifier),
+                            sourceSectionAsInternal,
+                            functionRoot).getCallTarget();
+            return new AsyncCallNode(resumeCallTarget);
         }
 
         private static String inferName(SourceSection sourceSection, String calleeIdent) {
@@ -2185,7 +2189,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 identBegin += identPrefix.length();
                 int identEnd = sourceText.indexOf(identSuffix, identBegin);
                 if (identEnd >= 0) {
-                    return sourceText.substring(identBegin, identEnd) + "->" + calleeIdent;
+                    String callerIdent = sourceText.substring(identBegin, identEnd);
+                    return callerIdent + "->" + calleeIdent;
                 }
             }
             return "ASYNC_CALL_RESUME";
