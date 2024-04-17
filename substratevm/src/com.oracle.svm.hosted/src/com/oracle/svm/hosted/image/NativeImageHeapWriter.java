@@ -156,7 +156,7 @@ public final class NativeImageHeapWriter {
             addNonDataRelocation(buffer, index, prepareRelocatable(info, value));
         } else {
             if (value instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
-                // TODO use object offset in base layer heap [GR-52911]
+                // GR-52911: use object offset in base layer heap
                 return;
             }
             write(buffer, index, value, info != null ? info : field);
@@ -205,7 +205,7 @@ public final class NativeImageHeapWriter {
             con = constant;
         }
         if (con instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
-            // TODO use object offset in base layer heap [GR-52911]
+            // GR-52911: use object offset in base layer heap
             return;
         }
         write(buffer, index, con, info);

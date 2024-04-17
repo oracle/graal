@@ -683,7 +683,7 @@ public abstract class NativeImageCodeCache {
         ByteBuffer bb = buffer.getByteBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
             if (constant instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
-                // TODO use object offset in base layer heap [GR-52911]
+                // GR-52911: use object offset in base layer heap
                 return;
             }
             writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant);

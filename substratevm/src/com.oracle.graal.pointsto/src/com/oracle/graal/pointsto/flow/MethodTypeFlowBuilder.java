@@ -627,11 +627,11 @@ public class MethodTypeFlowBuilder {
              */
             AnalysisType returnType = TypeFlow.filterUncheckedInterface(method.getSignature().getReturnType());
             if (returnType.getJavaKind().isObject()) {
-                // TODO the return type state should not be all-instantiated, it should be the
-                // persisted result of the open-world analysis [GR-52421]
+                // GR-52421: the return type state should not be all-instantiated, it should be the
+                // persisted result of the open-world analysis
                 insertAllInstantiatedTypesReturn();
             }
-            // TODO verify that tracked parameter state is subset of persisted state [GR-52421]
+            // GR-52421: verify that tracked parameter state is subset of persisted state
             insertPlaceholderParamAndReturnFlows();
             return;
         }

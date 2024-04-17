@@ -184,7 +184,7 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
             maxThreadId = Math.max(maxThreadId, threadId(thread));
             maxAutonumber = Math.max(maxAutonumber, autonumberOf(thread));
         }
-        // TODO load maxThreadId from base layer [GR-52413]
+        // GR-52413: load maxThreadId from base layer
         assert access.getBigBang().getHostVM().useBaseLayer() || maxThreadId >= 1 : "main thread with id 1 must always be found";
         setThreadSeqNumber(maxThreadId);
         setThreadInitNumber(maxAutonumber);

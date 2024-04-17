@@ -358,7 +358,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     HostedImageHeapConstantPatch patch = (HostedImageHeapConstantPatch) codeAnnotation;
 
                     if (patch.constant instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
-                        // TODO use object offset in base layer heap [GR-52911]
+                        // GR-52911: use object offset in base layer heap
                         continue;
                     }
                     ObjectInfo objectInfo = imageHeap.getConstantInfo(patch.constant);
