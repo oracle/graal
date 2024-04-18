@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -71,8 +72,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     private final TargetDescription target;
 
     @SuppressWarnings("this-escape")
-    public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
-        super(compilations, imageHeap);
+    public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, Set<HostedMethod> baseLayerMethods, NativeImageHeap imageHeap) {
+        super(compilations, imageHeap, baseLayerMethods);
         target = ConfigurationValues.getTarget();
         trampolineMap = new HashMap<>();
         orderedTrampolineMap = new HashMap<>();
@@ -491,8 +492,12 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
         @Override
         protected void defineMethodSymbol(String name, boolean global, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
-            final int size = result == null ? 0 : result.getTargetCodeSize();
-            objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
+            if (method.wrapped.isInBaseLayer()) {
+                objectFile.createUndefinedSymbol(name, 0, true);
+            } else {
+                final int size = result == null ? 0 : result.getTargetCodeSize();
+                objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
+            }
         }
     }
 
