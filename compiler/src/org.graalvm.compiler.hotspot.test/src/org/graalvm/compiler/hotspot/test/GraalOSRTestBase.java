@@ -130,6 +130,14 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
     }
 
     protected void compileOSR(OptionValues options, ResolvedJavaMethod method) {
+        compileOSR(options, method, (x, y, z) -> parseEager(x, y, z));
+    }
+
+    public interface Parser {
+        StructuredGraph parse(ResolvedJavaMethod m, AllowAssumptions a, OptionValues o);
+    }
+
+    public static void compileOSR(OptionValues options, ResolvedJavaMethod method, Parser p) {
         OptionValues goptions = options;
         // Silence diagnostics for permanent bailout errors as they
         // are expected for some OSR tests.
@@ -137,7 +145,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
             goptions = new OptionValues(options, GraalCompilerOptions.CompilationBailoutAsFailure, false);
         }
         // ensure eager resolving
-        StructuredGraph graph = parseEager(method, AllowAssumptions.YES, goptions);
+        StructuredGraph graph = p.parse(method, AllowAssumptions.YES, goptions);
         DebugContext debug = graph.getDebug();
         int bci = getBackedgeBCI(debug, method);
         assert bci != -1;
