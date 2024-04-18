@@ -261,10 +261,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind a thrown exception to (if available)"));
-        operation(OperationKind.FINALLY_TRY_NO_EXCEPT, "FinallyTryNoExcept") //
-                        .setVoid(true) //
-                        .setNumChildren(2) //
-                        .setChildrenMustBeValues(false, false);
         operation(OperationKind.FINALLY_TRY_CATCH, "FinallyTryCatch") //
                         .setVoid(true) //
                         .setNumChildren(3) //

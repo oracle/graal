@@ -1980,7 +1980,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case TRY_CATCH:
                         return "TryCatchData";
                     case FINALLY_TRY:
-                    case FINALLY_TRY_NO_EXCEPT:
                     case FINALLY_TRY_CATCH:
                         return "FinallyTryData";
                     case CUSTOM:
@@ -2654,7 +2653,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end();
                         break;
                     case FINALLY_TRY:
-                    case FINALLY_TRY_NO_EXCEPT:
                     case FINALLY_TRY_CATCH:
                         b.startCase().tree(createOperationConstant(op)).end().startBlock();
                         emitCastOperationData(b, op, "sp");
@@ -2780,7 +2778,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end();
                         break;
                     case FINALLY_TRY:
-                    case FINALLY_TRY_NO_EXCEPT:
                     case FINALLY_TRY_CATCH:
                         b.startCase().tree(createOperationConstant(op)).end().startBlock();
                         emitCastOperationData(b, op, "sp");
@@ -3479,7 +3476,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     buildEmitInstruction(b, model.tagEnterInstruction, "nodeId");
                     break;
                 case FINALLY_TRY:
-                case FINALLY_TRY_NO_EXCEPT:
                 case FINALLY_TRY_CATCH:
                     buildContextSensitiveFieldInitializer(b);
                     if (model.enableTracing) {
@@ -3696,7 +3692,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case WHILE -> createOperationData("WhileData", "bci", UNINIT, "this.reachable");
                 case TRY_CATCH -> createOperationData("TryCatchData", "bci", "currentStackHeight", "((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").index", UNINIT, UNINIT, UNINIT,
                                 "this.reachable", "this.reachable", "this.reachable");
-                case FINALLY_TRY, FINALLY_TRY_NO_EXCEPT, FINALLY_TRY_CATCH -> {
+                case FINALLY_TRY, FINALLY_TRY_CATCH -> {
                     // set finallyTryContext inside createFinallyTryX before calling beginOperation
                     b.startAssign("finallyTryContext").startNew(finallyTryContext.asType());
                     for (CodeVariableElement field : builderContextSensitiveState) {
@@ -3707,8 +3703,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.string("finallyTryContext");
                     b.end(2);
 
-                    String exceptionLocal = (operation.kind == OperationKind.FINALLY_TRY_NO_EXCEPT) ? "null"
-                                    : CodeTreeBuilder.createBuilder().cast(bytecodeLocalImpl.asType()).string(operation.getOperationArgumentName(0)).toString();
+                    String exceptionLocal = CodeTreeBuilder.createBuilder().cast(bytecodeLocalImpl.asType()).string(operation.getOperationArgumentName(0)).toString();
                     String catchReachable = (operation.kind == OperationKind.FINALLY_TRY_CATCH) ? "this.reachable" : "false";
 
                     yield createOperationData("FinallyTryData", exceptionLocal, "finallyTryContext", "this.reachable", "this.reachable", "this.reachable", catchReachable);
@@ -3949,20 +3944,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case FINALLY_TRY_CATCH:
                     emitCastCurrentOperationData(b, operation);
                     b.statement("markReachable(operationData.finallyReachable && operationData.tryReachable || operationData.catchReachable)").end();
-                    break;
-                case FINALLY_TRY_NO_EXCEPT:
-                    emitCastCurrentOperationData(b, operation);
-                    b.statement("BytecodeLocalImpl exceptionLocal = operationData.exceptionLocal");
-
-                    b.statement("FinallyTryContext ctx = operationData.finallyTryContext");
-                    b.statement("doEmitFinallyHandler(ctx)");
-
-                    b.startIf().string("!operationData.finallyReachable || !operationData.tryReachable").end().startBlock();
-                    b.statement("markReachable(false)");
-                    b.end().startElseBlock();
-                    b.statement("updateReachable()");
-                    b.end();
-
                     break;
                 case RETURN:
                     emitCastCurrentOperationData(b, operation);
@@ -4804,7 +4785,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 op.kind == OperationKind.IF_THEN_ELSE ||
                                 op.kind == OperationKind.IF_THEN ||
                                 op.kind == OperationKind.CONDITIONAL ||
-                                op.kind == OperationKind.FINALLY_TRY_NO_EXCEPT ||
                                 op.kind == OperationKind.FINALLY_TRY ||
                                 op.kind == OperationKind.FINALLY_TRY_CATCH) {
                     return BeforeChildKind.UPDATE_REACHABLE;
@@ -5171,10 +5151,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         break;
                     case FINALLY_TRY:
                     case FINALLY_TRY_CATCH:
-                    case FINALLY_TRY_NO_EXCEPT:
-                        if (op.kind != OperationKind.FINALLY_TRY_NO_EXCEPT) {
-                            emitCastOperationData(b, op, "operationSp - 1");
-                        }
+                        emitCastOperationData(b, op, "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
 
                         /**
@@ -5210,10 +5187,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                         b.statement("finallyTryContext = finallyTryContext.parentContext");
 
-                        if (op.kind != OperationKind.FINALLY_TRY_NO_EXCEPT) {
-                            // The guarded range starts at this bci (the start of the try).
-                            b.statement("operationData.guardedStartBci = bci");
-                        }
+                        // The guarded range starts at this bci (the start of the try).
+                        b.statement("operationData.guardedStartBci = bci");
 
                         b.end();
                         if (op.kind == OperationKind.FINALLY_TRY_CATCH) {
@@ -5991,15 +5966,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.statement("break");
             b.end(); // case finally
-
-            b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY_NO_EXCEPT))).end().startBlock();
-            emitCastOperationData(b, model.finallyTryOperation, "i");
-            b.statement("FinallyTryContext ctx = operationData.finallyTryContext");
-            b.startIf().string("ctx.handlerIsSet() && reachable").end().startBlock();
-            b.statement("doEmitFinallyHandler(ctx)");
-            b.end();
-            b.statement("break");
-            b.end(); // case finally noexcept
         }
 
         /**
