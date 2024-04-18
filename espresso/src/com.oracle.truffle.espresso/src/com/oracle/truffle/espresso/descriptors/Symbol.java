@@ -640,6 +640,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> downcallStubAddress = StaticSymbols.putName("downcallStubAddress");
         public static final Symbol<Name> argRegs = StaticSymbols.putName("argRegs");
         public static final Symbol<Name> retRegs = StaticSymbols.putName("retRegs");
+
+        public static final Symbol<Name> exclusiveOwnerThread = StaticSymbols.putName("exclusiveOwnerThread");
     }
 
     /**
@@ -976,6 +978,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_util_regex_Matcher = StaticSymbols.putType("Ljava/util/regex/Matcher;");
         public static final Symbol<Type> java_util_regex_IntHashSet = StaticSymbols.putType("Ljava/util/regex/IntHashSet;");
         public static final Symbol<Type> java_util_regex_IntHashSet_array = StaticSymbols.putType("[Ljava/util/regex/IntHashSet;");
+
+        public static final Symbol<Type> java_util_concurrent_locks_AbstractOwnableSynchronizer = StaticSymbols.putType("Ljava/util/concurrent/locks/AbstractOwnableSynchronizer;");
 
         // java math
         public static final Symbol<Type> java_math_BigInteger = StaticSymbols.putType("Ljava/math/BigInteger;");
