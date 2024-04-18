@@ -57,7 +57,6 @@ public class OperationModel implements PrettyPrintable {
         TRY_CATCH,
         FINALLY_TRY,
         FINALLY_TRY_CATCH,
-        FINALLY_TRY_NO_EXCEPT,
         SOURCE,
         SOURCE_SECTION,
         TAG,

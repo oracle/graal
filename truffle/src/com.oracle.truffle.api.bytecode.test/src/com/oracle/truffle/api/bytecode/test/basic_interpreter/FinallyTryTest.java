@@ -1469,66 +1469,6 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         testOrderingWithArguments(true, root,  new Object[] {false, true}, 1L, 2L, 4L, 5L);
     }
 
-
-    @Test
-    public void testFinallyTryNoExceptReturn() {
-        // try {
-        //   arg0.append(1);
-        //   return 0;
-        //   arg0.append(2);
-        // } finally noexcept {
-        //   arg0.append(3);
-        // }
-
-        RootCallTarget root = parse("finallyTryNoExceptReturn", b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginFinallyTryNoExcept();
-                emitAppend(b, 3);
-
-                b.beginBlock();
-                    emitAppend(b, 1);
-                    emitReturn(b, 0);
-                    emitAppend(b, 2);
-                b.endBlock();
-            b.endFinallyTryNoExcept();
-
-            b.endRoot();
-        });
-
-        testOrdering(false, root, 1L, 3L);
-    }
-
-    @Test
-    public void testFinallyTryNoExceptException() {
-        // try {
-        //   arg0.append(1);
-        //   throw 0;
-        //   arg0.append(2);
-        // } finally noexcept {
-        //   arg0.append(3);
-        // }
-
-        RootCallTarget root = parse("finallyTryNoExceptException", b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginFinallyTryNoExcept();
-                emitAppend(b, 3);
-
-                b.beginBlock();
-                    emitAppend(b, 1);
-                    emitThrow(b, 0);
-                    emitAppend(b, 2);
-                b.endBlock();
-            b.endFinallyTryNoExcept();
-
-            b.endRoot();
-        });
-
-        testOrdering(true, root, 1L);
-    }
-
-
     @Test
     public void testFinallyTryCatchBasic() {
         // try {
