@@ -40,9 +40,9 @@ import com.oracle.truffle.espresso.impl.Method;
 
 @ExportLibrary(InteropLibrary.class)
 final class SubstitutionScope implements TruffleObject {
-    private final Object[] args;
+    @CompilationFinal(dimensions = 1) private final Object[] args;
     private final Method method;
-    @CompilationFinal private String[] paramNames;
+    @CompilationFinal(dimensions = 1) private String[] paramNames;
 
     SubstitutionScope(Object[] arguments, Method.MethodVersion method) {
         this.args = arguments;
