@@ -55,6 +55,7 @@ import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.ComplexMatchResult;
@@ -729,7 +730,11 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult normalizedIntegerCompare(ValueNode x, ValueNode y, ConstantNode cm1, ConstantNode c0, ConstantNode c1) {
         if (cm1.getStackKind() == JavaKind.Int && cm1.asJavaConstant().asInt() == -1 && c0.getStackKind() == JavaKind.Int && c0.asJavaConstant().asInt() == 0 && c1.getStackKind() == JavaKind.Int &&
                         c1.asJavaConstant().asInt() == 1) {
-            return builder -> getArithmeticLIRGenerator().emitNormalizedUnsignedCompare(operand(x), operand(y));
+            GraalError.guarantee(PrimitiveStamp.getBits(x.stamp(NodeView.DEFAULT)) == PrimitiveStamp.getBits(y.stamp(NodeView.DEFAULT)), "need compatible inputs: %s, %s", x, y);
+            return builder -> {
+                LIRKind compareKind = gen.getLIRKind(x.stamp(NodeView.DEFAULT));
+                return getArithmeticLIRGenerator().emitNormalizedUnsignedCompare(compareKind, operand(x), operand(y));
+            };
         }
         return null;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,18 @@
 package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
@@ -54,23 +55,22 @@ public class AMD64NormalizedUnsignedCompareOp extends AMD64LIRInstruction {
     @Use({REG}) protected AllocatableValue x;
     @Use({REG}) protected AllocatableValue y;
 
-    public AMD64NormalizedUnsignedCompareOp(AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+    private final LIRKind compareKind;
+
+    public AMD64NormalizedUnsignedCompareOp(AllocatableValue result, LIRKind compareKind, AllocatableValue x, AllocatableValue y) {
         super(TYPE);
 
         this.result = result;
         this.x = x;
         this.y = y;
+        this.compareKind = compareKind;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Label done = new Label();
-        if (x.getPlatformKind() == AMD64Kind.DWORD) {
-            masm.cmpl(asRegister(x), asRegister(y));
-        } else {
-            GraalError.guarantee(x.getPlatformKind() == AMD64Kind.QWORD, "unsupported value kind %s", x.getPlatformKind());
-            masm.cmpq(asRegister(x), asRegister(y));
-        }
+        AMD64BaseAssembler.OperandSize size = AMD64BaseAssembler.OperandSize.get(compareKind.getPlatformKind());
+        CMP.getRMOpcode(size).emit(masm, size, asRegister(x), asRegister(y));
         masm.movl(asRegister(result), -1);
         masm.jccb(AMD64Assembler.ConditionFlag.Below, done);
         masm.setl(AMD64Assembler.ConditionFlag.NotEqual, asRegister(result));
