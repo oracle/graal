@@ -117,8 +117,11 @@ public final class JVMCIVersionCheck {
                 }
             } else {
                 try {
-                    // assume OpenJDK version
-                    return createOpenJDKVersion(stripVersion(vmVersion));
+                    var rv = Runtime.Version.parse(vmVersion);
+                    if (rv.pre().isEmpty() || "ea".equals(rv.pre().get())) {
+                        // release or early access build
+                        return createOpenJDKVersion(stripVersion(rv));
+                    }
                 } catch (IllegalArgumentException e) {
                     // unexpected version string -> be on the safe side and ignore
                 }
@@ -130,8 +133,7 @@ public final class JVMCIVersionCheck {
          * Returns a {@linkplain java.lang.Runtime.Version version string} without
          * {@link java.lang.Runtime.Version#pre()} and {@link java.lang.Runtime.Version#optional()}.
          */
-        private static String stripVersion(String versionString) {
-            var rv = Runtime.Version.parse(versionString);
+        private static String stripVersion(Runtime.Version rv) {
             var sb = new StringBuilder(rv.version().stream().map(Object::toString).collect(Collectors.joining(".")));
             if (rv.build().isPresent()) {
                 sb.append("+").append(rv.build().get());
@@ -322,7 +324,14 @@ public final class JVMCIVersionCheck {
                 // Allow local builds
                 return;
             }
-            // A "labsjdk"
+            if (!vmVersion.contains("-jvmci-")) {
+                var rv = Runtime.Version.parse(vmVersion);
+                if (rv.pre().isPresent() && !"ea".equals(rv.pre().get())) {
+                    // Not a release or early access OpenJDK version
+                    return;
+                }
+            }
+            // A "labsjdk" or a known OpenJDK
             if (minVersion == null) {
                 failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
             }
