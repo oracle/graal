@@ -40,6 +40,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoScope;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
 import com.oracle.truffle.espresso.impl.Method;
@@ -115,7 +116,7 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
             Symbol<Symbol.Type>[] parsedSignature = method.getParsedSignature();
             // include method parameters if not already included
             for (int i = startslot; i < localCount; i++) {
-                Symbol<Symbol.Type> paramType = hasReceiver ? parsedSignature[i - 1] : parsedSignature[i];
+                Symbol<Symbol.Type> paramType = hasReceiver ? Signatures.parameterType(parsedSignature, i - 1) : Signatures.parameterType(parsedSignature, i);
                 if (!slotToLocal.containsKey(i)) {
                     constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(ByteSequence.create("arg_" + i)), utf8Constants.getOrCreate(paramType), 0, 0xffff, i));
                     slotToLocal.remove(i);
