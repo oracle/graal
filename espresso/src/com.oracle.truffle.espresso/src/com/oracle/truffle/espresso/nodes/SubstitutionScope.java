@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -42,7 +41,7 @@ import com.oracle.truffle.espresso.impl.Method;
 final class SubstitutionScope implements TruffleObject {
     @CompilationFinal(dimensions = 1) private final Object[] args;
     private final Method method;
-    @CompilationFinal(dimensions = 1) private String[] paramNames;
+    private String[] paramNames;
 
     SubstitutionScope(Object[] arguments, Method.MethodVersion method) {
         this.args = arguments;
@@ -88,7 +87,6 @@ final class SubstitutionScope implements TruffleObject {
             // so this branch should rarely be taken.
             String[] names = paramNames;
             if (names == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 names = paramNames = fetchNames();
             }
             for (int i = 0; i < names.length; i++) {
@@ -140,11 +138,24 @@ final class SubstitutionScope implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+    @TruffleBoundary
+    boolean isMemberReadable(String member) {
         try {
             int index = Integer.parseInt(member);
             return 0 <= index && index < args.length;
         } catch (NumberFormatException e) {
+            // OK, see if we have parameter names as a fallback.
+            // The main use case which is JDWP doesn't use anything but slots,
+            // so this branch should rarely be taken.
+            String[] names = paramNames;
+            if (names == null) {
+                names = paramNames = fetchNames();
+            }
+            for (String name : names) {
+                if (name.equals(member)) {
+                    return true;
+                }
+            }
             return false;
         }
     }
@@ -152,7 +163,7 @@ final class SubstitutionScope implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "<intrinsified>";
+        return method.getNameAsString();
     }
 
 }
