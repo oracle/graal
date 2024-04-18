@@ -54,7 +54,6 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUppe
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
-import static javax.lang.model.element.Modifier.PROTECTED;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.SEALED;
 import static javax.lang.model.element.Modifier.STATIC;
@@ -11445,23 +11444,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             ElementUtils.findMethod(types.RootNode, "copy"),
                             ElementUtils.findMethod(types.RootNode, "cloneUninitialized"));
 
-            outer: for (ExecutableElement method : ElementFilter.methodsIn(types.RootNode.asElement().getEnclosedElements())) {
-                Set<Modifier> mods = method.getModifiers();
-                if (mods.contains(FINAL) || mods.contains(STATIC) || !(mods.contains(PUBLIC) || mods.contains(PROTECTED))) {
-                    continue;
-                }
+            outer: for (ExecutableElement rootNodeMethod : ElementUtils.getOverridableMethods((TypeElement) types.RootNode.asElement())) {
+                // Exclude methods we have already implemented.
                 for (ExecutableElement implemented : existing) {
-                    if (ElementUtils.signatureEquals(implemented, method)) {
+                    if (ElementUtils.signatureEquals(implemented, rootNodeMethod)) {
                         continue outer;
                     }
                 }
+                // Exclude methods we do not wish to implement.
                 for (ExecutableElement exclude : excludes) {
-                    if (ElementUtils.signatureEquals(exclude, method)) {
+                    if (ElementUtils.signatureEquals(exclude, rootNodeMethod)) {
                         continue outer;
                     }
+                }
+                // Only proxy methods overridden by the template class.
+                ExecutableElement templateMethod = ElementUtils.findOverride(model.templateType, rootNodeMethod);
+                if (templateMethod == null) {
+                    continue outer;
                 }
 
-                CodeExecutableElement proxyMethod = GeneratorUtils.overrideImplement(method);
+                CodeExecutableElement proxyMethod = GeneratorUtils.overrideImplement(templateMethod);
                 CodeTreeBuilder b = proxyMethod.createBuilder();
 
                 boolean isVoid = ElementUtils.isVoid(proxyMethod.getReturnType());
@@ -11471,8 +11473,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startReturn();
                 }
 
-                b.startCall("root", method.getSimpleName().toString());
-                for (VariableElement param : method.getParameters()) {
+                b.startCall("root", rootNodeMethod.getSimpleName().toString());
+                for (VariableElement param : rootNodeMethod.getParameters()) {
                     b.variable(param);
                 }
                 b.end(); // call
