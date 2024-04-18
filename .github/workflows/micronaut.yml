@@ -60,6 +60,10 @@ env:
 permissions:
   contents: read # to fetch code (actions/checkout)
 
+concurrency: 
+  group: ${{github.workflow}}
+  cancel-in-progress: true
+
 jobs:
   build-graalvm-and-micronaut:
     name: Native Tests

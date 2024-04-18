@@ -91,10 +91,11 @@ permissions:
 jobs:
   build-graalvm-linux:
     name: /${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }}
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-20.04, ubuntu-22.04]
         include:
           # /compiler
           - env:
@@ -225,6 +226,8 @@ jobs:
   build-graalvm-windows:
     name: /substratevm on Windows
     runs-on: windows-2022
+    matrix: 
+      os: [windows-2022, windows-2019]
     env:
       MX_PYTHON: 'python'
     steps:

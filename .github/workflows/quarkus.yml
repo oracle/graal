@@ -51,6 +51,10 @@ on:
   - cron: '0 3 * * *'
   workflow_dispatch:
 
+concurrency:
+  group: ${{github.workflow}} - ${{github.ref}}
+  cancel-in-progress: true
+
 env:
   COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end"
   DB_NAME: hibernate_orm_test
@@ -180,7 +184,7 @@ jobs:
         run: find . -type d -name '*-reports' -o -wholename '*/build/reports/tests/functionalTest' | tar -czf test-reports.tgz -T -
       - name: Upload failure Archive (if maven failed)
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && github.repository == 'oracle/graal'
         with:
           name: test-reports-native-${{matrix.category}}
           path: 'test-reports.tgz'
