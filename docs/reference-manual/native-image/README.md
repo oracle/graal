@@ -57,7 +57,7 @@ You can install `libstdc++-static` if the optional repositories are enabled (_ol
 
 On Ubuntu Linux use the `apt-get` package manager:
 ```shell
-sudo apt-get install build-essential libz-dev zlib1g-dev
+sudo apt-get install build-essential zlib1g-dev
 ```
 On other Linux distributions use the `dnf` package manager:
 ```shell
