@@ -82,6 +82,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     private static final short FLAG_IS_DETERMINISTIC = 1 << N_FLAGS + 2;
     private static final short FLAG_IS_IGNORE_CASE_REFERENCE = 1 << N_FLAGS + 3;
     private static final short FLAG_IS_RECURSIVE_REFERENCE = 1 << N_FLAGS + 4;
+    private static final short FLAG_IS_IGNORE_CASE_REFERENCE_ALTERNATIVE_MODE = 1 << N_FLAGS + 5;
 
     private final int astNodeId;
     private final int subtreeId;
@@ -102,6 +103,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
         }
         if (t.isBackReference()) {
             setIgnoreCaseReference(t.asBackReference().isIgnoreCaseReference());
+            setIgnoreCaseReferenceAlternativeMode(t.asBackReference().isIgnoreCaseReferenceAltMode());
             setRecursiveReference(t.asBackReference().isNestedBackReference());
         }
     }
@@ -208,6 +210,14 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
 
     public void setRecursiveReference(boolean value) {
         setFlag(FLAG_IS_RECURSIVE_REFERENCE, value);
+    }
+
+    public boolean isIgnoreCaseReferenceAlternativeMode() {
+        return getFlag(FLAG_IS_IGNORE_CASE_REFERENCE_ALTERNATIVE_MODE);
+    }
+
+    public void setIgnoreCaseReferenceAlternativeMode(boolean value) {
+        setFlag(FLAG_IS_IGNORE_CASE_REFERENCE_ALTERNATIVE_MODE, value);
     }
 
     /**

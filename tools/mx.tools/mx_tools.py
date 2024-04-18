@@ -75,7 +75,7 @@ def javadoc(args):
         projectNames = []
         for p in mx.projects(True, True):
             projectNames.append(p.name)
-        mx.javadoc(['--unified', '--projects', ','.join(projectNames)], includeDeps=False)
+        mx.javadoc(['--unified', '--disallow-all-warnings', '--projects', ','.join(projectNames)], includeDeps=False)
     else:
         mx.javadoc(['--unified'] + args)
     javadocDir = os.sep.join([_suite.dir, 'javadoc'])

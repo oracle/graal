@@ -7,7 +7,7 @@ permalink: /reference-manual/native-image/
 
 # Native Image
 
-Native Image is a technology to compile Java code ahead-of-time to a binary -- a **native executable**. 
+Native Image is a technology to compile Java code ahead-of-time to a binary&mdash;a **native executable**. 
 A native executable includes only the code required at run time, that is the application classes, standard-library classes, the language runtime, and statically-linked native code from the JDK. 
 
 An executable file produced by Native Image has several important advantages, in that it
@@ -73,13 +73,13 @@ xcode-select --install
 
 #### Windows
 
-To use Native Image on Windows, install [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) version 17.1.0 or later, and Microsoft Visual C++ (MSVC). There are two installation options:
-* Install the Visual Studio Build Tools with the Windows 10 or later SDK
-* Install Visual Studio with the Windows 10 or later SDK
+To use Native Image on Windows, install [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) version 17.6.0 or later, and Microsoft Visual C++ (MSVC). There are two installation options:
+* Install the Visual Studio Build Tools with the Windows 11 SDK (or later version)
+* Install Visual Studio with the Windows 11 SDK (or later version)
 
 Native Image runs in both a PowerShell or Command Prompt and will automatically set up build environments on Windows, given that it can find a suitable Visual Studio installation.
 
-For more information, see [Using GraalVM and Native Image on Windows 10](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
+For more information, see [Using GraalVM and Native Image on Windows](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
 
 ## Build a Native Executable
 

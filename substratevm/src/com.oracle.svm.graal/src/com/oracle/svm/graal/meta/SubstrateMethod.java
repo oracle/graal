@@ -32,8 +32,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
-import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.core.common.util.TypeConversion;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -42,6 +40,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
@@ -54,6 +54,8 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
@@ -89,17 +91,23 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int vTableIndex;
 
     /**
-     * A pointer to the compiled code of the corresponding method in the native image. Used as
-     * destination address if this method is called in a direct call.
+     * A metadata object describing the image code that contains the compiled code of this method.
+     * This is not a {@link CodeInfo} structure because those are not available until runtime.
      */
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int codeOffsetInImage;
+    private final ImageCodeInfo imageCodeInfo;
 
     /**
-     * A pointer to the deoptimization target code in the native image. Used as destination address
-     * for deoptimization. This is only != 0, if there _is_ a deoptimization target method in the
-     * image for this method.
+     * The offset of the first instruction of the compiled code in the image code described by
+     * {@link #imageCodeInfo}. Used to compute the destination address in a direct call.
      */
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int deoptOffsetInImage;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int imageCodeOffset;
+
+    /**
+     * The offset of the deoptimization target code in the image code described by
+     * {@link #imageCodeInfo}. Used to compute the destination address for deoptimization. This is
+     * only != 0 if there actually is a deoptimization target method in the image for this method.
+     */
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int imageCodeDeoptOffset;
 
     @UnknownObjectField(types = {SubstrateMethod[].class, SubstrateMethod.class}, canBeNull = true, availability = ReadyForCompilation.class)//
     protected Object implementations;
@@ -107,7 +115,8 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     private SubstrateSignature signature;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateMethod(AnalysisMethod original, HostedStringDeduplication stringTable) {
+    public SubstrateMethod(AnalysisMethod original, ImageCodeInfo codeInfo, HostedStringDeduplication stringTable) {
+        imageCodeInfo = codeInfo;
         encodedLineNumberTable = EncodedLineNumberTable.encode(original.getLineNumberTable());
 
         assert original.getAnnotation(CEntryPoint.class) == null : "Can't compile entry point method";
@@ -186,27 +195,33 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         return implementations;
     }
 
-    public void setSubstrateData(int vTableIndex, int codeOffsetInImage, int deoptOffsetInImage) {
+    public void setSubstrateData(int vTableIndex, int imageCodeOffset, int imageCodeDeoptOffset) {
         this.vTableIndex = vTableIndex;
-        this.codeOffsetInImage = codeOffsetInImage;
-        this.deoptOffsetInImage = deoptOffsetInImage;
-    }
-
-    @Override
-    public boolean hasCodeOffsetInImage() {
-        return codeOffsetInImage != 0;
-    }
-
-    @Override
-    public int getCodeOffsetInImage() {
-        assert codeOffsetInImage != 0;
-        return codeOffsetInImage;
+        this.imageCodeOffset = imageCodeOffset;
+        this.imageCodeDeoptOffset = imageCodeDeoptOffset;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getDeoptOffsetInImage() {
-        return deoptOffsetInImage;
+    public ImageCodeInfo getImageCodeInfo() {
+        return imageCodeInfo;
+    }
+
+    @Override
+    public boolean hasImageCodeOffset() {
+        return imageCodeOffset != 0;
+    }
+
+    @Override
+    public int getImageCodeOffset() {
+        assert imageCodeOffset != 0;
+        return imageCodeOffset;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getImageCodeDeoptOffset() {
+        return imageCodeDeoptOffset;
     }
 
     @Override

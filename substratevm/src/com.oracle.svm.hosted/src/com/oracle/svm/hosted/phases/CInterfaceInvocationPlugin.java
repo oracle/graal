@@ -34,6 +34,8 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.WordBoxFactory;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -44,6 +46,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CInterfaceError;
 import com.oracle.svm.hosted.c.CInterfaceWrapper;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -60,7 +63,6 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointJavaCallStubMethod;
 import com.oracle.svm.hosted.code.CFunctionPointerCallStubSupport;
 
-import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -72,12 +74,12 @@ import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.IndirectCallTargetNode;
 import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
-import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
@@ -85,12 +87,14 @@ import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -156,77 +160,86 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return true;
     }
 
-    private static boolean replaceAccessor(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, AccessorInfo accessorInfo, int displacement) {
-        StructuredGraph graph = b.getGraph();
-        SizableInfo sizableInfo = (SizableInfo) accessorInfo.getParent();
-        int elementSize = sizableInfo.getSizeInfo().getProperty();
-        boolean isUnsigned = sizableInfo.isUnsigned();
-        boolean isPinnedObject = sizableInfo.isObject();
-
+    private boolean replaceAccessor(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, AccessorInfo accessorInfo, int displacement) {
         assert args.length == accessorInfo.parameterCount(true);
 
+        SizableInfo typeInC = (SizableInfo) accessorInfo.getParent();
         ValueNode base = args[AccessorInfo.baseParameterNumber(true)];
         assert base.getStackKind() == ConfigurationValues.getWordKind();
 
         switch (accessorInfo.getAccessorKind()) {
-            case ADDRESS: {
-                ValueNode address = graph.addOrUniqueWithInputs(new AddNode(base, makeOffset(graph, args, accessorInfo, displacement, elementSize)));
-                b.addPush(pushKind(method), address);
-                return true;
-            }
-            case GETTER: {
-                JavaKind resultKind = b.getWordTypes().asKind(b.getInvokeReturnType());
-                JavaKind readKind = kindFromSize(elementSize, resultKind);
-                if (readKind == JavaKind.Object) {
-                    assert resultKind == JavaKind.Object;
-                } else if (readKind.getBitCount() > resultKind.getBitCount() && !readKind.isNumericFloat() && resultKind != JavaKind.Boolean) {
-                    readKind = resultKind;
-                }
-                OffsetAddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
-                LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
-                final Stamp stamp;
-                if (readKind == JavaKind.Object) {
-                    stamp = b.getInvokeReturnStamp(null).getTrustedStamp();
-                } else if (readKind == JavaKind.Float || readKind == JavaKind.Double) {
-                    stamp = StampFactory.forKind(readKind);
-                } else {
-                    stamp = IntegerStamp.create(readKind.getBitCount());
-                }
-                final ValueNode node;
-                if (isPinnedObject) {
-                    node = b.add(new JavaReadNode(stamp, readKind, offsetAddress, locationIdentity, BarrierType.NONE, MemoryOrderMode.PLAIN, true));
-                } else {
-                    ValueNode read = readPrimitive(b, offsetAddress, locationIdentity, stamp, accessorInfo, method);
-                    node = adaptPrimitiveType(graph, read, readKind, resultKind == JavaKind.Boolean ? resultKind : resultKind.getStackKind(), isUnsigned);
-                }
-                b.push(pushKind(method), node);
-                return true;
-            }
-            case SETTER: {
-                ValueNode value = args[accessorInfo.valueParameterNumber(true)];
-                JavaKind valueKind = value.getStackKind();
-                JavaKind writeKind = kindFromSize(elementSize, valueKind);
-                OffsetAddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
-                LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
-                if (isPinnedObject) {
-                    b.add(new JavaWriteNode(writeKind, offsetAddress, locationIdentity, value, BarrierType.NONE, true));
-                } else {
-                    ValueNode adaptedValue = adaptPrimitiveType(graph, value, valueKind, writeKind, isUnsigned);
-                    writePrimitive(b, offsetAddress, locationIdentity, adaptedValue, accessorInfo, method);
-                }
-                return true;
-            }
-            default:
-                throw shouldNotReachHereUnexpectedInput(accessorInfo.getAccessorKind()); // ExcludeFromJacocoGeneratedReport
+            case ADDRESS -> replaceWithAddress(b, method, base, args, accessorInfo, displacement, typeInC);
+            case GETTER -> replaceWithRead(b, method, base, args, accessorInfo, displacement, typeInC);
+            case SETTER -> replaceWithWrite(b, method, base, args, accessorInfo, displacement, typeInC);
+            default -> throw shouldNotReachHereUnexpectedInput(accessorInfo.getAccessorKind()); // ExcludeFromJacocoGeneratedReport
+        }
+        return true;
+    }
+
+    private static void replaceWithAddress(GraphBuilderContext b, AnalysisMethod method, ValueNode base, ValueNode[] args, AccessorInfo accessorInfo, int displacement, SizableInfo typeInC) {
+        StructuredGraph graph = b.getGraph();
+        ValueNode address = graph.addOrUniqueWithInputs(new AddNode(base, makeOffset(graph, args, accessorInfo, displacement, typeInC.getSizeInBytes())));
+        b.addPush(pushKind(method), address);
+    }
+
+    private void replaceWithRead(GraphBuilderContext b, AnalysisMethod method, ValueNode base, ValueNode[] args, AccessorInfo accessorInfo, int displacement, SizableInfo typeInC) {
+        StructuredGraph graph = b.getGraph();
+        OffsetAddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, typeInC.getSizeInBytes());
+        LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
+
+        ValueNode node;
+        JavaKind returnKind = b.getWordTypes().asKind(b.getInvokeReturnType());
+        if (returnKind == JavaKind.Object) {
+            Stamp stamp = b.getInvokeReturnStamp(null).getTrustedStamp();
+            node = b.add(new JavaReadNode(stamp, returnKind, offsetAddress, locationIdentity, BarrierType.NONE, MemoryOrderMode.PLAIN, true));
+        } else if (returnKind == JavaKind.Float || returnKind == JavaKind.Double) {
+            Stamp stamp = StampFactory.forKind(returnKind);
+            node = readPrimitive(b, offsetAddress, locationIdentity, stamp, accessorInfo, method);
+        } else {
+            IntegerStamp stamp = IntegerStamp.create(typeInC.getSizeInBytes() * Byte.SIZE);
+            ValueNode read = readPrimitive(b, offsetAddress, locationIdentity, stamp, accessorInfo, method);
+            node = convertCIntegerToMethodReturnType(graph, method, read, typeInC.isUnsigned());
+        }
+        b.push(pushKind(method), node);
+    }
+
+    private static void replaceWithWrite(GraphBuilderContext b, AnalysisMethod method, ValueNode base, ValueNode[] args, AccessorInfo accessorInfo, int displacement, SizableInfo typeInC) {
+        StructuredGraph graph = b.getGraph();
+        OffsetAddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, typeInC.getSizeInBytes());
+        LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
+
+        ValueNode value = args[accessorInfo.valueParameterNumber(true)];
+        JavaKind valueKind = value.getStackKind();
+        if (valueKind == JavaKind.Object) {
+            b.add(new JavaWriteNode(valueKind, offsetAddress, locationIdentity, value, BarrierType.NONE, true));
+        } else if (valueKind == JavaKind.Float || valueKind == JavaKind.Double) {
+            writePrimitive(b, offsetAddress, locationIdentity, value, accessorInfo, method);
+        } else {
+            ValueNode adaptedValue = adaptPrimitiveTypeForWrite(graph, value, typeInC.getSizeInBytes() * Byte.SIZE, typeInC.isUnsigned());
+            writePrimitive(b, offsetAddress, locationIdentity, adaptedValue, accessorInfo, method);
         }
     }
 
-    private static boolean replaceBitfieldAccessor(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, StructBitfieldInfo bitfieldInfo, AccessorInfo accessorInfo) {
+    private static ValueNode adaptPrimitiveTypeForWrite(StructuredGraph graph, ValueNode value, int toBits, boolean isCValueUnsigned) {
+        JavaKind valueKind = value.getStackKind();
+        int valueBits = valueKind.getBitCount();
+        if (valueBits == toBits) {
+            return value;
+        } else if (valueBits > toBits) {
+            return graph.unique(new NarrowNode(value, toBits));
+        } else if (isCValueUnsigned) {
+            return graph.unique(new ZeroExtendNode(value, toBits));
+        } else {
+            return graph.unique(new SignExtendNode(value, toBits));
+        }
+    }
+
+    private boolean replaceBitfieldAccessor(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, StructBitfieldInfo bitfieldInfo, AccessorInfo accessorInfo) {
         int byteOffset = bitfieldInfo.getByteOffsetInfo().getProperty();
         int startBit = bitfieldInfo.getStartBitInfo().getProperty();
         int endBit = bitfieldInfo.getEndBitInfo().getProperty();
-        boolean isUnsigned = bitfieldInfo.isUnsigned();
-        assert byteOffset >= 0 && byteOffset < ((SizableInfo) bitfieldInfo.getParent()).getSizeInfo().getProperty();
+        boolean isCValueUnsigned = bitfieldInfo.isUnsigned();
+        assert byteOffset >= 0 && byteOffset < ((SizableInfo) bitfieldInfo.getParent()).getSizeInBytes();
         assert startBit >= 0 && startBit < 8;
         assert endBit >= startBit && endBit < 64;
 
@@ -234,110 +247,121 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
          * The startBit is always in the first byte. Therefore, the endBit tells us how many bytes
          * we actually have to read and write.
          */
-        JavaKind memoryKind;
+        JavaKind readKind;
         if (endBit < 8) {
-            memoryKind = JavaKind.Byte;
+            readKind = JavaKind.Byte;
         } else if (endBit < 16) {
-            memoryKind = JavaKind.Short;
+            readKind = JavaKind.Short;
         } else if (endBit < 32) {
-            memoryKind = JavaKind.Int;
+            readKind = JavaKind.Int;
         } else {
-            memoryKind = JavaKind.Long;
+            readKind = JavaKind.Long;
         }
-        int numBytes = memoryKind.getByteCount();
 
         /*
-         * Try to align the byteOffset to be a multiple of numBytes. That should always be possible,
-         * but we don't trust the C compiler and memory layout enough to make it an assertion.
+         * Try to align the byteOffset to be a multiple of readBytes. That should always be
+         * possible, but we don't trust the C compiler and memory layout enough to make it an
+         * assertion.
          */
-        int alignmentCorrection = byteOffset % numBytes;
-        if (alignmentCorrection > 0 && endBit + alignmentCorrection * 8 < numBytes * 8) {
+        int readBytes = readKind.getByteCount();
+        int alignmentCorrection = byteOffset % readBytes;
+        if (alignmentCorrection > 0 && endBit + alignmentCorrection * Byte.SIZE < readKind.getBitCount()) {
             byteOffset -= alignmentCorrection;
-            startBit += alignmentCorrection * 8;
-            endBit += alignmentCorrection * 8;
+            startBit += alignmentCorrection * Byte.SIZE;
+            endBit += alignmentCorrection * Byte.SIZE;
         }
-        assert byteOffset >= 0 && byteOffset < ((SizableInfo) bitfieldInfo.getParent()).getSizeInfo().getProperty();
-        assert startBit >= 0 && startBit < numBytes * 8;
-        assert endBit >= startBit && endBit < numBytes * 8;
-
-        int numBits = endBit - startBit + 1;
-        assert numBits > 0 && numBits <= numBytes * 8;
+        assert byteOffset >= 0 && byteOffset < ((SizableInfo) bitfieldInfo.getParent()).getSizeInBytes();
+        assert startBit >= 0 && startBit < readKind.getBitCount();
+        assert endBit >= startBit && endBit < readKind.getBitCount();
 
         /*
-         * The bit-operations on the value are either performed on Int or Long. We do not perform 8
-         * or 16 bit arithmetic operations.
+         * Read the C memory. This is also necessary for writes, since we need to keep the bits
+         * around the written bitfield unchanged.
          */
-        JavaKind computeKind = memoryKind.getStackKind();
-        Stamp computeStamp = StampFactory.forKind(computeKind);
-        int computeBits = computeKind.getBitCount();
-        assert startBit >= 0 && startBit < computeBits;
-        assert endBit >= startBit && endBit < computeBits;
-        assert computeBits >= numBits;
-
         assert args.length == accessorInfo.parameterCount(true);
         ValueNode base = args[AccessorInfo.baseParameterNumber(true)];
         StructuredGraph graph = b.getGraph();
-        /*
-         * Read the memory location. This is also necessary for writes, since we need to keep the
-         * bits around the written bitfield unchanged.
-         */
         OffsetAddressNode address = makeOffsetAddress(graph, args, accessorInfo, base, byteOffset, -1);
         LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
-        Stamp stamp = IntegerStamp.create(memoryKind.getBitCount());
-        ValueNode cur = readPrimitive(b, address, locationIdentity, stamp, accessorInfo, method);
-        cur = adaptPrimitiveType(graph, cur, memoryKind, computeKind, true);
+        Stamp stamp = IntegerStamp.create(readKind.getBitCount());
+        ValueNode cValue = readPrimitive(b, address, locationIdentity, stamp, accessorInfo, method);
+
+        /* Arithmetic operations are always performed on 32 or 64-bit. */
+        JavaKind computeKind = readKind.getStackKind();
+        int computeBits = computeKind.getBitCount();
+        assert startBit >= 0 && startBit < computeBits;
+        assert endBit >= startBit && endBit < computeBits;
+
+        int accessedBits = endBit - startBit + 1;
+        assert accessedBits > 0 && accessedBits <= readKind.getBitCount() && accessedBits <= 64;
+        assert computeBits >= accessedBits;
+
+        /* Zero-extend the C value if it is less than 32-bit so that we can do arithmetics. */
+        if (readKind.getBitCount() < 32) {
+            cValue = graph.unique(new ZeroExtendNode(cValue, computeBits));
+        }
 
         switch (accessorInfo.getAccessorKind()) {
-            case GETTER: {
-                if (isUnsigned) {
-                    /*
-                     * Unsigned reads: shift the bitfield to the right and mask out the unnecessary
-                     * high-order bits.
-                     */
-                    cur = graph.unique(new RightShiftNode(cur, ConstantNode.forInt(startBit, graph)));
-                    cur = graph.unique(new AndNode(cur, ConstantNode.forIntegerStamp(computeStamp, (1L << numBits) - 1, graph)));
+            case GETTER -> {
+                /* Reduce the C value to the bits that we really wanted to read. */
+                cValue = graph.unique(new LeftShiftNode(cValue, ConstantNode.forInt(computeBits - endBit - 1, graph)));
+                if (isCValueUnsigned) {
+                    cValue = graph.unique(new UnsignedRightShiftNode(cValue, ConstantNode.forInt(computeBits - accessedBits, graph)));
                 } else {
-                    /*
-                     * Signed reads: shift the bitfield to the right end to get the sign bit in
-                     * place, then do a signed left shift to have a proper sign extension.
-                     */
-                    cur = graph.unique(new LeftShiftNode(cur, ConstantNode.forInt(computeBits - endBit - 1, graph)));
-                    cur = graph.unique(new RightShiftNode(cur, ConstantNode.forInt(computeBits - numBits, graph)));
+                    cValue = graph.unique(new RightShiftNode(cValue, ConstantNode.forInt(computeBits - accessedBits, graph)));
                 }
 
-                JavaKind resultKind = b.getWordTypes().asKind(b.getInvokeReturnType());
-                b.push(pushKind(method), adaptPrimitiveType(graph, cur, computeKind, resultKind == JavaKind.Boolean ? resultKind : resultKind.getStackKind(), isUnsigned));
-                return true;
-            }
-            case SETTER: {
-                /* Zero out the bits of our bitfields, i.e., the bits we are going to change. */
-                long mask = ~(((1L << numBits) - 1) << startBit);
-                cur = graph.unique(new AndNode(cur, ConstantNode.forIntegerStamp(computeStamp, mask, graph)));
+                /* Narrow the value so that its size matches the size of a C data type. */
+                int targetBits = 1 << CodeUtil.log2(accessedBits);
+                if (targetBits < accessedBits) {
+                    targetBits = targetBits * 2;
+                }
+                if (targetBits < 8) {
+                    targetBits = 8;
+                }
+
+                if (computeBits > targetBits) {
+                    cValue = graph.unique(new NarrowNode(cValue, targetBits));
+                }
 
                 /*
-                 * Mask the unnecessary high-order bits of the value to be written, and shift it to
-                 * its place.
+                 * Now, the value looks as if we actually read targetBits from C memory. So, we can
+                 * finally convert this value to the method's declared return type.
                  */
-                ValueNode value = args[accessorInfo.valueParameterNumber(true)];
-                value = adaptPrimitiveType(graph, value, value.getStackKind(), computeKind, isUnsigned);
-                value = graph.unique(new AndNode(value, ConstantNode.forIntegerStamp(computeStamp, (1L << numBits) - 1, graph)));
-                value = graph.unique(new LeftShiftNode(value, ConstantNode.forInt(startBit, graph)));
-
-                /* Combine the leftover bits of the original memory word with the new value. */
-                cur = graph.unique(new OrNode(cur, value));
-
-                /* Narrow value to the number of bits we need to write. */
-                cur = adaptPrimitiveType(graph, cur, computeKind, memoryKind, true);
-                /* Perform the write (bitcount is taken from the stamp of the written value). */
-                writePrimitive(b, address, locationIdentity, cur, accessorInfo, method);
+                ValueNode result = convertCIntegerToMethodReturnType(graph, method, cValue, isCValueUnsigned);
+                b.push(pushKind(method), result);
                 return true;
             }
-            default:
-                throw shouldNotReachHereUnexpectedInput(accessorInfo.getAccessorKind()); // ExcludeFromJacocoGeneratedReport
+            case SETTER -> {
+                /* Convert the new value to at least 32-bit so that we can do arithmetics. */
+                ValueNode newValue = args[accessorInfo.valueParameterNumber(true)];
+                newValue = adaptPrimitiveTypeForWrite(graph, newValue, computeBits, isCValueUnsigned);
+
+                if (accessedBits == 64) {
+                    /* The new value replaces all 64 bits of the C memory. */
+                    assert startBit == 0;
+                    cValue = newValue;
+                } else {
+                    /* Reduce the new value to the bits that we want and shift the bits in place. */
+                    newValue = graph.unique(new LeftShiftNode(newValue, ConstantNode.forInt(computeBits - accessedBits, graph)));
+                    newValue = graph.unique(new UnsignedRightShiftNode(newValue, ConstantNode.forInt(computeBits - accessedBits - startBit, graph)));
+
+                    /* Replace the bits in the old value with the bits from the new value. */
+                    long mask = ~(((1L << accessedBits) - 1) << startBit);
+                    cValue = graph.unique(new AndNode(cValue, ConstantNode.forIntegerBits(computeBits, mask, graph)));
+                    cValue = graph.unique(new OrNode(cValue, newValue));
+                }
+
+                /* Narrow the value to the bytes that we need and write those to C memory. */
+                cValue = adaptPrimitiveTypeForWrite(graph, cValue, readKind.getBitCount(), isCValueUnsigned);
+                writePrimitive(b, address, locationIdentity, cValue, accessorInfo, method);
+                return true;
+            }
+            default -> throw shouldNotReachHereUnexpectedInput(accessorInfo.getAccessorKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
-    private static ValueNode readPrimitive(GraphBuilderContext b, OffsetAddressNode address, LocationIdentity locationIdentity, Stamp stamp, AccessorInfo accessorInfo, ResolvedJavaMethod method) {
+    private static ValueNode readPrimitive(GraphBuilderContext b, OffsetAddressNode address, LocationIdentity locationIdentity, Stamp stamp, AccessorInfo accessorInfo, AnalysisMethod method) {
         if (ImageSingletons.contains(CInterfaceWrapper.class)) {
             ValueNode replaced = ImageSingletons.lookup(CInterfaceWrapper.class).replacePrimitiveRead(b, address, stamp, method);
             if (replaced != null) {
@@ -354,7 +378,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return read;
     }
 
-    private static void writePrimitive(GraphBuilderContext b, OffsetAddressNode address, LocationIdentity locationIdentity, ValueNode value, AccessorInfo accessorInfo, ResolvedJavaMethod method) {
+    private static void writePrimitive(GraphBuilderContext b, OffsetAddressNode address, LocationIdentity locationIdentity, ValueNode value, AccessorInfo accessorInfo, AnalysisMethod method) {
         if (ImageSingletons.contains(CInterfaceWrapper.class)) {
             boolean replaced = ImageSingletons.lookup(CInterfaceWrapper.class).replacePrimitiveWrite(b, address, value, method);
             if (replaced) {
@@ -379,7 +403,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         if (accessorInfo.isIndexed()) {
             ValueNode index = args[accessorInfo.indexParameterNumber(true)];
             assert index.getStackKind().isPrimitive();
-            ValueNode wordIndex = adaptPrimitiveType(graph, index, index.getStackKind(), ConfigurationValues.getWordKind(), false);
+            ValueNode wordIndex = extend(graph, index, ConfigurationValues.getWordKind().getBitCount(), false);
             ValueNode scaledIndex = graph.unique(new MulNode(wordIndex, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), indexScaling, graph)));
 
             offset = graph.unique(new AddNode(scaledIndex, offset));
@@ -412,92 +436,243 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return locationIdentity;
     }
 
-    public static ValueNode adaptPrimitiveType(StructuredGraph graph, ValueNode value, JavaKind fromKind, JavaKind toKind, boolean isUnsigned) {
-        if (fromKind == toKind) {
-            return value;
-        }
-        assert fromKind.isNumericFloat() == toKind.isNumericFloat();
+    private ValueNode convertCIntegerToMethodReturnType(StructuredGraph graph, AnalysisMethod method, ValueNode cValue, boolean isCValueUnsigned) {
+        return convertCIntegerToMethodReturnType(graph, nativeLibs, method.getSignature().getReturnType(), cValue, isCValueUnsigned);
+    }
 
-        int fromBits = fromKind.getBitCount();
-        int toBits = toKind.getBitCount();
+    /**
+     * Converts a C value to a value that can be returned by a Java method (i.e., a 32- or 64-bit
+     * value). Does zero- or sign-extend the value if necessary.
+     *
+     * <pre>
+     * -----------------------------------------------------------------------------------------
+     * | C type          | declared return type | result                                       |
+     * -----------------------------------------------------------------------------------------
+     * | signed 8-bit    | boolean              | 1 byte read, convert to 0 or 1 (32-bit)      |
+     * | signed 8-bit    | byte                 | 1 byte read, sign extend to 32-bit           |
+     * | signed 8-bit    | short                | 1 byte read, sign extend to 32-bit           |
+     * | signed 8-bit    | char                 | 1 byte read, zero extend to 32-bit           |
+     * | signed 8-bit    | int                  | 1 byte read, sign extend to 32-bit           |
+     * | signed 8-bit    | long                 | 1 byte read, sign extend to 64-bit           |
+     * | signed 8-bit    | UnsignedWord         | 1 byte read, zero extend to 64-bit           |
+     * |                                                                                       |
+     * | unsigned 8-bit  | boolean              | 1 byte read, convert to 0 or 1 (32-bit)      |
+     * | unsigned 8-bit  | byte                 | 1 byte read, sign extend to 32-bit           |
+     * | unsigned 8-bit  | short                | 1 byte read, zero extend to 32-bit           |
+     * | unsigned 8-bit  | char                 | 1 byte read, zero extend to 32-bit           |
+     * | unsigned 8-bit  | int                  | 1 byte read, zero extend to 32-bit           |
+     * | unsigned 8-bit  | long                 | 1 byte read, zero extend to 64-bit           |
+     * | unsigned 8-bit  | UnsignedWord         | 1 byte read, zero extend to 64-bit           |
+     * |                                                                                       |
+     * | signed 32-bit   | boolean              | 4 byte read, convert to 0 or 1 (32-bit)      |
+     * | signed 32-bit   | byte                 | 1 byte read, sign extend to 32-bit           |
+     * | signed 32-bit   | short                | 2 byte read, sign extend to 32-bit           |
+     * | signed 32-bit   | char                 | 2 byte read, zero extend to 32-bit           |
+     * | signed 32-bit   | int                  | 4 byte read, use value directly              |
+     * | signed 32-bit   | long                 | 4 byte read, sign extend to 64-bit           |
+     * | signed 32-bit   | UnsignedWord         | 4 byte read, sign extend to 64-bit           |
+     * |                                                                                       |
+     * | unsigned 32-bit | boolean              | 4 byte read, convert to 0 or 1 (32-bit)      |
+     * | unsigned 32-bit | byte                 | 1 byte read, sign extend to 32-bit           |
+     * | unsigned 32-bit | short                | 2 byte read, sign extend to 32-bit           |
+     * | unsigned 32-bit | char                 | 2 byte read, zero extend to 32-bit           |
+     * | unsigned 32-bit | int                  | 4 byte read, use value directly              |
+     * | unsigned 32-bit | long                 | 4 byte read, zero extend to 64-bit           |
+     * | unsigned 32-bit | UnsignedWord         | 4 byte read, zero extend to 64-bit           |
+     * |                                                                                       |
+     * | signed 64-bit   | boolean              | 8 byte read, convert to 0 or 1 (32-bit)      |
+     * | signed 64-bit   | byte                 | 1 byte read, sign extend to 32-bit           |
+     * | signed 64-bit   | short                | 2 byte read, sign extend to 32-bit           |
+     * | signed 64-bit   | char                 | 2 byte read, zero extend to 32-bit           |
+     * | signed 64-bit   | int                  | 4 byte read, use value directly              |
+     * | signed 64-bit   | long                 | 8 byte read, use value directly              |
+     * | signed 64-bit   | UnsignedWord         | 8 byte read, use value directly              |
+     * |                                                                                       |
+     * | unsigned 64-bit | boolean              | 8 byte read, convert to 0 or 1 (32-bit)      |
+     * | unsigned 64-bit | byte                 | 1 byte read, sign extend to 32-bit           |
+     * | unsigned 64-bit | short                | 2 byte read, sign extend to 32-bit           |
+     * | unsigned 64-bit | char                 | 2 byte read, zero extend to 32-bit           |
+     * | unsigned 64-bit | int                  | 4 byte read, use value directly              |
+     * | unsigned 64-bit | long                 | 8 byte read, use value directly              |
+     * | unsigned 64-bit | UnsignedWord         | 8 byte read, use value directly              |
+     * -----------------------------------------------------------------------------------------
+     * </pre>
+     */
+    public static ValueNode convertCIntegerToMethodReturnType(StructuredGraph graph, NativeLibraries nativeLibs, ResolvedJavaType declaredReturnType,
+                    ValueNode cValue, boolean isCValueUnsigned) {
+        IntegerStamp cValueStamp = (IntegerStamp) cValue.stamp(NodeView.DEFAULT);
+        int bitsInC = cValueStamp.getBits();
 
-        if (fromBits == toBits) {
-            return value;
-        } else if (fromKind.isNumericFloat()) {
-            FloatConvert op;
-            if (fromKind == JavaKind.Float && toKind == JavaKind.Double) {
-                op = FloatConvert.F2D;
-            } else if (fromKind == JavaKind.Double && toKind == JavaKind.Float) {
-                op = FloatConvert.D2F;
-            } else {
-                throw shouldNotReachHereUnexpectedInput(fromKind); // ExcludeFromJacocoGeneratedReport
+        JavaKind declaredReturnKind = nativeLibs.getWordTypes().asKind(declaredReturnType);
+        if (declaredReturnKind == JavaKind.Boolean) {
+            /* Convert the C value to a Java boolean (i.e., 32-bit zero or one). */
+            ValueNode comparisonValue = cValue;
+            int comparisonBits = bitsInC;
+            if (bitsInC < 32) {
+                /* For the comparison below, we need at least 32 bits. */
+                comparisonValue = graph.unique(new ZeroExtendNode(cValue, 32));
+                comparisonBits = 32;
             }
-            return graph.unique(new FloatConvertNode(op, value));
-        } else if (toKind == JavaKind.Boolean) {
-            JavaKind computeKind = fromKind == JavaKind.Long ? JavaKind.Long : JavaKind.Int;
-            LogicNode comparison = graph.unique(new IntegerEqualsNode(adaptPrimitiveType(graph, value, fromKind, computeKind, true), ConstantNode.forIntegerKind(computeKind, 0, graph)));
+
+            LogicNode comparison = graph.unique(new IntegerEqualsNode(comparisonValue, ConstantNode.forIntegerBits(comparisonBits, 0, graph)));
             return graph.unique(new ConditionalNode(comparison, ConstantNode.forBoolean(false, graph), ConstantNode.forBoolean(true, graph)));
-        } else if (fromBits > toBits) {
-            return graph.unique(new NarrowNode(value, toBits));
-        } else if (isUnsigned) {
-            return graph.unique(new ZeroExtendNode(value, toBits));
+        }
+
+        /*
+         * Narrow the C value to the bits that are actually needed for the method's declared return
+         * type.
+         */
+        ValueNode result = cValue;
+        int resultBits = bitsInC;
+        if (bitsInC > declaredReturnKind.getBitCount()) {
+            result = graph.unique(new NarrowNode(result, declaredReturnKind.getBitCount()));
+            resultBits = declaredReturnKind.getBitCount();
+        }
+
+        /*
+         * Finally, sign- or zero-extend the value. Here, we need to be careful that the result is
+         * within the value range of the method's declared return type (e.g., a Java method with
+         * return type "byte" may only return values between -128 and +127). If we violated that
+         * invariant, we could end up with miscompiled code (e.g., branches could fold away
+         * incorrectly).
+         *
+         * So, we primarily use the signedness of the method's declared return type to decide if we
+         * should zero- or sign-extend. There is only one exception: if the C value is unsigned and
+         * uses fewer bits than the method's declared return type, then we can safely zero-extend
+         * the value (i.e., the unsigned C value will fit into the positive value range of the
+         * larger Java type).
+         *
+         * If the narrowed C value already has the correct number of bits, then the sign- or
+         * zero-extension is still necessary. However, it will only adjust the stamp of the value so
+         * that it is within the value range of the method's declared return type.
+         */
+        int actualReturnTypeBitCount = declaredReturnKind.getStackKind().getBitCount();
+        assert actualReturnTypeBitCount >= resultBits;
+
+        boolean zeroExtend = shouldZeroExtend(nativeLibs, declaredReturnType, isCValueUnsigned, bitsInC);
+        return extend(graph, result, actualReturnTypeBitCount, zeroExtend);
+    }
+
+    private static boolean shouldZeroExtend(NativeLibraries nativeLibs, ResolvedJavaType declaredReturnType, boolean isCValueUnsigned, int bitsInC) {
+        JavaKind declaredReturnKind = nativeLibs.getWordTypes().asKind(declaredReturnType);
+        boolean isDeclaredReturnTypeSigned = nativeLibs.isSigned(declaredReturnType);
+        return !isDeclaredReturnTypeSigned || isCValueUnsigned && bitsInC < declaredReturnKind.getBitCount();
+    }
+
+    private ValueNode convertCIntegerToMethodReturnType(StructuredGraph graph, AnalysisMethod method, long cValue, int bitsInC, boolean isCValueUnsigned) {
+        return convertCIntegerToMethodReturnType(graph, nativeLibs, method.getSignature().getReturnType(), cValue, bitsInC, isCValueUnsigned);
+    }
+
+    /**
+     * Creates a {@link ConstantNode} and ensures that the stamp matches the declared return type of
+     * the method. Similar to the other {@link #convertCIntegerToMethodReturnType} implementation.
+     */
+    public static ValueNode convertCIntegerToMethodReturnType(StructuredGraph graph, NativeLibraries nativeLibs, ResolvedJavaType declaredReturnType,
+                    long cValue, int bitsInC, boolean isCValueUnsigned) {
+        JavaKind declaredReturnKind = nativeLibs.getWordTypes().asKind(declaredReturnType);
+        if (declaredReturnKind == JavaKind.Boolean) {
+            /* Convert the C value to a Java boolean (i.e., 32-bit zero or one). */
+            return ConstantNode.forBoolean(cValue != 0, graph);
+        }
+
+        long result = convertCIntegerToMethodReturnType(nativeLibs, declaredReturnType, cValue, bitsInC, isCValueUnsigned);
+        int resultBits = declaredReturnKind.getStackKind().getBitCount();
+
+        /*
+         * Finally, sign- or zero-extend the value. Here, we need to be careful that the stamp of
+         * the result is within the value range of the method's declared return type.
+         */
+        boolean zeroExtend = shouldZeroExtend(nativeLibs, declaredReturnType, isCValueUnsigned, bitsInC);
+        if (zeroExtend) {
+            IntegerStamp stamp = StampFactory.forUnsignedInteger(resultBits, result, result);
+            return ConstantNode.forIntegerStamp(stamp, result, graph);
+        }
+        return ConstantNode.forIntegerBits(resultBits, result, graph);
+    }
+
+    public static Object convertCIntegerToMethodReturnType(NativeLibraries nativeLibs, Class<?> objectReturnType, long cValue, int bitsInC, boolean isCValueUnsigned) {
+        ResolvedJavaType declaredReturnType = nativeLibs.getMetaAccess().lookupJavaType(getPrimitiveOrWordClass(nativeLibs, objectReturnType));
+        return createReturnObject(objectReturnType, convertCIntegerToMethodReturnType(nativeLibs, declaredReturnType, cValue, bitsInC, isCValueUnsigned));
+    }
+
+    private static long convertCIntegerToMethodReturnType(NativeLibraries nativeLibs, ResolvedJavaType declaredReturnType, long cValue, int bitsInC, boolean isCValueUnsigned) {
+        JavaKind declaredReturnKind = nativeLibs.getWordTypes().asKind(declaredReturnType);
+        if (declaredReturnKind == JavaKind.Boolean) {
+            /* Convert the C value to a Java boolean (i.e., zero or one). */
+            return cValue != 0L ? 1L : 0L;
+        }
+
+        /* Sign- or zero-extend the value. */
+        boolean zeroExtend = shouldZeroExtend(nativeLibs, declaredReturnType, isCValueUnsigned, bitsInC);
+        int inputBits = Math.min(bitsInC, declaredReturnKind.getBitCount());
+        if (zeroExtend) {
+            return CodeUtil.zeroExtend(cValue, inputBits);
+        }
+        return CodeUtil.signExtend(cValue, inputBits);
+    }
+
+    private static Class<?> getPrimitiveOrWordClass(NativeLibraries nativeLibs, Class<?> type) {
+        if (type == Boolean.class) {
+            return boolean.class;
+        } else if (type == Byte.class) {
+            return byte.class;
+        } else if (type == Short.class) {
+            return short.class;
+        } else if (type == Character.class) {
+            return char.class;
+        } else if (type == Integer.class) {
+            return int.class;
+        } else if (type == Long.class) {
+            return long.class;
+        } else if (type == Float.class) {
+            return float.class;
+        } else if (type == Double.class) {
+            return double.class;
+        } else if (nativeLibs.getWordTypes().isWord(type)) {
+            return type;
         } else {
-            return graph.unique(new SignExtendNode(value, toBits));
+            throw VMError.shouldNotReachHere("Unexpected type: " + type);
         }
     }
 
-    private static JavaKind kindFromSize(int sizeInBytes, JavaKind matchingKind) {
-        if (matchingKind == JavaKind.Object || sizeInBytes * 8 == matchingKind.getBitCount()) {
-            /* Out preferred matching kind fits, so we can use it. */
-            return matchingKind;
-        }
-
-        if (matchingKind == JavaKind.Float || matchingKind == JavaKind.Double) {
-            switch (sizeInBytes) {
-                case 4:
-                    return JavaKind.Float;
-                case 8:
-                    return JavaKind.Double;
-            }
+    private static Object createReturnObject(Class<?> returnType, long value) {
+        if (returnType == Boolean.class) {
+            return value != 0;
+        } else if (returnType == Byte.class) {
+            return (byte) value;
+        } else if (returnType == Short.class) {
+            return (short) value;
+        } else if (returnType == Character.class) {
+            return (char) value;
+        } else if (returnType == Integer.class) {
+            return (int) value;
+        } else if (returnType == Long.class) {
+            return value;
+        } else if (WordBase.class.isAssignableFrom(returnType)) {
+            return WordBoxFactory.box(value);
         } else {
-            switch (sizeInBytes) {
-                case 1:
-                    return JavaKind.Byte;
-                case 2:
-                    return JavaKind.Short;
-                case 4:
-                    return JavaKind.Int;
-                case 8:
-                    return JavaKind.Long;
-            }
+            throw VMError.shouldNotReachHere("Unexpected returnType: " + returnType.getName());
         }
-        throw shouldNotReachHere("Unsupported size: " + sizeInBytes);
     }
 
-    private static boolean replaceConstant(GraphBuilderContext b, AnalysisMethod method, ConstantInfo constantInfo) {
-        Object value = constantInfo.getValueInfo().getProperty();
-        JavaKind kind = b.getWordTypes().asKind(b.getInvokeReturnType());
-
-        ConstantNode valueNode;
-        switch (constantInfo.getKind()) {
-            case INTEGER:
-            case POINTER:
-                if (method.getSignature().getReturnKind() == JavaKind.Boolean) {
-                    valueNode = ConstantNode.forBoolean((long) value != 0, b.getGraph());
-                } else {
-                    valueNode = ConstantNode.forIntegerKind(kind, (long) value, b.getGraph());
-                }
-                break;
-            case FLOAT:
-                valueNode = ConstantNode.forFloatingKind(kind, (double) value, b.getGraph());
-                break;
-            case STRING:
-            case BYTEARRAY:
-                valueNode = ConstantNode.forConstant(b.getSnippetReflection().forObject(value), b.getMetaAccess(), b.getGraph());
-                break;
-            default:
-                throw shouldNotReachHere("Unexpected constant kind " + constantInfo);
+    private static ValueNode extend(StructuredGraph graph, ValueNode value, int resultBits, boolean zeroExtend) {
+        if (zeroExtend) {
+            return graph.unique(new ZeroExtendNode(value, resultBits));
         }
+        return graph.unique(new SignExtendNode(value, resultBits));
+    }
+
+    private boolean replaceConstant(GraphBuilderContext b, AnalysisMethod method, ConstantInfo constantInfo) {
+        Object value = constantInfo.getValue();
+        JavaKind declaredReturnKind = b.getWordTypes().asKind(b.getInvokeReturnType());
+        StructuredGraph graph = b.getGraph();
+
+        ValueNode valueNode = switch (constantInfo.getKind()) {
+            case INTEGER, POINTER -> convertCIntegerToMethodReturnType(graph, method, (long) value, constantInfo.getSizeInBytes() * Byte.SIZE, constantInfo.isUnsigned());
+            case FLOAT -> ConstantNode.forFloatingKind(declaredReturnKind, (double) value, graph);
+            case STRING, BYTEARRAY -> ConstantNode.forConstant(b.getSnippetReflection().forObject(value), b.getMetaAccess(), graph);
+            default -> throw shouldNotReachHere("Unexpected constant kind " + constantInfo);
+        };
         b.push(pushKind(method), valueNode);
         return true;
     }

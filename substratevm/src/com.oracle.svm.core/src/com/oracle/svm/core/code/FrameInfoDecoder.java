@@ -236,24 +236,23 @@ public class FrameInfoDecoder {
         }
 
         /**
-         * Determines whether the encodedSourceMethodNameIndex signals that this frame also encodes
-         * a uniqueSharedFrameSuccessor. See FrameInfoEncoder.encodeCompressedMethodIndex for more
-         * details.
+         * Determines whether the compressedBci signals that this frame also encodes a
+         * uniqueSharedFrameSuccessor. See {@link FrameInfoEncoder#encodeCompressedEncodedBci}.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static boolean hasEncodedUniqueSharedFrameSuccessor(int encodedSourceMethodNameIndex) {
-            return encodedSourceMethodNameIndex < 0;
+        private static boolean hasEncodedUniqueSharedFrameSuccessor(long compressedBci) {
+            return compressedBci < 0;
         }
 
         /**
-         * Complement of FrameInfoEncoder.encodeCompressedMethodIndex.
+         * Complement of {@link FrameInfoEncoder#encodeCompressedEncodedBci}.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static int decodeMethodIndex(int methodIndex) {
-            if (methodIndex < 0) {
-                return -(methodIndex + COMPRESSED_UNIQUE_SUCCESSOR_ADDEND);
+        private static long decodeCompressedEncodedBci(long bci) {
+            if (bci < 0) {
+                return -(bci + COMPRESSED_UNIQUE_SUCCESSOR_ADDEND);
             } else {
-                return methodIndex;
+                return bci;
             }
         }
 
@@ -275,10 +274,6 @@ public class FrameInfoDecoder {
 
     }
 
-    protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, ReusableTypeReader readBuffer, CodeInfo info) {
-        return decodeFrameInfo(isDeoptEntry, readBuffer, info, FrameInfoDecoder.SubstrateConstantAccess);
-    }
-
     protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, ReusableTypeReader readBuffer, CodeInfo info, ConstantAccess constantAccess) {
         return decodeFrameInfo(isDeoptEntry, readBuffer, info, FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator,
                         constantAccess, new FrameInfoState());
@@ -293,7 +288,7 @@ public class FrameInfoDecoder {
 
         FrameInfoQueryResult result;
         if (CompressedFrameDecoderHelper.isCompressedFrameSlice(state.firstValue)) {
-            result = decodeCompressedFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, state);
+            result = decodeCompressedFrameInfo(isDeoptEntry, readBuffer, resultAllocator, state);
         } else {
             result = decodeUncompressedFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, valueInfoAllocator, constantAccess, state);
         }
@@ -307,8 +302,7 @@ public class FrameInfoDecoder {
      * compressed encoding format.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static FrameInfoQueryResult decodeCompressedFrameInfo(boolean isDeoptEntry, ReusableTypeReader readBuffer, CodeInfo info, FrameInfoQueryResultAllocator resultAllocator,
-                    FrameInfoState state) {
+    private static FrameInfoQueryResult decodeCompressedFrameInfo(boolean isDeoptEntry, ReusableTypeReader readBuffer, FrameInfoQueryResultAllocator resultAllocator, FrameInfoState state) {
         FrameInfoQueryResult result = null;
         FrameInfoQueryResult prev = null;
 
@@ -344,15 +338,15 @@ public class FrameInfoDecoder {
                 // jump to shared frame index
                 readBuffer.setByteIndex(sharedFrameByteIndex);
 
-                int sourceClassIndex = readBuffer.getSVInt();
-                VMError.guarantee(!CompressedFrameDecoderHelper.isSharedFramePointer(sourceClassIndex));
-                decodeCompressedFrameData(readBuffer, info, state, sourceClassIndex, cur);
+                int methodId = readBuffer.getSVInt();
+                VMError.guarantee(!CompressedFrameDecoderHelper.isSharedFramePointer(methodId));
+                decodeCompressedFrameData(readBuffer, state, methodId, cur);
 
                 // jump back to frame slice information
                 readBuffer.setByteIndex(bufferIndexToRestore);
                 bufferIndexToRestore = -1;
             } else {
-                decodeCompressedFrameData(readBuffer, info, state, firstEntry, cur);
+                decodeCompressedFrameData(readBuffer, state, firstEntry, cur);
             }
 
             if (bufferIndexToRestore != -1) {
@@ -379,24 +373,16 @@ public class FrameInfoDecoder {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void decodeCompressedFrameData(ReusableTypeReader readBuffer, CodeInfo info, FrameInfoState state, int sourceClassIndex, FrameInfoQueryResult queryResult) {
-        int encodedSourceMethodNameIndex = readBuffer.getSVInt();
-        int sourceMethodNameIndex = CompressedFrameDecoderHelper.decodeMethodIndex(encodedSourceMethodNameIndex);
+    private static void decodeCompressedFrameData(ReusableTypeReader readBuffer, FrameInfoState state, int methodId, FrameInfoQueryResult queryResult) {
+        queryResult.sourceMethodId = methodId;
+
         int encodedSourceLineNumber = readBuffer.getSVInt();
-        int sourceLineNumber = CompressedFrameDecoderHelper.decodeSourceLineNumber(encodedSourceLineNumber);
-        long encodedBci = readBuffer.getUV();
-        int methodId = readBuffer.getSVInt();
+        long compressedBci = readBuffer.getSV();
 
-        queryResult.sourceClassIndex = sourceClassIndex;
-        queryResult.sourceMethodNameIndex = sourceMethodNameIndex;
+        queryResult.sourceLineNumber = CompressedFrameDecoderHelper.decodeSourceLineNumber(encodedSourceLineNumber);
+        queryResult.encodedBci = CompressedFrameDecoderHelper.decodeCompressedEncodedBci(compressedBci);
 
-        queryResult.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
-        queryResult.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
-        queryResult.sourceLineNumber = sourceLineNumber;
-        queryResult.encodedBci = encodedBci;
-        queryResult.methodId = methodId;
-
-        if (CompressedFrameDecoderHelper.hasEncodedUniqueSharedFrameSuccessor(encodedSourceMethodNameIndex)) {
+        if (CompressedFrameDecoderHelper.hasEncodedUniqueSharedFrameSuccessor(compressedBci)) {
             state.successorIndex = readBuffer.getSVInt();
         } else {
             state.successorIndex = NO_SUCCESSOR_INDEX_MARKER;
@@ -437,23 +423,28 @@ public class FrameInfoDecoder {
             cur.numLocals = readBuffer.getUVInt();
             cur.numStack = readBuffer.getUVInt();
 
-            /*
-             * We either encode a reference to the target method (for runtime compilations) or just
-             * the start offset of the target method (for native image methods, because we do not
-             * want to include unnecessary method metadata in the native image.
-             */
             int deoptMethodIndex = readBuffer.getSVInt();
             if (deoptMethodIndex < 0) {
-                /* Negative number is a reference to the target method. */
-                cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), -1 - deoptMethodIndex);
-                cur.deoptMethodOffset = cur.deoptMethod.getDeoptOffsetInImage();
-            } else {
-                /* Positive number is a directly encoded method offset. */
+                /*
+                 * Negative number is a reference to the target method (runtime compilations only).
+                 */
+                cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(CodeInfoAccess.getObjectConstants(info), -1 - deoptMethodIndex);
+                cur.deoptMethodOffset = cur.deoptMethod.getImageCodeDeoptOffset();
+                assert cur.deoptMethodOffset != 0;
+            } else if (deoptMethodIndex > 0) {
+                /*
+                 * Positive number is a directly encoded method offset (AOT compilations only, to
+                 * avoid unnecessary method metadata).
+                 */
+                assert CodeInfoAccess.isAOTImageCode(info);
                 cur.deoptMethodOffset = deoptMethodIndex;
+                cur.deoptMethodImageCodeInfo = info;
+            } else {
+                assert cur.deoptMethod == null && cur.deoptMethodOffset == 0 && cur.isDeoptMethodImageCodeInfoNull();
             }
 
             int curValueInfosLength = readBuffer.getUVInt();
-            cur.valueInfos = decodeValues(valueInfoAllocator, constantAccess, curValueInfosLength, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
+            cur.valueInfos = decodeValues(valueInfoAllocator, constantAccess, curValueInfosLength, readBuffer, CodeInfoAccess.getObjectConstants(info));
 
             if (state.isFirstFrame) {
                 /* This is the first frame, i.e., the top frame that will be returned. */
@@ -461,7 +452,7 @@ public class FrameInfoDecoder {
                 virtualObjects = newValueInfoArrayArray(valueInfoAllocator, numVirtualObjects);
                 for (int i = 0; i < numVirtualObjects; i++) {
                     int numValues = readBuffer.getUVInt();
-                    ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, constantAccess, numValues, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
+                    ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, constantAccess, numValues, readBuffer, CodeInfoAccess.getObjectConstants(info));
                     if (virtualObjects != null) {
                         virtualObjects[i] = decodedValues;
                     }
@@ -469,18 +460,8 @@ public class FrameInfoDecoder {
             }
             cur.virtualObjects = virtualObjects;
 
-            int sourceClassIndex = readBuffer.getSVInt();
-            int sourceMethodNameIndex = readBuffer.getSVInt();
-            int sourceLineNumber = readBuffer.getSVInt();
-            int sourceMethodId = readBuffer.getUVInt();
-
-            cur.sourceClassIndex = sourceClassIndex;
-            cur.sourceMethodNameIndex = sourceMethodNameIndex;
-
-            cur.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
-            cur.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
-            cur.sourceLineNumber = sourceLineNumber;
-            cur.methodId = sourceMethodId;
+            cur.sourceMethodId = readBuffer.getSVInt();
+            cur.sourceLineNumber = readBuffer.getSVInt();
 
             if (prev == null) {
                 // first frame read during this invocation

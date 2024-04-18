@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import java.util.function.BiPredicate;
-
-import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
 
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.charset.UnicodePropertyDataVersion;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -62,6 +62,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 public final class PythonFlavor extends RegexFlavor {
 
     public static final PythonFlavor INSTANCE = new PythonFlavor();
+    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_15_1_0, 0);
 
     private PythonFlavor() {
         super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK | USES_LAST_GROUP_RESULT_FIELD |
@@ -79,16 +80,12 @@ public final class PythonFlavor extends RegexFlavor {
     }
 
     @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
+    public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
         if (ast.getOptions().getEncoding() == Encodings.UTF_32) {
-            return PythonFlavor::equalsIgnoreCaseUnicode;
+            return (codePointA, codePointB, altMode) -> UCharacter.toLowerCase(codePointA) == UCharacter.toLowerCase(codePointB);
         } else {
             assert ast.getOptions().getEncoding() == Encodings.LATIN_1;
-            return CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii.getEqualsPredicate();
+            return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii.getEqualsPredicate().test(a, b);
         }
-    }
-
-    private static boolean equalsIgnoreCaseUnicode(int codePointA, int codePointB) {
-        return UCharacter.toLowerCase(codePointA) == UCharacter.toLowerCase(codePointB);
     }
 }

@@ -60,6 +60,7 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
@@ -238,8 +239,75 @@ public abstract class Node implements Cloneable, Formattable {
     /**
      * Marker interface for nodes that contain other nodes. When the inputs to {@code this} change,
      * users of {@code this} should also be placed on the work list for canonicalization.
+     *
+     * To illustrate this consider the following IR shape:
+     *
+     * <pre>
+     *                       Node n1
+     *                          |
+     *          IndirectInputCanonicalization
+     *          /               |            \
+     *       usage1          usage2          usage3
+     * </pre>
+     *
+     * Now consider the following situation: this pattern is fully optimized, nothing can change.
+     * However, when the input node {@code n1} of {@code IndirectInputCanonicalization} changes to a
+     * new node {@code n2} suddenly the usage of {@code IndirectInputCanonicalization} can optimize
+     * itself: for example it can drop an input edge (any optimization is possible). Normally these
+     * patterns would be found by a full canonicalizer run, by implementing this interface
+     * incremental canonicalization will also consider the usages.
+     *
+     * <pre>
+     *                       NewNode n2
+     *                          |
+     *          IndirectInputCanonicalization
+     *          /               |            \
+     *       usage1          usage2          usage3
+     * </pre>
+     *
+     * The pattern could optimize for example to
+     *
+     * <pre>
+     *                       NewNode n2---------------
+     *                          |                     |
+     *          IndirectInputCanonicalization         |
+     *          /               |                     |
+     *       usage1          usage2          usage3----
+     * </pre>
+     *
+     * where {@code usage3} completely skips {@code IndirectInputCanonicalization} now.
+     *
+     * Note that this is called {@code IndirectInputChangedCanonicalization} because {@code n1} is
+     * considered an indirect (transitive) input of {@code usage3}.
      */
-    public interface IndirectCanonicalization {
+    public interface IndirectInputChangedCanonicalization {
+    }
+
+    /**
+     * Marker interface for nodes where one input change can cause another input to optimize.
+     *
+     * Consider the following IR shape:
+     *
+     * <pre>
+     *            Node n1         Node n2
+     *               |               |
+     *          IndirectInputCanonicalization
+     * </pre>
+     *
+     * If now input {@code n1} is replaced by another node
+     *
+     * <pre>
+     *            NewNode n3      Node n2
+     *               |               |
+     *          IndirectInputCanonicalization
+     * </pre>
+     *
+     * this can cause n2 to optimize. This is especially relevant for local {@link Simplifiable}
+     * simplifications based on single input/usage patterns. Thus, in order to incrementally trigger
+     * the canonicalization of {@code n2} it is explicitly added to the worklist of the usage
+     * implements {@code InputsChangedCanonicalization}.
+     */
+    public interface InputsChangedCanonicalization {
     }
 
     /**

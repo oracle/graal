@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -94,23 +95,40 @@ public class DynamicHubInitializer {
 
         registerPackage(heapScanner, javaClass, hub);
 
+        boolean rescan = true;
+        /*
+         * The constant should not be rescanned directly if it is from the base layer, as it would
+         * try to access the constant again, which would trigger the dynamic hub initialization
+         * again. The constant has to be rescanned after the initialization is finished.
+         */
+        if (hostVM.useBaseLayer()) {
+            ImageHeapConstant hubConstant = (ImageHeapConstant) heapScanner.createImageHeapConstant(hub, OtherReason.HUB);
+            rescan = hubConstant == null || !hubConstant.isInBaseLayer();
+        }
+
         /*
          * Start by rescanning the hub itself. This ensures the correct scan reason in case this is
          * the first time we see this hub.
          */
-        heapScanner.rescanObject(hub, OtherReason.HUB);
+        if (rescan) {
+            heapScanner.rescanObject(hub, OtherReason.HUB);
+        }
 
-        buildClassInitializationInfo(heapScanner, type, hub);
+        buildClassInitializationInfo(heapScanner, type, hub, rescan);
 
         if (type.getJavaKind() == JavaKind.Object) {
             if (type.isArray()) {
                 AnalysisError.guarantee(hub.getComponentHub().getArrayHub() == null, "Array hub already initialized for %s.", type.getComponentType().toJavaName(true));
                 hub.getComponentHub().setArrayHub(hub);
-                heapScanner.rescanField(hub.getComponentHub(), dynamicHubArrayHubField);
+                if (rescan) {
+                    heapScanner.rescanField(hub.getComponentHub(), dynamicHubArrayHubField);
+                }
             }
 
             fillInterfaces(type, hub);
-            heapScanner.rescanField(hub, dynamicHubInterfacesEncodingField);
+            if (rescan) {
+                heapScanner.rescanField(hub, dynamicHubInterfacesEncodingField);
+            }
 
             /* Support for Java enumerations. */
             if (type.isEnum()) {
@@ -120,7 +138,9 @@ public class DynamicHubInitializer {
                 } else {
                     hub.initEnumConstants(retrieveEnumConstantArray(type, javaClass));
                 }
-                heapScanner.rescanField(hub, dynamicHubAnnotationsEnumConstantsReferenceField);
+                if (rescan) {
+                    heapScanner.rescanField(hub, dynamicHubAnnotationsEnumConstantsReferenceField);
+                }
             }
         }
     }
@@ -187,7 +207,7 @@ public class DynamicHubInitializer {
         return enumConstants;
     }
 
-    private void buildClassInitializationInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub) {
+    private void buildClassInitializationInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub, boolean rescan) {
         AnalysisError.guarantee(hub.getClassInitializationInfo() == null, "Class initialization info already computed for %s.", type.toJavaName(true));
         boolean initializedAtBuildTime = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
         ClassInitializationInfo info;
@@ -197,7 +217,9 @@ public class DynamicHubInitializer {
             info = buildRuntimeInitializationInfo(type);
         }
         hub.setClassInitializationInfo(info);
-        heapScanner.rescanField(hub, dynamicHubClassInitializationInfoField);
+        if (rescan) {
+            heapScanner.rescanField(hub, dynamicHubClassInitializationInfoField);
+        }
     }
 
     private ClassInitializationInfo buildRuntimeInitializationInfo(AnalysisType type) {

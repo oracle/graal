@@ -50,6 +50,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
@@ -97,9 +98,21 @@ public class CodeInfoTable {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static CodeInfo getImageCodeInfo() {
+    public static CodeInfo getFirstImageCodeInfo() {
         assert imageCodeInfo.notEqual(WordFactory.zero()) : "uninitialized";
         return imageCodeInfo;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CodeInfo getImageCodeInfo(CodePointer ip) {
+        CodeInfo info = lookupImageCodeInfo(ip);
+        VMError.guarantee(info.isNonNull(), "not in image code");
+        return info;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CodeInfo getImageCodeInfo(SharedMethod method) {
+        return getImageCodeInfo(method.getImageCodeInfo().getCodeStart());
     }
 
     public static CodeInfoQueryResult lookupCodeInfoQueryResult(CodeInfo info, CodePointer absoluteIP) {
@@ -113,10 +126,9 @@ public class CodeInfoTable {
         return result;
     }
 
-    public static CodeInfoQueryResult lookupDeoptimizationEntrypoint(int deoptOffsetInImage, long encodedBci) {
+    public static CodeInfoQueryResult lookupDeoptimizationEntrypoint(CodeInfo info, int deoptOffsetInImage, long encodedBci) {
         counters().lookupDeoptimizationEntrypointCount.inc();
         /* Deoptimization entry points are always in the image, i.e., never compiled at run time. */
-        CodeInfo info = getImageCodeInfo();
         CodeInfoQueryResult result = new CodeInfoQueryResult();
         long relativeIP = CodeInfoAccess.lookupDeoptimizationEntrypoint(info, deoptOffsetInImage, encodedBci, result, FrameInfoDecoder.SubstrateConstantAccess);
         if (relativeIP < 0) {
@@ -170,7 +182,7 @@ public class CodeInfoTable {
     public static SubstrateInstalledCode lookupInstalledCode(CodePointer ip) {
         counters().lookupInstalledCodeCount.inc();
         UntetheredCodeInfo untetheredInfo = lookupCodeInfo(ip);
-        if (untetheredInfo.isNull() || untetheredInfo.equal(getImageCodeInfo())) {
+        if (untetheredInfo.isNull() || UntetheredCodeInfoAccess.isAOTImageCode(untetheredInfo)) {
             return null; // not within a runtime-compiled method
         }
 
@@ -237,14 +249,28 @@ public class CodeInfoTable {
         codeCache.invalidateNonStackMethod(info);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CodeInfo lookupImageCodeInfo(CodePointer ip) {
+        CodeInfo info = getFirstImageCodeInfo();
+        while (info.isNonNull() && !CodeInfoAccess.contains(info, ip)) {
+            info = CodeInfoAccess.getNextImageCodeInfo(info);
+        }
+        return info;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isInAOTImageCode(CodePointer ip) {
+        return lookupImageCodeInfo(ip).isNonNull();
+    }
+
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.", callerMustBe = true)
     public static UntetheredCodeInfo lookupCodeInfo(CodePointer ip) {
         counters().lookupCodeInfoCount.inc();
-        if (CodeInfoAccess.contains(getImageCodeInfo(), ip)) {
-            return getImageCodeInfo();
-        } else {
-            return getRuntimeCodeCache().lookupCodeInfo(ip);
+        UntetheredCodeInfo info = lookupImageCodeInfo(ip);
+        if (info.isNull()) {
+            info = getRuntimeCodeCache().lookupCodeInfo(ip);
         }
+        return info;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -316,8 +342,10 @@ class CodeInfoFeature implements InternalFeature {
         config.registerAsImmutable(imageInfo.codeInfoEncodings);
         config.registerAsImmutable(imageInfo.referenceMapEncoding);
         config.registerAsImmutable(imageInfo.frameInfoEncodings);
-        config.registerAsImmutable(imageInfo.frameInfoObjectConstants);
-        config.registerAsImmutable(imageInfo.frameInfoSourceClasses);
-        config.registerAsImmutable(imageInfo.frameInfoSourceMethodNames);
+        config.registerAsImmutable(imageInfo.objectConstants);
+        config.registerAsImmutable(imageInfo.classes);
+        config.registerAsImmutable(imageInfo.memberNames);
+        config.registerAsImmutable(imageInfo.otherStrings);
+        config.registerAsImmutable(imageInfo.methodTable);
     }
 }

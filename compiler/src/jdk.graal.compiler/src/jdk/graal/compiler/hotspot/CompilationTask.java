@@ -60,6 +60,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.BailoutException;
@@ -139,6 +140,11 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         @Override
         public String toString() {
             return getMethod().format("%H.%n(%p) @ " + getEntryBCI());
+        }
+
+        @Override
+        protected void parseRetryOptions(String[] options, EconomicMap<OptionKey<?>, Object> values) {
+            OptionsParser.parseOptions(options, values, OptionsParser.getOptionsLoader());
         }
 
         @Override

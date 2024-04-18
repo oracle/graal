@@ -116,8 +116,10 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      *
      * @param allocationRestrictedTo if not {@code null}, register allocation will be restricted to
      *            registers whose names appear in this array
+     * @param stub object representing the stub code being generated or {@code null} if non-stub
+     *            code is being generated
      */
-    public abstract RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo);
+    public abstract RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, Object stub);
 
     /**
      * Creates a new instance of a code emission ordering computation.

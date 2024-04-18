@@ -100,7 +100,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64VectorizedMismatchOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZapRegistersOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZapStackOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZeroMemoryOp;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
+import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.gen.MoveFactory;
@@ -120,7 +120,7 @@ import jdk.vm.ci.meta.ValueKind;
 
 public abstract class AArch64LIRGenerator extends LIRGenerator {
 
-    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, Providers providers,
+    public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGeneratorTool barrierSetLIRGen, MoveFactory moveFactory, Providers providers,
                     LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, barrierSetLIRGen, moveFactory, providers, lirGenRes);
     }
@@ -135,11 +135,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             return emitMove(val);
         }
         return val;
-    }
-
-    @Override
-    public AArch64BarrierSetLIRGenerator getBarrierSet() {
-        return (AArch64BarrierSetLIRGenerator) super.getBarrierSet();
     }
 
     /**
@@ -244,8 +239,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     protected void emitCompareAndSwapOp(boolean isLogicVariant, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result, AllocatableValue allocatableExpectedValue,
                     AllocatableValue allocatableNewValue, BarrierType barrierType) {
-        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
-            getBarrierSet().emitCompareAndSwapOp(isLogicVariant, address, memoryOrder, memKind, result, allocatableExpectedValue, allocatableNewValue, barrierType);
+        if (barrierType != BarrierType.NONE && getBarrierSet() instanceof AArch64ReadBarrierSetLIRGenerator barrierSetLIRGenerator) {
+            barrierSetLIRGenerator.emitCompareAndSwapOp(this, isLogicVariant, address, memoryOrder, memKind, result, allocatableExpectedValue, allocatableNewValue, barrierType);
         } else {
             append(new CompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address)));
         }
@@ -253,8 +248,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue, BarrierType barrierType) {
-        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
-            return getBarrierSet().emitAtomicReadAndWrite(accessKind, address, newValue, barrierType);
+        if (barrierType != BarrierType.NONE && getBarrierSet() instanceof AArch64ReadBarrierSetLIRGenerator barrierSetLIRGenerator) {
+            return barrierSetLIRGenerator.emitAtomicReadAndWrite(this, accessKind, address, newValue, barrierType);
         } else {
             Variable result = newVariable(toRegisterKind(accessKind));
             append(new AtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));

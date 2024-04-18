@@ -31,7 +31,7 @@ The `native-image` builder uses static analysis to discover which of these servi
 It does so by registering reachability handlers for each of the `getInstance()` factory methods.
 When it determines that a `getInstance()` method is reachable at run time, it automatically performs the reflection registration for all the concrete implementations of the corresponding service type.
 
-Tracing of the security services automatic registation can be enabled with `-H:+TraceSecurityServices`.
+Tracing of the security services automatic registration can be enabled with `-H:+TraceSecurityServices`.
 The report will detail all registered service classes, the API methods that triggered registration, and the parsing context for each reachable API method.
 
 > Note: The `--enable-all-security-services` option is now deprecated and it will be removed in a future release.

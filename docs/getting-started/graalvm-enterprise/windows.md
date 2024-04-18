@@ -9,14 +9,15 @@ Oracle GraalVM is available for Windows on the x64 architecture.
 
 Follow these steps to install Oracle GraalVM:
 
-1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/). Select the preferred Oracle GraalVM version, **22** for the Java version, and **Windows** for the operating system. Start downloading.
+1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/).
+Select the preferred Oracle GraalVM version, **22** for the Java version, and **Windows** for the operating system. Start downloading.
 
-2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
+2. Change directory to the location where you want to install GraalVM, then move the _.zip_ file to it.
 
-3. Unzip the archive to your file system.
+3. Unzip the file.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 8, 10, and 11.
-  - Set the `JAVA_HOME` environment variable to resolve to the installation directory:
+  - Set the value of the `JAVA_HOME` environment variable to the installation directory:
     ```shell
     setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
     ```
@@ -26,7 +27,7 @@ Follow these steps to install Oracle GraalVM:
     ```  
   Note that the `/M` flag, equivalent to `-m`, requires elevated user privileges.
 
-5. Restart Command Prompt to reload the environment variables. Then use the following command to check whether the variables were set correctly:
+5. Restart Command Prompt to reload the environment variables. Then use the following command to check whether the variables are set correctly:
     ```shell
     echo %PATH%
     echo %JAVA_HOME%
@@ -45,36 +46,36 @@ Repeat the same for the `PATH` environment variable.
 
 ## Prerequisites for Native Image on Windows
 
-On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC). 
-You can use Visual Studio 2022 version 17.1.0 or later.
+On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC).
+Use **Visual Studio 2022 version 17.6.0 or later**.
 
 ### Install Visual Studio Build Tools and Windows SDK
 
-1. Download the Visual Studio Build Tools (C development environment) from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16){:target="_blank"}.
+1. Download the Visual Studio Build Tools 2022 or later (C development environment) from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16){:target="_blank"}.
 
-2. Start the Visual Studio Build Tools installation by clicking on the _.exe_ file, and then press Continue:
+2. Start the installation by clicking on the _.exe_ file, and then click Continue:
 
     ![Install Visual Studio Build Tools](../img/visual_studio_installer.png)
 
-3. Check the **Desktop development with C++** box in the main window. Also, on the right side under Installation Details, choose **Windows SDK**, and click the Install button.
+3. Select the **Desktop development with C++** check box in the main window. On the right side under Installation Details, make sure that the two requirements, **Windows 11 SDK** and **MSVC (...) C++ x64/x86 build tools**, are selected. Continue by clicking Install.
 
     ![Select Desktop development with C++](../img/desktop_development_with_C.png)
 
-4. After the installation completes, reboot your system.
+You should now be able to build with GraalVM Native Image.
 
-5. Next ensure Windows SDK is indeed available. Open the Visual Studio Installer:
+### Checking Existing Visual Studio Installations
+
+If Visual Studio is already installed on your system, follow these steps to check that the right components are installed.
+
+1. Open the Visual Studio Installer:
 
     ![Open the Visual Studio Installer](../img/open_vs_installer.png)
 
-6. Under the Installed tab, click Modify and choose Individual Components:
+2. Under the Installed tab, click Modify and choose Individual Components:
 
-    ![Visual Studio Installed Components](../img/visual-studio-installed-components.png)
+    ![Visual Studio Installed Components](../img/visual-studio-installed-components-modify.png)
 
-7. Then scroll to the bottom and check if Windows SDK is installed and confirm the build tools are checked:
-  
-    ![Windows SDK Installed](../img/windows-10-installed.png)
-
-Now that you have the Windows SDK and Visual Studio tooling installed, you can start using Oracle GraalVM Native Image.
+3. Then scroll to the bottom and confirm that Windows 11 SDK and Visual Studio SDK are checked. Now you can start using Native Image.
 
 ### Start Using Native Image
 
@@ -96,4 +97,4 @@ To build a project using the [Native Build Tools Gradle plugin](https://graalvm.
 gradlew.bat nativeCompile
 ```
 
-This guide was written for Windows 10, but should be valid for Windows 8 and 11.
+This guide was written for Windows 11, but should be valid for Windows 8 and 10.

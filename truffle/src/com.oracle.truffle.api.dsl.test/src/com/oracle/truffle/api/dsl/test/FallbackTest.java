@@ -765,6 +765,34 @@ public class FallbackTest extends AbstractPolyglotTest {
     }
 
     /*
+     * Test for GR-52819.
+     */
+    @SuppressWarnings("unused")
+    public abstract static class FallbackWithManualDispatch extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(int arg0,
+                        @CachedLibrary("this") InteropLibrary node) {
+            return "s0";
+        }
+
+        @Specialization
+        protected String s1(double arg0,
+                        @CachedLibrary("this") InteropLibrary node) {
+            return "s1";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @CachedLibrary("this") InteropLibrary node) {
+            return "f0";
+        }
+
+    }
+
+    /*
      * Test for GR-33857.
      */
     @Test

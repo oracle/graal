@@ -456,4 +456,8 @@ public class MethodHandleFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         assert substitutionProcessor == null || substitutionProcessor.checkAllTypeNames();
     }
+
+    public MethodHandleInvokerRenamingSubstitutionProcessor getMethodHandleSubstitutionProcessor() {
+        return substitutionProcessor;
+    }
 }

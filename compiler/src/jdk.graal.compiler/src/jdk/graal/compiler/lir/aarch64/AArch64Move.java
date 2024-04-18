@@ -894,8 +894,13 @@ public class AArch64Move {
             Register resultRegister = getResultRegister();
             Register base = encoding.hasBase() ? getBaseRegister() : null;
 
+            emitUncompressCode(masm, inputRegister, resultRegister, encoding, nonNull, base, uncompress32To64Bits);
+        }
+
+        public static void emitUncompressCode(AArch64MacroAssembler masm, Register inputRegister, Register resultRegister,
+                        CompressEncoding encoding, boolean nonNull, Register base, boolean uncompress32To64Bits) {
             // result = base + (ptr << shift)
-            if (nonNull || base == null) {
+            if (nonNull || !encoding.hasBase()) {
                 Register src;
                 if (uncompress32To64Bits) {
                     masm.mov(32, resultRegister, inputRegister);
@@ -903,7 +908,7 @@ public class AArch64Move {
                 } else {
                     src = inputRegister;
                 }
-                masm.add(64, resultRegister, base == null ? zr : base, src, AArch64Assembler.ShiftType.LSL, encoding.getShift());
+                masm.add(64, resultRegister, encoding.hasBase() ? base : zr, src, AArch64Assembler.ShiftType.LSL, encoding.getShift());
             } else {
                 // if ptr is null it has to be null after decompression
                 Label done = new Label();

@@ -2417,9 +2417,9 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         if alt_c_compiler is not None:
             experimental_build_args += ['-H:CCompilerPath=' + shutil.which(alt_c_compiler)]
         if self.args.alt_cflags is not None:
-            experimental_build_args += ['-H:CCompilerOption=' + self.args.alt_cflags]
+            experimental_build_args += ['-H:CCompilerOption=' + e for e in self.args.alt_cflags.split()]
         if self.args.alt_ldflags is not None:
-            experimental_build_args += ['-H:NativeLinkerOption=' + self.args.alt_ldflags]
+            experimental_build_args += ['-H:NativeLinkerOption=' + e for e in self.args.alt_ldflags.split()]
 
         build_args = [
             '-EJVMCI_VERSION_CHECK', # Propagate this env var when running native image from mx

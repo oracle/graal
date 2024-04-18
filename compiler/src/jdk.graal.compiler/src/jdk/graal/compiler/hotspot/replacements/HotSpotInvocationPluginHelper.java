@@ -184,7 +184,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
      * Read {@code Klass:_layout_helper}.
      */
     public ValueNode klassLayoutHelper(ValueNode klass) {
-        return b.add(KlassLayoutHelperNode.create(config, klass, b.getConstantReflection(), b.getMetaAccess()));
+        return b.add(KlassLayoutHelperNode.create(config, klass, b.getConstantReflection()));
     }
 
     /**

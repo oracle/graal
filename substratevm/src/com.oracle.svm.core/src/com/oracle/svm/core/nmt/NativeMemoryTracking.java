@@ -57,10 +57,17 @@ import jdk.graal.compiler.api.replacements.Fold;
 public class NativeMemoryTracking {
     private static final UnsignedWord ALIGNMENT = WordFactory.unsigned(16);
     private static final int MAGIC = 0xF0F1F2F3;
-    private final NmtMallocMemorySnapshot mallocMemorySnapshot = new NmtMallocMemorySnapshot();
+
+    private final NmtMallocMemoryInfo[] categories;
+    private final NmtMallocMemoryInfo total;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public NativeMemoryTracking() {
+        total = new NmtMallocMemoryInfo();
+        categories = new NmtMallocMemoryInfo[NmtCategory.values().length];
+        for (int i = 0; i < categories.length; i++) {
+            categories[i] = new NmtMallocMemoryInfo();
+        }
     }
 
     @Fold
@@ -71,7 +78,7 @@ public class NativeMemoryTracking {
     @Fold
     public static UnsignedWord sizeOfNmtHeader() {
         /*
-         * Align the header to 16 bytes to preserve platform-specific malloc alignments up to 16
+         * Align the header to 16 bytes to preserve platform-specific malloc alignment up to 16
          * bytes (i.e., the allocation payload is aligned to 16 bytes if the platform-specific
          * malloc implementation returns a pointer that is aligned to at least 16 bytes).
          */
@@ -109,9 +116,9 @@ public class NativeMemoryTracking {
         UnsignedWord allocationSize = header.getAllocationSize();
         UnsignedWord totalSize = allocationSize.add(nmtHeaderSize);
 
-        mallocMemorySnapshot.getInfoByCategory(header.getCategory()).track(allocationSize);
-        mallocMemorySnapshot.getInfoByCategory(NmtCategory.NMT).track(nmtHeaderSize);
-        mallocMemorySnapshot.getTotalInfo().track(totalSize);
+        getInfo(header.getCategory()).track(allocationSize);
+        getInfo(NmtCategory.NMT).track(nmtHeaderSize);
+        total.track(totalSize);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -127,9 +134,9 @@ public class NativeMemoryTracking {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void untrack(UnsignedWord size, int category) {
-        mallocMemorySnapshot.getInfoByCategory(category).untrack(size);
-        mallocMemorySnapshot.getInfoByCategory(NmtCategory.NMT).untrack(sizeOfNmtHeader());
-        mallocMemorySnapshot.getTotalInfo().untrack(size.add(sizeOfNmtHeader()));
+        getInfo(category).untrack(size);
+        getInfo(NmtCategory.NMT).untrack(sizeOfNmtHeader());
+        total.untrack(size.add(sizeOfNmtHeader()));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -144,27 +151,73 @@ public class NativeMemoryTracking {
         return ((Pointer) mallocHeader).add(sizeOfNmtHeader());
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getUsedMemory(NmtCategory category) {
-        return mallocMemorySnapshot.getInfoByCategory(category).getUsed();
+        return getInfo(category).getUsed();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getPeakUsedMemory(NmtCategory category) {
+        return getInfo(category).getPeakUsed();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getCountAtPeakUsage(NmtCategory category) {
+        return getInfo(category).getCountAtPeakUsage();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getTotalCount() {
+        return total.getCount();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getTotalUsedMemory() {
+        return total.getUsed();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getPeakTotalUsedMemory() {
+        return total.getPeakUsed();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getCountAtTotalPeakUsage() {
+        return total.getCountAtPeakUsage();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private NmtMallocMemoryInfo getInfo(NmtCategory category) {
+        return getInfo(category.ordinal());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private NmtMallocMemoryInfo getInfo(int category) {
+        assert category < categories.length;
+        return categories[category];
     }
 
     public static RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> NativeMemoryTracking.singleton().printStatistics();
     }
 
-    public void printStatistics() {
+    private void printStatistics() {
         if (VMInspectionOptions.PrintNMTStatistics.getValue()) {
             System.out.println();
             System.out.println("Native memory tracking");
-            System.out.println("  Total used memory: " + mallocMemorySnapshot.getTotalInfo().getUsed() + " bytes");
-            System.out.println("  Total alive allocations: " + mallocMemorySnapshot.getTotalInfo().getCount());
+            System.out.println("  Peak total used memory: " + getPeakTotalUsedMemory() + " bytes");
+            System.out.println("  Total alive allocations at peak usage: " + getCountAtTotalPeakUsage());
+            System.out.println("  Total used memory: " + getTotalUsedMemory() + " bytes");
+            System.out.println("  Total alive allocations: " + getTotalCount());
 
             for (int i = 0; i < NmtCategory.values().length; i++) {
                 String name = NmtCategory.values()[i].getName();
-                NmtMallocMemoryInfo info = mallocMemorySnapshot.getInfoByCategory(i);
+                NmtMallocMemoryInfo info = getInfo(i);
 
-                System.out.println("  " + name + " used memory: " + info.getUsed() + " bytes");
-                System.out.println("  " + name + " alive allocations: " + info.getCount());
+                System.out.println("  " + name + " peak used memory: " + info.getPeakUsed() + " bytes");
+                System.out.println("  " + name + " alive allocations at peak: " + info.getCountAtPeakUsage());
+                System.out.println("  " + name + " currently used memory: " + info.getUsed() + " bytes");
+                System.out.println("  " + name + " currently alive allocations: " + info.getCount());
             }
         }
     }

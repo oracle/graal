@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
-  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.1.0.json",
+  "$id": "https://raw.githubusercontent.com/oracle/graal/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.1.0.json",
   "default": [],
   "items": {
     "properties": {
@@ -34,8 +34,17 @@
               "type": "array"
             }
           },
-          "required": [
-            "name"
+          "oneOf": [
+            {
+              "required": [
+                "name"
+              ]
+            },
+            {
+              "required": [
+                "type"
+              ]
+            }
           ],
           "additionalProperties": false,
           "type": "object",

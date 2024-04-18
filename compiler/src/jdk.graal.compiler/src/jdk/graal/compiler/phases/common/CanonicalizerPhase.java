@@ -47,7 +47,8 @@ import jdk.graal.compiler.graph.Graph.Mark;
 import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.Node.IndirectCanonicalization;
+import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
+import jdk.graal.compiler.graph.Node.InputsChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeFlood;
 import jdk.graal.compiler.graph.NodeWorkList;
@@ -64,7 +65,6 @@ import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
-import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -320,12 +320,16 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             @Override
             public void inputChanged(Node node) {
                 tool.workList.add(node);
-                if (node instanceof IndirectCanonicalization) {
+                if (node instanceof IndirectInputChangedCanonicalization) {
                     for (Node usage : node.usages()) {
                         tool.workList.add(usage);
                     }
                 }
-
+                if (node instanceof InputsChangedCanonicalization) {
+                    for (Node input : node.inputs()) {
+                        tool.workList.add(input);
+                    }
+                }
                 if (node instanceof AbstractBeginNode) {
                     AbstractBeginNode abstractBeginNode = (AbstractBeginNode) node;
                     if (abstractBeginNode.predecessor() != null) {
@@ -463,7 +467,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     // Fixed node usage: can never have a dead cycle
                     return false;
                 }
-                if (usage instanceof VirtualState || usage instanceof ProxyNode) {
+                if (usage instanceof VirtualState) {
                     // usages that still require the (potential) dead cycle to be alive
                     return false;
                 }

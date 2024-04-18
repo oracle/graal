@@ -403,6 +403,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.ExplicitOOMEExceptionEdges;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
@@ -412,6 +413,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPluginContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.java.AllocateWithExceptionNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.FinalFieldBarrierNode;
@@ -424,8 +426,11 @@ import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.NewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.RegisterFinalizerNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
@@ -444,6 +449,7 @@ import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -975,6 +981,15 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
         int level = TraceBytecodeParserLevel.getValue(options);
         this.traceLevel = level != 0 ? refineTraceLevel(level) : 0;
+
+        /*
+         * If some code (via graph builder config) requested to not use allocations with exceptions
+         * or the user explicitly we disable it.
+         */
+        boolean userUseAllocWithException = BytecodeParserOptions.DoNotMoveAllocationsWithOOMEHandlers.getValue(graph.getOptions());
+        this.disableExplicitAllocationExceptionEdges = !userUseAllocWithException || graphBuilderConfig.oomeExceptionEdges() == ExplicitOOMEExceptionEdges.DisableOOMEExceptionEdges;
+        this.calleeInOOMEBlock = graphBuilderConfig.oomeExceptionEdges() == ExplicitOOMEExceptionEdges.ForceOOMEExceptionEdges;
+        assert !disableExplicitAllocationExceptionEdges || !calleeInOOMEBlock : Assertions.errorMessage("Cannot force callee to have exception edges if we explicitly disable them everywhere");
     }
 
     /**
@@ -1955,6 +1970,19 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     protected final ConstantPool constantPool;
     protected final IntrinsicContext intrinsicContext;
 
+    /**
+     * Flag indicating if we are parsing a callee in the course of inlining and the invocation in
+     * the caller was in a try block that is covered by a catch of an {@link OutOfMemoryError}. For
+     * such callees we do not move allocations to avoid moving an out of memory triggering
+     * allocation out of the try block.
+     */
+    protected boolean calleeInOOMEBlock;
+
+    /**
+     * It was requested for this graph to never emit {@link AllocateWithExceptionNode}.
+     */
+    protected final boolean disableExplicitAllocationExceptionEdges;
+
     protected InvocationPluginContext invocationPluginContext;
 
     @Override
@@ -2113,6 +2141,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
         if (referencedType != null) {
             invoke.callTarget().setReferencedType(referencedType);
+        }
+        if (currentBlockCatchesOOM()) {
+            invoke.setInOOMETry(true);
         }
         return invoke;
     }
@@ -2710,6 +2741,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                         : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args)
                                         : new InliningScope(this, targetMethod, args))) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
+            if (currentBlockCatchesOOM()) {
+                parser.calleeInOOMEBlock = true;
+            }
             boolean targetIsSubstitution = parsingIntrinsic();
             FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph, graphBuilderConfig.retainLocalVariables() && !targetIsSubstitution);
             if (!targetMethod.isStatic()) {
@@ -4814,7 +4848,63 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             }
         }
 
-        frameState.push(JavaKind.Object, append(new NewInstanceNode(resolvedType, true)));
+        createNewInstance(resolvedType);
+    }
+
+    /**
+     * Note that we only handle {@link OutOfMemoryError} catch blocks here and no subclasses.
+     * JVMS-6.3 states that virtual machine errors only include OutOfMemoryError for allocation
+     * failures.
+     */
+    @Override
+    public boolean currentBlockCatchesOOM() {
+        if (disableExplicitAllocationExceptionEdges) {
+            return false;
+        }
+        if (calleeInOOMEBlock) {
+            return true;
+        }
+        boolean inOOMETry = false;
+        if (currentBlock.exceptionDispatchBlock() != null) {
+            ExceptionDispatchBlock edb = (ExceptionDispatchBlock) currentBlock.exceptionDispatchBlock();
+            ExceptionHandler handler = edb.handler;
+            if (handler != null) {
+                JavaType catchType = handler.getCatchType();
+                // catch type can be null for java.lang.Throwable which catches everything
+                inOOMETry = catchType != null && catchType.equals(getMetaAccess().lookupJavaType(OutOfMemoryError.class));
+            }
+        }
+        return inOOMETry;
+    }
+
+    private void createNewInstance(ResolvedJavaType resolvedType) {
+        if (currentBlockCatchesOOM()) {
+            NewInstanceWithExceptionNode ni = new NewInstanceWithExceptionNode(resolvedType, true);
+            frameState.push(JavaKind.Object, append(ni));
+            setStateAfter(ni);
+        } else {
+            frameState.push(JavaKind.Object, append(new NewInstanceNode(resolvedType, true)));
+        }
+    }
+
+    private void createNewArray(ResolvedJavaType resolvedType, ValueNode length) {
+        if (currentBlockCatchesOOM()) {
+            NewArrayWithExceptionNode nawe = new NewArrayWithExceptionNode(resolvedType, length, true);
+            frameState.push(JavaKind.Object, append(nawe));
+            setStateAfter(nawe);
+        } else {
+            frameState.push(JavaKind.Object, append(new NewArrayNode(resolvedType, length, true)));
+        }
+    }
+
+    private void generateNewMultIArray(ResolvedJavaType resolvedType, ValueNode[] dims) {
+        if (currentBlockCatchesOOM()) {
+            NewMultiArrayWithExceptionNode nmanwe = new NewMultiArrayWithExceptionNode(resolvedType, dims);
+            frameState.push(JavaKind.Object, append(nmanwe));
+            setStateAfter(nmanwe);
+        } else {
+            frameState.push(JavaKind.Object, append(new NewMultiArrayNode(resolvedType, dims)));
+        }
     }
 
     /**
@@ -4857,7 +4947,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             }
         }
 
-        frameState.push(JavaKind.Object, append(new NewArrayNode(elementType, length, true)));
+        createNewArray(elementType, length);
     }
 
     private void genNewObjectArray(int cpi) {
@@ -4887,7 +4977,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             }
         }
 
-        frameState.push(JavaKind.Object, append(new NewArrayNode(resolvedType, length, true)));
+        createNewArray(resolvedType, length);
     }
 
     private void genNewMultiArray(int cpi) {
@@ -4906,23 +4996,19 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     private void genNewMultiArray(ResolvedJavaType resolvedType, int rank, ValueNode[] dims) {
-
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (classInitializationPlugin != null) {
             classInitializationPlugin.apply(this, resolvedType, this::createCurrentFrameState);
         }
-
         for (int i = rank - 1; i >= 0; i--) {
             dims[i] = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
         }
-
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             if (plugin.handleNewMultiArray(this, resolvedType, dims)) {
                 return;
             }
         }
-
-        frameState.push(JavaKind.Object, append(new NewMultiArrayNode(resolvedType, dims)));
+        generateNewMultIArray(resolvedType, dims);
     }
 
     protected void genGetField(int cpi, int opcode) {

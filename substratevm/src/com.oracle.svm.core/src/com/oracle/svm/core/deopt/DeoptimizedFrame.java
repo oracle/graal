@@ -394,9 +394,10 @@ public final class DeoptimizedFrame {
      */
     public void takeException() {
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
-        CodeInfo info = CodeInfoTable.getImageCodeInfo();
+        CodePointer ip = WordFactory.pointer(firstAddressEntry.returnAddress);
+        CodeInfo info = CodeInfoTable.getImageCodeInfo(ip);
         SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
-        CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)), codeInfoQueryResult);
+        CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, ip), codeInfoQueryResult);
         long handler = codeInfoQueryResult.getExceptionOffset();
         if (handler == 0) {
             throwMissingExceptionHandler(info, firstAddressEntry);

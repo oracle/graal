@@ -596,19 +596,29 @@ public class LibGraalCompilationDriver {
             compileOptions = new OptionValues(compileOptions, ProfileReplaySupport.Options.LoadProfiles, profilePath);
         }
 
-        long start = System.nanoTime();
-        long allocatedAtStart = getCurrentThreadAllocatedBytes();
+        boolean retried = false;
+        while (true) {
+            long start = System.nanoTime();
+            long allocatedAtStart = getCurrentThreadAllocatedBytes();
 
-        CompilationTask task = createCompilationTask(method, useProfilingInfo, installAsDefault);
-        HotSpotCompilationRequestResult result = task.runCompilation(compileOptions);
-        if (result.getFailure() != null) {
-            throw new GraalError("Compilation request failed: %s", result.getFailureMessage());
+            CompilationTask task = createCompilationTask(method, useProfilingInfo, installAsDefault);
+            HotSpotCompilationRequestResult result = task.runCompilation(compileOptions);
+            if (result.getFailure() != null) {
+                var error = new GraalError("Compilation request failed: %s", result.getFailureMessage());
+                if (result.getRetry() && !retried) {
+                    error.printStackTrace(TTY.out);
+                    TTY.println("Retrying...");
+                    retried = true;
+                    continue;
+                }
+                throw error;
+            }
+            HotSpotInstalledCode installedCode = task.getInstalledCode();
+            assert installedCode != null : "installed code is null yet no failure detected";
+            long duration = System.nanoTime() - start;
+            long memoryUsed = getCurrentThreadAllocatedBytes() - allocatedAtStart;
+            return new CompilationResult(installedCode, duration, memoryUsed);
         }
-        HotSpotInstalledCode installedCode = task.getInstalledCode();
-        assert installedCode != null : "installed code is null yet no failure detected";
-        long duration = System.nanoTime() - start;
-        long memoryUsed = getCurrentThreadAllocatedBytes() - allocatedAtStart;
-        return new CompilationResult(installedCode, duration, memoryUsed);
     }
 
     private final AtomicInteger failedCompilations = new AtomicInteger(0);

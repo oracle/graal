@@ -232,7 +232,6 @@ public final class Target_sun_misc_Unsafe {
         public int guestOffsetToSlot(long guestOffset) {
             int offset = Math.toIntExact(guestOffset);
             if (forceStatic(offset)) {
-                assert offset >= (SAFETY_STATIC_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS) : "offset: " + offset;
                 return offset - SAFETY_STATIC_FIELD_OFFSET;
             } else {
                 return offset - SAFETY_FIELD_OFFSET;

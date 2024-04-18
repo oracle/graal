@@ -95,7 +95,7 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
      * is guarded by {@link #isReaderInstalled()} which ensures that the future setting the field
      * values was executed, therefore we can read the field directly.
      */
-    private Object[] getElementValues() {
+    Object[] getElementValues() {
         AnalysisError.guarantee(isReaderInstalled());
         Object[] arrayElements = getConstantData().arrayElementValues;
         AnalysisError.guarantee(arrayElements != null);

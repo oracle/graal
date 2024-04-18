@@ -72,7 +72,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 
 final class PolyglotLoggers {
@@ -92,10 +91,6 @@ final class PolyglotLoggers {
 
     static Set<String> getInternalIds() {
         return INTERNAL_IDS;
-    }
-
-    static PolyglotContextImpl getCurrentOuterContext() {
-        return EngineImpl.getOuterContext(PolyglotFastThreadLocals.getContext(null));
     }
 
     static boolean haveSameTarget(LogHandler h1, LogHandler h2) {
@@ -256,7 +251,7 @@ final class PolyglotLoggers {
 
         public Map<String, Level> getLogLevels() {
             if (useCurrentContext) {
-                PolyglotContextImpl context = getCurrentOuterContext();
+                PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
                 if (context != null) {
                     return context.config.logLevels;
                 }
@@ -601,7 +596,7 @@ final class PolyglotLoggers {
         }
 
         private static LogHandler findDelegate() {
-            final PolyglotContextImpl currentContext = getCurrentOuterContext();
+            final PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
             return currentContext != null ? currentContext.config.logHandler : null;
         }
     }

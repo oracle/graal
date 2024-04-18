@@ -105,7 +105,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * {@link #isReaderInstalled()} which ensures that the future setting the field values was
      * executed, therefore we can read the field directly.
      */
-    private Object[] getFieldValues() {
+    Object[] getFieldValues() {
         AnalysisError.guarantee(isReaderInstalled());
         Object[] fieldValues = getConstantData().fieldValues;
         AnalysisError.guarantee(fieldValues != null);
@@ -135,6 +135,10 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * or the result of executing the task, i.e., a {@link JavaConstant}.
      */
     public Object getFieldValue(AnalysisField field) {
+        if (isInBaseLayer()) {
+            /* Base layer constants that are not relinked might not have field positions computed */
+            field.getType().getInstanceFields(true);
+        }
         return arrayHandle.getVolatile(getFieldValues(), field.getPosition());
     }
 

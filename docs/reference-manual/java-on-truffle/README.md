@@ -9,7 +9,7 @@ permalink: /reference-manual/java-on-truffle/
 
 Using GraalVM, you can run Java applications normally [on the JVM](../java/README.md), in [Native Image](../native-image/README.md), and now on Truffle.
 Java on Truffle is an implementation of the Java Virtual Machine Specification, [Java SE 8](https://docs.oracle.com/javase/specs/jvms/se8/html/index.html) and [Java SE 11](https://docs.oracle.com/javase/specs/jvms/se11/html/index.html), built upon GraalVM as a Truffle interpreter.
-It is a minified Java VM that includes all core components of a VM, implements the same API as the Java Runtime Environment library (`libjvm.so`), and reuses all JARs and native libraries from GraalVM.
+It is a minified Java VM that includes all core components of a VM, implements the same API as the Java Runtime Environment library (`libjvm.so`), and reuses all JAR files and native libraries from GraalVM.
 See the [Implementation Details](ImplementationDetails.md) for more information.
 The project name behind this implementation is "Espresso".
 Its open source version is available on [GitHub](https://github.com/oracle/graal/tree/master/espresso).
@@ -77,7 +77,7 @@ java -truffle [options] -m module[/<mainclass>]
 java -truffle [options] sourcefile
 ```
 
-By default, Java on Truffle runs within GraalVM by reusing all GraalVM's JARs and native libraries, but it is possible to "cross-version" and specify a different Java installation directory (`java.home`).
+By default, Java on Truffle runs within GraalVM by reusing all GraalVM's JAR files and native libraries, but it is possible to "cross-version" and specify a different Java installation directory (`java.home`).
 It will automatically switch versions regardless of the host JVM.
 ```shell
 java -truffle --java.JavaHome=/path/to/java/home -version
@@ -145,11 +145,11 @@ java -truffle -jar target/spring-petclinic-<version>-SNAPSHOT.jar
 To run a Java project on Truffle from an IDE requires setting the Java on Truffle enabled GraalVM as a project's default JDK.
 For exampe, to run the Spring PetClinic project using Intellij IDEA, you need to:
 
-1&#46; Navigate to **File**, then to **Project Structure**. Click **Project**, and then click **Project SDK**. Expand the drop down, press Add **JDK** and open the folder where you installed GraalVM. For macOS users, JDK home path will be `/Library/Java/JavaVirtualMachines/{graalvm}/Contents/Home`. Give it a name, and press Apply.
+1&#46; Navigate to **File**, then to **Project Structure**. Click **Project**, and then click **Project SDK**. Expand the drop down, press Add **JDK** and open the directory where you installed GraalVM. For macOS users, JDK home path will be `/Library/Java/JavaVirtualMachines/{graalvm}/Contents/Home`. Give it a name, and press Apply.
 
 ![Intellij IDEA: Add Project Name](images/add-project-default-sdk.png)
 
-2&#46; Generate sources and update folders for the project. In the Maven sidebar, click on the folder with the spinner icon:
+2&#46; Generate sources and update folders for the project. In the Maven sidebar, click on the directory with the spinner icon:
 
 ![Intellij IDEA: Generate Project Sources](images/generate-project-sources.png)
 
@@ -177,7 +177,7 @@ Check the [Interoperability with Truffle Languages guide](Interoperability.md) t
 
 To learn about the implementation approach, project's current status, and known limitations proceed to [Implementation Details](ImplementationDetails.md).
 
-You can already run some large applications like the Eclipse IDE, Scala or other languages REPLs, etc. in the Java on Truffle execution mode.
+You can already run some large applications such as the Eclipse IDE, Scala or other languages REPLs, etc. in the Java on Truffle execution mode.
 We recommend having a look at the collection of [Demo Applications](Demos.md).
 
 If you have a question, check the available [FAQs](FAQ.md), or reach us directly over the **#espresso** channel in [GraalVM Slack](https://www.graalvm.org/slack-invitation/).

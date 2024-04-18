@@ -50,7 +50,7 @@ public final class Target_java_lang_reflect_AccessibleObject {
     static class TypeAnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getTypeAnnotationsEncoding((AccessibleObject) receiver);
+            return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getTypeAnnotationsEncoding((AccessibleObject) receiver);
         }
     }
 }

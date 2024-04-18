@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.18.0",
+  "mxversion": "7.22.0",
   "name" : "sdk",
   "version" : "24.1.0",
   "release" : False,
@@ -1152,6 +1152,8 @@ include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
 CC=<path:LLVM_TOOLCHAIN>/bin/clang
 CXX=<path:LLVM_TOOLCHAIN>/bin/clang++
 AR=<path:LLVM_TOOLCHAIN>/bin/llvm-ar
+CFLAGS=
+CXXFLAGS=
 LDFLAGS=-fuse-ld=lld
 '''
             },
@@ -1169,6 +1171,9 @@ include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
 CC=xcrun <path:LLVM_TOOLCHAIN>/bin/clang
 CXX=xcrun <path:LLVM_TOOLCHAIN>/bin/clang++
 AR=xcrun <path:LLVM_TOOLCHAIN>/bin/llvm-ar
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
 '''
             },
           },
@@ -1186,6 +1191,9 @@ CL=<path:LLVM_TOOLCHAIN>\\bin\\clang-cl
 LINK=<path:LLVM_TOOLCHAIN>\\bin\\lld-link
 LIB=<path:LLVM_TOOLCHAIN>\\bin\\llvm-lib
 ML=<path:LLVM_TOOLCHAIN>\\bin\\llvm-ml
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
 '''
             },
           },
@@ -1221,6 +1229,9 @@ include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
 CC=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc
 CXX=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++
 AR=<path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
 '''
               },
             },
@@ -1238,12 +1249,53 @@ include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
 CC=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/gcc
 CXX=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/g++
 AR=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
 '''
               },
             },
             "dependencies": [
               "MUSL_GCC_TOOLCHAIN",
               "mx:GCC_NINJA_TOOLCHAIN",
+            ],
+          },
+        },
+        "<others>": {
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+      "maven" : False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "MUSL_CMAKE_TOOLCHAIN" : {
+      "native" : True,
+      "platformDependent" : True,
+      "native_toolchain" : {
+        "kind": "cmake",
+        "target": {
+          # host os/arch
+          "libc": "musl",
+        },
+      },
+      "os_arch": {
+        "linux": {
+          "amd64": {
+            "layout" : {
+              "toolchain.cmake" : {
+                "source_type": "string",
+                "value": '''
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc)
+set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++)
+set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar)
+'''
+              },
+            },
+            "dependencies": [
+              "MUSL_GCC_TOOLCHAIN",
             ],
           },
         },

@@ -51,7 +51,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
@@ -597,5 +596,10 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         masm.jmp(labelThirdLoopPrologue);
 
         masm.bind(labelDone);
+    }
+
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
     }
 }

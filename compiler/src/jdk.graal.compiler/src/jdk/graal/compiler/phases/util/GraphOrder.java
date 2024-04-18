@@ -428,7 +428,7 @@ public final class GraphOrder {
     }
 
     private static boolean isNeverDeadFloatingNode(Node n) {
-        return n instanceof GuardNode || n instanceof ProxyNode || n instanceof VirtualState;
+        return n instanceof GuardNode || n instanceof VirtualState;
     }
 
     /*

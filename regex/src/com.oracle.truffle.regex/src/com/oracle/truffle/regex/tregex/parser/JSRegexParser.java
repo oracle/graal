@@ -98,7 +98,8 @@ public final class JSRegexParser implements RegexParser {
 
     @Override
     public AbstractRegexObject getNamedCaptureGroups() {
-        return AbstractRegexObject.createNamedCaptureGroupMapListInt(lexer.getNamedCaptureGroups());
+        Map<String, List<Integer>> namedCaptureGroups = lexer.getNamedCaptureGroups();
+        return AbstractRegexObject.createNamedCaptureGroupMapListInt(namedCaptureGroups.isEmpty() ? null : namedCaptureGroups);
     }
 
     @Override

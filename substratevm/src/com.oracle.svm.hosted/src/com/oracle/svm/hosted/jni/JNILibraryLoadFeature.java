@@ -31,11 +31,10 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jni.JNILibraryInitializer;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 
 public class JNILibraryLoadFeature implements Feature {
 
-    private JNILibraryInitializer jniLibraryInitializer = new JNILibraryInitializer();
+    private final JNILibraryInitializer jniLibraryInitializer = new JNILibraryInitializer();
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -44,7 +43,7 @@ public class JNILibraryLoadFeature implements Feature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
+        NativeLibraries nativeLibraries = NativeLibraries.singleton();
         List<String> staticLibNames = nativeLibraries.getJniStaticLibraries();
         boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(staticLibNames);
         if (isChanged) {

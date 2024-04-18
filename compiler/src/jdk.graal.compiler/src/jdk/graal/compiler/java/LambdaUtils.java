@@ -24,9 +24,6 @@
  */
 package jdk.graal.compiler.java;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
@@ -46,6 +43,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -53,7 +51,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class LambdaUtils {
 
     private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda[/.][^/]+;");
-    private static final char[] HEX = "0123456789abcdef".toCharArray();
     public static final String LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda";
     public static final String LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda";
     public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING = "$$Lambda";
@@ -152,46 +149,11 @@ public final class LambdaUtils {
         for (ResolvedJavaMethod ctor : lambdaType.getDeclaredConstructors()) {
             sb.append(ctor.format("%P"));
         }
-        return m.replaceFirst(Matcher.quoteReplacement(LAMBDA_CLASS_NAME_SUBSTRING + ADDRESS_PREFIX + digest(sb.toString()) + ";"));
+        return m.replaceFirst(Matcher.quoteReplacement(LAMBDA_CLASS_NAME_SUBSTRING + ADDRESS_PREFIX + Digest.digestAsHex(sb.toString()) + ";"));
     }
 
     private static Matcher lambdaMatcher(String value) {
         return LAMBDA_PATTERN.matcher(value);
-    }
-
-    public static String toHex(byte[] data) {
-        StringBuilder r = new StringBuilder(data.length * 2);
-        for (byte b : data) {
-            r.append(HEX[(b >> 4) & 0xf]);
-            r.append(HEX[b & 0xf]);
-        }
-        return r.toString();
-    }
-
-    /**
-     * Hashing a passed string parameter using SHA-1 hashing algorithm.
-     *
-     * @param value string to be hashed
-     * @return hexadecimal hashed value of the passed string parameter
-     */
-    public static String digest(String value) {
-        return digest(value.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /**
-     * Hashing a passed byte array parameter using SHA-1 hashing algorithm.
-     *
-     * @param bytes byte array to be hashed
-     * @return hexadecimal hashed value of the passed byte array parameter
-     */
-    public static String digest(byte[] bytes) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-1");
-            md.update(bytes);
-            return toHex(md.digest());
-        } catch (NoSuchAlgorithmException ex) {
-            throw new JVMCIError(ex);
-        }
     }
 
     /**

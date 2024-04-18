@@ -24,23 +24,10 @@
  */
 package jdk.graal.compiler.lir.gen;
 
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.lir.LIRFrameState;
-import jdk.graal.compiler.lir.Variable;
-
-import jdk.vm.ci.meta.Value;
-
 /**
  * Base class for handling code generation for GC barriers at the LIR level. Architecture and
  * platform specific methods are added as needed in subclasses to interpose on the LIR generation.
  */
 public interface BarrierSetLIRGeneratorTool {
 
-    /**
-     * Emit a read of a memory location along with the required read barrier.. {@code barrierType}
-     * will always be something besides {@link BarrierType#NONE}.
-     */
-    Variable emitBarrieredLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, BarrierType barrierType);
 }

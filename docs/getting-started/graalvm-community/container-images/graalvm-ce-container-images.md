@@ -43,7 +43,7 @@ For example:
 
 ## Pulling Images
 
-1. To pull the container image for GraalVM JDK for a specific JDK feature version, e.g, _22_, run:
+1. To pull the container image for GraalVM JDK for a specific JDK feature version, such as _22_, run:
     ```bash
     docker pull ghcr.io/graalvm/jdk-community:22
     ```
@@ -53,9 +53,9 @@ For example:
     FROM ghcr.io/graalvm/jdk-community:22
     ```
 
-    You have pulled a size compact GraalVM Community Edition container image with the GraalVM JDK and the Graal compiler pre-installed.
+    You have pulled a size compact GraalVM Community Edition container image with the GraalVM JDK and the Graal compiler preinstalled.
 
-2. To pull the container image with the `native-image` utility for a specific JDK feature version, e.g, _22_, run: 
+2. To pull the container image with the `native-image` utility for a specific JDK feature version, such as _22_, run: 
     ```bash
     docker pull ghcr.io/graalvm/native-image-community:22
     ```

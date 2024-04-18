@@ -104,7 +104,12 @@ public class BootstrapMethodConfiguration implements InternalFeature {
         Method typeSwitch = ReflectionUtil.lookupMethod(SwitchBootstraps.class, "typeSwitch", MethodHandles.Lookup.class, String.class, MethodType.class, Object[].class);
         Method enumSwitch = ReflectionUtil.lookupMethod(SwitchBootstraps.class, "enumSwitch", MethodHandles.Lookup.class, String.class, MethodType.class, Object[].class);
 
-        indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch, enumSwitch);
+        /* Bootstrap method used for retrieving the value of static final processors. */
+        Class<?> templateRuntime = ReflectionUtil.lookupClass(false, "java.lang.runtime.TemplateRuntime");
+        Method processStringTemplate = ReflectionUtil.lookupMethod(templateRuntime, "processStringTemplate", MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class,
+                        String[].class);
+
+        indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch, enumSwitch, processStringTemplate);
 
         /* Bootstrap methods used for various dynamic constants. */
         Method nullConstant = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "nullConstant", MethodHandles.Lookup.class, String.class, Class.class);

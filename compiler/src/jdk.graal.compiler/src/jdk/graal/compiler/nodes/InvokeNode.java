@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,6 +75,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     protected boolean polymorphic;
     protected InlineControl inlineControl;
     protected final LocationIdentity identity;
+    private boolean isInOOMETry;
 
     public InvokeNode(CallTargetNode callTarget, int bci) {
         this(callTarget, bci, callTarget.returnStamp().getTrustedStamp());
@@ -249,6 +250,16 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
                 assert false : "Should not reach here";
                 return SIZE_UNKNOWN;
         }
+    }
+
+    @Override
+    public boolean isInOOMETry() {
+        return isInOOMETry;
+    }
+
+    @Override
+    public void setInOOMETry(boolean isInOOMETry) {
+        this.isInOOMETry = isInOOMETry;
     }
 
 }
