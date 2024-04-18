@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.java;
 
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PROTECTED;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.annotation.Repeatable;
@@ -56,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -1602,6 +1608,52 @@ public class ElementUtils {
             return false;
         }
         return true;
+    }
+
+    public static boolean isOverridable(ExecutableElement ex) {
+        Set<Modifier> mods = ex.getModifiers();
+        return !mods.contains(FINAL) && !mods.contains(STATIC) && (mods.contains(PUBLIC) || mods.contains(PROTECTED));
+    }
+
+    public static List<ExecutableElement> getOverridableMethods(TypeElement t) {
+        return ElementFilter.methodsIn(t.getEnclosedElements()).stream() //
+                        .filter(ElementUtils::isOverridable).collect(Collectors.toList());
+    }
+
+    /**
+     * Returns true if e1 is an override of e2.
+     */
+    public static boolean isOverride(ExecutableElement e1, ExecutableElement e2) {
+        if (!isOverridable(e2)) {
+            return false;
+        }
+
+        Set<Modifier> mods1 = e1.getModifiers();
+        Set<Modifier> mods2 = e2.getModifiers();
+        if (mods2.contains(PUBLIC)) {
+            if (!mods1.contains(PUBLIC)) {
+                return false;
+            }
+        } else { // e2 is protected
+            if (!mods1.contains(PUBLIC) && !mods1.contains(PROTECTED)) {
+                return false;
+            }
+        }
+        if (mods1.contains(STATIC)) {
+            return false;
+        }
+
+        // NB: we don't check covariance of return type or contravariance of parameters.
+        return signatureEquals(e1, e2);
+    }
+
+    public static ExecutableElement findOverride(TypeElement subclass, ExecutableElement method) {
+        for (ExecutableElement subclassMethod : ElementFilter.methodsIn(subclass.getEnclosedElements())) {
+            if (ElementUtils.isOverride(subclassMethod, method)) {
+                return subclassMethod;
+            }
+        }
+        return null;
     }
 
     public static boolean elementEquals(Element element1, Element element2) {
