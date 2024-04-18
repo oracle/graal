@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -31,13 +33,20 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Method;
 
 @ExportLibrary(InteropLibrary.class)
 final class SubstitutionScope implements TruffleObject {
     private final Object[] args;
+    private final Method method;
+    @CompilationFinal private String[] paramNames;
 
-    SubstitutionScope(Object[] arguments) {
+    SubstitutionScope(Object[] arguments, Method.MethodVersion method) {
         this.args = arguments;
+        this.method = method.getMethod();
     }
 
     @ExportMessage
@@ -74,8 +83,54 @@ final class SubstitutionScope implements TruffleObject {
             }
             return args[index];
         } catch (NumberFormatException e) {
+            // OK, see if we have parameter names as a fallback.
+            // The main use case which is JDWP doesn't use anything but slots,
+            // so this branch should rarely be taken.
+            String[] names = paramNames;
+            if (names == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                names = paramNames = fetchNames();
+            }
+            for (int i = 0; i < names.length; i++) {
+                if (names[i].equals(member)) {
+                    return args[i];
+                }
+            }
             throw UnknownIdentifierException.create(member);
         }
+    }
+
+    private String[] fetchNames() {
+        MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Symbol.Name.MethodParameters);
+
+        if (methodParameters == null) {
+            return new String[0];
+        }
+        // verify parameter attribute first
+        MethodParametersAttribute.Entry[] entries = methodParameters.getEntries();
+        int cpLength = method.getConstantPool().length();
+        for (MethodParametersAttribute.Entry entry : entries) {
+            int nameIndex = entry.getNameIndex();
+            if (nameIndex < 0 || nameIndex >= cpLength) {
+                return new String[0];
+            }
+            if (nameIndex != 0 && method.getConstantPool().tagAt(nameIndex) != ConstantPool.Tag.UTF8) {
+                return new String[0];
+            }
+        }
+        String[] result = new String[entries.length];
+        for (int i = 0; i < entries.length; i++) {
+            MethodParametersAttribute.Entry entry = entries[i];
+            // For a 0 index, give an empty name.
+            String name;
+            if (entry.getNameIndex() != 0) {
+                name = method.getConstantPool().symbolAt(entry.getNameIndex(), "parameter name").toString();
+            } else {
+                name = "";
+            }
+            result[i] = name;
+        }
+        return result;
     }
 
     @ExportMessage

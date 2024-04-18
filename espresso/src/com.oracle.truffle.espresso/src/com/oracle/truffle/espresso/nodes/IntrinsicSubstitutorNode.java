@@ -109,6 +109,6 @@ public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNo
     @ExportMessage
     @SuppressWarnings("static-method")
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
-        return new SubstitutionScope(frame.getArguments());
+        return new SubstitutionScope(frame.getArguments(), getMethodVersion());
     }
 }
