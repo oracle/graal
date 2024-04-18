@@ -142,7 +142,7 @@ public final class CodeAttribute extends Attribute {
                 case MONITORENTER, MONITOREXIT ->
                     flags |= FLAGS_USES_MONITORS;
             }
-            bci += bs.nextBCI(bci);
+            bci = bs.nextBCI(bci);
         }
         return (byte) flags;
     }
