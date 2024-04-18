@@ -1296,7 +1296,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (nullCheck == null) {
             return object;
         }
-        return before.graph().addOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck));
+        return before.graph().addOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck));
     }
 
     @Override

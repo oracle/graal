@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractQueuedLongSynchronizer;
 import java.util.concurrent.locks.LockSupport;
 
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -45,10 +44,10 @@ import jdk.internal.misc.Unsafe;
  * {@link java.util.concurrent.locks.AbstractQueuedLongSynchronizer} as of JDK 21+26. This class
  * could be merged with {@link JavaMonitor} but we keep it separate because that way diffing against
  * the JDK sources is easier.
- * 
+ *
  * Only the relevant methods from the JDK sources have been kept. Some additional Native
  * Image-specific functionality has been added.
- * 
+ *
  * Main differences to the JDK implementation:
  * <ul>
  * <li>No need to store an owner {@linkplain Thread thread object}.</li>
@@ -188,7 +187,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             } else {
                 if (h == null) {
                     try {
-                        h = allocateExclusiveNode();
+                        h = new ExclusiveNode();
                     } catch (OutOfMemoryError oome) {
                         return null;
                     }
@@ -330,7 +329,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                 }
             } else if (node == null) {          // allocate; retry before enqueue
                 try {
-                    node = allocateExclusiveNode();
+                    node = new ExclusiveNode();
                 } catch (OutOfMemoryError oome) {
                     return acquireOnOOME(arg);
                 }
@@ -400,11 +399,6 @@ abstract class JavaMonitorQueuedSynchronizer {
                 q = q.prev;
             }
         }
-    }
-
-    @NeverInline("Can be removed once GR-51172 is resolved")
-    private static ExclusiveNode allocateExclusiveNode() {
-        return new ExclusiveNode();
     }
 
     // see AbstractQueuedLongSynchronizer.cancelAcquire(Node, boolean, boolean)
@@ -552,7 +546,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             long savedState;
             if (tryInitializeHead() != null) {
                 try {
-                    return allocateConditionNode();
+                    return new ConditionNode();
                 } catch (OutOfMemoryError oome) {
                 }
             }
@@ -563,11 +557,6 @@ abstract class JavaMonitorQueuedSynchronizer {
             U.park(false, OOME_COND_WAIT_DELAY);
             acquireOnOOME(savedState);
             return null;
-        }
-
-        @NeverInline("Can be removed once GR-51172 is resolved")
-        private static ConditionNode allocateConditionNode() {
-            return new ConditionNode();
         }
 
         // see AbstractQueuedLongSynchronizer.ConditionObject.await()

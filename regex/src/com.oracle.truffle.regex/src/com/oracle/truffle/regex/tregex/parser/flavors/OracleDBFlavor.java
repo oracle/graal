@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import java.util.function.BiPredicate;
-
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -74,11 +72,7 @@ public final class OracleDBFlavor extends RegexFlavor {
     }
 
     @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
-        return OracleDBFlavor::equalsIgnoreCase;
-    }
-
-    private static boolean equalsIgnoreCase(int codePointA, int codePointB) {
-        return MultiCharacterCaseFolding.equalsIgnoreCase(CaseFoldData.CaseFoldAlgorithm.OracleDB, codePointA, codePointB);
+    public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
+        return (codePointA, codePointB, altMode) -> MultiCharacterCaseFolding.equalsIgnoreCase(CaseFoldData.CaseFoldAlgorithm.OracleDB, codePointA, codePointB);
     }
 }

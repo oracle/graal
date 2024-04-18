@@ -43,7 +43,7 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
-import jdk.graal.compiler.nodes.gc.WriteBarrier;
+import jdk.graal.compiler.nodes.gc.WriteBarrierNode;
 import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -167,8 +167,8 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
             }
             FixedNode nextNode = cur.next();
             // We can safely ignore GC barriers
-            while (nextNode instanceof WriteBarrier) {
-                nextNode = ((WriteBarrier) nextNode).next();
+            while (nextNode instanceof WriteBarrierNode) {
+                nextNode = ((WriteBarrierNode) nextNode).next();
             }
 
             if (nextNode instanceof OrderedMemoryAccess) {

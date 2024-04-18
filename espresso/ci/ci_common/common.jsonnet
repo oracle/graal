@@ -63,12 +63,12 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
         "<graal>/truffle/**",
         "<graal>/espresso/**",
         "<graal>/tools/**",
+        "<graal>/regex/**",
         "<graal>/sulong/**",
         "<graal>/java-benchmarks/**",
       ] + base.basic_guard_includes + (if with_compiler then [
         "<graal>/common.json",
         "<graal>/compiler/**",
-        "<graal>/regex/**",
       ] + base.compiler_guard_includes else []) + (if with_native_image then [
         "<graal>/substratevm/**",
       ] + base.nativeimage_guard_includes else []) + (if with_vm then [

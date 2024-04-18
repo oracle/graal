@@ -21,17 +21,19 @@
 # questions.
 #
 
+import io
 import os
 import signal
 import subprocess
 
 import mx
+import mx_util
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 import mx_sdk_vm_impl
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
-from os.path import join, isabs
+from os.path import join, isabs, exists
 
 _suite = mx.suite('espresso')
 
@@ -185,6 +187,76 @@ And adapt the code to the modified headers in '{committed}'.
 """.format(committed=os.path.relpath(mokapot_dir, _suite.vc_dir), generated=os.path.relpath(libjavavm_dir, _suite.vc_dir), instructions=run_instructions))
 
 
+class EspressoLegacyNativeImageProperties(mx.Project):
+    def __init__(self, suite, name, deps, workingSets, theLicense=None, **attr):
+        super().__init__(suite, name, "", [], deps, workingSets, suite.dir, theLicense, **attr)
+
+    def isPlatformDependent(self):
+        return True
+
+    def isJDKDependent(self):
+        return False
+
+    def output_dir(self):
+        return join(self.get_output_base(), self.name)
+
+    def output_file(self):
+        return join(self.output_dir(), "native-image.properties")
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        yield self.output_file(), "native-image.properties"
+
+    def getBuildTask(self, args):
+        return EspressoLegacyNativeImagePropertiesBuildTask(self, args, 1)
+
+
+class EspressoLegacyNativeImagePropertiesBuildTask(mx.BuildTask):
+    subject: EspressoLegacyNativeImageProperties
+
+    def __str__(self):
+        return f'Create {self.subject}'
+
+    def newestOutput(self):
+        return mx.TimeStampFile.newest(self.subject.output_file())
+
+    def needsBuild(self, newestInput):
+        r = super().needsBuild(newestInput)
+        if r[0]:
+            return r
+        out_file = self.subject.output_file()
+        if not exists(out_file):
+            return True, out_file + " doesn't exist"
+        expected = self.contents()
+        with open(out_file, 'r', encoding='utf-8') as f:
+            if f.read() != expected:
+                return True, "Outdated content"
+        return False, None
+
+    def clean(self, forBuild=False):
+        if exists(self.subject.output_dir()):
+            mx.rmtree(self.subject.output_dir())
+
+    @staticmethod
+    def contents():
+        with_tregex = mx_sdk_vm_impl.has_component('TRegex')
+        with_pre_init = mx.is_linux() and mx.get_os_variant() != "musl"
+        contents = "Requires = language:nfi"
+        if with_tregex:
+            contents = contents + " language:regex"
+        if with_pre_init:
+            contents = contents + """
+
+JavaArgs = -Dpolyglot.image-build-time.PreinitializeContexts=java \\
+      -Dpolyglot.image-build-time.PreinitializeContextsWithNative=true
+"""
+        return contents
+
+    def build(self):
+        mx_util.ensure_dir_exists(self.subject.output_dir())
+        with mx_util.SafeFileCreation(self.subject.output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as outfile:
+            outfile.write(self.contents())
+
+
 # REGISTER MX GATE RUNNER
 #########################
 add_gate_runner(_suite, _espresso_gate_runner)
@@ -202,7 +274,6 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
     build_args=[
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
-        '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
         '--enable-monitoring=threaddump',
     ] + mx_sdk_vm_impl.svm_experimental_options([
         '-H:-JNIExportSymbols',
@@ -452,19 +523,20 @@ def register_espresso_envs(suite):
     # pylint: disable=bad-whitespace
     # pylint: disable=line-too-long
     tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'truffle-json']
+    tregex = ['icu4j', 'rgx']
     _llvm_toolchain_wrappers = ['bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-clang++', 'bgraalvm-native-flang', 'bgraalvm-native-ld', 'bgraalvm-native-binutil']
     if espresso_llvm_java_home:
-        mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'                                                    , 'elau'                                                                                                                                                ] + tools, suite, env_file='jvm-llvm')
-        mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'         , 'svm', 'svmt'         , 'svmsl'          , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'] + _llvm_toolchain_wrappers + tools, suite, env_file='jvm-ce-llvm')
-        mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tfle', 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn', 'cmpee', 'svm', 'svmt', 'svmee', 'svmte', 'svmsl', 'tflllm', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'] + _llvm_toolchain_wrappers + tools, suite, env_file='jvm-ee-llvm')
-        mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'ejc', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'         , 'svm', 'svmt'         , 'svmsl'          , 'tflm'                                      , 'spolyglot'] + _llvm_toolchain_wrappers + tools, suite, env_file='native-ce-llvm')
-        mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'ejc', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tfle', 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn', 'cmpee', 'svm', 'svmt', 'svmsl', 'svmee', 'svmte', 'tflllm', 'tflm'                                      , 'spolyglot'] + _llvm_toolchain_wrappers + tools, suite, env_file='native-ee-llvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'                                                    , 'elau'                                                                                                                                                ] + tools + tregex, suite, env_file='jvm-llvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'         , 'svm', 'svmt'         , 'svmsl'          , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'] + _llvm_toolchain_wrappers + tools + tregex, suite, env_file='jvm-ce-llvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tfle', 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn', 'cmpee', 'svm', 'svmt', 'svmee', 'svmte', 'svmsl', 'tflllm', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'] + _llvm_toolchain_wrappers + tools + tregex, suite, env_file='jvm-ee-llvm')
+        mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'ejc', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'         , 'svm', 'svmt'         , 'svmsl'          , 'tflm'                                      , 'spolyglot'] + _llvm_toolchain_wrappers + tools + tregex, suite, env_file='native-ce-llvm')
+        mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'ejc', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tfle', 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn', 'cmpee', 'svm', 'svmt', 'svmsl', 'svmee', 'svmte', 'tflllm', 'tflm'                                      , 'spolyglot'] + _llvm_toolchain_wrappers + tools + tregex, suite, env_file='native-ee-llvm')
     else:
-        mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm'                , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp'                                                                                       , 'elau'                                                                                                                                                ] + tools, suite, env_file='jvm')
-        mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm'                , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp'                                            , 'svm', 'svmt', 'svmsl'                   , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'                                                                                                     ] + tools, suite, env_file='jvm-ce')
-        mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm'                , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tfle', 'cmp'                                   , 'cmpee', 'svm', 'svmt', 'svmsl', 'svmee', 'svmte', 'tflllm', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'                                                                                                     ] + tools, suite, env_file='jvm-ee')
-        mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'ejc'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp'                                            , 'svm', 'svmt', 'svmsl'                   , 'tflm'                                      , 'spolyglot'                                                                                                     ] + tools, suite, env_file='native-ce')
-        mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'ejc'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tfle', 'cmp'                                   , 'cmpee', 'svm', 'svmt', 'svmsl', 'svmee', 'svmte', 'tflllm', 'tflm'                                      , 'spolyglot'                                                                                                     ] + tools, suite, env_file='native-ee')
+        mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm'                , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp'                                                                                       , 'elau'                                                                                                                                                ] + tools + tregex, suite, env_file='jvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm'                , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp'                                            , 'svm', 'svmt', 'svmsl'                   , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'                                                                                                     ] + tools + tregex, suite, env_file='jvm-ce')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm'                , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tfle', 'cmp'                                   , 'cmpee', 'svm', 'svmt', 'svmsl', 'svmee', 'svmte', 'tflllm', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'                                                                                                     ] + tools + tregex, suite, env_file='jvm-ee')
+        mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'ejc'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp'                                            , 'svm', 'svmt', 'svmsl'                   , 'tflm'                                      , 'spolyglot'                                                                                                     ] + tools + tregex, suite, env_file='native-ce')
+        mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'ejc'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tfle', 'cmp'                                   , 'cmpee', 'svm', 'svmt', 'svmsl', 'svmee', 'svmte', 'tflllm', 'tflm'                                      , 'spolyglot'                                                                                                     ] + tools + tregex, suite, env_file='native-ee')
 
 
 register_espresso_envs(_suite)

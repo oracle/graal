@@ -29,7 +29,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * Base class for fast thread local variables.
+ * Base class for fast thread local variables. See {@link FastThreadLocalFactory} for details and
+ * restrictions of VM thread local variables.
  */
 public abstract class FastThreadLocal {
     class FastThreadLocalLocationIdentity extends LocationIdentity {

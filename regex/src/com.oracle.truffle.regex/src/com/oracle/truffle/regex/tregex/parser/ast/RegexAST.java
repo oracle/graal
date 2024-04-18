@@ -97,7 +97,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * Possibly wrapped root for NFA generation (see {@link #createPrefix()}).
      */
     private Group wrappedRoot;
-    private List<Group> captureGroups = new ArrayList<>();
+    private final List<Group> captureGroups = new ArrayList<>();
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
     private final GlobalSubTreeIndex subtrees = new GlobalSubTreeIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
@@ -583,8 +583,8 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * counterparts.</li>
      * <li>Nodes inserted as substitutions for e.g. {@code \b} will simply point to the source
      * section they are substituting.</li>
-     * <li>Source sections of {@link Token#createQuantifier(int, int, boolean)} quantifiers} are
-     * mapped to their respective {@link Term}.</li>
+     * <li>Source sections of {@link Token#createQuantifier(int, int, boolean, boolean, boolean)}
+     * quantifiers} are mapped to their respective {@link Term}.</li>
      * </ul>
      */
     public List<SourceSection> getSourceSections(RegexASTNode node) {

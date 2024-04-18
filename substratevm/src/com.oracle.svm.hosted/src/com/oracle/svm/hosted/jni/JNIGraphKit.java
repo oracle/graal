@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.jni;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
@@ -55,6 +54,7 @@ import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -80,7 +80,7 @@ public class JNIGraphKit extends HostedGraphKit {
             }
         }
         sb.append('_').append(signature.getReturnType().getJavaKind().getTypeChar());
-        return digest ? SubstrateUtil.digest(sb.toString()) : sb.toString();
+        return digest ? Digest.digest(sb.toString()) : sb.toString();
     }
 
     public ValueNode checkObjectType(ValueNode uncheckedValue, ResolvedJavaType type, boolean checkNonNull) {

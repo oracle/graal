@@ -55,6 +55,7 @@ import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.ConditionAnchorNode;
@@ -91,6 +92,7 @@ import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.OpaqueLogicNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
+import jdk.graal.compiler.nodes.java.AccessFieldNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.TypeSwitchNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -101,9 +103,11 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.InfoElement;
 import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
 
@@ -153,6 +157,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         @Option(help = "Moves guard nodes to earlier places in the dominator tree if " +
                        "all successors of a basic block share a common guard condition.", type = OptionType.Expert)
         public static final OptionKey<Boolean> MoveGuardsUpwards = new OptionKey<>(true);
+        @Option(help = "", type = OptionType.Debug)
+         public static final OptionKey<Boolean> FieldAccessSkipPreciseTypes = new OptionKey<>(true);
         // @formatter:on
     }
 
@@ -178,6 +184,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             NodeMap<HIRBlock> nodeToBlock = null;
             ControlFlowGraph cfg = null;
             if (fullSchedule) {
+                trySkippingGuardPis(graph);
                 cfg = ControlFlowGraph.newBuilder(graph).backendBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true).computePostdominators(
                                 true).build();
                 graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Conditional elimination after computing CFG");
@@ -204,6 +211,13 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             ControlFlowGraph.RecursiveVisitor<?> visitor = createVisitor(graph, cfg, blockToNodes, nodeToBlock, context);
             cfg.visitDominatorTree(visitor, graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
         }
+    }
+
+    private static void trySkippingGuardPis(StructuredGraph graph) {
+        for (GuardNode floatingGuard : graph.getNodes(GuardNode.TYPE).snapshot()) {
+            PiNode.guardTrySkipPi(floatingGuard, floatingGuard.getCondition(), floatingGuard.isNegated(), NodeView.DEFAULT);
+        }
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After trySkipGuardPis");
     }
 
     protected BlockMap<List<Node>> getBlockToNodes(@SuppressWarnings("unused") ControlFlowGraph cfg) {
@@ -415,8 +429,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         protected final EconomicMap<MergeNode, EconomicMap<ValuePhiNode, PhiInfoElement>> mergeMaps;
         private final ConditionalEliminationUtil.InfoElementProvider infoElementProvider;
         private final ConditionalEliminationUtil.GuardFolding guardFolding;
-
         protected final ArrayDeque<ConditionalEliminationUtil.GuardedCondition> conditions;
+        private final boolean processFieldAccess;
 
         /**
          * Tests which may be eliminated because post dominating tests to prove a broader condition.
@@ -448,6 +462,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     return foldPendingTest(thisGuard, original, newStamp, rewireGuardFunction);
                 }
             };
+            this.processFieldAccess = Options.FieldAccessSkipPreciseTypes.getValue(graph.getOptions());
         }
 
         protected void processConditionAnchor(ConditionAnchorNode node) {
@@ -474,8 +489,10 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     if (condition.hasNoUsages()) {
                         GraphUtil.killWithUnusedFloatingInputs(condition);
                     }
-                    if (guard instanceof DeoptimizingGuard && !((DeoptimizingGuard) guard).isNegated()) {
-                        rebuildPiNodes((DeoptimizingGuard) guard);
+                    if (guard instanceof BeginNode b && b.predecessor() instanceof IfNode ifNode) {
+                        rebuildPiNodes(b, ifNode.condition());
+                    } else if (guard instanceof DeoptimizingGuard dg && !((DeoptimizingGuard) guard).isNegated()) {
+                        rebuildPiNodes(dg, dg.getCondition());
                     }
                 } else {
                     AbstractBeginNode beginNode = (AbstractBeginNode) node.getAnchor();
@@ -508,8 +525,11 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
-                    if (guard instanceof DeoptimizingGuard && !((DeoptimizingGuard) guard).isNegated()) {
-                        rebuildPiNodes((DeoptimizingGuard) guard);
+
+                    if (guard instanceof BeginNode b && b.predecessor() instanceof IfNode ifNode) {
+                        rebuildPiNodes(b, ifNode.condition());
+                    } else if (guard instanceof DeoptimizingGuard dg && !((DeoptimizingGuard) guard).isNegated()) {
+                        rebuildPiNodes(dg, dg.getCondition());
                     }
                 } else {
                     node.setCondition(LogicConstantNode.forBoolean(result, node.graph()), node.isNegated());
@@ -522,8 +542,94 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             }
         }
 
-        private void rebuildPiNodes(DeoptimizingGuard guard) {
-            LogicNode newCondition = guard.getCondition();
+        /**
+         * Optimize load field / store field pi inputs if possible.
+         *
+         * This is a common Java source code pattern like:
+         *
+         * <pre>
+         * if (someObject instanceof ConcreteClass concrete) {
+         *     use(concrete.field);
+         * }
+         * </pre>
+         *
+         * Bytecode parsing builds two instanceof checks:
+         *
+         * <pre>
+         *     if (someObject instanceof ConcreteClass[non-null]) {
+         *         guard = FixedGuard(ClassCastException, someObject instanceof ConcreteClass[may be null]);
+         *         concrete = Pi(guard, someObject, piStamp = ConcreteClass[may be null]);
+         *         use(concrete.field);
+         *     }
+         * </pre>
+         *
+         * Conditional elimination removes the guard. We are left with the Pi anchored on the if:
+         *
+         * <pre>
+         *     if (someObject instanceof ConcreteClass[non-null]) {
+         *         anchor = BeginNode();
+         *         concrete = Pi(anchor, someObject, piStamp = ConcreteClass[may be null]);
+         *         use(concrete.field);
+         *     }
+         * </pre>
+         *
+         * The Pi now proves a weaker stamp than the branch on which it is anchored. When we lower
+         * the field access, we would need to insert a null check. That null check would eventually
+         * fold away, but in the meantime it could prevent other high tier canonicalizations.
+         * Strengthen the Pi to include the information that the object is non-null.
+         */
+        private void processAccessField(AccessFieldNode af) {
+            ValueNode object = af.object();
+            ResolvedJavaField field = af.field();
+            if (object instanceof PiNode objectPi) {
+                // see if there are earlier pi's we can use for the same data
+                final boolean nonNull = ((AbstractObjectStamp) object.stamp(NodeView.DEFAULT)).nonNull();
+                GuardingNode fieldPiGuard = objectPi.getGuard();
+                LogicNode condition = null;
+                if (fieldPiGuard instanceof BeginNode b) {
+                    if (b.predecessor() instanceof IfNode ifNode && b == ifNode.trueSuccessor()) {
+                        condition = ifNode.condition();
+                    }
+                } else if (fieldPiGuard instanceof GuardNode floatingGuard && !floatingGuard.isNegated()) {
+                    condition = floatingGuard.getCondition();
+                } else if (fieldPiGuard instanceof FixedGuardNode fixedGuard && !fixedGuard.isNegated()) {
+                    condition = fixedGuard.getCondition();
+                }
+
+                if (condition instanceof UnaryOpLogicNode unaryLogicNode) {
+                    final ValueNode value = unaryLogicNode.getValue();
+                    InfoElement infoElement = infoElementProvider.infoElements(value);
+                    while (infoElement != null) {
+                        /*
+                         * Once we optimized and skipped a pi we do not immediately remove it from
+                         * the graph. Other nodes may still use it, we let the canonicalizer take
+                         * care of it. We have to ensure we are not using a later pi again that we
+                         * just recently skipped. In the optimization (if conditional elimination is
+                         * called multiple times).
+                         */
+                        if (infoElement.getGuard() != fieldPiGuard && nodeToBlock.get(infoElement.getGuard().asNode()).strictlyDominates(nodeToBlock.get(fieldPiGuard.asNode()))) {
+                            final Stamp stamp = infoElement.getStamp();
+                            /*
+                             * Determine if this pi can be skipped by using a pi based on the stamp
+                             * of this guard.
+                             */
+                            if (stamp instanceof AbstractObjectStamp objectStamp && objectStamp.nonNull() == nonNull && objectStamp.type() != null &&
+                                            field.getDeclaringClass().isAssignableFrom(objectStamp.type())) {
+                                ValueNode newPi = graph.addOrUnique(PiNode.create(value, stamp, infoElement.getGuard().asNode()));
+                                af.setObject(newPi);
+                                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "AccessFieldSkipPi", af);
+                                break;
+                            }
+                        }
+                        infoElement = infoElementProvider.nextElement(infoElement);
+                    }
+                }
+
+            }
+        }
+
+        private void rebuildPiNodes(GuardingNode guard, LogicNode condition) {
+            LogicNode newCondition = condition;
             if (newCondition instanceof InstanceOfNode) {
                 InstanceOfNode inst = (InstanceOfNode) newCondition;
                 ValueNode originalValue = GraphUtil.skipPi(inst.getValue());
@@ -723,6 +829,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     processValueAnchor((ValueAnchorNode) node);
                 } else if (node instanceof CompressionNode c) {
                     processCompressionNode(c);
+                } else if (processFieldAccess && node instanceof AccessFieldNode af) {
+                    processAccessField(af);
                 }
             }
         }
@@ -1181,6 +1289,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                 conditions.pop();
             }
         }
+
     }
 
     @Override

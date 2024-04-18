@@ -171,9 +171,10 @@ public final class RuntimeCodeInfoAccess {
             continueVisiting = continueVisiting && CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(),
                             impl.getCodeConstantsReferenceMapEncoding(), impl.getCodeConstantsReferenceMapIndex(), visitor, null);
         }
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoObjectConstants(), visitor);
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoSourceClasses(), visitor);
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoSourceMethodNames(), visitor);
+        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectConstants(), visitor);
+        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getClasses(), visitor);
+        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getMemberNames(), visitor);
+        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getOtherStrings(), visitor);
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getDeoptimizationObjectConstants(), visitor);
         return continueVisiting;
     }
@@ -323,6 +324,7 @@ public final class RuntimeCodeInfoAccess {
         action.apply(impl.getDeoptimizationEncodings());
         action.apply(impl.getCodeConstantsReferenceMapEncoding());
         action.apply(impl.getCodeObserverHandles());
+        action.apply(impl.getMethodTable());
         forEachObjectArray(info, action);
     }
 
@@ -330,9 +332,10 @@ public final class RuntimeCodeInfoAccess {
     public static void forEachObjectArray(CodeInfo info, NonmovableArrayAction action) {
         CodeInfoImpl impl = cast(info);
         action.apply(impl.getObjectFields());
-        action.apply(impl.getFrameInfoObjectConstants());
-        action.apply(impl.getFrameInfoSourceClasses());
-        action.apply(impl.getFrameInfoSourceMethodNames());
+        action.apply(impl.getObjectConstants());
+        action.apply(impl.getClasses());
+        action.apply(impl.getMemberNames());
+        action.apply(impl.getOtherStrings());
         action.apply(impl.getDeoptimizationObjectConstants());
     }
 

@@ -733,7 +733,7 @@ public final class Deoptimizer {
                 }
             }
 
-            CodeInfoQueryResult targetInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(deoptInfo.getDeoptMethodOffset(), deoptInfo.getEncodedBci());
+            CodeInfoQueryResult targetInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(deoptInfo.getDeoptMethodImageCodeInfo(), deoptInfo.getDeoptMethodOffset(), deoptInfo.getEncodedBci());
             if (targetInfo == null || targetInfo.getFrameInfo() == null) {
                 throw fatalDeoptimizationError(
                                 "Deoptimization: no matching target bytecode frame found for deopt target method", deoptInfo, frameInfo);

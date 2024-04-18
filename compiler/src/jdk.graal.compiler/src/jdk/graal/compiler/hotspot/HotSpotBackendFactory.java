@@ -44,9 +44,11 @@ import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotSnippetReflectionProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotStampProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotSuitesProvider;
+import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
@@ -60,6 +62,7 @@ import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecodeProvider;
@@ -270,6 +273,14 @@ public abstract class HotSpotBackendFactory {
                         return false;
                     }
                     return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
+                }
+
+                @Override
+                protected ValueNode maybeUncompressExpectedValue(ValueNode value) {
+                    if (value != null && (value.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp)) {
+                        return HotSpotCompressionNode.uncompress(value.graph(), value, config.getOopEncoding());
+                    }
+                    return value;
                 }
             };
         } else {

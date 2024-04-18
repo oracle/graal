@@ -58,6 +58,11 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
         return object;
     }
 
+    public void setObject(ValueNode otherObject) {
+        updateUsages(object, otherObject);
+        this.object = otherObject;
+    }
+
     /**
      * Constructs a new access field object.
      *

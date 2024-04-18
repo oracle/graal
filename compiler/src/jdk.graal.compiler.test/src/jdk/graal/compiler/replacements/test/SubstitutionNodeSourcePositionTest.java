@@ -26,7 +26,6 @@ package jdk.graal.compiler.replacements.test;
 
 import static jdk.graal.compiler.core.GraalCompiler.compileGraph;
 import static jdk.graal.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
-import static org.junit.Assume.assumeTrue;
 
 import java.util.List;
 
@@ -52,16 +51,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class SubstitutionNodeSourcePositionTest extends ReplacementsTest {
 
-    public void snippetLowering(String[] array, String value) {
-        array[0] = value;
+    public boolean snippetLowering(Class<?> c, Object o) {
+        return c.isInstance(o);
     }
 
     @Test
     public void testSnippetLowering() {
-        // This test is checking for the source positions from the snippet lowered write barrier so
-        // it only works for GCs that have write barriers.
-        assumeTrue("current gc has no write barrier", getProviders().getPlatformConfigurationProvider().getBarrierSet().hasWriteBarrier());
-
         // @formatter:off
         // Expect mappings of the form:
         //   at jdk.graal.compiler.hotspot.replacements.WriteBarrierSnippets.serialWriteBarrier(WriteBarrierSnippets.java:140) [bci: 18]
@@ -72,7 +67,7 @@ public class SubstitutionNodeSourcePositionTest extends ReplacementsTest {
         //
         // The precise snippet bytecodes don't matter, just ensure that some actually appear after
         // lowering.
-        checkMappings("snippetLowering", true, SubstitutionNodeSourcePositionTest.class, "snippetLowering");
+        checkMappings("snippetLowering", false, SubstitutionNodeSourcePositionTest.class, "snippetLowering");
     }
 
     public int methodPlugin(int i) {

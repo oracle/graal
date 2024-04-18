@@ -60,15 +60,18 @@ public class ImageCodeInfo {
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataOffset;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataSize;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord codeAndDataMemorySize;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private int methodTableFirstId;
 
     private final Object[] objectFields;
     @UnknownObjectField(availability = AfterCompilation.class) byte[] codeInfoIndex;
     @UnknownObjectField(availability = AfterCompilation.class) byte[] codeInfoEncodings;
     @UnknownObjectField(availability = AfterCompilation.class) byte[] referenceMapEncoding;
     @UnknownObjectField(availability = AfterCompilation.class) byte[] frameInfoEncodings;
-    @UnknownObjectField(availability = AfterCompilation.class) Object[] frameInfoObjectConstants;
-    @UnknownObjectField(availability = AfterCompilation.class) Class<?>[] frameInfoSourceClasses;
-    @UnknownObjectField(availability = AfterCompilation.class) String[] frameInfoSourceMethodNames;
+    @UnknownObjectField(availability = AfterCompilation.class) Object[] objectConstants;
+    @UnknownObjectField(availability = AfterCompilation.class) Class<?>[] classes;
+    @UnknownObjectField(availability = AfterCompilation.class) String[] memberNames;
+    @UnknownObjectField(availability = AfterCompilation.class) String[] otherStrings;
+    @UnknownObjectField(availability = AfterCompilation.class) byte[] methodTable;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
@@ -95,31 +98,24 @@ public class ImageCodeInfo {
         info.setCodeInfoEncodings(NonmovableArrays.fromImageHeap(codeInfoEncodings));
         info.setStackReferenceMapEncoding(NonmovableArrays.fromImageHeap(referenceMapEncoding));
         info.setFrameInfoEncodings(NonmovableArrays.fromImageHeap(frameInfoEncodings));
-        info.setFrameInfoObjectConstants(NonmovableArrays.fromImageHeap(frameInfoObjectConstants));
-        info.setFrameInfoSourceClasses(NonmovableArrays.fromImageHeap(frameInfoSourceClasses));
-        info.setFrameInfoSourceMethodNames(NonmovableArrays.fromImageHeap(frameInfoSourceMethodNames));
+        info.setObjectConstants(NonmovableArrays.fromImageHeap(objectConstants));
+        info.setClasses(NonmovableArrays.fromImageHeap(classes));
+        info.setMemberNames(NonmovableArrays.fromImageHeap(memberNames));
+        info.setOtherStrings(NonmovableArrays.fromImageHeap(otherStrings));
+        info.setMethodTable(NonmovableArrays.fromImageHeap(methodTable));
+        info.setMethodTableFirstId(methodTableFirstId);
+        info.setIsAOTImageCode(true);
 
         return info;
     }
 
     /**
-     * Use {@link CodeInfoTable#getImageCodeInfo()} and {@link CodeInfoAccess#getCodeStart} instead.
-     * This method is intended only for the early stages of VM initialization when
-     * {@link #prepareCodeInfo()} has not yet run.
+     * Use {@link CodeInfoTable#getImageCodeInfo} and {@link CodeInfoAccess#getCodeStart} instead.
+     * This method is intended only for VM-internal usage.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodePointer getCodeStart() {
         return codeStart;
-    }
-
-    /**
-     * Use {@link CodeInfoTable#getImageCodeInfo()} and
-     * {@link CodeInfoAccess#getStackReferenceMapEncoding} instead. This method is intended only for
-     * the early stages of VM initialization when {@link #prepareCodeInfo()} has not yet run.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public NonmovableArray<Byte> getStackReferenceMapEncoding() {
-        return NonmovableArrays.fromImageHeap(referenceMapEncoding);
     }
 
     public HostedImageCodeInfo getHostedImageCodeInfo() {
@@ -127,7 +123,7 @@ public class ImageCodeInfo {
     }
 
     public List<Integer> getTotalByteArrayLengths() {
-        return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length);
+        return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length, methodTable.length);
     }
 
     /**
@@ -237,33 +233,63 @@ public class ImageCodeInfo {
         }
 
         @Override
-        public NonmovableObjectArray<Object> getFrameInfoObjectConstants() {
-            return NonmovableArrays.fromImageHeap(frameInfoObjectConstants);
+        public NonmovableObjectArray<Object> getObjectConstants() {
+            return NonmovableArrays.fromImageHeap(objectConstants);
         }
 
         @Override
-        public void setFrameInfoObjectConstants(NonmovableObjectArray<Object> array) {
-            frameInfoObjectConstants = NonmovableArrays.getHostedArray(array);
+        public void setObjectConstants(NonmovableObjectArray<Object> array) {
+            objectConstants = NonmovableArrays.getHostedArray(array);
         }
 
         @Override
-        public NonmovableObjectArray<Class<?>> getFrameInfoSourceClasses() {
-            return NonmovableArrays.fromImageHeap(frameInfoSourceClasses);
+        public NonmovableObjectArray<Class<?>> getClasses() {
+            return NonmovableArrays.fromImageHeap(classes);
         }
 
         @Override
-        public void setFrameInfoSourceClasses(NonmovableObjectArray<Class<?>> array) {
-            frameInfoSourceClasses = NonmovableArrays.getHostedArray(array);
+        public void setClasses(NonmovableObjectArray<Class<?>> array) {
+            classes = NonmovableArrays.getHostedArray(array);
         }
 
         @Override
-        public NonmovableObjectArray<String> getFrameInfoSourceMethodNames() {
-            return NonmovableArrays.fromImageHeap(frameInfoSourceMethodNames);
+        public NonmovableObjectArray<String> getMemberNames() {
+            return NonmovableArrays.fromImageHeap(memberNames);
         }
 
         @Override
-        public void setFrameInfoSourceMethodNames(NonmovableObjectArray<String> array) {
-            frameInfoSourceMethodNames = NonmovableArrays.getHostedArray(array);
+        public void setMemberNames(NonmovableObjectArray<String> array) {
+            memberNames = NonmovableArrays.getHostedArray(array);
+        }
+
+        @Override
+        public NonmovableObjectArray<String> getOtherStrings() {
+            return NonmovableArrays.fromImageHeap(otherStrings);
+        }
+
+        @Override
+        public void setOtherStrings(NonmovableObjectArray<String> array) {
+            otherStrings = NonmovableArrays.getHostedArray(array);
+        }
+
+        @Override
+        public NonmovableArray<Byte> getMethodTable() {
+            return NonmovableArrays.fromImageHeap(methodTable);
+        }
+
+        @Override
+        public void setMethodTable(NonmovableArray<Byte> methods) {
+            methodTable = NonmovableArrays.getHostedArray(methods);
+        }
+
+        @Override
+        public int getMethodTableFirstId() {
+            return methodTableFirstId;
+        }
+
+        @Override
+        public void setMethodTableFirstId(int methodId) {
+            methodTableFirstId = methodId;
         }
 
         @Override
@@ -369,6 +395,26 @@ public class ImageCodeInfo {
         @Override
         public boolean getAllObjectsAreInImageHeap() {
             throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public void setIsAOTImageCode(boolean value) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public boolean getIsAOTImageCode() {
+            return true;
+        }
+
+        @Override
+        public void setNextImageCodeInfo(CodeInfo next) {
+            throw VMError.shouldNotReachHere("not supported during image generation");
+        }
+
+        @Override
+        public CodeInfo getNextImageCodeInfo() {
+            throw VMError.shouldNotReachHere("not supported during image generation");
         }
 
         @Override

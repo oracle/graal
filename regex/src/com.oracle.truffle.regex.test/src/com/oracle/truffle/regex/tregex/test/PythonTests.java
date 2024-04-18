@@ -505,6 +505,7 @@ public class PythonTests extends RegexTestBase {
     @Test
     public void generatedTests() {
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+
         // Generated using sre from CPython 3.11.8
         // re._casefix._EXTRA_CASES
         test("i", "i", "\u0131", 0, true, 0, 1);
@@ -623,6 +624,7 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("(a)b(?<=(?(2)b|x))(c)", "", "", getTRegexEncoding(), "", 0, "cannot refer to an open group", 13);
         expectSyntaxError("(?(2147483648)a|b)", "", "", getTRegexEncoding(), "", 0, "invalid group reference 2147483648", 3);
         expectSyntaxError("(?(42)a|b)[", "", "", getTRegexEncoding(), "", 0, "unterminated character set", 10);
+
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
 }

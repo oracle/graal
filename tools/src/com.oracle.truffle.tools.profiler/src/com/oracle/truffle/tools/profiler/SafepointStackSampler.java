@@ -26,9 +26,10 @@ package com.oracle.truffle.tools.profiler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -79,10 +80,8 @@ final class SafepointStackSampler {
         return visitor;
     }
 
-    List<StackSample> sample(Env env, TruffleContext context, CPUSampler.MutableSamplerData mutableSamplerData, boolean useSyntheticFrames, long timeout, TimeUnit timeoutUnit) {
-        if (context.isClosed()) {
-            return Collections.emptyList();
-        }
+    List<StackSample> sample(Env env, Map<TruffleContext, CPUSampler.MutableSamplerData> contexts, boolean useSyntheticFrames, long timeout, TimeUnit timeoutUnit) {
+        long startNanos = System.nanoTime();
         SampleAction action = cachedAction.getAndSet(null);
         if (action == null) {
             long index = sampleIndex.getAndIncrement();
@@ -96,21 +95,37 @@ final class SafepointStackSampler {
         action.useSyntheticFrames = useSyntheticFrames;
 
         long submitTime = System.nanoTime();
-        Future<Void> future;
-        try {
-            future = env.submitThreadLocal(context, null, action);
-        } catch (IllegalStateException e) {
-            // context may be closed while submitting
-            return Collections.emptyList();
+        Map<TruffleContext, Future<Void>> futures = new LinkedHashMap<>();
+        for (TruffleContext context : contexts.keySet()) {
+            if (!context.isClosed()) {
+                try {
+                    futures.put(context, env.submitThreadLocal(context, null, action));
+                } catch (IllegalStateException e) {
+                    // context may be closed while submitting
+                }
+            }
         }
-        try {
-            future.get(timeout, timeoutUnit);
-        } catch (InterruptedException | ExecutionException e) {
-            env.getLogger(getClass()).log(Level.SEVERE, "Sampling failed", e);
-            return null;
-        } catch (TimeoutException e) {
-            future.cancel(false);
-            mutableSamplerData.missedSamples.incrementAndGet();
+
+        boolean incompleteSample = false;
+        for (Map.Entry<TruffleContext, Future<Void>> futureEntry : futures.entrySet()) {
+            TruffleContext context = futureEntry.getKey();
+            Future<Void> future = futureEntry.getValue();
+            long timeElapsed = System.nanoTime() - startNanos;
+            long timeoutNanos = timeoutUnit.toNanos(timeout);
+            if (!incompleteSample && timeElapsed < timeoutNanos) {
+                try {
+                    futureEntry.getValue().get(timeout, timeoutUnit);
+                } catch (InterruptedException | ExecutionException e) {
+                    env.getLogger(getClass()).log(Level.SEVERE, "Sampling error", e);
+                    incompleteSample = true;
+                } catch (TimeoutException e) {
+                    future.cancel(false);
+                    contexts.get(context).missedSamples.incrementAndGet();
+                    incompleteSample = true;
+                }
+            } else {
+                future.cancel(false);
+            }
         }
         // we compute the time to find out how accurate this sample is.
         List<StackSample> perThreadSamples = new ArrayList<>();
@@ -259,6 +274,9 @@ final class SafepointStackSampler {
 
         @Override
         protected void perform(Access access) {
+            if (completed.containsKey(access.getThread())) {
+                return;
+            }
             if (useSyntheticFrames) {
                 SyntheticFrame syntheticFrame = syntheticFrameThreadLocal.get();
                 if (syntheticFrame != null) {

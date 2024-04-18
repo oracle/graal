@@ -228,7 +228,7 @@ public final class StoredContinuationAccess {
         if (codeInfo.isNull()) {
             throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, null);
         }
-        VMError.guarantee(codeInfo.equal(CodeInfoTable.getImageCodeInfo()));
+        VMError.guarantee(CodeInfoAccess.isAOTImageCode(codeInfo));
         VMError.guarantee(Deoptimizer.checkDeoptimized(sp) == null);
 
         CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
@@ -309,7 +309,7 @@ public final class StoredContinuationAccess {
                 }
             }
 
-            VMError.guarantee(codeInfo.equal(CodeInfoTable.getImageCodeInfo()));
+            VMError.guarantee(CodeInfoAccess.isAOTImageCode(codeInfo));
 
             return true;
         }

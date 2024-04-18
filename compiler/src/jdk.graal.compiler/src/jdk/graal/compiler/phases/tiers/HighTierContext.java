@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.phases.tiers;
 
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.ExplicitOOMEExceptionEdges;
 import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.PhaseSuite;
@@ -43,6 +47,18 @@ public class HighTierContext extends CoreProvidersDelegate {
 
     public PhaseSuite<HighTierContext> getGraphBuilderSuite() {
         return graphBuilderSuite;
+    }
+
+    public PhaseSuite<HighTierContext> getGraphBuilderSuiteForCallee(Invoke invoke) {
+        PhaseSuite<HighTierContext> regularGraphBuilder = graphBuilderSuite;
+        if (invoke.isInOOMETry()) {
+            PhaseSuite<HighTierContext> copied = regularGraphBuilder.copy();
+            GraphBuilderPhase originalBuilder = (GraphBuilderPhase) (copied.findPhase(GraphBuilderPhase.class).previous());
+            GraphBuilderConfiguration newConfig = originalBuilder.getGraphBuilderConfig().copy().withOOMEExceptionEdges(ExplicitOOMEExceptionEdges.ForceOOMEExceptionEdges);
+            copied.findPhase(GraphBuilderPhase.class).set(originalBuilder.copyWithConfig(newConfig));
+            return copied;
+        }
+        return regularGraphBuilder;
     }
 
     public OptimisticOptimizations getOptimisticOptimizations() {

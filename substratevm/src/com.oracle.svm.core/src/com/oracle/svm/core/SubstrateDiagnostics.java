@@ -930,11 +930,14 @@ public class SubstrateDiagnostics {
                 log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
             }
 
-            CodeInfo info = CodeInfoTable.getImageCodeInfo();
-            Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
-            UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
-            Pointer codeEnd = codeStart.add(codeSize).subtract(1);
-            log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+            CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();
+            do {
+                Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
+                UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
+                Pointer codeEnd = codeStart.add(codeSize).subtract(1);
+                log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+                info = CodeInfoAccess.getNextImageCodeInfo(info);
+            } while (info.isNonNull());
 
             log.indent(false);
         }
@@ -1100,25 +1103,28 @@ public class SubstrateDiagnostics {
          * NOTE: this method may only be called by a single thread.
          */
         public boolean printLocationInfo(Log log, UnsignedWord value) {
-            CodeInfo imageCodeInfo = CodeInfoTable.getImageCodeInfo();
-            if (imageCodeInfo.equal(value)) {
-                log.string("is the image CodeInfo object");
-                return true;
-            }
-
-            UnsignedWord codeInfoEnd = ((UnsignedWord) imageCodeInfo).add(CodeInfoAccess.getSizeOfCodeInfo());
-            if (value.aboveOrEqual((UnsignedWord) imageCodeInfo) && value.belowThan(codeInfoEnd)) {
-                log.string("points inside the image CodeInfo object ").zhex(imageCodeInfo);
-                return true;
-            }
-
-            if (CodeInfoAccess.contains(imageCodeInfo, (CodePointer) value)) {
-                log.string("points into AOT compiled code ");
-                FrameInfoQueryResult compilationRoot = getCompilationRoot(imageCodeInfo, (CodePointer) value);
-                if (compilationRoot != null) {
-                    compilationRoot.log(log);
+            CodeInfo imageCodeInfo = CodeInfoTable.getFirstImageCodeInfo();
+            while (imageCodeInfo.isNonNull()) {
+                if (imageCodeInfo.equal(value)) {
+                    log.string("is an image CodeInfo object");
+                    return true;
                 }
-                return true;
+
+                UnsignedWord codeInfoEnd = ((UnsignedWord) imageCodeInfo).add(CodeInfoAccess.getSizeOfCodeInfo());
+                if (value.aboveOrEqual((UnsignedWord) imageCodeInfo) && value.belowThan(codeInfoEnd)) {
+                    log.string("points inside the image CodeInfo object ").zhex(imageCodeInfo);
+                    return true;
+                }
+
+                if (CodeInfoAccess.contains(imageCodeInfo, (CodePointer) value)) {
+                    log.string("points into AOT compiled code ");
+                    FrameInfoQueryResult compilationRoot = getCompilationRoot(imageCodeInfo, (CodePointer) value);
+                    if (compilationRoot != null) {
+                        compilationRoot.log(log);
+                    }
+                    return true;
+                }
+                imageCodeInfo = CodeInfoAccess.getNextImageCodeInfo(imageCodeInfo);
             }
 
             return false;

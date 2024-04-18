@@ -59,6 +59,8 @@ import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 
+import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
+
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     protected CCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> imageSymbols) {
@@ -258,17 +260,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
 
-            /*
-             * This is needed if the default linker is ld.lld from LLVM. On the GNU linker this
-             * option is the default, so we can just set it unconditionally.
-             */
+            // The linker should fail if DT_TEXTREL is needed, otherwise the image won't work on
+            // SELinux. If SpawnIsolates are disabled, this won't work as dynamic relocations
+            // are needed for heap access.
             additionalPreOptions.add("-z");
-            additionalPreOptions.add("notext");
-
-            if (SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
-                additionalPreOptions.add("-fuse-ld=gold");
-                additionalPreOptions.add("-Wl,--rosegment");
-            }
+            additionalPreOptions.add(SpawnIsolates.getValue() ? "text" : "notext");
 
             if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
                 /* Perform garbage collection of unused input sections. */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -136,6 +136,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.ExplicitOOMEExceptionEdges;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -264,7 +265,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         initialized = true;
 
         hostedProviders = newHostedProviders;
-        graphBuilderConfig = newGraphBuilderConfig.withNodeSourcePosition(true);
+
+        graphBuilderConfig = newGraphBuilderConfig.withNodeSourcePosition(true).withOOMEExceptionEdges(ExplicitOOMEExceptionEdges.DisableOOMEExceptionEdges);
         assert !runtimeCompilationCandidatePredicateUpdated : "Updated compilation predicate multiple times";
         runtimeCompilationCandidatePredicate = newRuntimeCompilationCandidatePredicate;
         runtimeCompilationCandidatePredicateUpdated = true;
@@ -681,7 +683,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 }
 
                 parsed = true;
-                graph = new StructuredGraph.Builder(debug.getOptions(), debug, StructuredGraph.AllowAssumptions.YES).method(method)
+                graph = new StructuredGraph.Builder(debug.getOptions(), debug, StructuredGraph.AllowAssumptions.YES)
+                                .method(method)
                                 /*
                                  * Needed for computation of the list of all runtime compilable
                                  * methods in TruffleFeature.
@@ -918,7 +921,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             /*
              * Check if trivial is possible. We use the graph size as the main criteria, similar to
              * the trivial inlining for AOT compilation.
-             * 
+             *
              * In addition, we do not allow method handle internals to be processed by the trivial
              * inlining. The regular accumulative inlining scope has a special mode for method
              * handle intrinsification with larger thresholds in order to fully inline the method

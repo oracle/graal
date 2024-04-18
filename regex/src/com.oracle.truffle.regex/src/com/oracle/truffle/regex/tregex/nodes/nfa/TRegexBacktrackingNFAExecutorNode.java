@@ -45,7 +45,6 @@ import static com.oracle.truffle.api.CompilerDirectives.LIKELY_PROBABILITY;
 import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 
 import java.util.List;
-import java.util.function.BiPredicate;
 
 import org.graalvm.collections.Pair;
 
@@ -77,6 +76,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -108,7 +108,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     @CompilationFinal(dimensions = 1) private final CharMatcher[] matchers;
     private final int[] zeroWidthTermEnclosedCGLow;
     private final int[] zeroWidthQuantifierCGOffsets;
-    private final BiPredicate<Integer, Integer> equalsIgnoreCase;
+    private final RegexFlavor.EqualsIgnoreCasePredicate equalsIgnoreCase;
 
     @Child TruffleString.RegionEqualByteIndexNode regionMatchesNode;
     @Child TruffleString.ByteIndexOfStringNode indexOfNode;
@@ -285,9 +285,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     }
 
     @Override
-    public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int index, int maxIndex) {
-        return TRegexBacktrackingNFAExecutorLocals.create(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        zeroWidthQuantifierCGOffsets, isTransitionMatchesStepByStep(), maxNTransitions, isTrackLastGroup(), returnsFirstGroup(), isRecursiveBackreferences());
+    public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index) {
+        return TRegexBacktrackingNFAExecutorLocals.create(input, fromIndex, maxIndex, regionFrom, regionTo, index, getNumberOfCaptureGroups(),
+                        nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow, zeroWidthQuantifierCGOffsets,
+                        isTransitionMatchesStepByStep(), maxNTransitions, isTrackLastGroup(), returnsFirstGroup(), isRecursiveBackreferences());
     }
 
     private static final int IP_BEGIN = -1;
@@ -729,10 +730,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     boolean atEnd, int c) {
         PureNFAState target = transition.getTarget();
         CompilerAsserts.partialEvaluationConstant(target);
-        if (transition.hasCaretGuard() && index != 0) {
+        if (transition.hasCaretGuard() && index != locals.getRegionFrom()) {
             return false;
         }
-        if (transition.hasDollarGuard() && index < locals.getMaxIndex()) {
+        if (transition.hasDollarGuard() && index < locals.getRegionTo()) {
             return false;
         }
         for (QuantifierGuard guard : transition.getQuantifierGuards()) {
@@ -817,6 +818,21 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     @ExplodeLoop
     protected void updateState(TRegexBacktrackingNFAExecutorLocals locals, PureNFATransition transition, int index) {
         CompilerAsserts.partialEvaluationConstant(transition);
+        if (isRecursiveBackreferences()) {
+            /*
+             * Recursive backreferences must be saved before capture groups bounds are overwritten
+             * by locals.apply
+             */
+            assert isForward();
+            for (QuantifierGuard guard : transition.getQuantifierGuards()) {
+                CompilerAsserts.partialEvaluationConstant(guard);
+                if (guard.getKind() == QuantifierGuard.Kind.updateRecursiveBackrefPointer) {
+                    locals.saveRecursiveBackrefGroupStart(guard.getIndex());
+                } else {
+                    break;
+                }
+            }
+        }
         locals.apply(transition, index);
         for (QuantifierGuard guard : transition.getQuantifierGuards()) {
             CompilerAsserts.partialEvaluationConstant(guard);
@@ -894,10 +910,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         CompilerAsserts.partialEvaluationConstant(transition);
         PureNFAState target = transition.getTarget();
         CompilerAsserts.partialEvaluationConstant(target);
-        if (transition.hasCaretGuard() && index != 0) {
+        if (transition.hasCaretGuard() && index != locals.getRegionFrom()) {
             return false;
         }
-        if (transition.hasDollarGuard() && index < locals.getMaxIndex()) {
+        if (transition.hasDollarGuard() && index < locals.getRegionTo()) {
             return false;
         }
         switch (target.getKind()) {
@@ -1073,7 +1089,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
      */
     private boolean canInlineBackReferenceIntoTransition(PureNFAState backRef) {
         assert backRef.isBackReference();
-        return !(backRef.isIgnoreCaseReference() || isLoneSurrogates());
+        return !(backRef.isIgnoreCaseReference() || isLoneSurrogates() || isRecursiveBackreferences());
     }
 
     private boolean matchBackReferenceSimple(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference, PureNFATransition transition, int index) {
@@ -1085,12 +1101,11 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         if (backrefStart < 0 || backrefEnd < 0) {
             return !isBackrefWithNullTargetFails();
         }
-        int inputLength = locals.getMaxIndex();
         int backrefLength = backrefEnd - backrefStart;
         if (backrefLength == 0) {
             return true;
         }
-        if (isForward() ? index + backrefLength > inputLength : index - backrefLength < 0) {
+        if (isForward() ? index + backrefLength > locals.getRegionTo() : index - backrefLength < locals.getRegionFrom()) {
             return false;
         }
         int stride = getEncoding().getStride();
@@ -1108,11 +1123,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             return isBackrefWithNullTargetFails() ? -1 : locals.getIndex();
         }
         int saveNextIndex = locals.getNextIndex();
-        int inputLength = locals.getMaxIndex();
         int iBR = isForward() ? backrefStart : backrefEnd;
         int i = locals.getIndex();
         while (injectBranchProbability(CONTINUE_PROBABILITY, inputBoundsCheck(iBR, backrefStart, backrefEnd))) {
-            if (injectBranchProbability(EXIT_PROBABILITY, !inputBoundsCheck(i, 0, inputLength))) {
+            if (injectBranchProbability(EXIT_PROBABILITY, !inputBoundsCheck(i, locals.getRegionFrom(), locals.getRegionTo()))) {
                 locals.setNextIndex(saveNextIndex);
                 return -1;
             }
@@ -1120,7 +1134,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             iBR = locals.getNextIndex();
             int codePointI = inputReadAndDecode(locals, i, codeRange);
             i = locals.getNextIndex();
-            if (injectBranchProbability(EXIT_PROBABILITY, !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI) : codePointBR == codePointI))) {
+            if (injectBranchProbability(EXIT_PROBABILITY,
+                            !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI, backReference.isIgnoreCaseReferenceAlternativeMode()) : codePointBR == codePointI))) {
                 locals.setNextIndex(saveNextIndex);
                 return -1;
             }
@@ -1154,8 +1169,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     }
 
     @TruffleBoundary
-    private boolean equalsIgnoreCase(int a, int b) {
-        return equalsIgnoreCase.test(a, b);
+    private boolean equalsIgnoreCase(int a, int b, boolean alternativeMode) {
+        return equalsIgnoreCase.test(a, b, alternativeMode);
     }
 
     private static int setFlag(int flags, int flag, boolean value) {

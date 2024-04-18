@@ -220,7 +220,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
     private static void doUninterruptibleStackWalk(CodePointer initialIp, Pointer initialSp) {
         CodePointer ip = initialIp;
         Pointer sp = initialSp;
-        if (!isInAOTCompiledCode(ip)) {
+        if (!CodeInfoTable.isInAOTImageCode(ip)) {
             JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
             if (anchor.isNull()) {
                 /*
@@ -252,12 +252,6 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
                 JfrThreadLocal.setSamplerWriterData(WordFactory.nullPointer());
             }
         }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean isInAOTCompiledCode(CodePointer ip) {
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        return CodeInfoAccess.contains(codeInfo, ip);
     }
 
     /**
@@ -314,8 +308,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
          * No matter where in the AOT-compiled code the signal has interrupted the execution, we
          * know how to decode it.
          */
-        assert isInAOTCompiledCode(ip);
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo(ip);
         SamplerStackWalkVisitor visitor = ImageSingletons.lookup(SamplerStackWalkVisitor.class);
         if (!visitor.visitFrame(sp, ip, codeInfo, null, null)) {
             /* The top frame is also the last one. */
@@ -327,7 +320,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
         if (isSPAligned(sp)) {
             /* Stack is probably in a normal, walkable state. */
             callerSP = getCallerSP(codeInfo, sp, ip);
-            if (SubstrateOptions.hasFramePointer() && (isSPOutsideStackBoundaries(callerSP) || !isInAOTCompiledCode(FrameAccess.singleton().readReturnAddress(callerSP)))) {
+            if (SubstrateOptions.hasFramePointer() && (isSPOutsideStackBoundaries(callerSP) || !CodeInfoTable.isInAOTImageCode(FrameAccess.singleton().readReturnAddress(callerSP)))) {
                 /*
                  * We are in the prologue or epilogue. Frame pointer and return address are on top
                  * of the stack.
@@ -346,7 +339,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
         }
 
         CodePointer returnAddressIP = FrameAccess.singleton().readReturnAddress(callerSP);
-        if (!isInAOTCompiledCode(returnAddressIP)) {
+        if (!CodeInfoTable.isInAOTImageCode(returnAddressIP)) {
             if (isEntryPoint(codeInfo, ip)) {
                 JavaFrameAnchor anchor = findLastJavaFrameAnchor(callerSP);
                 if (anchor.isNonNull()) {

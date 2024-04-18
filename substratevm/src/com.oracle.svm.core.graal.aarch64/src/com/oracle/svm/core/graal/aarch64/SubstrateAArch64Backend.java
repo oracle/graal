@@ -44,7 +44,6 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
@@ -532,8 +531,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
 
             LIRKind wordKind = getLIRKindTool().getWordKind();
-            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forLong(targetMethod.getCodeOffsetInImage()));
-            Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache()));
+            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forLong(targetMethod.getImageCodeOffset()));
+            Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo()));
             int size = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = KnownOffsets.singleton().getImageCodeInfoCodeStartOffset();
             Value codeStartField = AArch64AddressValue.makeAddress(wordKind, size, asAllocatable(codeInfo), codeStartFieldOffset);
@@ -1277,7 +1276,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     @Override
-    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
+    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, Object stub) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         return new RegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo);
     }

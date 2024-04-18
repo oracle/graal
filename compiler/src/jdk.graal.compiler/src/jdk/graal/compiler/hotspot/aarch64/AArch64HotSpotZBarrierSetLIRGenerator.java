@@ -28,8 +28,8 @@ import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
-import jdk.graal.compiler.core.aarch64.AArch64BarrierSetLIRGenerator;
 import jdk.graal.compiler.core.aarch64.AArch64LIRGenerator;
+import jdk.graal.compiler.core.aarch64.AArch64ReadBarrierSetLIRGenerator;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -47,6 +47,8 @@ import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.aarch64.AArch64FrameMap;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.ReadBarrierSetLIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -57,15 +59,11 @@ import jdk.vm.ci.meta.Value;
 /**
  * HotSpot specific code generation for ZGC read barriers.
  */
-public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64BarrierSetLIRGenerator {
+public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64ReadBarrierSetLIRGenerator implements ReadBarrierSetLIRGeneratorTool {
 
     public AArch64HotSpotZBarrierSetLIRGenerator(GraalHotSpotVMConfig config, HotSpotProviders providers) {
         this.config = config;
         this.providers = providers;
-    }
-
-    public AArch64LIRGenerator getAArch64LIRGen() {
-        return (AArch64LIRGenerator) lirGen;
     }
 
     private final GraalHotSpotVMConfig config;
@@ -111,7 +109,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64BarrierSetLIRG
                 masm.bind(entryPoint);
 
                 if (frameMap != null) {
-                    AArch64HotSpotBackend.rawEnter(crb, frameMap, masm, config);
+                    AArch64HotSpotBackend.rawEnter(crb, frameMap, masm, config, false);
                 }
 
                 CallingConvention cc = callTarget.getOutgoingCallingConvention();
@@ -143,15 +141,15 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64BarrierSetLIRG
     }
 
     @Override
-    public Variable emitBarrieredLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, BarrierType barrierType) {
+    public Variable emitBarrieredLoad(LIRGeneratorTool tool, LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, BarrierType barrierType) {
         if (kind.getPlatformKind().getVectorLength() == 1) {
             GraalError.guarantee(kind.getPlatformKind() == AArch64Kind.QWORD, "ZGC only uses uncompressed oops: %s", kind);
 
             ForeignCallLinkage callTarget = getBarrierStub(barrierType);
-            AArch64AddressValue loadAddress = getAArch64LIRGen().asAddressValue(address, 64);
-            Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(kind));
-            getLIRGen().getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-            getLIRGen().append(new AArch64HotSpotZReadBarrierOp(result, loadAddress, memoryOrder, state, config, callTarget));
+            AArch64AddressValue loadAddress = ((AArch64LIRGenerator) tool).asAddressValue(address, 64);
+            Variable result = tool.newVariable(tool.toRegisterKind(kind));
+            tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
+            tool.append(new AArch64HotSpotZReadBarrierOp(result, loadAddress, memoryOrder, state, config, callTarget));
             return result;
         }
         throw GraalError.shouldNotReachHere("unhandled");
@@ -179,31 +177,24 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64BarrierSetLIRG
     }
 
     @Override
-    public void emitCompareAndSwapOp(boolean isLogicVariant, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result, AllocatableValue allocatableExpectedValue,
+    public void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogicVariant, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result,
+                    AllocatableValue allocatableExpectedValue,
                     AllocatableValue allocatableNewValue, BarrierType barrierType) {
         ForeignCallLinkage callTarget = getBarrierStub(barrierType);
-        AllocatableValue temp = getLIRGen().newVariable(getLIRGen().toRegisterKind(LIRKind.value(memKind)));
-        getLIRGen().getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        getLIRGen().append(new AArch64HotSpotZCompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result,
-                        allocatableExpectedValue, allocatableNewValue, getLIRGen().asAllocatable(address), config, callTarget, temp));
-    }
-
-    AllocatableValue asAllocatable(Value value) {
-        return getLIRGen().asAllocatable(value);
-    }
-
-    public <I extends LIRInstruction> I append(I op) {
-        return getLIRGen().append(op);
+        AllocatableValue temp = tool.newVariable(tool.toRegisterKind(LIRKind.value(memKind)));
+        tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
+        tool.append(new AArch64HotSpotZCompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result,
+                        allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address), config, callTarget, temp));
     }
 
     @Override
-    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue, BarrierType barrierType) {
+    public Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind accessKind, Value address, Value newValue, BarrierType barrierType) {
         GraalError.guarantee(barrierType == BarrierType.READ, "unexpected type for barrier: %s", barrierType);
-        Variable result = lirGen.newVariable(lirGen.toRegisterKind(accessKind));
+        Variable result = tool.newVariable(tool.toRegisterKind(accessKind));
         GraalError.guarantee(accessKind.getPlatformKind() == AArch64Kind.QWORD, "unexpected kind for ZGC");
         ForeignCallLinkage callTarget = getBarrierStub(barrierType);
-        getLIRGen().getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        append(new AArch64HotSpotZAtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue), config, callTarget));
+        tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
+        tool.append(new AArch64HotSpotZAtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, tool.asAllocatable(address), tool.asAllocatable(newValue), config, callTarget));
         return result;
     }
 }

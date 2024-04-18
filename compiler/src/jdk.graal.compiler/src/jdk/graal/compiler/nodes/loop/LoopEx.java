@@ -517,7 +517,7 @@ public class LoopEx {
                     boolean isValidConvert = op instanceof PiNode || op instanceof SignExtendNode;
                     if (!isValidConvert && op instanceof ZeroExtendNode) {
                         ZeroExtendNode zeroExtendNode = (ZeroExtendNode) op;
-                        isValidConvert = zeroExtendNode.isInputAlwaysPositive() || ((IntegerStamp) zeroExtendNode.stamp(NodeView.DEFAULT)).isPositive();
+                        isValidConvert = ((IntegerStamp) zeroExtendNode.stamp(NodeView.DEFAULT)).isPositive();
                     }
                     if (!isValidConvert && op instanceof NarrowNode) {
                         NarrowNode narrow = (NarrowNode) op;
