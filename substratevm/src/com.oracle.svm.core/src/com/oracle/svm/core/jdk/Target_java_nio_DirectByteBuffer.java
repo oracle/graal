@@ -40,11 +40,10 @@ public final class Target_java_nio_DirectByteBuffer {
      * singleton empty buffer referenced from a static field, and a lot of Netty classes reference
      * this buffer statically.
      *
-     * Such buffers do actually have an address to memory that is allocated during image generation
-     * and therefore no longer available at run time. But since the capacity is 0, no memory can
-     * ever be accessed. We therefore allow this "dangling" address. However, we must never call
-     * free() for that address, so we remove the Cleaner registered for the buffer by resetting the
-     * field {@link #cleaner}.
+     * Such buffers do actually not have a valid address, see {@link BufferAddressTransformer}. But
+     * since the capacity is 0, no memory can ever be accessed. We therefore allow this "dangling"
+     * address. However, we must never call free() for that address, so we remove the Cleaner
+     * registered for the buffer by resetting the field {@link #cleaner}.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Target_jdk_internal_ref_Cleaner cleaner;
