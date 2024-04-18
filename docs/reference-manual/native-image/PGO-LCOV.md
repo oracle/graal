@@ -1,11 +1,11 @@
 ---
 layout: docs
 toc_group: pgo
-link_title: Creating LCOV Coverage Reports
+link_title: Making Sense of PGO Reports Using LCOV
 permalink: /reference-manual/native-image/optimizations-and-performance/PGO/LCOV/
 ---
 
-# Creating LCOV Coverage Reports
+# Making Sense of PGO Reports Using LCOV
 
 Here you will learn how to analyze PGO profiles with the aid of LCOV-based tooling.
 
