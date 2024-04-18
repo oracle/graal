@@ -703,7 +703,7 @@ public class CompileQueue {
                         assert method.isOriginalMethod();
                         for (MultiMethod multiMethod : method.getAllMultiMethods()) {
                             HostedMethod hMethod = (HostedMethod) multiMethod;
-                            if (hMethod.compilationInfo.getCompilationGraph() != null && !hMethod.wrapped.isInBaseLayer()) {
+                            if (hMethod.compilationInfo.getCompilationGraph() != null) {
                                 executor.execute(new TrivialInlineTask(hMethod));
                             }
                         }

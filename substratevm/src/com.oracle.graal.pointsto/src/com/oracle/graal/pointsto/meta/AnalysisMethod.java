@@ -301,7 +301,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    protected AnalysisUniverse getUniverse() {
+    public AnalysisUniverse getUniverse() {
         /* Access the universe via the declaring class to avoid storing it here. */
         return declaringClass.getUniverse();
     }
