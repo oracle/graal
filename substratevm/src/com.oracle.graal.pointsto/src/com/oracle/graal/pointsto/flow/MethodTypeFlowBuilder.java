@@ -622,10 +622,10 @@ public class MethodTypeFlowBuilder {
 
         if (bb.getHostVM().useBaseLayer() && method.isInBaseLayer()) {
             /*
-             * We don't need to analyze this method. We already know it's return type state from the
+             * We don't need to analyze this method. We already know its return type state from the
              * open world analysis. We just install a return flow to link it with its uses.
              */
-            AnalysisType returnType = TypeFlow.filterUncheckedInterface(method.getSignature().getReturnType());
+            AnalysisType returnType = method.getSignature().getReturnType();
             if (returnType.getJavaKind().isObject()) {
                 // GR-52421: the return type state should not be all-instantiated, it should be the
                 // persisted result of the open-world analysis
