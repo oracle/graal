@@ -56,7 +56,7 @@ public class SubstrateCompilationDirectives {
     public static final MultiMethod.MultiMethodKey RUNTIME_COMPILED_METHOD = new MultiMethod.MultiMethodKey() {
         @Override
         public String toString() {
-            return "Runtime_Compiled_Method_Key";
+            return "R";
         }
     };
 

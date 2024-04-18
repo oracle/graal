@@ -1284,9 +1284,8 @@ public class NativeImage {
             /* and we need to adjust the argument that passes the imagePath to the builder */
             updateArgumentEntryValue(imageBuilderArgs, imagePathEntry, imagePath.toString());
         } else {
-            String argsDigest = SubstrateUtil.digest(getNativeImageArgs().toString());
-            assert argsDigest.matches("[0-9a-f]+") && argsDigest.length() >= 32 : "Expecting a hex string";
-            imageBuildID = SubstrateUtil.getUUIDFromString(argsDigest).toString();
+            String value = getNativeImageArgs().toString();
+            imageBuildID = SubstrateUtil.getUUIDFromString(value).toString();
         }
         addPlainImageBuilderArg(oH(SubstrateOptions.ImageBuildID, OptionOrigin.originDriver) + imageBuildID);
 

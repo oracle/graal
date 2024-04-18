@@ -437,7 +437,6 @@ public final class Target_java_util_regex_Matcher {
 
         @Specialization
         static boolean doDefault(Node node, Object regexObject, StaticObject self, int from, Meta meta,
-                        @Cached TruffleString.SubstringByteIndexNode substringNode,
                         @CachedLibrary(limit = "3") InteropLibrary regexObjectInterop,
                         @CachedLibrary(limit = "3") InteropLibrary integerInterop,
                         @CachedLibrary(limit = "3") InteropLibrary booleanInterop,
@@ -454,24 +453,20 @@ public final class Target_java_util_regex_Matcher {
                 int regionFrom = meta.java_util_regex_Matcher_from.getInt(self);
                 int regionTo = meta.java_util_regex_Matcher_to.getInt(self);
 
-                TruffleString matchTruffleString = truffleString;
                 int truffleStringLength = truffleString.byteLength(TruffleString.Encoding.UTF_16) >> 1;
-                if (regionFrom != 0 || regionTo != truffleStringLength) {
-                    if (regionFrom < 0 || regionTo < regionFrom || regionTo > truffleStringLength) {
-                        ioobeProfile.enter(node);
-                        meta.throwException(meta.java_lang_IndexOutOfBoundsException);
-                    }
-                    matchTruffleString = substringNode.execute(truffleString, regionFrom * 2, (regionTo - regionFrom) * 2, TruffleString.Encoding.UTF_16, true);
+                if (regionFrom < 0 || regionTo < regionFrom || regionTo > truffleStringLength) {
+                    ioobeProfile.enter(node);
+                    meta.throwException(meta.java_lang_IndexOutOfBoundsException);
                 }
 
-                execRes = regexObjectInterop.invokeMember(regexObject, "exec", matchTruffleString, fromClipped - regionFrom);
+                execRes = regexObjectInterop.invokeMember(regexObject, "exec", truffleString, fromClipped, regionTo, regionFrom, regionTo);
                 boolean isMatch = booleanInterop.asBoolean(execResInterop.readMember(execRes, "isMatch"));
                 int modCount = meta.java_util_regex_Matcher_modCount.getInt(self);
                 meta.java_util_regex_Matcher_modCount.setInt(self, modCount + 1);
 
                 if (isMatch) {
-                    int first = regionFrom + integerInterop.asInt(execResInterop.invokeMember(execRes, "getStart", 0));
-                    int last = regionFrom + integerInterop.asInt(execResInterop.invokeMember(execRes, "getEnd", 0));
+                    int first = integerInterop.asInt(execResInterop.invokeMember(execRes, "getStart", 0));
+                    int last = integerInterop.asInt(execResInterop.invokeMember(execRes, "getEnd", 0));
 
                     meta.java_util_regex_Matcher_first.setInt(self, first);
                     meta.java_util_regex_Matcher_last.setInt(self, last);
@@ -480,8 +475,8 @@ public final class Target_java_util_regex_Matcher {
                     StaticObject array = meta.java_util_regex_Matcher_groups.getObject(self);
                     int[] unwrapped = array.unwrap(meta.getLanguage());
                     for (int i = 0; i < groupCount; i++) {
-                        int start = regionFrom + integerInterop.asInt(execResInterop.invokeMember(execRes, "getStart", i));
-                        int end = regionFrom + integerInterop.asInt(execResInterop.invokeMember(execRes, "getEnd", i));
+                        int start = integerInterop.asInt(execResInterop.invokeMember(execRes, "getStart", i));
+                        int end = integerInterop.asInt(execResInterop.invokeMember(execRes, "getEnd", i));
                         unwrapped[i * 2] = start;
                         unwrapped[i * 2 + 1] = end;
                     }

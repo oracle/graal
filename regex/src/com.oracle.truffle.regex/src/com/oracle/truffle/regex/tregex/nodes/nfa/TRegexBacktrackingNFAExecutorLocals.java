@@ -99,7 +99,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private int lastInnerLiteralIndex;
     private int lastInitialStateIndex;
 
-    private TRegexBacktrackingNFAExecutorLocals(TruffleString input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers,
+    private TRegexBacktrackingNFAExecutorLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index,
+                    int nCaptureGroups,
+                    int nQuantifiers,
+                    int nZeroWidthQuantifiers,
                     int[] zeroWidthTermEnclosedCGLow,
                     int[] zeroWidthQuantifierCGOffsets,
                     int[] stackFrameBuffer,
@@ -110,7 +113,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                     boolean trackLastGroup,
                     boolean dontOverwriteLastGroup,
                     boolean recursiveBackReferences) {
-        super(input, fromIndex, maxIndex, index);
+        super(input, fromIndex, maxIndex, regionFrom, regionTo, index);
         this.stackFrameSize = stackFrameSize;
         this.nQuantifierCounts = nQuantifiers;
         this.nZeroWidthQuantifiers = nZeroWidthQuantifiers;
@@ -130,8 +133,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     public static TRegexBacktrackingNFAExecutorLocals create(
                     TruffleString input,
                     int fromIndex,
-                    int index,
                     int maxIndex,
+                    int regionFrom,
+                    int regionTo,
+                    int index,
                     int nCaptureGroups,
                     int nQuantifiers,
                     int nZeroWidthQuantifiers,
@@ -146,8 +151,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         TRegexBacktrackingNFAExecutorLocals ret = new TRegexBacktrackingNFAExecutorLocals(
                         input,
                         fromIndex,
-                        index,
                         maxIndex,
+                        regionFrom,
+                        regionTo,
+                        index,
                         nCaptureGroups,
                         nQuantifiers,
                         nZeroWidthQuantifiers,
@@ -198,7 +205,11 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     private TRegexBacktrackingNFAExecutorLocals newSubLocals(boolean newDontOverwriteLastGroup) {
-        return new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), result.length / 2, nQuantifierCounts, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
+        return new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getMaxIndex(), getRegionFrom(), getRegionTo(), getIndex(),
+                        result.length / 2,
+                        nQuantifierCounts,
+                        nZeroWidthQuantifiers,
+                        zeroWidthTermEnclosedCGLow,
                         zeroWidthQuantifierCGOffsets, stackFrameBuffer, stack, sp + stackFrameSize, stackFrameSize,
                         transitionBitSet, trackLastGroup, newDontOverwriteLastGroup, recursiveBackReferences);
     }

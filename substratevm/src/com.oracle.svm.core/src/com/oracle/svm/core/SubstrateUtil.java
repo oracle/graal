@@ -27,11 +27,12 @@ package com.oracle.svm.core;
 import java.io.Console;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -57,6 +58,7 @@ import com.oracle.svm.util.StringUtil;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.BreakpointNode;
+import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -288,14 +290,6 @@ public class SubstrateUtil {
         return StringUtil.split(value, separator, limit);
     }
 
-    public static String toHex(byte[] data) {
-        return LambdaUtils.toHex(data);
-    }
-
-    public static String digest(String value) {
-        return LambdaUtils.digest(value);
-    }
-
     /**
      * Convenience method that unwraps the method details and delegates to the currently registered
      * UniqueShortNameProvider image singleton with the significant exception that it always passes
@@ -345,10 +339,10 @@ public class SubstrateUtil {
      * @return a unique stub name for the method
      */
     public static String uniqueStubName(ResolvedJavaMethod m) {
-        return uniqueShortName("", m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
+        return defaultUniqueShortName("", m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
     }
 
-    public static String uniqueShortName(String loaderNameAndId, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
+    public static String defaultUniqueShortName(String loaderNameAndId, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
         StringBuilder sb = new StringBuilder(loaderNameAndId);
         sb.append(declaringClass.toClassName()).append(".").append(methodName).append("(");
         for (int i = 0; i < methodSignature.getParameterCount(false); i++) {
@@ -359,8 +353,33 @@ public class SubstrateUtil {
             sb.append(methodSignature.getReturnType(null).toClassName());
         }
 
-        return stripPackage(declaringClass.toJavaName()) + "_" +
-                        (isConstructor ? "constructor" : methodName) + "_" + digest(sb.toString());
+        return shortenClassName(stripPackage(declaringClass.toJavaName())) + "_" +
+                        (isConstructor ? "" : stripExistingDigest(methodName) + "_") +
+                        Digest.digest(sb.toString());
+    }
+
+    public static String defaultUniqueShortName(Member m) {
+        StringBuilder fullName = new StringBuilder();
+        fullName.append(m.getDeclaringClass().getName()).append(".");
+        if (m instanceof Constructor) {
+            fullName.append("<init>");
+        } else {
+            fullName.append(m.getName());
+        }
+        if (m instanceof Executable) {
+            fullName.append("(");
+            for (Class<?> c : ((Executable) m).getParameterTypes()) {
+                fullName.append(c.getName()).append(",");
+            }
+            fullName.append(')');
+            if (m instanceof Method) {
+                fullName.append(((Method) m).getReturnType().getName());
+            }
+        }
+
+        return shortenClassName(stripPackage(m.getDeclaringClass().getTypeName())) + "_" +
+                        (m instanceof Constructor ? "" : stripExistingDigest(m.getName()) + "_") +
+                        Digest.digest(fullName.toString());
     }
 
     /**
@@ -450,10 +469,52 @@ public class SubstrateUtil {
         return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
     }
 
-    public static UUID getUUIDFromString(String digest) {
-        long mostSigBits = new BigInteger(digest.substring(0, 16), 16).longValue();
-        long leastSigBits = new BigInteger(digest.substring(16), 16).longValue();
-        return new UUID(mostSigBits, leastSigBits);
+    public static UUID getUUIDFromString(String value) {
+        return Digest.digestAsUUID(value);
+    }
+
+    /**
+     * Shorten lambda class names, as well as excessively long class names that can happen with
+     * deeply nested inner classes. We keep the end of the class name, because the innermost classes
+     * are the most interesting part of the name.
+     */
+    private static String shortenClassName(String className) {
+        String result = className;
+
+        /*
+         * Lambda classes have a 32-byte digest (because hex encoding is required), so with the
+         * prefix just the Lambda part is already longer than our desired maximum name. We keep only
+         * the first part of the digest, which is sufficent to distinguish multiple lambdas defined
+         * by the same holder class.
+         */
+        int lambdaStart = result.indexOf(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING);
+        if (lambdaStart != -1) {
+            int start = lambdaStart + LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING.length() + LambdaUtils.ADDRESS_PREFIX.length();
+            int keepHashLen = 8;
+            if (result.length() > start + keepHashLen) {
+                result = result.substring(0, lambdaStart) + "$$L" + result.substring(start, start + keepHashLen);
+            }
+        }
+
+        int maxLen = 40;
+        if (result.length() > maxLen) {
+            result = result.substring(result.length() - maxLen, result.length());
+        }
+        return result;
+    }
+
+    /**
+     * Strip off a potential {@link Digest} from the end of the name. Note that this is a heuristic
+     * only, and can remove the tail of a name on accident if a separator char happens to be at the
+     * same place where usually the digest separator character is expected. That is OK because the
+     * shorter name does not need to be unique.
+     */
+    private static String stripExistingDigest(String name) {
+        int digestLength = Digest.DIGEST_SIZE + 1;
+        if (name.length() > digestLength && name.charAt(name.length() - digestLength) == '_') {
+            return name.substring(0, name.length() - digestLength);
+        }
+        return name;
     }
 
     public static Class<?> toUnboxedClass(Class<?> clazz) {

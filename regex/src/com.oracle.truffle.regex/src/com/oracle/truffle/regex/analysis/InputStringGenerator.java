@@ -50,7 +50,6 @@ import java.util.Random;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage;
@@ -472,13 +471,8 @@ public final class InputStringGenerator {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            try {
-                long rngSeed = toLongNode.execute(frame.getArguments()[0]);
-                return Objects.requireNonNullElse(InputStringGenerator.generate(ast, rngSeed), TruffleNull.INSTANCE);
-            } catch (UnsupportedTypeException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new RuntimeException(e);
-            }
+            long rngSeed = toLongNode.execute(frame.getArguments()[0]);
+            return Objects.requireNonNullElse(InputStringGenerator.generate(ast, rngSeed), TruffleNull.INSTANCE);
         }
     }
 
