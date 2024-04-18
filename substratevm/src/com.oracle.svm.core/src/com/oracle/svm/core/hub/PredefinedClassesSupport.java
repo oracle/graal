@@ -27,34 +27,33 @@ package com.oracle.svm.core.hub;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.ProtectionDomain;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
+import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
+
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.util.Digest;
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.ClassVisitor;
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
-import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.ImageHeapMap;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ClassUtil;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 public final class PredefinedClassesSupport {
     public static final class Options {
@@ -89,16 +88,6 @@ public final class PredefinedClassesSupport {
     @Fold
     static PredefinedClassesSupport singleton() {
         return ImageSingletons.lookup(PredefinedClassesSupport.class);
-    }
-
-    public static String hash(byte[] classData, int offset, int length) {
-        try { // Only for lookups, cryptographic properties are irrelevant
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            md.update(classData, offset, length);
-            return SubstrateUtil.toHex(md.digest());
-        } catch (NoSuchAlgorithmException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -180,7 +169,7 @@ public final class PredefinedClassesSupport {
         if (!hasBytecodeClasses()) {
             throw throwNoBytecodeClasses();
         }
-        String hash = hash(data, offset, length);
+        String hash = Digest.digest(data, offset, length);
         Class<?> clazz = singleton().predefinedClassesByHash.get(hash);
         if (clazz == null) {
             String name = (expectedName != null) ? expectedName : "(name not specified)";

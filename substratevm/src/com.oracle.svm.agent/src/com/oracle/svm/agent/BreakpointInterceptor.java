@@ -106,6 +106,7 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.util.Digest;
 
 /**
  * Intercepts events of interest via breakpoints in Java code.
@@ -1010,7 +1011,7 @@ final class BreakpointInterceptor {
                     jni.getFunctions().getReleaseByteArrayElements().invoke(jni, bytesArray, bytesArrayCharPointer, JNIMode.JNI_ABORT());
                 }
 
-                className += LambdaUtils.digest(data);
+                className += Digest.digest(data);
                 tracer.traceCall("classloading", "onMethodHandleClassFileInit", null, null, null, null, state.getFullStackTraceOrNull(), className, data);
             }
         }
