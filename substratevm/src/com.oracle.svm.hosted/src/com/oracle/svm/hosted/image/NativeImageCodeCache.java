@@ -57,6 +57,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -125,6 +126,7 @@ import jdk.vm.ci.meta.VMConstant;
 public abstract class NativeImageCodeCache {
 
     private final Map<Constant, Object> embeddedConstants = new HashMap<>();
+    private final Set<HostedMethod> baseLayerMethods;
 
     public static class Options {
         @Option(help = "Verify that all possible deoptimization entry points have been properly compiled and registered in the metadata")//
@@ -146,7 +148,11 @@ public abstract class NativeImageCodeCache {
     private final Map<Constant, String> constantReasons = new HashMap<>();
 
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap) {
-        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class));
+        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class), null);
+    }
+
+    public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap, Set<HostedMethod> baseLayerMethods) {
+        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class), baseLayerMethods);
     }
 
     public void purge() {
@@ -156,8 +162,14 @@ public abstract class NativeImageCodeCache {
 
     @SuppressWarnings("this-escape")//
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
+        this(compilations, imageHeap, targetPlatform, null);
+    }
+
+    @SuppressWarnings("this-escape")//
+    public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Set<HostedMethod> baseLayerMethods) {
         this.compilations = compilations;
         this.imageHeap = imageHeap;
+        this.baseLayerMethods = baseLayerMethods;
         this.dataSection = new DataSection();
         this.targetPlatform = targetPlatform;
         this.orderedCompilations = computeCompilationOrder(compilations);
@@ -191,6 +203,10 @@ public abstract class NativeImageCodeCache {
 
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
         return orderedCompilations;
+    }
+
+    public Set<HostedMethod> getBaseLayerMethods() {
+        return baseLayerMethods;
     }
 
     public abstract int codeSizeFor(HostedMethod method);
@@ -666,6 +682,10 @@ public abstract class NativeImageCodeCache {
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getByteBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
+            if (constant instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
+                // GR-52911: use object offset in base layer heap
+                return;
+            }
             writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant);
         });
     }

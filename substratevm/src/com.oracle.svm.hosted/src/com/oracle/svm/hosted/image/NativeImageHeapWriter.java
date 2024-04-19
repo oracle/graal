@@ -118,6 +118,9 @@ public final class NativeImageHeapWriter {
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : heap.hUniverse.getFields()) {
+            if (field.wrapped.isInBaseLayer()) {
+                continue;
+            }
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
@@ -136,7 +139,7 @@ public final class NativeImageHeapWriter {
 
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw NativeImageHeap.reportIllegalType(target, reason);
+            throw NativeImageHeap.reportIllegalType(target, reason, "Inconsistent image heap.");
         }
     }
 
@@ -152,6 +155,10 @@ public final class NativeImageHeapWriter {
         if (value instanceof RelocatableConstant) {
             addNonDataRelocation(buffer, index, prepareRelocatable(info, value));
         } else {
+            if (value instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
+                // GR-52911: use object offset in base layer heap
+                return;
+            }
             write(buffer, index, value, info != null ? info : field);
         }
     }
@@ -196,6 +203,10 @@ public final class NativeImageHeapWriter {
             con = JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), 0);
         } else {
             con = constant;
+        }
+        if (con instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
+            // GR-52911: use object offset in base layer heap
+            return;
         }
         write(buffer, index, con, info);
     }
