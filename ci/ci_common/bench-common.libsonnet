@@ -57,6 +57,7 @@
       threads_per_node:: if self.is_numa then self.num_threads / std.length(self.numa_nodes) else self.num_threads,
     },
 
+<<<<<<< HEAD
     x52:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x52",
       capabilities+: ["no_frequency_scaling", "tmpfs25g"],
@@ -66,6 +67,8 @@
     },
 <<<<<<< HEAD
 =======
+=======
+>>>>>>> 05e25e0674d (Drop x52 machine type)
     e3:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "e3",
       capabilities: ["e3", "tmpfs25g", "linux", "amd64"],
