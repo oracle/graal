@@ -30,6 +30,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -81,4 +82,9 @@ public interface SharedMethod extends ResolvedJavaMethod {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getImageCodeDeoptOffset();
 
+    /** Always call this method indirectly, even if it is normally called directly. */
+    boolean forceIndirectCall();
+
+    /** Return a boxed pointer to this method. */
+    JavaConstant getMethodPointer();
 }

@@ -38,6 +38,7 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -162,7 +163,8 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
     }
 
     @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
+    public void afterAnalysis(AfterAnalysisAccess a) {
+        AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
         /*
          * No more changes to the reachable threads and thread groups are allowed after the
          * analysis.
@@ -182,7 +184,8 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
             maxThreadId = Math.max(maxThreadId, threadId(thread));
             maxAutonumber = Math.max(maxAutonumber, autonumberOf(thread));
         }
-        assert maxThreadId >= 1 : "main thread with id 1 must always be found";
+        // GR-52413: load maxThreadId from base layer
+        assert access.getBigBang().getHostVM().useBaseLayer() || maxThreadId >= 1 : "main thread with id 1 must always be found";
         setThreadSeqNumber(maxThreadId);
         setThreadInitNumber(maxAutonumber);
     }

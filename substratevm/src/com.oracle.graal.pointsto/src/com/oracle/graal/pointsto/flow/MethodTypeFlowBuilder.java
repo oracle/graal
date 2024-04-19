@@ -620,6 +620,22 @@ public class MethodTypeFlowBuilder {
         assert !processed : "can only call apply once per MethodTypeFlowBuilder";
         processed = true;
 
+        if (bb.getHostVM().useBaseLayer() && method.isInBaseLayer()) {
+            /*
+             * We don't need to analyze this method. We already know its return type state from the
+             * open world analysis. We just install a return flow to link it with its uses.
+             */
+            AnalysisType returnType = method.getSignature().getReturnType();
+            if (returnType.getJavaKind().isObject()) {
+                // GR-52421: the return type state should not be all-instantiated, it should be the
+                // persisted result of the open-world analysis
+                insertAllInstantiatedTypesReturn();
+            }
+            // GR-52421: verify that tracked parameter state is subset of persisted state
+            insertPlaceholderParamAndReturnFlows();
+            return;
+        }
+
         // assert method.getAnnotation(Fold.class) == null : method;
         if (handleNodeIntrinsic()) {
             assert !method.getReturnsAllInstantiatedTypes() : method;

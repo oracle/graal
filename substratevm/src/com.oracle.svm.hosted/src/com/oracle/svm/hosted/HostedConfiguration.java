@@ -331,7 +331,7 @@ public class HostedConfiguration {
         return new NativeImageCodeCacheFactory() {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
-                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
+                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), compileQueue.getBaseLayerMethods(), heap);
             }
         };
     }

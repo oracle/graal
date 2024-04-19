@@ -301,7 +301,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    protected AnalysisUniverse getUniverse() {
+    public AnalysisUniverse getUniverse() {
         /* Access the universe via the declaring class to avoid storing it here. */
         return declaringClass.getUniverse();
     }
@@ -517,7 +517,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod() || AtomicUtils.isSet(this, isImplementationInvokedUpdater));
     }
 
-    protected Object getImplementationInvokedReason() {
+    public Object getImplementationInvokedReason() {
         return isImplementationInvoked;
     }
 
@@ -775,6 +775,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public boolean canBeInlined() {
+        if (isInBaseLayer) {
+            return false;
+        }
         return !hasNeverInlineDirective();
     }
 

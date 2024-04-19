@@ -40,6 +40,8 @@ public interface BuildArtifacts {
 
         /* For all executables needed at run-time. */
         EXECUTABLE("executables"),
+        /* Native image layer. */
+        IMAGE_LAYER("image_layer"),
         /* For all shared libraries that are not JDK-related and needed at run-time. */
         SHARED_LIBRARY("shared_libraries"),
 

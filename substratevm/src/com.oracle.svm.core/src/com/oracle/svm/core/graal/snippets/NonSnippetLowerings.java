@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.snippets;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -37,6 +38,7 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
@@ -50,6 +52,7 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -106,12 +109,14 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NonSnippetLowerings {
 
     public static final SnippetRuntime.SubstrateForeignCallDescriptor REPORT_VERIFY_TYPES_ERROR = SnippetRuntime.findForeignCall(NonSnippetLowerings.class, "reportVerifyTypesError", HAS_SIDE_EFFECT,
                     LocationIdentity.any());
+    public static final Field boxedRelocatedPointerField = ReflectionUtil.lookupField(BoxedRelocatedPointer.class, "pointer");
 
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 
@@ -364,7 +369,26 @@ public abstract class NonSnippetLowerings {
                         targetMethod = implementations[0];
                     }
 
-                    if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
+                    if (targetMethod.forceIndirectCall()) {
+                        /*
+                         * Lower cross layer boundary direct calls to indirect calls. First emit a
+                         * load for the BoxedRelocatedPointer.pointer field holding the
+                         * MethodPointer to the target method, then emit an indirect call to that
+                         * pointer.
+                         */
+                        ResolvedJavaField boxedPointerField = tool.getMetaAccess().lookupJavaField(NonSnippetLowerings.boxedRelocatedPointerField);
+                        ConstantNode boxedPointerFieldOffset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), boxedPointerField.getOffset(), graph);
+                        ConstantNode boxedPointerBase = ConstantNode.forConstant(targetMethod.getMethodPointer(), tool.getMetaAccess(), graph);
+
+                        AddressNode methodPointerAddress = graph.unique(new OffsetAddressNode(boxedPointerBase, boxedPointerFieldOffset));
+                        /*
+                         * Use the ANY location identity to prevent ReadNode.canonicalizeRead() to
+                         * try to constant fold the method address.
+                         */
+                        ReadNode entry = graph.add(new ReadNode(methodPointerAddress, LocationIdentity.any(), FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
+                        loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, entry);
+                        graph.addBeforeFixed(node, entry);
+                    } else if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = createDirectCall(graph, callTarget, parameters, signature, callType, invokeKind, targetMethod, node);
                     } else if (!targetMethod.hasImageCodeOffset()) {
                         /*
