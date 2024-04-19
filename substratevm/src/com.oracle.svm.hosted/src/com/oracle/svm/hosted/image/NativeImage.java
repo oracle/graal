@@ -594,7 +594,7 @@ public abstract class NativeImage extends AbstractImage {
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
         HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
-        if (!target.isCompiled()) {
+        if (!target.isCompiled() && !target.wrapped.isInBaseLayer()) {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
         // A reference to a method. Mark the relocation site using the symbol name.
@@ -915,27 +915,21 @@ public abstract class NativeImage extends AbstractImage {
                 }
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
-                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
-                    final String symName = localSymbolNameForMethod(pair.getLeft());
-                    final String signatureString = pair.getLeft().getUniqueShortName();
-                    final HostedMethod existing = methodsBySignature.get(signatureString);
-                    HostedMethod current = pair.getLeft();
-                    if (existing != null) {
-                        /*
-                         * We've hit a signature with multiple methods. Choose the "more specific"
-                         * of the two methods, i.e. the overriding covariant signature.
-                         */
-                        HostedType existingReturnType = existing.getSignature().getReturnType();
-                        HostedType currentReturnType = current.getSignature().getReturnType();
-                        if (existingReturnType.isAssignableFrom(currentReturnType)) {
-                            /* current is more specific than existing */
-                            final HostedMethod replaced = methodsBySignature.put(signatureString, current);
-                            assert replaced.equals(existing);
-                        }
-                    } else {
-                        methodsBySignature.put(signatureString, current);
+
+                if (codeCache.getBaseLayerMethods() != null) {
+                    // define base layer methods symbols
+                    for (HostedMethod current : codeCache.getBaseLayerMethods()) {
+                        final String symName = localSymbolNameForMethod(current);
+                        final String signatureString = current.getUniqueShortName();
+                        defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, null);
                     }
-                    defineMethodSymbol(symName, false, textSection, current, pair.getRight());
+                }
+
+                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
+                    HostedMethod current = pair.getLeft();
+                    final String symName = localSymbolNameForMethod(current);
+                    final String signatureString = current.getUniqueShortName();
+                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, pair.getRight());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -976,6 +970,27 @@ public abstract class NativeImage extends AbstractImage {
                  */
                 codeCache.writeCode(textBuffer);
             }
+        }
+
+        private void defineMethodSymbol(Section textSection, HostedMethod current, Map<String, HostedMethod> methodsBySignature,
+                        String signatureString, String symName, CompilationResult compilationResult) {
+            final HostedMethod existing = methodsBySignature.get(signatureString);
+            if (existing != null) {
+                /*
+                 * We've hit a signature with multiple methods. Choose the "more specific" of the
+                 * two methods, i.e. the overriding covariant signature.
+                 */
+                HostedType existingReturnType = existing.getSignature().getReturnType();
+                HostedType currentReturnType = current.getSignature().getReturnType();
+                if (existingReturnType.isAssignableFrom(currentReturnType)) {
+                    /* current is more specific than existing */
+                    final HostedMethod replaced = methodsBySignature.put(signatureString, current);
+                    assert replaced.equals(existing);
+                }
+            } else {
+                methodsBySignature.put(signatureString, current);
+            }
+            defineMethodSymbol(symName, false, textSection, current, compilationResult);
         }
 
         protected NativeTextSectionImpl(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {

@@ -79,6 +79,7 @@ import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode.Computation;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode.FieldLoad;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode.FieldLoadIfZero;
+import com.oracle.svm.core.graal.snippets.NonSnippetLowerings;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.meta.CompressedNullConstant;
@@ -199,6 +200,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -664,12 +666,23 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         protected Value emitIndirectForeignCallAddress(ForeignCallLinkage linkage) {
+            SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
+            SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
+            if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
+                // Emit a load for the BoxedRelocatedPointer.pointer field holding the
+                // MethodPointer to the target method
+                ResolvedJavaField boxedPointerField = getMetaAccess().lookupJavaField(NonSnippetLowerings.boxedRelocatedPointerField);
+                int displacement = boxedPointerField.getOffset();
+                JavaConstant boxedPointerBase = targetMethod.getMethodPointer();
+                RegisterValue heapBaseRegister = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
+                AMD64AddressValue boxedRelocatedPointerBaseAddress = new AMD64AddressValue(getLIRKindTool().getWordKind(), heapBaseRegister, Value.ILLEGAL,
+                                Stride.S1, displacement + SubstrateAMD64Backend.addressDisplacement(boxedPointerBase, getConstantReflection()),
+                                SubstrateAMD64Backend.addressDisplacementAnnotation(boxedPointerBase));
+                return getArithmetic().emitLoad(getLIRKindTool().getWordKind(), boxedRelocatedPointerBaseAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
+            }
             if (!shouldEmitOnlyIndirectCalls()) {
                 return null;
             }
-            SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
-            SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
-
             Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(targetMethod.getImageCodeOffset()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo()));
             Value codeStartField = new AMD64AddressValue(getLIRKindTool().getWordKind(), asAllocatable(codeInfo), KnownOffsets.singleton().getImageCodeInfoCodeStartOffset());
@@ -684,9 +697,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             Value exceptionTemp = getExceptionTemp(info != null && info.exceptionEdge != null);
 
             vzeroupperBeforeCall(this, arguments, info, targetMethod);
-            if (shouldEmitOnlyIndirectCalls()) {
+            if (shouldEmitOnlyIndirectCalls() || targetMethod.forceIndirectCall()) {
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
-                emitMove(targetRegister, targetAddress);
+                emitMove(targetRegister, targetAddress); // targetAddress is a CFunctionPointer
                 append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
                                 Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null));
             } else {

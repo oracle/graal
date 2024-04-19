@@ -103,6 +103,18 @@ public class SubstrateOptions {
     @Option(help = "Build shared library")//
     public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
 
+    @Option(help = "Build a Native Image layer.")//
+    public static final HostedOptionKey<Boolean> ImageLayer = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            LayeredBaseImageAnalysis.update(values, newValue);
+            ClosedTypeWorld.update(values, !newValue);
+            PersistImageLayer.update(values, newValue);
+            DeleteLocalSymbols.update(values, !newValue);
+            StripDebugInfo.update(values, !newValue);
+        }
+    };
+
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
@@ -176,6 +188,7 @@ public class SubstrateOptions {
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
+    private static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
 
     @Fold
     public static boolean getSourceLevelDebug() {
@@ -324,8 +337,16 @@ public class SubstrateOptions {
         void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T newValue);
     }
 
+    public interface OptionEnabledHandler<T> {
+        void onOptionEnabled(EconomicMap<OptionKey<?>, Object> values);
+    }
+
     public static void setOptimizeValueUpdateHandler(ValueUpdateHandler<OptimizationLevel> updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
+    }
+
+    public static void setImageLayerEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {
+        SubstrateOptions.imageLayerEnabledHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
@@ -1102,7 +1123,17 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> AbortOnNameConflict = new HostedOptionKey<>(false);
 
     @Option(help = "Names of layer snapshots produced by PersistImageLayer", type = OptionType.Debug) //
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
+    @BundleMember(role = BundleMember.Role.Input)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build()) {
+        @Override
+        public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
+            super.update(values, boxedValue);
+            ClosedTypeWorld.update(values, false);
+            if (imageLayerEnabledHandler != null) {
+                imageLayerEnabledHandler.onOptionEnabled(values);
+            }
+        }
+    };
 
     public static class TruffleStableOptions {
 

@@ -61,6 +61,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.graal.compiler.java.LambdaUtils;
@@ -275,7 +276,8 @@ public final class CallTreePrinter {
         while (iterator.hasNext()) {
             MethodNode node = iterator.next();
             boolean lastEntryPoint = !iterator.hasNext();
-            out.format("%s%s %s %n", lastEntryPoint ? LAST_CHILD : CHILD, "entry", node.format());
+            out.format("%s%s %s, parsing reason:  %s %n", lastEntryPoint ? LAST_CHILD : CHILD, "entry", node.format(),
+                            PointsToAnalysisMethod.unwrapInvokeReason(node.method.getImplementationInvokedReason()));
             printCallTreeNode(out, lastEntryPoint ? EMPTY_INDENT : CONNECTING_INDENT, node);
         }
         out.println();

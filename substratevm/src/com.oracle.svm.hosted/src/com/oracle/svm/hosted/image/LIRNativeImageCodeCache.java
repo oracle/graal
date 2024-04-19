@@ -30,12 +30,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -70,8 +72,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     private final TargetDescription target;
 
     @SuppressWarnings("this-escape")
-    public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
-        super(compilations, imageHeap);
+    public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, Set<HostedMethod> baseLayerMethods, NativeImageHeap imageHeap) {
+        super(compilations, imageHeap, baseLayerMethods);
         target = ConfigurationValues.getTarget();
         trampolineMap = new HashMap<>();
         orderedTrampolineMap = new HashMap<>();
@@ -355,6 +357,10 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 } else if (codeAnnotation instanceof HostedImageHeapConstantPatch) {
                     HostedImageHeapConstantPatch patch = (HostedImageHeapConstantPatch) codeAnnotation;
 
+                    if (patch.constant instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
+                        // GR-52911: use object offset in base layer heap
+                        continue;
+                    }
                     ObjectInfo objectInfo = imageHeap.getConstantInfo(patch.constant);
                     long objectAddress = objectInfo.getOffset();
 
@@ -381,6 +387,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     // which is also in the code cache (a.k.a. a section-local call).
                     // This will change, and we will have to case-split here... but not yet.
                     HostedMethod callTarget = (HostedMethod) call.target;
+                    VMError.guarantee(!callTarget.wrapped.isInBaseLayer(), "Unexpected direct call to base layer method %s. These calls are currently lowered to indirect calls.", callTarget);
                     int callTargetStart = callTarget.getCodeAddressOffset();
                     if (trampolineOffsetMap != null && trampolineOffsetMap.containsKey(callTarget)) {
                         callTargetStart = trampolineOffsetMap.get(callTarget);
@@ -485,8 +492,12 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
         @Override
         protected void defineMethodSymbol(String name, boolean global, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
-            final int size = result == null ? 0 : result.getTargetCodeSize();
-            objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
+            if (method.wrapped.isInBaseLayer()) {
+                objectFile.createUndefinedSymbol(name, 0, true);
+            } else {
+                final int size = result == null ? 0 : result.getTargetCodeSize();
+                objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
+            }
         }
     }
 
