@@ -29,9 +29,12 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -49,6 +52,7 @@ import com.oracle.truffle.espresso.vm.VM;
 /**
  * Represents a native Java method.
  */
+@ExportLibrary(NodeLibrary.class)
 final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
 
     private final TruffleObject boundNative;
@@ -150,5 +154,17 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     @Override
     public int getBci(Frame frame) {
         return VM.EspressoStackElement.NATIVE_BCI;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+        return new SubstitutionScope(frame.getArguments(), getMethodVersion());
     }
 }

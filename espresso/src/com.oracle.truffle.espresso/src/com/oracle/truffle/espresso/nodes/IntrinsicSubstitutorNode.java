@@ -27,6 +27,9 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -34,6 +37,7 @@ import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.vm.VM;
 
+@ExportLibrary(NodeLibrary.class)
 public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl {
     @Child private JavaSubstitution substitution;
 
@@ -94,5 +98,17 @@ public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNo
         } else {
             return 0;
         }
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+        return new SubstitutionScope(frame.getArguments(), getMethodVersion());
     }
 }
