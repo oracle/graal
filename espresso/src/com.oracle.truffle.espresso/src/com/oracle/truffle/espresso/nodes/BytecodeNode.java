@@ -300,6 +300,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -374,6 +375,7 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.ContinuationSupport;
+import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -552,12 +554,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         Object[] arguments = frame.getArguments();
         ContinuationSupport.HostFrameRecord record;
 
-        // Calling convention: arg[0] might be the receiver for a non-static method, the arg after
-        // that is the record.
-        boolean hasReceiver = !getMethod().isStatic();
-        if (hasReceiver && arguments.length == 2 && arguments[1] instanceof ContinuationSupport.HostFrameRecord hfr) {
-            record = hfr;
-        } else if (!hasReceiver && arguments.length == 1 && arguments[0] instanceof ContinuationSupport.HostFrameRecord hfr) {
+        if (arguments.length == 1 && arguments[0] instanceof ContinuationSupport.HostFrameRecord hfr) {
             record = hfr;
         } else {
             return false;
@@ -570,16 +567,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         // Blindly copy stuff in.
         // TODO: Copy aux slots?
         // TODO: Be less blind, do some sanity checks.
-        for (int i = 0; i < record.pointers.length; i++) {
-            frame.setObjectStatic(i, record.pointers[i]);
-        }
-        for (int i = 0; i < record.primitives.length; i++) {
-            frame.setLongStatic(i, record.primitives[i]);
-        }
-        if (record.slotTags != null) {
-            assert frame.getIndexedTags().length == record.slotTags.length;
-            System.arraycopy(record.slotTags, 0, frame.getIndexedTags(), 0, record.slotTags.length);
-        }
+        record.frameDescriptor.exportToFrame(frame);
 
         int bci = getBCI(frame);
         var isInvoke = isPossiblyQuickenedInvoke(bci);
@@ -792,6 +780,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int nextStatementIndex = startStatementIndex;
         boolean skipEntryInstrumentation = isOSR || isContinuationResume;
         boolean skipLivenessActions = false;
+        boolean shouldResumeContinuation = isContinuationResume;
+        boolean inCompiledCode = CompilerDirectives.inCompiledCode();
 
         final Counter loopCount = new Counter();
 
@@ -808,7 +798,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         // During OSR or continuation resume, the method is not executed from the beginning hence
         // onStart is not applicable.
-        if (!isOSR && !isContinuationResume) {
+        if (!isOSR && !shouldResumeContinuation) {
             livenessAnalysis.onStart(frame, skipLivenessActions);
         }
 
@@ -824,14 +814,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 CompilerAsserts.partialEvaluationConstant(statementIndex);
                 CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
 
-                if (isContinuationResume) {
+                if (shouldResumeContinuation) {
                     // We're in the middle of resuming a continuation so re-perform the invoke we're
                     // pointing at, but using the special calling sequence that avoids (re)reading
                     // the arguments from the interpreter stack. The stack frame we're resuming is
                     // already in place. The continuation might suspend again, in which case the
                     // unwind will be processed as normal.
 
-                    isContinuationResume = false;
+                    shouldResumeContinuation = false;
                     top += resumeContinuation(frame, top, curBCI, curOpcode, statementIndex);
                     curBCI = curBCI + Bytecodes.lengthOf(curOpcode);
                     continue;
@@ -1565,7 +1555,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 }
             } catch (ContinuationSupport.Unwind unwindRequest) {
                 // Get the frame from the stack into the VM heap.
-                copyFrameToUnwindRequest(unwindRequest, frame.materialize(), top, statementIndex);
+                copyFrameToUnwindRequest(curBCI, unwindRequest, frame.materialize(), top, statementIndex, inCompiledCode);
                 throw unwindRequest;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
@@ -1691,24 +1681,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @TruffleBoundary
-    private void copyFrameToUnwindRequest(ContinuationSupport.Unwind unwindRequest, MaterializedFrame materializedFrame, int top, int statementIndex) {
-        // Downcast the frame's guest heap pointers.
-        var localRefsObj = materializedFrame.getIndexedLocals();
-        var localRefsStaticObj = new StaticObject[localRefsObj.length];
-        // noinspection SuspiciousSystemArraycopy
-        System.arraycopy(localRefsObj, 0, localRefsStaticObj, 0, localRefsObj.length);
-
-        // Slot tags are only used when the VM has assertions enabled. Otherwise they're
-        // always just STATIC_TAG.
-        byte[] slotTags = null;
-        // noinspection AssertWithSideEffects
-        assert (slotTags = materializedFrame.getIndexedTags()) != null;
-
+    private void copyFrameToUnwindRequest(int bci, ContinuationSupport.Unwind unwindRequest, MaterializedFrame materializedFrame, int top, int statementIndex, boolean inCompiledCode) {
+        EspressoFrameDescriptor record = FrameAnalysis.apply(getMethodVersion(), inCompiledCode ? livenessAnalysis : LivenessAnalysis.NO_ANALYSIS, bci);
+        record.importFromFrame(materializedFrame);
         // Extend the linked list of frame records as we unwind.
         unwindRequest.head = new ContinuationSupport.HostFrameRecord(
-                        localRefsStaticObj,
-                        materializedFrame.getIndexedPrimitiveLocals(),
-                        slotTags,
+                        record,
                         top,
                         statementIndex,
                         methodVersion,

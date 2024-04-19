@@ -50,6 +50,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
+import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor;
 
 public final class LivenessAnalysis {
 
@@ -60,7 +61,7 @@ public final class LivenessAnalysis {
     public static final DebugTimer PROPAGATE_TIMER = DebugTimer.create("propagation", LIVENESS_TIMER);
     public static final DebugTimer ACTION_TIMER = DebugTimer.create("action", LIVENESS_TIMER);
 
-    private static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis(null, null, null, null);
+    public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis(null, null, null, null);
 
     /*
      * <action> at index <i> means that once the bytecode at bci <i> executed, we need to perform
@@ -116,6 +117,24 @@ public final class LivenessAnalysis {
         }
     }
 
+    public void performOnEdge(EspressoFrameDescriptor.Builder frame, int bci, int nextBci) {
+        if (edge != null && edge[nextBci] != null) {
+            edge[nextBci].onEdge(frame, bci);
+        }
+    }
+
+    public void onStart(EspressoFrameDescriptor.Builder frame) {
+        if (onStart != null) {
+            onStart.execute(frame);
+        }
+    }
+
+    public void performPostBCI(EspressoFrameDescriptor.Builder frame, int bci) {
+        if (postBci != null && postBci[bci] != null) {
+            postBci[bci].execute(frame);
+        }
+    }
+
     public void catchUpOSR(VirtualFrame frame, int bci, boolean disable) {
         CompilerAsserts.neverPartOfCompilation();
         if (!disable) {
@@ -123,6 +142,10 @@ public final class LivenessAnalysis {
                 catchUpMap.catchUp(frame, bci);
             }
         }
+    }
+
+    public boolean isEmpty() {
+        return this == NO_ANALYSIS;
     }
 
     @SuppressWarnings("try")

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
@@ -41,7 +42,9 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     static void suspend0(@Inject EspressoLanguage language, @Inject Meta meta) {
         EspressoThreadLocalState tls = language.getThreadLocalState();
         if (tls.isContinuationSuspensionBlocked()) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Suspension is currently blocked by the presence of unsupported frames on the stack. Check for synchronized blocks, native calls and VM intrinsics in the stack trace of this exception.");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException,
+                            "Suspension is currently blocked by the presence of unsupported frames on the stack. " +
+                                            "Check for synchronized blocks, native calls and VM intrinsics in the stack trace of this exception.");
         }
 
         // We don't want to let the user see our upcalls during the unwind process e.g. to do
@@ -63,18 +66,18 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         ContinuationSupport.HostFrameRecord stack = ContinuationSupport.HostFrameRecord.copyFromGuest(self, meta, context);
 
         // This will break if the continuations API is redefined - TODO: find a way to block that.
-        var runMethod = meta.com_oracle_truffle_espresso_continuations_Continuation_run.getMethodVersion();
+        Method.MethodVersion runMethod = meta.com_oracle_truffle_espresso_continuations_Continuation_run.getMethodVersion();
 
         // This method is an intrinsic and the act of invoking one of those blocks the ability
         // to call suspend, so we have to undo that first.
-        var tls = language.getThreadLocalState();
+        EspressoThreadLocalState tls = language.getThreadLocalState();
         tls.unblockContinuationSuspension();
 
         // The entry node will unpack the head frame record into the stack and then pass the
         // remaining records into the bytecode interpreter, which will then pass them down the stack
         // until everything is fully unwound.
         try {
-            runMethod.getCallTarget().call(self, stack);
+            runMethod.getCallTarget().call(stack);
         } catch (ContinuationSupport.Unwind unwind) {
             CompilerDirectives.transferToInterpreter();
             meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
@@ -96,7 +99,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
                     @Inject EspressoLanguage language) {
         // This method is an intrinsic and the act of invoking one of those blocks the ability
         // to call suspend, so we have to undo that first.
-        var tls = language.getThreadLocalState();
+        EspressoThreadLocalState tls = language.getThreadLocalState();
         tls.unblockContinuationSuspension();
 
         try {

@@ -69,8 +69,10 @@ public abstract class InvokeQuickNode extends QuickNode {
      * Executes the target of the invoke using a special calling convention in which the frame
      * record to unwind is passed as a first argument.
      */
-    public int resumeContinuation(VirtualFrame frame, ContinuationSupport.HostFrameRecord hfr) {
-        throw new UnsupportedOperationException();
+    @SuppressWarnings("unused")
+    public final int resumeContinuation(VirtualFrame frame, ContinuationSupport.HostFrameRecord hfr) {
+        // The method that was called is in hfr.methodVersion, no need to re-resolve.
+        return pushResult(frame, hfr.methodVersion.getCallTarget().call(hfr));
     }
 
     protected Object[] getArguments(VirtualFrame frame) {

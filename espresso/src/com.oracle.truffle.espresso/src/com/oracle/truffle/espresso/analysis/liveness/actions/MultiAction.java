@@ -30,6 +30,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
+import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor.Builder;
 
 public final class MultiAction extends LocalVariableAction {
     @CompilationFinal(dimensions = 1) private final int[] actions;
@@ -43,6 +44,13 @@ public final class MultiAction extends LocalVariableAction {
     public void execute(VirtualFrame frame) {
         for (int local : actions) {
             EspressoFrame.clearLocal(frame, local);
+        }
+    }
+
+    @Override
+    public void execute(Builder frame) {
+        for (int local : actions) {
+            frame.clear(local);
         }
     }
 

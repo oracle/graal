@@ -573,4 +573,13 @@ public enum JavaKind {
                 return -1;
         }
     }
+
+    public static JavaKind fromOrdinalByte(byte b) {
+        assert b >= 0 && b < values().length;
+        return values()[b];
+    }
+
+    public byte toOrdinal() {
+        return (byte) ordinal();
+    }
 }

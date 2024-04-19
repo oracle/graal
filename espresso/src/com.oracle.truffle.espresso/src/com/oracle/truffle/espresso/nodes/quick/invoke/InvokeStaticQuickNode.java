@@ -28,7 +28,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeStatic;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeStaticNodeGen;
-import com.oracle.truffle.espresso.vm.ContinuationSupport;
 import com.oracle.truffle.espresso.vm.VM;
 
 public final class InvokeStaticQuickNode extends InvokeQuickNode {
@@ -60,21 +59,5 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
 
     public void initializeResolvedKlass() {
         invokeStatic.getStaticMethod().getDeclaringKlass().safeInitialize();
-    }
-
-    @Override
-    public int resumeContinuation(VirtualFrame frame, ContinuationSupport.HostFrameRecord hfr) {
-        // Support for AccessController.doPrivileged.
-        if (isDoPrivilegedCall) {
-            EspressoRootNode rootNode = (EspressoRootNode) getRootNode();
-            if (rootNode != null) {
-                // Put cookie in the caller frame.
-                rootNode.setFrameId(frame, VM.GlobalFrameIDs.getID());
-            }
-        }
-
-        // The frame doesn't hold the arguments anymore, they were cleared during the invoke that
-        // happened before the user suspended.
-        return pushResult(frame, invokeStatic.execute(new Object[]{hfr}));
     }
 }

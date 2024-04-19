@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.vm;
 
+import java.io.Serial;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.espresso.impl.Method;
@@ -30,8 +32,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-
-import java.io.Serial;
 
 /**
  * Support code used for implementation the
@@ -46,22 +46,18 @@ public class ContinuationSupport {
      * what we are running now.
      */
     public static final class HostFrameRecord {
-        public final StaticObject[] pointers;
-        public final long[] primitives;
-        public final byte[] slotTags;
+        public final EspressoFrameDescriptor frameDescriptor;
         public final int sp;
         public final int statementIndex;
         public final Method.MethodVersion methodVersion;
         public HostFrameRecord next;
 
-        public HostFrameRecord(StaticObject[] pointers, long[] primitives, byte[] slotTags,
-                               int sp,
-                               int statementIndex,
-                               Method.MethodVersion methodVersion,
-                               HostFrameRecord next) {
-            this.pointers = pointers;
-            this.primitives = primitives;
-            this.slotTags = slotTags;
+        public HostFrameRecord(EspressoFrameDescriptor frameDescriptor,
+                        int sp,
+                        int statementIndex,
+                        Method.MethodVersion methodVersion,
+                        HostFrameRecord next) {
+            this.frameDescriptor = frameDescriptor;
             this.sp = sp;
             this.statementIndex = statementIndex;
             this.methodVersion = methodVersion;
@@ -78,21 +74,17 @@ public class ContinuationSupport {
 
             // ptrs already contains StaticObjects, but we need to fill out the nulls and do the
             // casts ourselves, otherwise we get ClassCastExceptions.
-            StaticObject[] convertedPtrs = new StaticObject[pointers.length];
-            for (int i = 0; i < convertedPtrs.length; i++) {
-                convertedPtrs[i] = pointers[i] != null ? pointers[i] : StaticObject.NULL;
-            }
 
             var guestRecord = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.allocateInstance();
             meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_.invokeDirect(
                             guestRecord,
                             // Host arrays are not guest arrays, so convert.
-                            StaticObject.wrap(convertedPtrs, meta),
-                            StaticObject.wrap(primitives, meta),
+                            StaticObject.wrap(frameDescriptor.rawObjects(), meta),
+                            StaticObject.wrap(frameDescriptor.rawPrimitives(), meta),
                             methodVersion.getMethod().makeMirror(meta),
                             sp,
                             statementIndex,
-                            slotTags != null ? StaticObject.wrap(slotTags, meta) : StaticObject.NULL);
+                            StaticObject.wrap(frameDescriptor.rawTags(), meta));
             return guestRecord;
         }
 
@@ -127,7 +119,7 @@ public class ContinuationSupport {
                 byte[] slotTags = reservedGuest != StaticObject.NULL ? reservedGuest.unwrap(language) : null;
                 Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
 
-                var next = new HostFrameRecord(pointers, primitives, slotTags, sp, statementIndex, method.getMethodVersion(), null);
+                HostFrameRecord next = new HostFrameRecord(EspressoFrameDescriptor.fromRawRecord(pointers, primitives, slotTags), sp, statementIndex, method.getMethodVersion(), null);
                 if (hostCursor != null) {
                     hostCursor.next = next;
                 }
@@ -147,8 +139,7 @@ public class ContinuationSupport {
      * is gathered up into a linked list.
      */
     public static class Unwind extends ControlFlowException {
-        @Serial
-        private static final long serialVersionUID = 2520648816466452283L;
+        @Serial private static final long serialVersionUID = 2520648816466452283L;
 
         public transient HostFrameRecord head = null;
 
@@ -159,7 +150,7 @@ public class ContinuationSupport {
             StaticObject guestHead = null;
             StaticObject guestCursor = null;
             while (cursor != null) {
-                var next = cursor.copyToGuest(meta);
+                StaticObject next = cursor.copyToGuest(meta);
                 if (guestHead == null) {
                     guestHead = next;
                 }

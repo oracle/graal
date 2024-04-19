@@ -95,6 +95,10 @@ public final class ExceptionHandler {
         return catchTypeCPI == 0;
     }
 
+    public boolean covers(int bci) {
+        return startBCI <= bci && bci < endBCI;
+    }
+
     /**
      * Returns the type of exception caught by this exception handler.
      */

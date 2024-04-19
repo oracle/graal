@@ -289,26 +289,16 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         }
     }
 
-    /**
-     * Direct access to the pointers on the stack. This is a very low level interface that you
-     * should avoid using unless you are trying to bulk access untyped stack data. Prefer the typed
-     * slot accessors, which will check for mismatches when assertions are enabled.
-     */
-    public Object[] getIndexedLocals() {
-        return indexedLocals;
+    private Object[] getIndexedLocals() {
+        return unsafeCast(this.indexedLocals, Object[].class, true, true, true);
     }
 
-    /**
-     * Direct access to the primitive data on the stack. This is a very low level interface that you
-     * should avoid using unless you are trying to bulk access untyped stack data. Prefer the typed
-     * slot accessors, which will check for mismatches when assertions are enabled.
-     */
-    public long[] getIndexedPrimitiveLocals() {
-        return unsafeCast(indexedPrimitiveLocals, long[].class, true, true, true);
+    private long[] getIndexedPrimitiveLocals() {
+        return unsafeCast(this.indexedPrimitiveLocals, long[].class, true, true, true);
     }
 
-    public byte[] getIndexedTags() {
-        return unsafeCast(indexedTags, byte[].class, true, true, true);
+    private byte[] getIndexedTags() {
+        return unsafeCast(this.indexedTags, byte[].class, true, true, true);
     }
 
     @Override

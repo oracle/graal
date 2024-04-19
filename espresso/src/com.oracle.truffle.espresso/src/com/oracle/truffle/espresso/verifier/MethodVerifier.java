@@ -285,6 +285,7 @@ import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor;
 
 /**
  * Should be a complete bytecode verifier. Given the version of the classfile from which the method
@@ -649,12 +650,12 @@ public final class MethodVerifier implements ContextAccess {
      *             to why verification failed.
      */
     @SuppressWarnings("try")
-    public static void verify(Method m) {
+    public static MethodVerifier verify(Method m) {
         CodeAttribute codeAttribute = m.getCodeAttribute();
         assert !((m.isAbstract() || m.isNative()) && codeAttribute != null) : "Abstract method has code: " + m;
         if (codeAttribute == null) {
             if (m.isAbstract() || m.isNative()) {
-                return;
+                return null;
             }
             throw failFormat("Concrete method has no code attribute: " + m);
         }
@@ -670,7 +671,73 @@ public final class MethodVerifier implements ContextAccess {
                     throw e;
                 }
             }
+            return verifier;
         }
+    }
+
+    private int targetBci = -1;
+
+    public EspressoFrameDescriptor getForBci(int target) {
+        // Look for the closest available frame
+        StackFrame frame = stackFrames[target];
+        int closest = target;
+        while (frame == null) {
+            closest--;
+            frame = stackFrames[closest];
+        }
+        // Guaranteed to have at least a frame at bci == 0.
+        if (closest == target) {
+            return toDescriptor(frame);
+        }
+        // start verification process from closest available stack frame
+        assert frame != null;
+        targetBci = target;
+        // Makes sure verification does not stop early
+        Arrays.fill(bciStates, UNENCOUNTERED);
+        // Start verification from closest known frame
+        startVerify(closest, frame.extractStack(maxStack), frame.extractLocals());
+        // Frame should be initialized now.
+        frame = stackFrames[target];
+        assert frame != null;
+        targetBci = -1;
+
+        // Return frame description for the target bci.
+        return toDescriptor(frame);
+    }
+
+    private EspressoFrameDescriptor toDescriptor(StackFrame frame) {
+        JavaKind[] stackKinds = new JavaKind[getMaxStack()];
+        JavaKind[] localKinds = new JavaKind[getMaxLocals()];
+        Arrays.fill(stackKinds, JavaKind.Illegal);
+        Arrays.fill(localKinds, JavaKind.Illegal);
+        // Special quirk of the verifier stack, a long or double is not followed by an illegal, so
+        // we add it here.
+        int builderPos = 0;
+        int stackPos = 0;
+        while (stackPos < frame.top) {
+            Operand op = frame.stack[stackPos];
+            if (op == null) {
+                stackKinds[builderPos] = JavaKind.Illegal;
+            } else {
+                JavaKind k = op.getKind();
+                stackKinds[builderPos] = k;
+                if (k.needsTwoSlots()) {
+                    builderPos++;
+                    stackKinds[builderPos] = JavaKind.Illegal;
+                }
+            }
+            stackPos++;
+            builderPos++;
+        }
+        for (int i = 0; i < frame.locals.length; i++) {
+            Operand op = frame.locals[i];
+            if (op == null) {
+                localKinds[i] = JavaKind.Illegal;
+            } else {
+                localKinds[i] = op.getKind();
+            }
+        }
+        return new EspressoFrameDescriptor(stackKinds, localKinds);
     }
 
     private boolean shouldFallBack(VerifierError e) {
@@ -1266,6 +1333,10 @@ public final class MethodVerifier implements ContextAccess {
                 return;
             }
             checkExceptionHandlers(nextBCI, locals);
+            if (nextBCI == targetBci) {
+                stackFrames[nextBCI] = spawnStackFrame(stack, locals);
+                return;
+            }
             nextBCI = verifySafe(nextBCI, stack, locals);
             validateBCI(nextBCI);
         } while (previousBCI != nextBCI);
