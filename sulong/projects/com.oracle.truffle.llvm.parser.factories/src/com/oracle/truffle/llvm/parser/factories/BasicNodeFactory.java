@@ -1560,8 +1560,10 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.invariant.end.p0i8":
                     return LLVMInvariantEndNodeGen.create(args[1], args[2]);
                 case "llvm.stacksave":
+                case "llvm.stacksave.p0":
                     return LLVMStackSaveNodeGen.create();
                 case "llvm.stackrestore":
+                case "llvm.stackrestore.p0":
                     return LLVMStackRestoreNodeGen.create(args[1]);
                 case "llvm.frameaddress":
                 case "llvm.frameaddress.p0":
