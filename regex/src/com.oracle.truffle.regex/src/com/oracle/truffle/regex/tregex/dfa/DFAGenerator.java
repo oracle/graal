@@ -1119,13 +1119,71 @@ public final class DFAGenerator implements JsonConvertible {
             lazyPreFinalTransition = createWithLookup(s, maps, iTransitionToFinalState);
         }
         DFACaptureGroupPartialTransition cgLoopToSelf = null;
+        boolean cgLoopToSelfHasDependency = false;
         if (loopToSelf >= 0) {
             cgLoopToSelf = getLazyTransition(s.getSuccessors()[loopToSelf]).getPartialTransitions()[loopToSelf];
+            cgLoopToSelfHasDependency = calcCGLoopToSelfDependency(cgLoopToSelf);
         }
         short[] lastTransitionIndex = new short[s.getSuccessors().length];
         return new CGTrackingDFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers,
                         lastTransitionIndex, lazyTransitions, lazyPreAnchoredFinalTransition, lazyPreFinalTransition, createCGFinalTransition(s.getAnchoredFinalStateTransition()),
-                        createCGFinalTransition(s.getUnAnchoredFinalStateTransition()), cgLoopToSelf);
+                        createCGFinalTransition(s.getUnAnchoredFinalStateTransition()), cgLoopToSelf, cgLoopToSelfHasDependency);
+    }
+
+    /**
+     * Check if the capture group updates in the given looping transition have a dependency on their
+     * previous application in the loop. This happens when the transition contains a copy operation
+     * where the source array isn't updated at the same indices as the target array, for example:
+     * 
+     * <pre>
+     * {@code copy array 0 -> 1}
+     * {@code update array 0, indices [0, 1]}
+     * {@code update array 1, indices [1]}
+     * </pre>
+     * 
+     * In this case, array 1 at index 0 will always contain the value of array 0 of the previous
+     * loop iteration. We have to take this into account in {@link CGTrackingDFAStateNode}'s
+     * {@code afterIndexOf}-method.
+     */
+    private boolean calcCGLoopToSelfDependency(DFACaptureGroupPartialTransition cgLoopToSelf) {
+        byte[] arrayCopies = cgLoopToSelf.getArrayCopies();
+        if (cgLoopToSelf.doesReorderResults() || arrayCopies.length == 0) {
+            return false;
+        }
+        int maxArrayIndex = 0;
+        for (byte i : arrayCopies) {
+            maxArrayIndex = Math.max(maxArrayIndex, Byte.toUnsignedInt(i));
+        }
+        TBitSet[] updates = new TBitSet[maxArrayIndex + 1];
+        for (IndexOperation op : cgLoopToSelf.getIndexUpdates()) {
+            if (op.getTargetArray() > maxArrayIndex) {
+                continue;
+            }
+            TBitSet bs = new TBitSet(nfa.getAst().getNumberOfCaptureGroups() * 2);
+            for (int i = 0; i < op.getNumberOfIndices(); i++) {
+                bs.set(op.getIndex(i));
+            }
+            assert updates[op.getTargetArray()] == null;
+            updates[op.getTargetArray()] = bs;
+        }
+        TBitSet cmp = new TBitSet(nfa.getAst().getNumberOfCaptureGroups() * 2);
+        for (int i = 0; i < arrayCopies.length; i += 2) {
+            int src = Byte.toUnsignedInt(arrayCopies[i]);
+            int dst = Byte.toUnsignedInt(arrayCopies[i + 1]);
+            if (updates[src] == null) {
+                continue;
+            }
+            if (updates[dst] == null) {
+                return true;
+            }
+            cmp.clear();
+            cmp.union(updates[src]);
+            cmp.subtract(updates[dst]);
+            if (!cmp.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private DFACaptureGroupLazyTransition createWithLookup(DFAStateNodeBuilder s, EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>>[] maps, int i) {

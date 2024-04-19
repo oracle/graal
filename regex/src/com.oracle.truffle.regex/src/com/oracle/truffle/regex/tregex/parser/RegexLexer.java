@@ -637,7 +637,7 @@ public abstract class RegexLexer {
      *            {@link RegexSource#getPattern()}.
      */
     private void setSourceSection(Token t, int startIndex, int endIndex) {
-        if (source.getOptions().isDumpAutomataWithSourceSections()) {
+        if (source.getOptions().isDumpAutomataWithSourceSections() && t.kind != Token.Kind.charClassEnd) {
             // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
             // offset of 1 here.
             t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));
@@ -767,8 +767,12 @@ public abstract class RegexLexer {
         final char c = consumeChar();
         if (inCharacterClass()) {
             if (c == ']' && (!featureEnabledCharClassFirstBracketIsLiteral() || position != curCharClassStartIndex + (curCharClassInverted ? 2 : 1))) {
+                Token ccEnd = Token.createCharacterClassEnd();
+                if (source.getOptions().isDumpAutomataWithSourceSections()) {
+                    ccEnd.setSourceSection(source.getSource().createSection(curCharClassStartIndex, position - curCharClassStartIndex + 1));
+                }
                 curCharClassStartIndex = -1;
-                return Token.createCharacterClassEnd();
+                return ccEnd;
             }
             ClassSetContents atom = parseCharClassAtom(c);
             return Token.createCharacterClassAtom(atom.getCodePointSet(), atom.isPosixCollationEquivalenceClass());
