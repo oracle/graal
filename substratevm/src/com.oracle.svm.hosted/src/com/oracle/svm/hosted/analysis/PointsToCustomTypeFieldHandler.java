@@ -41,7 +41,7 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
      * which are not available during analysis.
      */
     @Override
-    protected void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes) {
+    public void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes) {
         NativeImagePointsToAnalysis analysis = (NativeImagePointsToAnalysis) bb;
 
         assert aField.getJavaKind().isObject();

@@ -119,6 +119,11 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
+    public void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes) {
+        customTypeFieldHandler.injectFieldTypes(aField, customTypes);
+    }
+
+    @Override
     public void onTypeReachable(AnalysisType type) {
         postTask(d -> {
             type.getInitializeMetaDataTask().ensureDone();
