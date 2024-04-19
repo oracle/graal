@@ -921,7 +921,7 @@ public abstract class NativeImage extends AbstractImage {
                     for (HostedMethod current : codeCache.getBaseLayerMethods()) {
                         final String symName = localSymbolNameForMethod(current);
                         final String signatureString = current.getUniqueShortName();
-                        defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, null);
+                        defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, false, null);
                     }
                 }
 
@@ -929,7 +929,7 @@ public abstract class NativeImage extends AbstractImage {
                     HostedMethod current = pair.getLeft();
                     final String symName = localSymbolNameForMethod(current);
                     final String signatureString = current.getUniqueShortName();
-                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, pair.getRight());
+                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, SubstrateOptions.InternalSymbolsAreGlobal.getValue(), pair.getRight());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -973,7 +973,7 @@ public abstract class NativeImage extends AbstractImage {
         }
 
         private void defineMethodSymbol(Section textSection, HostedMethod current, Map<String, HostedMethod> methodsBySignature,
-                        String signatureString, String symName, CompilationResult compilationResult) {
+                        String signatureString, String symName, boolean global, CompilationResult compilationResult) {
             final HostedMethod existing = methodsBySignature.get(signatureString);
             if (existing != null) {
                 /*
@@ -990,7 +990,7 @@ public abstract class NativeImage extends AbstractImage {
             } else {
                 methodsBySignature.put(signatureString, current);
             }
-            defineMethodSymbol(symName, false, textSection, current, compilationResult);
+            defineMethodSymbol(symName, global, textSection, current, compilationResult);
         }
 
         protected NativeTextSectionImpl(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {

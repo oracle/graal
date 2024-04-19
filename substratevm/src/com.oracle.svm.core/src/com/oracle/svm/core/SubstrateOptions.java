@@ -113,6 +113,7 @@ public class SubstrateOptions {
             PersistImageLayerSingletons.update(values, newValue);
             DeleteLocalSymbols.update(values, !newValue);
             StripDebugInfo.update(values, !newValue);
+            InternalSymbolsAreGlobal.update(values, newValue);
         }
     };
 
