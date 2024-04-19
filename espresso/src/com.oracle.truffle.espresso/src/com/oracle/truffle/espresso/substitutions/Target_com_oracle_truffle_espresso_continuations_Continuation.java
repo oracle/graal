@@ -66,7 +66,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         ContinuationSupport.HostFrameRecord stack = ContinuationSupport.HostFrameRecord.copyFromGuest(self, meta, context);
 
         // This will break if the continuations API is redefined - TODO: find a way to block that.
-        Method.MethodVersion runMethod = meta.com_oracle_truffle_espresso_continuations_Continuation_run.getMethodVersion();
+        Method.MethodVersion runMethod = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getMethodVersion();
 
         // This method is an intrinsic and the act of invoking one of those blocks the ability
         // to call suspend, so we have to undo that first.
@@ -80,7 +80,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             runMethod.getCallTarget().call(stack);
         } catch (ContinuationSupport.Unwind unwind) {
             CompilerDirectives.transferToInterpreter();
-            meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
+            meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
             // Allow reporting of stepping in this thread again. It was blocked by the call to
             // suspend0()
             tls.enableSingleStepping();
@@ -105,11 +105,11 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         try {
             // The run method is private in Continuation and is the continuation delimiter. Frames
             // from run onwards will be unwound on suspend, and rewound on resume.
-            meta.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(self);
+            meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(self);
         } catch (ContinuationSupport.Unwind unwind) {
             // Guest called suspend(). By the time we get here the frame info has been gathered up
             // into host-side objects so we just need to copy the data into the guest world.
-            meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
+            meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
             // Allow reporting of stepping in this thread again. It was blocked by the call to
             // suspend0()
             tls.enableSingleStepping();

@@ -75,8 +75,8 @@ public class ContinuationSupport {
             // ptrs already contains StaticObjects, but we need to fill out the nulls and do the
             // casts ourselves, otherwise we get ClassCastExceptions.
 
-            var guestRecord = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.allocateInstance();
-            meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_.invokeDirect(
+            var guestRecord = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.allocateInstance();
+            meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_.invokeDirect(
                             guestRecord,
                             // Host arrays are not guest arrays, so convert.
                             StaticObject.wrap(frameDescriptor.rawObjects(), meta),
@@ -99,18 +99,18 @@ public class ContinuationSupport {
                         @Inject EspressoContext context) {
             HostFrameRecord hostCursor = null;
             HostFrameRecord hostHead = null;
-            StaticObject /* FrameRecord */ cursor = meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(self);
+            StaticObject /* FrameRecord */ cursor = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(self);
             while (StaticObject.notNull(cursor)) {
                 /* Object[] */
-                StaticObject pointersGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers.getObject(cursor);
+                StaticObject pointersGuest = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers.getObject(cursor);
                 /* long[] */
-                StaticObject primitivesGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives.getObject(cursor);
+                StaticObject primitivesGuest = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives.getObject(cursor);
                 /* Object (actually byte[]), or null */
-                StaticObject reservedGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_reserved1.getObject(cursor);
+                StaticObject reservedGuest = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_reserved1.getObject(cursor);
                 /* java.lang.reflect.Method */
-                StaticObject methodGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method.getObject(cursor);
-                int sp = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp.getInt(cursor);
-                int statementIndex = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_statementIndex.getInt(cursor);
+                StaticObject methodGuest = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method.getObject(cursor);
+                int sp = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp.getInt(cursor);
+                int statementIndex = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_statementIndex.getInt(cursor);
 
                 var language = context.getLanguage();
 
@@ -127,7 +127,7 @@ public class ContinuationSupport {
                     hostHead = next;
                 }
                 hostCursor = next;
-                cursor = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.getObject(cursor);
+                cursor = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.getObject(cursor);
             }
 
             return hostHead;
@@ -155,7 +155,7 @@ public class ContinuationSupport {
                     guestHead = next;
                 }
                 if (guestCursor != null) {
-                    meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.setObject(guestCursor, next);
+                    meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.setObject(guestCursor, next);
                 }
                 guestCursor = next;
                 cursor = cursor.next;
