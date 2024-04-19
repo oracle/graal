@@ -20,7 +20,7 @@ sulong_logs: [
     "*/svmbuild/images/*.log"
 ]
 
-bench-llvm-linux: ${sulong_linux} ${oraclejdk8} {
+bench-llvm-linux: ${sulong_linux} ${linux-amd64} ${oraclejdk8} {
   capabilities: [e3, tmpfs25g]
   environment: {
     RESULTS_FILE_PREFIX: results-
