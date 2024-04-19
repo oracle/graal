@@ -267,19 +267,22 @@ public @interface GenerateBytecode {
     boolean enableQuickening() default true;
 
     /**
-     * Whether the generated interpreter should store the bytecode index (bci) in the frame. This
-     * can be useful to make location computations (e.g., {@link BytecodeNode#getBytecodeLocation}
-     * or {@link BytecodeNode#getSourceLocation}) efficient on the fast path.
+     * Whether the generated interpreter should store the bytecode index (bci) in the frame.
      * <p>
-     * By default, the interpreter has to follow {@link Node} parent pointers and scan the bytecode
-     * to find the location for a given node, which is expensive on the fast path. When the bci is
-     * stored in the frame, the interpreter can simply read it from the frame.
+     * By default, methods that compute location-dependent information (like
+     * {@link BytecodeNode#getBytecodeLocation(com.oracle.truffle.api.frame.Frame, Node)}) must
+     * follow {@link Node#getParent() Node parent} pointers and scan the bytecode to compute the
+     * current bci, which is not suitable for the fast path. When this feature is enabled, an
+     * implementation can use
+     * {@link BytecodeNode#getBytecodeIndex(com.oracle.truffle.api.frame.Frame)} to obtain the bci
+     * efficiently on the fast path and use it for location-dependent computations (e.g.,
+     * {@link BytecodeNode#getBytecodeLocation(int)}).
      * <p>
-     * Storing the bci in the frame increases frame size and requires many additional frame writes,
-     * so this feature should only be used if locations are needed on the fast path outside of the
-     * current operation (e.g., for closures or frame introspection). For fast path access within
-     * the current operation, you can bind the location or bci as a parameter (e.g.,
-     * {@code @Bind("$location")}).
+     * Note that operations always have fast-path access to the bci using a bind parameter (e.g.,
+     * {@code @Bind("$bci") int bci}); this feature should only be enabled for fast-path bci access
+     * outside of the current operation (e.g., for closures or frame introspection). Storing the bci
+     * in the frame increases frame size and requires additional frame writes, so it can negatively
+     * affect performance.
      *
      * @since 24.1
      */

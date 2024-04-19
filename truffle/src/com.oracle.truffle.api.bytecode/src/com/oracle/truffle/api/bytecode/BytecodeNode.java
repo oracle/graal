@@ -105,8 +105,9 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Gets the bytecode location associated with a {@code bci}. This method must only be used if
-     * the {@code bci} was obtained while executing this bytecode node.
+     * Gets the bytecode location associated with a bytecode index ({@code bci}). The result is only
+     * valid if {@code bci} was obtained from this bytecode node (using a bind variable or
+     * {@link #getBytecodeIndex}).
      *
      * @param bci the bytecode index
      * @return the bytecode location, or null if the bytecode index is invalid
@@ -117,6 +118,20 @@ public abstract class BytecodeNode extends Node {
             return null;
         }
         return findLocation(bci);
+    }
+
+    /**
+     * Reads and returns the bytecode index from the {@code frame}. This method should only be
+     * called if the interpreter is configured to {@link GenerateBytecode#storeBciInFrame store the
+     * bytecode index (bci) in the frame}; be sure to read the documentation before using this
+     * feature.
+     *
+     * @return the bytecode index stored in the frame
+     * @since 24.1
+     */
+    @SuppressWarnings("unused")
+    public int getBytecodeIndex(Frame frame) {
+        throw new UnsupportedOperationException("Interpreter does not store the bci in the frame.");
     }
 
     /**
@@ -352,7 +367,7 @@ public abstract class BytecodeNode extends Node {
      */
     public abstract SourceSection findSourceLocation(int bci);
 
-    public abstract SourceSection findSourceLocation(int beginBci, int endBCi);
+    public abstract SourceSection findSourceLocation(int beginBci, int endBci);
 
     /**
      * Finds all source locations associated with the given bytecode index. The array returns more
