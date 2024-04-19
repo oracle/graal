@@ -180,7 +180,7 @@ local graal_suite_root = root_ci.graal_suite_root;
       ]
     ],
     logs: ['bench-results.json'],
-    capabilities+: ['x52'],
+    capabilities+: ['e3'],
     timelimit: '1:00:00',
   },
 
