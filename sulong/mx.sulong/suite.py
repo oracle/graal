@@ -955,7 +955,6 @@ suite = {
       "cmakeConfig" : {
         "LIBCXXABI_INCLUDE_TESTS": "NO",
         "LIBCXXABI_ENABLE_STATIC" : "NO",
-        "LIBCXXABI_USE_LLVM_UNWINDER": "NO",
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
         "LIBCXX_ENABLE_STATIC" : "NO",
@@ -968,31 +967,31 @@ suite = {
       "ninja_install_targets" : ["install-cxx"],
       "os" : {
         "<others>" : {
-          "ninja_targets" : ["cxxabi"],
-          "ninja_install_targets" : ["install-cxxabi"],
+          "ninja_targets" : ["cxxabi", "unwind"],
+          "ninja_install_targets" : ["install-cxxabi", "install-unwind"],
           "results" : ["native"],
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
-            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
           },
         },
         "linux-musl" : {
-          "ninja_targets" : ["cxxabi"],
-          "ninja_install_targets" : ["install-cxxabi"],
+          "ninja_targets" : ["cxxabi", "unwind"],
+          "ninja_install_targets" : ["install-cxxabi", "install-unwind"],
           "results" : ["native"],
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
-            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "LIBCXX_HAS_MUSL_LIBC" : "YES",
           },
         },
         "darwin" : {
-          "ninja_targets" : ["cxxabi"],
-          "ninja_install_targets" : ["install-cxxabi"],
+          "ninja_targets" : ["cxxabi", "unwind"],
+          "ninja_install_targets" : ["install-cxxabi", "install-unwind"],
           "results" : ["native"],
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "@loader_path/",
-            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "CMAKE_LIBTOOL" : "<path:LLVM_TOOLCHAIN>/bin/llvm-libtool-darwin",
           },
         },
