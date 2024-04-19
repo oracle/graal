@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -1582,6 +1582,10 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.eh.sjlj.longjmp":
                 case "llvm.eh.sjlj.setjmp":
                     return LLVMUnsupportedInstructionNode.createExpression(UnsupportedReason.SET_JMP_LONG_JMP);
+                case "llvm.dbg.assign":
+                    // https://llvm.org/docs/AssignmentTracking.html
+                    // not used by Sulong
+                    return LLVMNoOpNodeGen.create();
                 case "llvm.dbg.declare":
                 case "llvm.dbg.addr":
                 case "llvm.dbg.value":
