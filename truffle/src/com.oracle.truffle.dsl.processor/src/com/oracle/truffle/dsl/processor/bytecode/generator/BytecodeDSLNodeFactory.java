@@ -8332,6 +8332,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createGetBranchProfiles());
             type.add(createFindBytecodeIndex1());
             type.add(createFindBytecodeIndex2());
+            if (model.storeBciInFrame) {
+                type.add(createGetBytecodeIndex());
+            }
             type.add(createFindBytecodeIndexOfOperationNode());
             type.add(createToString());
 
@@ -8414,6 +8417,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startReturn().string("-1").end();
             }
 
+            return ex;
+        }
+
+        private CodeExecutableElement createGetBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getBytecodeIndex");
+            ex.renameArguments("frame");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().string("frame.getInt(" + BCI_IDX + ")").end();
             return ex;
         }
 

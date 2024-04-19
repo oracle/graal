@@ -78,7 +78,7 @@ public class ReadBytecodeLocationTest {
      * a custom operation that has a specialization with a cached parameter. An example of this
      * latter case is a @Cached parameter that calls another root node, which then performs a stack
      * walk. @Bind variables are also included in this criteria, because the operation
-     * could @Bind("$root") and then invoke {@link BytecodeRootNode#readBciFromFrame} on $root.
+     * could @Bind("$bytecode") and then invoke {@link BytecodeNode#getBytecodeIndex} on $bytecode.
      */
     public BytecodeNodeWithStoredBci parseNode(BytecodeParser<BytecodeNodeWithStoredBciGen.Builder> builder) {
         return BytecodeNodeWithStoredBciGen.create(BytecodeConfig.WITH_SOURCE, builder).getNode(0);
@@ -280,7 +280,8 @@ abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRoo
         }
 
         public String getSourceCharacters() {
-            return bytecode.getSourceLocation(frame, node).getCharacters().toString();
+            int bci = bytecode.getBytecodeIndex(frame);
+            return bytecode.findSourceLocation(bci).getCharacters().toString();
         }
     }
 
