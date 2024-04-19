@@ -49,6 +49,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
@@ -360,6 +362,57 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         assertEquals(location.getBytecodeNode(), after.getBytecodeNode());
         assertTrue(before.getBytecodeIndex() < location.getBytecodeIndex());
         assertTrue(location.getBytecodeIndex() < after.getBytecodeIndex());
+    }
+
+    @Test
+    public void testYieldReparseSources() {
+        Source source = Source.newBuilder("test", "x = yield; return x ? 42 : position", "file").build();
+
+        BasicInterpreter rootNode = parseNode("yieldReparseSources", b -> {
+            b.beginSource(source);
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.beginYield();
+            b.emitLoadArgument(0);
+            b.endYield();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginConditional();
+
+            b.emitLoadLocal(result);
+
+            b.emitLoadConstant(42L);
+
+            b.beginSourceSection(27, 8);
+            b.emitGetSourcePosition();
+            b.endSourceSection();
+
+            b.endConditional();
+            b.endReturn();
+
+            b.endRoot();
+            b.endSource();
+        });
+
+        // Invoke the continuation once to transition to cached.
+        ContinuationResult cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        assertEquals(42L, cont.continueWith(true));
+
+        // A suspended invocation should transition.
+        cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        rootNode.getRootNodes().ensureSources();
+        SourceSection result = (SourceSection) cont.continueWith(false);
+        assertEquals(source, result.getSource());
+        assertEquals("position", result.getCharacters());
+
+        // Subsequent invocations work as expected.
+        cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        result = (SourceSection) cont.continueWith(false);
+        assertEquals(source, result.getSource());
+        assertEquals("position", result.getCharacters());
     }
 
     @Test

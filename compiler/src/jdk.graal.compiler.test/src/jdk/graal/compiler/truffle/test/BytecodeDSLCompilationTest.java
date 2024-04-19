@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.parseNodeWithSource;
+import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.parseNode;
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.invokeNewConfigBuilder;
 import static org.junit.Assert.assertEquals;
 
@@ -216,7 +216,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     }
 
     private static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeForCompilation(Class<? extends BasicInterpreter> interpreterClass, String rootName, BytecodeParser<T> builder) {
-        BasicInterpreter result = parseNodeWithSource(interpreterClass, false, rootName, builder);
+        BasicInterpreter result = parseNode(interpreterClass, false, rootName, builder);
         result.getBytecodeNode().setUncachedThreshold(0); // force interpreter to skip tier 0
         return result;
     }
