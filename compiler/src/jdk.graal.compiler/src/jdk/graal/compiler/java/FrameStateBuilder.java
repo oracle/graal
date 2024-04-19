@@ -1209,4 +1209,16 @@ public final class FrameStateBuilder implements SideEffectsState {
         return stateAfterStart;
     }
 
+    /**
+     * Sets monitorIds and lockedObjects of this FrameStateBuilder to the values in {@code from}.
+     */
+    public void setLocks(FrameStateBuilder from) {
+        lockedObjects = new ValueNode[from.lockedObjects.length];
+        monitorIds = new MonitorIdNode[from.lockedObjects.length];
+        for (int i = 0; i < from.lockedObjects.length; i++) {
+            lockedObjects[i] = from.lockedObjects[i];
+            monitorIds[i] = from.monitorIds[i];
+        }
+    }
+
 }

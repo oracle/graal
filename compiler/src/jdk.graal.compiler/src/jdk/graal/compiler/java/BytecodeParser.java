@@ -315,7 +315,6 @@ import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.java.BciBlockMapping.BciBlock;
 import jdk.graal.compiler.java.BciBlockMapping.ExceptionDispatchBlock;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.BeginStateSplitNode;
@@ -334,7 +333,6 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FullInfopointNode;
 import jdk.graal.compiler.nodes.IfNode;
-import jdk.graal.compiler.nodes.IncompatibleStateMergeNode;
 import jdk.graal.compiler.nodes.InliningLog;
 import jdk.graal.compiler.nodes.InliningLog.PlaceholderInvokable;
 import jdk.graal.compiler.nodes.Invokable;
@@ -867,13 +865,13 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         final FixedNode originalEntry;
         final FrameStateBuilder state;
 
-        Target(FixedNode entry, FrameStateBuilder state) {
+        public Target(FixedNode entry, FrameStateBuilder state) {
             this.entry = entry;
             this.state = state;
             this.originalEntry = null;
         }
 
-        Target(FixedNode entry, FrameStateBuilder state, FixedNode originalEntry) {
+        public Target(FixedNode entry, FrameStateBuilder state, FixedNode originalEntry) {
             this.entry = entry;
             this.state = state;
             this.originalEntry = originalEntry;
@@ -3351,7 +3349,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                  */
                 LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block);
                 LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-                Target target = checkLoopExit(new Target(loopEnd, state.copy()), block);
+                Target target = checkUnstructuredLocking(checkLoopExit(new Target(loopEnd, state.copy()), block), block, getEntryState(block));
                 FixedNode result = target.entry;
                 /*
                  * It is guaranteed that a loop header cannot be an ExceptionDispatchBlock. By the
@@ -3361,10 +3359,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 assert !(block instanceof ExceptionDispatchBlock) : block;
                 assert !getEntryState(block).rethrowException();
                 target.state.setRethrowException(false);
-                FrameStateBuilder entryState = getEntryState(block);
-                if (!entryState.areLocksMergeableWith(target.state)) {
-                    return handleUnmergeableLocks(target, block, loopBegin, entryState);
-                }
                 getEntryState(block).merge(loopBegin, target.state);
                 debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
 
@@ -3403,12 +3397,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
             // The EndNode for the newly merged edge.
             EndNode newEnd = graph.add(new EndNode());
-            Target target = checkLoopExit(checkUnwind(newEnd, block, state), block);
+            Target target = checkUnstructuredLocking(checkLoopExit(checkUnwind(newEnd, block, state), block), block, getEntryState(block));
             FixedNode result = target.entry;
-            FrameStateBuilder entryState = getEntryState(block);
-            if (!entryState.areLocksMergeableWith(target.state)) {
-                return handleUnmergeableLocks(target, block, mergeNode, entryState);
-            }
             getEntryState(block).merge(mergeNode, target.state);
             mergeNode.addForwardEnd(newEnd);
             debug.log("createTarget %s: merging state, result: %s", block, result);
@@ -3418,7 +3408,10 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     @SuppressWarnings("unused")
-    protected FixedNode handleUnmergeableLocks(Target target, BciBlock mergeBlock, AbstractMergeNode merge, FrameStateBuilder mergeState) {
+    protected Target checkUnstructuredLocking(Target target, BciBlock targetBlock, FrameStateBuilder mergeState) {
+        if (mergeState.areLocksMergeableWith(target.state)) {
+            return target;
+        }
         throw bailout("Locks cannot be merged. Possibly unstructured locking, which is not supported.");
     }
 
