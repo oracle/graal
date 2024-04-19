@@ -162,8 +162,13 @@
 
     # BENCHMARKS
 
+<<<<<<< HEAD
     bench_hw.x52 + common.oraclejdk17 + bench_common + {
       name: "bench-truffle-jmh-17",
+=======
+    bench_hw.e3 + common.labsjdkLatestCE + bench_common + {
+      name: "bench-truffle-jmh",
+>>>>>>> 4fdcc7c4555 (Migrate remaining bench jobs to E3)
       notify_groups:: ["truffle_bench"],
       run: [
         ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle"],

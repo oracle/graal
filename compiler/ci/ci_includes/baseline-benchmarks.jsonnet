@@ -6,8 +6,13 @@
   local hw = bc.bench_hw,
 
   local hotspot_amd64_builds = [
+<<<<<<< HEAD
     c.weekly + hw.x52 + jdk + cc.c2 + suite
   for jdk in cc.bench_jdks
+=======
+    c.weekly + hw.e3 + jdk + cc.c2 + suite
+  for jdk in cc.product_jdks
+>>>>>>> 4fdcc7c4555 (Migrate remaining bench jobs to E3)
   for suite in bench.groups.all_suites
   ],
 
@@ -18,17 +23,29 @@
 
   local hotspot_profiling_builds = std.flattenArrays([
     [
+<<<<<<< HEAD
     c.monthly + hw.x52  + cc.latest_jdk + cc.c2 + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
     c.monthly + hw.a12c + cc.latest_jdk + cc.c2 + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
     c.monthly + hw.x52  + cc.latest_jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" },
     c.monthly + hw.a12c + cc.latest_jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
+=======
+    c.monthly + hw.e3  + jdk + cc.c2 + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
+    c.monthly + hw.a12c + jdk + cc.c2 + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
+    c.monthly + hw.e3  + jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" },
+    c.monthly + hw.a12c + jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
+>>>>>>> 4fdcc7c4555 (Migrate remaining bench jobs to E3)
     ]
   for suite in bench.groups.profiled_suites
   ]),
 
   local weekly_forks_amd64_builds = std.flattenArrays([
+<<<<<<< HEAD
     bc.generate_fork_builds(c.weekly + hw.x52 + jdk + cc.c2 + suite)
   for jdk in cc.bench_jdks
+=======
+    bc.generate_fork_builds(c.weekly + hw.e3 + jdk + cc.c2 + suite)
+  for jdk in cc.jdks_of_interest
+>>>>>>> 4fdcc7c4555 (Migrate remaining bench jobs to E3)
   for suite in bench.groups.weekly_forks_suites
   ]),
 
@@ -38,15 +55,15 @@
   ]),
 
   local economy_builds = [
-      c.weekly + hw.x52 + jdk + cc.libgraal + cc.economy_mode + suite
+      c.weekly + hw.e3 + jdk + cc.libgraal + cc.economy_mode + suite
     for jdk in cc.product_jdks
     for suite in bench.groups.main_suites
   ],
   local no_tiered_builds = std.flattenArrays([
     [
-    c.monthly + hw.x52 + jdk + cc.c1                                             + suite,
-    c.monthly + hw.x52 + jdk + cc.c2                         + cc.no_tiered_comp + suite,
-    c.monthly + hw.x52 + jdk + cc.libgraal + cc.economy_mode + cc.no_tiered_comp + suite
+    c.monthly + hw.e3 + jdk + cc.c1                                             + suite,
+    c.monthly + hw.e3 + jdk + cc.c2                         + cc.no_tiered_comp + suite,
+    c.monthly + hw.e3 + jdk + cc.libgraal + cc.economy_mode + cc.no_tiered_comp + suite
     ]
   for jdk in cc.bench_jdks
   for suite in bench.groups.main_suites
@@ -54,10 +71,21 @@
 
   local zgc_builds = std.flattenArrays([
     [
-    c.monthly + hw.x52 + jdk + cc.c2                         + cc.zgc_mode + suite,
+    c.monthly + hw.e3 + jdk + cc.c2                         + cc.zgc_mode + suite,
     ]
   for jdk in cc.bench_jdks
   for suite in bench.groups.main_suites
+<<<<<<< HEAD
+=======
+  ]) + std.flattenArrays([
+    [
+    c.monthly + hw.e3 + jdk + cc.c2                         + cc.serialgc_mode + bench.microservice_benchmarks,
+    c.monthly + hw.e3 + jdk + cc.c2                         + cc.pargc_mode    + bench.microservice_benchmarks,
+    c.monthly + hw.e3 + jdk + cc.c2                         + cc.zgc_mode      + bench.microservice_benchmarks,
+    c.monthly + hw.e3 + jdk + cc.c2                         + cc.gen_zgc_mode  + bench.microservice_benchmarks,
+    ]
+  for jdk in cc.product_jdks
+>>>>>>> 4fdcc7c4555 (Migrate remaining bench jobs to E3)
   ]),
   local all_builds = hotspot_amd64_builds + hotspot_aarch64_builds + hotspot_profiling_builds +
     weekly_forks_amd64_builds + weekly_forks_aarch64_builds + economy_builds + no_tiered_builds + zgc_builds,

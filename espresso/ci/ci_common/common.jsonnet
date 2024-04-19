@@ -32,8 +32,16 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     },
   },
 
+<<<<<<< HEAD
   x52: self.linux + {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
+=======
+  linux_amd64: self.common + self.linux + graal_common.linux_amd64,
+  linux_aarch64: self.common + self.linux + graal_common.linux_aarch64,
+
+  e3: {
+    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'e3'],
+>>>>>>> 4fdcc7c4555 (Migrate remaining bench jobs to E3)
   },
 
   darwin_amd64: self.common + graal_common.darwin_amd64 + {
@@ -59,6 +67,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
   // precise targets and capabilities
+<<<<<<< HEAD
   jdk17_gate_linux              : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.gate          + self.linux,
   jdk17_gate_darwin             : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.gate          + self.darwin_amd64,
   jdk17_gate_windows            : graal_common.labsjdk17                              + self.gate          + self.windows_17,
@@ -83,6 +92,43 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk17_on_demand_bench_linux   : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemandBench + self.x52,
   jdk17_on_demand_bench_darwin  : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemandBench + self.darwin_amd64,
   jdk17_on_demand_bench_windows : graal_common.labsjdk17                              + self.onDemandBench + self.windows_17,
+=======
+  jdk21_gate_linux_amd64        : self.gate          + self.linux_amd64_21,
+  jdk21_gate_linux_aarch64      : self.gate          + self.linux_aarch64_21,
+  jdk21_gate_darwin_amd64       : self.gate          + self.darwin_amd64_21,
+  jdk21_gate_darwin_aarch64     : self.gate          + self.darwin_aarch64_21,
+  jdk21_gate_windows_amd64      : self.gate          + self.windows_21,
+  jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.e3,
+  jdk21_bench_darwin            : self.bench         + self.darwin_amd64_21,
+  jdk21_bench_windows           : self.bench         + self.windows_21,
+  jdk21_daily_linux_amd64       : self.daily         + self.linux_amd64_21,
+  jdk21_daily_linux_aarch64     : self.daily         + self.linux_aarch64_21,
+  jdk21_daily_darwin_amd64      : self.daily         + self.darwin_amd64_21,
+  jdk21_daily_darwin_aarch64    : self.daily         + self.darwin_aarch64_21,
+  jdk21_daily_windows_amd64     : self.daily         + self.windows_21,
+  jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.e3,
+  jdk21_daily_bench_darwin      : self.dailyBench    + self.darwin_amd64_21,
+  jdk21_daily_bench_windows     : self.dailyBench    + self.windows_21,
+  jdk21_weekly_linux_amd64      : self.weekly        + self.linux_amd64_21,
+  jdk21_weekly_linux_aarch64    : self.weekly        + self.linux_aarch64_21,
+  jdk21_weekly_darwin_amd64     : self.weekly        + self.darwin_amd64_21,
+  jdk21_weekly_darwin_aarch64   : self.weekly        + self.darwin_aarch64_21,
+  jdk21_weekly_windows_amd64    : self.weekly        + self.windows_21,
+  jdk21_monthly_linux_amd64     : self.monthly        + self.linux_amd64_21,
+  jdk21_monthly_linux_aarch64   : self.monthly        + self.linux_aarch64_21,
+  jdk21_monthly_darwin_amd64    : self.monthly        + self.darwin_amd64_21,
+  jdk21_monthly_darwin_aarch64  : self.monthly        + self.darwin_aarch64_21,
+  jdk21_monthly_windows_amd64   : self.monthly        + self.windows_21,
+  jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.e3,
+  jdk21_weekly_bench_darwin     : self.weeklyBench   + self.darwin_amd64_21,
+  jdk21_weekly_bench_windows    : self.weeklyBench   + self.windows_21,
+  jdk21_on_demand_linux         : self.onDemand      + self.linux_amd64_21,
+  jdk21_on_demand_darwin        : self.onDemand      + self.darwin_amd64_21,
+  jdk21_on_demand_windows       : self.onDemand      + self.windows_21,
+  jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.e3,
+  jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
+  jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
+>>>>>>> 4fdcc7c4555 (Migrate remaining bench jobs to E3)
 
   // shared snippets
   eclipse: {
