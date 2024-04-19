@@ -122,6 +122,7 @@ import jdk.graal.compiler.hotspot.stubs.NullPointerExceptionStub;
 import jdk.graal.compiler.hotspot.stubs.OutOfBoundsExceptionStub;
 import jdk.graal.compiler.hotspot.stubs.SnippetStub;
 import jdk.graal.compiler.hotspot.stubs.Stub;
+import jdk.graal.compiler.hotspot.stubs.UnstructuredLockingExceptionStub;
 import jdk.graal.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
 import jdk.graal.compiler.hotspot.stubs.VerifyOopStub;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
@@ -505,8 +506,10 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         link(new LongExactOverflowExceptionStub(options, providers,
                         registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.LONG_EXACT_OVERFLOW), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new IllegalArgumentExceptionArgumentIsNotAnArrayStub(options, providers,
-                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY),
-                                        SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY), SAFEPOINT, HAS_SIDE_EFFECT,
+                                        DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new UnstructuredLockingExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.UNSTRUCTURED_LOCKING), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
 
         linkForeignCall(options, providers, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, createDescriptor(REGISTER_FINALIZER, SAFEPOINT, HAS_SIDE_EFFECT, any()), c.registerFinalizerAddress, PREPEND_THREAD);

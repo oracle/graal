@@ -152,7 +152,7 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
         LONG_EXACT_OVERFLOW(0, ArithmeticException.class),
 
         /**
-         * Represents a {@link IllegalMonitorStateException}, with a fixed exception message
+         * Represents an {@link IllegalMonitorStateException}, with a fixed exception message
          * indicating the presence of unstructured locking which is not supported. No additional
          * arguments are allowed.
          */

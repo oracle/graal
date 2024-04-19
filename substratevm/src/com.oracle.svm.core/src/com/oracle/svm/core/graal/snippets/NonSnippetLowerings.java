@@ -161,6 +161,7 @@ public abstract class NonSnippetLowerings {
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.GET_CACHED_ARITHMETIC_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, ImplicitExceptions.GET_CACHED_ILLEGAL_MONITOR_STATE_EXCEPTION);
 
         createExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         createExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.CREATE_NULL_POINTER_EXCEPTION);
@@ -177,6 +178,7 @@ public abstract class NonSnippetLowerings {
         createExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.CREATE_LONG_OVERFLOW_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.CREATE_ASSERTION_ERROR_NULLARY);
         createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.CREATE_ASSERTION_ERROR_OBJECT);
+        createExceptionDescriptors.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, ImplicitExceptions.CREATE_ILLEGAL_MONITOR_STATE_EXCEPTION);
 
         throwCachedExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_CACHED_NULL_POINTER_EXCEPTION);
@@ -193,6 +195,7 @@ public abstract class NonSnippetLowerings {
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.THROW_CACHED_ARITHMETIC_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, ImplicitExceptions.THROW_CACHED_ILLEGAL_MONITOR_STATE_EXCEPTION);
 
         throwNewExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_NEW_NULL_POINTER_EXCEPTION);
@@ -209,6 +212,7 @@ public abstract class NonSnippetLowerings {
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.THROW_NEW_LONG_OVERFLOW_EXCEPTION);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_NULLARY);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_OBJECT);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, ImplicitExceptions.THROW_NEW_ILLEGAL_MONITOR_STATE_EXCEPTION_WITH_ARGS);
     }
 
     private ForeignCallDescriptor lookupBytecodeException(BytecodeExceptionKind exceptionKind, NodeInputList<ValueNode> exceptionArguments, StructuredGraph graph,
