@@ -69,9 +69,9 @@ import java.util.Arrays;
  *
  * <p>
  * Exceptions thrown from the entry point propagate out of {@link #resume()} and then mark the
- * continuation as failed. Resuming the exception after that point will fail with {@link
- * IllegalStateException}. If you want to retry a failed continuation you must have a clone from
- * before the failure (see below).
+ * continuation as failed. Resuming the exception after that point will fail with
+ * {@link IllegalStateException}. If you want to retry a failed continuation you must have a clone
+ * from before the failure (see below).
  * </p>
  *
  * <h1>Serialization</h1>
@@ -200,8 +200,7 @@ public final class Continuation implements Externalizable {
 
     // Avoid the continuation stack having a reference to this controller class.
     private static final class StateHolder implements Serializable {
-        @Serial
-        private static final long serialVersionUID = -4139336648021552606L;
+        @Serial private static final long serialVersionUID = -4139336648021552606L;
 
         State state = State.INCOMPLETE;
     }
@@ -277,8 +276,7 @@ public final class Continuation implements Externalizable {
      * {@link Continuation#resume()}.
      */
     public static final class SuspendCapability implements Serializable {
-        @Serial
-        private static final long serialVersionUID = 4790341975992263909L;
+        @Serial private static final long serialVersionUID = 4790341975992263909L;
 
         // Will be assigned separately to break the cycle that occurs because this object has to be
         // on the entry stack.
@@ -288,12 +286,14 @@ public final class Continuation implements Externalizable {
          * Suspends the continuation, unwinding the stack to the point at which it was previously
          * resumed.
          *
-         * @throws IllegalStateException if you try to call this outside a continuation, or if
-         * there are native frames on the stack, or if the thread is inside a synchronized block.
+         * @throws IllegalStateException if you try to call this outside a continuation, or if there
+         *             are native frames on the stack, or if the thread is inside a synchronized
+         *             block.
          */
         public void suspend() {
-            if (!insideContinuation.get())
+            if (!insideContinuation.get()) {
                 throw new IllegalStateException("Suspend capabilities can only be used inside a continuation.");
+            }
             stateHolder.state = State.SUSPENDED;
             Continuation.suspend0();
             stateHolder.state = State.RUNNING;
@@ -304,8 +304,8 @@ public final class Continuation implements Externalizable {
      * <p>
      * Runs the continuation until it either completes or calls {@link SuspendCapability#suspend()}.
      * The difference between the two reasons for returning is visible in {@link #getState()}. A
-     * continuation may not be resumed if it's already {@link State#COMPLETED} or {@link
-     * State#FAILED}, nor if it is already {@link State#RUNNING}.
+     * continuation may not be resumed if it's already {@link State#COMPLETED} or
+     * {@link State#FAILED}, nor if it is already {@link State#RUNNING}.
      * </p>
      *
      * <p>
@@ -316,13 +316,15 @@ public final class Continuation implements Externalizable {
      * @throws IllegalStateException if the {@link #getState()} is not {@link State#SUSPENDED}.
      */
     public void resume() {
-        if (stateHolder.state == State.INCOMPLETE)
+        if (stateHolder.state == State.INCOMPLETE) {
             throw new IllegalStateException("Do not construct this class using the no-arg constructor, which is there only for deserialization purposes.");
+        }
 
         // Are we in the special waiting-to-start state?
         if (stateHolder.state == State.NEW) {
-            if (entryPoint == null)
+            if (entryPoint == null) {
                 throw new IllegalStateException("The entry point is not set. Do not use the public no-args constructor to create this class, it's only for serialization.");
+            }
             // Enable the use of suspend capabilities.
             insideContinuation.set(true);
             try {
@@ -356,21 +358,21 @@ public final class Continuation implements Externalizable {
     // endregion
 
     // region Serialization
-    @Serial
-    private static final long serialVersionUID = -5833405097154096157L;
+    @Serial private static final long serialVersionUID = -5833405097154096157L;
 
     private static final int FORMAT_VERSION = 1;
 
     /**
      * Serializes the continuation using an internal format. The {@link ObjectOutput} will receive
-     * some opaque bytes followed by writes of the objects pointed to by the stack. It's up to
-     * the serialization engine to recursively serialize everything that's reachable.
+     * some opaque bytes followed by writes of the objects pointed to by the stack. It's up to the
+     * serialization engine to recursively serialize everything that's reachable.
      */
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         var state = getState();
-        if (state == State.RUNNING)
+        if (state == State.RUNNING) {
             throw new IllegalStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
+        }
 
         // We start by writing out a header byte. The high nibble contains a major version. Old
         // libraries will refuse to deserialize continuations with a higher version than what they
@@ -382,17 +384,20 @@ public final class Continuation implements Externalizable {
         boolean writeSlotTags = hasSlotTagsInFrames();
         // We'll have statement indexes if the user is currently debugging.
         boolean writeStatementIndexes = hasStatementIndexesInFrames();
-        if (writeSlotTags)
+        if (writeSlotTags) {
             header |= 1;
-        if (writeStatementIndexes)
+        }
+        if (writeStatementIndexes) {
             header |= 2;
+        }
         out.writeByte(header);
 
         out.writeObject(stateHolder);
         out.writeObject(entryPoint);
 
         if (state == State.SUSPENDED) {
-            // We serialize frame-at-a-time. Prims go first, then object pointers. Conceptually there
+            // We serialize frame-at-a-time. Prims go first, then object pointers. Conceptually
+            // there
             // aren't two arrays, just one array of untyped slots but we don't currently know the
             // real types of the slots, so have to serialize both arrays even though they'll contain
             // quite a few nulls. There are more efficient encodings available.
@@ -412,17 +417,20 @@ public final class Continuation implements Externalizable {
         out.writeObject(cursor.primitives);
         writeMethodNameAndTypes(out, method);
         out.writeInt(cursor.sp);
-        if (writeSlotTags)
+        if (writeSlotTags) {
             out.writeObject(cursor.reserved1);
-        if (writeStatementIndexes)
+        }
+        if (writeStatementIndexes) {
             out.writeInt(cursor.statementIndex);
+        }
     }
 
     private boolean hasSlotTagsInFrames() {
         FrameRecord cursor = stackFrameHead;
         while (cursor != null) {
-            if (cursor.reserved1 != null)
+            if (cursor.reserved1 != null) {
                 return true;
+            }
             cursor = cursor.next;
         }
         return false;
@@ -431,8 +439,9 @@ public final class Continuation implements Externalizable {
     private boolean hasStatementIndexesInFrames() {
         FrameRecord cursor = stackFrameHead;
         while (cursor != null) {
-            if (cursor.statementIndex != -1)
+            if (cursor.statementIndex != -1) {
                 return true;
+            }
             cursor = cursor.next;
         }
         return false;
@@ -453,9 +462,9 @@ public final class Continuation implements Externalizable {
      * Initializes the continuation from the given {@link ObjectInput}.
      *
      * @throws FormatVersionException if the header read from the stream doesn't match the expected
-     * version number.
-     * @throws IOException if there is a problem reading the stream, or if the stream appears to
-     * be corrupted.
+     *             version number.
+     * @throws IOException if there is a problem reading the stream, or if the stream appears to be
+     *             corrupted.
      */
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
@@ -463,8 +472,9 @@ public final class Continuation implements Externalizable {
         boolean hasSlotTags = (header & 1) == 1;
         boolean hasStatementIndex = (header & 2) == 2;
         int version = (header >> 4) & 0xFF;
-        if (version != FORMAT_VERSION)
+        if (version != FORMAT_VERSION) {
             throw new FormatVersionException(version);
+        }
 
         stateHolder = (StateHolder) in.readObject();
         entryPoint = (EntryPoint) in.readObject();
@@ -504,12 +514,14 @@ public final class Continuation implements Externalizable {
         int sp = in.readInt();
 
         Object reserved1 = null;
-        if (hasSlotTags)
+        if (hasSlotTags) {
             reserved1 = in.readObject();
+        }
 
         int statementIndex = -1;
-        if (hasStatementIndex)
+        if (hasStatementIndex) {
             statementIndex = in.readInt();
+        }
 
         return new FrameRecord(pointers, primitives, method, sp, statementIndex, reserved1);
     }
@@ -526,11 +538,13 @@ public final class Continuation implements Externalizable {
         // class for the method. Fortunately, lambdas always have an instance, so we can read it
         // out of the first pointer slot.
         if (declaringClassAsString.contains("$$Lambda/")) {
-            if (possibleThis == null)
+            if (possibleThis == null) {
                 throw new IllegalStateException("Lambda method with no this pointer in frame");
+            }
             declaringClass = possibleThis.getClass();
-            if (!declaringClass.getName().contains("$$Lambda/"))
+            if (!declaringClass.getName().contains("$$Lambda/")) {
                 throw new IllegalStateException("Lambda method on stack with incorrect 'this' pointer.");
+            }
         } else {
             declaringClass = Class.forName(declaringClassAsString, false, classLoader);
         }
@@ -544,15 +558,20 @@ public final class Continuation implements Externalizable {
         }
 
         for (Method method : declaringClass.getDeclaredMethods()) {
-            if (!method.getName().equals(name)) continue;
-            if (!Arrays.equals(method.getParameterTypes(), argTypes)) continue;
-            if (returnType != null && !method.getReturnType().equals(returnType)) continue;
+            if (!method.getName().equals(name)) {
+                continue;
+            }
+            if (!Arrays.equals(method.getParameterTypes(), argTypes)) {
+                continue;
+            }
+            if (returnType != null && !method.getReturnType().equals(returnType)) {
+                continue;
+            }
             return method;
         }
 
         throw new NoSuchMethodException("%s %s(%s)".formatted(
-                returnTypeAsString, name, String.join(", ", Arrays.stream(argTypes).map(Object::toString).toList()))
-        );
+                        returnTypeAsString, name, String.join(", ", Arrays.stream(argTypes).map(Object::toString).toList())));
     }
 
     private static Class<?> classForTypeName(ClassLoader classLoader, String typeName) throws ClassNotFoundException {
@@ -571,12 +590,11 @@ public final class Continuation implements Externalizable {
     }
 
     /**
-     * Thrown if the format of the serialized continuation is unrecognized i.e. from a newer
-     * version of the runtime, or from a version too old to still be supported.
+     * Thrown if the format of the serialized continuation is unrecognized i.e. from a newer version
+     * of the runtime, or from a version too old to still be supported.
      */
     public static final class FormatVersionException extends IOException {
-        @Serial
-        private static final long serialVersionUID = 6913545866116536598L;
+        @Serial private static final long serialVersionUID = 6913545866116536598L;
 
         public FormatVersionException(int version) {
             super("Unsupported serialized continuation version: " + version);
