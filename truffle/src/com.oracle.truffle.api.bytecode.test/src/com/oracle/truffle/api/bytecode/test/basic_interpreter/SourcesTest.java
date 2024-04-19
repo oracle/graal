@@ -56,6 +56,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -377,5 +378,52 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertEquals(sourceSection1.getSource(), source);
         assertEquals(sourceSection1.getCharIndex(), 0);
         assertEquals(sourceSection1.getCharLength(), 8);
+    }
+
+    @Test
+    public void testReparseAfterTransitionToCached() {
+        /**
+         * This is a regression test for a bug caused by cached nodes being reused (because of a
+         * source reparse) but not getting adopted by the new BytecodeNode.
+         */
+        Source source = Source.newBuilder("test", "return arg0 ? 42 : position", "file").build();
+
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
+            b.beginSource(source);
+            b.beginRoot(LANGUAGE);
+
+            b.beginSourceSection(0, 27);
+            b.beginReturn();
+            b.beginConditional();
+
+            b.beginSourceSection(7, 4);
+            b.emitLoadArgument(0);
+            b.endSourceSection();
+
+            b.beginSourceSection(14, 2);
+            b.emitLoadConstant(42L);
+            b.endSourceSection();
+
+            b.beginSourceSection(19, 8);
+            b.emitGetSourcePosition();
+            b.endSourceSection();
+
+            b.endConditional();
+            b.endReturn();
+            b.endSourceSection();
+
+            b.endRoot();
+            b.endSource();
+        });
+
+        BasicInterpreter node = nodes.getNode(0);
+
+        // call it once to transition to cached
+        assertEquals(42L, node.getCallTarget().call(true));
+
+        nodes.ensureSources();
+        SourceSection result = (SourceSection) node.getCallTarget().call(false);
+        assertEquals(source, result.getSource());
+        assertEquals("position", result.getCharacters());
     }
 }

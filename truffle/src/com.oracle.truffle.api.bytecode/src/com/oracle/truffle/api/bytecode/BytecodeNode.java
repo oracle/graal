@@ -161,7 +161,12 @@ public abstract class BytecodeNode extends Node {
     private int findBytecodeIndexImpl(Frame frame, Node location) {
         Objects.requireNonNull(frame, "Provided frame must not be null.");
         Objects.requireNonNull(location, "Provided location must not be null.");
+        Node operationNode = findOperationNode(location);
+        return findBytecodeIndex(frame, operationNode);
+    }
 
+    @TruffleBoundary
+    private Node findOperationNode(Node location) {
         Node prev = null;
         BytecodeNode bytecode = null;
         // Validate that location is this or a child of this.
@@ -173,10 +178,9 @@ public abstract class BytecodeNode extends Node {
             prev = current;
         }
         if (bytecode == null) {
-            return -1;
+            return null;
         }
-        // For cached interpreters, prev will be the operation node.
-        return findBytecodeIndex(frame, prev);
+        return prev;
     }
 
     /**
@@ -387,6 +391,7 @@ public abstract class BytecodeNode extends Node {
      * @return the corresponding bytecode node or null if no node can be found.
      * @since 24.1
      */
+    @TruffleBoundary
     public static BytecodeNode get(FrameInstance frameInstance) {
         BytecodeNode location = get(frameInstance.getCallNode());
         if (location != null) {
@@ -410,6 +415,7 @@ public abstract class BytecodeNode extends Node {
      * @return the corresponding bytecode location or null if no location can be found.
      * @since 24.1
      */
+    @TruffleBoundary
     public static BytecodeNode get(Node node) {
         Node location = node;
         for (Node currentNode = location; currentNode != null; currentNode = currentNode.getParent()) {

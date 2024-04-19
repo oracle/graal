@@ -43,6 +43,7 @@ package com.oracle.truffle.api.bytecode;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -211,6 +212,7 @@ public final class BytecodeLocation {
      * @return the corresponding bytecode location or null if no location can be found.
      * @since 24.1
      */
+    @TruffleBoundary
     public static BytecodeLocation get(FrameInstance frameInstance) {
         /*
          * We use two strategies to communicate the current bci.
@@ -251,6 +253,7 @@ public final class BytecodeLocation {
      *         {@link BytecodeNode}.
      * @since 24.1
      */
+    @TruffleBoundary
     public static BytecodeLocation get(Node location, int bci) {
         Objects.requireNonNull(location);
         for (Node current = location; current != null; current = current.getParent()) {
