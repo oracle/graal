@@ -255,7 +255,7 @@ public class HeapVerifier {
             return false;
         }
 
-        if (ObjectHeaderImpl.hasMarkedBit(header)) {
+        if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a marked header: ").zhex(header).newline();
             return false;
         }

@@ -105,7 +105,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             }
 
             Object obj = p.toObject();
-            if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.hasMarkedBit(header)) {
+            if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
                 RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
                 return true;
             }

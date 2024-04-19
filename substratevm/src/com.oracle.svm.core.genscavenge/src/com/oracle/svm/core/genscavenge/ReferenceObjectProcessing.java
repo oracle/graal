@@ -242,7 +242,7 @@ final class ReferenceObjectProcessing {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean willSurviveThisCollection(Object obj) {
         if (SerialGCOptions.useCompactingOldGen() && GCImpl.getGCImpl().isCompleteCollection()) {
-            return ObjectHeaderImpl.hasMarkedBit(obj);
+            return ObjectHeaderImpl.isMarked(obj);
         }
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = HeapChunk.getSpace(chunk);
@@ -261,7 +261,7 @@ final class ReferenceObjectProcessing {
             Pointer refPointer = ReferenceInternals.getReferentPointer(current);
             if (!maybeUpdateForwardedReference(current, refPointer)) {
                 UnsignedWord header = ObjectHeader.readHeaderFromPointer(refPointer);
-                if (!ObjectHeaderImpl.hasMarkedBit(header)) {
+                if (!ObjectHeaderImpl.isMarkedHeader(header)) {
                     ReferenceInternals.setReferent(current, null);
                 }
             }

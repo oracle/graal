@@ -88,8 +88,8 @@ public class PlanningVisitor implements AlignedHeapChunk.Visitor {
                 objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
             }
 
-            if (ObjectHeaderImpl.hasMarkedBit(header)) {
-                ObjectHeaderImpl.clearMarkedBit(obj);
+            if (ObjectHeaderImpl.isMarkedHeader(header)) {
+                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(obj);
 
                 /*
                  * Adding the optional identity hash field will increase the object's size,

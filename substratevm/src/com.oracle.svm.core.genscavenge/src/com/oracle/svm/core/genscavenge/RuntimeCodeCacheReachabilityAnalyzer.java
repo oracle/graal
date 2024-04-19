@@ -75,7 +75,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             return true;
         }
-        if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.hasMarkedBit(header)) {
+        if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
             return true;
         }
         Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(ptrToObj, header));

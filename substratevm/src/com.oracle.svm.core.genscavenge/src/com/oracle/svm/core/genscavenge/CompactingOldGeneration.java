@@ -59,6 +59,8 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.Word;
+
 /**
  * The compacting old generation has only one {@link Space} for existing and promoted objects and
  * uses a mark-compact algorithm for garbage collection.
@@ -130,24 +132,24 @@ final class CompactingOldGeneration extends OldGeneration {
             assert originalSpace.isFromSpace() && !originalSpace.isOldSpace();
             return space.copyAlignedObject(original, originalSpace);
         }
-
         assert originalSpace == space;
-        Object result;
+        Word header = ObjectHeader.readHeaderFromObject(original);
+        if (ObjectHeaderImpl.isMarkedHeader(header)) {
+            return original;
+        }
+        Object result = original;
         if (ObjectHeaderImpl.isIdentityHashFieldOptional() &&
-                        ObjectHeaderImpl.hasIdentityHashFromAddressInline(ObjectHeader.readHeaderFromObject(original)) &&
+                        ObjectHeaderImpl.hasIdentityHashFromAddressInline(header) &&
                         !originalChunk.getShouldSweepInsteadOfCompact()) {
             /*
              * This object's identity hash code is based on its current address, which we expect to
              * change during compaction, so we must add a field to store it, which increases the
              * object's size. The easiest way to handle this is to copy the object.
              */
-            assert !ObjectHeaderImpl.hasMarkedBit(original);
             result = space.copyAlignedObject(original, originalSpace);
             assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(ObjectHeader.readHeaderFromObject(result));
-        } else {
-            result = original;
         }
-        ObjectHeaderImpl.setMarkedBit(result);
+        ObjectHeaderImpl.setMarked(result);
         markQueue.push(result);
         return result;
     }
@@ -162,8 +164,10 @@ final class CompactingOldGeneration extends OldGeneration {
             return original;
         }
         assert originalSpace == space;
-        ObjectHeaderImpl.setMarkedBit(original);
-        markQueue.push(original);
+        if (!ObjectHeaderImpl.isMarked(original)) {
+            ObjectHeaderImpl.setMarked(original);
+            markQueue.push(original);
+        }
         return original;
     }
 
@@ -182,10 +186,14 @@ final class CompactingOldGeneration extends OldGeneration {
             return true;
         }
         assert originalSpace == space;
+        if (ObjectHeaderImpl.isMarked(obj)) {
+            assert !isAligned || ((AlignedHeapChunk.AlignedHeader) originalChunk).getShouldSweepInsteadOfCompact();
+            return true;
+        }
         if (isAligned) {
             ((AlignedHeapChunk.AlignedHeader) originalChunk).setShouldSweepInsteadOfCompact(true);
         }
-        ObjectHeaderImpl.setMarkedBit(obj);
+        ObjectHeaderImpl.setMarked(obj);
         markQueue.push(obj);
         return true;
     }
@@ -278,8 +286,8 @@ final class CompactingOldGeneration extends OldGeneration {
                 UnalignedHeapChunk.UnalignedHeader next = HeapChunk.getNext(uChunk);
                 Pointer objPointer = UnalignedHeapChunk.getObjectStart(uChunk);
                 Object obj = objPointer.toObject();
-                if (ObjectHeaderImpl.hasMarkedBit(obj)) {
-                    ObjectHeaderImpl.clearMarkedBit(obj);
+                if (ObjectHeaderImpl.isMarked(obj)) {
+                    ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(obj);
                     RememberedSet.get().clearRememberedSet(uChunk);
 
                     UnalignedHeapChunk.walkObjectsInline(uChunk, fixingVisitor);
