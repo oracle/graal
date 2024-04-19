@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import java.util.List;
 
+import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -202,7 +203,7 @@ public final class OracleDBRegexParser implements RegexParser {
                     }
                     break;
                 case charClassEnd:
-                    addCharClass();
+                    addCharClass(token);
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
@@ -217,7 +218,8 @@ public final class OracleDBRegexParser implements RegexParser {
         return astBuilder.popRootGroup();
     }
 
-    private void addCharClass() {
+    private void addCharClass(Token ccEnd) {
+        astBuilder.setOverrideSourceSection(ccEnd.getSourceSection());
         boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar() && curCharClassPosixEquivalenceClasses.isEmpty();
         if (flags.isIgnoreCase()) {
             MultiCharacterCaseFolding.caseClosure(CaseFoldData.CaseFoldAlgorithm.OracleDB, curCharClass, charClassTmp, (a, b) -> true, Encodings.UTF_8.getFullSet());
@@ -254,6 +256,7 @@ public final class OracleDBRegexParser implements RegexParser {
         } else {
             astBuilder.addCharClass(curCharClass.toCodePointSet(), wasSingleChar);
         }
+        astBuilder.clearOverrideSourceSection();
     }
 
     private void addMultiCodePointExpansions(List<Pair<Integer, int[]>> multiCodePointExpansions, CaseFoldData.CaseFoldAlgorithm algorithm) {

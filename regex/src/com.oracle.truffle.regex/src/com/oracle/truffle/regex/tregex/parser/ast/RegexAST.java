@@ -615,9 +615,9 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return getOptions().isDumpAutomataWithSourceSections() ? sourceSections.get(node) : null;
     }
 
-    public void addSourceSection(RegexASTNode node, Token token) {
-        if (getOptions().isDumpAutomataWithSourceSections() && token != null && token.getSourceSection() != null) {
-            getOrCreateSourceSections(node).add(token.getSourceSection());
+    public void addSourceSection(RegexASTNode node, SourceSection sourceSection) {
+        if (getOptions().isDumpAutomataWithSourceSections() && sourceSection != null) {
+            getOrCreateSourceSections(node).add(sourceSection);
         }
     }
 
