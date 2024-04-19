@@ -41,6 +41,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyImageSingleton;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
@@ -54,7 +55,7 @@ import com.sun.management.OperatingSystemMXBean;
 public class PhysicalMemory {
 
     /** Implemented by operating-system specific code. */
-    public interface PhysicalMemorySupport {
+    public interface PhysicalMemorySupport extends RuntimeOnlyImageSingleton {
         /** Get the size of physical memory from the OS. */
         UnsignedWord size();
     }

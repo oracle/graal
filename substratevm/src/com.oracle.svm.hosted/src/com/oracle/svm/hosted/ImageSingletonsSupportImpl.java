@@ -35,11 +35,13 @@ import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
+import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
 
-public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
+public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport implements LayeredImageSingletonSupport {
 
     @Override
     public <T> void add(Class<T> key, T value) {
@@ -48,7 +50,12 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
 
     @Override
     public <T> T lookup(Class<T> key) {
-        return HostedManagement.getAndAssertExists().doLookup(key);
+        return HostedManagement.getAndAssertExists().doLookup(key, false);
+    }
+
+    @Override
+    public <T> T runtimeLookup(Class<T> key) {
+        return HostedManagement.getAndAssertExists().doLookup(key, true);
     }
 
     @Override
@@ -135,9 +142,15 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
         }
 
         private final Map<Class<?>, Object> configObjects;
+        private final boolean checkUnsupported;
 
         public HostedManagement() {
+            this(false);
+        }
+
+        public HostedManagement(boolean checkUnsupported) {
             this.configObjects = new ConcurrentHashMap<>();
+            this.checkUnsupported = checkUnsupported;
         }
 
         <T> void doAdd(Class<T> key, T value) {
@@ -150,28 +163,40 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
                 throw UserError.abort("ImageSingletons do not allow null value for key %s", key.getTypeName());
             }
 
+            Object storedValue = value;
             if (value instanceof LayeredImageSingleton singleton) {
                 assert singleton.verifyImageBuilderFlags();
 
-                if (singleton.getImageBuilderFlags().contains(LayeredImageSingleton.ImageBuilderFlags.UNSUPPORTED)) {
+                if (checkUnsupported && singleton.getImageBuilderFlags().contains(LayeredImageSingleton.ImageBuilderFlags.UNSUPPORTED)) {
                     throw UserError.abort("Unsupported image singleton is being installed %s %s", key.getTypeName(), singleton);
+                }
+
+                if (!singleton.getImageBuilderFlags().contains(LayeredImageSingleton.ImageBuilderFlags.BUILDTIME_ACCESS)) {
+                    storedValue = new RuntimeOnlyWrapper(singleton);
                 }
             }
 
-            Object prevValue = configObjects.putIfAbsent(key, value);
+            Object prevValue = configObjects.putIfAbsent(key, storedValue);
 
             if (prevValue != null) {
                 throw UserError.abort("ImageSingletons.add must not overwrite existing key %s%nExisting value: %s%nNew value: %s", key.getTypeName(), prevValue, value);
             }
         }
 
-        <T> T doLookup(Class<T> key) {
+        <T> T doLookup(Class<T> key, boolean stripRuntimeOnly) {
             checkKey(key);
             Object result = configObjects.get(key);
             if (result == null) {
                 throw UserError.abort("ImageSingletons do not contain key %s", key.getTypeName());
             } else if (result == SINGLETON_INSTALLATION_FOBIDDEN) {
                 throw UserError.abort("A LayeredImageSingleton was installed in a prior layer which forbids creating the singleton in a subsequent layer. Key %s", key.getTypeName());
+            } else if (result instanceof RuntimeOnlyWrapper wrapper) {
+                if (!stripRuntimeOnly) {
+                    throw UserError.abort("A LayeredImageSingleton was accessed during image building which does not have %s access. Key: %s, object %s",
+                                    LayeredImageSingleton.ImageBuilderFlags.BUILDTIME_ACCESS, key, wrapper.wrappedObject());
+                }
+                result = wrapper.wrappedObject();
+
             }
             return key.cast(result);
         }
