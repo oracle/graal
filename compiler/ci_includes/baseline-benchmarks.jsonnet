@@ -13,7 +13,7 @@
   local aarch64_jdks = [jdk11, jdk17],
 
   local hotspot_main_builds = [
-    c.monthly + hw.x52 + jdk + cc.c2 + suite
+    c.monthly + hw.e3 + jdk + cc.c2 + suite
   for jdk in amd64_jdks
   for suite in bench.groups.all_suites
   if suite.is_jdk_supported(jdk.jdk_version)
@@ -22,7 +22,7 @@
 
   local hotspot_profiling_builds = std.flattenArrays([
     [
-    c.monthly + hw.x52 + jdk + cc.c2 + cc.enable_profiling + suite + { job_prefix:: "bench-profiling" }
+    c.monthly + hw.e3 + jdk + cc.c2 + cc.enable_profiling + suite + { job_prefix:: "bench-profiling" }
     ]
   for jdk in amd64_jdks
   for suite in bench.groups.profiled_suites
@@ -30,7 +30,7 @@
   ]),
 
   local weekly_forks_builds = std.flattenArrays([
-    bc.generate_fork_builds(c.weekly + hw.x52 + jdk + cc.c2 + suite)
+    bc.generate_fork_builds(c.weekly + hw.e3 + jdk + cc.c2 + suite)
   for jdk in amd64_jdks
   for suite in bench.groups.weekly_forks_suites
   if suite.is_jdk_supported(jdk.jdk_version)
