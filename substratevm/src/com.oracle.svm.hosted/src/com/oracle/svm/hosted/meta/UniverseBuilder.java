@@ -729,6 +729,8 @@ public class UniverseBuilder {
         for (HostedField field : fields) {
             if (skipStaticField(field)) {
                 // does not require memory.
+            } else if (field.wrapped.isInBaseLayer()) {
+                field.setLocation(aUniverse.getImageLayerLoader().getFieldLocation(field.wrapped));
             } else if (field.getStorageKind() == JavaKind.Object) {
                 field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObjectField)));
                 nextObjectField += 1;

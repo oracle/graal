@@ -54,6 +54,7 @@ import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -109,6 +110,10 @@ public final class StaticFieldsSupport {
         return result;
     }
 
+    public static FloatingNode createStaticFieldBaseNode(ResolvedJavaField field) {
+        return new StaticFieldBaseNode(field);
+    }
+
     public static FloatingNode createStaticFieldBaseNode(boolean primitive) {
         return new StaticFieldBaseNode(primitive);
     }
@@ -118,6 +123,7 @@ public final class StaticFieldsSupport {
         public static final NodeClass<StaticFieldBaseNode> TYPE = NodeClass.create(StaticFieldBaseNode.class);
 
         public final boolean primitive;
+        public final ResolvedJavaField field;
 
         /**
          * We must not expose that the stamp will eventually be an array, to avoid memory graph
@@ -125,7 +131,14 @@ public final class StaticFieldsSupport {
          */
         protected StaticFieldBaseNode(boolean primitive) {
             super(TYPE, StampFactory.objectNonNull());
+            this.field = null;
             this.primitive = primitive;
+        }
+
+        protected StaticFieldBaseNode(ResolvedJavaField field) {
+            super(TYPE, StampFactory.objectNonNull());
+            this.field = Objects.requireNonNull(field);
+            this.primitive = false; // this value doesn't matter if field is not-null
         }
 
         /**
@@ -156,8 +169,22 @@ public final class StaticFieldsSupport {
                  */
                 return;
             }
-
-            JavaConstant constant = tool.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+            JavaConstant constant;
+            if (field != null) {
+                SharedField sharedField = (SharedField) field;
+                if (sharedField.isInBaseLayer()) {
+                    constant = sharedField.getStaticFieldBase();
+                } else {
+                    /*
+                     * Cannot check primitive flag before we know that the field is SharedField, so
+                     * we can access the storage kind.
+                     */
+                    boolean isPrimitive = sharedField.getStorageKind().isPrimitive();
+                    constant = tool.getSnippetReflection().forObject(isPrimitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+                }
+            } else {
+                constant = tool.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+            }
             assert constant.isNonNull() : constant;
             replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
         }

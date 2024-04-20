@@ -96,6 +96,14 @@ public final class NativeImageHeapWriter {
         try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject());
+                if (info.getConstant().isInBaseLayer()) {
+                    /*
+                     * Base layer constants are only added to the heap model to store the absolute
+                     * offset in the base layer heap. We don't need to actually write them; their
+                     * absolute offset is used by the objects that reference them.
+                     */
+                    continue;
+                }
                 writeObject(info, buffer);
             }
 
@@ -119,6 +127,7 @@ public final class NativeImageHeapWriter {
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : heap.hUniverse.getFields()) {
             if (field.wrapped.isInBaseLayer()) {
+                /* Base layer static field values are accessed via the base layer arrays. */
                 continue;
             }
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
@@ -155,10 +164,6 @@ public final class NativeImageHeapWriter {
         if (value instanceof RelocatableConstant) {
             addNonDataRelocation(buffer, index, prepareRelocatable(info, value));
         } else {
-            if (value instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
-                // GR-52911: use object offset in base layer heap
-                return;
-            }
             write(buffer, index, value, info != null ? info : field);
         }
     }
@@ -203,10 +208,6 @@ public final class NativeImageHeapWriter {
             con = JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), 0);
         } else {
             con = constant;
-        }
-        if (con instanceof ImageHeapConstant hc && hc.isInBaseLayer()) {
-            // GR-52911: use object offset in base layer heap
-            return;
         }
         write(buffer, index, con, info);
     }

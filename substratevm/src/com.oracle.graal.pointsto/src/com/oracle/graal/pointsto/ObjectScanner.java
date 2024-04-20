@@ -156,6 +156,10 @@ public class ObjectScanner {
      * @param field the scanned root field
      */
     protected final void scanRootField(AnalysisField field) {
+        if (field.isInBaseLayer()) {
+            // skip base layer roots
+            return;
+        }
         scanField(field, null, null);
     }
 

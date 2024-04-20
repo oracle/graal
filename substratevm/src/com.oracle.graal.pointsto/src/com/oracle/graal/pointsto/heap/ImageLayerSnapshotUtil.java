@@ -70,6 +70,7 @@ public class ImageLayerSnapshotUtil {
     public static final String FIELD_READ_TAG = "read";
     public static final String FIELD_WRITTEN_TAG = "written";
     public static final String FIELD_FOLDED_TAG = "folded";
+    public static final String LOCATION_TAG = "location";
     public static final String NEXT_TYPE_ID_TAG = "next type id";
     public static final String NEXT_METHOD_ID_TAG = "next method id";
     public static final String NEXT_FIELD_ID_TAG = "next field id";
@@ -78,6 +79,9 @@ public class ImageLayerSnapshotUtil {
     public static final String ENUM_NAME_TAG = "enum name";
     public static final String CLASS_ID_TAG = "class id";
     public static final String SIMULATED_TAG = "simulated";
+    public static final String OBJECT_OFFSET_TAG = "object offset";
+    public static final String STATIC_PRIMITIVE_FIELDS_TAG = "static primitive fields";
+    public static final String STATIC_OBJECT_FIELDS_TAG = "static object fields";
 
     public String getTypeIdentifier(AnalysisType type) {
         String javaName = type.toJavaName(true);

@@ -74,6 +74,7 @@ import java.util.stream.IntStream;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -128,8 +129,10 @@ public class ImageLayerWriter {
         return type.toJavaName().contains(TYPE_SWITCH_SUBSTRING);
     }
 
-    public void persist(AnalysisUniverse analysisUniverse, Path layerSnapshotPath, String fileName, String suffix) {
+    public void persist(Universe hostedUniverse, AnalysisUniverse analysisUniverse, Path layerSnapshotPath, String fileName, String suffix) {
         EconomicMap<String, Object> jsonMap = EconomicMap.create();
+
+        persistHook(hostedUniverse, analysisUniverse, jsonMap);
 
         jsonMap.put(NEXT_TYPE_ID_TAG, analysisUniverse.getNextTypeId());
         jsonMap.put(NEXT_METHOD_ID_TAG, analysisUniverse.getNextMethodId());
@@ -157,7 +160,7 @@ public class ImageLayerWriter {
 
         EconomicMap<String, EconomicMap<String, Object>> fieldsMap = EconomicMap.create();
         for (AnalysisField field : analysisUniverse.getFields().stream().filter(AnalysisField::isReachable).toList()) {
-            persistField(fieldsMap, field);
+            persistField(fieldsMap, field, hostedUniverse);
         }
         jsonMap.put(FIELDS_TAG, fieldsMap);
 
@@ -170,6 +173,15 @@ public class ImageLayerWriter {
         jsonMap.put(CONSTANTS_TAG, constantsMap);
 
         FileDumpingUtil.dumpFile(layerSnapshotPath, fileName, suffix, writer -> JSONFormatter.printJSON(jsonMap, writer));
+    }
+
+    /**
+     * A hook used to persist more general information about the base layer not accessible in
+     * pointsto.
+     */
+    @SuppressWarnings("unused")
+    protected void persistHook(Universe hostedUniverse, AnalysisUniverse analysisUniverse, EconomicMap<String, Object> jsonMap) {
+
     }
 
     private static void persistType(EconomicMap<String, Object> typesMap, AnalysisType type, String typeIdentifier) {
@@ -223,13 +235,15 @@ public class ImageLayerWriter {
         methodsMap.put(name, methodMap);
     }
 
-    private static void persistField(EconomicMap<String, EconomicMap<String, Object>> fieldsMap, AnalysisField field) {
+    private void persistField(EconomicMap<String, EconomicMap<String, Object>> fieldsMap, AnalysisField field, Universe hostedUniverse) {
         EconomicMap<String, Object> fieldMap = EconomicMap.create();
         fieldMap.put(ID_TAG, field.getId());
         fieldMap.put(FIELD_ACCESSED_TAG, field.getAccessedReason() != null);
         fieldMap.put(FIELD_READ_TAG, field.getReadReason() != null);
         fieldMap.put(FIELD_WRITTEN_TAG, field.getWrittenReason() != null);
         fieldMap.put(FIELD_FOLDED_TAG, field.getFoldedReason() != null);
+
+        persistFieldHook(fieldMap, field, hostedUniverse);
 
         String tid = String.valueOf(field.getDeclaringClass().getId());
         if (fieldsMap.containsKey(tid)) {
@@ -241,29 +255,45 @@ public class ImageLayerWriter {
         }
     }
 
-    private void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantsMap) {
-        if (imageHeapConstant.isReaderInstalled() && !constantsMap.containsKey(Integer.toString(imageHeapConstant.constantData.id))) {
-            EconomicMap<String, Object> constantMap = EconomicMap.create();
-            constantsMap.put(Integer.toString(imageHeapConstant.constantData.id), constantMap);
-            constantMap.put(TID_TAG, imageHeapConstant.getType().getId());
-            if (imageHeapConstant.hasIdentityHashCode()) {
-                constantMap.put(IDENTITY_HASH_CODE_TAG, imageHeapConstant.getIdentityHashCode());
-            }
+    /**
+     * A hook used to persist more field information not accessible in pointsto.
+     */
+    @SuppressWarnings("unused")
+    protected void persistFieldHook(EconomicMap<String, Object> fieldMap, AnalysisField field, Universe hostedUniverse) {
 
-            switch (imageHeapConstant) {
-                case ImageHeapInstance imageHeapInstance -> {
-                    persistConstant(analysisUniverse, constantsMap, constantMap, INSTANCE_TAG, imageHeapInstance.getFieldValues());
-                    persistConstantRelinkingInfo(constantMap, imageHeapConstant, analysisUniverse.getBigbang());
-                }
-                case ImageHeapObjectArray imageHeapObjectArray ->
-                    persistConstant(analysisUniverse, constantsMap, constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
-                case ImageHeapPrimitiveArray imageHeapPrimitiveArray -> {
-                    constantMap.put(CONSTANT_TYPE_TAG, PRIMITIVE_ARRAY_TAG);
-                    constantMap.put(DATA_TAG, getString(imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray()));
-                }
-                default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
-            }
+    }
+
+    private void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantsMap) {
+        if (imageHeapConstant.isReaderInstalled() && !constantsMap.containsKey(Integer.toString(getConstantId(imageHeapConstant)))) {
+            EconomicMap<String, Object> constantMap = EconomicMap.create();
+            persistConstant(analysisUniverse, imageHeapConstant, constantMap, constantsMap);
         }
+    }
+
+    protected void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap, EconomicMap<String, Object> constantsMap) {
+        constantsMap.put(Integer.toString(getConstantId(imageHeapConstant)), constantMap);
+        constantMap.put(TID_TAG, imageHeapConstant.getType().getId());
+        if (imageHeapConstant.hasIdentityHashCode()) {
+            constantMap.put(IDENTITY_HASH_CODE_TAG, imageHeapConstant.getIdentityHashCode());
+        }
+
+        switch (imageHeapConstant) {
+            case ImageHeapInstance imageHeapInstance -> {
+                persistConstant(analysisUniverse, constantsMap, constantMap, INSTANCE_TAG, imageHeapInstance.getFieldValues());
+                persistConstantRelinkingInfo(constantMap, imageHeapConstant, analysisUniverse.getBigbang());
+            }
+            case ImageHeapObjectArray imageHeapObjectArray ->
+                persistConstant(analysisUniverse, constantsMap, constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
+            case ImageHeapPrimitiveArray imageHeapPrimitiveArray -> {
+                constantMap.put(CONSTANT_TYPE_TAG, PRIMITIVE_ARRAY_TAG);
+                constantMap.put(DATA_TAG, getString(imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray()));
+            }
+            default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
+        }
+    }
+
+    protected int getConstantId(ImageHeapConstant imageHeapConstant) {
+        return imageHeapConstant.constantData.id;
     }
 
     public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, ImageHeapConstant imageHeapConstant, BigBang bb) {
@@ -318,7 +348,7 @@ public class ImageLayerWriter {
             if (delegateProcessing(data, object)) {
                 /* The object was already persisted */
             } else if (object instanceof ImageHeapConstant imageHeapConstant) {
-                data.add(List.of(OBJECT_TAG, imageHeapConstant.constantData.id));
+                data.add(List.of(OBJECT_TAG, getConstantId(imageHeapConstant)));
                 /*
                  * Some constants are not in imageHeap#reachableObjects, but are still created in
                  * reachable constants. They can be created in the extension image, but should not
