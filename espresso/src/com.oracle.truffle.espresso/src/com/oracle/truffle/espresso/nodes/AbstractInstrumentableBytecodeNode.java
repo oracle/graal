@@ -40,9 +40,9 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoScope;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 
 @GenerateWrapper
@@ -100,34 +100,31 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
             int localCount = hasReceiver ? 1 : 0;
             localCount += method.getParameterCount();
 
-            Klass[] parameters = (Klass[]) method.getParameters();
             Utf8ConstantTable utf8Constants = method.getLanguage().getUtf8ConstantTable();
             int startslot = 0;
 
             if (hasReceiver) {
                 // include 'this' and method arguments if not already included
                 if (!slotToLocal.containsKey(startslot)) {
-                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(Symbol.Name.thiz), utf8Constants.getOrCreate(method.getDeclaringKlass().getType()), 0, 65536, 0));
+                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(Symbol.Name.thiz), utf8Constants.getOrCreate(method.getDeclaringKlass().getType()), 0, 0xffff, 0));
                 } else {
                     constructedLiveLocals.add(slotToLocal.get(startslot));
                 }
                 slotToLocal.remove(startslot);
                 startslot++;
             }
-
+            Symbol<Symbol.Type>[] parsedSignature = method.getParsedSignature();
             // include method parameters if not already included
             for (int i = startslot; i < localCount; i++) {
-                Klass param = hasReceiver ? parameters[i - 1] : parameters[i];
+                Symbol<Symbol.Type> paramType = hasReceiver ? Signatures.parameterType(parsedSignature, i - 1) : Signatures.parameterType(parsedSignature, i);
                 if (!slotToLocal.containsKey(i)) {
-                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(ByteSequence.create("param_" + (i))), utf8Constants.getOrCreate(param.getType()), 0, 65536, i));
+                    constructedLiveLocals.add(new Local(utf8Constants.getOrCreate(ByteSequence.create("arg_" + i)), utf8Constants.getOrCreate(paramType), 0, 0xffff, i));
                     slotToLocal.remove(i);
                 }
             }
-            for (Local local : slotToLocal.values()) {
-                // add non-parameters last
-                constructedLiveLocals.add(local);
-            }
-            liveLocals = constructedLiveLocals.toArray(new Local[constructedLiveLocals.size()]);
+            // add non-parameters last
+            constructedLiveLocals.addAll(slotToLocal.values());
+            liveLocals = constructedLiveLocals.toArray(Local.EMPTY_ARRAY);
         }
         return EspressoScope.createVariables(liveLocals, frame, method.getName());
     }
