@@ -279,6 +279,7 @@ public final class NativeImageHeap implements ImageHeap {
          */
         for (HostedField field : hUniverse.getFields()) {
             if (field.wrapped.isInBaseLayer()) {
+                /* Base layer static field values are accessed via the base layer arrays. */
                 continue;
             }
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {

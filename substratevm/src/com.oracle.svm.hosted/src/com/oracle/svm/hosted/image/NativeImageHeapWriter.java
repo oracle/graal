@@ -127,6 +127,7 @@ public final class NativeImageHeapWriter {
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : heap.hUniverse.getFields()) {
             if (field.wrapped.isInBaseLayer()) {
+                /* Base layer static field values are accessed via the base layer arrays. */
                 continue;
             }
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
