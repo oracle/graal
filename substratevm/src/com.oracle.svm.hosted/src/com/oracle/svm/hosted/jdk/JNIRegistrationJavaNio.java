@@ -105,7 +105,6 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerIocpInitIDs, method(a, "sun.nio.ch.Iocp", "initIDs"));
         }
 
-
         Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
         if (JavaVersionUtil.JAVA_SPEC < 9) {
             a.registerReachabilityHandler(registerInitInetAddressIDs, method(a, "sun.nio.ch.IOUtil", "initIDs"));
