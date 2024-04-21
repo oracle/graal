@@ -860,7 +860,7 @@ public class SubstrateGraphBuilderPlugins {
 
         /* Emits a null-check for the otherwise unused receiver. */
         receiver.get(true);
-        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(targetField.getType().isPrimitive()));
+        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(b.getMetaAccess().lookupJavaField(targetField)));
         return true;
     }
 

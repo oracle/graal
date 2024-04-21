@@ -130,6 +130,23 @@ public abstract class ImageHeapScanner {
         AnalysisType declaringClass = field.getDeclaringClass();
         if (field.isStatic()) {
             FieldScan reason = new FieldScan(field);
+            if (field.isInBaseLayer()) {
+                /*
+                 * For base layer static fields we don't want to scan the constant value, but
+                 * instead inject its type state in the field flow. This will be propagated to any
+                 * corresponding field loads.
+                 * 
+                 * GR-52421: the field state needs to be serialized from the base layer analysis
+                 */
+                if (field.getJavaKind().isObject()) {
+                    AnalysisType fieldType = field.getType();
+                    if (fieldType.isArray() || (fieldType.isInstanceClass() && !fieldType.isAbstract())) {
+                        fieldType.registerAsInHeap(field);
+                    }
+                    bb.injectFieldTypes(field, fieldType);
+                }
+                return;
+            }
             if (isValueAvailable(field)) {
                 JavaConstant fieldValue = readStaticFieldValue(field);
                 markReachable(fieldValue, reason);

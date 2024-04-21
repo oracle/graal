@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -167,5 +171,21 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
     @Override
     public ResolvedJavaField unwrapTowardsOriginalField() {
         return wrapped;
+    }
+
+    @Override
+    public boolean isInBaseLayer() {
+        return wrapped.isInBaseLayer();
+    }
+
+    @Override
+    public JavaConstant getStaticFieldBase() {
+        AnalysisUniverse universe = type.wrapped.getUniverse();
+        boolean primitive = getStorageKind().isPrimitive();
+        if (isInBaseLayer()) {
+            ImageLayerLoader imageLayerLoader = universe.getImageLayerLoader();
+            return primitive ? imageLayerLoader.getBaseLayerStaticPrimitiveFields() : imageLayerLoader.getBaseLayerStaticObjectFields();
+        }
+        return universe.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
     }
 }

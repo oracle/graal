@@ -92,7 +92,6 @@ import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -203,7 +202,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
         SharedField field = (SharedField) f;
         assert field.isStatic();
-        return graph.unique(StaticFieldsSupport.createStaticFieldBaseNode(field.getStorageKind() != JavaKind.Object));
+        return graph.unique(StaticFieldsSupport.createStaticFieldBaseNode(field));
     }
 
     private static ValueNode maybeUncompress(ValueNode node) {

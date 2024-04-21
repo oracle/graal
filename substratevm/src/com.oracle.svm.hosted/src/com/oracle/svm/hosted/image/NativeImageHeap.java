@@ -98,6 +98,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * make any assumptions about the final layout of the image heap.
  */
 public final class NativeImageHeap implements ImageHeap {
+    /** A pseudo-partition for base layer objects, see {@link BaseLayerPartition}. */
+    private static final ImageHeapPartition BASE_LAYER_PARTITION = new BaseLayerPartition();
+
     public final AnalysisUniverse aUniverse;
     public final HostedUniverse hUniverse;
     public final HostedMetaAccess hMetaAccess;
@@ -276,6 +279,7 @@ public final class NativeImageHeap implements ImageHeap {
          */
         for (HostedField field : hUniverse.getFields()) {
             if (field.wrapped.isInBaseLayer()) {
+                /* Base layer static field values are accessed via the base layer arrays. */
                 continue;
             }
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
@@ -343,14 +347,6 @@ public final class NativeImageHeap implements ImageHeap {
 
     public void addConstant(final JavaConstant constant, boolean immutableFromParent, final Object reason) {
         assert addObjectsPhase.isAllowed() : "Objects cannot be added at phase: " + addObjectsPhase.toString() + " with reason: " + reason;
-
-        if (constant instanceof ImageHeapConstant hc && hc.isInBaseLayer() && !hMetaAccess.isInstanceOf(constant, Class.class)) {
-            /*
-             * Skip base layer constants, but not the hubs. We need the object info in
-             * NativeImageHeapWriter.writeObjectHeader()
-             */
-            return;
-        }
 
         if (constant.getJavaKind().isPrimitive() || constant.isNull() || hMetaAccess.isInstanceOf(constant, WordBase.class)) {
             return;
@@ -540,6 +536,9 @@ public final class NativeImageHeap implements ImageHeap {
             }
 
             info = addToImageHeap(constant, clazz, size, identityHashCode, reason);
+            if (processBaseLayerConstant(constant, info)) {
+                return;
+            }
             try {
                 recursiveAddObject(hub, false, info);
                 // Recursively add all the fields of the object.
@@ -585,6 +584,9 @@ public final class NativeImageHeap implements ImageHeap {
             int length = hConstantReflection.readArrayLength(constant);
             final long size = objectLayout.getArraySize(type.getComponentType().getStorageKind(), length, true);
             info = addToImageHeap(constant, clazz, size, identityHashCode, reason);
+            if (processBaseLayerConstant(constant, info)) {
+                return;
+            }
             try {
                 recursiveAddObject(hub, false, info);
                 if (hMetaAccess.isInstanceOf(constant, Object[].class)) {
@@ -608,6 +610,21 @@ public final class NativeImageHeap implements ImageHeap {
             }
         }
         heapLayouter.assignObjectToPartition(info, !written || immutable, references, relocatable);
+    }
+
+    /**
+     * For base layer constants reuse the base layer absolute offset and assign the object to a
+     * pseudo-partition. We do not process this object recursively, i.e., following fields and array
+     * elements, we only want the JavaConstant -> ObjectInfo mapping for base layer constants that
+     * are reachable from regular constants in this layer.
+     */
+    private boolean processBaseLayerConstant(JavaConstant constant, ObjectInfo info) {
+        if (((ImageHeapConstant) constant).isInBaseLayer()) {
+            info.setOffsetInPartition(aUniverse.getImageLayerLoader().getObjectOffset(constant));
+            info.setHeapPartition(BASE_LAYER_PARTITION);
+            return true;
+        }
+        return false;
     }
 
     private static HostedType requireType(Optional<HostedType> optionalType, Object object, Object reason) {
@@ -1007,5 +1024,28 @@ public final class NativeImageHeap implements ImageHeap {
             }
             return ObjectReachabilityGroup.Other.flag;
         }
+    }
+}
+
+/**
+ * A pseudo-partition necessary for {@link ImageHeapObject}s that refer to base layer constants,
+ * i.e., they are not actually written in current layer's heap. Their offset is absolute (not
+ * relative to a partition start offset) and is serialized from the base layer.
+ */
+final class BaseLayerPartition implements ImageHeapPartition {
+    /** Zero so that the partition-relative offsets are always absolute. */
+    @Override
+    public long getStartOffset() {
+        return 0;
+    }
+
+    @Override
+    public String getName() {
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public long getSize() {
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 }

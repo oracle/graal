@@ -26,6 +26,7 @@ package com.oracle.svm.core.meta;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -63,4 +64,9 @@ public interface SharedField extends ResolvedJavaField {
     boolean isValueAvailable();
 
     JavaKind getStorageKind();
+
+    /** Returns true if this field is defined in a base layer. */
+    boolean isInBaseLayer();
+
+    JavaConstant getStaticFieldBase();
 }

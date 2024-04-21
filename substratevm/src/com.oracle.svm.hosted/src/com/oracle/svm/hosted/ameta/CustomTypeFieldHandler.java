@@ -85,7 +85,7 @@ public abstract class CustomTypeFieldHandler {
         injectFieldTypes(field, customTypes.toArray(new AnalysisType[0]));
     }
 
-    protected abstract void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes);
+    public abstract void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes);
 
     private List<AnalysisType> transformTypes(AnalysisField field, List<Class<?>> types) {
         List<AnalysisType> customTypes = new ArrayList<>();

@@ -25,7 +25,11 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LOCATION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_OFFSET_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJECT_FIELDS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_PRIMITIVE_FIELDS_TAG;
 
 import java.util.List;
 
@@ -34,15 +38,24 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageHeap;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
+import com.oracle.graal.pointsto.infrastructure.Universe;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.lambda.StableLambdaProxyNameFeature;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.methodhandles.MethodHandleFeature;
 import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerSubstitutionType;
@@ -55,8 +68,25 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SVMImageLayerWriter extends ImageLayerWriter {
+    private NativeImageHeap nativeImageHeap;
+
     public SVMImageLayerWriter(ImageHeap imageHeap) {
         super(imageHeap, new SVMImageLayerSnapshotUtil());
+    }
+
+    public void setNativeImageHeap(NativeImageHeap nativeImageHeap) {
+        this.nativeImageHeap = nativeImageHeap;
+    }
+
+    @Override
+    protected void persistHook(Universe universe, AnalysisUniverse analysisUniverse, EconomicMap<String, Object> jsonMap) {
+        HostedUniverse hostedUniverse = (HostedUniverse) universe;
+
+        ImageHeapConstant staticPrimitiveFields = (ImageHeapConstant) hostedUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticPrimitiveFields());
+        ImageHeapConstant staticObjectFields = (ImageHeapConstant) hostedUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticObjectFields());
+
+        jsonMap.put(STATIC_PRIMITIVE_FIELDS_TAG, getConstantId(staticPrimitiveFields));
+        jsonMap.put(STATIC_OBJECT_FIELDS_TAG, getConstantId(staticObjectFields));
     }
 
     @Override
@@ -99,6 +129,25 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         } else {
             LogUtils.warning(message);
         }
+    }
+
+    @Override
+    protected void persistFieldHook(EconomicMap<String, Object> fieldMap, AnalysisField field, Universe universe) {
+        HostedUniverse hostedUniverse = (HostedUniverse) universe;
+        HostedField hostedField = hostedUniverse.lookup(field);
+        int location = hostedField.getLocation();
+        if (hostedField.isStatic() && location > 0) {
+            fieldMap.put(LOCATION_TAG, location);
+        }
+    }
+
+    @Override
+    protected void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap, EconomicMap<String, Object> constantsMap) {
+        ObjectInfo objectInfo = nativeImageHeap.getConstantInfo(imageHeapConstant);
+        if (objectInfo != null) {
+            constantMap.put(OBJECT_OFFSET_TAG, String.valueOf(objectInfo.getOffset()));
+        }
+        super.persistConstant(analysisUniverse, imageHeapConstant, constantMap, constantsMap);
     }
 
     @Override
