@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -37,9 +35,11 @@ import com.oracle.truffle.espresso.vm.ContinuationSupport;
  */
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_continuations_Continuation {
-    @Substitution
-    @TruffleBoundary
-    static void suspend0(@Inject EspressoLanguage language, @Inject Meta meta) {
+    private Target_com_oracle_truffle_espresso_continuations_Continuation() {
+    }
+
+    @Substitution(hasReceiver = true)
+    static void suspend0(StaticObject self, @Inject EspressoLanguage language, @Inject Meta meta) {
         EspressoThreadLocalState tls = language.getThreadLocalState();
         if (tls.isContinuationSuspensionBlocked()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException,
@@ -53,21 +53,17 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
 
         // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records
         // will be added to the exception object in a linked list until it's caught in resume below.
-        throw new ContinuationSupport.Unwind();
+        throw new ContinuationSupport.Unwind(self);
     }
 
     @Substitution(hasReceiver = true)
-    @TruffleBoundary
-    static void resume0(
-                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
-                    @Inject Meta meta,
-                    @Inject EspressoContext context,
-                    @Inject EspressoLanguage language) {
-        ContinuationSupport.HostFrameRecord stack = ContinuationSupport.HostFrameRecord.copyFromGuest(self, meta, context);
+    static void resume0(StaticObject self, @Inject EspressoContext context) {
+        Meta meta = context.getMeta();
+        ContinuationSupport.HostFrameRecord stack = ContinuationSupport.HostFrameRecord.copyFromGuest(self, meta);
 
         // This will break if the continuations API is redefined - TODO: find a way to block that.
-        Method.MethodVersion runMethod = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getMethodVersion();
 
+        EspressoLanguage language = context.getLanguage();
         // This method is an intrinsic and the act of invoking one of those blocks the ability
         // to call suspend, so we have to undo that first.
         EspressoThreadLocalState tls = language.getThreadLocalState();
@@ -77,9 +73,10 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         // remaining records into the bytecode interpreter, which will then pass them down the stack
         // until everything is fully unwound.
         try {
-            runMethod.getCallTarget().call(stack);
+            // TODO separate entry point: cannot invokeDirect because the # of arguments doesn't match the signature
+            meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getCallTarget().call(stack);
         } catch (ContinuationSupport.Unwind unwind) {
-            CompilerDirectives.transferToInterpreter();
+            assert unwind.getContinuation() == self;
             meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
             // Allow reporting of stepping in this thread again. It was blocked by the call to
             // suspend0()
@@ -92,11 +89,8 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     }
 
     @Substitution(hasReceiver = true)
-    @TruffleBoundary
-    static void start0(
-                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
-                    @Inject Meta meta,
-                    @Inject EspressoLanguage language) {
+    static void start0(StaticObject self, @Inject Meta meta) {
+        EspressoLanguage language = meta.getLanguage();
         // This method is an intrinsic and the act of invoking one of those blocks the ability
         // to call suspend, so we have to undo that first.
         EspressoThreadLocalState tls = language.getThreadLocalState();
@@ -107,6 +101,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // from run onwards will be unwound on suspend, and rewound on resume.
             meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(self);
         } catch (ContinuationSupport.Unwind unwind) {
+            assert unwind.getContinuation() == self;
             // Guest called suspend(). By the time we get here the frame info has been gathered up
             // into host-side objects so we just need to copy the data into the guest world.
             meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));

@@ -24,13 +24,10 @@ package com.oracle.truffle.espresso.vm;
 
 import java.io.Serial;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
@@ -94,12 +91,11 @@ public class ContinuationSupport {
          * records.
          */
         public static HostFrameRecord copyFromGuest(
-                        @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
-                        Meta meta,
-                        @Inject EspressoContext context) {
+                        @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject continuation,
+                        Meta meta) {
             HostFrameRecord hostCursor = null;
             HostFrameRecord hostHead = null;
-            StaticObject /* FrameRecord */ cursor = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(self);
+            StaticObject /* FrameRecord */ cursor = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(continuation);
             while (StaticObject.notNull(cursor)) {
                 /* Object[] */
                 StaticObject pointersGuest = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers.getObject(cursor);
@@ -112,11 +108,11 @@ public class ContinuationSupport {
                 int sp = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp.getInt(cursor);
                 int statementIndex = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_statementIndex.getInt(cursor);
 
-                var language = context.getLanguage();
+                var language = meta.getLanguage();
 
                 StaticObject[] pointers = pointersGuest.unwrap(language);
                 long[] primitives = primitivesGuest.unwrap(language);
-                byte[] slotTags = reservedGuest != StaticObject.NULL ? reservedGuest.unwrap(language) : null;
+                byte[] slotTags = StaticObject.notNull(reservedGuest) ? reservedGuest.unwrap(language) : null;
                 Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
 
                 HostFrameRecord next = new HostFrameRecord(EspressoFrameDescriptor.fromRawRecord(pointers, primitives, slotTags), sp, statementIndex, method.getMethodVersion(), null);
@@ -140,10 +136,18 @@ public class ContinuationSupport {
      */
     public static class Unwind extends ControlFlowException {
         @Serial private static final long serialVersionUID = 2520648816466452283L;
+        private final StaticObject continuation;
 
         public transient HostFrameRecord head = null;
 
-        @CompilerDirectives.TruffleBoundary
+        public Unwind(StaticObject continuation) {
+            this.continuation = continuation;
+        }
+
+        public StaticObject getContinuation() {
+            return continuation;
+        }
+
         public StaticObject toGuest(Meta meta) {
             // Convert the linked list from host to guest.
             ContinuationSupport.HostFrameRecord cursor = head;

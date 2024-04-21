@@ -46,6 +46,8 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serial;
 import java.io.Serializable;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
@@ -106,10 +108,20 @@ public final class Continuation implements Externalizable {
 
     // We want a compact serialized representation, so use fields judiciously here.
 
+    private static final VarHandle STATE_HANDLE;
+
+    static {
+        try {
+            STATE_HANDLE = MethodHandles.lookup().findVarHandle(Continuation.class, "state", State.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     // region Suspended state
 
     // This field is set by the VM after a suspend.
-    public volatile FrameRecord stackFrameHead;
+    private volatile FrameRecord stackFrameHead;
 
     /**
      * <p>
@@ -122,45 +134,45 @@ public final class Continuation implements Externalizable {
      * The contents of the arrays should be treated as opaque.
      * </p>
      */
-    public static final class FrameRecord {
+    private static final class FrameRecord {
         /**
          * The next frame in the stack.
          */
-        public FrameRecord next;   // Set by the VM
+        private FrameRecord next;   // Set by the VM
 
         /**
          * Pointer stack slots. Note that not every slot is used.
          */
-        public final Object[] pointers;
+        private final Object[] pointers;
 
         /**
          * Primitive stack slots. Note that not every slot is used.
          */
-        public final long[] primitives;
+        private final long[] primitives;
 
         /**
          * The method of this stack frame.
          */
-        public final Method method;
+        private final Method method;
 
         /**
          * The stack pointer (how many slots are used at the current bytecode index).
          */
-        public final int sp;
+        private final int sp;
 
         /**
          * Location in the program source where the suspend happened (versus location in the
          * bytecode).
          */
-        public final int statementIndex;
+        private final int statementIndex;
 
         /**
          * Reserved. Will always be null when using release builds of the JVM.
          */
-        public final Object reserved1;
+        private final Object reserved1;
 
         // Invoked by the VM.
-        FrameRecord(Object[] pointers, long[] primitives, Method method, int sp, int statementIndex, Object reserved1) {
+        private FrameRecord(Object[] pointers, long[] primitives, Method method, int sp, int statementIndex, Object reserved1) {
             this.pointers = pointers;
             this.primitives = primitives;
             this.method = method;
@@ -169,11 +181,6 @@ public final class Continuation implements Externalizable {
             this.reserved1 = reserved1;
         }
     }
-
-    /**
-     * The entry point as provided to the constructor.
-     */
-    public EntryPoint entryPoint;
 
     /**
      * A point in the lifecycle of a continuation.
@@ -198,14 +205,31 @@ public final class Continuation implements Externalizable {
         FAILED
     }
 
-    // Avoid the continuation stack having a reference to this controller class.
-    private static final class StateHolder implements Serializable {
-        @Serial private static final long serialVersionUID = -4139336648021552606L;
+    private volatile State state;
 
-        State state = State.INCOMPLETE;
+    private boolean updateState(State expectedState, State newState) {
+        return STATE_HANDLE.compareAndSet(this, expectedState, newState);
     }
 
-    private StateHolder stateHolder = new StateHolder();
+    private State forceState(State newState) {
+        return (State) STATE_HANDLE.getAndSet(this, newState);
+    }
+
+    /**
+     * The entry point as provided to the constructor.
+     */
+    private EntryPoint entryPoint;
+    private transient Thread exclusiveOwner;
+
+    private void setExclusiveOwner() {
+        assert exclusiveOwner == null;
+        exclusiveOwner = Thread.currentThread();
+    }
+
+    private void clearExclusiveOwner() {
+        assert exclusiveOwner == Thread.currentThread();
+        exclusiveOwner = null;
+    }
 
     // endregion State
 
@@ -236,7 +260,7 @@ public final class Continuation implements Externalizable {
      * </p>
      */
     public Continuation(EntryPoint entryPoint) {
-        this.stateHolder.state = State.NEW;
+        this.state = State.NEW;
         this.entryPoint = entryPoint;
     }
 
@@ -246,6 +270,7 @@ public final class Continuation implements Externalizable {
     public Continuation() {
         // Note: can't mark this as @hidden in javadoc because the doclet fork used by GraalVM
         // is too old to understand it.
+        this.state = State.INCOMPLETE;
     }
 
     /**
@@ -255,7 +280,14 @@ public final class Continuation implements Externalizable {
      * suspends, at which point it will be {@link State#SUSPENDED}.
      */
     public State getState() {
-        return stateHolder.state;
+        return state;
+    }
+
+    /**
+     * Returns the entrypoint used to construct this continuation.
+     */
+    public EntryPoint getEntryPoint() {
+        return entryPoint;
     }
 
     /**
@@ -275,12 +307,8 @@ public final class Continuation implements Externalizable {
      * An object provided by the system that lets you yield control and return from
      * {@link Continuation#resume()}.
      */
-    public static final class SuspendCapability implements Serializable {
+    public final class SuspendCapability implements Serializable {
         @Serial private static final long serialVersionUID = 4790341975992263909L;
-
-        // Will be assigned separately to break the cycle that occurs because this object has to be
-        // on the entry stack.
-        StateHolder stateHolder;
 
         /**
          * Suspends the continuation, unwinding the stack to the point at which it was previously
@@ -291,12 +319,27 @@ public final class Continuation implements Externalizable {
          *             block.
          */
         public void suspend() {
-            if (!insideContinuation.get()) {
+            if (exclusiveOwner != Thread.currentThread()) {
                 throw new IllegalStateException("Suspend capabilities can only be used inside a continuation.");
             }
-            stateHolder.state = State.SUSPENDED;
-            Continuation.suspend0();
-            stateHolder.state = State.RUNNING;
+            if (!updateState(State.RUNNING, State.SUSPENDED)) {
+                throw new IllegalStateException("Suspend capabilities can only be used inside a running continuation.");
+            }
+            try {
+                suspend0();
+            } catch (IllegalStateException e) {
+                if (!updateState(State.SUSPENDED, State.RUNNING)) {
+                    // force failed state and maybe assert
+                    State badState = forceState(State.RUNNING);
+                    if (ASSERTIONS_ENABLED) {
+                        AssertionError assertionError = new AssertionError(badState.toString());
+                        assertionError.addSuppressed(e);
+                        throw assertionError;
+                    }
+                }
+                throw e;
+            }
+            assert state == State.RUNNING : state; // set in #resume()
         }
     }
 
@@ -316,42 +359,38 @@ public final class Continuation implements Externalizable {
      * @throws IllegalStateException if the {@link #getState()} is not {@link State#SUSPENDED}.
      */
     public void resume() {
-        if (stateHolder.state == State.INCOMPLETE) {
-            throw new IllegalStateException("Do not construct this class using the no-arg constructor, which is there only for deserialization purposes.");
+        if (!isSupported()) {
+            throw new UnsupportedOperationException("Continuations must be run on the Java on Truffle JVM with the java.Continuum option set to true.");
         }
-
         // Are we in the special waiting-to-start state?
-        if (stateHolder.state == State.NEW) {
-            if (entryPoint == null) {
-                throw new IllegalStateException("The entry point is not set. Do not use the public no-args constructor to create this class, it's only for serialization.");
-            }
+        if (updateState(State.NEW, State.RUNNING)) {
             // Enable the use of suspend capabilities.
-            insideContinuation.set(true);
+            setExclusiveOwner();
             try {
                 start0();
             } finally {
-                insideContinuation.set(false);
+                clearExclusiveOwner();
             }
-            return;
-        }
-
-        switch (stateHolder.state) {
-            case RUNNING -> throw new IllegalStateException("You can't recursively resume an already executing continuation.");
-            case SUSPENDED -> {
-                // OK
+        } else if (updateState(State.SUSPENDED, State.RUNNING)) {
+            assert stackFrameHead != null;
+            setExclusiveOwner();
+            try {
+                resume0();
+            } finally {
+                clearExclusiveOwner();
             }
-            case COMPLETED -> throw new IllegalStateException("This continuation has already completed successfully.");
-            case FAILED -> throw new IllegalStateException("This continuation has failed and must be discarded.");
-        }
-
-        assert stackFrameHead != null;
-
-        // Enable the use of suspend capabilities.
-        insideContinuation.set(true);
-        try {
-            resume0();
-        } finally {
-            insideContinuation.set(false);
+        } else {
+            // illegal state for resume: neither suspended nor new
+            switch (state) {
+                case RUNNING -> throw new IllegalStateException("You can't resume an already executing continuation.");
+                case COMPLETED ->
+                        throw new IllegalStateException("This continuation has already completed successfully.");
+                case FAILED -> throw new IllegalStateException("This continuation has failed and must be discarded.");
+                case INCOMPLETE ->
+                        throw new IllegalStateException("Do not construct this class using the no-arg constructor, which is there only for deserialization purposes.");
+                // this is racy so ensure we have a general error message in those case
+                default -> throw new IllegalStateException("Only new or suspended continuation can be resumed");
+            }
         }
     }
 
@@ -605,11 +644,7 @@ public final class Continuation implements Externalizable {
 
     // region Implementation
 
-    /**
-     * Tracks whether the current thread has passed through {@link #resume()}. If it hasn't then
-     * suspending is illegal.
-     */
-    private static final ThreadLocal<Boolean> insideContinuation = ThreadLocal.withInitial(() -> false);
+    private static final boolean ASSERTIONS_ENABLED = Continuation.class.desiredAssertionStatus();
 
     /**
      * Invoked by the VM. This is the first frame in the continuation. We get here from inside the
@@ -617,17 +652,32 @@ public final class Continuation implements Externalizable {
      */
     @SuppressWarnings("unused")
     private void run() {
+        assert state == State.RUNNING : state; // set in #resume()
         var cap = new SuspendCapability();
-        cap.stateHolder = stateHolder;
-        stateHolder.state = State.RUNNING;
         try {
-            entryPoint.start(cap);
-            stateHolder.state = State.COMPLETED;
+            try {
+                entryPoint.start(cap);
+            } catch (Throwable e) {
+                if (!updateState(State.RUNNING, State.FAILED)) {
+                    // force failed state and maybe assert
+                    State badState = forceState(State.FAILED);
+                    if (ASSERTIONS_ENABLED) {
+                        AssertionError assertionError = new AssertionError(badState.toString());
+                        assertionError.addSuppressed(e);
+                        throw assertionError;
+                    }
+                }
+                throw e;
+            }
+            if (!updateState(State.RUNNING, State.COMPLETED)) {
+                // force completed state and maybe assert
+                State badState = forceState(State.COMPLETED);
+                if (ASSERTIONS_ENABLED) {
+                    throw new AssertionError(badState.toString());
+                }
+            }
+        } finally {
             stackFrameHead = null;
-        } catch (Throwable e) {
-            stateHolder.state = State.FAILED;
-            stackFrameHead = null;
-            throw e;
         }
     }
 
@@ -694,23 +744,10 @@ public final class Continuation implements Externalizable {
         return sb.toString();
     }
 
-    private void start0() {
-        // Control passes from here to run() via the VM.
-        throw notOnEspresso();
-    }
+    private native void start0();
 
-    private void resume0() {
-        throw notOnEspresso();
-    }
+    private native void resume0();
 
-    // This is native rather than throwing, because if we throw then IntelliJ can look inside the
-    // implementation to determine it always fails and then its static analysis starts flagging
-    // non-existent errors in the user's source code.
-    private static native void suspend0();
-
-    private static UnsupportedOperationException notOnEspresso() {
-        // Caller should have been replaced by an intrinsic / substitution.
-        return new UnsupportedOperationException("Continuations must be run on the Java on Truffle JVM.");
-    }
+    private native void suspend0();
     // endregion
 }
