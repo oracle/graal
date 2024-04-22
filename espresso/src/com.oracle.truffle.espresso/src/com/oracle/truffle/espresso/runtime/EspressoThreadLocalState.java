@@ -150,6 +150,22 @@ public class EspressoThreadLocalState {
         suspensionBlocks--;
     }
 
+    public AllowSuspensionScope allowSuspensionScope() {
+        return new AllowSuspensionScope();
+    }
+
+    public final class AllowSuspensionScope implements AutoCloseable {
+        private final int startBlocks;
+        private AllowSuspensionScope() {
+            startBlocks = suspensionBlocks;
+            suspensionBlocks = 0;
+        }
+        @Override
+        public void close() {
+            suspensionBlocks = startBlocks;
+        }
+    }
+
     public boolean isContinuationSuspensionBlocked() {
         // Why one and not zero here? Because the fact we reached here means we're inside the
         // suspend intrinsic, and we don't want to consider that as blocking the suspend.

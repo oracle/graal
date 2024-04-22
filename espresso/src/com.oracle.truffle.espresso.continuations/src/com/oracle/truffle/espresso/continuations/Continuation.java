@@ -442,8 +442,8 @@ public final class Continuation implements Externalizable {
         try {
             // We start by writing out a header byte. The high nibble contains a major version. Old
             // libraries will refuse to deserialize continuations with a higher version than what
-            // they recognize. New libraries may choose to continue supporting the old formats. The low
-            // nibble contains flags.
+            // they recognize. New libraries may choose to continue supporting the old formats. The
+            // low nibble contains flags.
             int header = FORMAT_VERSION << 4;
             // The first flag indicates if VM assertions are enabled, in which case we have to also
             // record the slot tag array.
@@ -464,9 +464,9 @@ public final class Continuation implements Externalizable {
             if (currentState == State.SUSPENDED) {
                 Map<String, Integer> stringPool = new HashMap<>();
                 // We serialize frame-at-a-time. Prims go first, then object pointers. Conceptually
-                // there aren't two arrays, just one array of untyped slots but we don't currently know
-                // the real types of the slots, so have to serialize both arrays even though they'll
-                // contain quite a few nulls. There are more efficient encodings available.
+                // there aren't two arrays, just one array of untyped slots but we don't currently
+                // know the real types of the slots, so have to serialize both arrays even though
+                // they'll contain quite a few nulls. There are more efficient encodings available.
                 FrameRecord cursor = stackFrameHead;
                 assert cursor != null;
                 while (cursor != null) {

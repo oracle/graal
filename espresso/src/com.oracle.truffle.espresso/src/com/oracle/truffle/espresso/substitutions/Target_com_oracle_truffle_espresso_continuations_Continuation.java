@@ -67,13 +67,13 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         // This method is an intrinsic and the act of invoking one of those blocks the ability
         // to call suspend, so we have to undo that first.
         EspressoThreadLocalState tls = language.getThreadLocalState();
-        tls.unblockContinuationSuspension();
 
         // The entry node will unpack the head frame record into the stack and then pass the
         // remaining records into the bytecode interpreter, which will then pass them down the stack
         // until everything is fully unwound.
-        try {
-            // TODO separate entry point: cannot invokeDirect because the # of arguments doesn't match the signature
+        try (var scope = tls.allowSuspensionScope()) {
+            // TODO separate entry point: cannot invokeDirect because the # of arguments doesn't
+            // match the signature
             meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getCallTarget().call(stack);
         } catch (ContinuationSupport.Unwind unwind) {
             assert unwind.getContinuation() == self;
@@ -81,10 +81,6 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // Allow reporting of stepping in this thread again. It was blocked by the call to
             // suspend0()
             tls.enableSingleStepping();
-        } finally {
-            // Re-increment the block counter. It'll be reduced to zero again on our way back out
-            // of the intrinsic.
-            tls.blockContinuationSuspension();
         }
     }
 
@@ -94,9 +90,8 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         // This method is an intrinsic and the act of invoking one of those blocks the ability
         // to call suspend, so we have to undo that first.
         EspressoThreadLocalState tls = language.getThreadLocalState();
-        tls.unblockContinuationSuspension();
 
-        try {
+        try (var scope = tls.allowSuspensionScope()) {
             // The run method is private in Continuation and is the continuation delimiter. Frames
             // from run onwards will be unwound on suspend, and rewound on resume.
             meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(self);
@@ -108,10 +103,6 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // Allow reporting of stepping in this thread again. It was blocked by the call to
             // suspend0()
             tls.enableSingleStepping();
-        } finally {
-            // Re-increment the block counter. It'll be reduced to zero again on our way back out
-            // of the intrinsic.
-            tls.blockContinuationSuspension();
         }
     }
 
