@@ -48,7 +48,7 @@ public final class YoungGeneration extends Generation {
     @Platforms(Platform.HOSTED_ONLY.class)
     YoungGeneration(String name) {
         super(name);
-        this.eden = new Space("Eden", "E", true, 0);
+        this.eden = new Space("Eden", "E", false, 0);
         this.maxSurvivorSpaces = HeapParameters.getMaxSurvivorSpaces();
         this.survivorFromSpaces = new Space[maxSurvivorSpaces];
         this.survivorToSpaces = new Space[maxSurvivorSpaces];
@@ -56,8 +56,8 @@ public final class YoungGeneration extends Generation {
         this.survivorsToSpacesAccounting = new ChunksAccounting();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             int age = i + 1;
-            this.survivorFromSpaces[i] = new Space("Survivor-" + age, "S" + age, true, age);
-            this.survivorToSpaces[i] = new Space("Survivor-" + age + " To", "S" + age, false, age, survivorsToSpacesAccounting);
+            this.survivorFromSpaces[i] = new Space("Survivor-" + age, "S" + age, false, age);
+            this.survivorToSpaces[i] = new Space("Survivor-" + age + " To", "S" + age, true, age, survivorsToSpacesAccounting);
             this.survivorGreyObjectsWalkers[i] = new GreyObjectsWalker();
         }
     }

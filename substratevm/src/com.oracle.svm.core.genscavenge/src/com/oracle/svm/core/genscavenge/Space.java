@@ -61,7 +61,7 @@ import jdk.graal.compiler.word.Word;
 public final class Space {
     private final String name;
     private final String shortName;
-    private final boolean isFromSpace;
+    private final boolean isToSpace;
     private final int age;
     private final ChunksAccounting accounting;
 
@@ -77,16 +77,16 @@ public final class Space {
      * collections so they should not move.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    Space(String name, String shortName, boolean isFromSpace, int age) {
-        this(name, shortName, isFromSpace, age, null);
+    Space(String name, String shortName, boolean isToSpace, int age) {
+        this(name, shortName, isToSpace, age, null);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    Space(String name, String shortName, boolean isFromSpace, int age, ChunksAccounting parentAccounting) {
+    Space(String name, String shortName, boolean isToSpace, int age, ChunksAccounting parentAccounting) {
         assert name != null : "Space name should not be null.";
         this.name = name;
         this.shortName = shortName;
-        this.isFromSpace = isFromSpace;
+        this.isToSpace = isToSpace;
         this.age = age;
         this.accounting = new ChunksAccounting(parentAccounting);
     }
@@ -132,6 +132,12 @@ public final class Space {
         return age == (HeapParameters.getMaxSurvivorSpaces() + 1);
     }
 
+    @AlwaysInline("GC performance.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isCompactingOldSpace() {
+        return SerialGCOptions.useCompactingOldGen() && isOldSpace();
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getAge() {
         return age;
@@ -142,9 +148,15 @@ public final class Space {
         return age + 1;
     }
 
+    @AlwaysInline("GC performance.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isFromSpace() {
-        return isFromSpace;
+        return !isToSpace && !isCompactingOldSpace();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean isToSpace() {
+        return isToSpace;
     }
 
     public boolean walkObjects(ObjectVisitor visitor) {
@@ -181,8 +193,8 @@ public final class Space {
     }
 
     public void logChunks(Log log) {
-        HeapChunkLogging.logChunks(log, getFirstAlignedHeapChunk(), shortName, isFromSpace);
-        HeapChunkLogging.logChunks(log, getFirstUnalignedHeapChunk(), shortName, isFromSpace);
+        HeapChunkLogging.logChunks(log, getFirstAlignedHeapChunk(), shortName, isToSpace());
+        HeapChunkLogging.logChunks(log, getFirstUnalignedHeapChunk(), shortName, isToSpace());
     }
 
     /**
@@ -375,7 +387,7 @@ public final class Space {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Object copyAlignedObject(Object original, Space originalSpace) {
         assert ObjectHeaderImpl.isAlignedObject(original);
-        assert originalSpace.isFromSpace();
+        assert originalSpace.isFromSpace() || (originalSpace == this && isCompactingOldSpace());
 
         Object copy = copyAlignedObject(original);
         if (copy != null) {
@@ -424,11 +436,15 @@ public final class Space {
         }
         if (isOldSpace()) {
             if (SerialGCOptions.useCompactingOldGen() && GCImpl.getGCImpl().isCompleteCollection()) {
-                // Not needed as it was the remembered set bit is set during mark phase
-                // and the first object table built after compaction.
+                /*
+                 * In a compacting complete collection, the remembered set bit is set already during
+                 * marking and the first object table is built later during compaction.
+                 */
             } else {
-                // If the object was promoted to the old gen, we need to take care of the remembered
-                // set bit and the first object table (even when promoting from old to old).
+                /*
+                 * If an object was copied to the old generation, its remembered set bit must be set
+                 * and the first object table must be updated (even when copying from old to old).
+                 */
                 AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
                 RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
             }

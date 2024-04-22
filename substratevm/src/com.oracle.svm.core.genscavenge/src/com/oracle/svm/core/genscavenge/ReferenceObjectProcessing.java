@@ -246,7 +246,7 @@ final class ReferenceObjectProcessing {
         }
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = HeapChunk.getSpace(chunk);
-        return !space.isFromSpace() || (SerialGCOptions.useCompactingOldGen() && space.isOldSpace());
+        return space.isToSpace() || space.isCompactingOldSpace();
     }
 
     static void updateForwardedRefs() {

@@ -79,10 +79,10 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
             return true;
         }
         Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(ptrToObj, header));
-        if (!space.isFromSpace()) {
+        if (space.isToSpace()) {
             return true;
         }
-        if (SerialGCOptions.useCompactingOldGen() && space.isOldSpace() && !GCImpl.getGCImpl().isCompleteCollection()) {
+        if (space.isCompactingOldSpace() && !GCImpl.getGCImpl().isCompleteCollection()) {
             return true;
         }
         Class<?> clazz = DynamicHub.toClass(ohi.dynamicHubFromObjectHeader(header));

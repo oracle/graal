@@ -67,7 +67,7 @@ import jdk.graal.compiler.word.Word;
  */
 final class CompactingOldGeneration extends OldGeneration {
 
-    private final Space space = new Space("Old", "O", true, HeapParameters.getMaxSurvivorSpaces() + 1);
+    private final Space space = new Space("Old", "O", false, HeapParameters.getMaxSurvivorSpaces() + 1);
     private final MarkQueue markQueue = new MarkQueue();
 
     private final GreyObjectsWalker toGreyObjectsWalker = new GreyObjectsWalker();
@@ -129,7 +129,7 @@ final class CompactingOldGeneration extends OldGeneration {
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
-            assert originalSpace.isFromSpace() && !originalSpace.isOldSpace();
+            assert originalSpace.isFromSpace();
             return space.copyAlignedObject(original, originalSpace);
         }
         assert originalSpace == space;
@@ -159,7 +159,7 @@ final class CompactingOldGeneration extends OldGeneration {
     @Override
     protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
-            assert originalSpace.isFromSpace() && !originalSpace.isOldSpace();
+            assert originalSpace.isFromSpace();
             space.promoteUnalignedHeapChunk(originalChunk, originalSpace);
             return original;
         }
@@ -174,9 +174,9 @@ final class CompactingOldGeneration extends OldGeneration {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected boolean promotePinnedObject(Object obj, HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
-        assert originalSpace.isFromSpace();
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
-            if (!originalSpace.isOldSpace()) {
+            if (originalSpace != space) {
+                assert originalSpace.isFromSpace();
                 if (isAligned) {
                     space.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
                 } else {

@@ -278,7 +278,7 @@ final class HeapChunkProvider {
     }
 
     void logFreeChunks(Log log) {
-        HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", true);
+        HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

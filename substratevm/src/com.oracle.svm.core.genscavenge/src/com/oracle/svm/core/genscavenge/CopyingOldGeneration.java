@@ -56,8 +56,8 @@ final class CopyingOldGeneration extends OldGeneration {
     CopyingOldGeneration(String name) {
         super(name);
         int age = HeapParameters.getMaxSurvivorSpaces() + 1;
-        this.fromSpace = new Space("Old", "O", true, age);
-        this.toSpace = new Space("Old To", "O", false, age);
+        this.fromSpace = new Space("Old", "O", false, age);
+        this.toSpace = new Space("Old To", "O", true, age);
     }
 
     @Override

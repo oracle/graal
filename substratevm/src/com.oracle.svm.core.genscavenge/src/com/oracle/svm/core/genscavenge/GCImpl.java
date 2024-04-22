@@ -1039,7 +1039,7 @@ public final class GCImpl implements GC {
         boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
         Header<?> originalChunk = getChunk(original, isAligned);
         Space originalSpace = HeapChunk.getSpace(originalChunk);
-        if (!originalSpace.isFromSpace()) {
+        if (originalSpace.isToSpace()) {
             assert !SerialGCOptions.useCompactingOldGen() || !completeCollection;
             return original;
         }
@@ -1084,7 +1084,7 @@ public final class GCImpl implements GC {
             boolean isAligned = ObjectHeaderImpl.isAlignedObject(referent);
             Header<?> originalChunk = getChunk(referent, isAligned);
             Space originalSpace = HeapChunk.getSpace(originalChunk);
-            if (originalSpace.isFromSpace()) {
+            if (originalSpace.isFromSpace() || originalSpace.isCompactingOldSpace()) {
                 boolean promoted = false;
                 if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
                     promoted = heap.getYoungGeneration().promotePinnedObject(referent, originalChunk, isAligned, originalSpace);
