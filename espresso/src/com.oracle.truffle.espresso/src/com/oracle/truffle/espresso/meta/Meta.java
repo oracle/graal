@@ -1215,7 +1215,7 @@ public final class Meta extends ContextAccessImpl {
         }
 
         // Load Espresso's Polyglot API.
-        boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+        boolean polyglotSupport = getContext().getEspressoEnv().Polyglot;
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
 
         JImageExtensions jImageExtensions = getLanguage().getJImageExtensions();
@@ -1233,7 +1233,7 @@ public final class Meta extends ContextAccessImpl {
         }
 
         // Continuations
-        boolean continuumSupport = getContext().getEnv().getOptions().get(EspressoOptions.Continuum);
+        boolean continuumSupport = getContext().getEspressoEnv().Continuum;
         this.continuum = continuumSupport ? new ContinuumSupport() : null;
     }
 
@@ -1943,24 +1943,24 @@ public final class Meta extends ContextAccessImpl {
             ObjectKlass com_oracle_truffle_espresso_continuations_Continuation = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation);
             com_oracle_truffle_espresso_continuations_Continuation_run = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredMethod(Name.run, Signature._void);
             com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredField(Name.stackFrameHead,
-                    Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
+                            Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_ = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredMethod(
-                    Name._init_, Signature._void_FrameRecord_Object_array_long_array_Method_int_int_Object);
+                            Name._init_, Signature._void_FrameRecord_Object_array_long_array_Method_int_int_Object);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                    Name.pointers, Type.java_lang_Object_array);
+                            Name.pointers, Type.java_lang_Object_array);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                    Name.primitives, Type._long_array);
+                            Name.primitives, Type._long_array);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                    Name.method, Type.java_lang_reflect_Method);
+                            Name.method, Type.java_lang_reflect_Method);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                    Name.next, Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
+                            Name.next, Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                    Name.sp, Type._int);
+                            Name.sp, Type._int);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_statementIndex = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                    Name.statementIndex, Type._int);
+                            Name.statementIndex, Type._int);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_reserved1 = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                    Name.reserved1, Type.java_lang_Object);
+                            Name.reserved1, Type.java_lang_Object);
         }
     }
 
