@@ -39,6 +39,7 @@ public class EspressoThreadLocalState {
 
     // A refcount, when >0 the serializable continuation mechanism will refuse to suspend.
     private int suspensionBlocks;
+    private boolean inContinuation;
 
     private int singleSteppingDisabledCounter;
 
@@ -150,19 +151,26 @@ public class EspressoThreadLocalState {
         suspensionBlocks--;
     }
 
-    public AllowSuspensionScope allowSuspensionScope() {
-        return new AllowSuspensionScope();
+    public ContinuationScope continuationScope() {
+        return new ContinuationScope();
     }
 
-    public final class AllowSuspensionScope implements AutoCloseable {
+    public boolean isInContinuation() {
+        return inContinuation;
+    }
+
+    public final class ContinuationScope implements AutoCloseable {
         private final int startBlocks;
-        private AllowSuspensionScope() {
+        private ContinuationScope() {
             startBlocks = suspensionBlocks;
             suspensionBlocks = 0;
+            assert !inContinuation;
+            inContinuation = true;
         }
         @Override
         public void close() {
             suspensionBlocks = startBlocks;
+            inContinuation = false;
         }
     }
 
