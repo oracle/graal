@@ -39,6 +39,7 @@ import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedObject;
 
 public class TestGCHeapSummaryEvent extends JfrRecordingTest {
+
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{JfrEvent.GCHeapSummary.getName()};

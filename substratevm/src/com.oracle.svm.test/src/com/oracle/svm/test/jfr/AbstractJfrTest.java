@@ -39,8 +39,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.BooleanSupplier;
 
+import jdk.jfr.Unsigned;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -187,4 +189,10 @@ public abstract class AbstractJfrTest {
 }
 
 class JfrTestFeature implements Feature {
+
+    @Override
+    public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
+        /* Needed so that the tests can call RecordedObject.getLong(). */
+        RuntimeProxyCreation.register(Unsigned.class);
+    }
 }
