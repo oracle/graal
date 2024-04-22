@@ -40,6 +40,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ENABLE_POLYBENCH_HPC: 'yes',
       POLYBENCH_HPC_EXTRA_HEADERS: '/cm/shared/apps/papi/papi-5.5.1/include',
       POLYBENCH_HPC_PAPI_LIB_DIR: '/cm/shared/apps/papi/papi-5.5.1/lib',
+      LIBPFM_FORCE_PMU: 'amd64'
     },
   },
 
