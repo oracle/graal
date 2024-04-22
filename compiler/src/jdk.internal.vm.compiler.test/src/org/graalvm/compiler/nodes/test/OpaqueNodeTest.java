@@ -22,44 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.jtt.lang;
+package org.graalvm.compiler.nodes.test;
 
-import org.graalvm.compiler.jtt.JTTTest;
 import org.junit.Test;
 
-public class Double_isInfinite extends JTTTest {
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 
-    public static boolean snippet(double d) {
-        return Double.isInfinite(d);
+public class OpaqueNodeTest extends GraalCompilerTest {
+
+    public static void opaqueClassSnippet() {
+        /*
+         * GR-51558: This would cause an assertion failure in LIR constant load optimization if the
+         * opaque is not removed.
+         */
+        Class<?> c = GraalDirectives.opaque(Object.class);
+        if (c.getResource("resource.txt") == null) {
+            GraalDirectives.deoptimize();
+        }
     }
 
     @Test
-    public void runPos0() {
-        runTest("snippet", +0.0d);
-    }
-
-    @Test
-    public void runNeg0() {
-        runTest("snippet", -0.0d);
-    }
-
-    @Test
-    public void run1() {
-        runTest("snippet", 1.0d);
-    }
-
-    @Test
-    public void runPosInf() {
-        runTest("snippet", Double.POSITIVE_INFINITY);
-    }
-
-    @Test
-    public void runNegInf() {
-        runTest("snippet", Double.NEGATIVE_INFINITY);
-    }
-
-    @Test
-    public void runNaN() {
-        runTest("snippet", Double.NaN);
+    public void testOpaqueClass() {
+        test("opaqueClassSnippet");
     }
 }
