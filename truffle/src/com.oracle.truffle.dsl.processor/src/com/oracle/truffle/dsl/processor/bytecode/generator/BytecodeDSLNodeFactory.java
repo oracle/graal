@@ -1424,6 +1424,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
         b.end().end(); // call, call
         b.end(); // statement
+
+        b.startIf().string("bytecodes_ == null").end().startBlock();
+        b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
+        b.statement("newBytecode.adoptNodesAfterUpdate()");
+        b.end();
         emitFence(b);
         b.end().startDoWhile().startCall("!BYTECODE_UPDATER", "compareAndSet").string("this").string("oldBytecode").string("newBytecode").end().end();
         b.newLine();
@@ -7351,6 +7356,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createTransitionInstrumentationIndex());
                 type.add(createComputeNewBci());
             }
+            type.add(createAdoptNodesAfterUpdate());
 
             return type;
         }
@@ -8053,6 +8059,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createAdoptNodesAfterUpdate() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), type(void.class), "adoptNodesAfterUpdate");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.lineComment("no nodes to adopt");
+            return ex;
+        }
+
         private CodeExecutableElement createFindSourceLocation() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation", 1);
             ex.getModifiers().add(FINAL);
@@ -8287,7 +8300,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount_")).createInitBuilder().string("16");
             } else if (tier.isCached()) {
                 type.add(createCachedConstructor());
-                type.add(child(new CodeVariableElement(Set.of(PRIVATE), arrayOf(types.Node), "cachedNodes_")));
+                type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(types.Node), "cachedNodes_")));
                 type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(context.getType(int.class)), "branchProfiles_")));
                 type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(context.getType(boolean.class)), "exceptionProfiles_")));
                 if (model.epilogExceptional != null) {
@@ -8295,6 +8308,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
 
                 type.add(createLoadConstantCompiled());
+                type.add(createAdoptNodesAfterUpdate());
                 // Define the members required to support OSR.
                 type.getImplements().add(types.BytecodeOSRNode);
                 type.addAll(new OSRMembersFactory().create());
@@ -11013,6 +11027,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             b.statement(setFrameObject("sp", "constant"));
 
+            return ex;
+        }
+
+        /**
+         * When a node gets re-adopted, the insertion logic validates that the old and new parents
+         * both have/don't have a root node. Thus, the bytecode node cannot adopt the operation
+         * nodes until the node itself is adopted by the root node. We adopt them after insertion.
+         */
+        private CodeExecutableElement createAdoptNodesAfterUpdate() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "adoptNodesAfterUpdate");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("insert(this.cachedNodes_)");
             return ex;
         }
 
