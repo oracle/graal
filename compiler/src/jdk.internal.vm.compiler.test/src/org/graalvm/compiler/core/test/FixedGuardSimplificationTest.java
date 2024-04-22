@@ -43,6 +43,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Tests that correct removal of always deoptimizing {@link FixedGuardNode}s in the presence of
@@ -76,6 +77,11 @@ public class FixedGuardSimplificationTest extends GraalCompilerTest {
             A ba = b.a;
             GraalDirectives.blackhole(ba);
         }
+    }
+
+    @Override
+    protected SpeculationLog getSpeculationLog() {
+        return getCodeCache().createSpeculationLog();
     }
 
     @Override
