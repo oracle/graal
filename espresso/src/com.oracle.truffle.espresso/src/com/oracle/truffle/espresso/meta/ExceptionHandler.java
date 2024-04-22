@@ -95,6 +95,10 @@ public final class ExceptionHandler {
         return catchTypeCPI == 0;
     }
 
+    /**
+     * Returns whether the given bci is covered by this exception handler. Equivalent to
+     * {@code getStartBCI() <= bci && bci < getEndBCI()}
+     */
     public boolean covers(int bci) {
         return startBCI <= bci && bci < endBCI;
     }

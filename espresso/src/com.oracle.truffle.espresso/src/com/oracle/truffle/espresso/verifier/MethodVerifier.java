@@ -1350,7 +1350,7 @@ public final class MethodVerifier implements ContextAccess {
     private void checkExceptionHandlers(int nextBCI, Locals locals) {
         for (int i = 0; i < exceptionHandlers.length; i++) {
             ExceptionHandler handler = exceptionHandlers[i];
-            if (nextBCI >= handler.getStartBCI() && nextBCI < handler.getEndBCI()) {
+            if (handler.covers(nextBCI)) {
                 OperandStack stack = new OperandStack(1);
                 Symbol<Type> catchType = handler.getCatchType();
                 stack.push(catchType == null ? jlThrowable : new ReferenceOperand(catchType, thisKlass));

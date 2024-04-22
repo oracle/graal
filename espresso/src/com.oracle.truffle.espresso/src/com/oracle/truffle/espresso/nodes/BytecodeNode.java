@@ -1623,7 +1623,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     ExceptionHandler handler = null;
                     for (ExceptionHandler toCheck : handlers) {
                         CompilerAsserts.partialEvaluationConstant(toCheck);
-                        if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
+                        if (toCheck.covers(curBCI)) {
                             Klass catchType = null;
                             if (!toCheck.isCatchAll()) {
                                 // exception handlers are similar to instanceof bytecodes, so we
@@ -2038,7 +2038,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         ExceptionHandler[] handlers = getMethodVersion().getExceptionHandlers();
         ExceptionHandler resolved = null;
         for (ExceptionHandler toCheck : handlers) {
-            if (bci >= toCheck.getStartBCI() && bci < toCheck.getEndBCI()) {
+            if (toCheck.covers(bci)) {
                 Klass catchType = null;
                 if (!toCheck.isCatchAll()) {
                     // exception handlers are similar to instanceof bytecodes, so we pass instanceof
