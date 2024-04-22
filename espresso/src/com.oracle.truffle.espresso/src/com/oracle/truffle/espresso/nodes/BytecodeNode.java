@@ -2815,15 +2815,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (opcode == PUTSTATIC) {
             receiver = initializeAndGetStatics(field);
         } else {
-            // Do not release the object, it might be read again in PutFieldNode
-            receiver = nullCheck(popObject(frame, slot));
-        }
-        if (!noForeignObjects.isValid() && opcode == PUTFIELD) {
-            if (receiver.isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                // Restore the receiver for quickening.
-                putObject(frame, slot, receiver);
-                return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
+            if (!noForeignObjects.isValid()) {
+                // Do not release the object, it might be read again in PutFieldNode
+                receiver = nullCheck(peekObject(frame, slot));
+                if (receiver.isForeignObject()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    // Restore the receiver for quickening.
+                    putObject(frame, slot, receiver);
+                    return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
+                }
+                popObject(frame, slot); // clear the slot
+            } else {
+                receiver = nullCheck(popObject(frame, slot));
             }
         }
 
@@ -2937,15 +2940,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (opcode == GETSTATIC) {
             receiver = initializeAndGetStatics(field);
         } else {
-            // Do not release the object, it might be read again in GetFieldNode
-            receiver = nullCheck(peekObject(frame, slot));
-        }
-        if (!noForeignObjects.isValid() && opcode == GETFIELD) {
-            if (receiver.isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                // Restore the receiver for quickening.
-                putObject(frame, slot, receiver);
-                return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
+            if (!noForeignObjects.isValid()) {
+                // Do not release the object yet, it might be read again in GetFieldNode
+                receiver = nullCheck(peekObject(frame, slot));
+                if (receiver.isForeignObject()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    // Restore the receiver for quickening.
+                    putObject(frame, slot, receiver);
+                    return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
+                }
+                popObject(frame, slot); // clear the slot
+            } else {
+                receiver = nullCheck(popObject(frame, slot));
             }
         }
 
