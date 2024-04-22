@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.List;
 
@@ -1400,6 +1401,53 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         BasicInterpreter cloned = node.doCloneUninitialized();
         assertEquals("User field was not copied to the uninitialized clone.", node.name, cloned.name);
+    }
+
+    @Test
+    public void testCloneUninitializedUnquicken() {
+        assumeTrue(hasBE(interpreterClass));
+
+        BasicInterpreter node = parseNode("cloneUninitializedUnquicken", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadConstant(40L);
+            b.emitLoadArgument(0);
+            b.endAddOperation();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.constant",
+                        "load.argument",
+                        "c.AddOperation",
+                        "return");
+
+        node.getBytecodeNode().setUncachedThreshold(0); // ensure we use cached
+        assertEquals(42L, node.getCallTarget().call(2L));
+
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.constant$Long",
+                        "load.argument$Long",
+                        "c.AddOperation$AddLongs",
+                        "return");
+
+        BasicInterpreter cloned = node.doCloneUninitialized();
+        // clone should be unquickened
+        AbstractInstructionTest.assertInstructions(cloned,
+                        "load.constant",
+                        "load.argument",
+                        "c.AddOperation",
+                        "return");
+        // original should be unchanged
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.constant$Long",
+                        "load.argument$Long",
+                        "c.AddOperation$AddLongs",
+                        "return");
+        // clone call should work like usual
+        assertEquals(42L, cloned.getCallTarget().call(2L));
     }
 
     @Test
