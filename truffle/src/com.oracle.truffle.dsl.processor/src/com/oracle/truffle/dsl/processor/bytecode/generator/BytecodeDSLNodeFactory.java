@@ -8328,6 +8328,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createToCached());
             type.add(createUpdate());
             type.add(createCloneUninitialized());
+            if (cloneUninitializedNeedsUnquickenedBytecode()) {
+                type.add(createUnquickenBytecode());
+            }
             type.add(createGetCachedNodes());
             type.add(createGetBranchProfiles());
             type.add(createFindBytecodeIndex1());
@@ -8462,15 +8465,86 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private boolean cloneUninitializedNeedsUnquickenedBytecode() {
+            // If the node supports BE/quickening, cloneUninitialized should unquicken the bytecode.
+            // Uncached nodes don't rewrite bytecode, so we only need to unquicken if cached.
+            return (model.usesBoxingElimination() || model.enableQuickening) && tier.isCached();
+        }
+
         private CodeExecutableElement createCloneUninitialized() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "cloneUninitialized");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.startNew(InterpreterTier.CACHED.friendlyName + "BytecodeNode");
             for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
-                b.string("this.", var.getSimpleName().toString());
+                if (cloneUninitializedNeedsUnquickenedBytecode() && var.getSimpleName().contentEquals("bytecodes")) {
+                    b.startCall("unquickenBytecode").string("this.bytecodes").end();
+                } else {
+                    b.string("this.", var.getSimpleName().toString());
+                }
             }
             b.end();
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createUnquickenBytecode() {
+            CodeExecutableElement ex = new CodeExecutableElement(arrayOf(type(short.class)), "unquickenBytecode");
+            ex.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "original"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(arrayOf(type(short.class)), "copy", "Arrays.copyOf(original, original.length)");
+
+            Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
+                            .collect(Collectors.partitioningBy(InstructionModel::isQuickening));
+            List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
+                            .collect(Collectors.groupingBy(InstructionModel::getInstructionLength)).entrySet() //
+                            .stream().sorted(Comparator.comparing(entry -> entry.getKey())) //
+                            .toList();
+            List<Entry<InstructionModel, List<InstructionModel>>> quickenedGroupedByQuickeningRoot = partitionedByIsQuickening.get(true).stream() //
+                            .collect(Collectors.groupingBy(InstructionModel::getQuickeningRoot)).entrySet() //
+                            .stream().sorted(Comparator.comparing((Entry<InstructionModel, List<InstructionModel>> entry) -> entry.getKey().isCustomInstruction()) //
+                                            .thenComparing(entry -> entry.getKey().getInstructionLength())) //
+                            .toList();
+
+            b.declaration(type(int.class), "bci", "0");
+
+            b.startWhile().string("bci < copy.length").end().startBlock();
+            b.startSwitch().string(readBc("copy", "bci")).end().startBlock();
+
+            for (var quickenedGroup : quickenedGroupedByQuickeningRoot) {
+                InstructionModel quickeningRoot = quickenedGroup.getKey();
+                List<InstructionModel> instructions = quickenedGroup.getValue();
+                int instructionLength = instructions.get(0).getInstructionLength();
+                for (InstructionModel instruction : instructions) {
+                    assert instruction.getInstructionLength() == instructionLength;
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                b.startCaseBlock();
+
+                b.startStatement().startCall("ACCESS.shortArrayWrite").string("copy").string("bci").tree(createInstructionConstant(quickeningRoot)).end(2);
+                b.startStatement().string("bci += ").string(instructionLength).end();
+                b.statement("break");
+                b.end();
+            }
+
+            for (var regularGroup : regularGroupedByLength) {
+                int instructionLength = regularGroup.getKey();
+                List<InstructionModel> instructions = regularGroup.getValue();
+                for (InstructionModel instruction : instructions) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                b.startCaseBlock();
+                b.startStatement().string("bci += ").string(instructionLength).end();
+                b.statement("break");
+                b.end();
+            }
+
+            b.end(); // switch
+            b.end(); // while
+
+            b.startReturn();
+            b.string("copy");
             b.end();
             return ex;
         }
@@ -11714,7 +11788,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     // Helpers to generate common strings
     private static String readBc(String index) {
-        return String.format("ACCESS.shortArrayRead(bc, %s)", index);
+        return readBc("bc", index);
+    }
+
+    private static String readBc(String bc, String index) {
+        return String.format("ACCESS.shortArrayRead(%s, %s)", bc, index);
     }
 
     private static String readConst(String index) {
