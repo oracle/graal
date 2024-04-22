@@ -56,6 +56,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         throw new ContinuationSupport.Unwind(self);
     }
 
+    @SuppressWarnings("try")
     @Substitution(hasReceiver = true)
     static void resume0(StaticObject self, @Inject EspressoContext context) {
         Meta meta = context.getMeta();
@@ -84,6 +85,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         }
     }
 
+    @SuppressWarnings("try")
     @Substitution(hasReceiver = true)
     static void start0(StaticObject self, @Inject Meta meta) {
         EspressoLanguage language = meta.getLanguage();

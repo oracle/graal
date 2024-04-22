@@ -134,9 +134,9 @@ public class ContinuationSupport {
      * The exception thrown host-side to unwind the stack when a continuation suspends. Frame info
      * is gathered up into a linked list.
      */
+    @SuppressWarnings("serial")
     public static class Unwind extends ControlFlowException {
-        @Serial private static final long serialVersionUID = 2520648816466452283L;
-        private final StaticObject continuation;
+        private final transient StaticObject continuation;
 
         public transient HostFrameRecord head = null;
 
