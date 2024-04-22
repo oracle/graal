@@ -114,6 +114,10 @@ public class SubstrateOptions {
             DeleteLocalSymbols.update(values, !newValue);
             StripDebugInfo.update(values, !newValue);
             InternalSymbolsAreGlobal.update(values, newValue);
+            AOTTrivialInline.update(values, !newValue);
+            if (imageLayerEnabledHandler != null) {
+                imageLayerEnabledHandler.onOptionEnabled(values);
+            }
         }
     };
 
@@ -1134,6 +1138,7 @@ public class SubstrateOptions {
         public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
             super.update(values, boxedValue);
             ClosedTypeWorld.update(values, false);
+            AOTTrivialInline.update(values, false);
             if (imageLayerEnabledHandler != null) {
                 imageLayerEnabledHandler.onOptionEnabled(values);
             }
