@@ -63,6 +63,7 @@ import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
@@ -105,11 +106,13 @@ import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
@@ -129,7 +132,6 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.internal.org.objectweb.asm.Opcodes;
-import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -663,7 +665,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected void handleMismatchAtMonitorexit() {
-            genThrowUnsupportedFeatureException("Unexpected lock object at monitorexit. Unstructured locking is not supported.", bci());
+            genThrowUnsupportedFeatureError("Unexpected lock object at monitorexit. Unstructured locking is not supported.");
         }
 
         @Override
@@ -671,7 +673,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (mergeState.areLocksMergeableWith(target.getState())) {
                 return target;
             }
-            GraalError.guarantee(targetBlock != blockMap.getUnwindBlock(), "Cannot handle incompatible lock stacks with unwind block!");
 
             FixedWithNextNode originalLast = lastInstr;
             FrameStateBuilder originalState = frameState;
@@ -685,11 +686,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             lastInstr = ifNode.falseSuccessor();
             frameState = target.getState().copy();
             genReleaseMonitors();
-            genThrowUnsupportedFeatureException("Cannot merge branch due to incompatible lock states!", BytecodeFrame.UNWIND_BCI);
+            genThrowUnsupportedFeatureError("Incompatible lock states at merge. Possibly due to unstructured locking, which is not supported.");
 
             /*
              * Update the never entered (true) branch to have a matching lock stack with the
-             * subsequent merge. This branch will fold away during canonicalization.
+             * subsequent merge. This branch will fold away during canonicalization. Add an
+             * UnreachableNode as assurance.
              */
             Target newTarget;
             FrameStateBuilder newState = target.getState().copy();
@@ -701,7 +703,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 pred.setNext(ifNode);
                 newTarget = new Target(target.getEntry(), newState, target.getOriginalEntry());
             }
-            ifNode.trueSuccessor().setNext(target.getEntry());
+            UnreachableNode unreachable = graph.add(new UnreachableNode());
+            unreachable.setNext(target.getEntry());
+            ifNode.trueSuccessor().setNext(unreachable);
 
             lastInstr = originalLast;
             frameState = originalState;
@@ -719,16 +723,14 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
-        private void genThrowUnsupportedFeatureException(String msg, int bci) {
-            genNewInstance(getMetaAccess().lookupJavaType(UnsupportedFeatureException.class));
-            frameState.push(JavaKind.Object, frameState.peekObject());
-            ConstantNode msgConst = ConstantNode.forConstant(getConstantReflection().forString(msg), getMetaAccess(), getGraph());
-            frameState.push(JavaKind.Object, msgConst);
-            Constructor<?> ctor = ReflectionUtil.lookupConstructor(UnsupportedFeatureException.class, String.class);
-            ResolvedJavaMethod ctorMeth = getMetaAccess().lookupJavaMethod(ctor);
-            genInvokeSpecial(ctorMeth);
-            ValueNode exception = frameState.pop(JavaKind.Object);
-            lastInstr.setNext(handleException(exception, bci, false));
+        private void genThrowUnsupportedFeatureError(String msg) {
+            FixedNode unreachableNode = graph.add(new LoweredDeadEndNode());
+
+            ConstantNode messageNode = ConstantNode.forConstant(getConstantReflection().forString(msg), getMetaAccess(), getGraph());
+            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(SnippetRuntime.UNSUPPORTED_FEATURE, messageNode));
+            foreignCallNode.setNext(unreachableNode);
+            unreachableNode = foreignCallNode;
+            lastInstr.setNext(unreachableNode);
         }
 
         private void checkWordType(ValueNode value, JavaType expectedType, String reason) {
