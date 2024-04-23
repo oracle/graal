@@ -72,6 +72,7 @@ import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.HostedConfiguration;
+import com.oracle.svm.hosted.SVMImageLayerSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
@@ -237,7 +238,9 @@ public final class NativeImageHeap implements ImageHeap {
             String[] imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
             Arrays.sort(imageInternedStrings);
             ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
-            aUniverse.getImageLayerWriter().setImageInternedStrings(imageInternedStrings);
+            if (SVMImageLayerSupport.singleton().persistAnalysis()) {
+                SVMImageLayerSupport.singleton().getWriter().setImageInternedStrings(imageInternedStrings);
+            }
             /* Manually snapshot the interned strings array. */
             aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);
 

@@ -206,7 +206,7 @@ public class SVMHost extends HostVM {
         }
         fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
-        useBaseLayer = SubstrateOptions.LoadImageLayer.hasBeenSet();
+        useBaseLayer = SVMImageLayerSupport.singleton().loadAnalysis();
         if (SubstrateOptions.includeAll()) {
             initializeExcludedFields();
         }

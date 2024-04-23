@@ -25,24 +25,36 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
@@ -57,8 +69,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     private final Field dynamicHubArrayHubField;
 
-    public SVMImageLayerLoader(AnalysisUniverse universe) {
-        super(universe, new SVMImageLayerSnapshotUtil());
+    public SVMImageLayerLoader(List<Path> loaderPaths) {
+        super(new SVMImageLayerSnapshotUtil(), loaderPaths);
         dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
     }
 
@@ -171,5 +183,81 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 universe.getHeapScanner().rescanField(hub, SVMImageLayerSnapshotUtil.enumConstantsReference);
             }
         }
+    }
+
+    public Map<Object, Set<Class<?>>> loadImageSingletons(Object forbiddenObject) {
+        loadJsonMap();
+        return loadImageSingletons0(forbiddenObject);
+    }
+
+    private Map<Object, Set<Class<?>>> loadImageSingletons0(Object forbiddenObject) {
+        List<Object> singletonObjects = cast(jsonMap.get(IMAGE_SINGLETON_OBJECTS));
+        Map<Integer, Object> idToObjectMap = new HashMap<>();
+        for (Object entry : singletonObjects) {
+            List<Object> list = cast(entry);
+            Integer id = cast(list.get(0));
+            String className = cast(list.get(1));
+            EconomicMap<String, Object> keyStore = cast(list.get(2));
+
+            // create singleton object instance
+            Object result;
+            try {
+                Class<?> clazz = ReflectionUtil.lookupClass(false, className);
+                Method createMethod = ReflectionUtil.lookupMethod(clazz, "createFromLoader", ImageSingletonLoader.class);
+                result = createMethod.invoke(null, new ImageSingletonLoaderImpl(keyStore));
+            } catch (Throwable t) {
+                throw VMError.shouldNotReachHere("Failed to recreate image singleton", t);
+            }
+
+            idToObjectMap.put(id, result);
+        }
+
+        Map<Object, Set<Class<?>>> singletonInitializationMap = new HashMap<>();
+        List<Object> singletonKeys = cast(jsonMap.get(IMAGE_SINGLETON_KEYS));
+        for (Object entry : singletonKeys) {
+            List<Object> list = cast(entry);
+            String key = cast(list.get(0));
+            LayeredImageSingleton.PersistFlags persistInfo = LayeredImageSingleton.PersistFlags.values()[(int) list.get(1)];
+            int id = cast(list.get(2));
+            if (persistInfo == PersistFlags.CREATE) {
+                assert id != -1 : "Create image singletons should be linked to an object";
+                Object singletonObject = idToObjectMap.get(id);
+                Class<?> clazz = ReflectionUtil.lookupClass(false, key);
+                singletonInitializationMap.computeIfAbsent(singletonObject, (k) -> new HashSet<>());
+                singletonInitializationMap.get(singletonObject).add(clazz);
+            } else if (persistInfo == PersistFlags.FORBIDDEN) {
+                assert id == -1 : "Unrestored image singleton should not be linked to an object";
+                Class<?> clazz = ReflectionUtil.lookupClass(false, key);
+                singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
+                singletonInitializationMap.get(forbiddenObject).add(clazz);
+            } else {
+                assert persistInfo == PersistFlags.NOTHING : "Unexpected PersistFlags value: " + persistInfo;
+                assert id == -1 : "Unrestored image singleton should not be linked to an object";
+            }
+        }
+
+        return singletonInitializationMap;
+    }
+
+}
+
+class ImageSingletonLoaderImpl implements ImageSingletonLoader {
+    private final UnmodifiableEconomicMap<String, Object> keyStore;
+
+    ImageSingletonLoaderImpl(UnmodifiableEconomicMap<String, Object> keyStore) {
+        this.keyStore = keyStore;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T cast(Object object) {
+        return (T) object;
+    }
+
+    @Override
+    public int readInt(String keyName) {
+        List<Object> value = cast(keyStore.get(keyName));
+        String type = cast(value.get(0));
+        assert type.equals("I") : type;
+        return cast(value.get(1));
     }
 }
