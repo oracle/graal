@@ -30,9 +30,7 @@ import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsMode;
 import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
 import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
@@ -101,7 +99,6 @@ import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil;
-import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisFactory;
@@ -233,8 +230,6 @@ import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 import com.oracle.svm.hosted.heap.ObservableImageHeapMapProviderImpl;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.hosted.heap.SVMImageHeapVerifier;
-import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
-import com.oracle.svm.hosted.heap.SVMImageLayerWriter;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -323,7 +318,6 @@ import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.MethodHandleWithExceptionPlugin;
 import jdk.graal.compiler.replacements.NodeIntrinsificationProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
-import jdk.graal.compiler.util.json.JSONParser;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.aarch64.AArch64;
@@ -532,20 +526,32 @@ public class NativeImageGenerator {
 
         setSystemPropertiesForImageLate(k);
 
-        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement());
+        var hostedOptionValues = new HostedOptionValues(optionProvider.getHostedValues());
+        SVMImageLayerSupport imageLayerSupport = SVMImageLayerSupport.initialize(hostedOptionValues);
+        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(), imageLayerSupport);
 
+        ImageSingletons.add(SVMImageLayerSupport.class, imageLayerSupport);
         ImageSingletons.add(ProgressReporter.class, reporter);
         ImageSingletons.add(DeadlockWatchdog.class, loader.watchdog);
         ImageSingletons.add(TimerCollection.class, timerCollection);
         ImageSingletons.add(ImageBuildStatistics.TimerCollectionPrinter.class, timerCollection);
         ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.annotationExtractor);
         ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
-        ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
+        ImageSingletons.add(HostedOptionValues.class, hostedOptionValues);
         ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
 
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
+            if (imageLayerSupport.hasWriter()) {
+                setupImageLayerArtifact(imageName);
+            }
             doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions);
+            if (imageLayerSupport.persistImageSingletons()) {
+                ImageSingletonsSupportImpl.HostedManagement.persist();
+            }
+            if (imageLayerSupport.hasWriter()) {
+                imageLayerSupport.getWriter().dumpFile();
+            }
         } finally {
             reporter.ensureCreationStageEndCompleted();
         }
@@ -646,7 +652,9 @@ public class NativeImageGenerator {
             var hConstantReflection = (HostedConstantReflectionProvider) runtimeConfiguration.getProviders().getConstantReflection();
             heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, hConstantReflection, ImageSingletons.lookup(ImageHeapLayouter.class));
 
-            ((SVMImageLayerWriter) aUniverse.getImageLayerWriter()).setNativeImageHeap(heap);
+            if (SVMImageLayerSupport.singleton().persistAnalysis()) {
+                SVMImageLayerSupport.singleton().getWriter().setNativeImageHeap(heap);
+            }
 
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtimeConfiguration, nativeLibraries);
             featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
@@ -710,8 +718,8 @@ public class NativeImageGenerator {
 
                         image.build(imageName, debug);
 
-                        if (SubstrateOptions.PersistImageLayer.getValue()) {
-                            persistImageLayer(imageName);
+                        if (SVMImageLayerSupport.singleton().persistAnalysis()) {
+                            SVMImageLayerSupport.singleton().getWriter().persistAnalysisInfo(hUniverse, bb.getUniverse());
                         }
 
                         if (NativeImageOptions.PrintUniverse.getValue()) {
@@ -788,12 +796,12 @@ public class NativeImageGenerator {
         heap.addTrailingObjects();
     }
 
-    private void persistImageLayer(String imageName) {
+    private static void setupImageLayerArtifact(String imageName) {
         int imageNameStart = imageName.lastIndexOf('/') + 1;
         String fileName = ImageLayerSnapshotUtil.FILE_NAME_PREFIX + imageName.substring(imageNameStart);
         String filePath = imageName.substring(0, imageNameStart) + fileName;
         Path layerSnapshotPath = generatedFiles(HostedOptionValues.singleton()).resolve(filePath + ImageLayerSnapshotUtil.FILE_EXTENSION);
-        bb.getUniverse().getImageLayerWriter().persist(hUniverse, bb.getUniverse(), layerSnapshotPath, fileName, ImageLayerSnapshotUtil.FILE_EXTENSION);
+        SVMImageLayerSupport.singleton().getWriter().setFileInfo(layerSnapshotPath, fileName, ImageLayerSnapshotUtil.FILE_EXTENSION);
         BuildArtifacts.singleton().add(ArtifactType.LAYER_SNAPSHOT, layerSnapshotPath);
     }
 
@@ -812,8 +820,8 @@ public class NativeImageGenerator {
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
             }
 
-            if (SubstrateOptions.LoadImageLayer.hasBeenSet()) {
-                aUniverse.getImageLayerLoader().loadLayerConstants();
+            if (SVMImageLayerSupport.singleton().loadAnalysis()) {
+                SVMImageLayerSupport.singleton().getLoader().loadLayerConstants();
             }
 
             try (ReporterClosable c = ProgressReporter.singleton().printAnalysis(bb.getUniverse(), nativeLibraries.getLibraries())) {
@@ -883,17 +891,6 @@ public class NativeImageGenerator {
             throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ExitAfterAnalysis, "+"));
         }
         return false;
-    }
-
-    private void loadImageLayer() {
-        for (Path layerPath : SubstrateOptions.LoadImageLayer.getValue().values()) {
-            try (InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(layerPath.toFile()))) {
-                Object json = new JSONParser(inputStreamReader).parse();
-                aUniverse.getImageLayerLoader().loadLayerSnapshot(json);
-            } catch (IOException e) {
-                throw VMError.shouldNotReachHere("Error during image layer snapshot loading", e);
-            }
-        }
     }
 
     @SuppressWarnings("try")
@@ -969,16 +966,22 @@ public class NativeImageGenerator {
                 aUniverse = createAnalysisUniverse(options, target, loader, originalMetaAccess, annotationSubstitutions, cEnumProcessor,
                                 classInitializationSupport, Collections.singletonList(harnessSubstitutions));
 
-                ImageLayerLoader imageLayerLoader = new SVMImageLayerLoader(aUniverse);
-                aUniverse.setImageLayerLoader(imageLayerLoader);
-                if (SubstrateOptions.LoadImageLayer.hasBeenSet()) {
-                    loadImageLayer();
+                ImageLayerLoader imageLayerLoader = null;
+                if (SVMImageLayerSupport.singleton().loadAnalysis()) {
+                    imageLayerLoader = SVMImageLayerSupport.singleton().getLoader();
+                    imageLayerLoader.setUniverse(aUniverse);
+                    aUniverse.setImageLayerLoader(imageLayerLoader);
+                    imageLayerLoader.loadLayerAnalysis();
                 }
 
                 AnalysisMetaAccess aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
-                imageLayerLoader.setMetaAccess(aMetaAccess);
+                if (imageLayerLoader != null) {
+                    imageLayerLoader.setMetaAccess(aMetaAccess);
+                }
                 HostedValuesProvider hostedValuesProvider = new SVMHostedValueProvider(aMetaAccess, aUniverse);
-                imageLayerLoader.setHostedValuesProvider(hostedValuesProvider);
+                if (imageLayerLoader != null) {
+                    imageLayerLoader.setHostedValuesProvider(hostedValuesProvider);
+                }
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(aMetaAccess);
                 HostedProviders aProviders = createHostedProviders(target, aUniverse, originalProviders, platformConfig, aMetaAccess);
                 aUniverse.hostVM().initializeProviders(aProviders);
@@ -999,10 +1002,13 @@ public class NativeImageGenerator {
                 ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aProviders.getSnippetReflection(),
                                 aProviders.getConstantReflection(), aScanningObserver, hostedValuesProvider);
                 aUniverse.setHeapScanner(heapScanner);
-                ImageLayerWriter imageLayerWriter = new SVMImageLayerWriter(imageHeap);
-                aUniverse.setImageLayerWriter(imageLayerWriter);
+                if (SVMImageLayerSupport.singleton().persistAnalysis()) {
+                    SVMImageLayerSupport.singleton().getWriter().setImageHeap(imageHeap);
+                }
                 ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
-                aUniverse.getImageLayerLoader().executeHeapScannerTasks();
+                if (imageLayerLoader != null) {
+                    imageLayerLoader.executeHeapScannerTasks();
+                }
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
                 aUniverse.setHeapVerifier(heapVerifier);
 

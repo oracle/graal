@@ -50,7 +50,6 @@ import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
-import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -127,7 +126,6 @@ public class AnalysisUniverse implements Universe {
     private AnalysisPolicy analysisPolicy;
     private ImageHeapScanner heapScanner;
     private ImageLayerLoader imageLayerLoader;
-    private ImageLayerWriter imageLayerWriter;
     private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
     private DuringAnalysisAccess concurrentAnalysisAccess;
@@ -730,14 +728,6 @@ public class AnalysisUniverse implements Universe {
 
     public ImageLayerLoader getImageLayerLoader() {
         return imageLayerLoader;
-    }
-
-    public ImageLayerWriter getImageLayerWriter() {
-        return imageLayerWriter;
-    }
-
-    public void setImageLayerWriter(ImageLayerWriter imageLayerWriter) {
-        this.imageLayerWriter = imageLayerWriter;
     }
 
     public HostedValuesProvider getHostedValuesProvider() {

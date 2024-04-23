@@ -48,6 +48,7 @@ import jdk.graal.compiler.processor.AbstractProcessor;
 public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProcessor {
 
     static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton";
+    static final String LAYERED_SINGLETON_INFO = "com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo";
 
     private final Set<Element> processed = new HashSet<>();
 
@@ -94,13 +95,32 @@ public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProc
                 }
             }
 
-            out.println("        var singleton = new " + annotatedType + "();");
             List<TypeMirror> keysFromAnnotation = getAnnotationValueList(singletonAnnotation, "value", TypeMirror.class);
             if (keysFromAnnotation.isEmpty()) {
-                out.println("        ImageSingletons.add(" + annotatedType + ".class, singleton);");
+                String keyname = "" + annotatedType + ".class";
+                out.println("        if (ImageSingletons.lookup(" + LAYERED_SINGLETON_INFO + ".class).handledDuringLoading(" + keyname + ")){");
+                out.println("            return;");
+                out.println("        }");
+            } else {
+                out.println("        boolean match = false;");
+                for (var keyFromAnnotation : keysFromAnnotation) {
+                    String keyname = keyFromAnnotation.toString() + ".class";
+                    out.println("        match = match || !ImageSingletons.lookup(" + LAYERED_SINGLETON_INFO + ".class).handledDuringLoading(" + keyname + ");");
+                }
+                out.println("        if (!match) { return; }");
+            }
+
+            out.println("        var singleton = new " + annotatedType + "();");
+
+            if (keysFromAnnotation.isEmpty()) {
+                String keyname = "" + annotatedType + ".class";
+                out.println("        ImageSingletons.add(" + keyname + ", singleton);");
             } else {
                 for (var keyFromAnnotation : keysFromAnnotation) {
-                    out.println("        ImageSingletons.add(" + keyFromAnnotation.toString() + ".class, singleton);");
+                    String keyname = keyFromAnnotation.toString() + ".class";
+                    out.println("        if (!ImageSingletons.lookup(" + LAYERED_SINGLETON_INFO + ".class).handledDuringLoading(" + keyname + ")){");
+                    out.println("            ImageSingletons.add(" + keyname + ", singleton);");
+                    out.println("        }");
                 }
             }
             out.println("    }");

@@ -82,6 +82,8 @@ public class ImageLayerSnapshotUtil {
     public static final String OBJECT_OFFSET_TAG = "object offset";
     public static final String STATIC_PRIMITIVE_FIELDS_TAG = "static primitive fields";
     public static final String STATIC_OBJECT_FIELDS_TAG = "static object fields";
+    public static final String IMAGE_SINGLETON_KEYS = "image singleton keys";
+    public static final String IMAGE_SINGLETON_OBJECTS = "image singleton objects";
 
     public String getTypeIdentifier(AnalysisType type) {
         String javaName = type.toJavaName(true);

@@ -71,6 +71,8 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -103,7 +105,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
 
-public class ProgressReporter {
+public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
     private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
     private static final int CHARACTERS_PER_LINE;
     private static final String HEADLINE_SEPARATOR;
