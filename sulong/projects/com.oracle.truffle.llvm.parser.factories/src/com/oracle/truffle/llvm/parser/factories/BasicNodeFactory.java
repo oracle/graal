@@ -280,6 +280,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMStructStoreNodeGen
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMIsFPClassNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerMaskNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode.LLVMAbstractI64ArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMDoubleArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMFP128ArithmeticNodeGen;
@@ -1490,6 +1491,8 @@ public class BasicNodeFactory implements NodeFactory {
         String intrinsicName = declaration.getName();
         try {
             switch (intrinsicName) {
+                case "llvm.ptrmask.p0.i64":
+                    return LLVMPointerMaskNodeGen.create(args[1], args[2]);
                 case "llvm.memset.p0.i32":
                 case "llvm.memset.p0i8.i32":
                 case "llvm.memset.p0.i64":
