@@ -61,7 +61,7 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 System.err.println(String.join(" ", vmArgs));
             }
             SubprocessUtil.Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", testClass.getName());
-            if (verbose) {
+            if (verbose || proc.exitCode != 0) {
                 for (String line : proc.output) {
                     System.err.println(line);
                 }
