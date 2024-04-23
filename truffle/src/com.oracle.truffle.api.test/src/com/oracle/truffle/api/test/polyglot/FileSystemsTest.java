@@ -2044,7 +2044,7 @@ public class FileSystemsTest {
         boolean canRead = cfg.canRead();
         boolean canWrite = cfg.canWrite();
         AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestSetAttributeLanguage.class, "", configuration, path, usePublicFile, canRead, canWrite, supportsUnixAttributes(),
-                        supportsSetLastAccessTime());
+                        supportsSetLastAccessTime(), supportsSetCreationTime());
     }
 
     @Registration
@@ -2059,6 +2059,7 @@ public class FileSystemsTest {
             boolean canWrite = (boolean) contextArguments[4];
             boolean supportsUnixAttributes = (boolean) contextArguments[5];
             boolean supportsSetLastAccessTime = (boolean) contextArguments[6];
+            boolean supportsSetCreationTime = (boolean) contextArguments[7];
             TruffleFile root = resolve(env, usePublicFile, path);
             try {
                 TruffleFile file = root.resolve(FILE_CHANGE_ATTRS);
@@ -2067,14 +2068,18 @@ public class FileSystemsTest {
                 Assert.assertTrue(formatErrorMessage("Expected SecurityException", configurationName, path), canWrite);
                 Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME));
                 Assert.assertTrue(formatErrorMessage("Expected SecurityException", configurationName, path), canRead);
+                file.setAttribute(TruffleFile.LAST_ACCESS_TIME, time);
+                FileTime lastAccessTime = file.getAttribute(TruffleFile.LAST_ACCESS_TIME);
                 // Workaround for issue JDK-8298187: The file last access time does not work on
                 // JDK-20 on macOS with the hfs file system.
                 if (supportsSetLastAccessTime) {
-                    file.setAttribute(TruffleFile.LAST_ACCESS_TIME, time);
-                    Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_ACCESS_TIME));
+                    Assert.assertEquals(time, lastAccessTime);
                 }
                 file.setAttribute(TruffleFile.CREATION_TIME, time);
-                Assert.assertEquals(time, file.getAttribute(TruffleFile.CREATION_TIME));
+                FileTime creationTime = file.getAttribute(TruffleFile.CREATION_TIME);
+                if (supportsSetCreationTime) {
+                    Assert.assertEquals(time, creationTime);
+                }
                 file.setAttribute(TruffleFile.UNIX_PERMISSIONS, EnumSet.of(PosixFilePermission.OWNER_READ));
                 Assert.assertEquals(EnumSet.of(PosixFilePermission.OWNER_READ), file.getAttribute(TruffleFile.UNIX_PERMISSIONS));
                 file.setAttribute(TruffleFile.UNIX_PERMISSIONS, EnumSet.of(PosixFilePermission.OWNER_READ));
@@ -2104,6 +2109,17 @@ public class FileSystemsTest {
             return !Files.exists(unwrappedPath) || !"hfs".equals(Files.getFileStore(unwrappedPath).type());
         }
         return true;
+    }
+
+    /**
+     * Returns {@code true} if the operating system supports file creation time modification. Note:
+     * Posix does not support setting a file's creation time directly. MacOS and BSD Unix, however,
+     * provide an additional system call {@code fsetattrlist} utilized by Java NIO to set the
+     * creation time. On Linux, the Posix functions {@code utimes}, {@code futimens}, or
+     * {@code utimensat} are employed, allowing modification only of access and modification times.
+     */
+    private static boolean supportsSetCreationTime() {
+        return OSUtils.isWindows() || OSUtils.getCurrent() == OSUtils.OS.Darwin;
     }
 
     @Test
