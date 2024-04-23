@@ -8,8 +8,8 @@ permalink: /reference-manual/java-on-truffle/
 # Java on Truffle
 
 Using GraalVM, you can run Java applications normally [on the JVM](../java/README.md), in [Native Image](../native-image/README.md), and now on Truffle.
-Java on Truffle is an implementation of the Java Virtual Machine Specification, [Java SE 8](https://docs.oracle.com/javase/specs/jvms/se8/html/index.html) and [Java SE 11](https://docs.oracle.com/javase/specs/jvms/se11/html/index.html), built upon GraalVM as a Truffle interpreter.
-It is a minified Java VM that includes all core components of a VM, implements the same API as the Java Runtime Environment library (`libjvm.so`), and reuses all JAR files and native libraries from GraalVM.
+Java on Truffle is an implementation of the Java Virtual Machine Specification, [Java SE 8](https://docs.oracle.com/javase/specs/jvms/se8/html/index.html), [Java SE 11](https://docs.oracle.com/javase/specs/jvms/se11/html/index.html), [Java SE 17](https://docs.oracle.com/javase/specs/jvms/se17/html/index.html), and [Java SE 21](https://docs.oracle.com/javase/specs/jvms/se21/html/index.html) built upon GraalVM as a Truffle interpreter.
+It is a minified Java VM that includes all core components of a VM, implements the same API as the Java Runtime Environment library (`libjvm.so`), and reuses the existing standard library.
 See the [Implementation Details](ImplementationDetails.md) for more information.
 The project name behind this implementation is "Espresso".
 Its open source version is available on [GitHub](https://github.com/oracle/graal/tree/master/espresso).
@@ -19,7 +19,7 @@ Now Java can be executed by the same principle as other languages in the GraalVM
 Besides complete language interoperability, with Java on Truffle you can:
 
 - run Java bytecode in a separate context from the host Java VM.
-- run either a Java 8, Java 11, Java 17, Java 21, or Java 22 guest JVM, allowing to embed e.g. a Java 17 context in a Java 22 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
+- run either a Java 8, Java 11, Java 17, or Java 21 guest JVM, allowing to embed e.g. a Java 17 context in a Java 22 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
 - leverage the whole stack of tools provided by the Truffle framework, not previously available for Java.
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
 - run in the context of a native executable while still allowing dynamically-loaded bytecodes.
@@ -28,16 +28,16 @@ Java on Truffle passes the Java Compatibility Kit (JCK or TCK for Java SE).
 
 ## Getting Started
 
-Java on Truffle (known as Espresso) is available as a standalone distribution.
+Java on Truffle (known as Espresso) is available as a standalone distribution that provides a Java 21 environment.
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
 1. Download the Java on Truffle (Espresso) 24.0 standalone for your operating system:
 
-   * [Linux x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.0-linux-amd64.tar.gz)
-   * [Linux AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.0-linux-aarch64.tar.gz)
-   * [macOS x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.0-macos-amd64.tar.gz)
-   * [macOS AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.0-macos-aarch64.tar.gz)
-   * [Windows x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.0-windows-amd64.zip)
+   * [Linux x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-linux-amd64.tar.gz)
+   * [Linux AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-linux-aarch64.tar.gz)
+   * [macOS x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-macos-amd64.tar.gz)
+   * [macOS AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-macos-aarch64.tar.gz)
+   * [Windows x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-windows-amd64.zip)
 
 2. Unzip the archive:
 
