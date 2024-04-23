@@ -272,6 +272,7 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
     language='java',
     jar_distributions=['espresso:LIB_JAVAVM'],
     build_args=[
+        '-Dpolyglot.java.GuestFieldOffsetStrategy=graal',
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
         '--enable-monitoring=threaddump',
