@@ -333,12 +333,12 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         if (registeredRuntimeCompilations.add(aMethod)) {
             aMethod.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
             /*
-             * For static methods it is important to also register the deopt targets to ensure the
-             * method will be linked appropriately. However, we do not need to make the entire flow
-             * until we see what FrameStates exist.
+             * For static methods it is important to also register the runtime and deopt targets as
+             * roots to ensure the methods will be linked appropriately. However, we do not need to
+             * make the entire flow for the deopt version until we see what FrameStates exist within
+             * the runtime version.
              */
-            var deoptMethod = aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
-            SubstrateCompilationDirectives.singleton().registerDeoptTarget(deoptMethod);
+            aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
             config.registerAsRoot(aMethod, true, "Runtime compilation, registered in " + RuntimeCompilationFeature.class, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
         }
 
