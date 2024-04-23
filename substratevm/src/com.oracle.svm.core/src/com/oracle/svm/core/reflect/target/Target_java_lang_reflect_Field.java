@@ -85,7 +85,7 @@ public final class Target_java_lang_reflect_Field {
     native Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor();
 
     @Alias//
-    native Target_jdk_internal_reflect_FieldAccessor acquireOverrideFieldAccessor();
+    public native Target_jdk_internal_reflect_FieldAccessor acquireOverrideFieldAccessor();
 
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
