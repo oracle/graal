@@ -29,6 +29,7 @@ package com.oracle.svm.util;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * This is an interruptible wrapper around some of the {@link String} methods that we usually use to
@@ -100,6 +101,13 @@ public class StringUtil {
      */
     public static final String joinSingleQuoted(List<String> strings) {
         return joinSingleQuoted(strings.toArray(new String[strings.size()]));
+    }
+
+    /**
+     * See {@link #joinSingleQuoted(String...)}.
+     */
+    public static String joinSingleQuoted(Set<String> strings) {
+        return joinSingleQuoted(strings.toArray(new String[0]));
     }
 
     public static String toSlashSeparated(String string) {

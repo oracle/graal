@@ -142,7 +142,7 @@ class JfrGCEventSupport {
 class JfrGCEventFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.UseSerialGC.getValue();
+        return SubstrateOptions.useSerialGC();
     }
 
     @Override

@@ -25,6 +25,7 @@
 package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
+import static com.oracle.svm.core.option.LocatableMultiOptionValue.Strings.buildWithCommaDelimiter;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
@@ -52,6 +53,7 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.BundleMember;
+import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -453,29 +455,80 @@ public class SubstrateOptions {
         public String helpText() {
             return "Select native-image garbage collector implementation.";
         }
+
+        @Override
+        public HostedOptionKey<LocatableMultiOptionValue.Strings> multiValueOption() {
+            return SupportedGCs;
+        }
     }
 
-    @APIOption(name = "serial", group = GCGroup.class, customHelp = "Serial garbage collector")//
-    @Option(help = "Use a serial GC")//
-    public static final HostedOptionKey<Boolean> UseSerialGC = new HostedOptionKey<>(true) {
+    @Option(help = "Please use '--gc=*' instead. Possible values are listed with '--help'.")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SupportedGCs = new HostedOptionKey<>(buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue())) {
         @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                SubstrateOptions.UseEpsilonGC.update(values, false);
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, LocatableMultiOptionValue.Strings oldValue, LocatableMultiOptionValue.Strings newValue) {
+
+            if (oldValue == null && newValue.values().size() > 1) {
+                // Default value is still in the newValue, so remove it.
+                newValue.removeFirst();
             }
+
+            if (newValue.contains(GCOptionValue.G1.getValue())) {
+                SubstrateOptions.SpawnIsolates.update(values, true);
+                SubstrateOptions.AllowVMInternalThreads.update(values, true);
+                SubstrateOptions.ConcealedOptions.UseDedicatedVMOperationThread.update(values, true);
+                SubstrateOptions.ConcealedOptions.SupportCompileInIsolates.update(values, false);
+            }
+
+            super.onValueUpdate(values, oldValue, newValue);
         }
+
     };
 
-    @APIOption(name = "epsilon", group = GCGroup.class, customHelp = "Epsilon garbage collector")//
-    @Option(help = "Use a no-op GC")//
-    public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                SubstrateOptions.UseSerialGC.update(values, false);
+    @Fold
+    public static boolean useSerialGC() {
+        return !SubstrateOptions.SupportedGCs.hasBeenSet() || SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.SERIAL.getValue());
+    }
+
+    @Fold
+    public static boolean useEpsilonGC() {
+        return SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.EPSILON.getValue());
+    }
+
+    @Fold
+    public static boolean useG1GC() {
+        return SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.G1.getValue());
+    }
+
+    public static class DeprecatedOptions {
+
+        @APIOption(name = "serial", group = GCGroup.class, customHelp = "Serial garbage collector")//
+        @Option(help = "Use a serial GC", deprecated = true, deprecationMessage = "Please use '--gc=serial' instead")//
+        public static final HostedOptionKey<Boolean> UseSerialGC = new HostedOptionKey<>(true) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                if (newValue) {
+                    SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue()));
+                } else if (!values.containsKey(SubstrateOptions.SupportedGCs) ||
+                                ((LocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.SERIAL.getValue())) {
+                    SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter());
+                }
             }
-        }
-    };
+        };
+
+        @APIOption(name = "epsilon", group = GCGroup.class, customHelp = "Epsilon garbage collector")//
+        @Option(help = "Use a no-op GC", deprecated = true, deprecationMessage = "Please use '--gc=epsilon' instead")//
+        public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                if (newValue) {
+                    SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter(GCOptionValue.EPSILON.getValue()));
+                } else if (((LocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.EPSILON.getValue())) {
+                    SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter());
+                }
+            }
+        };
+    }
+
     @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, Immutable);
 

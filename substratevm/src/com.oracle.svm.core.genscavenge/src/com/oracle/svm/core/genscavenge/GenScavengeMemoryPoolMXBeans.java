@@ -52,14 +52,14 @@ public class GenScavengeMemoryPoolMXBeans {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public GenScavengeMemoryPoolMXBeans() {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.useSerialGC()) {
             mxBeans = new AbstractMemoryPoolMXBean[]{
                             new EdenMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
                             new SurvivorMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
                             new OldGenerationMemoryPoolMXBean(COMPLETE_SCAVENGER)
             };
         } else {
-            assert SubstrateOptions.UseEpsilonGC.getValue();
+            assert SubstrateOptions.useEpsilonGC();
             mxBeans = new AbstractMemoryPoolMXBean[]{
                             new EpsilonMemoryPoolMXBean(EPSILON_SCAVENGER)
             };

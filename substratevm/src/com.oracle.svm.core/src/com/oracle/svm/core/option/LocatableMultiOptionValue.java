@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,7 +46,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
 
     private final String delimiter;
     private final Class<T> valueType;
-    private final List<Pair<T, String>> values;
+    protected final List<Pair<T, String>> values;
 
     private LocatableMultiOptionValue(Class<T> valueType, String delimiter, List<T> defaults) {
         this.valueType = valueType;
@@ -94,6 +95,10 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         return getValuesWithOrigins().map(Pair::getLeft).collect(Collectors.toList());
     }
 
+    public Set<T> valuesAsSet() {
+        return getValuesWithOrigins().map(Pair::getLeft).collect(Collectors.toSet());
+    }
+
     @Override
     public Optional<T> lastValue() {
         return lastValueWithOrigin().map(Pair::getLeft);
@@ -130,6 +135,24 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
             return new Strings(this);
         }
 
+        @Override
+        public void valueUpdate(Object value) {
+            if (value instanceof Strings) {
+                values.clear();
+                values.addAll(((Strings) value).values);
+                return;
+            }
+            super.valueUpdate(value);
+        }
+
+        public boolean contains(String s) {
+            return values.stream().map(Pair::getLeft).anyMatch(val -> val.equals(s));
+        }
+
+        public void removeFirst() {
+            values.removeFirst();
+        }
+
         private Strings(String delimiter, List<String> defaultStrings) {
             super(String.class, delimiter, defaultStrings);
         }
@@ -140,6 +163,10 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
 
         public static Strings buildWithCommaDelimiter() {
             return new Strings(",", List.of());
+        }
+
+        public static Strings buildWithCommaDelimiter(String... defaultStrings) {
+            return new Strings(",", List.of(defaultStrings));
         }
 
         public static Strings buildWithDefaults(String... defaultStrings) {
