@@ -15,13 +15,13 @@ In the GraalVM family, this is similar to WebAssembly or the LLVM interpreter: w
 
 ### Does Java running on Truffle run on the HotSpot JVM too?
 Like other languages implemented with the [Truffle framework](../../../truffle/docs/README.md), it can run both as a native executable or on top of the HotSpot JVM.
-Running on top of the HotSpot JVM is currently only possible on Linux.
-We plan to extend this capability to macOS and Windows platforms.
+Running on top of the HotSpot JVM is currently only possible on Linux x64 and macOS x64.
+We plan to extend this capability to other platforms.
 
 ### Does running Java on Truffle require the HotSpot JVM?
 
 No, it doesn't, it works fine as a native executable.
-Java on Truffle does require a standard core Java library (the _rt.jar_ library for Java 8 or the `lib/modules` file for Java 11 and Java 17 as well as the associated native libraries: `libjava`, `libnio`, etc.)
+Java on Truffle does require a standard core Java library (the _rt.jar_ library for Java 8 or the `lib/modules` file for Java 11+ as well as the associated native libraries: `libjava`, `libnio`, etc.).
 
 ### Running Java on GraalVM already brings the highest level of optimization, what benefits will Java on Truffle give me?
 - Java on Truffle will inherit the extensive tooling provided by the Truffle framework. This means that for the things like code coverage and profiling you would no longer need to rely on external tools.
@@ -33,8 +33,7 @@ Java on Truffle does require a standard core Java library (the _rt.jar_ library 
 Java on Truffle is an implementation of the Java Virtual Machine. It is open source and is offered as free software under the [GNU General Public License version two (GPLv2)](https://github.com/oracle/graal/blob/master/tools/LICENSE).
 
 ### Can I run Java on Truffle in production?
-Yes, you can. Java on Truffle is still a prototype, but it already passes the Java Compatibility Kit (JCK or TCK for Java SE) 8, 11, 17, and 21.
-It may undergo significant improvements.
+Yes, you can on Linux x64. Support for other platforms is still experimental.
 
 ### What performance can I expect from executing Java on Truffle?
 Performance is currently 2-3x slower than the HotSpot JVM.

@@ -9,7 +9,7 @@ permalink: /reference-manual/java-on-truffle/implementation/
 
 Java on Truffle operates, like other languages implemented with Truffle, both as a native executable or on top of HotSpot (currently possible on Linux only).
 In the first case, when the Java on Truffle runtime is compiled to a native executable, it does not require HotSpot to run Java.
-However it requires a standard core Java library (the _rt.jar_ library for Java 8 or the _lib/modules file_ for Java 11 as well as the associated native libraries: `libjava`, `libnio`, etc.). 
+However, it requires a standard core Java library (the _rt.jar_ library for Java 8 or the _lib/modules file_ for Java 11+ as well as the associated native libraries: `libjava`, `libnio`, etc.).
 
 Java on Truffle is a minified Java VM that implements all core components of a VM including:
 * Bytecode interpreter
