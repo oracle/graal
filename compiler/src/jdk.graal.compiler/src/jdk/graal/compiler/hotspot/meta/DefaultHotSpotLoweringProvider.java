@@ -979,7 +979,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             cachedExceptions.put(BytecodeExceptionKind.DIVISION_BY_ZERO, clearStackTrace(new ArithmeticException()));
             cachedExceptions.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY,
                             clearStackTrace(new IllegalArgumentException(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY.getExceptionMessage())));
-            cachedExceptions.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, new IllegalMonitorStateException(BytecodeExceptionKind.UNSTRUCTURED_LOCKING.getExceptionMessage()));
         }
 
         private static RuntimeException clearStackTrace(RuntimeException ex) {
@@ -1003,7 +1002,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             runtimeCalls.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, new ForeignCallSignature("createLongExactOverflowException", ArithmeticException.class));
             runtimeCalls.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY,
                             new ForeignCallSignature("createIllegalArgumentExceptionArgumentIsNotAnArray", IllegalArgumentException.class));
-            runtimeCalls.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, new ForeignCallSignature("createUnstructuredLockingException", IllegalMonitorStateException.class));
         }
     }
 
