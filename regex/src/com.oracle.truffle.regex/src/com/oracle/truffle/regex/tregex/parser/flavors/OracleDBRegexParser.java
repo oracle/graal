@@ -42,7 +42,6 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import java.util.List;
 
-import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;

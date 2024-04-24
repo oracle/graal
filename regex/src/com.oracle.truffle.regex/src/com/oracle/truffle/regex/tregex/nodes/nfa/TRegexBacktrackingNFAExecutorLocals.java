@@ -45,6 +45,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.tregex.buffer.IntRingBuffer;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -97,6 +98,8 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private int lastResultIndex = -1;
     private int lastInnerLiteralIndex;
     private int lastInitialStateIndex;
+    private final IntRingBuffer backrefMultiCharExpansionBufferA;
+    private final IntRingBuffer backrefMultiCharExpansionBufferB;
 
     private TRegexBacktrackingNFAExecutorLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index,
                     int nCaptureGroups,
@@ -111,7 +114,9 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                     long[] transitionBitSet,
                     boolean trackLastGroup,
                     boolean dontOverwriteLastGroup,
-                    boolean recursiveBackReferences) {
+                    boolean recursiveBackReferences,
+                    IntRingBuffer backrefMultiCharExpansionBufferA,
+                    IntRingBuffer backrefMultiCharExpansionBufferB) {
         super(input, fromIndex, maxIndex, regionFrom, regionTo, index);
         this.stackFrameSize = stackFrameSize;
         this.nQuantifierCounts = nQuantifiers;
@@ -127,6 +132,8 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         this.trackLastGroup = trackLastGroup;
         this.dontOverwriteLastGroup = dontOverwriteLastGroup;
         this.recursiveBackReferences = recursiveBackReferences;
+        this.backrefMultiCharExpansionBufferA = backrefMultiCharExpansionBufferA;
+        this.backrefMultiCharExpansionBufferB = backrefMultiCharExpansionBufferB;
     }
 
     public static TRegexBacktrackingNFAExecutorLocals create(
@@ -145,7 +152,8 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                     int maxNTransitions,
                     boolean trackLastGroup,
                     boolean dontOverwriteLastGroup,
-                    boolean recursiveBackrefs) {
+                    boolean recursiveBackrefs,
+                    boolean backrefMultiCharExpansion) {
         int stackFrameSize = getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets, trackLastGroup, recursiveBackrefs);
         TRegexBacktrackingNFAExecutorLocals ret = new TRegexBacktrackingNFAExecutorLocals(
                         input,
@@ -166,7 +174,9 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                         BitSets.createBitSetArray(maxNTransitions),
                         trackLastGroup,
                         dontOverwriteLastGroup,
-                        recursiveBackrefs);
+                        recursiveBackrefs,
+                        backrefMultiCharExpansion ? new IntRingBuffer(7) : null,
+                        backrefMultiCharExpansion ? new IntRingBuffer(7) : null);
         ret.setIndex(fromIndex);
         ret.clearCaptureGroups();
         if (recursiveBackrefs) {
@@ -210,7 +220,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                         nZeroWidthQuantifiers,
                         zeroWidthTermEnclosedCGLow,
                         zeroWidthQuantifierCGOffsets, stackFrameBuffer, stack, sp + stackFrameSize, stackFrameSize,
-                        transitionBitSet, trackLastGroup, newDontOverwriteLastGroup, recursiveBackReferences);
+                        transitionBitSet, trackLastGroup, newDontOverwriteLastGroup, recursiveBackReferences, backrefMultiCharExpansionBufferA, backrefMultiCharExpansionBufferB);
     }
 
     private int offsetIP() {
@@ -493,6 +503,14 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     public int[] getStackFrameBuffer() {
         return stackFrameBuffer;
+    }
+
+    public IntRingBuffer getBackrefMultiCharExpansionBufferA() {
+        return backrefMultiCharExpansionBufferA;
+    }
+
+    public IntRingBuffer getBackrefMultiCharExpansionBufferB() {
+        return backrefMultiCharExpansionBufferB;
     }
 
     @TruffleBoundary

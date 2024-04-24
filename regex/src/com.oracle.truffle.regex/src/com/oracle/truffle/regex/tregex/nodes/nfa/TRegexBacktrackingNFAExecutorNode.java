@@ -60,6 +60,7 @@ import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntRingBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nfa.PureNFA;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAState;
@@ -69,6 +70,8 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputOps;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
+import com.oracle.truffle.regex.tregex.parser.MultiCharacterCaseFolding;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
@@ -97,6 +100,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     private static final int FLAG_LOOPBACK_INITIAL_STATE = 1 << 10;
     private static final int FLAG_USE_MERGE_EXPLODE = 1 << 11;
     private static final int FLAG_RECURSIVE_BACK_REFERENCES = 1 << 12;
+    private static final int FLAG_BACKREF_IGNORE_CASE_MULTI_CHARACTER_EXPANSION = 1 << 13;
 
     private final PureNFA nfa;
     private final int numberOfStates;
@@ -111,6 +115,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     private final int[] zeroWidthTermEnclosedCGLow;
     private final int[] zeroWidthQuantifierCGOffsets;
     private final RegexFlavor.EqualsIgnoreCasePredicate equalsIgnoreCase;
+    private final CaseFoldData.CaseFoldAlgorithm multiCharacterExpansionCaseFoldAlgorithm;
 
     @Child TruffleString.RegionEqualByteIndexNode regionMatchesNode;
     @Child TruffleString.ByteIndexOfStringNode indexOfNode;
@@ -147,6 +152,11 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             this.innerLiteral = null;
         }
         this.equalsIgnoreCase = ast.getOptions().getFlavor().getEqualsIgnoreCasePredicate(ast);
+        if (isBackreferenceIgnoreCaseMultiCharExpansion() && ast.getProperties().hasBackReferences()) {
+            this.multiCharacterExpansionCaseFoldAlgorithm = ast.getOptions().getFlavor().getCaseFoldAlgorithm(ast);
+        } else {
+            this.multiCharacterExpansionCaseFoldAlgorithm = null;
+        }
         if (isLoopbackInitialState() && innerLiteral == null) {
             CodePointSet initialCharSet = nfa.getMergedInitialStateCharSet(ast, compilationBuffer);
             loopbackInitialStateMatcher = initialCharSet == null ? null : CharMatchers.createMatcher(initialCharSet, compilationBuffer);
@@ -188,6 +198,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         this.zeroWidthQuantifierCGOffsets = copy.zeroWidthQuantifierCGOffsets;
         this.equalsIgnoreCase = copy.equalsIgnoreCase;
         this.loopbackInitialStateMatcher = copy.loopbackInitialStateMatcher;
+        this.multiCharacterExpansionCaseFoldAlgorithm = copy.multiCharacterExpansionCaseFoldAlgorithm;
     }
 
     @Override
@@ -215,6 +226,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         flags = setFlag(flags, FLAG_LOOPBACK_INITIAL_STATE, nfa.isRoot() && !ast.getFlags().isSticky() && !ast.getRoot().startsWithCaret());
         flags = setFlag(flags, FLAG_USE_MERGE_EXPLODE, nStates <= ast.getOptions().getMaxBackTrackerCompileSize() && nTransitions <= ast.getOptions().getMaxBackTrackerCompileSize());
         flags = setFlag(flags, FLAG_RECURSIVE_BACK_REFERENCES, ast.getProperties().hasRecursiveBackReferences());
+        flags = setFlag(flags, FLAG_BACKREF_IGNORE_CASE_MULTI_CHARACTER_EXPANSION, ast.getOptions().getFlavor().backreferenceIgnoreCaseMultiCharExpansion() && ast.getProperties().hasBackReferences());
         return flags;
     }
 
@@ -287,6 +299,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         return isFlagSet(FLAG_RECURSIVE_BACK_REFERENCES);
     }
 
+    public boolean isBackreferenceIgnoreCaseMultiCharExpansion() {
+        return isFlagSet(FLAG_BACKREF_IGNORE_CASE_MULTI_CHARACTER_EXPANSION);
+    }
+
     private boolean isFlagSet(int flag) {
         return isFlagSet(flags, flag);
     }
@@ -303,7 +319,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index) {
         return TRegexBacktrackingNFAExecutorLocals.create(input, fromIndex, maxIndex, regionFrom, regionTo, index, getNumberOfCaptureGroups(),
                         nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow, zeroWidthQuantifierCGOffsets,
-                        isTransitionMatchesStepByStep(), maxNTransitions, isTrackLastGroup(), returnsFirstGroup(), isRecursiveBackreferences());
+                        isTransitionMatchesStepByStep(), maxNTransitions, isTrackLastGroup(), returnsFirstGroup(), isRecursiveBackreferences(), isBackreferenceIgnoreCaseMultiCharExpansion());
     }
 
     private static final int IP_BEGIN = -1;
@@ -1114,6 +1130,14 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         if (backrefStart < 0 || backrefEnd < 0) {
             return isBackrefWithNullTargetFails() ? -1 : locals.getIndex();
         }
+        if (isBackreferenceIgnoreCaseMultiCharExpansion() && backReference.isIgnoreCaseReference()) {
+            return matchBackreferenceGenericMultiCharExpansion(locals, codeRange, backrefStart, backrefEnd);
+        } else {
+            return matchBackreferenceGenericSingleChars(locals, backReference, codeRange, backrefStart, backrefEnd);
+        }
+    }
+
+    private int matchBackreferenceGenericSingleChars(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference, TruffleString.CodeRange codeRange, int backrefStart, int backrefEnd) {
         int saveNextIndex = locals.getNextIndex();
         int iBR = isForward() ? backrefStart : backrefEnd;
         int i = locals.getIndex();
@@ -1134,6 +1158,56 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         }
         locals.setNextIndex(saveNextIndex);
         return i;
+    }
+
+    @TruffleBoundary
+    private int matchBackreferenceGenericMultiCharExpansion(TRegexBacktrackingNFAExecutorLocals locals, TruffleString.CodeRange codeRange, int backrefStart, int backrefEnd) {
+        IntRingBuffer bufA = locals.getBackrefMultiCharExpansionBufferA();
+        IntRingBuffer bufB = locals.getBackrefMultiCharExpansionBufferB();
+        bufA.clear();
+        bufB.clear();
+        int saveNextIndex = locals.getNextIndex();
+        int iBR = isForward() ? backrefStart : backrefEnd;
+        int i = locals.getIndex();
+        while (true) {
+            if (bufA.isEmpty()) {
+                if (!inputBoundsCheck(iBR, backrefStart, backrefEnd)) {
+                    break;
+                }
+                int codePointBR = inputReadAndDecode(locals, iBR, codeRange);
+                iBR = locals.getNextIndex();
+                matchBackreferenceGenericMultiCharExpansionAddFolded(bufA, codePointBR);
+            }
+            if (bufB.isEmpty()) {
+                if (!inputBoundsCheck(i, locals.getRegionFrom(), locals.getRegionTo())) {
+                    break;
+                }
+                int codePointI = inputReadAndDecode(locals, i, codeRange);
+                i = locals.getNextIndex();
+                matchBackreferenceGenericMultiCharExpansionAddFolded(bufB, codePointI);
+            }
+            while (!bufA.isEmpty() && !bufB.isEmpty()) {
+                if (bufA.removeFirst() != bufB.removeFirst()) {
+                    locals.setNextIndex(saveNextIndex);
+                    return -1;
+                }
+            }
+        }
+        locals.setNextIndex(saveNextIndex);
+        if (bufA.isEmpty() && bufB.isEmpty()) {
+            return i;
+        } else {
+            return -1;
+        }
+    }
+
+    private void matchBackreferenceGenericMultiCharExpansionAddFolded(IntRingBuffer buf, int codePoint) {
+        int[] folded = MultiCharacterCaseFolding.caseFold(multiCharacterExpansionCaseFoldAlgorithm, codePoint);
+        if (folded == null) {
+            buf.add(codePoint);
+        } else {
+            buf.addAll(folded);
+        }
     }
 
     private TruffleString.RegionEqualByteIndexNode getRegionMatchesNode() {

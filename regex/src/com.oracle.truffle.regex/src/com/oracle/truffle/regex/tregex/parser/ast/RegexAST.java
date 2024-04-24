@@ -46,6 +46,8 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.regex.AbstractConstantKeysObject;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -81,6 +83,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final RegexLanguage language;
     private final RegexSource source;
     private RegexFlags flags;
+    private AbstractRegexObject flavorSpecificFlags;
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexParserTreeMaxSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final RegexProperties properties = new RegexProperties();
@@ -130,6 +133,14 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public void setFlags(RegexFlags flags) {
         this.flags = flags;
+    }
+
+    public AbstractRegexObject getFlavorSpecificFlags() {
+        return flavorSpecificFlags;
+    }
+
+    public void setFlavorSpecificFlags(AbstractRegexObject flavorSpecificFlags) {
+        this.flavorSpecificFlags = flavorSpecificFlags;
     }
 
     public RegexOptions getOptions() {

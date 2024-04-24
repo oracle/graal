@@ -768,8 +768,14 @@ public class OracleDBTests extends RegexTestBase {
         test("(ab|a)(bcd|c)(d|.*)", "", "abcd", 0, true, 0, 4, 0, 2, 2, 3, 3, 4);
         test("\ufb00", "i", "FF", 0, true, 0, 2);
         test("(\ufb00)\\1", "i", "FFFF", 0, true, 0, 4, 0, 2);
-        test("(\ufb00)\\1", "i", "FF\ufb00", 0, false);
-        test("(\ufb00)\\1", "i", "\ufb00FF", 0, false);
+        test("(\ufb00)\\1", "i", "FF\ufb00", 0, true, 0, 5, 0, 2);
+        test("(\ufb00)\\1", "i", "\ufb00FF", 0, true, 0, 5, 0, 3);
+        test("(F\ufb00F)\\1", "i", "\ufb00FF\ufb00FF", 0, true, 0, 10, 0, 5);
+        test("(F\ufb00F)\\1", "i", "FFFFFFFF", 0, true, 0, 8, 0, 4);
+        test("(F\ufb00F)\\1", "i", "\ufb00\ufb00\ufb00\ufb00", 0, true, 0, 12, 0, 6);
+        test("(F\ufb00F)\\1", "i", "\ufb00\ufb00FFFF", 0, true, 0, 10, 0, 6);
+        test("(F\ufb00F)\\1", "i", "FFFF\ufb00\ufb00", 0, true, 0, 10, 0, 4);
+        test("(\ufb00\ufb00)\\1", "i", "F\ufb00F\ufb00\ufb00", 0, true, 0, 11, 0, 5);
         test("\ufb01", "i", "FI", 0, true, 0, 2);
         test("(\ufb01)\\1", "i", "FIFI", 0, true, 0, 4, 0, 2);
         test("\ufb02", "i", "FL", 0, true, 0, 2);

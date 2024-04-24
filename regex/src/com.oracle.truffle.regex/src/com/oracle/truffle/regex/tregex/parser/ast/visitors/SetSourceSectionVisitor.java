@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
