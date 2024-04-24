@@ -232,6 +232,15 @@ public final class TransitionGuard {
     }
 
     @TruffleBoundary
+    public static String dump(long[] guards) {
+        StringBuilder sb = new StringBuilder();
+        for (long guard: guards) {
+            sb.append(toString(guard)).append('\n');
+        }
+        return sb.toString();
+    }
+
+    @TruffleBoundary
     public static JsonValue toJson(long guard) {
         return Json.val(toString(guard));
     }

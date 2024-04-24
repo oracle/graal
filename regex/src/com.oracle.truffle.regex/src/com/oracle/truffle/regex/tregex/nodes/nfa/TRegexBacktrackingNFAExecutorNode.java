@@ -832,21 +832,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     @ExplodeLoop
     protected void updateState(TRegexBacktrackingNFAExecutorLocals locals, PureNFATransition transition, int index) {
         CompilerAsserts.partialEvaluationConstant(transition);
-        if (isRecursiveBackreferences()) {
-            /*
-             * Recursive backreferences must be saved before capture groups bounds are overwritten
-             * by locals.apply
-             */
-            assert isForward();
-            for (long guard : transition.getGuards()) {
-                CompilerAsserts.partialEvaluationConstant(guard);
-                if (TransitionGuard.is(guard, TransitionGuard.Kind.updateRecursiveBackrefPointer)) {
-                    locals.saveRecursiveBackrefGroupStart(TransitionGuard.getGroupNumber(guard));
-                } else {
-                    break;
-                }
-            }
-        }
+        assert !isRecursiveBackreferences();
         locals.apply(transition, index);
         for (long guard : transition.getGuards()) {
             CompilerAsserts.partialEvaluationConstant(guard);

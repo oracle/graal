@@ -203,7 +203,7 @@ public class RegexASTPostProcessor {
 
             private final RegexAST ast;
 
-            private CopyVisitor copyVisitor;
+            private final CopyVisitor copyVisitor;
             private Group curGroup;
             private Sequence curSequence;
             private Term curTerm;
