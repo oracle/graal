@@ -360,7 +360,7 @@ public final class CallTreePrinter {
 
         List<MethodNode> entrypoints = methodToNode.values().stream().filter(n -> n.isEntryPoint).toList();
         for (MethodNode entrypoint : entrypoints) {
-            walkNodes((MethodNode) entrypoint, nodes, methodToNode);
+            walkNodes(entrypoint, nodes, methodToNode);
         }
 
         String msgPrefix = "call tree csv file for ";
@@ -433,10 +433,8 @@ public final class CallTreePrinter {
     }
 
     private static List<String> callTargetInfo(InvokeNode invoke, Node callee) {
-        if (callee instanceof MethodNodeReference) {
-            callee = ((MethodNodeReference) callee).methodNode;
-        }
-        return Arrays.asList(String.valueOf(invoke.id), String.valueOf(((MethodNode) callee).id));
+        MethodNode node = callee instanceof MethodNodeReference ref ? ref.methodNode : ((MethodNode) callee);
+        return Arrays.asList(String.valueOf(invoke.id), String.valueOf(node.id));
     }
 
     private static void walkNodes(MethodNode methodNode, Set<MethodNode> nodes, Map<AnalysisMethod, MethodNode> methodToNode) {
