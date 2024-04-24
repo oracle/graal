@@ -32,6 +32,7 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
 
@@ -83,7 +84,7 @@ public class InlineBeforeAnalysisGraphDecoderImpl extends InlineBeforeAnalysisGr
                  */
                 simulateClassInitializerSupport.trySimulateClassInitializer(bb, type);
             }
-            if (simulateClassInitializerSupport.isClassInitializerSimulated(type)) {
+            if (simulateClassInitializerSupport.isClassInitializerSimulated(type) && !ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type)) {
                 return null;
             }
         }

@@ -577,7 +577,7 @@ public class SVMHost extends HostVM {
                  */
                 new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMultiMethodKey()));
             }
-            UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
+            UninterruptibleAnnotationChecker.checkAfterParsing(method, graph, bb.getConstantReflectionProvider());
 
             optimizeAfterParsing(bb, method, graph);
             /*

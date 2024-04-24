@@ -1464,7 +1464,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         Class<?> result;
         try {
-            result = ClassForNameSupport.forName(name, loader);
+            result = ClassForNameSupport.singleton().forName(name, loader);
         } catch (ClassNotFoundException e) {
             if (loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
                 result = loader.loadClass(name); // may throw
@@ -1917,6 +1917,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public Object getJfrEventConfiguration() {
         return companion.getJfrEventConfiguration();
+    }
+
+    public boolean isReached() {
+        return classInitializationInfo.isTypeReached();
     }
 
     private static class ReflectionDataAccessors {
