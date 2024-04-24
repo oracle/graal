@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.config;
+package com.oracle.svm.core.classinitialization;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.CONDITIONAL_KEY;
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-import java.io.IOException;
-
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
-import com.oracle.svm.core.util.json.JsonWriter;
-
-final class ConfigurationConditionPrintable {
-    static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer) throws IOException {
-        if (!condition.isAlwaysTrue()) {
-            writer.quote(CONDITIONAL_KEY).append(":{");
-            writer.quote(TYPE_REACHABLE_KEY).append(':').quote(condition.getTypeName());
-            writer.append("},").newline();
-        }
-    }
+/**
+ * Used to determine if <code>EnsureClassInitializedNode</code> is required for type-reached
+ * checking.
+ */
+public interface TypeReachedProvider {
+    /**
+     * Check whether a type needs a class-initialization node to mark it as reached.
+     */
+    boolean initializationCheckRequired(ResolvedJavaType type);
 }

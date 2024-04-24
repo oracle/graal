@@ -44,6 +44,7 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -68,6 +69,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -145,6 +147,9 @@ public class UniverseBuilder {
         try (Indent indent = debug.logAndIndent("build universe")) {
             for (AnalysisType aType : aUniverse.getTypes()) {
                 makeType(aType);
+            }
+            for (AnalysisType aType : aUniverse.getTypes()) {
+                checkHierarchyForTypeReachedConstraints(aType);
             }
             for (AnalysisField aField : aUniverse.getFields()) {
                 makeField(aField);
@@ -278,7 +283,47 @@ public class UniverseBuilder {
                             " -> " + hTypeChecked + " @ " + Integer.toHexString(System.identityHashCode(hTypeChecked)) +
                             " / " + aTypeChecked + " @ " + Integer.toHexString(System.identityHashCode(aTypeChecked)));
         }
+
+        /*
+         * Mark all types whose subtype is marked as --initialize-at-build-time types as reached. We
+         * need this as interfaces without default methods are not transitively initialized at build
+         * time by their subtypes.
+         */
+        if (hType.wrapped.isReachable() &&
+                        ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(hostedJavaClass) &&
+                        hub.getClassInitializationInfo().getTypeReached() == ClassInitializationInfo.TypeReached.NOT_REACHED) {
+            hType.wrapped.forAllSuperTypes(t -> {
+                var superHub = hUniverse.hostVM().dynamicHub(t);
+                if (superHub.getClassInitializationInfo().getTypeReached() == ClassInitializationInfo.TypeReached.NOT_REACHED) {
+                    superHub.getClassInitializationInfo().setTypeReached();
+                }
+            });
+        }
         return hType;
+    }
+
+    /**
+     * The {@link ClassInitializationInfo#getTypeReached()} for each super-type hub must have a
+     * value whose ordinal is greater or equal to its own value.
+     */
+    private void checkHierarchyForTypeReachedConstraints(AnalysisType type) {
+        if (type.isReachable()) {
+            var hub = hUniverse.hostVM().dynamicHub(type);
+            if (type.getSuperclass() != null) {
+                checkSuperHub(hub, hub.getSuperHub());
+            }
+
+            for (AnalysisType superInterface : type.getInterfaces()) {
+                checkSuperHub(hub, hUniverse.hostVM().dynamicHub(superInterface));
+            }
+        }
+    }
+
+    private static void checkSuperHub(DynamicHub hub, DynamicHub superTypeHub) {
+        ClassInitializationInfo.TypeReached typeReached = hub.getClassInitializationInfo().getTypeReached();
+        ClassInitializationInfo.TypeReached superTypeReached = superTypeHub.getClassInitializationInfo().getTypeReached();
+        VMError.guarantee(superTypeReached.ordinal() >= typeReached.ordinal(),
+                        "Super type of a type must have type reached >= than the type: %s is %s but %s is %s", hub.getName(), typeReached, superTypeHub.getName(), superTypeReached);
     }
 
     /*
