@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,13 +71,16 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * The state of the stack is copied and saved into trees of {@linkplain ProfilerNode nodes}, which
  * represent the profile of the execution.
  * <p>
- * Usage example: {@snippet file = "com/oracle/truffle/tools/profiler/CPUSampler.java" region =
+ * Usage example:
+ *
+ * {@snippet file = "com/oracle/truffle/tools/profiler/CPUSampler.java" region =
  * "CPUSamplerSnippets#example"}
  *
  * @since 0.30
  */
 public final class CPUSampler implements Closeable {
 
+    private static final int DEFAULT_STACK_LIMIT = 10000;
     static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
     private static final Function<Payload, Payload> COPY_PAYLOAD = new Function<>() {
         @Override
@@ -110,16 +113,14 @@ public final class CPUSampler implements Closeable {
     private volatile boolean collecting;
     private long period = 10;
     private long delay = 0;
-    private int stackLimit = 10000;
     private boolean sampleContextInitialization = false;
-    private SourceSectionFilter filter = DEFAULT_FILTER;
     private ScheduledExecutorService samplerExecutionService;
     private ExecutorService processingExecutionService;
     private ResultProcessingRunnable processingThreadRunnable;
     private Future<?> processingThreadFuture;
     private Future<?> samplerFuture;
 
-    private volatile SafepointStackSampler safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
+    private final SafepointStackSampler safepointStackSampler = new SafepointStackSampler(DEFAULT_STACK_LIMIT, DEFAULT_FILTER);
     private boolean gatherSelfHitTimes = false;
 
     /*
@@ -264,7 +265,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized int getStackLimit() {
-        return stackLimit;
+        return safepointStackSampler.getStackLimit();
     }
 
     /**
@@ -279,7 +280,7 @@ public final class CPUSampler implements Closeable {
         if (stackLimit < 1) {
             throw new ProfilerException(format("Invalid stack limit %s.", stackLimit));
         }
-        this.stackLimit = stackLimit;
+        this.safepointStackSampler.setStackLimit(stackLimit);
     }
 
     /**
@@ -302,7 +303,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized SourceSectionFilter getFilter() {
-        return filter;
+        return safepointStackSampler.getSourceSectionFilter();
     }
 
     /**
@@ -314,7 +315,7 @@ public final class CPUSampler implements Closeable {
      */
     public synchronized void setFilter(SourceSectionFilter filter) {
         enterChangeConfig();
-        this.filter = filter;
+        safepointStackSampler.setSourceSectionFilter(filter);
     }
 
     /**
@@ -471,6 +472,25 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
+     * @return Whether or not async stack trace information for each sample is gathered.
+     * @since 24.1
+     */
+    public boolean isGatherAsyncStackTrace() {
+        return safepointStackSampler.isIncludeAsyncStackTrace();
+    }
+
+    /**
+     * Sets whether or not to try to gather async stack trace information for each sample.
+     *
+     * @param asyncStackTrace new value for whether or not to include async stack trace elements
+     * @since 24.1
+     */
+    public synchronized void setGatherAsyncStackTrace(boolean asyncStackTrace) {
+        enterChangeConfig();
+        safepointStackSampler.setIncludeAsyncStackTrace(asyncStackTrace);
+    }
+
+    /**
      * Sample all threads and gather their current stack trace entries with a default time out.
      * Short hand for: {@link #takeSample(long, TimeUnit) takeSample}(this.getPeriod(),
      * TimeUnit.MILLISECONDS).
@@ -497,9 +517,6 @@ public final class CPUSampler implements Closeable {
      */
     public Map<Thread, List<StackTraceEntry>> takeSample(long timeout, TimeUnit timeoutUnit) {
         synchronized (CPUSampler.this) {
-            if (safepointStackSampler == null) {
-                this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
-            }
             if (activeContexts.isEmpty()) {
                 return Collections.emptyMap();
             }
@@ -553,7 +570,7 @@ public final class CPUSampler implements Closeable {
                 return t;
             });
         }
-        this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
+        this.safepointStackSampler.resetSampling();
         assert samplerFuture == null;
         samplerFuture = samplerExecutionService.scheduleAtFixedRate(new SamplingTask(), delay, period, TimeUnit.MILLISECONDS);
     }
