@@ -308,6 +308,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     private ScheduleResult lastSchedule;
 
+    private ControlFlowGraph lastCFG;
+
     private InliningLog inliningLog;
 
     /**
@@ -393,6 +395,19 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void clearLastSchedule() {
         setLastSchedule(null);
+        clearLastCFG();
+    }
+
+    public ControlFlowGraph getLastCFG() {
+        return lastCFG;
+    }
+
+    public void setLastCFG(ControlFlowGraph cfg) {
+        lastCFG = cfg;
+    }
+
+    public void clearLastCFG() {
+        setLastCFG(null);
     }
 
     @Override

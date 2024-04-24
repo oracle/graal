@@ -106,6 +106,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     public static final double MAX_RELATIVE_FREQUENCY = 1 / MIN_RELATIVE_FREQUENCY;
 
     public final StructuredGraph graph;
+    private final int edgeModCount;
+    private BuildConfig buildConfig;
 
     private NodeMap<HIRBlock> nodeToBlock;
     private HIRBlock[] reversePostOrder;
@@ -142,38 +144,85 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     @SuppressWarnings("try")
     static ControlFlowGraph compute(StructuredGraph graph, boolean backendBlocks, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators,
                     boolean computePostdominators) {
+        ControlFlowGraph lastCFG = graph.getLastCFG();
 
         try (DebugCloseable c = CFG_MEMORY.start(graph.getDebug())) {
-            ControlFlowGraph cfg = new ControlFlowGraph(graph);
+            ControlFlowGraph cfg;
+            if (lastCFG != null && (lastCFG.edgeModCount == graph.getEdgeModificationCount()) && (lastCFG.buildConfig.backendBlocks == backendBlocks)) {
+                if (lastCFG.buildConfig.hasAllParams(backendBlocks, connectBlocks, computeFrequency, computeLoops, computeDominators, computePostdominators)) {
+                    return lastCFG;
+                }
+                cfg = lastCFG;
+            } else {
+                cfg = new ControlFlowGraph(graph);
+            }
 
-            cfg.identifyBlocks(backendBlocks);
+            if (cfg != lastCFG) {
+                cfg.identifyBlocks(backendBlocks);
+            }
 
             boolean loopInfoComputed = false;
             if (CFGOptions.DumpEndVersusExitLoopFrequencies.getValue(graph.getOptions())) {
                 // additional loop info for sink frequencies inside the loop body
-                cfg.computeLoopInformation();
-                cfg.computeDominators();
+                if (!cfg.buildConfig.computeLoops) {
+                    cfg.computeLoopInformation();
+                }
+                if (!cfg.buildConfig.computeDominators) {
+                    cfg.computeDominators();
+                }
                 loopInfoComputed = true;
             }
 
-            if (computeFrequency) {
+            if (computeFrequency && !cfg.buildConfig.computeFrequency) {
                 cfg.computeFrequencies();
             }
 
-            if (computeLoops && !loopInfoComputed) {
+            if (computeLoops && !loopInfoComputed && !cfg.buildConfig.computeLoops) {
                 cfg.computeLoopInformation();
             }
-            if (computeDominators && !loopInfoComputed) {
+            if (computeDominators && !loopInfoComputed && !cfg.buildConfig.computeDominators) {
                 cfg.computeDominators();
                 assert cfg.verifyRPOInnerLoopsFirst();
             }
-            if (computePostdominators) {
+            if (computePostdominators && !cfg.buildConfig.computePostdominators) {
                 cfg.computePostdominators();
             }
 
             // there's not much to verify when connectBlocks == false
             assert !(connectBlocks || computeLoops || computeDominators || computePostdominators) || CFGVerifier.verify(cfg);
+            cfg.buildConfig.update(backendBlocks, connectBlocks, computeFrequency, computeLoops | loopInfoComputed, computeDominators | loopInfoComputed, computePostdominators);
+            graph.setLastCFG(cfg);
             return cfg;
+        }
+    }
+
+    private static class BuildConfig {
+        private boolean backendBlocks = false;
+        private boolean connectBlocks = false;
+        private boolean computeFrequency = false;
+        private boolean computeLoops = false;
+        private boolean computeDominators = false;
+        private boolean computePostdominators = false;
+
+        @SuppressWarnings("hiding")
+        public void update(boolean backendBlocks, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
+            this.backendBlocks |= backendBlocks;
+            this.connectBlocks |= connectBlocks;
+            this.computeFrequency |= computeFrequency;
+            this.computeLoops |= computeLoops;
+            this.computeDominators |= computeDominators;
+            this.computePostdominators |= computePostdominators;
+        }
+
+        /**
+         * Checks that this build configuration is not weaker than a build configuration from the
+         * provided parameters. That is, if for each parameter p the following holds:
+         * {@code (p -> this.p)} which is equivalent to {@code (!p || this.p)}.
+         */
+        @SuppressWarnings("hiding")
+        public boolean hasAllParams(boolean backendBlocks, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
+            return (this.backendBlocks || !backendBlocks) && (this.connectBlocks || !connectBlocks) && (this.computeFrequency || !computeFrequency) && (this.computeLoops || !computeLoops) &&
+                            (this.computeDominators || !computeDominators) && (this.computePostdominators || !computePostdominators);
         }
     }
 
@@ -458,6 +507,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     private ControlFlowGraph(StructuredGraph graph) {
         this.graph = graph;
         this.nodeToBlock = graph.createNodeMap();
+        this.edgeModCount = graph.getEdgeModificationCount();
+        this.buildConfig = new BuildConfig();
     }
 
     /**
