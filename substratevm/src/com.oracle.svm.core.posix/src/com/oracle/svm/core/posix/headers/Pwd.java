@@ -57,8 +57,5 @@ public class Pwd {
     }
 
     @CFunction
-    public static native passwd getpwuid(int __uid);
-
-    @CFunction
     public static native int getpwuid_r(int __uid, passwd pwd, CCharPointer buf, UnsignedWord buflen, passwdPointer result);
 }
