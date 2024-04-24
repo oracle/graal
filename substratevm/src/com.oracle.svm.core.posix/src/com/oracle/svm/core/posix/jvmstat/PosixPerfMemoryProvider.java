@@ -37,7 +37,6 @@ import static com.oracle.svm.core.posix.headers.Fcntl.O_CREAT;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_NOFOLLOW;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDONLY;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDWR;
-import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
 
 import java.nio.ByteBuffer;
 
@@ -61,21 +60,17 @@ import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfMemoryPrologue;
 import com.oracle.svm.core.jvmstat.PerfMemoryProvider;
-import com.oracle.svm.core.memory.NullableNativeMemory;
-import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.PosixStat;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Mman;
-import com.oracle.svm.core.posix.headers.Pwd;
-import com.oracle.svm.core.posix.headers.Pwd.passwd;
-import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
 
@@ -111,7 +106,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         }
 
         int vmId = Unistd.getpid();
-        String userName = getUserName(Unistd.NoTransitions.geteuid());
+        String userName = PosixUtils.getUserName(Unistd.NoTransitions.geteuid());
         if (userName == null) {
             return null;
         }
@@ -148,43 +143,6 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         /* Clear the shared memory region. */
         LibC.memset(mapAddress, WordFactory.signed(0), WordFactory.unsigned(size));
         return DirectByteBufferUtil.allocate(mapAddress.rawValue(), size);
-    }
-
-    private static String getUserName(int uid) {
-        /* Determine max. pwBuf size. */
-        long bufSize = Unistd.sysconf(_SC_GETPW_R_SIZE_MAX());
-        if (bufSize == -1) {
-            bufSize = 1024;
-        }
-
-        /* Retrieve the username and copy it to a String object. */
-        CCharPointer pwBuf = NullableNativeMemory.malloc(WordFactory.unsigned(bufSize), NmtCategory.JvmStat);
-        if (pwBuf.isNull()) {
-            return null;
-        }
-
-        try {
-            passwd pwent = StackValue.get(passwd.class);
-            passwdPointer p = StackValue.get(passwdPointer.class);
-            int code = Pwd.getpwuid_r(uid, pwent, pwBuf, WordFactory.unsigned(bufSize), p);
-            if (code != 0) {
-                return null;
-            }
-
-            passwd result = p.read();
-            if (result.isNull()) {
-                return null;
-            }
-
-            CCharPointer pwName = result.pw_name();
-            if (pwName.isNull() || pwName.read() == '\0') {
-                return null;
-            }
-
-            return CTypeConversion.toJavaString(pwName);
-        } finally {
-            NullableNativeMemory.free(pwBuf);
-        }
     }
 
     private static String getUserTmpDir(String user, int vmId, int nsPid) {
