@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,7 +137,7 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
                     // If the second argument is 1.0, then the result is the same as the first
                     // argument.
                     if (yValue == 1.0D) {
-                        return x;
+                        return forX;
                     }
 
                     // If the second argument is NaN, then the result is NaN.
@@ -147,19 +147,19 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
 
                     // x**-1 = 1/x
                     if (yValue == -1.0D) {
-                        return new FloatDivNode(ConstantNode.forDouble(1), x);
+                        return new FloatDivNode(ConstantNode.forDouble(1), forX);
                     }
 
                     // x**2 = x*x
                     if (yValue == 2.0D) {
-                        return new MulNode(x, x);
+                        return new MulNode(forX, forX);
                     }
 
                     // x**0.5 = sqrt(x)
                     // Note that Math.pow(Double.MAX_VALUE, 0.5) returns different value than
                     // Math.sqrt(Double.MAX_VALUE) until Java 17.
-                    if (yValue == 0.5D && x.stamp(view) instanceof FloatStamp && ((FloatStamp) x.stamp(view)).lowerBound() >= 0.0D) {
-                        return SqrtNode.create(x, view);
+                    if (yValue == 0.5D && forX.stamp(view) instanceof FloatStamp xStamp && xStamp.lowerBound() >= 0.0D) {
+                        return SqrtNode.create(forX, view);
                     }
                 }
                 break;
