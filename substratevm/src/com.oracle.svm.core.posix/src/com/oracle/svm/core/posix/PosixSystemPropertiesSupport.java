@@ -31,7 +31,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
-import com.oracle.svm.core.posix.headers.Pwd;
 import com.oracle.svm.core.posix.headers.Unistd;
 
 public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSupport {
@@ -43,14 +42,14 @@ public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSuppo
 
     @Override
     protected String userNameValue() {
-        Pwd.passwd pwent = Pwd.getpwuid(Unistd.getuid());
-        return pwent.isNull() ? "?" : CTypeConversion.toJavaString(pwent.pw_name());
+        String name = PosixUtils.getUserName(Unistd.getuid());
+        return name == null ? "?" : name;
     }
 
     @Override
     protected String userHomeValue() {
-        Pwd.passwd pwent = Pwd.getpwuid(Unistd.getuid());
-        return pwent.isNull() ? "?" : CTypeConversion.toJavaString(pwent.pw_dir());
+        String dir = PosixUtils.getUserDir(Unistd.getuid());
+        return dir == null ? "?" : dir;
     }
 
     @Override

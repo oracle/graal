@@ -37,7 +37,6 @@ import static com.oracle.svm.core.posix.headers.Fcntl.O_CREAT;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_NOFOLLOW;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDONLY;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDWR;
-import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
 
 import java.nio.ByteBuffer;
 
@@ -69,15 +68,13 @@ import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.PosixStat;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Mman;
-import com.oracle.svm.core.posix.headers.Pwd;
-import com.oracle.svm.core.posix.headers.Pwd.passwd;
-import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
 
@@ -111,7 +108,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         }
 
         int vmId = Unistd.getpid();
-        String userName = getUserName(Unistd.NoTransitions.geteuid());
+        String userName = PosixUtils.getUserName(Unistd.NoTransitions.geteuid());
         if (userName == null) {
             return null;
         }
@@ -150,6 +147,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(mapAddress.rawValue(), size), ByteBuffer.class);
     }
 
+<<<<<<< HEAD
     private static String getUserName(int uid) {
         /* Determine max. pwBuf size. */
         long bufSize = Unistd.sysconf(_SC_GETPW_R_SIZE_MAX());
@@ -187,6 +185,8 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         }
     }
 
+=======
+>>>>>>> a5af7062936 (remove getpwuid in favor of getpwuid_r)
     private static String getUserTmpDir(String user, int vmId, int nsPid) {
         String tmpDir = Target_jdk_internal_vm_VMSupport.getVMTemporaryDirectory();
         if (Platform.includedIn(Platform.LINUX.class)) {
