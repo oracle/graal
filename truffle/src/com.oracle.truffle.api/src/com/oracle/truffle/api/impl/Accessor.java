@@ -368,6 +368,8 @@ public abstract class Accessor {
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
+        public abstract Env getEnvForLanguage(Object polyglotLanguageContext, LanguageInfo requiredLanguage, LanguageInfo accessingLanguage);
+
         public abstract boolean hasCurrentContext();
 
         public abstract boolean isDisposed(Object polyglotLanguageContext);

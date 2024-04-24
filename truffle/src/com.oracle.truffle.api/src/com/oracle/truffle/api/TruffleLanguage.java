@@ -3735,6 +3735,30 @@ public abstract class TruffleLanguage<C> {
             return LanguageAccessor.engineAccess().getContextSandboxPolicy(this.polyglotLanguageContext);
         }
 
+        /**
+         * Retrieves the top scope object of {@code language}, if available. This method first
+         * checks if the specified {@code language} is accessible from the current language. If not,
+         * a {@link IllegalArgumentException} is thrown. If the language is accessible, this method
+         * initializes the language if it has not been initialized already, and then returns the
+         * top-level scope object. The returned object is an
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#isScope(Object) interop scope
+         * object}, or {@code null} if the language does not support such concept.
+         *
+         * @see TruffleLanguage#getScope(Object)
+         * @since 24.1
+         */
+        @TruffleBoundary
+        public Object getScope(LanguageInfo language) {
+            try {
+                Env env = LanguageAccessor.engineAccess().getEnvForLanguage(polyglotLanguageContext, language, getSpi().languageInfo);
+                Object result = env.getSpi().getScope(env.context);
+                assert result == null || LanguageAccessor.interopAccess().isScopeObject(result) : String.format("%s is not a scope", result);
+                return result;
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
         /*
          * For reflective use in tests.
          */

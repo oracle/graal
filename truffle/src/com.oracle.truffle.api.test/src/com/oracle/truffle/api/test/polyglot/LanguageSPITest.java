@@ -3335,6 +3335,198 @@ public class LanguageSPITest {
         }
     }
 
+    @TruffleLanguage.Registration
+    public static final class TestGetScopeInternalLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object internalLanguageScope = env.getScope(env.getInternalLanguages().get(GetScopeTargetInternalLanguage.ID));
+            assertTrue(interop.isScope(internalLanguageScope));
+            assertTrue(interop.hasMembers(internalLanguageScope));
+            return null;
+        }
+    }
+
+    @Test
+    public void testGetScopeInternalLanguage() {
+        try (Context context = Context.newBuilder().build()) {
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestGetScopeInternalLanguage.class, "").execute();
+        }
+    }
+
+    @TruffleLanguage.Registration(dependentLanguages = GetScopeTargetNonInternalLanguage.ID)
+    public static final class TestGetScopeDependentLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object internalLanguageScope = env.getScope(env.getInternalLanguages().get(GetScopeTargetNonInternalLanguage.ID));
+            assertTrue(interop.isScope(internalLanguageScope));
+            assertTrue(interop.hasMembers(internalLanguageScope));
+            return null;
+        }
+    }
+
+    @Test
+    public void testGetScopeDependentLanguage() {
+        try (Context context = Context.newBuilder().build()) {
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestGetScopeDependentLanguage.class, "").execute();
+        }
+    }
+
+    @TruffleLanguage.Registration
+    public static final class TestGetScopeAllowedLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object internalLanguageScope = env.getScope(env.getInternalLanguages().get(GetScopeTargetNonInternalLanguage.ID));
+            assertTrue(interop.isScope(internalLanguageScope));
+            assertTrue(interop.hasMembers(internalLanguageScope));
+            return null;
+        }
+    }
+
+    @Test
+    public void testGetScopeAllowedLanguage() {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestGetScopeAllowedLanguage.class, "").execute();
+        }
+        PolyglotAccess polyglotAccess = PolyglotAccess.newBuilder().allowEval(TestUtils.getDefaultLanguageId(TestGetScopeAllowedLanguage.class), GetScopeTargetNonInternalLanguage.ID).build();
+        try (Context context = Context.newBuilder().allowPolyglotAccess(polyglotAccess).build()) {
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestGetScopeAllowedLanguage.class, "").execute();
+        }
+    }
+
+    @TruffleLanguage.Registration
+    public static final class TestGetScopeDeniedLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertNull(env.getInternalLanguages().get(GetScopeTargetNonInternalLanguage.ID));
+            assertNull(env.getPublicLanguages().get(GetScopeTargetNonInternalLanguage.ID));
+            return null;
+        }
+    }
+
+    @Test
+    public void testGetScopeDeniedLanguage() {
+        try (Context context = Context.newBuilder().build()) {
+            AbstractExecutableTestLanguage.parseTestLanguage(context, TestGetScopeDeniedLanguage.class, "").execute();
+        }
+    }
+
+    static class GetScopeTargetLanguage extends TruffleLanguage<GetScopeTargetLanguage.LanguageContext> {
+
+        @Override
+        protected LanguageContext createContext(Env env) {
+            return new LanguageContext(getClass());
+        }
+
+        @Override
+        protected void initializeContext(LanguageContext context) throws Exception {
+            context.initialized = true;
+        }
+
+        @Override
+        protected Object getScope(LanguageContext context) {
+            assertTrue(context.initialized);
+            return context.scope;
+        }
+
+        static final class LanguageContext {
+
+            final Object scope;
+            volatile boolean initialized;
+
+            LanguageContext(Class<? extends TruffleLanguage<?>> languageClass) {
+                scope = new Scope(languageClass);
+            }
+
+            @ExportLibrary(InteropLibrary.class)
+            record Scope(Class<? extends TruffleLanguage<?>> language) implements TruffleObject {
+
+                @ExportMessage
+                @SuppressWarnings("static-method")
+                boolean hasMembers() {
+                    return true;
+                }
+
+                @ExportMessage
+                @SuppressWarnings({"static-method", "unused"})
+                Object getMembers(boolean includeInternal) {
+                    return new ScopeKeys(new String[0]);
+                }
+
+                @ExportMessage
+                @SuppressWarnings("static-method")
+                boolean isScope() {
+                    return true;
+                }
+
+                @ExportMessage
+                @SuppressWarnings("static-method")
+                boolean hasLanguage() {
+                    return true;
+                }
+
+                @ExportMessage
+                Class<? extends TruffleLanguage<?>> getLanguage() {
+                    return language;
+                }
+
+                @ExportMessage
+                @TruffleBoundary
+                @SuppressWarnings("unused")
+                Object toDisplayString(boolean allowSideEffects) {
+                    return String.format("%s Scope", language.getSimpleName());
+                }
+            }
+
+            @ExportLibrary(InteropLibrary.class)
+            record ScopeKeys(String[] keys) implements TruffleObject {
+
+                @SuppressWarnings("static-method")
+                @ExportMessage
+                boolean hasArrayElements() {
+                    return true;
+                }
+
+                @ExportMessage
+                boolean isArrayElementReadable(long index) {
+                    return index >= 0 && index < keys.length;
+                }
+
+                @ExportMessage
+                long getArraySize() {
+                    return keys.length;
+                }
+
+                @ExportMessage
+                Object readArrayElement(long index) throws InvalidArrayIndexException {
+                    if (isArrayElementReadable(index)) {
+                        return keys[(int) index];
+                    } else {
+                        CompilerDirectives.transferToInterpreter();
+                        throw InvalidArrayIndexException.create(index);
+                    }
+                }
+            }
+        }
+    }
+
+    @TruffleLanguage.Registration(id = GetScopeTargetInternalLanguage.ID, name = GetScopeTargetInternalLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED, internal = true, interactive = false)
+    static final class GetScopeTargetInternalLanguage extends GetScopeTargetLanguage {
+        static final String ID = "GetScopeTargetInternalLanguage";
+    }
+
+    @TruffleLanguage.Registration(id = GetScopeTargetNonInternalLanguage.ID, name = GetScopeTargetNonInternalLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED, interactive = false)
+    static final class GetScopeTargetNonInternalLanguage extends GetScopeTargetLanguage {
+        static final String ID = "GetScopeTargetNonInternalLanguage";
+    }
+
     private static void testInitializeFromServiceImpl(Context context, Function<Env, LanguageInfo> languageResolver, Supplier<Boolean> verifier) {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override

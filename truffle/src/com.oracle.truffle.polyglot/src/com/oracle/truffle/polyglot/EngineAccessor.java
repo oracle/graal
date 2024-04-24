@@ -503,6 +503,15 @@ final class EngineAccessor extends Accessor {
             return context.getContextInitialized(language, null).env;
         }
 
+        @Override
+        public TruffleLanguage.Env getEnvForLanguage(Object polyglotLanguageContext, LanguageInfo requiredLanguage, LanguageInfo accessingLanguage) {
+            PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
+            PolyglotLanguage requiredPolyglotLanguage = context.engine.findLanguage(requiredLanguage);
+            PolyglotLanguage accessingPolyglotLanguage = context.engine.findLanguage(accessingLanguage);
+            PolyglotLanguageContext requestedPolyglotLanguageContext = context.getContextInitialized(requiredPolyglotLanguage, accessingPolyglotLanguage);
+            return requestedPolyglotLanguageContext.env;
+        }
+
         static PolyglotLanguage findObjectLanguage(PolyglotEngineImpl engine, Object value) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
             if (lib.hasLanguage(value)) {
