@@ -191,15 +191,18 @@ public class ServiceLoaderFeature implements InternalFeature {
             Constructor<?> nullaryConstructor = null;
             Method nullaryProviderMethod = null;
             try {
-                for (Method method : providerClass.getDeclaredMethods()) {
-                    if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
-                                    method.getParameterCount() == 0 && method.getName().equals("provider")) {
-                        if (nullaryProviderMethod == null) {
-                            nullaryProviderMethod = method;
-                        } else {
-                            /* There must be at most one public static provider() method. */
-                            nullaryProviderMethod = null;
-                            break;
+                /* Only look for a provider() method if provider class is in an explicit module. */
+                if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
+                    for (Method method : providerClass.getDeclaredMethods()) {
+                        if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
+                                        method.getParameterCount() == 0 && method.getName().equals("provider")) {
+                            if (nullaryProviderMethod == null) {
+                                nullaryProviderMethod = method;
+                            } else {
+                                /* There must be at most one public static provider() method. */
+                                nullaryProviderMethod = null;
+                                break;
+                            }
                         }
                     }
                 }
