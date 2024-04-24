@@ -460,6 +460,7 @@ suite = {
             "useModulePath": True,
             "description": "Libraries used by the Java on Truffle (aka Espresso) implementation",
             "maven" : {
+                "artifactId": "espresso-libs-resources",
                 "tag": ["default", "public"],
             },
         },
@@ -537,6 +538,7 @@ suite = {
             "useModulePath": True,
             "description": "Runtime environment used by the Java on Truffle (aka Espresso) implementation",
             "maven" : {
+                "artifactId": "espresso-runtime-resources",
                 "tag": ["default", "public"],
             },
         },
