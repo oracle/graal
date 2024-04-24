@@ -24,9 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TIMES;
-import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.SAMPLE_CONTEXT_INITIALIZATION;
-
 import java.io.File;
 import java.lang.reflect.Method;
 
@@ -116,8 +113,9 @@ public class CPUSamplerInstrument extends TruffleInstrument {
             sampler.setDelay(options.get(CPUSamplerCLI.DELAY_PERIOD));
             sampler.setStackLimit(options.get(CPUSamplerCLI.STACK_LIMIT));
             sampler.setFilter(getSourceSectionFilter(env));
-            sampler.setGatherSelfHitTimes(options.get(GATHER_HIT_TIMES));
-            sampler.setSampleContextInitialization(options.get(SAMPLE_CONTEXT_INITIALIZATION));
+            sampler.setGatherSelfHitTimes(options.get(CPUSamplerCLI.GATHER_HIT_TIMES));
+            sampler.setSampleContextInitialization(options.get(CPUSamplerCLI.SAMPLE_CONTEXT_INITIALIZATION));
+            sampler.setGatherAsyncStackTrace(options.get(CPUSamplerCLI.GATHER_ASYNC_STACK_TRACE));
             sampler.setCollecting(true);
             String outputPath = CPUSamplerCLI.getOutputPath(options);
             absoluteOutputPath = (outputPath != null) ? new File(outputPath).getAbsolutePath() : null;

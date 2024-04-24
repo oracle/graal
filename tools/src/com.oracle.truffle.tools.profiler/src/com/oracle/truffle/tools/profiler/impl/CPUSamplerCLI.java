@@ -221,6 +221,10 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> SAMPLE_CONTEXT_INITIALIZATION = new OptionKey<>(false);
 
+    @Option(name = "GatherAsyncStackTrace", help = "Try to gather async stack trace elements for each sample (default: true). " +
+                    "Disabling this option may reduce sampling overhead.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> GATHER_ASYNC_STACK_TRACE = new OptionKey<>(true);
+
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler, String absoluteOutputPath) {
         PrintStream out = chooseOutputStream(env, absoluteOutputPath);
         List<CPUSamplerData> data = sampler.getDataList();
