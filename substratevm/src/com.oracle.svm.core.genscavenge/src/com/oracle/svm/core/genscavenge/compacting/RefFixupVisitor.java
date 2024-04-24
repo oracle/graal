@@ -22,7 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.tenured;
+package com.oracle.svm.core.genscavenge.compacting;
+
+import java.lang.ref.Reference;
 
 import org.graalvm.word.Pointer;
 
@@ -31,8 +33,6 @@ import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
-
-import java.lang.ref.Reference;
 
 public class RefFixupVisitor implements ObjectReferenceVisitor {
 

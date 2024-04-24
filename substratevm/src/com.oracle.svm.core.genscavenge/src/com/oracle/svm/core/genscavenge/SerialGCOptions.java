@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.genscavenge.tenured.RelocationInfo;
+import com.oracle.svm.core.genscavenge.compacting.RelocationInfo;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;

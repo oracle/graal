@@ -32,7 +32,7 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
-import com.oracle.svm.core.genscavenge.tenured.RelocationInfo;
+import com.oracle.svm.core.genscavenge.compacting.RelocationInfo;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 
 import jdk.graal.compiler.word.Word;

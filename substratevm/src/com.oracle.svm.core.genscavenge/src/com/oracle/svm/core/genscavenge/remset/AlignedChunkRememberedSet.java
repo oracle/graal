@@ -43,7 +43,7 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
-import com.oracle.svm.core.genscavenge.tenured.RelocationInfo;
+import com.oracle.svm.core.genscavenge.compacting.RelocationInfo;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;

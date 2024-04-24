@@ -31,12 +31,13 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
+import com.oracle.svm.core.genscavenge.compacting.RelocationInfo;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Inspired by the .NET CoreCLR, the {@link BrickTable} speeds up relocation pointer lookups
- * by acting as a lookup table for {@link com.oracle.svm.core.genscavenge.tenured.RelocationInfo}.
+ * by acting as a lookup table for {@link RelocationInfo}.
  * Each entry stores a pointer to the start of the first plug of the chunk fraction it covers.
  * <br/>
  * Note that we borrow the memory of a chunk's {@link CardTable} to store that table.
@@ -70,7 +71,7 @@ public class BrickTable {
     }
 
     /**
-     * @return A pointer to the nearest {@link com.oracle.svm.core.genscavenge.tenured.RelocationInfo}.
+     * @return A pointer to the nearest {@link RelocationInfo}.
      */
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static Pointer getEntry(AlignedHeapChunk.AlignedHeader chunk, UnsignedWord index) {
@@ -80,7 +81,7 @@ public class BrickTable {
     }
 
     /**
-     * @param pointer The pointer to the nearest {@link com.oracle.svm.core.genscavenge.tenured.RelocationInfo}.
+     * @param pointer The pointer to the nearest {@link RelocationInfo}.
      */
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setEntry(AlignedHeapChunk.AlignedHeader chunk, UnsignedWord index, Pointer pointer) {
