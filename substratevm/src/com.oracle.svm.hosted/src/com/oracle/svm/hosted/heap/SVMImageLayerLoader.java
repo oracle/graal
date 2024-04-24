@@ -112,31 +112,21 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected void relinkConstant(ImageHeapInstance imageHeapInstance, EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
+    protected JavaConstant getHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
         if (clazz.equals(Class.class)) {
             Integer tid = get(baseLayerConstant, CLASS_ID_TAG);
             /* DynamicHub corresponding to $$TypeSwitch classes are not relinked */
             if (tid != null) {
-                if (universe.isTypeCreated(tid)) {
-                    relinkDynamicHub(imageHeapInstance, tid);
-                } else {
-                    /*
-                     * If the DynamicHub is not created yet, we create a task that will be executed
-                     * on the DynamicHub creation
-                     */
-                    AnalysisFuture<Void> task = new AnalysisFuture<>(() -> relinkDynamicHub(imageHeapInstance, tid));
-                    missingTypeTasks.computeIfAbsent(tid, unused -> ConcurrentHashMap.newKeySet()).add(task);
-                }
+                return getDynamicHub(tid);
             }
-        } else {
-            super.relinkConstant(imageHeapInstance, baseLayerConstant, clazz);
         }
+        return super.getHostedObject(baseLayerConstant, clazz);
     }
 
-    private void relinkDynamicHub(ImageHeapInstance imageHeapInstance, int tid) {
+    private JavaConstant getDynamicHub(int tid) {
         AnalysisType type = universe.getType(tid);
         DynamicHub hub = ((SVMHost) universe.hostVM()).dynamicHub(type);
-        relinkConstant(hub, imageHeapInstance);
+        return getHostedObject(hub);
     }
 
     @Override

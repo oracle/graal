@@ -64,6 +64,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
@@ -408,7 +409,11 @@ public class SVMHost extends HostVM {
         ClassLoader hubClassLoader = javaClass.getClassLoader();
 
         /* Class names must be interned strings according to the Java specification. */
-        String className = type.toClassName().intern();
+        String name = type.toClassName();
+        if (name.endsWith(BaseLayerType.BASE_LAYER_SUFFIX.substring(0, BaseLayerType.BASE_LAYER_SUFFIX.length() - 1))) {
+            name = name.substring(0, name.length() - BaseLayerType.BASE_LAYER_SUFFIX.length() + 1);
+        }
+        String className = name.intern();
         /*
          * There is no need to have file names and simple binary names as interned strings. So we
          * perform our own de-duplication.

@@ -74,7 +74,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -114,6 +113,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *      "next field id": nextFieldId,
  *      "static primitive fields": staticPrimitiveFields.id,
  *      "static object fields": staticObjectFields.id,
+ *      "image heap size": imageHeapSize,
  *      "types": {
  *          typeIdentifier: {
  *              "id": id,
@@ -201,37 +201,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * The "offset object" is the offset of the constant in the heap from the base layer.
  */
 public class ImageLayerLoader {
-    /**
-     * The AnalysisUniverse.createType method can be called multiple times for same type. We need to
-     * ensure the constants are only created once, so we keep track of the types that were already
-     * processed. Some types can be created before loadLayerConstants, so some types can be
-     * processed before they are force loaded.
-     */
-    private final Set<Integer> processedTypeIds = ConcurrentHashMap.newKeySet();
     private final Set<Integer> processedFieldsIds = ConcurrentHashMap.newKeySet();
     protected final Map<Integer, AnalysisMethod> methods = new ConcurrentHashMap<>();
     private final Map<Integer, ImageHeapConstant> constants = new ConcurrentHashMap<>();
     private final List<Path> loadPaths;
-    /**
-     * Map from a missing constant id to all the constants that depend on it. A constant is missing
-     * if its {@link AnalysisType} was not created yet, but its parent constant was already created.
-     * This can happen in both {@link ImageHeapInstance} and {@link ImageHeapObjectArray}, if the
-     * type of one field or one of the objects was not yet created. In this case, an AnalysisFuture
-     * that looks up the constants and assigns it in the missing place is created and stored in this
-     * map.
-     * <p>
-     * This map could be removed if the constants were created recursively using a
-     * {@link BaseLayerType}. However, it is easier to use this at the moment, as the types are
-     * loaded before the analysis.
-     */
-    private final ConcurrentHashMap<Integer, Set<AnalysisFuture<JavaConstant>>> missingConstantTasks = new ConcurrentHashMap<>();
-    /**
-     * Map from a missing type id to a set of tasks that depends on it. These tasks are created when
-     * a constant containing a DynamicHub cannot be relinked as the DynamicHub is not created yet.
-     * All the tasks corresponding to the missing type are executed when the DynamicHub is created.
-     */
-    public final ConcurrentHashMap<Integer, Set<AnalysisFuture<Void>>> missingTypeTasks = new ConcurrentHashMap<>();
-    private final Map<AnalysisType, Object> claims = new ConcurrentHashMap<>();
     /**
      * Map from a missing method id to all the constants that depend on it. A method is missing when
      * a constant contains a method pointer and the corresponding {@link AnalysisMethod} was not
@@ -241,7 +214,6 @@ public class ImageLayerLoader {
     protected final ConcurrentHashMap<Integer, Set<AnalysisFuture<JavaConstant>>> missingMethodTasks = new ConcurrentHashMap<>();
     private final Map<Integer, String> typeToIdentifier = new HashMap<>();
     protected final Set<AnalysisFuture<Void>> heapScannerTasks = ConcurrentHashMap.newKeySet();
-    private final Map<Integer, Set<Integer>> typeToConstants = new HashMap<>();
     private final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private final Map<AnalysisType, Set<ImageHeapConstant>> baseLayerImageHeap = new ConcurrentHashMap<>();
     protected final Map<JavaConstant, ImageHeapConstant> relinkedConstants = new ConcurrentHashMap<>();
@@ -321,62 +293,34 @@ public class ImageLayerLoader {
             int tid = get(typeData, ID_TAG);
             typeToIdentifier.put(tid, typesCursor.getKey());
         }
-
-        /*
-         * The dependencies link between the constants is stored in typeToConstants allowing to
-         * easily look it up when creating the constants.
-         */
-        EconomicMap<String, Object> constantsMap = get(jsonMap, CONSTANTS_TAG);
-        MapCursor<String, Object> constantsCursor = constantsMap.getEntries();
-        while (constantsCursor.advance()) {
-            String stringId = constantsCursor.getKey();
-            int id = Integer.parseInt(stringId);
-            EconomicMap<String, Object> constantData = getValue(constantsCursor);
-            int tid = get(constantData, TID_TAG);
-            typeToConstants.computeIfAbsent(tid, k -> new HashSet<>()).add(id);
-        }
     }
 
-    /**
-     * Creates all the constants from the base layer.
-     * <p>
-     * In the future, all the constants should not be eagerly created. All the constants of a given
-     * type should still be created via
-     * {@link ImageLayerLoader#loadAndRelinkTypeConstants(AnalysisType)} on the type creation, but
-     * the types should not be forcibly loaded. This mixed approach is used at the moment as it is
-     * easier to implement for the prototype, and it is useful for testing purposes.
-     */
-    public void loadLayerConstants() {
+    public void loadTypes() {
         EconomicMap<String, Object> typesMap = get(jsonMap, TYPES_TAG);
         MapCursor<String, Object> typesCursor = typesMap.getEntries();
         while (typesCursor.advance()) {
             EconomicMap<String, Object> typeData = getValue(typesCursor);
             int tid = get(typeData, ID_TAG);
-            /*
-             * Some types like Object or String are processed on demand (see
-             * loadAndRelinkTypeConstants) because they are created early in the build process.
-             */
-            if (!processedTypeIds.contains(tid)) {
-                loadTypeConstants(typeData, tid);
-            }
+            loadType(typeData, tid);
         }
     }
 
-    private void loadTypeConstants(EconomicMap<String, Object> typeData, int tid) {
+    private void loadType(EconomicMap<String, Object> typeData, int tid) {
+        if (universe.isTypeCreated(tid)) {
+            return;
+        }
+
         String name = get(typeData, CLASS_JAVA_NAME_TAG);
         Class<?> clazz = lookupBaseLayerTypeInHostVM(name);
 
         if (clazz != null) {
+            metaAccess.lookupJavaType(clazz);
+        }
+
+        if (!universe.isTypeCreated(tid)) {
             /*
-             * If the type can be looked up by name, the constants can be directly loaded and
-             * relinked.
-             */
-            AnalysisType type = metaAccess.lookupJavaType(clazz);
-            loadAndRelinkTypeConstants(type);
-        } else {
-            /*
-             * If the type cannot be looked up by name, the constants are created using an
-             * incomplete AnalysisType, which uses a BaseLayerType in its wrapped field.
+             * If the type cannot be looked up by name, an incomplete AnalysisType, which uses a
+             * BaseLayerType in its wrapped field, has to be created
              */
             String className = get(typeData, CLASS_NAME_TAG);
             int modifiers = get(typeData, MODIFIERS_TAG);
@@ -402,16 +346,14 @@ public class ImageLayerLoader {
 
             BaseLayerType baseLayerType = new BaseLayerType(className, tid, modifiers, isInterface, isEnum, isInitialized, isLinked, sourceFileName, enclosingType, componentType, superClass,
                             interfaces, objectType);
-            AnalysisType type = universe.lookup(baseLayerType);
-
-            /*
-             * The constant cannot be relinked if the proper AnalysisType is not created yet. The
-             * constants are only created and the type is tracked to relink the constants if it is
-             * created later.
-             */
-            loadTypeConstants(type);
-            processedTypeIds.add(tid);
+            universe.lookup(baseLayerType);
         }
+
+        if (!universe.isTypeCreated(tid)) {
+            loadType(typeData, tid);
+        }
+
+        guarantee(universe.isTypeCreated(tid));
     }
 
     private ResolvedJavaType processType(Integer tid) {
@@ -424,12 +366,26 @@ public class ImageLayerLoader {
                  * and the set is queried before calling loadTypeConstants in other places.
                  */
                 EconomicMap<String, Object> typesMap = get(jsonMap, TYPES_TAG);
-                loadTypeConstants(get(typesMap, typeToIdentifier.get(tid)), tid);
+                loadType(get(typesMap, typeToIdentifier.get(tid)), tid);
             }
             guarantee(universe.isTypeCreated(tid));
             type = universe.getType(tid).getWrapped();
         }
         return type;
+    }
+
+    /**
+     * Creates all the constants from the base layer.
+     */
+    public void loadLayerConstants() {
+        EconomicMap<String, Object> constantsMap = get(jsonMap, CONSTANTS_TAG);
+        MapCursor<String, Object> constantsCursor = constantsMap.getEntries();
+        while (constantsCursor.advance()) {
+            int id = Integer.parseInt(constantsCursor.getKey());
+            if (!constants.containsKey(id)) {
+                createConstant(constantsMap, id);
+            }
+        }
     }
 
     /**
@@ -506,58 +462,6 @@ public class ImageLayerLoader {
             case "void" -> void.class;
             default -> null;
         };
-    }
-
-    public void loadAndRelinkTypeConstants(AnalysisType type) {
-        if (!(type.getWrapped() instanceof BaseLayerType)) {
-            /*
-             * Types can be created before loadLayerConstants, in which case the constants have to
-             * be loaded before new constants are created.
-             */
-            if (processedTypeIds.add(type.getId())) {
-                loadTypeConstants(type);
-            }
-            relinkTypeConstants(type);
-        }
-    }
-
-    /**
-     * Creates all the constants for the given type.
-     */
-    private void loadTypeConstants(AnalysisType type) {
-        EconomicMap<String, Object> constantsMap = get(jsonMap, CONSTANTS_TAG);
-        for (int constantId : typeToConstants.getOrDefault(type.getId(), Set.of())) {
-            createConstant(constantsMap, String.valueOf(constantId), type);
-        }
-    }
-
-    /**
-     * Re-links the constants for the given type.
-     */
-    private void relinkTypeConstants(AnalysisType analysisType) {
-        int id = analysisType.getId();
-        Set<AnalysisFuture<Void>> tasks = missingTypeTasks.getOrDefault(id, Set.of());
-        if (!tasks.isEmpty()) {
-            Object claim = claims.put(analysisType, Thread.currentThread().getName());
-            if (claim == null || !claim.equals(Thread.currentThread().getName())) {
-                for (AnalysisFuture<Void> task : tasks) {
-                    if (claim == null) {
-                        /*
-                         * Only the thread that got the claim can execute the tasks. Some tasks can
-                         * look up the AnalysisType, which causes this method to be executed again.
-                         * The thread that got the claim will skip the recursive execution of the
-                         * tasks, but another thread would try to execute them again and cause a
-                         * deadlock.
-                         */
-                        task.ensureDone();
-                    } else {
-                        task.guardedGet();
-                    }
-                }
-                missingTypeTasks.remove(id);
-                claims.remove(analysisType);
-            }
-        }
     }
 
     /**
@@ -666,22 +570,24 @@ public class ImageLayerLoader {
         }
     }
 
-    private void createConstant(EconomicMap<String, Object> constantsMap, String stringId, AnalysisType type) {
-        int id = Integer.parseInt(stringId);
-        EconomicMap<String, Object> baseLayerConstant = get(constantsMap, stringId);
+    private void createConstant(EconomicMap<String, Object> constantsMap, int id) {
+        EconomicMap<String, Object> baseLayerConstant = get(constantsMap, Integer.toString(id));
         if (baseLayerConstant == null) {
             throw GraalError.shouldNotReachHere("The constant was not reachable in the base image");
         }
+        int tid = get(baseLayerConstant, TID_TAG);
+        AnalysisType type = universe.getType(tid);
         String objectOffset = get(baseLayerConstant, OBJECT_OFFSET_TAG);
         String constantType = get(baseLayerConstant, CONSTANT_TYPE_TAG);
         switch (constantType) {
             case INSTANCE_TAG -> {
                 List<List<Object>> instanceData = get(baseLayerConstant, DATA_TAG);
-                ImageHeapInstance imageHeapInstance = new ImageHeapInstance(type, null);
-                Object[] fieldValues = getReferencedValues(imageHeapInstance, instanceData, imageLayerSnapshotUtil.getRelinkedFields(type, metaAccess));
+                JavaConstant hostedObject = getHostedObject(baseLayerConstant, type);
+                ImageHeapInstance imageHeapInstance = new ImageHeapInstance(type, hostedObject);
                 addBaseLayerObject(type, id, imageHeapInstance, objectOffset);
+                Object[] fieldValues = getReferencedValues(constantsMap, imageHeapInstance, instanceData, imageLayerSnapshotUtil.getRelinkedFields(type, metaAccess));
                 imageHeapInstance.setFieldValues(fieldValues);
-                relinkConstant(imageHeapInstance, baseLayerConstant, type);
+                relinkConstant(imageHeapInstance);
                 /*
                  * Packages are normally rescanned when the DynamicHub is initialized. However,
                  * since they are not relinked, the packages from the base layer will never be
@@ -694,8 +600,8 @@ public class ImageLayerLoader {
             case ARRAY_TAG -> {
                 List<List<Object>> arrayData = get(baseLayerConstant, DATA_TAG);
                 ImageHeapObjectArray imageHeapObjectArray = new ImageHeapObjectArray(type, null, arrayData.size());
-                Object[] elementsValues = getReferencedValues(imageHeapObjectArray, arrayData, Set.of());
                 addBaseLayerObject(type, id, imageHeapObjectArray, objectOffset);
+                Object[] elementsValues = getReferencedValues(constantsMap, imageHeapObjectArray, arrayData, Set.of());
                 imageHeapObjectArray.setElementValues(elementsValues);
             }
             case PRIMITIVE_ARRAY_TAG -> {
@@ -706,26 +612,23 @@ public class ImageLayerLoader {
             }
             default -> throw GraalError.shouldNotReachHere("Unknown constant type: " + constantType);
         }
-        for (AnalysisFuture<JavaConstant> task : missingConstantTasks.getOrDefault(id, Set.of())) {
-            task.ensureDone();
-        }
-        missingConstantTasks.remove(id);
     }
 
-    protected void relinkConstant(ImageHeapInstance imageHeapInstance, EconomicMap<String, Object> baseLayerConstant, AnalysisType analysisType) {
+    protected JavaConstant getHostedObject(EconomicMap<String, Object> baseLayerConstant, AnalysisType analysisType) {
         Class<?> clazz = analysisType.getJavaClass();
         boolean simulated = get(baseLayerConstant, SIMULATED_TAG);
         if (!simulated) {
-            relinkConstant(imageHeapInstance, baseLayerConstant, clazz);
+            return getHostedObject(baseLayerConstant, clazz);
         }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
-    protected void relinkConstant(ImageHeapInstance imageHeapInstance, EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
+    protected JavaConstant getHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
         if (clazz.equals(String.class)) {
             String value = get(baseLayerConstant, VALUE_TAG);
             if (value != null) {
-                relinkConstant(value.intern(), imageHeapInstance);
+                return getHostedObject(value.intern());
             }
         } else if (Enum.class.isAssignableFrom(clazz)) {
             String className = get(baseLayerConstant, ENUM_CLASS_TAG);
@@ -733,14 +636,20 @@ public class ImageLayerLoader {
             String name = get(baseLayerConstant, ENUM_NAME_TAG);
             /* asSubclass produces an "unchecked" warning */
             Enum<?> enumValue = Enum.valueOf(enumClass.asSubclass(Enum.class), name);
-            relinkConstant(enumValue, imageHeapInstance);
+            return getHostedObject(enumValue);
+        }
+        return null;
+    }
+
+    protected void relinkConstant(ImageHeapInstance imageHeapInstance) {
+        JavaConstant hostedObject = imageHeapInstance.getHostedObject();
+        if (hostedObject != null) {
+            relinkedConstants.put(hostedObject, imageHeapInstance);
         }
     }
 
-    protected void relinkConstant(Object object, ImageHeapInstance imageHeapInstance) {
-        JavaConstant hostedObject = hostedValuesProvider.forObject(object);
-        imageHeapInstance.setHostedObject(hostedObject);
-        relinkedConstants.put(hostedObject, imageHeapInstance);
+    protected JavaConstant getHostedObject(Object object) {
+        return hostedValuesProvider.forObject(object);
     }
 
     @SuppressWarnings("unchecked")
@@ -790,10 +699,9 @@ public class ImageLayerLoader {
         return primitiveBooleans;
     }
 
-    private Object[] getReferencedValues(ImageHeapConstant parentConstant, List<List<Object>> data, Set<Integer> positionsToRelink) {
+    private Object[] getReferencedValues(EconomicMap<String, Object> constantsMap, ImageHeapConstant parentConstant, List<List<Object>> data, Set<Integer> positionsToRelink) {
         Object[] values = new Object[data.size()];
         for (int position = 0; position < data.size(); ++position) {
-            int finalPosition = position;
             List<Object> constantData = data.get(position);
             String constantKind = (String) constantData.get(0);
             Object constantValue = constantData.get(1);
@@ -804,34 +712,11 @@ public class ImageLayerLoader {
                 int constantId = (int) constantValue;
                 if (constantId >= 0) {
                     boolean relink = positionsToRelink.contains(position);
-                    ImageHeapConstant constant = constants.get(constantId);
-                    if (constant != null) {
-                        setConstant(parentConstant, values, position, constant, relink);
-                    } else {
-                        values[position] = new AnalysisFuture<JavaConstant>(() -> {
-                            throw AnalysisError.shouldNotReachHere("The constant should be loaded before being accessed.");
-                        });
-
-                        AnalysisFuture<JavaConstant> linkingConstantTask = new AnalysisFuture<>(() -> {
-                            ImageHeapConstant createdConstant = constants.get(constantId);
-                            guarantee(createdConstant != null);
-                            setConstant(parentConstant, values, finalPosition, createdConstant, relink);
-                            return createdConstant;
-                        });
-                        missingConstantTasks.computeIfAbsent(constantId, unused -> ConcurrentHashMap.newKeySet()).add(linkingConstantTask);
-
-                        /* If the constant was published in the meantime just set it. */
-                        if (constants.containsKey(constantId)) {
-                            linkingConstantTask.ensureDone();
-                            /*
-                             * It is safe to remove the entry from the map because the tasks that
-                             * were added too late (e.g. after missingConstantTasks.getOrDefault)
-                             * will all be executed here since the constant has been registered in
-                             * the constants map at this point.
-                             */
-                            missingConstantTasks.remove(constantId);
-                        }
+                    if (!constants.containsKey(constantId)) {
+                        createConstant(constantsMap, constantId);
                     }
+                    ImageHeapConstant constant = constants.get(constantId);
+                    setConstant(parentConstant, values, position, constant, relink);
                 } else if (constantId == NULL_POINTER_CONSTANT) {
                     values[position] = JavaConstant.NULL_POINTER;
                 } else {
