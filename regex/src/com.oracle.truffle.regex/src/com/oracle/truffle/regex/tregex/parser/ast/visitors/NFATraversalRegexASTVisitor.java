@@ -373,28 +373,6 @@ public abstract class NFATraversalRegexASTVisitor {
         if (transitionGuardsResult == null) {
             assert useTransitionGuards() || getTransitionGuards().isEmpty();
             transitionGuardsResult = getTransitionGuards().isEmpty() ? TransitionGuard.NO_GUARDS : getTransitionGuards().toArray();
-            if (ast.getOptions().getFlavor().supportsRecursiveBackreferences()) {
-                // Note: Updating the recursive back-reference boundaries before all other
-                // quantifier guards causes back-references to empty matches to fail. This
-                // is expected behavior in OracleDBFlavor.
-                long[] reordered = new long[transitionGuardsResult.length];
-                int i = 0;
-                for (long guard : transitionGuardsResult) {
-                    if (TransitionGuard.is(guard, TransitionGuard.Kind.updateRecursiveBackrefPointer)) {
-                        reordered[i++] = guard;
-                    }
-                }
-                if (i == 0) {
-                    return;
-                }
-                for (long guard : transitionGuardsResult) {
-                    if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateRecursiveBackrefPointer)) {
-                        reordered[i++] = guard;
-                    }
-                }
-                assert i == transitionGuardsResult.length;
-                transitionGuardsResult = reordered;
-            }
         }
     }
 
@@ -1040,6 +1018,7 @@ public abstract class NFATraversalRegexASTVisitor {
                             Quantifier quantifier = group.getQuantifier();
                             if (quantifier.hasIndex()) {
                                 boundedQuantifiersExited.set(quantifier.getIndex());
+                                pushTransitionGuard(TransitionGuard.createExitReset(quantifier));
                             }
                             if (quantifier.hasZeroWidthIndex()) {
                                 pushTransitionGuard(TransitionGuard.createEscapeZeroWidth(quantifier));
@@ -1254,6 +1233,13 @@ public abstract class NFATraversalRegexASTVisitor {
             } else {
                 System.out.printf("NODE        %s%n", pathGetNode(element));
             }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    protected void dumpTransitionGuards(long[] guards) {
+        for (long guard : guards) {
+            System.out.println(TransitionGuard.toString(guard));
         }
     }
 

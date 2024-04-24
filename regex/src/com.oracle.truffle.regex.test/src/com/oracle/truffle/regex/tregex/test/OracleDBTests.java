@@ -1193,6 +1193,25 @@ public class OracleDBTests extends RegexTestBase {
         expectSyntaxError("[]\\\\", "", "", getTRegexEncoding(), "g", 0, "unmatched bracket in regular expression");
         test("[[:print:][.j.]]\\S;[0-HB]t", "", "$*iAt\u0005;;Et", 0, false);
         test("\\s\\Dz()[[.o.][:blank:][:upper:][=c=]'[.0.][:blank:]<-M}-}[=r=][.h.][=e=]]", "", " &zzh", 0, false);
+        test("()(a\\1\\1)*", "", "aaaa", 0, true, 0, 4, 0, 0, 3, 4);
+        test("8(?\\A\\D|)[j-{[:punct:][=:=]](\\1[d[./.]]\\1{10,20}?)*\\z|", "", "8://dd/d///d/d", 0, true, 0, 14, 1, 1, 13, 14);
+        test("(a*)*", "", "aaaaaaaaaaaaaaa", 0, true, 0, 15, 15, 15);
+        test("(a*())*", "", "aaaaaaaaaaaaaaa", 0, true, 0, 15, 15, 15, 15, 15);
+        test("([^a])*[^b]+", "", "ccccc", 0, true, 0, 5, 3, 4);
+        test("([^a])*[^b]+[^a]", "", "cccccccccccccccc", 0, true, 0, 16, 13, 14);
+        test("(\\S)*\\D+\\S", "", "\u0007c\u0004\u0012U\u0019\u001a/to!\u000f\u0012M+~QO", 0, true, 0, 18, 15, 16);
+        test("a*?b?|b", "", "b", 0, true, 0, 1);
+        test("[][::A]]", "", ":]", 0, true, 0, 2);
+        test("[[::AA]]", "", ":]", 0, true, 0, 2);
+        test("()^\\s()(\\1\\1|\\\\\\1\\1)+()\\2[_|-~[.>.][:lower:]]|\\w\\s\\1|", "", " \\\\>", 0, true, 0, 4, 0, 0, 1, 1, 3, 3, 3, 3);
+        test("\\W\\d\\]+?\\+?'\\D((|\\d\\2)4S(5)O\\W){1,278}\\w", "", "`9]]]]]]]'~4S5O?4S5O`74S5O|4S5O{04S5O}V", 0, true, 0, 39, 32, 38, 32, 33, 35, 36);
+        test("H(@\\S|4|\\1\\D|\\z*)+?()H\\Wh", "", "H@\u0012@\u0008@J4%@\u0002\u00054H&h", 0, false);
+        test("\\d(A(()()i(|(??\\5)\\W))|\\A)*[T]", "", "3AiAi\u007fAiAi@T", 0, true, 0, 12, 8, 11, 9, 11, 9, 9, 9, 9, 10, 11, 10, 10);
+        test("o|([[:blank:][:punct:]I[=_=]])*?$", "", "}~", 0, true, 0, 2, 1, 2);
+        test("()*?()a+?", "", "b", 0, false);
+        test("()\\1*\\1\\1+\\1?\\1", "", "b", 0, true, 0, 0, 0, 0);
+        test("((b\\2|)a)+", "", "aba", 0, true, 0, 3, 1, 3, 1, 2);
+        test("(\\A{1,10}a)*?\\z", "", "aa", 0, true, 2, 2, -1, -1);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
