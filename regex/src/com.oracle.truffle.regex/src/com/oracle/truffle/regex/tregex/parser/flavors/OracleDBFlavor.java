@@ -58,7 +58,7 @@ public final class OracleDBFlavor extends RegexFlavor {
 
     private OracleDBFlavor() {
         super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | FAILING_EMPTY_CHECKS_DONT_BACKTRACK | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | SUPPORTS_RECURSIVE_BACKREFERENCES |
-                        EMPTY_CHECKS_ON_MANDATORY_LOOP_ITERATIONS);
+                        EMPTY_CHECKS_ON_MANDATORY_LOOP_ITERATIONS | BACKREFERENCE_IGNORE_CASE_MULTI_CHAR_EXPANSION);
     }
 
     @Override
@@ -74,5 +74,15 @@ public final class OracleDBFlavor extends RegexFlavor {
     @Override
     public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
         return (codePointA, codePointB, altMode) -> MultiCharacterCaseFolding.equalsIgnoreCase(CaseFoldData.CaseFoldAlgorithm.OracleDB, codePointA, codePointB);
+    }
+
+    @Override
+    public CaseFoldData.CaseFoldAlgorithm getCaseFoldAlgorithm(RegexAST ast) {
+        OracleDBFlags flags = (OracleDBFlags) ast.getFlavorSpecificFlags();
+        if (flags.isIgnoreCase()) {
+            return CaseFoldData.CaseFoldAlgorithm.OracleDB;
+        }
+        // TODO: Accent-insensitive mode, either via an extra flag or a RegexOption
+        return null;
     }
 }

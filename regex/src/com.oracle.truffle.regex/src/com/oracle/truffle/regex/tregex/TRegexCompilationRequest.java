@@ -101,7 +101,6 @@ public final class TRegexCompilationRequest {
     private final RegexLanguage language;
     private final RegexSource source;
     private RegexAST ast = null;
-    private AbstractRegexObject flags = null;
     private AbstractRegexObject namedCaptureGroups = null;
     private PureNFA pureNFA = null;
     private NFA nfa = null;
@@ -134,10 +133,6 @@ public final class TRegexCompilationRequest {
 
     public RegexAST getAst() {
         return ast;
-    }
-
-    public AbstractRegexObject getFlags() {
-        return flags;
     }
 
     public AbstractRegexObject getNamedCaptureGroups() {
@@ -333,7 +328,7 @@ public final class TRegexCompilationRequest {
         RegexFlavor flavor = source.getOptions().getFlavor();
         RegexParser parser = flavor.createParser(language, source, compilationBuffer);
         ast = parser.parse();
-        flags = parser.getFlags();
+        ast.setFlavorSpecificFlags(parser.getFlags());
         namedCaptureGroups = parser.getNamedCaptureGroups();
     }
 

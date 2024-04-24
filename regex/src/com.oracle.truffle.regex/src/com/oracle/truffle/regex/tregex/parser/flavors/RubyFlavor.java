@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
@@ -243,5 +244,10 @@ public final class RubyFlavor extends RegexFlavor {
     @Override
     public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
         return (codePointA, codePointB, altMode) -> MultiCharacterCaseFolding.equalsIgnoreCase(CaseFoldData.CaseFoldAlgorithm.Ruby, codePointA, codePointB);
+    }
+
+    @Override
+    public CaseFoldData.CaseFoldAlgorithm getCaseFoldAlgorithm(RegexAST ast) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 }
