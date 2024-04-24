@@ -24,15 +24,21 @@
  */
 package com.oracle.svm.core.posix;
 
+import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
+
 import java.io.FileDescriptor;
 import java.io.IOException;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -50,10 +56,13 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Locale;
+import com.oracle.svm.core.posix.headers.Pwd;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
+import com.oracle.svm.core.posix.headers.Pwd.passwd;
+import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.thread.VMOperation;
@@ -331,4 +340,49 @@ public class PosixUtils {
         }
     }
     // Checkstyle: resume
+
+    public static String getUserName(int uid) {
+        return getUserNameOrDir(uid, true);
+    }
+
+    public static String getUserDir(int uid) {
+        return getUserNameOrDir(uid, false);
+    }
+
+    private static String getUserNameOrDir(int uid, boolean name) {
+        /* Determine max. pwBuf size. */
+        long bufSize = Unistd.sysconf(_SC_GETPW_R_SIZE_MAX());
+        if (bufSize == -1) {
+            bufSize = 1024;
+        }
+
+        /* Retrieve the username and copy it to a String object. */
+        CCharPointer pwBuf = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(bufSize));
+        if (pwBuf.isNull()) {
+            return null;
+        }
+
+        try {
+            passwd pwent = StackValue.get(passwd.class);
+            passwdPointer p = StackValue.get(passwdPointer.class);
+            int code = Pwd.getpwuid_r(uid, pwent, pwBuf, WordFactory.unsigned(bufSize), p);
+            if (code != 0) {
+                return null;
+            }
+
+            passwd result = p.read();
+            if (result.isNull()) {
+                return null;
+            }
+
+            CCharPointer pwName = name ? result.pw_name() : result.pw_dir();
+            if (pwName.isNull() || pwName.read() == '\0') {
+                return null;
+            }
+
+            return CTypeConversion.toJavaString(pwName);
+        } finally {
+            UnmanagedMemory.free(pwBuf);
+        }
+    }
 }
