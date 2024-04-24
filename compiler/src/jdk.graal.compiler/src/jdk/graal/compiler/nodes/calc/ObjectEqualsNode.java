@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -108,7 +108,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             if (type != null && nonConstant instanceof GetClassNode) {
                 GetClassNode getClassNode = (GetClassNode) nonConstant;
                 ValueNode object = getClassNode.getObject();
-                assert ((ObjectStamp) object.stamp(view)).nonNull();
+                assert ((ObjectStamp) object.stamp(view)).nonNull() : "getClassNode %s object %s should have a non-null stamp, got: %s".formatted(getClassNode, object, object.stamp(view));
                 if (!type.isPrimitive() && (type.isConcrete() || type.isArray())) {
                     return InstanceOfNode.create(TypeReference.createExactTrusted(type), object);
                 }
