@@ -28,25 +28,16 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
-import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
-import com.oracle.svm.core.genscavenge.compacting.RelocationInfo;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.genscavenge.compacting.ObjectRefFixupVisitor;
 
-import jdk.graal.compiler.word.Word;
-
-/**
- * References from the runtime compiled code to the Java heap must be fixed up when compacting the old generation.
- * It is essential to re-visit all references that were visited in {@link RuntimeCodeCacheWalker} during mark phase.
- */
+/** Before compaction, updates references from {@link CodeInfo} structures. */
 final class RuntimeCodeCacheFixupWalker implements CodeInfoVisitor {
-
-    private final ObjectReferenceVisitor visitor;
+    private final ObjectRefFixupVisitor visitor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    RuntimeCodeCacheFixupWalker(ObjectReferenceVisitor visitor) {
+    RuntimeCodeCacheFixupWalker(ObjectRefFixupVisitor visitor) {
         this.visitor = visitor;
     }
 
@@ -56,42 +47,12 @@ final class RuntimeCodeCacheFixupWalker implements CodeInfoVisitor {
             return true;
         }
 
-        Object tether = UntetheredCodeInfoAccess.getTetherUnsafe(codeInfo);
-        if (tether != null && !isReachable(tether)) {
-            int state = CodeInfoAccess.getState(codeInfo);
-            if (state == CodeInfo.STATE_UNREACHABLE || state == CodeInfo.STATE_READY_FOR_INVALIDATION) {
-                /*
-                 * The CodeInfo object's state was changed to unreachable or to-be-invalidated during mark phase,
-                 * so we only need to visit references that will be accessed before the unmanaged memory is freed.
-                 */
-                RuntimeCodeInfoAccess.walkObjectFields(codeInfo, visitor);
-                return true;
-            }
-        }
-
         /*
-         * As the tether object survived scavenging, we need to fixup all references.
+         * Whether this CodeInfo remains valid or will be invalidated or freed during this GC, we
+         * update all its references, including clearing those to objects that do not survive.
          */
         RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, visitor);
         RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, visitor);
-
         return true;
-    }
-
-    /**
-     * @return {code true} if the object will survive this collection, otherwise {@code false}.
-     */
-    public static boolean isReachable(Object tether) {
-        if (HeapImpl.getHeapImpl().isInImageHeap(tether)) {
-            return true;
-        }
-
-        Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(tether));
-        if (space == null || !space.isOldSpace()) {
-            return false;
-        }
-
-        Word ptr = Word.objectToUntrackedPointer(tether);
-        return RelocationInfo.getRelocatedObjectPointer(ptr).isNonNull();
     }
 }

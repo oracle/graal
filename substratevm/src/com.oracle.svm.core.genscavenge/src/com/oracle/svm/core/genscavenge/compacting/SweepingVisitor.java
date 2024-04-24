@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,79 +24,53 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
+import static jdk.graal.compiler.replacements.AllocationSnippets.FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED;
+
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.heap.FillerObject;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaKind;
 
-public class SweepingVisitor implements RelocationInfo.Visitor {
+/**
+ * Overwrites dead objects with filler objects so that heap walks or scans that use card tables
+ * cannot encounter them (and their broken references).
+ */
+public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
+    @Fold
+    static int byteArrayMinSize() {
+        return NumUtil.safeToInt(ConfigurationValues.getObjectLayout().getArraySize(JavaKind.Byte, 0, false));
+    }
 
-    private static final int MIN_ARRAY_SIZE = NumUtil.safeToInt(
-            ConfigurationValues.getObjectLayout().getArraySize(JavaKind.Byte, 0, false)
-    );
+    @Fold
+    static int byteArrayBaseOffset() {
+        return ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
+    }
 
     @Override
     public boolean visit(Pointer p) {
-        return visitInline(p);
-    }
-
-    @AlwaysInline("GC performance")
-    @Override
-    public boolean visitInline(Pointer p) {
-        int size = RelocationInfo.readGapSize(p);
-        if (size == 0) {
-            return true;
+        int size = ObjectMoveInfo.getPrecedingGapSize(p);
+        if (size != 0) {
+            Pointer gap = p.subtract(size);
+            writeFillerObjectAt(gap, size);
         }
-
-        Pointer gap = p.subtract(size);
-        writeFillerObjectAt(gap, size);
-
         return true;
     }
 
     private static void writeFillerObjectAt(Pointer p, int size) {
-        ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
-        ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
-
-        if (size >= MIN_ARRAY_SIZE) {
-            Word encodedHeader = objectHeader.encodeAsUnmanagedObjectHeader(
-                    SubstrateUtil.cast(byte[].class, DynamicHub.class)
-            );
-            objectHeader.initializeHeaderOfNewObject(p, encodedHeader, true);
-
-            int baseOffset = objectLayout.getArrayBaseOffset(JavaKind.Byte);
-            int indexShift = objectLayout.getArrayIndexShift(JavaKind.Byte);
-            int length = (size - baseOffset) >> indexShift;
-            p.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
+        assert size > 0;
+        if (size >= byteArrayMinSize()) {
+            int length = size - byteArrayBaseOffset();
+            FormatArrayNode.formatArray(p, byte[].class, length, true, false, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
         } else {
-            Word encodedHeader = objectHeader.encodeAsUnmanagedObjectHeader(
-                    SubstrateUtil.cast(FillerObject.class, DynamicHub.class)
-            );
-            objectHeader.initializeHeaderOfNewObject(p, encodedHeader, false);
+            FormatObjectNode.formatObject(p, FillerObject.class, true, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
         }
-
-        if (LayoutEncoding.getSizeFromObjectInGC(p.toObject()).notEqual(size)) {
-            Log.log().string("DEBUG: filler object size mismatch")
-                    .string(", expected=").signed(size)
-                    .string(", actual=").signed(LayoutEncoding.getSizeFromObjectInGC(p.toObject()))
-                    .newline().flush();
-        }
-        VMError.guarantee(
-                LayoutEncoding.getSizeFromObjectInGC(p.toObject()).equal(size),
-                "Filler object must fill gap completely"
-        );
+        assert LayoutEncoding.getSizeFromObjectInGC(p.toObject()).equal(size);
     }
 }

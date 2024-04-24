@@ -43,7 +43,7 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
-import com.oracle.svm.core.genscavenge.compacting.RelocationInfo;
+import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
@@ -67,8 +67,8 @@ final class AlignedChunkRememberedSet {
     public static UnsignedWord getHeaderSize() {
         UnsignedWord headerSize = getFirstObjectTableLimitOffset();
         if (SerialGCOptions.useCompactingOldGen()) {
-            // Compaction needs room for a RelocationInfo structure before the first object.
-            headerSize = headerSize.add(RelocationInfo.getSize());
+            // Compaction needs room for a ObjectMoveInfo structure before the first object.
+            headerSize = headerSize.add(ObjectMoveInfo.getSize());
         }
         UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);

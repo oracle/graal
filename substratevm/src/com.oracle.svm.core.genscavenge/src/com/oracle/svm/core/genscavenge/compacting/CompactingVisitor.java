@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,66 +32,41 @@ import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 
-public class CompactingVisitor implements RelocationInfo.Visitor {
-
+/** Moves sequences of live objects to their planned location during compaction. */
+public final class CompactingVisitor implements ObjectMoveInfo.Visitor {
     private AlignedHeapChunk.AlignedHeader chunk;
-
     private UnsignedWord top;
 
     @Override
     public boolean visit(Pointer p) {
-        return visitInline(p);
-    }
-
-    @AlwaysInline("GC performance")
-    @Override
-    public boolean visitInline(Pointer p) {
-        Pointer relocationPointer = RelocationInfo.readRelocationPointer(p);
-        if (relocationPointer.equal(p)) {
-            /*
-             * No copy. Data stays where it's currently located.
-             */
+        Pointer newAddress = ObjectMoveInfo.getNewAddress(p);
+        if (newAddress.equal(p)) {
+            return true;
+        }
+        UnsignedWord size = computeObjSeqSize(p);
+        if (size.equal(0)) { // gap right at the chunk's start
             return true;
         }
 
-        UnsignedWord size = calculatePlugSize(p);
-        if (size.equal(0)) {
-            /*
-             * Gap at chunk start causes a 0 bytes 1st plug.
-             */
-            return true;
-        }
-
-        UnmanagedMemoryUtil.copy(p, relocationPointer, size);
+        UnmanagedMemoryUtil.copy(p, newAddress, size);
 
         // TODO: Find a more elegant way to set the top pointer during/after compaction.
-        AlignedHeapChunk.AlignedHeader newChunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(relocationPointer);
-        HeapChunk.setTopPointer(
-                newChunk,
-                relocationPointer.add(size)
-        );
+        AlignedHeapChunk.AlignedHeader newChunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(newAddress);
+        HeapChunk.setTopPointer(newChunk, newAddress.add(size));
         if (chunk.notEqual(newChunk)) {
-            HeapChunk.setTopPointer(
-                    chunk,
-                    AlignedHeapChunk.getObjectsStart(chunk)
-            );
+            HeapChunk.setTopPointer(chunk, AlignedHeapChunk.getObjectsStart(chunk));
         }
-
         return true;
     }
 
-    /**
-     * May return {@code 0} values if there is a gap at chunk start!
-     */
     @AlwaysInline("GC performance")
-    private UnsignedWord calculatePlugSize(Pointer relocInfo) {
-        Pointer nextRelocInfo = RelocationInfo.getNextRelocationInfo(relocInfo);
-        if (nextRelocInfo.isNull()) {
-            // Last plug of chunk! Plug size is based on chunk top.
-            return top.subtract(relocInfo);
+    private UnsignedWord computeObjSeqSize(Pointer objSeqStart) {
+        Pointer nextObjSeq = ObjectMoveInfo.getNextObjectSeqAddress(objSeqStart);
+        if (nextObjSeq.isNull()) {
+            return top.subtract(objSeqStart); // last sequence of objects in chunk
         }
-        int gap = RelocationInfo.readGapSize(nextRelocInfo);
-        return nextRelocInfo.subtract(gap).subtract(relocInfo);
+        int gap = ObjectMoveInfo.getPrecedingGapSize(nextObjSeq);
+        return nextObjSeq.subtract(gap).subtract(objSeqStart);
     }
 
     public void init(AlignedHeapChunk.AlignedHeader c) {

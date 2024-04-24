@@ -43,11 +43,11 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.compacting.CompactingVisitor;
-import com.oracle.svm.core.genscavenge.compacting.FixingVisitor;
 import com.oracle.svm.core.genscavenge.compacting.MarkStack;
+import com.oracle.svm.core.genscavenge.compacting.ObjectFixupVisitor;
+import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
+import com.oracle.svm.core.genscavenge.compacting.ObjectRefFixupVisitor;
 import com.oracle.svm.core.genscavenge.compacting.PlanningVisitor;
-import com.oracle.svm.core.genscavenge.compacting.RefFixupVisitor;
-import com.oracle.svm.core.genscavenge.compacting.RelocationInfo;
 import com.oracle.svm.core.genscavenge.compacting.SweepingVisitor;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.RuntimeCompilation;
@@ -73,8 +73,8 @@ final class CompactingOldGeneration extends OldGeneration {
 
     private final GreyObjectsWalker toGreyObjectsWalker = new GreyObjectsWalker();
     private final PlanningVisitor planningVisitor = new PlanningVisitor();
-    private final RefFixupVisitor refFixupVisitor = new RefFixupVisitor();
-    private final FixingVisitor fixingVisitor = new FixingVisitor(refFixupVisitor);
+    private final ObjectRefFixupVisitor refFixupVisitor = new ObjectRefFixupVisitor();
+    private final ObjectFixupVisitor fixupVisitor = new ObjectFixupVisitor(refFixupVisitor);
     private final CompactingVisitor compactingVisitor = new CompactingVisitor();
     private final SweepingVisitor sweepingVisitor = new SweepingVisitor();
     private final RuntimeCodeCacheFixupWalker runtimeCodeCacheFixupWalker = new RuntimeCodeCacheFixupWalker(refFixupVisitor);
@@ -244,19 +244,19 @@ final class CompactingOldGeneration extends OldGeneration {
         timers.tenuredFixingAlignedChunks.open();
         AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
-            RelocationInfo.walkObjects(aChunk, fixingVisitor);
+            ObjectMoveInfo.walkObjects(aChunk, fixupVisitor);
             aChunk = HeapChunk.getNext(aChunk);
         }
         timers.tenuredFixingAlignedChunks.close();
 
         timers.tenuredFixingImageHeap.open();
         for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
-            GCImpl.walkImageHeapRoots(info, fixingVisitor);
+            GCImpl.walkImageHeapRoots(info, fixupVisitor);
         }
         if (AuxiliaryImageHeap.isPresent()) {
             ImageHeapInfo auxImageHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
             if (auxImageHeapInfo != null) {
-                GCImpl.walkImageHeapRoots(auxImageHeapInfo, fixingVisitor);
+                GCImpl.walkImageHeapRoots(auxImageHeapInfo, fixupVisitor);
             }
         }
         timers.tenuredFixingImageHeap.close();
@@ -274,7 +274,12 @@ final class CompactingOldGeneration extends OldGeneration {
         }
         timers.tenuredFixingThreadLocal.close();
 
-        fixupStackReferences(timers);
+        timers.tenuredFixingStack.open();
+        try {
+            fixupStackReferences();
+        } finally {
+            timers.tenuredFixingStack.close();
+        }
 
         /*
          * Check unaligned objects. Fix its contained references if the object is marked. Add the
@@ -291,7 +296,7 @@ final class CompactingOldGeneration extends OldGeneration {
                     ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(obj);
                     RememberedSet.get().clearRememberedSet(uChunk);
 
-                    UnalignedHeapChunk.walkObjectsInline(uChunk, fixingVisitor);
+                    UnalignedHeapChunk.walkObjectsInline(uChunk, fixupVisitor);
 
                     UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
                     assert UnalignedHeapChunk.getObjectStart(uChunk).add(objSize).equal(HeapChunk.getTopPointer(uChunk));
@@ -316,55 +321,50 @@ final class CompactingOldGeneration extends OldGeneration {
                     "Note that we could start the stack frame also further down the stack, because GC stack frames must not access any objects that are processed by the GC. " +
                     "But we don't store stack frame information for the first frame we would need to process.")
     @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.")
-    private void fixupStackReferences(Timers timers) {
-        timers.tenuredFixingStack.open();
-        try {
-            Pointer sp = readCallerStackPointer();
-            CodePointer ip = readReturnAddress();
-            GCImpl.walkStackRoots(refFixupVisitor, sp, ip, false);
-        } finally {
-            timers.tenuredFixingStack.close();
-        }
+    private void fixupStackReferences() {
+        Pointer sp = readCallerStackPointer();
+        CodePointer ip = readReturnAddress();
+        GCImpl.walkStackRoots(refFixupVisitor, sp, ip, false);
     }
 
     private void compact(Timers timers) {
         timers.tenuredCompactingChunks.open();
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-
             if (chunk.getShouldSweepInsteadOfCompact()) {
-                RelocationInfo.visit(chunk, sweepingVisitor);
+                ObjectMoveInfo.visit(chunk, sweepingVisitor);
                 chunk.setShouldSweepInsteadOfCompact(false);
             } else {
                 compactingVisitor.init(chunk);
-                RelocationInfo.visit(chunk, compactingVisitor);
+                ObjectMoveInfo.visit(chunk, compactingVisitor);
             }
-
             chunk = HeapChunk.getNext(chunk);
         }
         timers.tenuredCompactingChunks.close();
 
-        chunk = space.getFirstAlignedHeapChunk();
         timers.tenuredCompactingUpdatingRemSet.open();
+        chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-            // clear CardTable and update FirstObjectTable
-            // TODO: Build the FirstObjectTable during compaction (when completing a chunk and it is
-            // in the cache) or fixup (in-flight with fixing references) or planning.
+            /*
+             * Clears the card table (which currently contains the brick table) and updates the
+             * first object table.
+             *
+             * TODO: build the first object table during compaction (after processing a chunk and it
+             * is in the cache) or during fixup (in-flight with fixing references) or even planning.
+             */
             RememberedSet.get().enableRememberedSetForChunk(chunk);
-
             chunk = HeapChunk.getNext(chunk);
         }
         timers.tenuredCompactingUpdatingRemSet.close();
     }
 
+    /** After the collection, releases those chunks which are empty (typically at the end). */
     @Override
     void releaseSpaces(ChunkReleaser chunkReleaser) {
-        // Release empty aligned chunks.
         AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
             AlignedHeapChunk.AlignedHeader next = HeapChunk.getNext(aChunk);
             if (HeapChunk.getTopPointer(aChunk).equal(AlignedHeapChunk.getObjectsStart(aChunk))) {
-                // Release the empty aligned chunk.
                 space.extractAlignedHeapChunk(aChunk);
                 chunkReleaser.add(aChunk);
             }

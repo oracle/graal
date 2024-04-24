@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.genscavenge.compacting.RelocationInfo;
+import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -139,9 +139,9 @@ public final class SerialGCOptions {
                 throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
                                 SubstrateOptionsParser.commandArgument(ConcealedOptions.UseRememberedSet, "+"));
             }
-            if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue() > RelocationInfo.MAX_CHUNK_SIZE) {
+            if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue() > ObjectMoveInfo.MAX_CHUNK_SIZE) {
                 throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
-                                SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value below or equal to " + RelocationInfo.MAX_CHUNK_SIZE + ">"));
+                                SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value below or equal to " + ObjectMoveInfo.MAX_CHUNK_SIZE + ">"));
             }
             return true;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
@@ -43,13 +41,17 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 
 import jdk.graal.compiler.word.Word;
 
-public class PlanningVisitor implements AlignedHeapChunk.Visitor {
+/**
+ * Decides where live objects will be moved during compaction and stores this information in gaps
+ * between them using {@link ObjectMoveInfo} so that {@link ObjectFixupVisitor},
+ * {@link CompactingVisitor} and {@link SweepingVisitor} can update references and move live objects
+ * or overwrite dead objects.
+ */
+public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
+    private static final PrepareSweepVisitor SWEEP_PREPARING_VISITOR = new PrepareSweepVisitor();
 
-    private static final SweepPreparingVisitor SWEEP_PREPARING_VISITOR = new SweepPreparingVisitor();
-
-    private AlignedHeapChunk.AlignedHeader allocationChunk;
-
-    private Pointer allocationPointer;
+    private AlignedHeapChunk.AlignedHeader allocChunk;
+    private Pointer allocPointer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public PlanningVisitor() {
@@ -57,32 +59,35 @@ public class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
     @Override
     public boolean visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        Pointer cursor = AlignedHeapChunk.getObjectsStart(chunk);
-        Pointer top = HeapChunk.getTopPointer(chunk); // top can't move here, therefore it's fine to read once
+        Pointer initialTop = HeapChunk.getTopPointer(chunk); // top doesn't move until we are done
 
-        Pointer relocationInfoPointer = AlignedHeapChunk.getObjectsStart(chunk);
+        Pointer objSeq = AlignedHeapChunk.getObjectsStart(chunk);
         UnsignedWord gapSize = WordFactory.zero();
-        UnsignedWord plugSize = WordFactory.zero();
+        UnsignedWord objSeqSize = WordFactory.zero();
 
-        UnsignedWord brick = WordFactory.zero();
-        UnsignedWord fragmentation = WordFactory.zero();
+        UnsignedWord brickIndex = WordFactory.zero();
+        UnsignedWord totalUnusedBytes = WordFactory.zero();
 
-        /*
-         * Write the first relocation info just before objects start.
-         */
-        RelocationInfo.writeRelocationPointer(relocationInfoPointer, allocationPointer);
-        RelocationInfo.writeGapSize(relocationInfoPointer, 0);
-        RelocationInfo.writeNextPlugOffset(relocationInfoPointer, 0);
+        /* Initialize the move info structure at the chunk's object start location. */
+        ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
+        ObjectMoveInfo.setPrecedingGapSize(objSeq, 0);
+        ObjectMoveInfo.setNextObjectSeqOffset(objSeq, 0);
 
-        BrickTable.setEntry(chunk, brick, relocationInfoPointer);
+        BrickTable.setEntry(chunk, brickIndex, objSeq);
 
-        while (cursor.belowThan(top)) {
-            Word header = ObjectHeaderImpl.readHeaderFromPointer(cursor);
-            Object obj = cursor.toObject();
+        Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
+        while (p.belowThan(initialTop)) {
+            Word header = ObjectHeaderImpl.readHeaderFromPointer(p);
+            Object obj = p.toObject();
 
             UnsignedWord objSize;
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
-                Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(cursor, header);
+                /*
+                 * If an object was copied from a chunk that won't be swept and forwarding was put
+                 * in place, it was because we needed to add an identity hash code field.
+                 */
+                assert ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
+                Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(p, header);
                 objSize = LayoutEncoding.getSizeFromObjectWithoutOptionalIdHashFieldInGC(forwardedObj);
             } else {
                 objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
@@ -92,145 +97,112 @@ public class PlanningVisitor implements AlignedHeapChunk.Visitor {
                 ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(obj);
 
                 /*
-                 * Adding the optional identity hash field will increase the object's size,
-                 * but in here, when compacting the tenured space, we expect that there aren't any marked objects
-                 * which have their "IdentityHashFromAddress" object header flag set.
+                 * Adding the optional identity hash field would increase an object's size, so we
+                 * should have copied all objects that need one during marking instead.
                  */
-                assert !ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional()
-                        || !ObjectHeaderImpl.hasIdentityHashFromAddressInline(header)
-                        || chunk.getShouldSweepInsteadOfCompact();
+                assert !ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional() ||
+                                !ObjectHeaderImpl.hasIdentityHashFromAddressInline(header) || chunk.getShouldSweepInsteadOfCompact();
 
-                if (gapSize.notEqual(0)) {
+                if (gapSize.notEqual(0)) { // end of a gap, start of an object sequence
+                    // Link previous move info to here.
+                    int offset = (int) p.subtract(objSeq).rawValue();
+                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, offset);
 
-                    /*
-                     * Update previous relocation info or set the chunk's "FirstRelocationInfo" pointer.
-                     */
-                    int offset = (int) cursor.subtract(relocationInfoPointer).rawValue();
-                    RelocationInfo.writeNextPlugOffset(relocationInfoPointer, offset);
+                    // Initialize move info.
+                    objSeq = p;
+                    ObjectMoveInfo.setPrecedingGapSize(objSeq, (int) gapSize.rawValue());
+                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, 0);
 
-                    /*
-                     * Write the current relocation info at the gap end.
-                     */
-                    relocationInfoPointer = cursor;
-                    RelocationInfo.writeGapSize(relocationInfoPointer, (int) gapSize.rawValue());
-                    RelocationInfo.writeNextPlugOffset(relocationInfoPointer, 0);
-
-                    fragmentation = fragmentation.add(gapSize);
+                    totalUnusedBytes = totalUnusedBytes.add(gapSize);
                     gapSize = WordFactory.zero();
                 }
 
-                plugSize = plugSize.add(objSize);
-            } else {
-                if (plugSize.notEqual(0)) {
-                    /*
-                     * Update previous relocation info to set its relocation pointer.
-                     */
-                    Pointer relocationPointer = getRelocationPointer(plugSize);
-                    RelocationInfo.writeRelocationPointer(relocationInfoPointer, relocationPointer);
+                objSeqSize = objSeqSize.add(objSize);
+            } else { // not marked, i.e. not alive and start of a gap of yet unknown size
+                if (objSeqSize.notEqual(0)) { // end of an object sequence
+                    Pointer newAddress = allocate(objSeqSize);
+                    ObjectMoveInfo.setNewAddress(objSeq, newAddress);
 
-                    plugSize = WordFactory.zero();
+                    objSeqSize = WordFactory.zero();
 
-                    /*
-                     * Update brick table entry.
-                     */
-                    UnsignedWord currentBrick = BrickTable.getIndex(chunk, cursor);
-                    while (brick.belowThan(currentBrick)) {
-                        brick = brick.add(1);
-                        BrickTable.setEntry(chunk, brick, relocationInfoPointer);
+                    /* Set brick table entries. */
+                    UnsignedWord currentBrick = BrickTable.getIndex(chunk, p);
+                    while (brickIndex.belowThan(currentBrick)) {
+                        brickIndex = brickIndex.add(1);
+                        BrickTable.setEntry(chunk, brickIndex, objSeq);
                     }
                 }
-
                 gapSize = gapSize.add(objSize);
             }
-
-            cursor = cursor.add(objSize);
+            p = p.add(objSize);
         }
+        assert gapSize.equal(0) || objSeqSize.equal(0);
 
-        /*
-         * Sanity check
-         */
-        assert gapSize.equal(0) || plugSize.equal(0);
-
-        /*
-         * Check for a gap at chunk end that requires updating the chunk top offset to clear that memory.
-         */
+        /* A gap at the end of the chunk requires updating the chunk top. */
         if (gapSize.notEqual(0)) {
             chunk.setTopOffset(chunk.getTopOffset().subtract(gapSize));
+        } else if (objSeqSize.notEqual(0)) {
+            Pointer newAddress = allocate(objSeqSize);
+            ObjectMoveInfo.setNewAddress(objSeq, newAddress);
         }
 
-        if (plugSize.notEqual(0)) {
-            Pointer relocationPointer = getRelocationPointer(plugSize);
-            RelocationInfo.writeRelocationPointer(relocationInfoPointer, relocationPointer);
-        }
-
-        /*
-         * Sweep chunk instead of compacting on low fragmentation as the freed memory isn't worth the effort.
-         */
-        fragmentation = fragmentation.add(HeapChunk.getEndOffset(chunk).subtract(HeapChunk.getTopOffset(chunk)));
-        if (shouldSweepBasedOnFragmentation(fragmentation)) {
+        totalUnusedBytes = totalUnusedBytes.add(HeapChunk.getEndOffset(chunk).subtract(HeapChunk.getTopOffset(chunk)));
+        if (shouldSweepBasedOnFragmentation(totalUnusedBytes)) {
             chunk.setShouldSweepInsteadOfCompact(true);
         }
 
-        /*
-         * Prepare for sweeping. Actual sweep will be done in compacting phase.
-         */
+        /* For sweeping, we need to reset all the new addresses to the original locations. */
+        // TODO: if we already know that before, we can avoid that extra pass
         if (chunk.getShouldSweepInsteadOfCompact()) {
-            RelocationInfo.visit(chunk, SWEEP_PREPARING_VISITOR);
+            ObjectMoveInfo.visit(chunk, SWEEP_PREPARING_VISITOR);
 
-            // Reset allocation pointer as we want to resume after the swept memory.
-            this.allocationChunk = chunk;
-            this.allocationPointer = HeapChunk.getTopPointer(chunk);
+            /*
+             * Continue allocating for compaction after the swept memory. Note that this can forfeit
+             * unused memory in any chunks before, but the order of objects must stay the same
+             * across all chunks.
+             */
+            this.allocChunk = chunk;
+            this.allocPointer = HeapChunk.getTopPointer(chunk);
         }
 
-        /*
-         * Update remaining brick table entries at chunk end.
-         */
-        brick = brick.add(1);
-        while (brick.belowThan(BrickTable.getLength())) {
-            BrickTable.setEntry(chunk, brick, relocationInfoPointer);
-            brick = brick.add(1);
+        /* Set remaining brick table entries at chunk end. */
+        brickIndex = brickIndex.add(1);
+        while (brickIndex.belowThan(BrickTable.getLength())) {
+            BrickTable.setEntry(chunk, brickIndex, objSeq);
+            brickIndex = brickIndex.add(1);
         }
 
         return true;
     }
 
-    private Pointer getRelocationPointer(UnsignedWord size) {
-        Pointer relocationPointer = allocationPointer;
-        allocationPointer = allocationPointer.add(size);
-        if (AlignedHeapChunk.getObjectsEnd(allocationChunk).belowThan(allocationPointer)) {
-            allocationChunk = HeapChunk.getNext(allocationChunk);
-            relocationPointer = AlignedHeapChunk.getObjectsStart(allocationChunk);
-            allocationPointer = relocationPointer.add(size);
+    private Pointer allocate(UnsignedWord size) {
+        Pointer p = allocPointer;
+        allocPointer = allocPointer.add(size);
+        if (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
+            allocChunk = HeapChunk.getNext(allocChunk);
+            assert allocChunk.isNonNull();
+
+            p = AlignedHeapChunk.getObjectsStart(allocChunk);
+            allocPointer = p.add(size);
         }
-        return relocationPointer;
+        return p;
     }
 
-    /**
-     * @return {@code true} if {@code 0 <= fragmentation ratio < 0.0625}
-     */
-    @AlwaysInline("GC Performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean shouldSweepBasedOnFragmentation(UnsignedWord fragmentation) {
-        UnsignedWord limit = HeapParameters.getAlignedHeapChunkSize().unsignedShiftRight(4);
-        return fragmentation.aboveOrEqual(0) && fragmentation.belowThan(limit);
+    private static boolean shouldSweepBasedOnFragmentation(UnsignedWord unusedBytes) {
+        UnsignedWord limit = HeapParameters.getAlignedHeapChunkSize().unsignedDivide(16);
+        return unusedBytes.aboveOrEqual(0) && unusedBytes.belowThan(limit);
     }
 
     public void init(Space space) {
-        allocationChunk = space.getFirstAlignedHeapChunk();
-        allocationPointer = AlignedHeapChunk.getObjectsStart(allocationChunk);
+        allocChunk = space.getFirstAlignedHeapChunk();
+        allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
     }
 
-    private static class SweepPreparingVisitor implements RelocationInfo.Visitor {
-
-            @Override
-            public boolean visit(Pointer p) {
-                return visitInline(p);
-            }
-
-            @Override
-            public boolean visitInline(Pointer p) {
-                RelocationInfo.writeRelocationPointer(p, p);
-                return true;
-            }
+    private static class PrepareSweepVisitor implements ObjectMoveInfo.Visitor {
+        @Override
+        public boolean visit(Pointer p) {
+            ObjectMoveInfo.setNewAddress(p, p);
+            return true;
+        }
     }
 }

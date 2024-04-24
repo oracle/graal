@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,50 +28,46 @@ import java.lang.ref.Reference;
 
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 
-public class RefFixupVisitor implements ObjectReferenceVisitor {
-
+/**
+ * Updates each reference after marking and before compaction to point to the referenced object's
+ * future location.
+ */
+public final class ObjectRefFixupVisitor implements ObjectReferenceVisitor {
     @Override
     public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
         return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
     }
 
     @Override
+    @AlwaysInline("GC performance")
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        assert innerOffset == 0; // Will always be 0.
-
+        assert innerOffset == 0;
         Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-        if (p.isNull()) {
+        if (p.isNull() || HeapImpl.getHeapImpl().isInImageHeap(p)) {
             return true;
         }
 
-        if (HeapImpl.getHeapImpl().isInImageHeap(p)) {
-            return true;
+        Object obj;
+        Object original = p.toObject();
+        if (ObjectHeaderImpl.isAlignedObject(original)) {
+            Pointer newLocation = ObjectMoveInfo.getNewObjectAddress(p);
+            assert newLocation.isNonNull() || holderObject == null || holderObject instanceof Reference<?>;
+
+            obj = newLocation.toObject();
+            ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
+        } else {
+            obj = original;
         }
-
-        Object obj = p.toObject();
-        if (ObjectHeaderImpl.isUnalignedObject(obj)) {
-            if (HeapImpl.getHeapImpl().isInImageHeap(holderObject)) {
-                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
-            }
-            return true;
+        if (HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(holderObject)) {
+            RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
         }
-
-        Pointer newLocation = RelocationInfo.getRelocatedObjectPointer(p);
-        assert newLocation.isNonNull() || holderObject == null || holderObject instanceof Reference<?>;
-
-        Object relocatedObj = newLocation.toObject();
-        ReferenceAccess.singleton().writeObjectAt(objRef, relocatedObj, compressed);
-
-        if (HeapImpl.getHeapImpl().isInImageHeap(holderObject)) {
-            RememberedSet.get().dirtyCardIfNecessary(holderObject, relocatedObj);
-        }
-
         return true;
     }
 }

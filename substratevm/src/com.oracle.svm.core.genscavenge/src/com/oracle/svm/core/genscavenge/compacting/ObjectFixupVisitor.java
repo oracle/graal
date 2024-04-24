@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,29 +29,38 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
-public class FixingVisitor implements ObjectVisitor {
+/** Visits surviving objects before compaction to update their references. */
+public final class ObjectFixupVisitor implements ObjectVisitor {
+    private final ObjectRefFixupVisitor refFixupVisitor;
 
-    private final RefFixupVisitor refFixupVisitor;
-
-    public FixingVisitor(RefFixupVisitor refFixupVisitor) {
+    public ObjectFixupVisitor(ObjectRefFixupVisitor refFixupVisitor) {
         this.refFixupVisitor = refFixupVisitor;
     }
 
     @Override
-    public boolean visitObject(Object obj) {
+    @AlwaysInline("GC performance")
+    public boolean visitObjectInline(Object obj) {
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         if (probability(SLOW_PATH_PROBABILITY, hub.isReferenceInstanceClass())) {
-            // fixes Target_java_lang_ref_Reference.referent
+            // update Target_java_lang_ref_Reference.referent
             Reference<?> dr = (Reference<?>) obj;
             refFixupVisitor.visitObjectReference(ReferenceInternals.getReferentFieldAddress(dr), true, dr);
         }
         InteriorObjRefWalker.walkObjectInline(obj, refFixupVisitor);
         return true;
+    }
+
+    @Override
+    public boolean visitObject(Object o) {
+        throw VMError.shouldNotReachHere("for performance reasons");
     }
 }
