@@ -145,6 +145,10 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 for (String line : proc.output) {
                     System.err.println(line);
                 }
+                String rerun = rerunCommand(testClass, proc);
+                if (rerun != null) {
+                    System.out.printf("Rerun: %s%n", rerun);
+                }
             }
             String suffix = "";
             if (!Boolean.getBoolean(SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
@@ -160,16 +164,12 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 String expectExitCode = expectNormalExit ? "0" : "non-0";
                 fail("%s produced exit code %d, but expected %s.%s%s", proc, exitCode, expectExitCode, suffix, rerun);
             }
-            if (verbose) {
+            if (junitVerbose) {
                 System.out.println("--- subprocess output:");
                 for (String line : proc.output) {
                     System.out.println(line);
                 }
                 System.out.println("--- end subprocess output");
-                String rerun = rerunCommand(testClass, proc);
-                if (rerun != null) {
-                    System.out.printf("--- rerun: %s%n", rerun);
-                }
             }
             return proc;
         }
