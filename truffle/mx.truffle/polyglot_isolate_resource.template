@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package ${package};
+package <package>;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
@@ -49,7 +49,7 @@ import java.nio.file.Path;
 @InternalResource.Id(value = PolyglotIsolateResource.ID, componentId = "engine", optional = true)
 public final class PolyglotIsolateResource implements InternalResource {
 
-    static final String ID = "${resourceId}";
+    static final String ID = "<resourceId>";
 
     @Override
     public void unpackFiles(Env env, Path targetDirectory) throws IOException {

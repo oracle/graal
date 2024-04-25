@@ -57,6 +57,7 @@ import mx_gate
 import mx_native
 import mx_sdk
 import mx_sdk_vm
+import mx_sdk_vm_impl
 import mx_subst
 import mx_unittest
 import mx_jardistribution
@@ -1302,11 +1303,13 @@ class _PolyglotIsolateResourceBuildTask(mx.JavaBuildTask):
         pkg_name = prj.name
         with open(_PolyglotIsolateResourceBuildTask._template_file(prj.placeholder), 'r', encoding='utf-8') as f:
             file_content = f.read()
-        file_content = (file_content.replace('${package}', pkg_name)
-                        .replace('${languageId}', prj.language_id)
-                        .replace('${resourceId}', prj.resource_id)
-                        .replace('${os}', prj.os_name)
-                        .replace('${arch}', prj.cpu_architecture))
+        subst_eng = mx_subst.SubstitutionEngine()
+        subst_eng.register_no_arg('package', pkg_name)
+        subst_eng.register_no_arg('languageId', prj.language_id)
+        subst_eng.register_no_arg('resourceId', prj.resource_id)
+        subst_eng.register_no_arg('os', prj.os_name)
+        subst_eng.register_no_arg('arch', prj.cpu_architecture)
+        file_content = subst_eng.substitute(file_content)
         target_file = _PolyglotIsolateResourceBuildTask._target_file(prj.source_gen_dir(), pkg_name)
         mx_util.ensure_dir_exists(dirname(target_file))
         with mx_util.SafeFileCreation(target_file) as sfc, open(sfc.tmpPath, 'w', encoding='utf-8') as f:
@@ -1347,10 +1350,8 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     assert maven_group_id
     assert language_license
 
-    polyglot_isolates_value = mx.get_opts().polyglot_isolates
-    if polyglot_isolates_value is None:
-        polyglot_isolates_value = os.getenv('POLYGLOT_ISOLATES')
-    if not polyglot_isolates_value or (polyglot_isolates_value != 'true' and language_id not in polyglot_isolates_value.split(',')):
+    polyglot_isolates_value = mx_sdk_vm_impl._parse_cmd_arg('polyglot_isolates')
+    if not polyglot_isolates_value or not (polyglot_isolates_value is True or (isinstance(polyglot_isolates_value, list) and language_id in polyglot_isolates_value)):
         return False
 
     if not isinstance(language_license, list):
@@ -1394,7 +1395,6 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         if build_for_current_platform:
             # 2. Register a project building the isolate library
             isolate_deps = [language_pom_distribution, 'graal-enterprise:TRUFFLE_ENTERPRISE']
-            import mx_sdk_vm_impl
             build_library = mx_sdk_vm_impl.PolyglotIsolateLibrary(language_suite, language_id, isolate_deps, isolate_build_options)
             register_project(build_library)
 
