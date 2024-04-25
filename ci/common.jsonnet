@@ -128,6 +128,7 @@ local common_json = import "../common.json";
     mx: {
       environment+: {
         MX_PYTHON: "python3.8",
+        PYTHONIOENCODING: "utf-8",
       },
       packages+: {
         python3: "==3.8.10",
