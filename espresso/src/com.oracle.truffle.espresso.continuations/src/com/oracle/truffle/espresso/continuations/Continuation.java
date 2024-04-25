@@ -420,6 +420,9 @@ public final class Continuation implements Externalizable {
 
     private static final int FORMAT_VERSION = 2;
 
+    private static final int FORMAT_SHIFT = 4;
+    private static final int FORMAT_MASK = 0xFF;
+
     /**
      * Serializes the continuation using an internal format. The {@link ObjectOutput} will receive
      * some opaque bytes followed by writes of the objects pointed to by the stack. It's up to the
@@ -436,9 +439,8 @@ public final class Continuation implements Externalizable {
             // libraries will refuse to deserialize continuations with a higher version than what
             // they recognize. New libraries may choose to continue supporting the old formats. The
             // low nibble contains flags.
-            int header = FORMAT_VERSION << 4;
-            // The first flag indicates if VM assertions are enabled, in which case we have to also
-            // record the slot tag array.
+            int header = FORMAT_VERSION << FORMAT_SHIFT;
+
             out.writeByte(header);
 
             out.writeObject(currentState);
@@ -566,7 +568,7 @@ public final class Continuation implements Externalizable {
             throw new IllegalStateException("Do not use readExternal on a Continuation object that was not just freshly created through the no-arg constructor");
         }
         int header = in.readByte();
-        int version = (header >> 4) & 0xFF;
+        int version = (header >> FORMAT_SHIFT) & FORMAT_MASK;
         if (version != FORMAT_VERSION) {
             throw new FormatVersionException(version);
         }

@@ -1941,7 +1941,6 @@ public final class Meta extends ContextAccessImpl {
 
         private ContinuumSupport() {
             ObjectKlass com_oracle_truffle_espresso_continuations_Continuation = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation);
-            com_oracle_truffle_espresso_continuations_Continuation = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation);
             com_oracle_truffle_espresso_continuations_Continuation_run = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredMethod(Name.run, Signature._void);
             com_oracle_truffle_espresso_continuations_Continuation_suspend = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredMethod(Name.suspend, Signature._void);
             com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredField(Name.stackFrameHead,

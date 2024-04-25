@@ -46,7 +46,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  * Note that this is a raw description of the frame, there is no notion of stack or locals.
  */
 public class EspressoFrameDescriptor {
-    private static final long INT_MASK = 0xFFFFFFFFL;
+    private static final long INT_MASK = 0xFFFF_FFFFL;
     private static final boolean CHECK_ILLEGAL = false;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final JavaKind[] kinds;
@@ -103,10 +103,10 @@ public class EspressoFrameDescriptor {
     private void importSlot(Frame frame, int slot, Object[] objects, long[] primitives) {
         switch (kinds[slot]) {
             case Int:
-                primitives[slot] = extend(frame.getIntStatic(slot));
+                primitives[slot] = zeroExtend(frame.getIntStatic(slot));
                 break;
             case Float:
-                primitives[slot] = extend(Float.floatToRawIntBits(frame.getFloatStatic(slot)));
+                primitives[slot] = zeroExtend(Float.floatToRawIntBits(frame.getFloatStatic(slot)));
                 break;
             case Long:
                 primitives[slot] = frame.getLongStatic(slot);
@@ -151,7 +151,7 @@ public class EspressoFrameDescriptor {
         }
     }
 
-    static long extend(int value) {
+    static long zeroExtend(int value) {
         return value & INT_MASK;
     }
 

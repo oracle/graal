@@ -178,7 +178,7 @@ public final class HostFrameRecord {
             cursor = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.getObject(cursor);
         }
 
-        // Make sure the stack is valid.
+        // Make sure the stack is valid. Will force class initialization of the entire record stack.
         if (hostHead != null) {
             hostHead.verify(meta, false);
         }
