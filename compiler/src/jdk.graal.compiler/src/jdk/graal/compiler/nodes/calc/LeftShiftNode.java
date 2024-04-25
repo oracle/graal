@@ -28,6 +28,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shl;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
@@ -139,7 +140,7 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
                     if (other instanceof LeftShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            return ConstantNode.forIntegerKind(stamp.getStackKind(), 0);
+                            return ConstantNode.forIntegerBits(PrimitiveStamp.getBits(stamp), 0);
                         }
                         return new LeftShiftNode(other.getX(), ConstantNode.forInt(total));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
