@@ -106,6 +106,7 @@ import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.UnreachableControlSinkNode;
 import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
@@ -656,16 +657,48 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleUnstructuredLocking(String msg) {
+        protected void handleUnstructuredLocking(String msg, boolean isDeadEnd) {
+            assert !method.isSynchronized() || frameState.lockDepth(false) > 0 : "MethodSynchronizeObject not locked anymore! Should have been prevented when emitting monitorexits.";
             if (getDispatchBlock(bci()) == blockMap.getUnwindBlock()) {
-                genReleaseMonitors();
+                // methodSynchronizeObject is unlocked in synchronizedEpilogue
+                genReleaseMonitors(false);
             }
-            emitBytecodeExceptionCheck(graph.unique(LogicConstantNode.contradiction()), true, BytecodeExceptionKind.UNSTRUCTURED_LOCKING);
+            FrameStateBuilder stateBeforeExc = frameState.copy();
+            lastInstr = emitBytecodeExceptionCheck(graph.unique(LogicConstantNode.contradiction()), true, BytecodeExceptionKind.UNSTRUCTURED_LOCKING);
+            // lastInstr is the start of the never entered no-exception branch
+            if (isDeadEnd) {
+                append(new UnreachableControlSinkNode());
+                lastInstr = null;
+            } else {
+                append(new UnreachableNode());
+                frameState = stateBeforeExc;
+            }
         }
 
         @Override
         protected void handleMismatchAtMonitorexit() {
+            genReleaseMonitors(true);
             genThrowUnsupportedFeatureError("Unexpected lock object at monitorexit. Unstructured locking is not supported.");
+        }
+
+        @Override
+        protected FixedNode handleUnstructuredLockingForUnwindTarget(String msg, FrameStateBuilder state) {
+            FrameStateBuilder oldFs = frameState;
+            FixedWithNextNode oldLastInstr = lastInstr;
+            frameState = state;
+
+            BeginNode holder = graph.add(new BeginNode());
+            lastInstr = holder;
+            handleUnstructuredLocking(msg, true);
+
+            frameState = oldFs;
+            lastInstr = oldLastInstr;
+
+            FixedNode result = holder.next();
+            holder.setNext(null);
+            holder.safeDelete();
+
+            return result;
         }
 
         @Override
@@ -674,10 +707,26 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 return target;
             }
 
+            /*
+             * If the current locks are not compatible with the target merge,
+             * the following code is created
+             *
+             * @formatter:off
+             *
+             * if(false)                // UnreachableBeginNode
+             *   goto originalTarget    // using adapted locks
+             * else
+             *   releaseMonitors()      // also methodSynchronizedObject
+             *   throw new UnsupportedFeatureError()
+             *
+             * @formatter:on
+             *
+             * Returns the newly created IfNode as updated target.
+             */
             FixedWithNextNode originalLast = lastInstr;
             FrameStateBuilder originalState = frameState;
 
-            IfNode ifNode = graph.add(new IfNode(LogicConstantNode.contradiction(graph), graph.add(new BeginNode()), graph.add(new BeginNode()), BranchProbabilityNode.NEVER_TAKEN_PROFILE));
+            IfNode ifNode = graph.add(new IfNode(LogicConstantNode.contradiction(graph), graph.add(new UnreachableBeginNode()), graph.add(new BeginNode()), BranchProbabilityNode.NEVER_TAKEN_PROFILE));
 
             /*
              * Create an UnsupportedFeatureException in the always entered (false) branch and
@@ -685,7 +734,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              */
             lastInstr = ifNode.falseSuccessor();
             frameState = target.getState().copy();
-            genReleaseMonitors();
+            genReleaseMonitors(true);
             genThrowUnsupportedFeatureError("Incompatible lock states at merge. Possibly due to unstructured locking, which is not supported.");
 
             /*
@@ -699,13 +748,10 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (target.getOriginalEntry() == null) {
                 newTarget = new Target(ifNode, newState, target.getEntry());
             } else {
-                FixedWithNextNode pred = (FixedWithNextNode) target.getOriginalEntry().predecessor();
-                pred.setNext(ifNode);
+                target.getOriginalEntry().replaceAtPredecessor(ifNode);
                 newTarget = new Target(target.getEntry(), newState, target.getOriginalEntry());
             }
-            UnreachableNode unreachable = graph.add(new UnreachableNode());
-            unreachable.setNext(target.getEntry());
-            ifNode.trueSuccessor().setNext(unreachable);
+            ifNode.trueSuccessor().setNext(newTarget.getOriginalEntry());
 
             lastInstr = originalLast;
             frameState = originalState;
@@ -713,8 +759,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return newTarget;
         }
 
-        private void genReleaseMonitors() {
-            final int monitorsToRelease = method.isSynchronized() ? frameState.lockDepth(false) - 1 : frameState.lockDepth(false);
+        private void genReleaseMonitors(boolean includeMethodSynchronizeObject) {
+            final int monitorsToRelease = (method.isSynchronized() && !includeMethodSynchronizeObject) ? frameState.lockDepth(false) - 1 : frameState.lockDepth(false);
             for (int i = 0; i < monitorsToRelease; i++) {
                 MonitorIdNode id = frameState.peekMonitorId();
                 ValueNode lock = frameState.popLock();

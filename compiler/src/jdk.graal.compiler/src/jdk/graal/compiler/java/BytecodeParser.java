@@ -2965,6 +2965,10 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
              */
             append(new FinalFieldBarrierNode(entryBCI == INVOCATION_ENTRY_BCI ? originalReceiver : null));
         }
+        int expectedDepth = frameState.getMethod().isSynchronized() ? 1 : 0;
+        if (frameState.lockDepth(false) > expectedDepth) {
+            handleUnstructuredLocking("too few monitorexits exiting frame", false);
+        }
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
     }
 
@@ -2987,7 +2991,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         // ever parsed so we should bailout here instead.
         int expectedDepth = frameState.getMethod().isSynchronized() && !epilogue ? 1 : 0;
         if (frameState.lockDepth(false) == expectedDepth) {
-            handleUnstructuredLocking("too many monitorexits");
+            handleUnstructuredLocking("too many monitorexits", false);
             return;
         }
         MonitorIdNode monitorId = frameState.peekMonitorId();
@@ -3019,7 +3023,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         monitorExit.setStateAfter(createFrameState(bci, monitorExit));
     }
 
-    protected void handleUnstructuredLocking(String msg) {
+    @SuppressWarnings("unused")
+    protected void handleUnstructuredLocking(String msg, boolean isDeadEnd) {
         throw bailout("Unstructured locking: " + msg);
     }
 
@@ -3227,8 +3232,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         if (targetBlock != blockMap.getUnwindBlock()) {
             return new Target(target, state);
         }
-        FrameStateBuilder newState = state;
-        newState = newState.copy();
+        FrameStateBuilder newState = state.copy();
         newState.setRethrowException(false);
         if (!method.isSynchronized()) {
             return new Target(target, newState);
@@ -3308,6 +3312,13 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         assert !block.isExceptionEntry() || state.stackSize() == 1 : Assertions.errorMessage(block, state);
 
         try (DebugCloseable context = openNodeContext(state, block.startBci)) {
+            if (block == blockMap.getUnwindBlock()) {
+                int expectedDepth = state.getMethod().isSynchronized() ? 1 : 0;
+                if (state.lockDepth(false) > expectedDepth) {
+                    return handleUnstructuredLockingForUnwindTarget("too few monitorexits exiting frame", state);
+                }
+            }
+
             if (getFirstInstruction(block) == null) {
                 /*
                  * This is the first time we see this block as a branch target. Create and return a
@@ -3330,8 +3341,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 } else {
                     setFirstInstruction(block, graph.add(new BeginNode()));
                 }
-                Target target = checkUnwind(getFirstInstruction(block), block, state);
-                target = checkLoopExit(target, block);
+                Target target = checkLoopExit(checkUnwind(getFirstInstruction(block), block, state), block);
                 FixedNode result = target.entry;
                 FrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
                 setEntryState(block, currentEntryState);
@@ -3408,6 +3418,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     @SuppressWarnings("unused")
+    protected FixedNode handleUnstructuredLockingForUnwindTarget(String msg, FrameStateBuilder state) {
+        throw bailout("Unstructured locking: " + msg);
+    }
+
+    @SuppressWarnings("unused")
     protected Target checkUnstructuredLocking(Target target, BciBlock targetBlock, FrameStateBuilder mergeState) {
         if (mergeState.areLocksMergeableWith(target.state)) {
             return target;
@@ -3473,9 +3488,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     private void handleUnwindBlock() {
-        if (frameState.lockDepth(false) != 0) {
-            handleUnstructuredLocking("too few monitorexits exiting frame");
-        }
+        GraalError.guarantee(frameState.lockDepth(false) == 0, "Unstructured locking: unreleased locks at unwind block!");
         assert !frameState.rethrowException();
         if (parent == null) {
             createUnwind();
@@ -3516,9 +3529,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 }
                 genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, true);
                 assert !frameState.rethrowException();
-            }
-            if (frameState.lockDepth(false) != 0) {
-                handleUnstructuredLocking("too few monitorexits exiting frame");
             }
         }
     }
