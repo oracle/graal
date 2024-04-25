@@ -43,6 +43,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -53,6 +54,7 @@ import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
+import com.oracle.svm.core.code.BaseLayerMethodAccessor;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -79,7 +81,6 @@ import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode.Computation;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode.FieldLoad;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode.FieldLoadIfZero;
-import com.oracle.svm.core.graal.snippets.NonSnippetLowerings;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.meta.CompressedNullConstant;
@@ -200,7 +201,6 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -669,16 +669,15 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
             if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
-                // Emit a load for the BoxedRelocatedPointer.pointer field holding the
-                // MethodPointer to the target method
-                ResolvedJavaField boxedPointerField = getMetaAccess().lookupJavaField(NonSnippetLowerings.boxedRelocatedPointerField);
-                int displacement = boxedPointerField.getOffset();
-                JavaConstant boxedPointerBase = targetMethod.getMethodPointer();
-                RegisterValue heapBaseRegister = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
-                AMD64AddressValue boxedRelocatedPointerBaseAddress = new AMD64AddressValue(getLIRKindTool().getWordKind(), heapBaseRegister, Value.ILLEGAL,
-                                Stride.S1, displacement + SubstrateAMD64Backend.addressDisplacement(boxedPointerBase, getConstantReflection()),
-                                SubstrateAMD64Backend.addressDisplacementAnnotation(boxedPointerBase));
-                return getArithmetic().emitLoad(getLIRKindTool().getWordKind(), boxedRelocatedPointerBaseAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
+                /*
+                 * Load the absolute address of the target method from the method entry stored in
+                 * the data section.
+                 */
+                CGlobalDataInfo methodDataInfo = BaseLayerMethodAccessor.singleton().getMethodData(targetMethod);
+                AllocatableValue methodPointerAddress = newVariable(getLIRKindTool().getWordKind());
+                append(new AMD64CGlobalDataLoadAddressOp(methodDataInfo, methodPointerAddress));
+                AMD64AddressValue methodTableEntryAddress = new AMD64AddressValue(getLIRKindTool().getWordKind(), methodPointerAddress, Value.ILLEGAL, Stride.S1, 0);
+                return getArithmetic().emitLoad(getLIRKindTool().getWordKind(), methodTableEntryAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
             }
             if (!shouldEmitOnlyIndirectCalls()) {
                 return null;

@@ -460,6 +460,7 @@ public abstract class NativeImage extends AbstractImage {
                                             isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
                             (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
+            BaseLayerSupport.markDynamicRelocationSites((ProgbitsSectionImpl) rwDataSection);
 
             // - Write the heap to its own section.
             // Dynamic linkers/loaders generally don't ensure any alignment to more than page

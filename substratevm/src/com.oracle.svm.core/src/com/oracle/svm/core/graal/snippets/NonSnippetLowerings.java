@@ -39,10 +39,13 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
+import com.oracle.svm.core.code.BaseLayerMethodAccessor;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
@@ -109,7 +112,6 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NonSnippetLowerings {
@@ -369,18 +371,15 @@ public abstract class NonSnippetLowerings {
                         targetMethod = implementations[0];
                     }
 
-                    if (targetMethod.forceIndirectCall()) {
+                    if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
                         /*
-                         * Lower cross layer boundary direct calls to indirect calls. First emit a
-                         * load for the BoxedRelocatedPointer.pointer field holding the
-                         * MethodPointer to the target method, then emit an indirect call to that
-                         * pointer.
+                         * Lower cross layer boundary direct calls to indirect calls. First load the
+                         * target method absolute address from the method entry stored in the data
+                         * section. Then call that address indirectly.
                          */
-                        ResolvedJavaField boxedPointerField = tool.getMetaAccess().lookupJavaField(NonSnippetLowerings.boxedRelocatedPointerField);
-                        ConstantNode boxedPointerFieldOffset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), boxedPointerField.getOffset(), graph);
-                        ConstantNode boxedPointerBase = ConstantNode.forConstant(targetMethod.getMethodPointer(), tool.getMetaAccess(), graph);
+                        CGlobalDataInfo methodDataInfo = BaseLayerMethodAccessor.singleton().getMethodData(targetMethod);
+                        AddressNode methodPointerAddress = graph.addOrUniqueWithInputs(OffsetAddressNode.create(new CGlobalDataLoadAddressNode(methodDataInfo)));
 
-                        AddressNode methodPointerAddress = graph.unique(new OffsetAddressNode(boxedPointerBase, boxedPointerFieldOffset));
                         /*
                          * Use the ANY location identity to prevent ReadNode.canonicalizeRead() to
                          * try to constant fold the method address.
