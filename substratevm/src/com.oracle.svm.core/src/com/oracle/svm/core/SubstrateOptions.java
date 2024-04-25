@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
@@ -118,6 +119,7 @@ public class SubstrateOptions {
             if (imageLayerEnabledHandler != null) {
                 imageLayerEnabledHandler.onOptionEnabled(values);
             }
+            UseContainerSupport.update(values, !newValue);
         }
     };
 
