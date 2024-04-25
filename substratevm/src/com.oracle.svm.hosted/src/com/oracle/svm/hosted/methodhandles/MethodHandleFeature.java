@@ -91,10 +91,6 @@ public class MethodHandleFeature implements InternalFeature {
     private Method memberNameIsConstructor;
     private Method memberNameIsField;
     private Method memberNameGetMethodType;
-    private Field lambdaFormLFIdentity;
-    private Field lambdaFormLFZero;
-    private Field lambdaFormNFIdentity;
-    private Field lambdaFormNFZero;
     private Field typedAccessors;
     private Field typedCollectors;
 
@@ -117,12 +113,6 @@ public class MethodHandleFeature implements InternalFeature {
         memberNameIsConstructor = ReflectionUtil.lookupMethod(memberNameClass, "isConstructor");
         memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
         memberNameGetMethodType = ReflectionUtil.lookupMethod(memberNameClass, "getMethodType");
-
-        Class<?> lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
-        lambdaFormLFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "LF_identity");
-        lambdaFormLFZero = ReflectionUtil.lookupField(lambdaFormClass, "LF_zero");
-        lambdaFormNFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "NF_identity");
-        lambdaFormNFZero = ReflectionUtil.lookupField(lambdaFormClass, "NF_zero");
 
         Class<?> arrayAccessorClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$ArrayAccessor");
         typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
@@ -277,6 +267,26 @@ public class MethodHandleFeature implements InternalFeature {
                                 return filteredArray;
                             }
                         });
+
+        /*
+         * Retrieve all six basic types from the java.lang.invoke.LambdaForm$BasicType class (void,
+         * int, long, float, double, Object) and invoke the
+         * java.lang.invoke.LambdaForm.createFormsFor method to ensure that the analysis tracks
+         * these types. This addresses an issue that arises when these types are created after
+         * analysis as a side effect of using reflection in the image builder (for example in a
+         * method Feature.beforeCompilation()), thereby registering new elements into the image heap
+         * (elements that were not tracked in the analysis).
+         */
+        Class<?> lambdaFormClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm");
+        Class<?> basicTypeClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$BasicType");
+        Method createFormsForMethod = ReflectionUtil.lookupMethod(lambdaFormClass, "createFormsFor", basicTypeClass);
+        try {
+            for (Object type : (Object[]) ReflectionUtil.readStaticField(basicTypeClass, "ALL_TYPES")) {
+                createFormsForMethod.invoke(null, type);
+            }
+        } catch (ReflectiveOperationException e) {
+            VMError.shouldNotReachHere("Can not invoke createFormsForm method to register base types from the java.lang.invoke.LambdaForm$BasicType class.");
+        }
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -419,10 +429,6 @@ public class MethodHandleFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        access.rescanRoot(lambdaFormLFIdentity);
-        access.rescanRoot(lambdaFormLFZero);
-        access.rescanRoot(lambdaFormNFIdentity);
-        access.rescanRoot(lambdaFormNFZero);
         access.rescanRoot(typedAccessors);
         access.rescanRoot(typedCollectors);
         access.rescanObject(runtimeMethodTypeInternTable);
