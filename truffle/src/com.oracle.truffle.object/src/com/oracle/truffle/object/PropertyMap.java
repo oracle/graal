@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.object;
 
 import java.util.Iterator;
-import java.util.Map;
 
 import com.oracle.truffle.api.object.Property;
 
@@ -90,33 +89,4 @@ public abstract class PropertyMap implements ImmutableMap<Object, Property> {
 
     /** @since 0.17 or earlier */
     public abstract PropertyMap removeCopy(Property value);
-
-    /** @since 0.17 or earlier */
-    @Override
-    public Property put(final Object key, final Property value) {
-        throw unmodifiableException();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public void putAll(final Map<? extends Object, ? extends Property> m) {
-        throw unmodifiableException();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public Property remove(final Object key) {
-        throw unmodifiableException();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public void clear() {
-        throw unmodifiableException();
-    }
-
-    /** @since 0.17 or earlier */
-    protected static RuntimeException unmodifiableException() {
-        throw new UnsupportedOperationException();
-    }
 }

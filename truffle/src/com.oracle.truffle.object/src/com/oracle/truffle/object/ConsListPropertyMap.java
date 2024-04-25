@@ -339,7 +339,7 @@ final class ConsListPropertyMap extends PropertyMap {
         }
 
         public Property setValue(Property value) {
-            throw unmodifiableException();
+            throw ImmutableMap.unmodifiableException();
         }
     }
 

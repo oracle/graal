@@ -49,7 +49,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
@@ -427,7 +426,8 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static TransitionMap<Transition, ShapeImpl> newTransitionMap() {
-        return new TransitionMap<>();
+        transitionMapsCreated.inc();
+        return TransitionMap.create();
     }
 
     @SuppressWarnings("unchecked")
@@ -448,6 +448,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static Object newSingleEntry(Transition transition, ShapeImpl successor) {
+        transitionSingleEntriesCreated.inc();
         Object key = transition;
         if (transition.hasConstantLocation()) {
             key = new WeakKey<>(transition);
@@ -531,27 +532,6 @@ public abstract class ShapeImpl extends Shape {
         shapeCacheMissCount.inc();
 
         return null;
-    }
-
-    public final <R> R iterateTransitions(BiFunction<Transition, ShapeImpl, R> consumer) {
-        Object trans = transitionMap;
-        if (trans == null) {
-            return null;
-        } else if (isSingleEntry(trans)) {
-            StrongKeyWeakValueEntry<Object, ShapeImpl> entry = asSingleEntry(trans);
-            ShapeImpl shape = entry.getValue();
-            if (shape != null) {
-                Transition key = unwrapKey(entry.getKey());
-                if (key != null) {
-                    return consumer.apply(key, shape);
-                }
-            }
-            return null;
-        } else {
-            assert isTransitionMap(trans);
-            TransitionMap<Transition, ShapeImpl> map = asTransitionMap(trans);
-            return map.iterateEntries(consumer);
-        }
     }
 
     /**
@@ -1390,5 +1370,7 @@ public abstract class ShapeImpl extends Shape {
     static final DebugCounter shapeCacheWeakKeys = DebugCounter.create("Shape cache weak keys");
     static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
     static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
+    static final DebugCounter transitionSingleEntriesCreated = DebugCounter.create("Transition single-entry maps created");
+    static final DebugCounter transitionMapsCreated = DebugCounter.create("Transition multi-entry maps created");
 
 }
