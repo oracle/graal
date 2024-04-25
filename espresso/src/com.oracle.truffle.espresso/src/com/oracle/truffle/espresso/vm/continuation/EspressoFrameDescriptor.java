@@ -303,6 +303,16 @@ public class EspressoFrameDescriptor {
             top++;
         }
 
+        public JavaKind pop(JavaKind k) {
+            JavaKind top = pop();
+            assert top == k;
+            if (k.needsTwoSlots()) {
+                JavaKind dummy = pop();
+                assert dummy == JavaKind.Illegal;
+            }
+            return top;
+        }
+
         public JavaKind pop() {
             int head = stackIdx(top - 1);
             JavaKind k = kinds[head];

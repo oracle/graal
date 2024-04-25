@@ -287,10 +287,7 @@ public final class FrameAnalysis {
     private static void popSignature(Symbol<Type>[] sig, boolean isStatic, Builder frame) {
         for (int i = 0; i < Signatures.parameterCount(sig); i++) {
             JavaKind k = Signatures.parameterKind(sig, i);
-            frame.pop();
-            if (k.needsTwoSlots()) {
-                frame.pop();
-            }
+            frame.pop(k);
         }
         if (!isStatic) {
             frame.pop();
