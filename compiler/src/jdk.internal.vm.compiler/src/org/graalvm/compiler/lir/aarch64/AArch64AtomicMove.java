@@ -112,7 +112,7 @@ public class AArch64AtomicMove {
         }
 
         /**
-         * Both cas and ld(a)xr produce a zero-extended value. Since comparisons must be at minimum
+         * Both cas and ldxr produce a zero-extended value. Since comparisons must be at minimum
          * 32-bits, the expected value must also be zero-extended to produce an accurate comparison.
          */
         private static void emitCompare(AArch64MacroAssembler masm, int memAccessSize, Register result, Register expected) {
@@ -169,8 +169,9 @@ public class AArch64AtomicMove {
                     throw GraalError.shouldNotReachHereUnexpectedValue(memoryOrder); // ExcludeFromJacocoGeneratedReport
             }
 
+            int moveSize = Math.max(memAccessSize, 32);
             if (AArch64LIRFlags.useLSE(masm)) {
-                masm.mov(Math.max(memAccessSize, 32), result, expected);
+                masm.mov(moveSize, result, expected);
                 moveSPAndEmitCode(masm, asRegister(newValue), newVal -> {
                     masm.cas(memAccessSize, result, newVal, address, acquire, release);
                 });
@@ -178,44 +179,54 @@ public class AArch64AtomicMove {
                     emitCompare(masm, memAccessSize, result, expected);
                 }
             } else {
-                /*
-                 * Because the store is only conditionally emitted, a dmb is needed for performing a
-                 * release.
-                 *
-                 * Furthermore, even if the stlxr is emitted, if both acquire and release semantics
-                 * are required, then a dmb is anyways needed to ensure that the instruction
-                 * sequence:
-                 *
-                 * A -> ldaxr -> stlxr -> B
-                 *
-                 * cannot be executed as:
-                 *
-                 * ldaxr -> B -> A -> stlxr
-                 */
-                if (release) {
-                    masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
+
+                try (ScratchRegister scratchRegister1 = masm.getScratchRegister(); ScratchRegister scratchRegister2 = masm.getScratchRegister()) {
+                    Label retry = new Label();
+                    masm.bind(retry);
+                    Register scratch2 = scratchRegister2.getRegister();
+                    Register newValueReg = asRegister(newValue);
+                    if (newValueReg.equals(sp)) {
+                        /*
+                         * SP cannot be used in csel or stl(x)r.
+                         *
+                         * Since csel overwrites scratch2, newValue must be newly loaded each loop
+                         * iteration. However, unless under heavy contention, the storeExclusive
+                         * should rarely fail.
+                         */
+                        masm.mov(moveSize, scratch2, newValueReg);
+                        newValueReg = scratch2;
+                    }
+                    masm.loadExclusive(memAccessSize, result, address, false);
+
+                    emitCompare(masm, memAccessSize, result, expected);
+                    masm.csel(moveSize, scratch2, newValueReg, result, AArch64Assembler.ConditionFlag.EQ);
+
+                    /*
+                     * STLXR must be used also if acquire is set to ensure prior ldaxr/stlxr
+                     * instructions are not reordered after it.
+                     */
+                    Register scratch1 = scratchRegister1.getRegister();
+                    masm.storeExclusive(memAccessSize, scratch1, scratch2, address, acquire || release);
+                    // if scratch1 == 0 then write successful, else retry.
+                    masm.cbnz(32, scratch1, retry);
                 }
 
-                moveSPAndEmitCode(masm, asRegister(newValue), newVal -> {
-                    try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
-                        Register scratch = scratchRegister.getRegister();
-                        Label retry = new Label();
-                        Label fail = new Label();
-                        masm.bind(retry);
-                        masm.loadExclusive(memAccessSize, result, address, acquire);
-                        emitCompare(masm, memAccessSize, result, expected);
-                        masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-                        /*
-                         * Even with the prior dmb, for releases it is still necessary to use stlxr
-                         * instead of stxr to guarantee subsequent lda(x)r/stl(x)r cannot be hoisted
-                         * above this instruction and thereby violate volatile semantics.
-                         */
-                        masm.storeExclusive(memAccessSize, scratch, newVal, address, release);
-                        // if scratch == 0 then write successful, else retry.
-                        masm.cbnz(32, scratch, retry);
-                        masm.bind(fail);
-                    }
-                });
+                /*
+                 * From the Java perspective, the (ldxr, cmp, csel, stl(x)r) is a single atomic
+                 * operation which must abide by all requested semantics. Therefore, when acquire
+                 * semantics are needed, we use a full barrier after the store to guarantee that
+                 * instructions following the store cannot execute before it and violate acquire
+                 * semantics.
+                 *
+                 * Note we could instead perform a conditional branch and when the comparison fails
+                 * skip the store, but this introduces an opportunity for branch mispredictions, and
+                 * also, when release semantics are needed, requires a barrier to be inserted before
+                 * the operation.
+                 */
+
+                if (acquire) {
+                    masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
+                }
             }
         }
     }
@@ -291,14 +302,10 @@ public class AArch64AtomicMove {
                 }
             }
             /*
-             * Use a full barrier for the acquire semantics instead of ldaxr to guarantee that the
-             * instruction sequence:
-             *
-             * A -> ldaxr -> stlxr -> B
-             *
-             * cannot be executed as:
-             *
-             * ldaxr -> B -> A -> stlxr
+             * From the Java perspective, the (ldxr, add, stlxr) is a single atomic operation which
+             * must abide by both acquire and release semantics. Therefore, we use a full barrier
+             * after the store to guarantee that instructions following the store cannot execute
+             * before it and violate acquire semantics.
              */
             masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
         }
@@ -406,14 +413,10 @@ public class AArch64AtomicMove {
                         // if scratch == 0 then write successful, else retry
                         masm.cbnz(32, scratch, retry);
                         /*
-                         * Use a full barrier for the acquire semantics instead of ldaxr to
-                         * guarantee that the instruction sequence:
-                         *
-                         * A -> ldaxr -> stlxr -> B
-                         *
-                         * cannot be executed as:
-                         *
-                         * ldaxr -> B -> A -> stlxr
+                         * From the Java perspective, the (ldxr, stlxr) is a single atomic operation
+                         * which must abide by both acquire and release semantics. Therefore, we use
+                         * a full barrier after the store to guarantee that instructions following
+                         * the store cannot execute before it and violate acquire semantics.
                          */
                         masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
                     }
