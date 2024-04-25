@@ -1468,7 +1468,7 @@ suite = {
       "fileExts" : [".c"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["executable-O0"],
+      "variants" : ["toolchain-O0"],
       "buildRef" : True,
       "os" : {
         "windows" : {
@@ -1497,7 +1497,7 @@ suite = {
       "fileExts" : [".cpp", ".C", ".cc"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["executable-O0"],
+      "variants" : ["toolchain-O0"],
       "buildRef" : True,
       "os" : {
         "windows" : {
@@ -1569,7 +1569,7 @@ suite = {
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["executable-O0"],
+      "variants" : ["toolchain-O0"],
       "buildRef" : True,
       "os_arch" : {
         "darwin": {
