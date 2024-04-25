@@ -300,7 +300,6 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -374,9 +373,9 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.vm.ContinuationSupport;
-import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
+import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
 /**
  * Bytecode interpreter loop.
@@ -552,9 +551,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // continuations-specific calling convention.
     private boolean maybePrepareForContinuation(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
-        ContinuationSupport.HostFrameRecord record;
+        HostFrameRecord record;
 
-        if (arguments.length == 1 && arguments[0] instanceof ContinuationSupport.HostFrameRecord hfr) {
+        if (arguments.length == 1 && arguments[0] instanceof HostFrameRecord hfr) {
             record = hfr;
         } else {
             return false;
@@ -564,17 +563,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         getRoot().setContinuationHostFrameRecord(frame, record);
 
-        // Blindly copy stuff in.
-        // TODO: Copy aux slots?
-        // TODO: Be less blind, do some sanity checks.
-        record.frameDescriptor.exportToFrame(frame);
-
-        int bci = getBCI(frame);
-        var isInvoke = isPossiblyQuickenedInvoke(bci);
-        if (!isInvoke) {
-            // TODO: Throw guest exception.
-            throw new IllegalStateException("Continuation does not match currently loaded bytecode: opcode at index " + bci + " is not an invoke.");
-        }
+        assert record.verify(getMeta(), true);
+        record.exportToFrame(frame);
 
         return true;
     }
@@ -759,12 +749,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @TruffleBoundary
-    private Object transferToInterpreterAndResumeContinuation(MaterializedFrame frame, ContinuationSupport.HostFrameRecord hostFrameRecord) {
+    private Object transferToInterpreterAndResumeContinuation(MaterializedFrame frame, HostFrameRecord hostFrameRecord) {
         assert !methodVersion.hasJsr();
         return executeBodyFromBCI(frame,
-                        getBCI(frame),
-                        hostFrameRecord.sp,
-                        hostFrameRecord.statementIndex,
+                        hostFrameRecord.bci,
+                        hostFrameRecord.top,
+                        instrumentation == null ? 0 : instrumentation.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI()),
                         false, // isOSR
                         true   // isContinuationResume
         );
@@ -781,7 +771,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         boolean skipEntryInstrumentation = isOSR || isContinuationResume;
         boolean skipLivenessActions = false;
         boolean shouldResumeContinuation = isContinuationResume;
-        boolean inCompiledCode = CompilerDirectives.inCompiledCode();
 
         final Counter loopCount = new Counter();
 
@@ -1553,10 +1542,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
-            } catch (ContinuationSupport.Unwind unwindRequest) {
+            } catch (UnwindContinuationException unwindContinuationExceptionRequest) {
                 // Get the frame from the stack into the VM heap.
-                copyFrameToUnwindRequest(curBCI, unwindRequest, frame.materialize(), top, statementIndex, inCompiledCode);
-                throw unwindRequest;
+                copyFrameToUnwindRequest(curBCI, unwindContinuationExceptionRequest, frame.materialize(), top, statementIndex);
+                throw unwindContinuationExceptionRequest;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 // Handle both guest and host StackOverflowError.
@@ -1681,16 +1670,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @TruffleBoundary
-    private void copyFrameToUnwindRequest(int bci, ContinuationSupport.Unwind unwindRequest, MaterializedFrame materializedFrame, int top, int statementIndex, boolean inCompiledCode) {
-        EspressoFrameDescriptor record = FrameAnalysis.apply(getMethodVersion(), inCompiledCode ? livenessAnalysis : LivenessAnalysis.NO_ANALYSIS, bci);
-        record.importFromFrame(materializedFrame);
+    private void copyFrameToUnwindRequest(int bci, UnwindContinuationException unwindContinuationExceptionRequest, MaterializedFrame materializedFrame, int top, int statementIndex) {
         // Extend the linked list of frame records as we unwind.
-        unwindRequest.head = new ContinuationSupport.HostFrameRecord(
-                        record,
-                        top,
-                        statementIndex,
-                        methodVersion,
-                        unwindRequest.head);
+        unwindContinuationExceptionRequest.head = HostFrameRecord.recordFrame(materializedFrame, getMethodVersion(), bci, top, unwindContinuationExceptionRequest.head);
     }
 
     @Override

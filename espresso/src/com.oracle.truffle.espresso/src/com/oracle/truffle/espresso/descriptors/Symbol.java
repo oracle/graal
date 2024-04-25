@@ -626,13 +626,12 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> defineModule = StaticSymbols.putName("defineModule");
 
         // Continuations
+        public static final Symbol<Name> suspend = StaticSymbols.putName("suspend");
         public static final Symbol<Name> stackFrameHead = StaticSymbols.putName("stackFrameHead");
         public static final Symbol<Name> pointers = StaticSymbols.putName("pointers");
         public static final Symbol<Name> primitives = StaticSymbols.putName("primitives");
         public static final Symbol<Name> method = StaticSymbols.putName("method");
-        public static final Symbol<Name> sp = StaticSymbols.putName("sp");
-        public static final Symbol<Name> statementIndex = StaticSymbols.putName("statementIndex");
-        public static final Symbol<Name> reserved1 = StaticSymbols.putName("reserved1");
+        public static final Symbol<Name> top = StaticSymbols.putName("top");
 
         // Panama
         public static final Symbol<Name> segmentMaskOrSize = StaticSymbols.putName("segmentMaskOrSize");

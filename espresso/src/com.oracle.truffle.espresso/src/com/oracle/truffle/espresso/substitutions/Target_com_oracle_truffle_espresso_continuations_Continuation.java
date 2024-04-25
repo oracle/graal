@@ -27,7 +27,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.vm.ContinuationSupport;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
+import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
 /**
  * VM entry point from the Continuation class, responsible for unwinding and rewinding the stack.
@@ -52,14 +53,14 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
 
         // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records
         // will be added to the exception object in a linked list until it's caught in resume below.
-        throw new ContinuationSupport.Unwind(self);
+        throw new UnwindContinuationException(self);
     }
 
     @SuppressWarnings("try")
     @Substitution(hasReceiver = true)
     static void resume0(StaticObject self, @Inject EspressoContext context) {
         Meta meta = context.getMeta();
-        ContinuationSupport.HostFrameRecord stack = ContinuationSupport.HostFrameRecord.copyFromGuest(self, meta);
+        HostFrameRecord stack = HostFrameRecord.copyFromGuest(self, meta, context);
 
         // This will break if the continuations API is redefined - TODO: find a way to block that.
 
@@ -78,7 +79,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // TODO separate entry point: cannot invokeDirect because the # of arguments doesn't
             // match the signature
             meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getCallTarget().call(stack);
-        } catch (ContinuationSupport.Unwind unwind) {
+        } catch (UnwindContinuationException unwind) {
             assert unwind.getContinuation() == self;
             meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
             // Allow reporting of stepping in this thread again. It was blocked by the call to
@@ -102,7 +103,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // The run method is private in Continuation and is the continuation delimiter. Frames
             // from run onwards will be unwound on suspend, and rewound on resume.
             meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(self);
-        } catch (ContinuationSupport.Unwind unwind) {
+        } catch (UnwindContinuationException unwind) {
             assert unwind.getContinuation() == self;
             // Guest called suspend(). By the time we get here the frame info has been gathered up
             // into host-side objects so we just need to copy the data into the guest world.

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.vm;
 
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 /**
  * A cookie to be inserted into a {@link com.oracle.truffle.api.frame.Frame}. Espresso currently
@@ -66,7 +67,7 @@ public final class FrameCookie {
         return new FrameCookie(CookieKind.StackWalk, data);
     }
 
-    public static FrameCookie createResumeCookie(ContinuationSupport.HostFrameRecord data) {
+    public static FrameCookie createResumeCookie(HostFrameRecord data) {
         return new FrameCookie(CookieKind.ContinuationResume, data);
     }
 

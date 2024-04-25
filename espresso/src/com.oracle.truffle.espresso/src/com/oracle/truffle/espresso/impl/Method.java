@@ -63,6 +63,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -1163,6 +1164,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Multiple maximally-specific interface methods. Fail on call.
         @CompilationFinal private boolean poisonPill;
 
+        @CompilationFinal private LivenessAnalysis livenessAnalysis;
+
         private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, boolean poisonPill,
                         CodeAttribute codeAttribute) {
             this.klassVersion = klassVersion;
@@ -1634,6 +1637,22 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 }
                 checkedExceptions = tmpchecked;
             }
+        }
+
+        @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
+                        justification = "fields of LivenessAnalysis are final.")
+        public LivenessAnalysis getLivenessAnalysis() {
+            CompilerAsserts.neverPartOfCompilation();
+            LivenessAnalysis result = this.livenessAnalysis;
+            if (result == null) {
+                synchronized (this) {
+                    result = this.livenessAnalysis;
+                    if (result == null) {
+                        this.livenessAnalysis = result = LivenessAnalysis.analyze(this);
+                    }
+                }
+            }
+            return result;
         }
 
         public ObjectKlass.KlassVersion getKlassVersion() {

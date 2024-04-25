@@ -21,14 +21,17 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.vm;
+package com.oracle.truffle.espresso.vm.continuation;
+
+import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
@@ -44,10 +47,9 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  */
 public class EspressoFrameDescriptor {
     private static final long INT_MASK = 0xFFFFFFFFL;
+    private static final boolean CHECK_ILLEGAL = false;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final JavaKind[] kinds;
-    private StaticObject[] objects;
-    private long[] primitives;
 
     public EspressoFrameDescriptor(JavaKind[] stackKinds, JavaKind[] localsKind) {
         int stack = stackKinds.length;
@@ -58,32 +60,28 @@ public class EspressoFrameDescriptor {
         System.arraycopy(stackKinds, 0, kinds, 1 + locals, stack);
     }
 
-    public void importFromFrame(VirtualFrame frame) {
+    public void importFromFrame(Frame frame, Object[] objects, long[] primitives) {
         assert kinds.length == frame.getFrameDescriptor().getNumberOfSlots();
         assert verifyConsistent(frame);
-        objects = new StaticObject[kinds.length];
-        primitives = new long[kinds.length];
+        assert objects != null && primitives != null;
+        assert kinds.length == objects.length && kinds.length == primitives.length;
         Arrays.fill(objects, StaticObject.NULL);
         for (int slot = 0; slot < kinds.length; slot++) {
-            importSlot(frame, slot);
+            importSlot(frame, slot, objects, primitives);
         }
     }
 
-    public void exportToFrame(VirtualFrame frame) {
+    public void exportToFrame(Frame frame, Object[] objects, long[] primitives) {
         assert kinds.length == frame.getFrameDescriptor().getNumberOfSlots();
         assert objects != null && objects.length == kinds.length;
         assert primitives != null && primitives.length == kinds.length;
         for (int slot = 0; slot < kinds.length; slot++) {
-            exportSlot(frame, slot);
+            exportSlot(frame, slot, objects, primitives);
         }
     }
 
-    public StaticObject[] rawObjects() {
-        return objects;
-    }
-
-    public long[] rawPrimitives() {
-        return primitives;
+    public int size() {
+        return kinds.length;
     }
 
     public byte[] rawTags() {
@@ -102,11 +100,7 @@ public class EspressoFrameDescriptor {
         return kinds;
     }
 
-    public static EspressoFrameDescriptor fromRawRecord(StaticObject[] rawObjects, long[] rawPrimitives, byte[] rawTags) {
-        return new EspressoFrameDescriptor(fromTags(rawTags), rawObjects, rawPrimitives);
-    }
-
-    private void importSlot(VirtualFrame frame, int slot) {
+    private void importSlot(Frame frame, int slot, Object[] objects, long[] primitives) {
         switch (kinds[slot]) {
             case Int:
                 primitives[slot] = extend(frame.getIntStatic(slot));
@@ -131,7 +125,7 @@ public class EspressoFrameDescriptor {
         }
     }
 
-    private void exportSlot(VirtualFrame frame, int slot) {
+    private void exportSlot(Frame frame, int slot, Object[] objects, long[] primitives) {
         switch (kinds[slot]) {
             case Int:
                 frame.setIntStatic(slot, narrow(primitives[slot]));
@@ -157,11 +151,11 @@ public class EspressoFrameDescriptor {
         }
     }
 
-    private static long extend(int value) {
+    static long extend(int value) {
         return value & INT_MASK;
     }
 
-    private static int narrow(long value) {
+    static int narrow(long value) {
         return (int) value;
     }
 
@@ -169,28 +163,14 @@ public class EspressoFrameDescriptor {
         this.kinds = kinds.clone();
     }
 
-    private EspressoFrameDescriptor(JavaKind[] kinds, StaticObject[] rawObjects, long[] rawPrimitives) {
-        this.kinds = kinds;
-        this.objects = rawObjects;
-        this.primitives = rawPrimitives;
-    }
-
-    public boolean similar(EspressoFrameDescriptor frameAnalysisResult) {
-        assert frameAnalysisResult.kinds.length == this.kinds.length;
-        for (int i = 0; i < this.kinds.length; i++) {
-            assert frameAnalysisResult.kinds[i] == JavaKind.Illegal || frameAnalysisResult.kinds[i] == this.kinds[i];
-        }
-        return true;
-    }
-
-    private boolean verifyConsistent(VirtualFrame frame) {
+    private boolean verifyConsistent(Frame frame) {
         for (int slot = 0; slot < kinds.length; slot++) {
             assert verifyConsistentSlot(frame, slot);
         }
         return true;
     }
 
-    private boolean verifyConsistentSlot(VirtualFrame frame, int slot) {
+    private boolean verifyConsistentSlot(Frame frame, int slot) {
         switch (kinds[slot]) {
             case Int:
                 frame.getIntStatic(slot);
@@ -208,45 +188,10 @@ public class EspressoFrameDescriptor {
                 frame.getObjectStatic(slot);
                 break;
             case Illegal: {
-                if (frame.getTag(slot) == 0) {
-                    // uninitialized slot, it's fine.
+                if (!CHECK_ILLEGAL) {
                     break;
                 }
-                // Try all possible slot kinds to check for a failure in each.
-                boolean fail = false;
-                try {
-                    frame.getIntStatic(slot);
-                    fail = true;
-                } catch (AssertionError e) {
-                    /* nop */
-                }
-                try {
-                    frame.getFloatStatic(slot);
-                    fail = true;
-                } catch (AssertionError e) {
-                    /* nop */
-                }
-                try {
-                    frame.getLongStatic(slot);
-                    fail = true;
-                } catch (AssertionError e) {
-                    /* nop */
-                }
-                try {
-                    frame.getDoubleStatic(slot);
-                    fail = true;
-                } catch (AssertionError e) {
-                    /* nop */
-                }
-                try {
-                    frame.getObjectStatic(slot);
-                    fail = true;
-                } catch (AssertionError e) {
-                    /* nop */
-                }
-                if (fail) {
-                    throw new AssertionError();
-                }
+                illegalCheck(frame, slot);
                 break;
             }
             default:
@@ -254,6 +199,70 @@ public class EspressoFrameDescriptor {
                 throw EspressoError.shouldNotReachHere();
         }
         return true;
+    }
+
+    private static void illegalCheck(Frame frame, int slot) {
+        if (frame.getTag(slot) == 0) {
+            // uninitialized slot, it's fine.
+            return;
+        }
+        // Try all possible slot kinds to check for a failure in each.
+        boolean fail = false;
+        try {
+            frame.getIntStatic(slot);
+            fail = true;
+        } catch (AssertionError e) {
+            /* nop */
+        }
+        try {
+            frame.getFloatStatic(slot);
+            fail = true;
+        } catch (AssertionError e) {
+            /* nop */
+        }
+        try {
+            frame.getLongStatic(slot);
+            fail = true;
+        } catch (AssertionError e) {
+            /* nop */
+        }
+        try {
+            frame.getDoubleStatic(slot);
+            fail = true;
+        } catch (AssertionError e) {
+            /* nop */
+        }
+        try {
+            frame.getObjectStatic(slot);
+            fail = true;
+        } catch (AssertionError e) {
+            /* nop */
+        }
+        if (fail) {
+            throw new AssertionError();
+        }
+    }
+
+    public void validateImport(StaticObject[] pointers, long[] primitives, Meta meta) {
+        guarantee(pointers.length == kinds.length, cat("Invalid pointers array length: ", pointers.length), meta);
+        guarantee(primitives.length == kinds.length, cat("Invalid primitives array length: ", pointers.length), meta);
+        for (int i = 0; i < kinds.length; i++) {
+            JavaKind k = kinds[i];
+            boolean checkNullObject = (k == JavaKind.Illegal) || (k.isPrimitive());
+            boolean checkZeroPrim = (k == JavaKind.Illegal) || (!k.isPrimitive());
+            if (checkNullObject) {
+                guarantee(StaticObject.isNull(pointers[i]), cat("Non-null object in pointers array at slot: ", i, ", but expected a ", k.toString()), meta);
+            }
+            if (checkZeroPrim) {
+                guarantee(primitives[i] == 0, cat("Non-zero primitive in primitives array at slot: ", i, ", but expected a ", k.toString()), meta);
+            }
+        }
+    }
+
+    static void guarantee(boolean condition, String message, Meta meta) {
+        if (!condition) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, message);
+        }
     }
 
     public static class Builder {

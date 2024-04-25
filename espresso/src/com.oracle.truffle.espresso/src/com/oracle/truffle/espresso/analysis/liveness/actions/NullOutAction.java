@@ -26,7 +26,7 @@ package com.oracle.truffle.espresso.analysis.liveness.actions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
-import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor.Builder;
+import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor.Builder;
 
 public final class NullOutAction extends LocalVariableAction {
     private static final int MAX_CACHE = 256;

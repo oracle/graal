@@ -313,7 +313,7 @@ public final class EspressoFrame {
         frame.setIntStatic(BCI_SLOT, bci + 1);
     }
 
-    static int getBCI(Frame frame) {
+    public static int getBCI(Frame frame) {
         return frame.getIntStatic(BCI_SLOT) - 1;
     }
 

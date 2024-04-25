@@ -1046,8 +1046,8 @@ public final class Meta extends ContextAccessImpl {
             java_util_regex_IntHashSet = null;
         }
 
-        ObjectKlass java_util_concurrent_locks_AbstractOwnableSynchronizer = knownKlass(Type.java_util_concurrent_locks_AbstractOwnableSynchronizer);
-        java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread = java_util_concurrent_locks_AbstractOwnableSynchronizer.requireDeclaredField(Name.exclusiveOwnerThread,
+        java_util_concurrent_locks_abstractOwnableSynchronizer = knownKlass(Type.java_util_concurrent_locks_AbstractOwnableSynchronizer);
+        java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread = java_util_concurrent_locks_abstractOwnableSynchronizer.requireDeclaredField(Name.exclusiveOwnerThread,
                         Type.java_lang_Thread);
 
         java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
@@ -1876,6 +1876,7 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_util_regex_Matcher_requireEnd;
     public final Method java_util_regex_Matcher_groupCount;
 
+    public final ObjectKlass java_util_concurrent_locks_abstractOwnableSynchronizer;
     public final Field java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread;
 
     public final ObjectKlass java_math_BigInteger;
@@ -1928,25 +1929,24 @@ public final class Meta extends ContextAccessImpl {
 
     public final class ContinuumSupport {
         public final Method com_oracle_truffle_espresso_continuations_Continuation_run;
+        public final Method com_oracle_truffle_espresso_continuations_Continuation_suspend;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead;
         public final ObjectKlass com_oracle_truffle_espresso_continuations_Continuation_FrameRecord;
-        public final Method com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_statementIndex;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_reserved1;
+        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci;
+        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_top;
 
         private ContinuumSupport() {
             ObjectKlass com_oracle_truffle_espresso_continuations_Continuation = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation);
+            com_oracle_truffle_espresso_continuations_Continuation = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation);
             com_oracle_truffle_espresso_continuations_Continuation_run = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredMethod(Name.run, Signature._void);
+            com_oracle_truffle_espresso_continuations_Continuation_suspend = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredMethod(Name.suspend, Signature._void);
             com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredField(Name.stackFrameHead,
                             Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_ = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredMethod(
-                            Name._init_, Signature._void_FrameRecord_Object_array_long_array_Method_int_int_Object);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
                             Name.pointers, Type.java_lang_Object_array);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
@@ -1955,12 +1955,10 @@ public final class Meta extends ContextAccessImpl {
                             Name.method, Type.java_lang_reflect_Method);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
                             Name.next, Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                            Name.sp, Type._int);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_statementIndex = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                            Name.statementIndex, Type._int);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_reserved1 = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                            Name.reserved1, Type.java_lang_Object);
+            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+                            Name.bci, Type._int);
+            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_top = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+                            Name.top, Type._int);
         }
     }
 

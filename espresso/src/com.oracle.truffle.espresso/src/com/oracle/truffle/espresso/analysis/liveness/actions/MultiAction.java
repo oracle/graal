@@ -30,7 +30,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
-import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor.Builder;
+import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor.Builder;
 
 public final class MultiAction extends LocalVariableAction {
     @CompilationFinal(dimensions = 1) private final int[] actions;

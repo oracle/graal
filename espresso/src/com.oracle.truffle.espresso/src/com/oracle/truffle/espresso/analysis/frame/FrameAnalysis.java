@@ -245,8 +245,9 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor;
-import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor.Builder;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor;
+import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor.Builder;
 
 /**
  * Statically analyses bytecodes to produce a {@link EspressoFrameDescriptor frame description} for
@@ -267,13 +268,13 @@ public final class FrameAnalysis {
 
     private final ArrayDeque<Integer> queue = new ArrayDeque<>(2);
 
-    public static EspressoFrameDescriptor apply(Method.MethodVersion m, LivenessAnalysis la, int bci) {
-        return new FrameAnalysis(la, bci, m).apply();
+    public static EspressoFrameDescriptor apply(Method.MethodVersion m, int bci) {
+        return new FrameAnalysis(bci, m).apply();
     }
 
-    private FrameAnalysis(LivenessAnalysis la, int targetBci, Method.MethodVersion m) {
+    private FrameAnalysis(int targetBci, Method.MethodVersion m) {
         this.lang = m.getMethod().getLanguage();
-        this.la = la;
+        this.la = m.getLivenessAnalysis();
         this.bs = new BytecodeStream(m.getOriginalCode());
         this.targetBci = targetBci;
         this.states = new Builder[bs.endBCI()];
@@ -346,6 +347,7 @@ public final class FrameAnalysis {
 
     private void markBranchTargets() {
         int bci = 0;
+        boolean validTarget = false;
         while (bci < bs.endBCI()) {
             int opcode = bs.opcode(bci);
             if (Bytecodes.isBranch(opcode)) {
@@ -357,7 +359,15 @@ public final class FrameAnalysis {
                 }
                 branchTargets.set(helper.defaultTarget(bs, bci));
             }
+            if (bci == targetBci) {
+                validTarget = true;
+            }
             bci = bs.nextBCI(bci);
+        }
+
+        if (!validTarget) {
+            Meta meta = m.getDeclaringKlass().getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Target bci is not a valid bytecode.");
         }
 
         ExceptionHandler[] handlers = m.getExceptionHandlers();

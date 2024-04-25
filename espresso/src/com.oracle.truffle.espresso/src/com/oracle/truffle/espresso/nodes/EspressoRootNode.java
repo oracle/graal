@@ -45,9 +45,9 @@ import com.oracle.truffle.espresso.runtime.ForeignStackTraceElementObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
-import com.oracle.truffle.espresso.vm.ContinuationSupport;
 import com.oracle.truffle.espresso.vm.FrameCookie;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 /**
  * The root of all executable bits in Espresso, includes everything that can be called a "method" in
@@ -230,12 +230,11 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     /**
      * Used as part of the continuation resumption process. This is a bit of a hack to work around
      * the fact that we can't add arguments to {@link BytecodeNode#execute(VirtualFrame)}, as the
-     * prototype is specified by Truffle, and we don't want to add a pointer to every bytecode
-     * node for memory consumption reasons. So during the resume process the frame is initialized
-     * from the host frame record, which is also needed later, and that's stashed in a frame
-     * cookie.
+     * prototype is specified by Truffle, and we don't want to add a pointer to every bytecode node
+     * for memory consumption reasons. So during the resume process the frame is initialized from
+     * the host frame record, which is also needed later, and that's stashed in a frame cookie.
      */
-    public final void setContinuationHostFrameRecord(Frame frame, ContinuationSupport.HostFrameRecord hfr) {
+    public final void setContinuationHostFrameRecord(Frame frame, HostFrameRecord hfr) {
         initCookieSlot(frame);
         // These edge cases are supposed to be caught during the unwind for suspend, so we should
         // never encounter a case where a cookie is already set unless more cookie use cases are
@@ -244,10 +243,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         frame.setAuxiliarySlot(cookieSlot, FrameCookie.createResumeCookie(hfr));
     }
 
-    public final ContinuationSupport.HostFrameRecord getContinuationHostFrameRecord(Frame frame) {
+    public final HostFrameRecord getContinuationHostFrameRecord(Frame frame) {
         FrameCookie cookie = getCookie(frame);
         if (cookie != null && cookie.isResume()) {
-            return (ContinuationSupport.HostFrameRecord) cookie.getData();
+            return (HostFrameRecord) cookie.getData();
         }
         return null;
     }

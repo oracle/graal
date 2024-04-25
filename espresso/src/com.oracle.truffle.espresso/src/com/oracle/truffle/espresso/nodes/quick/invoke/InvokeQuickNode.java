@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.vm.ContinuationSupport;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 public abstract class InvokeQuickNode extends QuickNode {
     private static final Object[] EMPTY_ARGS = new Object[0];
@@ -70,7 +70,7 @@ public abstract class InvokeQuickNode extends QuickNode {
      * record to unwind is passed as a first argument.
      */
     @SuppressWarnings("unused")
-    public final int resumeContinuation(VirtualFrame frame, ContinuationSupport.HostFrameRecord hfr) {
+    public final int resumeContinuation(VirtualFrame frame, HostFrameRecord hfr) {
         // The method that was called is in hfr.methodVersion, no need to re-resolve.
         return pushResult(frame, hfr.methodVersion.getCallTarget().call(hfr));
     }

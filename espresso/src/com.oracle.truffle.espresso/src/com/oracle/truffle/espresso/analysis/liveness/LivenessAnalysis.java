@@ -50,7 +50,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
-import com.oracle.truffle.espresso.vm.EspressoFrameDescriptor;
+import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor;
 
 public final class LivenessAnalysis {
 
