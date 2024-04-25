@@ -29,7 +29,10 @@ import static jdk.graal.compiler.test.SubprocessUtil.getVMCommandLine;
 import static jdk.graal.compiler.test.SubprocessUtil.java;
 import static jdk.graal.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -151,19 +154,36 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 suffix = String.format("%s%n%nSet -D%s=true for verbose output.", suffix, verboseProperty);
             }
             int exitCode = proc.exitCode;
-            if (expectNormalExit) {
-                assertTrue(exitCode == 0, String.format("%s produced exit code %d, but expected 0.%s", proc, exitCode, suffix));
-            } else {
-                assertTrue(exitCode != 0, String.format("%s produced normal exit code %d, but expected abnormal exit%s", proc, exitCode, suffix));
+            if ((exitCode == 0) != expectNormalExit) {
+                String rerun = rerunCommand(testClass, proc);
+                rerun = String.format("%n%nRerun: %s", rerun != null ? rerun : "<see args above>");
+                String expectExitCode = expectNormalExit ? "0" : "non-0";
+                fail("%s produced exit code %d, but expected %s.%s%s", proc, exitCode, expectExitCode, suffix, rerun);
             }
-            if (junitVerbose) {
+            if (verbose) {
                 System.out.println("--- subprocess output:");
                 for (String line : proc.output) {
                     System.out.println(line);
                 }
                 System.out.println("--- end subprocess output");
+                String rerun = rerunCommand(testClass, proc);
+                if (rerun != null) {
+                    System.out.printf("--- rerun: %s%n", rerun);
+                }
             }
             return proc;
         }
+    }
+
+    static String rerunCommand(Class<? extends GraalCompilerTest> testClass, Subprocess proc) throws IOException {
+        File exe = new File(proc.command.get(0));
+        if (exe.getName().equals("java") || exe.getName().equals("java.exe")) {
+            Path argfile = Path.of(testClass.getName() + "." + proc.pid + ".argfile").toAbsolutePath();
+            // First line is the java executable so comment it out
+            Files.writeString(argfile, "# " + String.join("\n", proc.expandedCommand));
+            String env = proc.envPrefix();
+            return String.format("%s%s @%s%n", env.isEmpty() ? "" : env + " ", exe, argfile);
+        }
+        return null;
     }
 }

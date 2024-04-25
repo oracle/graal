@@ -207,6 +207,11 @@ public final class SubprocessUtil {
         public final List<String> command;
 
         /**
+         * The command line with all @argfiles content "inlined".
+         */
+        public final List<String> expandedCommand;
+
+        /**
          * Exit code of the subprocess.
          */
         public final int exitCode;
@@ -222,19 +227,37 @@ public final class SubprocessUtil {
         public final boolean timedOut;
 
         /**
+         * OS level pid.
+         */
+        public final long pid;
+
+        /**
          * Explicit environment variables.
          */
         private Map<String, String> env;
 
-        public Subprocess(List<String> command, Map<String, String> env, int exitCode, List<String> output, boolean timedOut) {
+        public Subprocess(List<String> command, List<String> expandedCommand, Map<String, String> env, long pid, int exitCode, List<String> output, boolean timedOut) {
             this.command = command;
+            this.expandedCommand = expandedCommand;
             this.env = env;
+            this.pid = pid;
             this.exitCode = exitCode;
             this.output = output;
             this.timedOut = timedOut;
         }
 
         public static final String DASHES_DELIMITER = "-------------------------------------------------------";
+
+        public String envPrefix() {
+            Formatter msg = new Formatter();
+            if (env != null && !env.isEmpty()) {
+                msg.format("env");
+                for (Map.Entry<String, String> e : env.entrySet()) {
+                    msg.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
+                }
+            }
+            return msg.toString();
+        }
 
         /**
          * Returns the command followed by the output as a string.
@@ -246,12 +269,9 @@ public final class SubprocessUtil {
             if (delimiter != null) {
                 msg.format("%s%n", delimiter);
             }
-            if (env != null && !env.isEmpty()) {
-                msg.format("env");
-                for (Map.Entry<String, String> e : env.entrySet()) {
-                    msg.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
-                }
-                msg.format("\\%n");
+            String envPrefix = envPrefix();
+            if (!envPrefix.isEmpty()) {
+                msg.format("%s\\%n", envPrefix);
             }
             msg.format("%s%n", CollectionsUtil.mapAndJoin(command, e -> quoteShellArg(String.valueOf(e)), " "));
             for (String line : output) {
@@ -420,7 +440,7 @@ public final class SubprocessUtil {
             while ((line = stdout.readLine()) != null) {
                 output.add(line);
             }
-            return new Subprocess(command, env, process.waitFor(), output, false);
+            return new Subprocess(command, expandArgFileArgs(command), env, process.pid(), process.waitFor(), output, false);
         } else {
             // The subprocess might produce output forever. We need to grab the output in a
             // separate thread, so we can terminate the process after the timeout if necessary.
@@ -440,7 +460,7 @@ public final class SubprocessUtil {
                 process.destroyForcibly().waitFor();
             }
             outputReader.join();
-            return new Subprocess(command, env, process.exitValue(), output, !finishedOnTime);
+            return new Subprocess(command, expandArgFileArgs(command), env, process.pid(), process.exitValue(), output, !finishedOnTime);
         }
     }
 

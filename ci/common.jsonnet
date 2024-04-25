@@ -306,6 +306,7 @@ local common_json = import "../common.json";
         "*/*/stripped/*.map",
         "*/callgrind.*",
         "*.log",
+        "*.argfile",
       ],
     },
   },
