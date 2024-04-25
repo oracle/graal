@@ -38,6 +38,7 @@ import java.util.Formatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -246,8 +247,6 @@ public final class SubprocessUtil {
             this.timedOut = timedOut;
         }
 
-        public static final String DASHES_DELIMITER = "-------------------------------------------------------";
-
         public String envPrefix() {
             Formatter msg = new Formatter();
             if (env != null && !env.isEmpty()) {
@@ -260,15 +259,13 @@ public final class SubprocessUtil {
         }
 
         /**
-         * Returns the command followed by the output as a string.
+         * Returns the process execution as a string with a header line followed by one or more body
+         * lines followed by a trailer with a new line.
          *
-         * @param delimiter if non-null, the returned string has this value as a prefix and suffix
+         * @see #asString(Map, Consumer)
          */
-        public String toString(String delimiter) {
+        public String toString(Consumer<Formatter> suffix) {
             Formatter msg = new Formatter();
-            if (delimiter != null) {
-                msg.format("%s%n", delimiter);
-            }
             String envPrefix = envPrefix();
             if (!envPrefix.isEmpty()) {
                 msg.format("%s\\%n", envPrefix);
@@ -278,19 +275,77 @@ public final class SubprocessUtil {
                 msg.format("%s%n", line);
             }
             msg.format("exit code: %s%n", exitCode);
-            if (delimiter != null) {
-                msg.format("%s%n", delimiter);
+            if (suffix != null) {
+                suffix.accept(msg);
             }
-            return msg.toString();
+            String body = msg.toString();
+            if (!body.endsWith(System.lineSeparator())) {
+                body = body + System.lineSeparator();
+            }
+            long lines = body.chars().filter(ch -> ch == '\n').count();
+            int chars = body.length();
+            String head = String.format("----------subprocess[%d]:(%d/%d)----------", pid, lines, chars);
+            String tail = String.format("==========subprocess[%d]==========", pid);
+            return String.format("%s%n%s%n%s%n", head, body, tail);
+        }
+
+        @Override
+        public String toString() {
+            return toString(null);
         }
 
         /**
-         * Returns the command followed by the output as a string delimited by
-         * {@value #DASHES_DELIMITER}.
+         * Returns the process execution as a string with a header line followed by one or more body
+         * lines followed by a trailer with a new line.
+         *
+         * The header is {@code "----------subprocess[<pid>]:(<lines>/<chars>)----------"} where
+         * {@code pid} is the id of the process and {@code chars} and {@code lines} provide the
+         * dimensions of the body.
+         *
+         * The sections in the body are the environment variables (key: "env"), the command line
+         * (key: "cmd"), the lines of output produced (key: "output"), the exit code (key:
+         * "exitCode"), and lines provided by {@code suffix} if {@code suffix != null}.
+         *
+         * The trailer is {@code "==========subprocess[<pid>]=========="}
+         *
+         * @param sections selects which sections are in the body. If null, all sections are
+         *            included.
          */
-        @Override
-        public String toString() {
-            return toString(DASHES_DELIMITER);
+        public String asString(Map<String, Boolean> sections, Consumer<Formatter> suffix) {
+            Formatter msg = new Formatter();
+            if (include(sections, "env")) {
+                String envPrefix = envPrefix();
+                if (!envPrefix.isEmpty()) {
+                    msg.format("%s\\%n", envPrefix);
+                }
+            }
+            if (include(sections, "cmd")) {
+                msg.format("%s%n", CollectionsUtil.mapAndJoin(command, e -> quoteShellArg(String.valueOf(e)), " "));
+            }
+            if (include(sections, "output")) {
+                for (String line : output) {
+                    msg.format("%s%n", line);
+                }
+            }
+            if (include(sections, "exitCode")) {
+                msg.format("exit code: %s%n", exitCode);
+            }
+            if (suffix != null) {
+                suffix.accept(msg);
+            }
+            String body = msg.toString();
+            if (!body.endsWith(System.lineSeparator())) {
+                body = body + System.lineSeparator();
+            }
+            long lines = body.chars().filter(ch -> ch == '\n').count();
+            int chars = body.length();
+            String head = String.format("----------subprocess[%d]:(%d/%d)----------", pid, lines, chars);
+            String tail = String.format("==========subprocess[%d]==========", pid);
+            return String.format("%s%n%s%s%n", head, body, tail);
+        }
+
+        private static boolean include(Map<String, Boolean> sections, String key) {
+            return sections == null || sections.getOrDefault(key, false);
         }
     }
 
