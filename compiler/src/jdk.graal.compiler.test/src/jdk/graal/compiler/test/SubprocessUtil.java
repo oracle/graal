@@ -28,14 +28,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileTime;
-import java.nio.file.attribute.UserPrincipal;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
@@ -478,9 +473,6 @@ public final class SubprocessUtil {
 
     private static final Set<String> EXECUTABLES_USING_ARGFILES = Set.of("java", "java.exe", "javac", "javac.exe");
 
-    // Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
-    private static final TemporaryFiles SUBPROCESS_ARGFILES = new TemporaryFiles(SubprocessUtil.class.getName() + ".", ".argfile");
-
     /**
      * Creates an argfile for {@code command} if {@code command.get(0)} denotes an
      * {@linkplain #EXECUTABLES_USING_ARGFILES executable supporting argfiles}.
@@ -491,15 +483,16 @@ public final class SubprocessUtil {
     public static Path makeArgfile(List<String> command) {
         File exe = new File(command.get(0));
         if (EXECUTABLES_USING_ARGFILES.contains(exe.getName())) {
-            Path argfile = SUBPROCESS_ARGFILES.newFile();
             expandArgFileArgs(command);
             try {
+                // Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
+                Path argfile = Files.createTempFile(SubprocessUtil.class.getName() + ".", ".argfile");
                 String content = expandArgFileArgs(command).stream().map(SubprocessUtil::quoteArgfileArgument).collect(Collectors.joining("\n"));
                 Files.writeString(argfile, "# " + content);
+                return argfile;
             } catch (IOException e) {
                 throw new AssertionError(e);
             }
-            return argfile;
         }
         return null;
     }
@@ -597,77 +590,5 @@ public final class SubprocessUtil {
             }
         }
         throw new InternalError();
-    }
-
-    /**
-     * Manages temporary files with a given prefix and suffix. When new files are created, temporary
-     * files older than 2 hours are deleted.
-     */
-    public static class TemporaryFiles {
-        private final Path dir;
-        private final FileTime maxAge;
-        private final String prefix;
-        private final String suffix;
-        private final UserPrincipal user;
-
-        public TemporaryFiles(String prefix, String suffix) {
-            this.dir = Path.of(System.getProperty("java.io.tmpdir"));
-            this.maxAge = DEBUG ? //
-                            FileTime.from(Instant.now().minus(5, ChronoUnit.SECONDS)) : //
-                            FileTime.from(Instant.now().minus(2, ChronoUnit.HOURS));
-            this.prefix = prefix;
-            this.suffix = suffix;
-            try {
-                this.user = FileSystems.getDefault().getUserPrincipalLookupService().lookupPrincipalByName(System.getProperty("user.name"));
-            } catch (IOException e) {
-                throw new AssertionError(e);
-            }
-        }
-
-        /**
-         * Creates a new temporary file after {@linkplain #removeOldFiles() deleting} old temporary
-         * files.
-         */
-        Path newFile() {
-            removeOldFiles();
-            try {
-                Path path = Files.createTempFile(dir, prefix, suffix).toAbsolutePath();
-                if (DEBUG) {
-                    System.out.println("created " + path);
-                }
-                return path;
-            } catch (IOException e) {
-                throw new AssertionError(e);
-            }
-        }
-
-        /**
-         * Deletes argfiles in {@link #dir} that start with {@link #prefix} and end with
-         * {@link #suffix} whose last modification time is before {@link #maxAge}.
-         */
-        private void removeOldFiles() {
-            try {
-                Files.list(dir).filter(this::match).forEach(p -> {
-                    try {
-                        if (Files.getOwner(p).equals(user) && Files.getLastModifiedTime(p).compareTo(maxAge) < 0) {
-                            Files.delete(p);
-                            if (DEBUG) {
-                                System.out.println("deleted " + p);
-                            }
-                            return;
-                        }
-                    } catch (IOException e) {
-                        System.err.printf("Error deleting %s: %e%n", p, e);
-                    }
-                });
-            } catch (IOException e) {
-                System.err.printf("Error listing files in %s: %e%n", dir, e);
-            }
-        }
-
-        private boolean match(Path p) {
-            String fileName = p.getFileName().toString();
-            return fileName.startsWith(prefix) && fileName.endsWith(suffix);
-        }
     }
 }
