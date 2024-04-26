@@ -49,7 +49,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.standalone.StandaloneHost;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -226,14 +225,8 @@ public class StandaloneAnalysisFeatureImpl {
             registerAsUnsafeAccessed(aField, "registered from standalone feature");
         }
 
-        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind, Object reason) {
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind, reason);
-        }
-
-        public void registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind, Object reason) {
-            if (!aField.isUnsafeAccessed()) {
-                aField.registerAsUnsafeAccessed(partitionKind, reason);
-            }
+        public void registerAsUnsafeAccessed(Field field, Object reason) {
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), reason);
         }
 
         public void registerAsInvoked(Executable method, boolean invokeSpecial, Object reason) {

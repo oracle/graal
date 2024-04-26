@@ -80,8 +80,6 @@ import com.oracle.svm.util.ClassUtil;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeList;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -278,14 +276,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public AnalysisType getObjectArrayType() {
         return metaAccess.lookupJavaType(Object[].class);
-    }
-
-    public AnalysisType getGraalNodeType() {
-        return metaAccess.lookupJavaType(Node.class);
-    }
-
-    public AnalysisType getGraalNodeListType() {
-        return metaAccess.lookupJavaType(NodeList.class);
     }
 
     public TypeFlow<?> getAllInstantiatedTypeFlow() {

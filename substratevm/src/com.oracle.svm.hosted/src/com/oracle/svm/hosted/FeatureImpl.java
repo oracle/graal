@@ -54,7 +54,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -87,7 +86,6 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -403,16 +401,8 @@ public class FeatureImpl {
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
-            return registerAsUnsafeAccessed(aField, DefaultUnsafePartition.get(), reason);
-        }
-
-        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind, Object reason) {
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind, reason);
-        }
-
-        public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind, Object reason) {
             assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
-            return aField.registerAsUnsafeAccessed(partitionKind, reason);
+            return aField.registerAsUnsafeAccessed(reason);
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field, Object reason) {
