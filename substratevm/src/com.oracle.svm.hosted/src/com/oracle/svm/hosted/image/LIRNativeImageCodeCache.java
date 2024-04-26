@@ -486,13 +486,15 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         }
 
         @Override
+        protected void defineBaseLayerMethodSymbol(String name, ObjectFile.Element section, HostedMethod method) {
+            VMError.guarantee(method.wrapped.isInBaseLayer(), "Expecting a base layer method, found %s", method);
+            objectFile.createUndefinedSymbol(name, 0, true);
+        }
+
+        @Override
         protected void defineMethodSymbol(String name, boolean global, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
-            if (method.wrapped.isInBaseLayer()) {
-                objectFile.createUndefinedSymbol(name, 0, true);
-            } else {
-                final int size = result == null ? 0 : result.getTargetCodeSize();
-                objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
-            }
+            final int size = result == null ? 0 : result.getTargetCodeSize();
+            objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
         }
     }
 

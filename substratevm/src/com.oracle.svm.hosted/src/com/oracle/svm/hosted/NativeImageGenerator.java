@@ -1299,7 +1299,25 @@ public class NativeImageGenerator {
             if (CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
                 throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterCAPCache, "+"));
             }
-
+            if (SVMImageLayerSupport.singleton().hasLoader()) {
+                for (Path layerPath : SVMImageLayerSupport.singleton().getLoader().getLoadPaths()) {
+                    Path snapshotFileName = layerPath.getFileName();
+                    if (snapshotFileName != null) {
+                        String layerName = snapshotFileName.toString().split(ImageLayerSnapshotUtil.FILE_NAME_PREFIX)[1].split(ImageLayerSnapshotUtil.FILE_EXTENSION)[0].trim();
+                        /*
+                         * This currently assumes lib{layer}.so is in the same dir as the layer
+                         * snapshot. GR-53663 will create a proper bundle that contains both files.
+                         */
+                        Path layerPathDir = layerPath.getParent();
+                        if (layerPathDir != null && layerName.startsWith("lib") && Files.exists(layerPathDir.resolve(layerName + ".so"))) {
+                            nativeLibs.getLibraryPaths().add(layerPathDir.toString());
+                            nativeLibs.addDynamicNonJniLibrary(layerName.split("lib")[1]);
+                        } else {
+                            throw VMError.shouldNotReachHere("Missing " + layerName + ".so. It must be placed in the same dir as the layer snapshot.");
+                        }
+                    }
+                }
+            }
             return nativeLibs;
         }
     }
