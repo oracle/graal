@@ -51,6 +51,8 @@ abstract class LoadFlags {
             case LINUX:
             case DARWIN:
                 return new PosixFlags(ctx);
+            case WINDOWS:
+                return new WindowsFlags();
             default:
                 return new UnknownFlags();
         }
@@ -111,6 +113,42 @@ abstract class LoadFlags {
             if (!lazyOrNow) {
                 // default to 'RTLD_NOW' if neither 'RTLD_LAZY' nor 'RTLD_NOW' was specified
                 flags |= ctx.RTLD_NOW;
+            }
+            return flags;
+        }
+    }
+
+    static final class WindowsFlags extends LoadFlags {
+
+        @Override
+        int parseFlags(List<String> flagNames) {
+            int flags = 0;
+            if (flagNames != null) {
+                for (String flag : flagNames) {
+                    // https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-loadlibraryexw
+                    switch (flag) {
+                        case "LOAD_LIBRARY_SEARCH_APPLICATION_DIR":
+                            flags |= 0x00000200;
+                            break;
+                        case "LOAD_LIBRARY_SEARCH_DEFAULT_DIRS":
+                            flags |= 0x00001000;
+                            break;
+                        case "LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR":
+                            flags |= 0x00000100;
+                            break;
+                        case "LOAD_LIBRARY_SEARCH_SYSTEM32":
+                            flags |= 0x00000800;
+                            break;
+                        case "LOAD_LIBRARY_SEARCH_USER_DIRS":
+                            flags |= 0x00000400;
+                            break;
+                        case "LOAD_WITH_ALTERED_SEARCH_PATH":
+                            flags |= 0x00000008;
+                            break;
+                        case "ISOLATED_NAMESPACE":
+                            throw new NFIUnsupportedException("isolated namespace not supported");
+                    }
+                }
             }
             return flags;
         }
