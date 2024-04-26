@@ -29,17 +29,11 @@ import static jdk.graal.compiler.test.SubprocessUtil.getVMCommandLine;
 import static jdk.graal.compiler.test.SubprocessUtil.java;
 import static jdk.graal.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Formatter;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import jdk.graal.compiler.test.SubprocessUtil;
@@ -124,8 +118,6 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 vmArgs = filter(vmArgs, vmArgsFilter);
             }
 
-            String verboseProperty = "debug." + testClass.getName() + ".verbose";
-            boolean verbose = Boolean.getBoolean(verboseProperty);
             List<String> mainClassAndArgs = new LinkedList<>();
             mainClassAndArgs.add("com.oracle.mxtool.junit.MxJUnitWrapper");
             String testName = testClass.getName();
@@ -139,42 +131,18 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             }
             SubprocessUtil.Subprocess proc = java(vmArgs, mainClassAndArgs);
 
-            Consumer<Formatter> suffix = msg -> {
-                File exe = new File(proc.command.get(0));
-                if (exe.getName().equals("java") || exe.getName().equals("java.exe")) {
-                    Path argfile = Path.of(testClass.getName() + "." + proc.pid + ".argfile").toAbsolutePath();
-                    // First line is the java executable so comment it out
-                    try {
-                        Files.writeString(argfile, "# " + String.join("\n", proc.expandedCommand));
-                        String env = proc.envPrefix();
-                        msg.format("%nrerun: %s%s @%s%n", env.isEmpty() ? "" : env + " ", exe, argfile);
-                    } catch (IOException e) {
-                        msg.format("%nrerun: <error: %s>%n", e);
-                    }
-                }
-                if (!Boolean.getBoolean(SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
-                    msg.format("%nSet -D%s=true to preserve subprocess temp files.%n", SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME);
-                }
-                if (!verbose) {
-                    msg.format("%nSet -D%s=true for verbose output.%n", verboseProperty);
-                }
-            };
-
             if (testPredicate != null && !testPredicate.test(proc.output)) {
-                fail("Subprocess produced unexpected output:%n%s", proc.toString(suffix));
+                fail("Subprocess produced unexpected output:%n%s", proc);
             }
             int exitCode = proc.exitCode;
             if ((exitCode == 0) != expectNormalExit) {
                 String expectExitCode = expectNormalExit ? "0" : "non-0";
-                fail("Subprocess produced exit code %d, but expected %s%n%s", exitCode, expectExitCode, proc.toString(suffix));
+                fail("Subprocess produced exit code %d, but expected %s%n%s", exitCode, expectExitCode, proc);
             }
 
             // Test passed
-            if (verbose) {
-                System.err.printf("%n%s%n", proc.toString(suffix));
-            } else if (junitVerbose) {
-                Map<String, Boolean> sections = Map.of("output", true);
-                System.out.printf("%n%s%n", proc.asString(sections, null));
+            if (junitVerbose) {
+                System.out.printf("%n%s%n", proc);
             }
             return proc;
         }

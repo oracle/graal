@@ -252,7 +252,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
 
         Subprocess proc = SubprocessUtil.java(vmArgs, mainClassAndArgs);
         if (VERBOSE) {
-            System.out.println(proc);
+            System.out.printf("%n%s%n", proc);
         }
 
         try {

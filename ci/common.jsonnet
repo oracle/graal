@@ -146,6 +146,8 @@ local common_json = import "../common.json";
         "Dumping debug output to '(?P<filename>[^']+)'",
         # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
         " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
+        # Keep in sync with jdk.graal.compiler.test.SubprocessUtil#SUBPROCESS_ARGFILES
+        " @(?P<filename>.*SubprocessUtil.*\\.argfile)",
       ],
     },
 
@@ -306,7 +308,6 @@ local common_json = import "../common.json";
         "*/*/stripped/*.map",
         "*/callgrind.*",
         "*.log",
-        "*.argfile",
       ],
     },
   },
