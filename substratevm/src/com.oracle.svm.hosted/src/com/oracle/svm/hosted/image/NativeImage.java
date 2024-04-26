@@ -872,6 +872,8 @@ public abstract class NativeImage extends AbstractImage {
             return getContent();
         }
 
+        protected abstract void defineBaseLayerMethodSymbol(String name, Element section, HostedMethod method);
+
         protected abstract void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result);
 
         @SuppressWarnings("try")
@@ -921,8 +923,7 @@ public abstract class NativeImage extends AbstractImage {
                     // define base layer methods symbols
                     for (HostedMethod current : codeCache.getBaseLayerMethods()) {
                         final String symName = localSymbolNameForMethod(current);
-                        final String signatureString = current.getUniqueShortName();
-                        defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, false, null);
+                        defineBaseLayerMethodSymbol(symName, textSection, current);
                     }
                 }
 
