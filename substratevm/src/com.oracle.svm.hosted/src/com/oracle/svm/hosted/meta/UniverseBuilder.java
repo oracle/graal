@@ -44,7 +44,6 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -94,6 +93,7 @@ import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.PodSupport;
@@ -856,7 +856,7 @@ public class UniverseBuilder {
             referenceMaps.put(type, referenceMap);
             referenceMapEncoder.add(referenceMap);
         }
-        ImageSingletons.lookup(DynamicHubSupport.class).setReferenceMapEncoding(referenceMapEncoder.encodeAll());
+        DynamicHubSupport.singleton().setReferenceMapEncoding(referenceMapEncoder.encodeAll());
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();

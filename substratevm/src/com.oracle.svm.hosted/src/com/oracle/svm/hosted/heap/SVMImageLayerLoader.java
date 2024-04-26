@@ -260,4 +260,12 @@ class ImageSingletonLoaderImpl implements ImageSingletonLoader {
         assert type.equals("I") : type;
         return cast(value.get(1));
     }
+
+    @Override
+    public List<Integer> readIntList(String keyName) {
+        List<Object> value = cast(keyStore.get(keyName));
+        String type = cast(value.get(0));
+        assert type.equals("I[]") : type;
+        return cast(value.get(1));
+    }
 }

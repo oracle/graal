@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import java.util.Set;
 
 public class LoadedLayeredImageSingletonInfo {
@@ -36,5 +38,9 @@ public class LoadedLayeredImageSingletonInfo {
 
     public boolean handledDuringLoading(Class<?> key) {
         return loadedKeys.contains(key);
+    }
+
+    public static LoadedLayeredImageSingletonInfo singleton() {
+        return ImageSingletons.lookup(LoadedLayeredImageSingletonInfo.class);
     }
 }
