@@ -132,17 +132,17 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             SubprocessUtil.Subprocess proc = java(vmArgs, mainClassAndArgs);
 
             if (testPredicate != null && !testPredicate.test(proc.output)) {
-                fail("Subprocess produced unexpected output:%n%s", proc);
+                fail("Subprocess produced unexpected output:%n%s", proc.preserveArgfile());
             }
             int exitCode = proc.exitCode;
             if ((exitCode == 0) != expectNormalExit) {
                 String expectExitCode = expectNormalExit ? "0" : "non-0";
-                fail("Subprocess produced exit code %d, but expected %s%n%s", exitCode, expectExitCode, proc);
+                fail("Subprocess produced exit code %d, but expected %s%n%s", exitCode, expectExitCode, proc.preserveArgfile());
             }
 
             // Test passed
             if (junitVerbose) {
-                System.out.printf("%n%s%n", proc);
+                System.out.printf("%n%s%n", proc.preserveArgfile());
             }
             return proc;
         }

@@ -56,6 +56,8 @@ import jdk.vm.ci.services.Services;
  */
 public final class SubprocessUtil {
 
+    private static final boolean DEBUG = Boolean.parseBoolean(Services.getSavedProperty("debug." + SubprocessUtil.class.getName()));
+
     private SubprocessUtil() {
     }
 
@@ -249,13 +251,59 @@ public final class SubprocessUtil {
          */
         private Map<String, String> env;
 
-        public Subprocess(List<String> command, Map<String, String> env, long pid, int exitCode, List<String> output, boolean timedOut) {
+        /**
+         * Argfile, if any, created by {@link SubprocessUtil#process} to execute the subprocess. It
+         * can be preserved upon JVM exit by calling {@link #preserveArgfile()}.
+         */
+        public final Path argfile;
+
+        private boolean preserveArgfileOnExit;
+
+        private static final List<Subprocess> subprocessesWithArgfiles = new ArrayList<>();
+        static {
+            Runtime.getRuntime().addShutdownHook(new Thread("SubprocessArgFileCleanUp") {
+                @Override
+                public void run() {
+                    synchronized (subprocessesWithArgfiles) {
+                        for (Subprocess s : subprocessesWithArgfiles) {
+                            if (s.argfile != null && !s.preserveArgfileOnExit && Files.exists(s.argfile)) {
+                                try {
+                                    Files.delete(s.argfile);
+                                    if (DEBUG) {
+                                        System.out.println("deleted " + s.argfile);
+                                    }
+                                } catch (IOException e) {
+                                    System.err.println(e);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        Subprocess(List<String> command, Map<String, String> env, long pid, int exitCode, List<String> output, boolean timedOut, Path argfile) {
             this.command = command;
             this.env = env;
             this.pid = pid;
             this.exitCode = exitCode;
             this.output = output;
             this.timedOut = timedOut;
+            this.argfile = argfile;
+            synchronized (subprocessesWithArgfiles) {
+                subprocessesWithArgfiles.add(this);
+            }
+        }
+
+        /**
+         * Preserves this subprocess's argfile after the JVM exits.
+         */
+        public Subprocess preserveArgfile() {
+            if (DEBUG && argfile != null) {
+                System.out.println("preserving " + argfile);
+            }
+            preserveArgfileOnExit = true;
+            return this;
         }
 
         /**
@@ -432,12 +480,13 @@ public final class SubprocessUtil {
     private static final TemporaryFiles SUBPROCESS_ARGFILES = new TemporaryFiles(SubprocessUtil.class.getName() + ".", ".argfile");
 
     /**
-     * Translates {@code command} to a command line using an argfile if {@code command.get(0)}
-     * denotes an {@linkplain #EXECUTABLES_USING_ARGFILES executable supporting argfiles}.
+     * Creates an argfile for {@code command} if {@code command.get(0)} denotes an
+     * {@linkplain #EXECUTABLES_USING_ARGFILES executable supporting argfiles}.
      *
      * @see "https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html#java-command-line-argument-files"
+     * @return the created argfile or null
      */
-    public static List<String> withArgfile(List<String> command) {
+    public static Path makeArgfile(List<String> command) {
         File exe = new File(command.get(0));
         if (EXECUTABLES_USING_ARGFILES.contains(exe.getName())) {
             Path argfile = SUBPROCESS_ARGFILES.newFile();
@@ -448,9 +497,9 @@ public final class SubprocessUtil {
             } catch (IOException e) {
                 throw new AssertionError(e);
             }
-            return List.of(command.get(0), "@" + argfile);
+            return argfile;
         }
-        return command;
+        return null;
     }
 
     /**
@@ -466,7 +515,8 @@ public final class SubprocessUtil {
      *            thread waits for the process indefinitely.
      */
     public static Subprocess process(List<String> command, Map<String, String> env, File workingDir, Duration timeout) throws IOException, InterruptedException {
-        ProcessBuilder pb = new ProcessBuilder(withArgfile(command));
+        Path argfile = makeArgfile(command);
+        ProcessBuilder pb = new ProcessBuilder(argfile == null ? command : List.of(command.get(0), "@" + argfile));
 
         if (workingDir != null) {
             pb.directory(workingDir);
@@ -484,7 +534,7 @@ public final class SubprocessUtil {
             while ((line = stdout.readLine()) != null) {
                 output.add(line);
             }
-            return new Subprocess(pb.command(), env, process.pid(), process.waitFor(), output, false);
+            return new Subprocess(pb.command(), env, process.pid(), process.waitFor(), output, false, argfile);
         } else {
             // The subprocess might produce output forever. We need to grab the output in a
             // separate thread, so we can terminate the process after the timeout if necessary.
@@ -504,7 +554,7 @@ public final class SubprocessUtil {
                 process.destroyForcibly().waitFor();
             }
             outputReader.join();
-            return new Subprocess(command, env, process.pid(), process.exitValue(), output, !finishedOnTime);
+            return new Subprocess(pb.command(), env, process.pid(), process.exitValue(), output, !finishedOnTime, argfile);
         }
     }
 
@@ -546,8 +596,6 @@ public final class SubprocessUtil {
         }
         throw new InternalError();
     }
-
-    private static final boolean DEBUG = Boolean.parseBoolean(Services.getSavedProperty("debug." + SubprocessUtil.class.getName()));
 
     /**
      * Manages temporary files with a given prefix and suffix.
