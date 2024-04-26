@@ -8,7 +8,7 @@ permalink: /reference-manual/native-image/guides/build-and-run-native-executable
 # Build and Run Native Executables with JFR
 
 [JDK Flight Recorder (JFR](https://docs.oracle.com/javacomponents/jmc-5-4/jfr-runtime-guide/about.htm) is a tool for collecting diagnostic and profiling data about a running Java application, built into the JVM. 
-GraalVM Native Image supports JFR events and users can use the [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/17/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
+GraalVM Native Image supports JFR events and users can use the [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
 
 To collect JFR events when running a native executable, enable JFR support and JFR event recording as described in this guide.
 
@@ -88,4 +88,4 @@ It will look something like this:
 ### Related Documentation
 
 - Learn more about [Native Image support for JFR events](../JFR.md) and how to further configure JFR recording and system logging.
-- [Create and record your first event with Java](https://docs.oracle.com/en/java/javase/22/jfapi/creating-and-recording-your-first-event.html).
+- [Create and record your first event with Java](https://docs.oracle.com/en/java/javase/23/jfapi/creating-and-recording-your-first-event.html).
