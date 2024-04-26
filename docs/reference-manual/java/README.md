@@ -5,7 +5,7 @@ link_title: GraalVM as a Java Virtual Machine
 permalink: /reference-manual/java/
 ---
 
-# {{ page.link_title }}
+# GraalVM as a Java Virtual Machine
 
 GraalVM is based on the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/22/vm/java-virtual-machine-technology-overview.html), so any application that runs on the Java HotSpot Virtual Machine will also on GraalVM.
 

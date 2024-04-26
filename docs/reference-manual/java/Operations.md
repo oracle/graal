@@ -6,7 +6,7 @@ permalink: /reference-manual/compiler/operations/
 redirect_from: /reference-manual/java/operations/
 ---
 
-# {{ page.link_title }}
+# Graal JIT Compiler Operations Manual
 
 ## Measuring Performance
 

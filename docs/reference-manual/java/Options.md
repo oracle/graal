@@ -5,7 +5,7 @@ link_title: Graal JIT Compiler Configuration
 permalink: /reference-manual/java/options/
 ---
 
-# {{ page.link_title }}
+# Graal JIT Compiler Configuration
 
 The options to configure the Graal JIT compiler are in three categories: general, performance tuning, and diagnostic.
 
