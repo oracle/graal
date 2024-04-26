@@ -765,7 +765,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 MonitorIdNode id = frameState.peekMonitorId();
                 ValueNode lock = frameState.popLock();
                 frameState.pushLock(lock, id);
-                genMonitorExit(lock, null, bci(), true);
+                genMonitorExit(lock, null, bci(), true, false);
             }
         }
 

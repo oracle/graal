@@ -2984,11 +2984,18 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
     }
 
-    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean epilogue) {
-        // If a bytecode attempts to pop the last lock in a synchronized method then this method
-        // doesn't having properly matching locks so we should bailout. Normally this is detected by
-        // the final exit underflowing the lock stack but there is no guarantee that the exit is
-        // ever parsed so we should bailout here instead.
+    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean epilogue, boolean needsNullCheck) {
+        /*
+         * This null check ensures Java spec compatibility, where a NPE has precedence over an
+         * IllegalMonitorStateException. In the presence of structured locking, this check should
+         * fold away, as the non-nullness is already proven by the corresponding monitorenter.
+         */
+        ValueNode maybeNullCheckedX = needsNullCheck ? maybeEmitExplicitNullCheck(x) : x;
+        /*
+         * Graal enforces structured locking. In accordance to Rule 2, it has to throw an
+         * IllegalMonitorStateException (or deopt) if the number of monitorexits exceeds the number
+         * of monitorenters at any time during method execution.
+         */
         int expectedDepth = frameState.getMethod().isSynchronized() && !epilogue ? 1 : 0;
         if (frameState.lockDepth(false) == expectedDepth) {
             handleUnstructuredLocking("too many monitorexits", false);
@@ -2999,11 +3006,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         // if we merged two monitor ids we trust the merging logic checked the correct enter bcis
         if (!monitorId.isMultipleEntry()) {
             ValueNode originalLockedObject = GraphUtil.originalValue(lockedObject, false);
-            ValueNode originalX = GraphUtil.originalValue(x, false);
+            ValueNode originalX = GraphUtil.originalValue(maybeNullCheckedX, false);
             if (originalLockedObject != originalX) {
                 // at this point, the lock objects could still be equal, but not visibly to the
                 // parser; add a run-time check
-                LogicNode eq = append(genObjectEquals(x, lockedObject));
+                LogicNode eq = append(genObjectEquals(maybeNullCheckedX, lockedObject));
                 IfNode ifNode = append(new IfNode(eq, null, null, BranchProbabilityNode.EXTREMELY_FAST_PATH_PROFILE));
 
                 // lock objects not equal
@@ -3527,7 +3534,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     // push the return value on the stack
                     frameState.push(currentReturnValueKind, currentReturnValue);
                 }
-                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, true);
+                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, true, false);
                 assert !frameState.rethrowException();
             }
         }
@@ -5727,7 +5734,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             case CHECKCAST      : genCheckCast(stream.readCPI()); break;
             case INSTANCEOF     : genInstanceOf(stream.readCPI()); break;
             case MONITORENTER   : genMonitorEnter(frameState.pop(JavaKind.Object), stream.nextBCI()); break;
-            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), false); break;
+            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), false, true); break;
             case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;
