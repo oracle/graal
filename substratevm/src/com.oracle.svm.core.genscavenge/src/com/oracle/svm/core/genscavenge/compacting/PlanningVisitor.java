@@ -48,7 +48,7 @@ import jdk.graal.compiler.word.Word;
  * or overwrite dead objects.
  */
 public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
-    private static final PrepareSweepVisitor SWEEP_PREPARING_VISITOR = new PrepareSweepVisitor();
+    private static final ResetNewLocationsForSweepingVisitor RESET_NEW_LOCATIONS_FOR_SWEEPING_VISITOR = new ResetNewLocationsForSweepingVisitor();
 
     private AlignedHeapChunk.AlignedHeader allocChunk;
     private Pointer allocPointer;
@@ -59,6 +59,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
     @Override
     public boolean visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
+        boolean sweeping = chunk.getShouldSweepInsteadOfCompact();
         Pointer initialTop = HeapChunk.getTopPointer(chunk); // top doesn't move until we are done
 
         Pointer objSeq = AlignedHeapChunk.getObjectsStart(chunk);
@@ -86,7 +87,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                  * If an object was copied from a chunk that won't be swept and forwarding was put
                  * in place, it was because we needed to add an identity hash code field.
                  */
-                assert ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
+                assert !sweeping && ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
                 Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(p, header);
                 objSize = LayoutEncoding.getSizeFromObjectWithoutOptionalIdHashFieldInGC(forwardedObj);
             } else {
@@ -100,8 +101,8 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                  * Adding the optional identity hash field would increase an object's size, so we
                  * should have copied all objects that need one during marking instead.
                  */
-                assert !ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional() ||
-                                !ObjectHeaderImpl.hasIdentityHashFromAddressInline(header) || chunk.getShouldSweepInsteadOfCompact();
+                assert sweeping || !ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional() ||
+                                !ObjectHeaderImpl.hasIdentityHashFromAddressInline(header);
 
                 if (gapSize.notEqual(0)) { // end of a gap, start of an object sequence
                     // Link previous move info to here.
@@ -120,7 +121,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                 objSeqSize = objSeqSize.add(objSize);
             } else { // not marked, i.e. not alive and start of a gap of yet unknown size
                 if (objSeqSize.notEqual(0)) { // end of an object sequence
-                    Pointer newAddress = allocate(objSeqSize);
+                    Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
                     ObjectMoveInfo.setNewAddress(objSeq, newAddress);
 
                     objSeqSize = WordFactory.zero();
@@ -142,24 +143,22 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         if (gapSize.notEqual(0)) {
             chunk.setTopOffset(chunk.getTopOffset().subtract(gapSize));
         } else if (objSeqSize.notEqual(0)) {
-            Pointer newAddress = allocate(objSeqSize);
+            Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
             ObjectMoveInfo.setNewAddress(objSeq, newAddress);
         }
 
         totalUnusedBytes = totalUnusedBytes.add(HeapChunk.getEndOffset(chunk).subtract(HeapChunk.getTopOffset(chunk)));
-        if (shouldSweepBasedOnFragmentation(totalUnusedBytes)) {
+        if (!sweeping && shouldSweepBasedOnFragmentation(totalUnusedBytes)) {
+            sweeping = true;
             chunk.setShouldSweepInsteadOfCompact(true);
+            ObjectMoveInfo.visit(chunk, RESET_NEW_LOCATIONS_FOR_SWEEPING_VISITOR);
         }
-
-        /* For sweeping, we need to reset all the new addresses to the original locations. */
-        // TODO: if we already know that before, we can avoid that extra pass
-        if (chunk.getShouldSweepInsteadOfCompact()) {
-            ObjectMoveInfo.visit(chunk, SWEEP_PREPARING_VISITOR);
-
+        if (sweeping) {
             /*
-             * Continue allocating for compaction after the swept memory. Note that this can forfeit
-             * unused memory in any chunks before, but the order of objects must stay the same
-             * across all chunks.
+             * Continue allocating for compaction after the swept memory. Note that this forfeits
+             * unused memory in the chunks before, but the order of objects must stay the same
+             * across all chunks. If chunks end up completely empty however, they will be released
+             * after compaction.
              */
             this.allocChunk = chunk;
             this.allocPointer = HeapChunk.getTopPointer(chunk);
@@ -198,7 +197,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
     }
 
-    private static class PrepareSweepVisitor implements ObjectMoveInfo.Visitor {
+    private static class ResetNewLocationsForSweepingVisitor implements ObjectMoveInfo.Visitor {
         @Override
         public boolean visit(Pointer p) {
             ObjectMoveInfo.setNewAddress(p, p);
