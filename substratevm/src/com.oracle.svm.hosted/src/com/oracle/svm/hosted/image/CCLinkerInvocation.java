@@ -270,6 +270,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 /* Perform garbage collection of unused input sections. */
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
+            if (SubstrateOptions.IgnoreUndefinedReferences.getValue()) {
+                /* Ignore references to undefined symbols from the object files. */
+                additionalPreOptions.add("-Wl,--unresolved-symbols=ignore-in-object-files");
+            }
 
             /* Use --version-script to control the visibility of image symbols. */
             try {
