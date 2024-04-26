@@ -48,7 +48,7 @@ import tempfile
 import difflib
 import zipfile
 from argparse import Action, ArgumentParser, RawDescriptionHelpFormatter
-from os.path import exists, isdir, join, abspath
+from os.path import dirname, exists, isdir, join, abspath
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
 
 import mx
@@ -57,6 +57,7 @@ import mx_gate
 import mx_native
 import mx_sdk
 import mx_sdk_vm
+import mx_sdk_vm_impl
 import mx_subst
 import mx_unittest
 import mx_jardistribution
@@ -1205,90 +1206,309 @@ def validate_parser(grammar_project, grammar_path, create_command, args=None, ou
                     "Make sure the grammar files are up to date with the generated code. You can regenerate the generated code using mx.")
 
 
-def register_polyglot_isolate_distributions(register_distribution, language_id, language_distribution, isolate_library_layout_distribution, internal_resource_project):
+class _PolyglotIsolateResourceProject(mx.JavaProject):
     """
-    Registers the polyglot isolate resource distribution and isolate resource meta-POM distribution.
+    A Java project creating an internal resource implementation unpacking the polyglot isolate library.
+    The Java source code for internal resources is generated into the project's `source_gen_dir` before compilation,
+    using the `mx.truffle/polyglot_isolate_resource.template`. Configuration of the project follows these conventions:
+    The target package name is `com.oracle.truffle.isolate.resource.<language_id>.<os>.<arch>`,
+    and the resource ID is `<language_id>-isolate-<os>-<arch>`.
+    """
+
+    def __init__(self, language_suite, subDir, language_id, resource_id, os_name, cpu_architecture, placeholder):
+        name = f'com.oracle.truffle.isolate.resource.{language_id}.{os_name}.{cpu_architecture}'
+        javaCompliance = str(mx.distribution('truffle:TRUFFLE_API').javaCompliance) + '+'
+        project_dir = os.path.join(language_suite.dir, subDir, name)
+        deps = ['truffle:TRUFFLE_API']
+        if placeholder:
+            deps += ['sdk:NATIVEIMAGE']
+        super(_PolyglotIsolateResourceProject, self).__init__(language_suite, name, subDir=subDir, srcDirs=[], deps=deps,
+                                             javaCompliance=javaCompliance, workingSets='Truffle', d=project_dir,
+                                             theLicense=_suite.defaultLicense)
+        src_gen_dir = self.source_gen_dir()
+        self.srcDirs.append(src_gen_dir)
+        self.declaredAnnotationProcessors = ['truffle:TRUFFLE_DSL_PROCESSOR']
+        self.language_id = language_id
+        self.resource_id = resource_id
+        self.os_name = os_name
+        self.cpu_architecture = cpu_architecture
+        self.placeholder = placeholder
+
+
+    def getBuildTask(self, args):
+        jdk = mx.get_jdk(self.javaCompliance, tag=mx.DEFAULT_JDK_TAG, purpose='building ' + self.name)
+        return _PolyglotIsolateResourceBuildTask(args, self, jdk)
+
+
+class _PolyglotIsolateResourceBuildTask(mx.JavaBuildTask):
+    """
+    A _PolyglotIsolateResourceProject build task generating and building the internal resource unpacking
+    the polyglot isolate library. Refer to `_PolyglotIsolateResourceProject` documentation for more details.
+    """
+
+    def __str__(self):
+        return f'Generating {self.subject.name} internal resource and compiling it with {self._getCompiler().name()}'
+
+    @staticmethod
+    def _template_file(placeholder):
+        name = 'polyglot_isolate_resource_invalid.template' if placeholder else 'polyglot_isolate_resource.template'
+        return os.path.join(_suite.mxDir, name)
+
+    def needsBuild(self, newestInput):
+        is_needed, reason = mx.ProjectBuildTask.needsBuild(self, newestInput)
+        if is_needed:
+            return True, reason
+        proj = self.subject
+        for outDir in [proj.output_dir(), proj.source_gen_dir()]:
+            if not os.path.exists(outDir):
+                return True, f"{outDir} does not exist"
+        template_ts = mx.TimeStampFile.newest([
+                        _PolyglotIsolateResourceBuildTask._template_file(False),
+                        _PolyglotIsolateResourceBuildTask._template_file(True),
+                        __file__
+        ])
+        if newestInput is None or newestInput.isOlderThan(template_ts):
+            newestInput = template_ts
+        return super().needsBuild(newestInput)
+
+    @staticmethod
+    def _target_file(root, pkg_name):
+        target_folder = os.path.join(root, pkg_name.replace('.', os.sep))
+        target_file = os.path.join(target_folder, 'PolyglotIsolateResource.java')
+        return target_file
+
+
+    def _collect_files(self):
+        if self._javafiles is not None:
+            # already collected
+            return self
+        # collect project files first, then extend with generated resource
+        super(_PolyglotIsolateResourceBuildTask, self)._collect_files()
+        javafiles = self._javafiles
+        prj = self.subject
+        gen_src_dir = prj.source_gen_dir()
+        pkg_name = prj.name
+        target_file = _PolyglotIsolateResourceBuildTask._target_file(gen_src_dir, pkg_name)
+        if not target_file in javafiles:
+            bin_dir = prj.output_dir()
+            target_class = os.path.join(bin_dir, os.path.relpath(target_file, gen_src_dir)[:-len('.java')] + '.class')
+            javafiles[target_file] = target_class
+        # Remove annotation processor generated files.
+        javafiles = {k: v for k, v in javafiles.items() if k == target_file}
+        self._javafiles = javafiles
+        return self
+
+    def build(self):
+        prj = self.subject
+        pkg_name = prj.name
+        with open(_PolyglotIsolateResourceBuildTask._template_file(prj.placeholder), 'r', encoding='utf-8') as f:
+            file_content = f.read()
+        subst_eng = mx_subst.SubstitutionEngine()
+        subst_eng.register_no_arg('package', pkg_name)
+        subst_eng.register_no_arg('languageId', prj.language_id)
+        subst_eng.register_no_arg('resourceId', prj.resource_id)
+        subst_eng.register_no_arg('os', prj.os_name)
+        subst_eng.register_no_arg('arch', prj.cpu_architecture)
+        file_content = subst_eng.substitute(file_content)
+        target_file = _PolyglotIsolateResourceBuildTask._target_file(prj.source_gen_dir(), pkg_name)
+        mx_util.ensure_dir_exists(dirname(target_file))
+        with mx_util.SafeFileCreation(target_file) as sfc, open(sfc.tmpPath, 'w', encoding='utf-8') as f:
+            f.write(file_content)
+        super(_PolyglotIsolateResourceBuildTask, self).build()
+
+
+
+def register_polyglot_isolate_distributions(language_suite, register_project, register_distribution, language_id,
+                                            subDir, language_pom_distribution, maven_group_id, language_license,
+                                            isolate_build_options=None, platforms=None):
+    """
+    Creates and registers the polyglot isolate resource distribution and isolate resource meta-POM distribution.
     The created polyglot isolate resource distribution is named `<ID>_ISOLATE_RESOURCES`, inheriting the Maven group ID
     from the given `language_distribution`, and the Maven artifact ID is `<id>-isolate`.
     The meta-POM distribution is named `<ID>_ISOLATE`, having the Maven group ID `org.graalvm.polyglot`,
     and the Maven artifact ID is `<id>-isolate`.
 
+    :param Suite language_suite: The language suite  used to register generated projects and distributions to.
+    :param register_project: A callback to dynamically register the project, obtained as a parameter from `mx_register_dynamic_suite_constituents`.
+    :type register_project: (mx.Project) -> None
     :param register_distribution: A callback to dynamically register the distribution, obtained as a parameter from `mx_register_dynamic_suite_constituents`.
     :type register_distribution: (mx.Distribution) -> None
-    :param language_id: The language ID.
-    :param language_distribution: The language distribution used to inherit distribution properties.
-    :param isolate_library_layout_distribution: The layout distribution with polyglot isolate library.
-    :param internal_resource_project: The internal resource project used for unpacking the polyglot isolate library.
+    :param str language_id: The language ID.
+    :param str subDir: a path relative to `suite.dir` in which the IDE project configuration for this distribution is generated
+    :param POMDistribution language_pom_distribution: The language meta pom distribution used to set the image builder module-path.
+    :param str maven_group_id: The maven language group id.
+    :param str | list | language_license: Language licence(s).
+    :param list isolate_build_options: additional options passed to a native image to build the isolate library.
+    :param list platforms: supported platforms, defaults to ['linux-amd64', 'linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64']
     """
-    assert language_distribution
-    assert isolate_library_layout_distribution
-    assert internal_resource_project
-    owner_suite = language_distribution.suite
-    resources_dist_name = f'{language_id.upper()}_ISOLATE_RESOURCES'
-    isolate_dist_name = f'{language_id.upper()}_ISOLATE'
-    layout_dist_qualified_name = f'{isolate_library_layout_distribution.suite.name}:{isolate_library_layout_distribution.name}'
-    maven_group_id = language_distribution.maven_group_id()
-    maven_artifact_id = f'{language_id}-isolate'
-    module_name = f'{get_module_name(language_distribution)}.isolate'
-    licenses = set()
-    licenses.update(language_distribution.theLicense)
-    licenses.update(owner_suite.defaultLicense)
-    attrs = {
-        'description': f'Polyglot isolate resources for {language_id}.',
-        'moduleInfo': {
-            'name': module_name,
-        },
-        'maven': {
-            'groupId': maven_group_id,
-            'artifactId': maven_artifact_id,
-            'tag': ['default', 'public'],
-        },
-        'mavenNoJavadoc': True,
-        'mavenNoSources': True,
-    }
-    isolate_library_dist = mx_jardistribution.JARDistribution(
-        suite=owner_suite,
-        name=resources_dist_name,
-        subDir=language_distribution.subDir,
-        path=None,
-        sourcesPath=None,
-        deps=[
-            internal_resource_project.name,
-            layout_dist_qualified_name,
-        ],
-        mainClass=None,
-        excludedLibs=[],
-        distDependencies=['truffle:TRUFFLE_API'],
-        javaCompliance=str(internal_resource_project.javaCompliance)+'+',
-        platformDependent=True,
-        theLicense=list(licenses),
-        compress=True,
-        **attrs
-    )
-    register_distribution(isolate_library_dist)
+    assert language_suite
+    assert register_project
+    assert register_distribution
+    assert language_id
+    assert subDir
+    assert language_pom_distribution
+    assert maven_group_id
+    assert language_license
+
+    polyglot_isolates_value = mx_sdk_vm_impl._parse_cmd_arg('polyglot_isolates')
+    if not polyglot_isolates_value or not (polyglot_isolates_value is True or (isinstance(polyglot_isolates_value, list) and language_id in polyglot_isolates_value)):
+        return False
+
+    if not isinstance(language_license, list):
+        assert isinstance(language_license, str)
+        language_license = [language_license]
+
+    def _qualname(distribution_name):
+        return language_suite.name + ':' + distribution_name if distribution_name.find(':') < 0 else distribution_name
+
+    language_pom_distribution = _qualname(language_pom_distribution)
+    if isolate_build_options is None:
+        isolate_build_options = []
+    language_id_upper_case = language_id.upper()
+    if platforms is None:
+        platforms = [
+            'linux-amd64',
+            'linux-aarch64',
+            'darwin-amd64',
+            'darwin-aarch64',
+            'windows-amd64',
+        ]
+    current_platform = mx_subst.string_substitutions.substitute('<os>-<arch>')
+    if current_platform not in platforms:
+        mx.abort(f'Current platform {current_platform} is not in supported platforms {", ".join(platforms)}')
+
+    platform_meta_poms = []
+    for platform in platforms:
+        build_for_current_platform = platform == current_platform
+        resource_id = f'{language_id}-isolate-{platform}'
+        os_name, cpu_architecture = platform.split('-')
+        os_name_upper_case = os_name.upper()
+        cpu_architecture_upper_case = cpu_architecture.upper()
+        # 1. Register a project generating and building an internal resource for polyglot isolate library
+        build_internal_resource = _PolyglotIsolateResourceProject(language_suite, subDir, language_id, resource_id,
+                                                                  os_name, cpu_architecture, not build_for_current_platform)
+        register_project(build_internal_resource)
+        resources_dist_dependencies = [
+            build_internal_resource.name,
+        ]
+
+        if build_for_current_platform:
+            # 2. Register a project building the isolate library
+            isolate_deps = [language_pom_distribution, 'graal-enterprise:TRUFFLE_ENTERPRISE']
+            build_library = mx_sdk_vm_impl.PolyglotIsolateLibrary(language_suite, language_id, isolate_deps, isolate_build_options)
+            register_project(build_library)
+
+            # 3. Register layout distribution with isolate library and isolate resources
+            resource_base_folder = f'META-INF/resources/engine/{resource_id}/libvm'
+            attrs = {
+                'description': f'Contains {language_id} language library resources.',
+                'hashEntry': f'{resource_base_folder}/sha256',
+                'fileListEntry': f'{resource_base_folder}/files',
+                'maven': False,
+            }
+            layout_dist = mx.LayoutDirDistribution(
+                suite=language_suite,
+                name=f'{language_id_upper_case}_ISOLATE_LAYOUT_{os_name_upper_case}_{cpu_architecture_upper_case}',
+                deps=[],
+                layout={
+                    f'{resource_base_folder}/': f'dependency:{build_library.name}',
+                    f'{resource_base_folder}/resources': f'dependency:{build_library.name}/resources',
+                },
+                path=None,
+                platformDependent=True,
+                theLicense=None,
+                platforms=[platform],
+                **attrs
+            )
+            register_distribution(layout_dist)
+            layout_dist_qualified_name = f'{layout_dist.suite.name}:{layout_dist.name}'
+            resources_dist_dependencies.append(layout_dist_qualified_name)
+
+        # 4. Register Jar distribution containing the internal resource project and isolate library for current platform.
+        # For other platforms, create a jar distribution with an internal resource only
+        resources_dist_name = f'{language_id_upper_case}_ISOLATE_RESOURCES_{os_name_upper_case}_{cpu_architecture_upper_case}'
+        maven_artifact_id = resource_id
+        licenses = set(language_license)
+        # The graal-enterprise suite may not be fully loaded.
+        # We cannot look up the TRUFFLE_ENTERPRISE distribution to resolve its license
+        # We pass directly the license id
+        licenses.update(['GFTC'])
+        attrs = {
+            'description': f'Polyglot isolate resources for {language_id} for {platform}.',
+            'moduleInfo': {
+                'name': build_internal_resource.name,
+            },
+            'maven': {
+                'groupId': maven_group_id,
+                'artifactId': maven_artifact_id,
+                'tag': ['default', 'public'],
+            },
+            'mavenNoJavadoc': True,
+            'mavenNoSources': True,
+        }
+        isolate_library_dist = mx_jardistribution.JARDistribution(
+            suite=language_suite,
+            name=resources_dist_name,
+            subDir=subDir,
+            path=None,
+            sourcesPath=None,
+            deps=resources_dist_dependencies,
+            mainClass=None,
+            excludedLibs=[],
+            distDependencies=['truffle:TRUFFLE_API'],
+            javaCompliance=str(build_internal_resource.javaCompliance)+'+',
+            platformDependent=True,
+            theLicense=sorted(list(licenses)),
+            compress=True,
+            **attrs
+        )
+        register_distribution(isolate_library_dist)
+
+        # 5. Register meta POM distribution for the isolate library jar file for a specific platform.
+        isolate_dist_name = f'{language_id_upper_case}_ISOLATE_{os_name_upper_case}_{cpu_architecture_upper_case}'
+        attrs = {
+            'description': f'The {language_id} polyglot isolate for {platform}.',
+            'maven': {
+                'groupId': 'org.graalvm.polyglot',
+                'artifactId': maven_artifact_id,
+                'tag': ['default', 'public'],
+            },
+        }
+        meta_pom_dist = mx_pomdistribution.POMDistribution(
+            suite=language_suite,
+            name=isolate_dist_name,
+            distDependencies=[],
+            runtimeDependencies=[
+                resources_dist_name,
+                'graal-enterprise:TRUFFLE_ENTERPRISE',
+            ],
+            theLicense=sorted(list(licenses)),
+            **attrs)
+        register_distribution(meta_pom_dist)
+        platform_meta_poms.append(meta_pom_dist)
+    # 6. Register meta POM distribution listing all platform specific meta-POMS.
+    isolate_dist_name = f'{language_id_upper_case}_ISOLATE'
     attrs = {
         'description': f'The {language_id} polyglot isolate.',
         'maven': {
             'groupId': 'org.graalvm.polyglot',
-            'artifactId': maven_artifact_id,
+            'artifactId': f'{language_id}-isolate',
             'tag': ['default', 'public'],
         },
     }
-    # The graal-enterprise suite may not be fully loaded.
-    # We cannot look up the TRUFFLE_ENTERPRISE distribution to resolve its license
-    # We pass directly the license id
-    licenses.update(['GFTC'])
     meta_pom_dist = mx_pomdistribution.POMDistribution(
-        suite=owner_suite,
+        suite=language_suite,
         name=isolate_dist_name,
         distDependencies=[],
-        runtimeDependencies=[
-            resources_dist_name,
-            'graal-enterprise:TRUFFLE_ENTERPRISE',
-        ],
+        runtimeDependencies=[pom.name for pom in platform_meta_poms],
         theLicense=sorted(list(licenses)),
         **attrs)
     register_distribution(meta_pom_dist)
+    return True
+
+
+mx.add_argument('--polyglot-isolates', action='store', help='Comma-separated list of languages for which the polyglot isolate library should be built. Setting the value to `true` builds all polyglot isolate libraries.')
+
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.
@@ -1336,7 +1556,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
 
                 def getArchivableResults(self, use_relpath=True, single=False):
                     for file_path, archive_path in super(LibtoolNativeProject, self).getArchivableResults(use_relpath):
-                        path_in_lt_objdir = os.path.basename(os.path.dirname(file_path)) == '.libs'
+                        path_in_lt_objdir = os.path.basename(dirname(file_path)) == '.libs'
                         yield file_path, os.path.basename(archive_path) if path_in_lt_objdir else archive_path
                         if single:
                             assert path_in_lt_objdir, 'the first build result must be from LT_OBJDIR'
