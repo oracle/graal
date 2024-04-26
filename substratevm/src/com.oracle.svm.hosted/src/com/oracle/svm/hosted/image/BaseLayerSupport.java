@@ -31,7 +31,6 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.code.BaseLayerMethodAccessor;
@@ -40,6 +39,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.hosted.SVMImageLayerSupport;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.image.BaseLayerSupport.BaseLayerMethodAccessorImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -49,7 +49,7 @@ class LoadBaseLayerFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.LoadImageLayer.hasBeenSet();
+        return SVMImageLayerSupport.singleton().hasLoader();
     }
 
     @Override
@@ -61,7 +61,7 @@ class LoadBaseLayerFeature implements InternalFeature {
 public class BaseLayerSupport {
 
     public static void markDynamicRelocationSites(ProgbitsSectionImpl rwDataSection) {
-        if (SubstrateOptions.LoadImageLayer.hasBeenSet()) {
+        if (ImageSingletons.contains(BaseLayerMethodAccessor.class)) {
             ((BaseLayerMethodAccessorImpl) ImageSingletons.lookup(BaseLayerMethodAccessor.class)).markDynamicRelocations(rwDataSection);
         }
     }

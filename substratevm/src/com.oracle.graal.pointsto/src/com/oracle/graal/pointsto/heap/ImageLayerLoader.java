@@ -261,6 +261,10 @@ public class ImageLayerLoader {
         this.loadPaths = loadPaths;
     }
 
+    public List<Path> getLoadPaths() {
+        return loadPaths;
+    }
+
     public void setUniverse(AnalysisUniverse newUniverse) {
         this.universe = newUniverse;
     }

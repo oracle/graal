@@ -52,6 +52,10 @@ public final class SVMImageLayerSupport {
         return ImageSingletons.lookup(SVMImageLayerSupport.class);
     }
 
+    public boolean hasLoader() {
+        return loader != null;
+    }
+
     public SVMImageLayerLoader getLoader() {
         return loader;
     }

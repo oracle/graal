@@ -1299,8 +1299,8 @@ public class NativeImageGenerator {
             if (CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
                 throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterCAPCache, "+"));
             }
-            if (SubstrateOptions.LoadImageLayer.hasBeenSet()) {
-                for (Path layerPath : SubstrateOptions.LoadImageLayer.getValue().values()) {
+            if (SVMImageLayerSupport.singleton().hasLoader()) {
+                for (Path layerPath : SVMImageLayerSupport.singleton().getLoader().getLoadPaths()) {
                     Path layerPathDir = layerPath.getParent();
                     String snapshotFile = layerPath.getFileName().toString();
                     String layerName = snapshotFile.split(ImageLayerSnapshotUtil.FILE_NAME_PREFIX)[1].split(ImageLayerSnapshotUtil.FILE_EXTENSION)[0].trim();
