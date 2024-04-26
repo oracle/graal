@@ -28,9 +28,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.UserPrincipal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -598,13 +600,15 @@ public final class SubprocessUtil {
     }
 
     /**
-     * Manages temporary files with a given prefix and suffix.
+     * Manages temporary files with a given prefix and suffix. When new files are created, temporary
+     * files older than 2 hours are deleted.
      */
     public static class TemporaryFiles {
         private final Path dir;
         private final FileTime maxAge;
         private final String prefix;
         private final String suffix;
+        private final UserPrincipal user;
 
         public TemporaryFiles(String prefix, String suffix) {
             this.dir = Path.of(System.getProperty("java.io.tmpdir"));
@@ -613,6 +617,11 @@ public final class SubprocessUtil {
                             FileTime.from(Instant.now().minus(2, ChronoUnit.HOURS));
             this.prefix = prefix;
             this.suffix = suffix;
+            try {
+                this.user = FileSystems.getDefault().getUserPrincipalLookupService().lookupPrincipalByName(System.getProperty("user.name"));
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
         }
 
         /**
@@ -640,7 +649,7 @@ public final class SubprocessUtil {
             try {
                 Files.list(dir).filter(this::match).forEach(p -> {
                     try {
-                        if (Files.getLastModifiedTime(p).compareTo(maxAge) < 0) {
+                        if (Files.getOwner(p).equals(user) && Files.getLastModifiedTime(p).compareTo(maxAge) < 0) {
                             Files.delete(p);
                             if (DEBUG) {
                                 System.out.println("deleted " + p);
