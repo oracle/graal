@@ -66,7 +66,6 @@
     max_jdk_version:: null
   },
 
-<<<<<<< HEAD
   dacapo_timing: cc.compiler_benchmark + c.heap.default + {
     suite:: "dacapo-timing",
     run+: [
@@ -77,10 +76,7 @@
     max_jdk_version:: null
   },
 
-  scala_dacapo: cc.compiler_benchmark + c.heap.default + {
-=======
   scala_dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
->>>>>>> 77b88ccb9b5 (CI E3 benchmarking migration)
     suite:: "scala-dacapo",
     run+: [
       self.benchmark_cmd + ["scala-dacapo:*", "--"] + self.extra_vm_args
@@ -113,7 +109,6 @@
     max_jdk_version:: null
   },
 
-<<<<<<< HEAD
   scala_dacapo_timing: cc.compiler_benchmark + c.heap.default + {
     suite:: "scala-dacapo-timing",
     run+: [
@@ -124,10 +119,7 @@
     max_jdk_version:: null
   },
 
-  renaissance_template(suite_version=null, suite_name="renaissance", max_jdk_version=null):: cc.compiler_benchmark + c.heap.default + {
-=======
   renaissance_template(suite_version=null, suite_name="renaissance", max_jdk_version=null):: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
->>>>>>> 77b88ccb9b5 (CI E3 benchmarking migration)
     suite:: suite_name,
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     run+: [
@@ -142,7 +134,6 @@
 
   renaissance: self.renaissance_template(),
 
-<<<<<<< HEAD
   renaissance_0_11: self.renaissance_template(suite_version="0.11.0", suite_name="renaissance-0-11", max_jdk_version=11) + {
     environment+: {
       "SPARK_LOCAL_IP": "127.0.0.1"
@@ -167,10 +158,7 @@
     max_jdk_version:: 11
   },
 
-  specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
-=======
   specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + bc.bench_max_threads + {
->>>>>>> 77b88ccb9b5 (CI E3 benchmarking migration)
     suite:: "specjbb2015",
     downloads+: {
       "SPECJBB2015": { name: "specjbb2015", version: "1.03" }
@@ -185,7 +173,6 @@
     max_jdk_version:: null
   },
 
-<<<<<<< HEAD
   specjbb2015_full_machine: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
     suite:: "specjbb2015-full-machine",
     downloads+: {
@@ -199,10 +186,7 @@
     max_jdk_version:: null
   },
 
-  specjvm2008: cc.compiler_benchmark + c.heap.default + {
-=======
   specjvm2008: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
->>>>>>> 77b88ccb9b5 (CI E3 benchmarking migration)
     suite:: "specjvm2008",
     downloads+: {
       "SPECJVM2008": { name: "specjvm2008", version: "1.01" }
@@ -246,7 +230,6 @@
       bench_upload,
 
       # petclinic-wrk
-<<<<<<< HEAD
       self.benchmark_cmd + ["petclinic-wrk:mixed-tiny"]                  + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms32m",   "-Xmx100m",  "-XX:ActiveProcessorCount=1"],
       bench_upload,
       self.benchmark_cmd + ["petclinic-wrk:mixed-small"]                 + hwlocBind_2C_2T   + ["--"] + self.extra_vm_args + ["-Xms40m",   "-Xmx144m",  "-XX:ActiveProcessorCount=2"],
@@ -254,9 +237,6 @@
       self.benchmark_cmd + ["petclinic-wrk:mixed-medium"]                + hwlocBind_4C_4T   + ["--"] + self.extra_vm_args + ["-Xms80m",   "-Xmx256m",  "-XX:ActiveProcessorCount=4"],
       bench_upload,
       self.benchmark_cmd + ["petclinic-wrk:mixed-large"]                 + hwlocBind_16C_16T + ["--"] + self.extra_vm_args + ["-Xms320m",  "-Xmx1280m", "-XX:ActiveProcessorCount=16"],
-=======
-      self.benchmark_cmd + ["petclinic-wrk:mixed-large"]                 + hwlocBind_16C_16T + ["--"] + self.extra_vm_args + ["-Xms128m",  "-Xmx512m", "-XX:ActiveProcessorCount=16"],
->>>>>>> 77b88ccb9b5 (CI E3 benchmarking migration)
       bench_upload,
 
       # helloworld-wrk
@@ -267,12 +247,8 @@
       self.benchmark_cmd + ["spring-helloworld-wrk:helloworld"]          + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms8m",    "-Xmx64m",   "-XX:ActiveProcessorCount=1", "-XX:MaxDirectMemorySize=256m"],
       bench_upload
     ],
-<<<<<<< HEAD
-    timelimit: "7:00:00",
-    restricted_archs:: ["amd64"],  # load testers only work on amd64 at the moment: GR-35619
-=======
     timelimit: "4:00:00",
->>>>>>> 77b88ccb9b5 (CI E3 benchmarking migration)
+    restricted_archs:: ["amd64"],  # load testers only work on amd64 at the moment: GR-35619
     min_jdk_version:: 11,
     max_jdk_version:: null
   },

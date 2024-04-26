@@ -64,14 +64,9 @@
       "--results-file",
       "${BENCH_RESULTS_FILE_PATH}",
       "--machine-name=${MACHINE_NAME}"] +
-<<<<<<< HEAD
       (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else ["--tracker=rss"]),
-    benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
-=======
-      (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else ["--tracker=rsspercentiles+maxrss"]),
-    restrict_threads:: null,  # can be overridden to restrict the benchmark to the given number of threads. If null, will use one full NUMA node
+    restrict_threads:: null
     benchmark_cmd:: if self.should_use_hwloc then bench_common.hwloc_cmd(self.plain_benchmark_cmd, self.restrict_threads, self.default_numa_node, self.hyperthreading, self.threads_per_node) else self.plain_benchmark_cmd,
->>>>>>> 77b88ccb9b5 (CI E3 benchmarking migration)
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
     _WarnMissingIntrinsic:: true, # won't be needed after GR-34642
