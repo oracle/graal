@@ -930,7 +930,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     private LineNumberTable lnt;
     private BitSet emittedLineNumbers;
 
-    private ValueNode methodSynchronizedObject;
+    protected ValueNode methodSynchronizedObject;
 
     private List<ReturnToCallerData> returnDataList;
     private ValueNode unwindValue;
@@ -2984,7 +2984,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
     }
 
-    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean epilogue, boolean needsNullCheck) {
+    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean needsNullCheck) {
         /*
          * This null check ensures Java spec compatibility, where a NPE has precedence over an
          * IllegalMonitorStateException. In the presence of structured locking, this check should
@@ -2996,8 +2996,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
          * IllegalMonitorStateException (or deopt) if the number of monitorexits exceeds the number
          * of monitorenters at any time during method execution.
          */
-        int expectedDepth = frameState.getMethod().isSynchronized() && !epilogue ? 1 : 0;
-        if (frameState.lockDepth(false) == expectedDepth) {
+        if (frameState.lockDepth(false) == 0) {
             handleUnstructuredLocking("too many monitorexits", false);
             return;
         }
@@ -3241,7 +3240,14 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
         FrameStateBuilder newState = state.copy();
         newState.setRethrowException(false);
-        if (!method.isSynchronized()) {
+        if (!method.isSynchronized() || methodSynchronizedObject == null) {
+            /*
+             * methodSynchronizedObject==null indicates that the methodSynchronizeObject has been
+             * released unexpectedly due to unstructured locking but we are already on the path to
+             * the unwind for throwing an IllegalMonitorStateException. Thus, we need to break up an
+             * exception loop in the unwind path, which would repeatedly try to release the
+             * methodSynchronizedObject via the synchronizedEpilogue.
+             */
             return new Target(target, newState);
         }
         FixedWithNextNode originalLast = lastInstr;
@@ -3320,8 +3326,14 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
         try (DebugCloseable context = openNodeContext(state, block.startBci)) {
             if (block == blockMap.getUnwindBlock()) {
-                int expectedDepth = state.getMethod().isSynchronized() ? 1 : 0;
-                if (state.lockDepth(false) > expectedDepth) {
+                int expectedDepth = state.getMethod().isSynchronized() && methodSynchronizedObject != null ? 1 : 0;
+                /*
+                 * methodSynchronizeObject==null indicates that the methodSynchronizeObject has been
+                 * released unexpectedly but we are already on the path to the unwind for throwing
+                 * an IllegalMonitorStateException. Thus, we need to break up an exception loop in
+                 * the unwind path.
+                 */
+                if (state.lockDepth(false) != expectedDepth) {
                     return handleUnstructuredLockingForUnwindTarget("too few monitorexits exiting frame", state);
                 }
             }
@@ -3534,7 +3546,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     // push the return value on the stack
                     frameState.push(currentReturnValueKind, currentReturnValue);
                 }
-                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, true, false);
+                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, false);
                 assert !frameState.rethrowException();
             }
         }
@@ -5734,7 +5746,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             case CHECKCAST      : genCheckCast(stream.readCPI()); break;
             case INSTANCEOF     : genInstanceOf(stream.readCPI()); break;
             case MONITORENTER   : genMonitorEnter(frameState.pop(JavaKind.Object), stream.nextBCI()); break;
-            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), false, true); break;
+            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), true); break;
             case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;

@@ -658,11 +658,23 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected void handleUnstructuredLocking(String msg, boolean isDeadEnd) {
-            assert !method.isSynchronized() || frameState.lockDepth(false) > 0 : "MethodSynchronizeObject not locked anymore! Should have been prevented when emitting monitorexits.";
+            ValueNode methodSynchronizedObjectSnapshot = methodSynchronizedObject;
             if (getDispatchBlock(bci()) == blockMap.getUnwindBlock()) {
                 // methodSynchronizeObject is unlocked in synchronizedEpilogue
                 genReleaseMonitors(false);
+
+                if (method.isSynchronized() && frameState.lockDepth(false) == 0) {
+                    /*
+                     * methodSynchronizedObject has been released unexpectedly but the parser is
+                     * already creating an IllegalMonitorStateException. Thus, set the
+                     * methodSynchronizedObject to null, to signal that the synchronizedEpilogue
+                     * need not be executed, as this would cause an exception loop due to the empty
+                     * lock stack
+                     */
+                    methodSynchronizedObject = null;
+                }
             }
+
             FrameStateBuilder stateBeforeExc = frameState.copy();
             lastInstr = emitBytecodeExceptionCheck(graph.unique(LogicConstantNode.contradiction()), true, BytecodeExceptionKind.UNSTRUCTURED_LOCKING);
             // lastInstr is the start of the never entered no-exception branch
@@ -673,6 +685,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 append(new UnreachableNode());
                 frameState = stateBeforeExc;
             }
+            methodSynchronizedObject = methodSynchronizedObjectSnapshot;
         }
 
         @Override
@@ -765,7 +778,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 MonitorIdNode id = frameState.peekMonitorId();
                 ValueNode lock = frameState.popLock();
                 frameState.pushLock(lock, id);
-                genMonitorExit(lock, null, bci(), true, false);
+                genMonitorExit(lock, null, bci(), false);
             }
         }
 
