@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,8 +60,6 @@ import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
-
-import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
@@ -99,7 +99,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             Set<String> globalHiddenSymbols = CGlobalDataFeature.singleton().getGlobalHiddenSymbols();
             stream = stream.filter(symbol -> symbol.isGlobal() && !globalHiddenSymbols.contains(symbol.getName()));
         }
-        if (!SubstrateOptions.useLLVMBackend()) {
+        if (!(SubstrateOptions.useLLVMBackend() || SubstrateOptions.PreserveUndefinedSymbols.getValue())) {
             stream = stream.filter(ObjectFile.Symbol::isDefined);
         }
         return stream.map(this::getSymbolName).collect(Collectors.toList());
@@ -269,6 +269,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
                 /* Perform garbage collection of unused input sections. */
                 additionalPreOptions.add("-Wl,--gc-sections");
+            }
+            if (SubstrateOptions.IgnoreUndefinedReferences.getValue()) {
+                /* Ignore references to undefined symbols from the object files. */
+                additionalPreOptions.add("-Wl,--unresolved-symbols=ignore-in-object-files");
             }
 
             /* Use --version-script to control the visibility of image symbols. */

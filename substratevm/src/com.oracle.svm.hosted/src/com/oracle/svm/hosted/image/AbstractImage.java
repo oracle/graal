@@ -54,7 +54,7 @@ public abstract class AbstractImage {
         IMAGE_LAYER(false, true) {
             @Override
             public String getFilenameSuffix() {
-                return ".gso"; // Graal shared object
+                return ".so";
             }
         },
         SHARED_LIBRARY(false) {

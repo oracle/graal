@@ -51,7 +51,6 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -78,7 +77,6 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
@@ -94,8 +92,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
     public final AnalysisMethod wrapped;
-    /** A boxed relocated pointer to this method. */
-    public JavaConstant methodPointer;
 
     private final HostedType holder;
     private final ResolvedSignature<HostedType> signature;
@@ -212,14 +208,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         this.uniqueShortName = uniqueShortName;
         this.multiMethodKey = multiMethodKey;
         this.multiMethodMap = multiMethodMap;
-        /*
-         * Cache a method pointer for base layer methods. Cross layer direct calls are currently
-         * lowered to indirect calls.
-         */
-        if (wrapped.isInBaseLayer()) {
-            BoxedRelocatedPointer pointer = new BoxedRelocatedPointer(new MethodPointer(wrapped));
-            this.methodPointer = wrapped.getUniverse().getSnippetReflection().forObject(pointer);
-        }
     }
 
     @Override
@@ -281,12 +269,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     @Override
     public boolean forceIndirectCall() {
         return wrapped.isInBaseLayer();
-    }
-
-    @Override
-    public JavaConstant getMethodPointer() {
-        assert forceIndirectCall();
-        return methodPointer;
     }
 
     @Override

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
@@ -113,6 +114,12 @@ public class SubstrateOptions {
             PersistImageLayerSingletons.update(values, newValue);
             DeleteLocalSymbols.update(values, !newValue);
             StripDebugInfo.update(values, !newValue);
+            InternalSymbolsAreGlobal.update(values, newValue);
+            AOTTrivialInline.update(values, !newValue);
+            if (imageLayerEnabledHandler != null) {
+                imageLayerEnabledHandler.onOptionEnabled(values);
+            }
+            UseContainerSupport.update(values, !newValue);
         }
     };
 
@@ -707,6 +714,10 @@ public class SubstrateOptions {
      */
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN);
+    @Option(help = "Keep all undefined symbols.")//
+    public static final HostedOptionKey<Boolean> PreserveUndefinedSymbols = new HostedOptionKey<>(false);
+    @Option(help = "Ignore undefined symbols referenced from the built image.")//
+    public static final HostedOptionKey<Boolean> IgnoreUndefinedReferences = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
     @Option(help = "Compatibility option to make symbols used for the image heap global. " +
@@ -1133,6 +1144,10 @@ public class SubstrateOptions {
         public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
             super.update(values, boxedValue);
             ClosedTypeWorld.update(values, false);
+            PreserveUndefinedSymbols.update(values, true);
+            /* Ignore any potential undefined references caused by inlining in base layer. */
+            IgnoreUndefinedReferences.update(values, true);
+            AOTTrivialInline.update(values, false);
             if (imageLayerEnabledHandler != null) {
                 imageLayerEnabledHandler.onOptionEnabled(values);
             }

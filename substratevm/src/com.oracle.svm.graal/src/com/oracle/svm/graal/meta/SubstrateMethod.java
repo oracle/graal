@@ -60,7 +60,6 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ExceptionHandler;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ProfilingInfo;
@@ -228,11 +227,6 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     @Override
     public boolean forceIndirectCall() {
         return false;
-    }
-
-    @Override
-    public JavaConstant getMethodPointer() {
-        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
