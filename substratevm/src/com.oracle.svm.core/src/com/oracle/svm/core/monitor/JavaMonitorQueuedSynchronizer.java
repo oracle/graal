@@ -144,6 +144,7 @@ abstract class JavaMonitorQueuedSynchronizer {
     private transient volatile Node head;
     private transient volatile Node tail;
     private volatile long state;
+    protected Object blockedObject;
 
     // see AbstractQueuedLongSynchronizer.getState()
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

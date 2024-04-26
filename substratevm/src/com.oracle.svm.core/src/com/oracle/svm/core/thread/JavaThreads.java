@@ -25,11 +25,19 @@
 package com.oracle.svm.core.thread;
 
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.security.AccessControlContext;
 import java.security.AccessController;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
@@ -53,6 +61,8 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
+
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
@@ -428,6 +438,182 @@ public final class JavaThreads {
         assert thread == carrier || isVirtual(thread);
         toTarget(carrier).vthread = (thread != carrier) ? thread : null;
         currentVThreadId.set(getThreadId(thread));
+    }
+
+    public static class JMXMonitoring {
+        private static final ThreadMXBean THREAD_MX_BEAN = ManagementFactory.getThreadMXBean();
+        private static final int NO_VALUE = -1;
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static void handleContentionMonitoring(Target_java_lang_Thread targetThread, int threadStatus) {
+            boolean contentionEnabled = THREAD_MX_BEAN.isThreadContentionMonitoringEnabled();
+            if (contentionEnabled) {
+                handleContentionWhenEnabled(targetThread, threadStatus);
+            } else {
+                resetContentionIfStarted(targetThread);
+            }
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private static void resetContentionIfStarted(Target_java_lang_Thread targetThread) {
+            if (targetThread.lastStartedBlocked != NO_VALUE || targetThread.lastStartedWaiting != NO_VALUE) {
+                targetThread.lastStartedBlocked = targetThread.lastStartedWaiting = NO_VALUE;
+            }
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private static void handleContentionWhenEnabled(Target_java_lang_Thread targetThread, int threadStatus) {
+            switch (threadStatus) {
+                case ThreadStatus.BLOCKED_ON_MONITOR_ENTER:
+                    setThreadBlockedToEnterLock(targetThread);
+                    break;
+                case ThreadStatus.IN_OBJECT_WAIT:
+                case ThreadStatus.IN_OBJECT_WAIT_TIMED:
+                case ThreadStatus.SLEEPING:
+                case ThreadStatus.PARKED:
+                case ThreadStatus.PARKED_TIMED:
+                    setThreadStartsWaiting(targetThread);
+                    break;
+                case ThreadStatus.RUNNABLE:
+                    calculateContentionOnThreadRunning(targetThread);
+                    break;
+            }
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private static void setThreadBlockedToEnterLock(Target_java_lang_Thread thread) {
+            if (thread.lastStartedBlocked == NO_VALUE) {
+                thread.lastStartedBlocked = System.currentTimeMillis();
+                thread.blockedCount++;
+            }
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private static void setThreadStartsWaiting(Target_java_lang_Thread thread) {
+            if (thread.lastStartedWaiting == NO_VALUE) {
+                thread.lastStartedWaiting = System.currentTimeMillis();
+                thread.waitedCount++;
+            }
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private static void calculateContentionOnThreadRunning(Target_java_lang_Thread thread) {
+            long currentTimeMillis = System.currentTimeMillis();
+            thread.timeWaited += thread.lastStartedWaiting == NO_VALUE ? 0 : (currentTimeMillis - thread.lastStartedWaiting);
+            thread.timeBlocked += thread.lastStartedBlocked == NO_VALUE ? 0 : (currentTimeMillis - thread.lastStartedBlocked);
+            thread.lastStartedBlocked = thread.lastStartedWaiting = NO_VALUE;
+        }
+
+        public static long getThreadTotalWaitedTime(Thread thread) {
+            if (!THREAD_MX_BEAN.isThreadContentionMonitoringEnabled()) {
+                return 0;
+            }
+            Target_java_lang_Thread targetThread = toTarget(thread);
+            return targetThread.timeWaited + (targetThread.lastStartedWaiting == NO_VALUE ? 0 : (System.currentTimeMillis() - targetThread.lastStartedWaiting));
+        }
+
+        public static long getThreadTotalWaitedCount(Thread thread) {
+            return toTarget(thread).waitedCount;
+        }
+
+        public static long getThreadTotalBlockedTime(Thread thread) {
+            if (!THREAD_MX_BEAN.isThreadContentionMonitoringEnabled()) {
+                return 0;
+            }
+            Target_java_lang_Thread targetThread = toTarget(thread);
+            return targetThread.timeBlocked + (targetThread.lastStartedBlocked == NO_VALUE ? 0 : (System.currentTimeMillis() - targetThread.lastStartedBlocked));
+        }
+
+        public static long getThreadTotalBlockedCount(Thread thread) {
+            return toTarget(thread).blockedCount;
+        }
+
+        public static void addThreadLock(Thread thread, AbstractOwnableSynchronizer synchronizer) {
+            assert !isVirtual(thread);
+            Target_java_lang_Thread targetThread = toTarget(thread);
+            if (targetThread != null) {
+                if (targetThread.locks == null) {
+                    targetThread.locks = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+                }
+                synchronized (targetThread.locks) {
+                    targetThread.locks.add(synchronizer);
+                }
+            }
+        }
+
+        public static void removeThreadLock(Thread thread, AbstractOwnableSynchronizer synchronizer) {
+            assert !isVirtual(thread);
+            Target_java_lang_Thread targetThread = toTarget(thread);
+            if (targetThread != null && targetThread.locks != null) {
+                synchronized (targetThread.locks) {
+                    targetThread.locks.remove(synchronizer);
+                }
+            }
+        }
+
+        public static Object[] getThreadLocks(Thread thread) {
+            assert !isVirtual(thread);
+            Target_java_lang_Thread targetThread = toTarget(thread);
+            if (targetThread != null && targetThread.locks != null) {
+                synchronized (targetThread.locks) {
+                    return targetThread.locks.toArray(new AbstractOwnableSynchronizer[targetThread.locks.size()]);
+                }
+            }
+            return new Object[0];
+        }
+
+        public record MonitorInfo(Object originalObject, int stacksize) {
+        }
+
+        public static void addThreadMonitor(Object originalObject) {
+            Thread currentThread = Thread.currentThread();
+            Target_java_lang_Thread targetThread = toTarget(currentThread);
+            if (targetThread != null) {
+                if (targetThread.monitors == null) {
+                    targetThread.monitors = new ConcurrentLinkedDeque<>();
+                }
+                StackTraceElement[] stacktrace = currentThread.getStackTrace();
+
+                /*
+                 * During monitor creation we add several extra frames on top of the stack. At the
+                 * moment when monitor reporting via JMX is requested the stack doesn't contain them
+                 * anymore. The offset value below helps align with the real location where
+                 * synchronized block occurred.
+                 */
+                int internalCodeOffset = 0;
+                for (StackTraceElement element : stacktrace) {
+                    String moduleName = element.getModuleName();
+                    if (moduleName != null && (moduleName.equals("java.base") || moduleName.startsWith("org.graalvm"))) {
+                        internalCodeOffset++;
+                    } else {
+                        break;
+                    }
+                }
+                /*
+                 * If all frames belong to internal modules, they are not subtracted from remembered
+                 * stacktrace size, and we assume that the monitor happened at the top frame:
+                 */
+                int rememberedStacksize = stacktrace.length - (internalCodeOffset < stacktrace.length ? internalCodeOffset : 0);
+                targetThread.monitors.push(new MonitorInfo(originalObject, rememberedStacksize));
+            }
+        }
+
+        public static void removeThreadMonitor() {
+            Target_java_lang_Thread targetThread = toTarget(Thread.currentThread());
+            if (targetThread != null && targetThread.monitors != null) {
+                targetThread.monitors.pop();
+            }
+        }
+
+        public static List<MonitorInfo> getThreadMonitors(Thread thread) {
+            assert !isVirtual(thread);
+            Target_java_lang_Thread targetThread = toTarget(thread);
+            List<MonitorInfo> listOfMonitors = new LinkedList<>();
+            if (targetThread != null && targetThread.monitors != null) {
+                targetThread.monitors.iterator().forEachRemaining(listOfMonitors::add);
+            }
+            return listOfMonitors;
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
