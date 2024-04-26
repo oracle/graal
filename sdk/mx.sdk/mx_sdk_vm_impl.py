@@ -1991,6 +1991,47 @@ class GraalVmLibrary(GraalVmNativeImage):
     def is_skipped(self):
         return _skip_libraries(self.native_image_config)
 
+class PolyglotIsolateLibrary(GraalVmLibrary):
+    """
+    A native image project dedicated to constructing a language polyglot isolate library.
+    Despite being built upon the component supertype, it operates independently of the component system
+    and native-image macros. Its configuration relies solely on the module path and META-INF/native-image
+    configuration files. Instances are instantiated by mx_truffle::register_polyglot_isolate_distributions
+    when a language dynamically registers a polyglot isolate distribution.
+    """
+    def __init__(self, target_suite, language, deps, build_args, **kw_args):
+        library_config = mx_sdk.LanguageLibraryConfig(
+            jar_distributions=deps,
+            build_args=[],
+            build_args_enterprise=build_args,
+            language=language,
+        )
+        super(PolyglotIsolateLibrary, self).__init__(None, f'{language}.isolate.image',
+                                                     list(deps), library_config, **kw_args)
+        self.suite = target_suite
+        self.dir = target_suite.dir
+
+
+    def getBuildTask(self, args):
+        svm_support = _get_svm_support()
+        assert svm_support.is_supported(), "Needs svm to build " + str(self)
+        if not self.is_skipped():
+            return PolyglotIsolateLibraryBuildTask(self, args, svm_support)
+        else:
+            return mx.NoOpTask(self, args)
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        for e in super(PolyglotIsolateLibrary, self).getArchivableResults(use_relpath=use_relpath, single=single):
+            yield e
+            if single:
+                return
+        output_dir = dirname(self.output_file())
+        resources_dir = join(output_dir, 'resources')
+        if exists(resources_dir):
+            yield resources_dir, 'resources'
+
+    def is_skipped(self):
+        return False
 
 class GraalVmMiscLauncher(GraalVmLauncher):  # pylint: disable=too-many-ancestors
     def __init__(self, component, native_image_config, stage1=False, **kw_args):
@@ -2438,6 +2479,32 @@ class GraalVmSVMLauncherBuildTask(GraalVmSVMNativeImageBuildTask):
 
 class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
     pass
+
+
+class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
+    """
+    A PolyglotIsolateLibrary build task building a language polyglot isolate library.
+    Despite being built upon the component supertype, it operates independently of the component system
+    and native-image macros. Its configuration relies solely on the module path and META-INF/native-image
+    configuration files.
+    """
+    def get_build_args(self):
+        project = self.subject
+        target = project.native_image_name[:-len(_lib_suffix)]
+        build_args = [
+            '-EJVMCI_VERSION_CHECK',  # Propagate this env var when running native image from mx
+            '--parallelism=' + str(self.parallelism),
+            '--shared',
+            '-o',
+            target,
+            '--features=com.oracle.svm.enterprise.truffle.PolyglotIsolateGuestFeature',
+            '-H:APIFunctionPrefix=truffle_isolate_',
+        ] + svm_experimental_options([
+            '-H:+BuildOutputPrefix',
+            '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
+        ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions) + \
+        project.native_image_config.build_args + project.native_image_config.build_args_enterprise
+        return build_args
 
 
 class JmodModifier(mx.Project):
@@ -3491,7 +3558,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     else:
                         with_non_rebuildable_configs = True
             for library_config in _get_library_configs(component):
-                library_project = None
                 if with_svm:
                     library_project = GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config)
                     register_project(library_project)
@@ -3509,29 +3575,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         register_project(launcher_project)
                         polyglot_config_project = PolyglotConfig(component, library_config)
                         register_project(polyglot_config_project)
-                    if with_svm and library_config.isolate_library_layout_distribution and not library_project.is_skipped() and has_component('tfle', stage1=True):
-                        # Create a layout distribution with the resulting language library that can be consumed into the
-                        # isolate resources jar distribution,
-                        resource_base_folder = f'META-INF/resources/engine/{library_config.language}-isolate/<os>/<arch>/libvm'
-                        attrs = {
-                            'description': f'Contains {library_config.language} language library resources',
-                            'hashEntry': f'{resource_base_folder}/sha256',
-                            'fileListEntry': f'{resource_base_folder}/files',
-                            'maven': False,
-                        }
-                        register_distribution(mx.LayoutDirDistribution(
-                            suite=_suite,
-                            name=library_config.isolate_library_layout_distribution['name'],
-                            deps=[],
-                            layout={
-                                f'{resource_base_folder}/': f'dependency:{library_project.name}'
-                            },
-                            path=None,
-                            platformDependent=True,
-                            theLicense=None,
-                            platforms=library_config.isolate_library_layout_distribution['platforms'],
-                            **attrs
-                        ))
             if isinstance(component, mx_sdk.GraalVmLanguage) and component.support_distributions:
                 ni_resources_components = dir_name_to_ni_resources_components.get(component.dir_name)
                 if not ni_resources_components:

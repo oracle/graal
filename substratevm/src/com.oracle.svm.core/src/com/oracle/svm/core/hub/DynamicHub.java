@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1146,17 +1146,30 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void checkMethod(String methodName, Class<?>[] parameterTypes, Method method, boolean publicOnly) throws NoSuchMethodException {
-        if (CONSTRUCTOR_NAME.equals(methodName)) {
+        if (!checkMethodExists(methodName, parameterTypes, method, publicOnly)) {
             throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
         }
-        checkExecutable(methodName, parameterTypes, method, publicOnly);
+    }
+
+    private boolean checkMethodExists(String methodName, Class<?>[] parameterTypes, Method method, boolean publicOnly) {
+        if (CONSTRUCTOR_NAME.equals(methodName)) {
+            return false;
+        }
+        return checkExecutableExists(methodName, parameterTypes, method, publicOnly);
     }
 
     private void checkConstructor(Class<?>[] parameterTypes, Constructor<?> constructor, boolean publicOnly) throws NoSuchMethodException {
-        checkExecutable(CONSTRUCTOR_NAME, parameterTypes, constructor, publicOnly);
+        if (!checkExecutableExists(CONSTRUCTOR_NAME, parameterTypes, constructor, publicOnly)) {
+            throw new NoSuchMethodException(methodToString(CONSTRUCTOR_NAME, parameterTypes));
+        }
     }
 
-    private void checkExecutable(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) throws NoSuchMethodException {
+    /**
+     * Checks if the method exists and reports any missing reflection registration errors.
+     *
+     * @return true if the method exists and is visible, false if missing (NoSuchMethodException).
+     */
+    private boolean checkExecutableExists(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) {
         boolean throwMissingErrors = throwMissingRegistrationErrors();
         Class<?> clazz = DynamicHub.toClass(this);
         if (method == null) {
@@ -1172,7 +1185,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
              * sure that the method does indeed not exist if we don't find it. This is also the case
              * when querying an interface constructor.
              */
-            throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
+            return false;
         } else {
             RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
             int methodModifiers = method.getModifiers();
@@ -1181,9 +1194,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (throwMissingErrors && hiding) {
                 MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
             }
-            if (negative || hiding) {
-                throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
-            }
+            return !(negative || hiding);
         }
     }
 
@@ -1597,20 +1608,35 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     /**
+     * Used by {@link java.util.ServiceLoader} to find any {@code public static provider()} method.
+     *
      * @see #filterMethods(Method...)
      */
     @Substitute //
     @SuppressWarnings({"unused"})
     List<Method> getDeclaredPublicMethods(String methodName, Class<?>... parameterTypes) {
-        checkClassFlag(ALL_METHODS_FLAG | ALL_DECLARED_METHODS_FLAG, "getMethods or getDeclaredMethods");
-
-        Method[] methods = filterMethods(privateGetDeclaredMethods(/* publicOnly */ true));
+        Method[] methods = privateGetDeclaredMethods(/* publicOnly */ true);
         ReflectionFactory factory = getReflectionFactory();
         List<Method> result = new ArrayList<>();
+        boolean matchedAnyRegistered = false;
         for (Method method : methods) {
             if (method.getName().equals(methodName) && Arrays.equals(factory.getExecutableSharedParameterTypes(method), parameterTypes)) {
-                result.add(factory.copyMethod(method));
+                matchedAnyRegistered = true;
+                /*
+                 * We've matched a registered method query, but we still need to check it's not a
+                 * negative method or hiding method.
+                 */
+                if (checkMethodExists(methodName, parameterTypes, method, /* publicOnly */ true)) {
+                    result.add(factory.copyMethod(method));
+                }
             }
+        }
+        if (!matchedAnyRegistered) {
+            /*
+             * No matching method was registered. Report a missing registration error if no bulk
+             * query for all (public or declared) methods was registered for reflection either.
+             */
+            checkMethodExists(methodName, parameterTypes, null, /* publicOnly */ true);
         }
         return result;
     }
