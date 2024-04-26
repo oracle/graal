@@ -7,7 +7,7 @@ permalink: /reference-manual/java/
 
 # {{ page.link_title }}
 
-GraalVM is based on the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/23/vm/java-virtual-machine-technology-overview.html), so any application that runs on the Java HotSpot Virtual Machine will also on GraalVM.
+GraalVM is based on the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/22/vm/java-virtual-machine-technology-overview.html), so any application that runs on the Java HotSpot Virtual Machine will also on GraalVM.
 
 GraalVM includes an advanced compiler written in Java, known as the _Graal compiler_.
 At runtime, just like any other Java Virtual Machine (JVM), GraalVM loads an application and analyzes its code to detect performance bottlenecks, or _hot spots_. 
@@ -17,7 +17,7 @@ The Graal compiler can improve the efficiency and the speed of applications writ
 For example, it assures performance advantages for highly-abstracted applications due to its ability to remove costly object allocations.
 For more information, see the [platform-independent compiler optimizations in GraalVM Community Edition](https://github.com/oracle/graal/blob/master/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/core/phases/CEOptimization.java){:target="_blank"}.
 
-> The Graal (JIT) compiler is now also integrated with the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/23/vm/java-virtual-machine-technology-overview.html). 
+> The Graal (JIT) compiler is now also integrated with the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/22/vm/java-virtual-machine-technology-overview.html). 
 To find out more, see [Graal Compiler](compiler.md).
 
 ## Interoperability

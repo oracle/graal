@@ -88,4 +88,4 @@ It will look something like this:
 ### Related Documentation
 
 - Learn more about [Native Image support for JFR events](../JFR.md) and how to further configure JFR recording and system logging.
-- [Create and record your first event with Java](https://docs.oracle.com/en/java/javase/23/jfapi/creating-and-recording-your-first-event.html).
+- [Create and record your first event with Java](https://docs.oracle.com/en/java/javase/22/jfapi/creating-and-recording-your-first-event.html).

@@ -9,7 +9,7 @@ redirect_from: /reference-manual/compiler/
 # Graal Compiler
 
 The Graal compiler is a dynamic compiler, written in Java, that transforms bytecode into machine code.
-The Graal just-in-time (JIT) compiler is integrated with the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/23/vm/java-virtual-machine-technology-overview.html) and [GraalVM](/reference-manual/java/).
+The Graal just-in-time (JIT) compiler is integrated with the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/22/vm/java-virtual-machine-technology-overview.html) and [GraalVM](/reference-manual/java/).
 (The open source code of the Graal JIT compiler is available on [GitHub](https://github.com/oracle/graal/tree/master/compiler).)
 
 
