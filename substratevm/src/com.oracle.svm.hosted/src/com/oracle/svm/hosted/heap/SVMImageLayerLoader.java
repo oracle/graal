@@ -75,6 +75,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
+    protected void prepareConstantRelinking(EconomicMap<String, Object> constantData, int id) {
+        Integer tid = get(constantData, CLASS_ID_TAG);
+        if (tid != null) {
+            typeToConstant.put(tid, id);
+        } else {
+            super.prepareConstantRelinking(constantData, id);
+        }
+    }
+
+    @Override
     protected boolean delegateProcessing(String constantType, Object constantValue, Object[] values, int i) {
         if (constantType.equals(METHOD_POINTER_TAG)) {
             AnalysisType methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
@@ -124,6 +134,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private JavaConstant getDynamicHub(int tid) {
+        getAnalysisType(tid);
         AnalysisType type = universe.getType(tid);
         DynamicHub hub = ((SVMHost) universe.hostVM()).dynamicHub(type);
         return getHostedObject(hub);
@@ -173,6 +184,25 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 universe.getHeapScanner().rescanField(hub, SVMImageLayerSnapshotUtil.enumConstantsReference);
             }
         }
+    }
+
+    @Override
+    protected boolean hasValueForObject(Object object) {
+        if (object instanceof DynamicHub dynamicHub) {
+            AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(dynamicHub);
+            return typeToConstant.containsKey(type.getId());
+        }
+        return super.hasValueForObject(object);
+    }
+
+    @Override
+    protected ImageHeapConstant getValueForObject(Object object) {
+        if (object instanceof DynamicHub dynamicHub) {
+            AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(dynamicHub);
+            int id = typeToConstant.get(type.getId());
+            return getOrCreateConstant(id);
+        }
+        return super.getValueForObject(object);
     }
 
     public Map<Object, Set<Class<?>>> loadImageSingletons(Object forbiddenObject) {

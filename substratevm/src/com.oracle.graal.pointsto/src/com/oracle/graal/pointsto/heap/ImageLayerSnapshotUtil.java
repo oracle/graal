@@ -58,6 +58,7 @@ public class ImageLayerSnapshotUtil {
     public static final String SUPER_CLASS_TAG = "super class";
     public static final String INTERFACES_TAG = "interfaces";
     public static final String CONSTANTS_TAG = "constants";
+    public static final String CONSTANTS_TO_RELINK_TAG = "constants to relink";
     public static final String TID_TAG = "tid";
     public static final String IDENTITY_HASH_CODE_TAG = "identityHashCode";
     public static final String ID_TAG = "id";

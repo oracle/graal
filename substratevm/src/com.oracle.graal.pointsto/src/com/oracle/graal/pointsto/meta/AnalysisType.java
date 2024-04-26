@@ -274,10 +274,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         /* Set id after accessing super types, so that all these types get a lower id number. */
-        if (wrapped instanceof BaseLayerType baseLayerType) {
-            this.id = baseLayerType.getId();
-            this.isInBaseLayer = true;
-        } else if (universe.hostVM().useBaseLayer()) {
+        if (universe.hostVM().useBaseLayer()) {
             int tid = universe.getImageLayerLoader().lookupHostedTypeInBaseLayer(this);
             if (tid != -1) {
                 /*
@@ -288,7 +285,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                 this.isInBaseLayer = true;
             } else {
                 this.id = universe.computeNextTypeId();
-                this.isInBaseLayer = false;
+                /*
+                 * If both the BaseLayerType and the complete type are created at the same time,
+                 * there can be a race for the base layer id. It is possible that the complete type
+                 * gets the base layer id even though the BaseLayerType is created. In this case,
+                 * the AnalysisType should still be marked as isInBaseLayer.
+                 */
+                this.isInBaseLayer = wrapped instanceof BaseLayerType;
             }
         } else {
             this.id = universe.computeNextTypeId();

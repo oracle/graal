@@ -1044,8 +1044,6 @@ public class NativeImageGenerator {
 
                 if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                     Heap.getHeap().setStartOffset(HostedImageLayerBuildingSupport.singleton().getLoader().getImageHeapSize());
-                    HostedImageLayerBuildingSupport.singleton().getLoader().loadTypes();
-                    HostedImageLayerBuildingSupport.singleton().getLoader().loadLayerConstants();
                 }
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,

@@ -51,7 +51,7 @@ public class BaseLayerType implements ResolvedJavaType, OriginalClassProvider {
      */
     public static final String BASE_LAYER_SUFFIX = "_BaseLayer;";
     private final String name;
-    private final int id;
+    private final int baseLayerId;
     private final int modifiers;
     private final boolean isInterface;
     private final boolean isEnum;
@@ -64,10 +64,10 @@ public class BaseLayerType implements ResolvedJavaType, OriginalClassProvider {
     private final ResolvedJavaType[] interfaces;
     private final ResolvedJavaType objectType;
 
-    public BaseLayerType(String name, int id, int modifiers, boolean isInterface, boolean isEnum, boolean isInitialized, boolean isLinked, String sourceFileName, ResolvedJavaType enclosingType,
-                    ResolvedJavaType componentType, ResolvedJavaType superClass, ResolvedJavaType[] interfaces, ResolvedJavaType objectType) {
+    public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isInitialized, boolean isLinked, String sourceFileName,
+                    ResolvedJavaType enclosingType, ResolvedJavaType componentType, ResolvedJavaType superClass, ResolvedJavaType[] interfaces, ResolvedJavaType objectType) {
         this.name = name.substring(0, name.length() - 1) + BASE_LAYER_SUFFIX;
-        this.id = id;
+        this.baseLayerId = baseLayerId;
         this.modifiers = modifiers;
         this.isInterface = isInterface;
         this.isEnum = isEnum;
@@ -328,7 +328,7 @@ public class BaseLayerType implements ResolvedJavaType, OriginalClassProvider {
         return objectType;
     }
 
-    public int getId() {
-        return id;
+    public int getBaseLayerId() {
+        return baseLayerId;
     }
 }
