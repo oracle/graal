@@ -514,24 +514,6 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     for r in unit_test_runs:
         r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments), extraUnitTestArguments=extraUnitTestArguments)
 
-    # Run selected tests (initially those from GR-6581) under -Xcomp
-    xcompTests = [
-        'BlackholeDirectiveTest',
-        'OpaqueDirectiveTest',
-        'CompiledMethodTest',
-        'ControlFlowAnchorDirectiveTest',
-        'ConditionalElimination',
-        'MarkUnsafeAccessTest',
-        'PEAAssertionsTest',
-        'MergeCanonicalizerTest',
-        'ExplicitExceptionTest',
-        'GuardedIntrinsicTest',
-        'HashCodeTest',
-        'ProfilingInfoTest',
-        'GraalOSRLockTest'
-    ]
-    UnitTestRun('XcompUnitTests', [], tags=GraalTags.test).run(['compiler'], tasks, ['-Xcomp', '-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments) + xcompTests)
-
     # Run ctw against rt.jar on hosted
     ctw_flags = [
         '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
@@ -712,10 +694,6 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
                     raise
                 finally:
                     os.remove(logFile)
-
-    # ensure -Xcomp still works
-    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     # ensure -XX:+PreserveFramePointer  still works
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:

@@ -118,11 +118,6 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 vmArgs = filter(vmArgs, vmArgsFilter);
             }
 
-            String verboseProperty = "debug." + testClass.getName() + ".verbose";
-            boolean verbose = Boolean.getBoolean(verboseProperty);
-            if (verbose) {
-                System.err.println(String.join(" ", vmArgs));
-            }
             List<String> mainClassAndArgs = new LinkedList<>();
             mainClassAndArgs.add("com.oracle.mxtool.junit.MxJUnitWrapper");
             String testName = testClass.getName();
@@ -135,33 +130,19 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 mainClassAndArgs.add("-JUnitVerbose");
             }
             SubprocessUtil.Subprocess proc = java(vmArgs, mainClassAndArgs);
-            if (testPredicate != null) {
-                assertTrue(testPredicate.test(proc.output), proc.toString() + " produced unexpected output:\n\n" + String.join("\n", proc.output));
-            }
-            if (verbose) {
-                for (String line : proc.output) {
-                    System.err.println(line);
-                }
-            }
-            String suffix = "";
-            if (!Boolean.getBoolean(SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
-                suffix = String.format("%s%n%nSet -D%s=true to preserve subprocess temp files.", suffix, SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME);
-            }
-            if (!verbose) {
-                suffix = String.format("%s%n%nSet -D%s=true for verbose output.", suffix, verboseProperty);
+
+            if (testPredicate != null && !testPredicate.test(proc.output)) {
+                fail("Subprocess produced unexpected output:%n%s", proc.preserveArgfile());
             }
             int exitCode = proc.exitCode;
-            if (expectNormalExit) {
-                assertTrue(exitCode == 0, String.format("%s produced exit code %d, but expected 0.%s", proc, exitCode, suffix));
-            } else {
-                assertTrue(exitCode != 0, String.format("%s produced normal exit code %d, but expected abnormal exit%s", proc, exitCode, suffix));
+            if ((exitCode == 0) != expectNormalExit) {
+                String expectExitCode = expectNormalExit ? "0" : "non-0";
+                fail("Subprocess produced exit code %d, but expected %s%n%s", exitCode, expectExitCode, proc.preserveArgfile());
             }
+
+            // Test passed
             if (junitVerbose) {
-                System.out.println("--- subprocess output:");
-                for (String line : proc.output) {
-                    System.out.println(line);
-                }
-                System.out.println("--- end subprocess output");
+                System.out.printf("%n%s%n", proc.preserveArgfile());
             }
             return proc;
         }

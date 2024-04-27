@@ -30,31 +30,30 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.junit.Assume;
 
 import jdk.graal.compiler.util.CollectionsUtil;
-import org.junit.Assume;
+import jdk.vm.ci.services.Services;
 
 /**
  * Utility methods for spawning a VM in a subprocess during unit tests.
  */
 public final class SubprocessUtil {
 
-    /**
-     * The name of the boolean system property that can be set to preserve temporary files created
-     * as arguments files passed to the java launcher.
-     */
-    public static final String KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME = "test.SubprocessUtil.keepTempArgumentFiles";
+    private static final boolean DEBUG = Boolean.parseBoolean(Services.getSavedProperty("debug." + SubprocessUtil.class.getName()));
 
     private SubprocessUtil() {
     }
@@ -96,6 +95,24 @@ public final class SubprocessUtil {
         }
         // See http://stackoverflow.com/a/1250279
         return "'" + arg.replace("'", "'\"'\"'") + "'";
+    }
+
+    /**
+     * Quote an argument for use in an argfile.
+     */
+    public static String quoteArgfileArgument(String arg) {
+        if (arg.isEmpty()) {
+            return "\"\"";
+        }
+        if (arg.chars().anyMatch(ch -> Character.isWhitespace(ch) || ch == '#')) {
+            if (arg.indexOf('"') != -1) {
+                assert arg.indexOf('\'') == -1 : "unquotable: " + arg;
+                return "'" + arg + "'";
+            }
+            assert arg.indexOf('"') == -1 : "unquotable: " + arg;
+            return '"' + arg + '"';
+        }
+        return arg;
     }
 
     /**
@@ -222,65 +239,142 @@ public final class SubprocessUtil {
         public final boolean timedOut;
 
         /**
+         * OS level pid.
+         */
+        public final long pid;
+
+        /**
          * Explicit environment variables.
          */
         private Map<String, String> env;
 
-        public Subprocess(List<String> command, Map<String, String> env, int exitCode, List<String> output, boolean timedOut) {
+        /**
+         * Argfile, if any, created by {@link SubprocessUtil#process} to execute the subprocess. It
+         * can be preserved upon JVM exit by calling {@link #preserveArgfile()}.
+         */
+        public final Path argfile;
+
+        private boolean preserveArgfileOnExit;
+
+        private static final List<Subprocess> subprocessesWithArgfiles = new ArrayList<>();
+        static {
+            Runtime.getRuntime().addShutdownHook(new Thread("SubprocessArgFileCleanUp") {
+                @Override
+                public void run() {
+                    synchronized (subprocessesWithArgfiles) {
+                        for (Subprocess s : subprocessesWithArgfiles) {
+                            if (s.argfile != null && !s.preserveArgfileOnExit && Files.exists(s.argfile)) {
+                                try {
+                                    Files.delete(s.argfile);
+                                    if (DEBUG) {
+                                        System.out.println("deleted " + s.argfile);
+                                    }
+                                } catch (IOException e) {
+                                    System.err.println(e);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        Subprocess(List<String> command, Map<String, String> env, long pid, int exitCode, List<String> output, boolean timedOut, Path argfile) {
             this.command = command;
             this.env = env;
+            this.pid = pid;
             this.exitCode = exitCode;
             this.output = output;
             this.timedOut = timedOut;
+            this.argfile = argfile;
+            synchronized (subprocessesWithArgfiles) {
+                subprocessesWithArgfiles.add(this);
+            }
         }
 
-        public static final String DASHES_DELIMITER = "-------------------------------------------------------";
-
         /**
-         * Returns the command followed by the output as a string.
-         *
-         * @param delimiter if non-null, the returned string has this value as a prefix and suffix
+         * Preserves this subprocess's argfile after the JVM exits.
          */
-        public String toString(String delimiter) {
-            Formatter msg = new Formatter();
-            if (delimiter != null) {
-                msg.format("%s%n", delimiter);
+        public Subprocess preserveArgfile() {
+            if (DEBUG && argfile != null) {
+                System.out.println("preserving " + argfile);
             }
-            if (env != null && !env.isEmpty()) {
-                msg.format("env");
-                for (Map.Entry<String, String> e : env.entrySet()) {
-                    msg.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
-                }
-                msg.format("\\%n");
-            }
-            msg.format("%s%n", CollectionsUtil.mapAndJoin(command, e -> quoteShellArg(String.valueOf(e)), " "));
-            for (String line : output) {
-                msg.format("%s%n", line);
-            }
-            msg.format("exit code: %s%n", exitCode);
-            if (delimiter != null) {
-                msg.format("%s%n", delimiter);
-            }
-            return msg.toString();
+            preserveArgfileOnExit = true;
+            return this;
         }
 
         /**
-         * Returns the command followed by the output as a string delimited by
-         * {@value #DASHES_DELIMITER}.
+         * Returns the process execution as a string with a header line followed by one or more body
+         * lines followed by a trailer with a new line.
+         *
+         * @see #asString(Map)
          */
         @Override
         public String toString() {
-            return toString(DASHES_DELIMITER);
+            return asString(null);
+        }
+
+        /**
+         * Returns the process execution as a string with a header line followed by one or more body
+         * lines followed by a trailer with a new line.
+         *
+         * The header is {@code "----------subprocess[<pid>]:(<lines>/<chars>)----------"} where
+         * {@code pid} is the id of the process and {@code chars} and {@code lines} provide the
+         * dimensions of the body.
+         *
+         * The sections in the body are the environment variables (key: "env"), the command line
+         * (key: "cmd"), the lines of output produced (key: "output") and the exit code (key:
+         * "exitCode").
+         *
+         * The trailer is {@code "==========subprocess[<pid>]=========="}
+         *
+         * @param sections selects which sections are in the body. If null, all sections are
+         *            included.
+         */
+        public String asString(Map<String, Boolean> sections) {
+            Formatter msg = new Formatter();
+            if (include(sections, "env")) {
+                if (env != null && !env.isEmpty()) {
+                    msg.format("env");
+                    for (Map.Entry<String, String> e : env.entrySet()) {
+                        msg.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
+                    }
+                    msg.format("\\%n");
+                }
+            }
+            if (include(sections, "cmd")) {
+                msg.format("%s%n", CollectionsUtil.mapAndJoin(command, e -> quoteShellArg(String.valueOf(e)), " "));
+            }
+            if (include(sections, "output")) {
+                for (String line : output) {
+                    msg.format("%s%n", line);
+                }
+            }
+            if (include(sections, "exitCode")) {
+                msg.format("exit code: %s%n", exitCode);
+            }
+            String body = msg.toString();
+            if (!body.endsWith(System.lineSeparator())) {
+                body = body + System.lineSeparator();
+            }
+            long lines = body.chars().filter(ch -> ch == '\n').count();
+            int chars = body.length();
+            String head = String.format("----------subprocess[%d]:(%d/%d)----------", pid, lines, chars);
+            String tail = String.format("==========subprocess[%d]==========", pid);
+            return String.format("%s%n%s%s%n", head, body, tail);
+        }
+
+        private static boolean include(Map<String, Boolean> sections, String key) {
+            return sections == null || sections.getOrDefault(key, false);
         }
     }
 
     /**
      * A sentinel value which when present in the {@code vmArgs} parameter for any of the
-     * {@code java(...)} methods in this class is replaced with a temporary argument file containing
-     * the contents of {@link #getPackageOpeningOptions}. The argument file is preserved if the
-     * {@link #KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME} system property is true.
+     * {@code java(...)} methods in this class is replaced with the contents of
+     * {@link #getPackageOpeningOptions}.
      */
-    public static final String PACKAGE_OPENING_OPTIONS = ";:PACKAGE_OPENING_OPTIONS_IN_TEMPORARY_ARGUMENTS_FILE:;";
+    public static final String PACKAGE_OPENING_OPTIONS = ";:PACKAGE_OPENING_OPTIONS:;";
 
     /**
      * Executes a Java subprocess.
@@ -363,31 +457,44 @@ public final class SubprocessUtil {
      */
     private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, File workingDir, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>(vmArgs.size());
-        Path packageOpeningOptionsArgumentsFile = null;
         for (String vmArg : vmArgs) {
             if (vmArg == PACKAGE_OPENING_OPTIONS) {
-                if (packageOpeningOptionsArgumentsFile == null) {
-                    List<String> packageOpeningOptions = getPackageOpeningOptions();
-                    if (!packageOpeningOptions.isEmpty()) {
-                        packageOpeningOptionsArgumentsFile = Files.createTempFile(Paths.get("."), "package-opening-options-arguments-file", ".txt").toAbsolutePath();
-                        Files.write(packageOpeningOptionsArgumentsFile, packageOpeningOptions);
-                        command.add("@" + packageOpeningOptionsArgumentsFile);
-                    }
+                List<String> packageOpeningOptions = getPackageOpeningOptions();
+                if (!packageOpeningOptions.isEmpty()) {
+                    command.addAll(packageOpeningOptions);
                 }
             } else {
                 command.add(vmArg);
             }
         }
         command.addAll(mainClassAndArgs);
-        try {
-            return process(command, env, workingDir, timeout);
-        } finally {
-            if (packageOpeningOptionsArgumentsFile != null) {
-                if (!Boolean.getBoolean(KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
-                    Files.delete(packageOpeningOptionsArgumentsFile);
-                }
+        return process(command, env, workingDir, timeout);
+    }
+
+    private static final Set<String> EXECUTABLES_USING_ARGFILES = Set.of("java", "java.exe", "javac", "javac.exe");
+
+    /**
+     * Creates an argfile for {@code command} if {@code command.get(0)} denotes an
+     * {@linkplain #EXECUTABLES_USING_ARGFILES executable supporting argfiles}.
+     *
+     * @see "https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html#java-command-line-argument-files"
+     * @return the created argfile or null
+     */
+    public static Path makeArgfile(List<String> command) {
+        File exe = new File(command.get(0));
+        if (EXECUTABLES_USING_ARGFILES.contains(exe.getName())) {
+            expandArgFileArgs(command);
+            try {
+                // Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
+                Path argfile = Files.createTempFile(SubprocessUtil.class.getName() + ".", ".argfile");
+                String content = expandArgFileArgs(command).stream().map(SubprocessUtil::quoteArgfileArgument).collect(Collectors.joining("\n"));
+                Files.writeString(argfile, "# " + content);
+                return argfile;
+            } catch (IOException e) {
+                throw new AssertionError(e);
             }
         }
+        return null;
     }
 
     /**
@@ -403,16 +510,18 @@ public final class SubprocessUtil {
      *            thread waits for the process indefinitely.
      */
     public static Subprocess process(List<String> command, Map<String, String> env, File workingDir, Duration timeout) throws IOException, InterruptedException {
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        Path argfile = makeArgfile(command);
+        ProcessBuilder pb = new ProcessBuilder(argfile == null ? command : List.of(command.get(0), "@" + argfile));
+
         if (workingDir != null) {
-            processBuilder.directory(workingDir);
+            pb.directory(workingDir);
         }
         if (env != null) {
-            Map<String, String> processBuilderEnv = processBuilder.environment();
+            Map<String, String> processBuilderEnv = pb.environment();
             processBuilderEnv.putAll(env);
         }
-        processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
         List<String> output = new ArrayList<>();
         if (timeout == null) {
@@ -420,7 +529,7 @@ public final class SubprocessUtil {
             while ((line = stdout.readLine()) != null) {
                 output.add(line);
             }
-            return new Subprocess(command, env, process.waitFor(), output, false);
+            return new Subprocess(pb.command(), env, process.pid(), process.waitFor(), output, false, argfile);
         } else {
             // The subprocess might produce output forever. We need to grab the output in a
             // separate thread, so we can terminate the process after the timeout if necessary.
@@ -440,7 +549,7 @@ public final class SubprocessUtil {
                 process.destroyForcibly().waitFor();
             }
             outputReader.join();
-            return new Subprocess(command, env, process.exitValue(), output, !finishedOnTime);
+            return new Subprocess(pb.command(), env, process.pid(), process.exitValue(), output, !finishedOnTime, argfile);
         }
     }
 
@@ -482,5 +591,4 @@ public final class SubprocessUtil {
         }
         throw new InternalError();
     }
-
 }
