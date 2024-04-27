@@ -278,6 +278,7 @@ public final class ClassRegistries {
         return (BootClassRegistry) bootClassRegistry;
     }
 
+    @TruffleBoundary
     public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
         Symbol<Type> toCheck = context.getTypes().getElementalType(type);
         if (!Types.isPrimitive(toCheck) && loader1 != loader2) {

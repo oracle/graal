@@ -228,6 +228,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import java.util.ArrayDeque;
 import java.util.BitSet;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -268,6 +269,7 @@ public final class FrameAnalysis {
 
     private final ArrayDeque<Integer> queue = new ArrayDeque<>(2);
 
+    @TruffleBoundary
     public static EspressoFrameDescriptor apply(Method.MethodVersion m, int bci) {
         return new FrameAnalysis(bci, m).apply();
     }
