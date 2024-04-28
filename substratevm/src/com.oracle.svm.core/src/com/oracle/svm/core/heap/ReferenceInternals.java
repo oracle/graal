@@ -42,7 +42,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.TimeUtils;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -54,7 +53,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * not injected into {@link Target_java_lang_ref_Reference} so that subclasses of {@link Reference}
  * cannot interfere with them.
  */
-@BasedOnJDKClass(Reference.class)
 public final class ReferenceInternals {
     public static final String REFERENT_FIELD_NAME = "referent";
 
