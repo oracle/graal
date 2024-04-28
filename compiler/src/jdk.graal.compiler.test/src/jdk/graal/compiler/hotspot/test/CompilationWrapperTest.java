@@ -252,7 +252,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
 
         Subprocess proc = SubprocessUtil.java(vmArgs, mainClassAndArgs);
         if (VERBOSE) {
-            System.out.println(proc);
+            System.out.printf("%n%s%n", proc.preserveArgfile());
         }
 
         try {
@@ -274,7 +274,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             for (Probe probe : probes) {
                 String error = probe.test();
                 if (error != null) {
-                    Assert.fail(String.format("Did not find expected occurrences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
+                    Assert.fail(String.format("Did not find expected occurrences of '%s' in output of command: %s%n%s", probe.substring, error, proc.preserveArgfile()));
                 }
             }
 
@@ -317,7 +317,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                 for (ZipProbe probe : zipProbes) {
                     String error = probe.test();
                     if (error != null) {
-                        Assert.fail(String.format("Did not find expected occurrences of '%s' files in %s: %s%n%s", probe.suffix, entries, error, proc));
+                        Assert.fail(String.format("Did not find expected occurrences of '%s' files in %s: %s%n%s", probe.suffix, entries, error, proc.preserveArgfile()));
                     }
                 }
             } finally {
