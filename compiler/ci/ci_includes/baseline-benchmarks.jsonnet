@@ -39,7 +39,7 @@
 
   local economy_builds = [
       c.weekly + hw.e3 + jdk + cc.libgraal + cc.economy_mode + suite
-    for jdk in cc.product_jdks
+    for jdk in cc.bench_jdks
     for suite in bench.groups.main_suites
   ],
   local no_tiered_builds = std.flattenArrays([
