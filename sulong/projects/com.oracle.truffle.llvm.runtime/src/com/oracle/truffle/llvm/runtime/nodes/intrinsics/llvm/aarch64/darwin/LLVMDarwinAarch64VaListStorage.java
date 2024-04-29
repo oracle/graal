@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
@@ -356,10 +357,17 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             return LLVMMaybeVaPointer.createWithHeap(p);
         }
 
-        @Specialization(guards = {"isManagedPointer(p)", "!isGlobal(p)"})
+        @Specialization(guards = {"isManagedPointer(p)", "!isGlobal(p)", "isLLVMMaybeVaPointer(p)"})
         Object extractFromManaged(LLVMManagedPointer p) {
-            assert p.getObject() instanceof LLVMMaybeVaPointer;
             return p.getObject();
+        }
+
+        @Specialization(guards = {"isManagedPointer(p)", "!isGlobal(p)"})
+        Object createNativeWrapperForeign(LLVMManagedPointer p,
+                        @CachedLibrary(limit = "1") LLVMAsForeignLibrary foreignLibrary) {
+            assert foreignLibrary.isForeign(p);
+            assert !isLLVMMaybeVaPointer(p);
+            return LLVMMaybeVaPointer.createWithHeap(p);
         }
 
         static boolean isManagedPointer(Object o) {
@@ -368,6 +376,10 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
         static boolean isGlobal(Object o) {
             return LLVMManagedPointer.cast(o).getObject() instanceof LLVMGlobalContainer;
+        }
+
+        static boolean isLLVMMaybeVaPointer(Object o) {
+            return LLVMManagedPointer.cast(o).getObject() instanceof LLVMMaybeVaPointer;
         }
 
         static Object getGlobal(Object o) {

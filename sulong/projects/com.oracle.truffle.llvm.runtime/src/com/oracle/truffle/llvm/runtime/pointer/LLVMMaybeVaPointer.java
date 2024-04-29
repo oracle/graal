@@ -288,6 +288,14 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     static class Copy {
+        @Specialization(guards = "other.isPointer()")
+        static void copyToNative(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
+                        @Cached LLVMPointerOffsetStoreNode storeAddressNode) {
+            /* triggers toNative transition for vaListInstance */
+            storeAddressNode.executeWithTarget(other.address, 0, self.vaList);
+
+            assert other.vaList == null;
+        }
 
         @Specialization
         static void copy(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
