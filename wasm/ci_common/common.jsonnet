@@ -181,7 +181,7 @@ local graal_suite_root = root_ci.graal_suite_root;
       ]
     ],
     logs: ['bench-results.json'],
-    capabilities+: ['x52'],
+    capabilities+: ['e3'],
   },
 
   jdk8_gate_linux_eclipse_jdt              : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
