@@ -160,7 +160,7 @@
 
     # BENCHMARKS
 
-    bench_hw.x52 + common.labsjdkLatestCE + bench_common + {
+    bench_hw.e3 + common.labsjdkLatestCE + bench_common + {
       name: "bench-truffle-jmh",
       notify_groups:: ["truffle_bench"],
       run: [

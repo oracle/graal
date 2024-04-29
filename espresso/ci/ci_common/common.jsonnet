@@ -41,8 +41,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     },
   },
 
-  x52: {
-    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
+  e3: {
+    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'e3'],
   },
 
   darwin_amd64: self.common + graal_common.darwin_amd64 + {
@@ -85,7 +85,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_gate_darwin_amd64       : self.gate          + self.darwin_amd64_21,
   jdk21_gate_darwin_aarch64     : self.gate          + self.darwin_aarch64_21,
   jdk21_gate_windows_amd64      : self.gate          + self.windows_21,
-  jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.x52,
+  jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.e3,
   jdk21_bench_darwin            : self.bench         + self.darwin_amd64_21,
   jdk21_bench_windows           : self.bench         + self.windows_21,
   jdk21_daily_linux_amd64       : self.daily         + self.linux_amd64_21,
@@ -93,7 +93,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_daily_darwin_amd64      : self.daily         + self.darwin_amd64_21,
   jdk21_daily_darwin_aarch64    : self.daily         + self.darwin_aarch64_21,
   jdk21_daily_windows_amd64     : self.daily         + self.windows_21,
-  jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.x52,
+  jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.e3,
   jdk21_daily_bench_darwin      : self.dailyBench    + self.darwin_amd64_21,
   jdk21_daily_bench_windows     : self.dailyBench    + self.windows_21,
   jdk21_weekly_linux_amd64      : self.weekly        + self.linux_amd64_21,
@@ -106,13 +106,13 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_monthly_darwin_amd64    : self.monthly        + self.darwin_amd64_21,
   jdk21_monthly_darwin_aarch64  : self.monthly        + self.darwin_aarch64_21,
   jdk21_monthly_windows_amd64   : self.monthly        + self.windows_21,
-  jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.x52,
+  jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.e3,
   jdk21_weekly_bench_darwin     : self.weeklyBench   + self.darwin_amd64_21,
   jdk21_weekly_bench_windows    : self.weeklyBench   + self.windows_21,
   jdk21_on_demand_linux         : self.onDemand      + self.linux_amd64_21,
   jdk21_on_demand_darwin        : self.onDemand      + self.darwin_amd64_21,
   jdk21_on_demand_windows       : self.onDemand      + self.windows_21,
-  jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.x52,
+  jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.e3,
   jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
 
