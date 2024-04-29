@@ -176,7 +176,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   local check_base_graalvm_image = task_spec({ run +: [
       ['set-export', 'GRAALVM_DIST', self.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'paths', self.mx_vm_common + vm.vm_profiles + ['graalvm-dist-name']]]
-    ] + vm.check_graalvm_base_build('$GRAALVM_DIST', self.os, self.arch, std.toString(self.jdk_version))
+    ] + vm.check_graalvm_base_build('$GRAALVM_DIST', self.os, self.arch, if (self.jdk_name == 'jdk-latest') then 'latest' else std.toString(self.jdk_version))
   }),
 
   local deploy_graalvm_base = svm_common + common_os_deploy + name + task_spec(vm.check_structure) + build_base_graalvm_image + task_spec({
