@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
@@ -89,6 +92,7 @@ public final class ObjectMoveInfo {
         assert getNewAddress(objSeqStart).equal(newAddress);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static Pointer getNewAddress(Pointer objSeqStart) {
         if (useCompressedLayout()) {
             long offset = objSeqStart.readInt(-8);
@@ -109,6 +113,7 @@ public final class ObjectMoveInfo {
         assert getPrecedingGapSize(objSeqStart) == gapSize;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static int getPrecedingGapSize(Pointer objSeqStart) {
         if (useCompressedLayout()) {
             return (objSeqStart.readShort(-4) & 0xffff) * ConfigurationValues.getObjectLayout().getAlignment();
@@ -127,6 +132,7 @@ public final class ObjectMoveInfo {
         assert getNextObjectSeqOffset(objSeqStart) == offset;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static int getNextObjectSeqOffset(Pointer objSeqStart) {
         if (useCompressedLayout()) {
             return (objSeqStart.readShort(-2) & 0xffff) * ConfigurationValues.getObjectLayout().getAlignment();
@@ -135,6 +141,7 @@ public final class ObjectMoveInfo {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static Pointer getNextObjectSeqAddress(Pointer objSeqStart) {
         int offset = getNextObjectSeqOffset(objSeqStart);
         if (offset == 0) {
@@ -154,30 +161,40 @@ public final class ObjectMoveInfo {
      * @see HeapChunk#walkObjectsFrom
      * @see AlignedHeapChunk#walkObjects
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void walkObjects(AlignedHeapChunk.AlignedHeader chunkHeader, ObjectFixupVisitor visitor) {
-        Pointer cursor = AlignedHeapChunk.getObjectsStart(chunkHeader);
-        Pointer top = HeapChunk.getTopPointer(chunkHeader); // top cannot change here
-        Pointer objSeq = cursor;
+        Pointer top = HeapChunk.getTopPointer(chunkHeader);
 
-        while (cursor.belowThan(top)) {
-            // TODO: can avoid re-reading, get tighter loop for objects
-            if (objSeq.isNonNull()) { // jump gaps
-                int gapSize = getPrecedingGapSize(objSeq);
-                if (cursor.aboveOrEqual(objSeq.subtract(gapSize))) {
-                    cursor = objSeq;
-                    objSeq = getNextObjectSeqAddress(objSeq);
+        Pointer p = AlignedHeapChunk.getObjectsStart(chunkHeader);
+        Pointer nextObjSeq = p;
+        while (p.belowThan(top)) {
+            Pointer objSeqEnd;
+            if (nextObjSeq.isNonNull()) {
+                objSeqEnd = nextObjSeq.subtract(getPrecedingGapSize(nextObjSeq));
+                if (p.aboveOrEqual(objSeqEnd)) { // skip over gap
+                    p = nextObjSeq;
+                    nextObjSeq = getNextObjectSeqAddress(nextObjSeq);
                     continue;
                 }
+                assert objSeqEnd.belowOrEqual(top);
+            } else {
+                objSeqEnd = top;
             }
-            Object obj = cursor.toObject();
-            UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
-            if (!visitor.visitObjectInline(obj)) {
-                return;
+            while (p.belowThan(objSeqEnd)) {
+                assert p.belowThan(top) && top.equal(HeapChunk.getTopPointer(chunkHeader));
+                assert nextObjSeq.isNull() || objSeqEnd.equal(nextObjSeq.subtract(getPrecedingGapSize(nextObjSeq)));
+
+                Object obj = p.toObject();
+                UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
+                if (!visitor.visitObjectInline(obj)) {
+                    return;
+                }
+                p = p.add(objSize);
             }
-            cursor = cursor.add(objSize);
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static Pointer getNewObjectAddress(Pointer objPointer) {
         assert ObjectHeaderImpl.isAlignedObject(objPointer.toObject());
 

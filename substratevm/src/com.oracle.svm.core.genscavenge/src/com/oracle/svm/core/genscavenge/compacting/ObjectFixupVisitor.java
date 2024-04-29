@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -48,12 +49,13 @@ public final class ObjectFixupVisitor implements ObjectVisitor {
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean visitObjectInline(Object obj) {
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         if (probability(SLOW_PATH_PROBABILITY, hub.isReferenceInstanceClass())) {
             // update Target_java_lang_ref_Reference.referent
             Reference<?> dr = (Reference<?>) obj;
-            refFixupVisitor.visitObjectReference(ReferenceInternals.getReferentFieldAddress(dr), true, dr);
+            refFixupVisitor.visitObjectReferenceInline(ReferenceInternals.getReferentFieldAddress(dr), 0, true, dr);
         }
         InteriorObjRefWalker.walkObjectInline(obj, refFixupVisitor);
         return true;

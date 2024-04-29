@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.ref.Reference;
 
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -47,6 +50,7 @@ public final class ObjectRefFixupVisitor implements ObjectReferenceVisitor {
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset == 0;
         Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);

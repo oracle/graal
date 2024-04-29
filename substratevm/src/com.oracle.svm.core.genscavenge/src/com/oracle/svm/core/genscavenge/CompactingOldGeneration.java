@@ -240,6 +240,7 @@ final class CompactingOldGeneration extends OldGeneration {
         space.walkAlignedHeapChunks(planningVisitor);
     }
 
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     private void fixupReferencesBeforeCompaction(ChunkReleaser chunkReleaser, Timers timers) {
         timers.tenuredFixingAlignedChunks.open();
         AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
