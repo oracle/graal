@@ -25,6 +25,7 @@ Here you will learn how to:
 - [Containerize a Native Executable and Run in a Docker Container](containerise-native-executable-with-docker.md)
 - [Create a Heap Dump from a Native Executable](create-heap-dump-from-native-executable.md)
 - [Debug Native Executables with GDB](debug-native-executables-with-gdb.md)
+- [Debug Native Executables with a Python Helper Script](debug-native-executables-with-python-helper.md)
 - [Include Reachability Metadata Using the Native Image Gradle Plugin](include-reachability-metadata-gradle.md)
 - [Include Reachability Metadata Using the Native Image Maven Plugin](include-reachability-metadata-maven.md)
 - [Include Resources in a Native Executable](include-resources.md)

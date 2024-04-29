@@ -986,6 +986,125 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         os.environ.update({'debuginfotest_isolates' : 'yes'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', gdb_utils_py, '-x', testhello_py, hello_binary])
 
+
+def _gdbdebughelperstest(native_image, path, with_isolates_only, build_only, test_only, args):
+    test_proj = mx.dependency('com.oracle.svm.test')
+    test_source_path = test_proj.source_dirs()[0]
+    tutorial_proj = mx.dependency('com.oracle.svm.tutorial')
+    tutorial_c_source_dir = join(tutorial_proj.dir, 'native')
+    tutorial_source_path = tutorial_proj.source_dirs()[0]
+
+    gdbdebughelpers_py = join(mx.dependency('com.oracle.svm.hosted.image.debug').output_dir(), 'gdb-debughelpers.py')
+
+    test_python_source_dir = join(test_source_path, 'com', 'oracle', 'svm', 'test', 'debug', 'helper')
+    test_pretty_printer_py = join(test_python_source_dir, 'test_pretty_printer.py')
+    test_cinterface_py = join(test_python_source_dir, 'test_cinterface.py')
+    test_class_loader_py = join(test_python_source_dir, 'test_class_loader.py')
+    test_settings_py = join(test_python_source_dir, 'test_settings.py')
+    test_svm_util_py = join(test_python_source_dir, 'test_svm_util.py')
+
+    test_pretty_printer_args = [
+        '-cp', classpath('com.oracle.svm.test'),
+        # We do not want to step into class initializer, so initialize everything at build time.
+        '--initialize-at-build-time=com.oracle.svm.test.debug.helper',
+        'com.oracle.svm.test.debug.helper.PrettyPrinterTest'
+    ]
+    test_cinterface_args = [
+        '--shared',
+        '-Dcom.oracle.svm.tutorial.headerfile=' + join(tutorial_c_source_dir, 'mydata.h'),
+        '-cp', tutorial_proj.output_dir()
+    ]
+    test_class_loader_args = [
+        '-cp', classpath('com.oracle.svm.test'),
+        '-Dsvm.test.missing.classes=' + classpath('com.oracle.svm.test.missing.classes'),
+        '--initialize-at-build-time=com.oracle.svm.test.debug.helper',
+        # We need the static initializer of the ClassLoaderTest to run at image build time
+        '--initialize-at-build-time=com.oracle.svm.test.missing.classes',
+        'com.oracle.svm.test.debug.helper.ClassLoaderTest'
+    ]
+
+    gdb_args = [
+        os.environ.get('GDB_BIN', 'gdb'),
+        '--nx',
+        '-q',  # do not print the introductory and copyright messages
+        '-iex', 'set logging overwrite on',
+        '-iex', 'set logging redirect on',
+        '-iex', 'set logging enabled on',
+    ]
+
+    def run_debug_test(image_name: str, testfile: str, source_path: str, with_isolates: bool = True,
+                       build_cinterfacetutorial: bool = False, extra_args: list[str] = None, skip_build: bool = False):
+        extra_args = [] if extra_args is None else extra_args
+        build_dir = join(path, image_name + ("" if with_isolates else "_no_isolates"))
+
+        if not test_only and not skip_build:
+            # clean / create output directory
+            if exists(build_dir):
+                mx.rmtree(build_dir)
+            mx.ensure_dir_exists(build_dir)
+
+            build_args = args + [
+                '-H:CLibraryPath=' + source_path,
+                '--native-image-info',
+                '-Djdk.graal.LogFile=graal.log',
+                '-g', '-O0',
+            ] + svm_experimental_options([
+                '-H:+VerifyNamingConventions',
+                '-H:+SourceLevelDebug',
+                '-H:+IncludeDebugHelperMethods',
+                '-H:DebugInfoSourceSearchPath=' + source_path,
+            ]) + extra_args
+
+            if not with_isolates:
+                build_args += svm_experimental_options(['-H:-SpawnIsolates'])
+
+            if build_cinterfacetutorial:
+                build_args += ['-o', join(build_dir, 'lib' + image_name)]
+            else:
+                build_args += ['-o', join(build_dir, image_name)]
+
+            mx.log(f"native_image {' '.join(build_args)}")
+            native_image(build_args)
+
+            if build_cinterfacetutorial:
+                if mx.get_os() != 'windows':
+                    c_command = ['cc', '-g', join(tutorial_c_source_dir, 'cinterfacetutorial.c'),
+                                 '-I.', '-L.', '-lcinterfacetutorial',
+                                 '-ldl', '-Wl,-rpath,' + build_dir,
+                                 '-o', 'cinterfacetutorial']
+
+                else:
+                    c_command = ['cl', '-MD', join(tutorial_c_source_dir, 'cinterfacetutorial.c'), '-I.',
+                                 'libcinterfacetutorial.lib']
+                mx.log(' '.join(c_command))
+                mx.run(c_command, cwd=build_dir)
+        if not build_only and mx.get_os() == 'linux':
+            # copying the most recent version of gdb-debughelpers.py (even if the native image was not built)
+            mx.log(f"Copying {gdbdebughelpers_py} to {build_dir}")
+            mx.copyfile(gdbdebughelpers_py, join(build_dir, 'gdb-debughelpers.py'))
+
+            gdb_command = gdb_args + [
+                '-iex', f"set auto-load safe-path {join(build_dir, 'gdb-debughelpers.py')}",
+                '-x', testfile, join(build_dir, image_name)
+            ]
+            mx.log(' '.join(gdb_command))
+            # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
+            mx.run(gdb_command, cwd=build_dir, nonZeroIsFatal=False)
+
+    if not with_isolates_only:
+        run_debug_test('prettyPrinterTest', test_pretty_printer_py, test_source_path, False,
+                       extra_args=test_pretty_printer_args)
+    run_debug_test('prettyPrinterTest', test_pretty_printer_py, test_source_path, extra_args=test_pretty_printer_args)
+    run_debug_test('prettyPrinterTest', test_settings_py, test_source_path, extra_args=test_pretty_printer_args, skip_build=True)
+    run_debug_test('prettyPrinterTest', test_svm_util_py, test_source_path, extra_args=test_pretty_printer_args, skip_build=True)
+
+    run_debug_test('cinterfacetutorial', test_cinterface_py, tutorial_source_path, build_cinterfacetutorial=True,
+                   extra_args=test_cinterface_args)
+
+    run_debug_test('classLoaderTest', test_class_loader_py, test_source_path, extra_args=test_class_loader_args)
+
+
+
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
     mx_util.ensure_dir_exists(path)
@@ -1520,6 +1639,30 @@ def debuginfotestshared(args, config=None):
     # ideally we ought to script a gdb run
     native_image_context_run(_cinterfacetutorial, all_args)
 
+@mx.command(suite_name=suite.name, command_name='gdbdebughelperstest', usage_msg='[options]')
+def gdbdebughelperstest(args, config=None):
+    """
+    builds and tests gdb-debughelpers.py with multiple native images with debuginfo
+    """
+    parser = ArgumentParser(prog='mx gdbdebughelperstest')
+    all_args = ['--output-path', '--with-isolates-only', '--build-only', '--test-only']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[join(svmbuild_dir(), "gdbdebughelperstest")])
+    parser.add_argument(all_args[1], action='store_true', help='Only build and test the native image with isolates')
+    parser.add_argument(all_args[2], action='store_true', help='Only build the native image')
+    parser.add_argument(all_args[3], action='store_true', help='Only run the tests')
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    output_path = unmask(parsed.output_path)[0]
+    with_isolates_only = parsed.with_isolates_only
+    build_only = parsed.build_only
+    test_only = parsed.test_only
+    native_image_context_run(
+        lambda native_image, a:
+            _gdbdebughelperstest(native_image, output_path, with_isolates_only, build_only, test_only, a), unmask(parsed.image_args),
+        config=config
+    )
+
 @mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
 def helloworld(args, config=None):
     """
@@ -1876,6 +2019,17 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 class JDKLayoutTARDistribution(mx.LayoutTARDistribution):
     def isJDKDependent(self):
         return True
+
+
+class GDBDebugHelpers(mx.ArchivableProject):
+    def output_dir(self):
+        return os.path.join(self.dir, 'src', self.name, 'gdbpy')
+
+    def archive_prefix(self):
+        return ''
+
+    def getResults(self):
+        return [os.path.join(self.output_dir(), 'gdb-debughelpers.py')]
 
 
 class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
