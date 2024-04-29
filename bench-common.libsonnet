@@ -61,21 +61,7 @@
       default_numa_node:: 1,
       num_threads:: 256
     },
-    e4_8_64:: common.linux + common.amd64 + self._bench_machine + {
-      machine_name:: "e4_8_64",
-      capabilities+: ["tmpfs25g"],
-      numa_nodes:: [0],
-      default_numa_node:: 0,
-      num_threads:: 16
-    },
-    x82:: common.linux + common.amd64  + self._bench_machine + {
-      machine_name:: "x82",
-      capabilities+: ["tmpfs25g"],
-      numa_nodes:: [0, 1],
-      default_numa_node:: 0,
-      num_threads:: 96
-    },
-    xgene3:: common.linux + common.aarch64  + self._bench_machine + {
+    xgene3:: common.linux + common.aarch64 + self._bench_machine + {
       machine_name:: "xgene3",
       capabilities+: [],
       num_threads:: 32,
