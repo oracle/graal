@@ -7,13 +7,11 @@ permalink: /reference-manual/native-image/guides/specify-class-initialization/
 
 # Specify Class Initialization Explicitly
 
-By default, Native Image initializes as many classes as possible at build time. 
-This includes most of the JDK classes, the garbage collector, and the application classes that Native Image estimates as "safe" for initialization.
-
+By default, Native Image initializes application classes at run time, except for the classes that Native Image proves "safe" for initialization at build time. 
 However, you can influence the default behavior by specifying the classes to be build-time or run-time initialized explicitly.
 For that, there are two command-line options: `--initialize-at-build-time` and `--initialize-at-run-time`.
 You can use these options to specify whole packages or individual classes.
-For example, if you have the classes `p.C1`, `p.C2`, … ,`p.Cn`, you can specify that all the classes in the package `p` are to be initialized at build time by passing the following option to `native-image` on the command line:
+For example, if you have the classes `p.C1`, `p.C2`, … ,`p.Cn`, you can specify that all the classes in the package `p` are to be initialized at build time by passing the following option to `native-image`:
 ```shell
 --initialize-at-build-time=p
 ```
@@ -24,9 +22,9 @@ If you want only class `C1` in package `p` to be initialized at runtime, use:
 
 The whole class hierarchy can be initialized at build time by passing `--initialize-at-build-time` on the command line.
 
-You can also programmatically specify Class initialization using the [`RuntimeClassInitialization` class ](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/RuntimeClassInitialization.java) from the [Native Image Feature interface](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/Feature.java).
+You can also programmatically specify Class initialization using the [`RuntimeClassInitialization` class](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/RuntimeClassInitialization.java) from the [Native Image Feature interface](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/Feature.java).
 
-This guide demonstrates how to build a native executable by explicitly initializing classes at build time, and then at runtime, and compares the two approaches.
+This guide demonstrates how to build a native executable by running the class initializer at run time, and then at build time, and compares the two approaches. 
 
 ## Run a Demo
 
@@ -53,7 +51,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
     public class SaxXMLParser {
 
-        private static final Document configRoot = parseXML("""
+        private static final Document document = parseXML("""
                         <?xml version="1.0" encoding="UTF-8"?>
                         <talks>
                             <talk name="Asynchronous Programming in Java: Options to Choose from by Venkat Subramaniam"></talk>
@@ -76,7 +74,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
         public static void main(String[] args) {
             System.out.println("Talks loaded via XML:");
-            var nodeList = configRoot.getElementsByTagName("talk");
+            var nodeList = document.getElementsByTagName("talk");
             for (int i = 0; i < nodeList.getLength(); i++) {
                 System.out.println("- " + nodeList.item(i).getAttributes().getNamedItem("name").getTextContent());
             }
@@ -88,17 +86,17 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ```bash
     javac SaxXMLParser.java
     ```
-
-3. Build a native executable, initializing the application classes at build time:
+  
+3. Build a native executable, running the class initializer at runtime:
     ```bash
-    native-image --initialize-at-build-time=SaxXMLParser -o buildtime-parser SaxXMLParser
+    native-image --initialize-at-run-time=SaxXMLParser -o runtime-parser SaxXMLParser
     ```
     The `-o` option specifies the name for the output file. 
     If your Java project structure is different, make sure to pass necessary JAR file(s) on the classpath using `-cp <ClasspathForYourProject>`.
 
 4. Run the application from a native executable and `time` the results:
     ```bash
-    time ./buildtime-parser
+    time ./runtime-parser
     ```
     On a machine with 16 GB of memory and 8 cores, you should see a result similar to:
     ```
@@ -108,21 +106,23 @@ For other installation options, visit the [Downloads section](https://www.graalv
     - Java in the Cloud with GraalVM by Alina Yurenko
     - Bootiful Spring Boot 3 by Josh Long
     - Spring I/O 2023 - Keynote
-    ./buildtime-parser  0.00s user 0.00s system 46% cpu 0.017 total
+    ./runtime-parser  0.00s user 0.01s system 44% cpu 0.021 total
     ```
-    Check the file size, which should be 13M:
+    The application parses the XML data at runtime.
+
+    Check the file size which should be 19M:
     ```
-    du -sh buildtime-parser
+    du -sh runtime-parser
     ```
 
-5. Next, build a new native executable that excludes the static initializer from being initialized at build time, and provides a different name to differentiate from the previous build:
+5.  Next, build a native executable initializing `SaxXMLParser` at build time, and providing a different name for the output file to differentiate from the previous build:
     ```bash
-    native-image --initialize-at-run-time=SaxXMLParser -o runtime-parser SaxXMLParser
+    native-image --initialize-at-build-time=SaxXMLParser -o buildtime-parser SaxXMLParser
     ```
-
+    
 6. Run the second executable and `time` the results for comparison:
     ```bash
-    time ./runtime-parser
+    time ./buildtime-parser
     ```
     This time you should see something similar to this:
     ```
@@ -132,19 +132,19 @@ For other installation options, visit the [Downloads section](https://www.graalv
     - Java in the Cloud with GraalVM by Alina Yurenko
     - Bootiful Spring Boot 3 by Josh Long
     - Spring I/O 2023 - Keynote
-    ./runtime-parser  0.00s user 0.00s system 59% cpu 0.012 total
+    ./buildtime-parser  0.00s user 0.00s system 43% cpu 0.019 total
     ```
-    The static initializer is now run at runtime. 
-    Notice the increase in the CPU time.
-    
-    Check also the file size, which should have increased to 19M:
+    Check the file size which should decrease to 13M:
     ```
-    du -sh runtime-parser
+    du -sh buildtime-parser
     ```
+    The file size change is due to the fact that Native Image runs the static initializer at build time, parsing the XML data, and saving only the object into the executable. 
+    Another valuable criteria for analyzing such a small Java application performance is the number of instructions, which you can obtain using the [Linux `perf` profiler](../PerfProfiling.md).
 
-    The benefits of the build-time versus run-time initialization are described in [Class Initialization in Native Image](../ClassInitialization.md), but, in short, it makes the run-time initialization and "class safely" checks unnecessary, improving the application efficiency.
+    [insert a screenshot]
 
-This guide demonstrated how you can influence the default `native-image` build-time initialization policy, and configure it to initialize a specific class at runtime, depending on the use case. 
+This guide demonstrated how you can influence the default `native-image` class initialization policy, and configure it to initialize a specific class at build time, depending on the use case. 
+The other benefits of the build-time versus run-time initialization are described in [Class Initialization in Native Image](../ClassInitialization.md), but, in short, build-time initialization can significantly improve the application efficiency.
 
 ### Related Documentation
 
