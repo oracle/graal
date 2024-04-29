@@ -83,26 +83,26 @@ bench-renaissance-legacy-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifi
 }
 
 
-x52.default-jfr : ${linux-amd64} {
-  capabilities: ${linux-amd64.capabilities} [x52, no_frequency_scaling]
+e3.default-jfr : ${linux-amd64} {
+  capabilities: ${linux-amd64.capabilities} [e3, no_frequency_scaling]
   environment : {
     JVM_CONFIG  : ${jvm-config.default}
     JVM         : "server"
-    MACHINE_NAME: "x52"
+    MACHINE_NAME: "e3"
     BENCH_SERVER_EXTRAS : "target:weekly-jfr"
   }
   targets: [bench, weekly]
 }
 
-x52.tmpfs10g-jfr : ${x52.default-jfr} {
-  capabilities: ${x52.default-jfr.capabilities} [tmpfs10g]
+e3.tmpfs10g-jfr : ${e3.default-jfr} {
+  capabilities: ${e3.default-jfr.capabilities} [tmpfs10g]
 }
 
 builds += [
-  ${x52.tmpfs10g-jfr} ${bench-dacapo-jfr}                        ${oraclejdk8} { name: "bench-compiler-dacapo-linux-x52-jfr" }
-  ${x52.tmpfs10g-jfr} ${bench-scala-dacapo-jfr}                  ${oraclejdk8} { name: "bench-compiler-scala-dacapo-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-specjvm2008-Single-jfr}             ${oraclejdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-specjbb2015-jfr}                    ${oraclejdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-renaissance-jfr}                    ${oraclejdk8} { name: "bench-compiler-renaissance-linux-x52-jfr", timelimit: "3:45:00" }
-  ${x52.default-jfr} ${bench-renaissance-legacy-jfr}             ${oraclejdk8} { name: "bench-compiler-renaissance-legacy-linux-x52-jfr" }
+  ${e3.tmpfs10g-jfr} ${bench-dacapo-jfr}                        ${oraclejdk8} { name: "bench-compiler-dacapo-linux-e3-jfr" }
+  ${e3.tmpfs10g-jfr} ${bench-scala-dacapo-jfr}                  ${oraclejdk8} { name: "bench-compiler-scala-dacapo-linux-e3-jfr" }
+  ${e3.default-jfr} ${bench-specjvm2008-Single-jfr}             ${oraclejdk8} { name: "bench-compiler-specjvm2008-Single-linux-e3-jfr" }
+  ${e3.default-jfr} ${bench-specjbb2015-jfr}                    ${oraclejdk8} { name: "bench-compiler-specjbb2015-linux-e3-jfr" }
+  ${e3.default-jfr} ${bench-renaissance-jfr}                    ${oraclejdk8} { name: "bench-compiler-renaissance-linux-e3-jfr", timelimit: "3:45:00" }
+  ${e3.default-jfr} ${bench-renaissance-legacy-jfr}             ${oraclejdk8} { name: "bench-compiler-renaissance-legacy-linux-e3-jfr" }
 ]

@@ -14,7 +14,7 @@ bench_js_linux: ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_
       ${bench_js_linux.cmd} ["--jvm-config=native"]
       ${bench_js_linux.upload}
   ]
-  capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
+  capabilities: [no_frequency_scaling, tmpfs25g, e3, linux, amd64]
   targets: [bench]
   timelimit: "1:00:00"
 }
