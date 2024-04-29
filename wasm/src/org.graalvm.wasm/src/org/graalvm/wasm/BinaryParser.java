@@ -1802,7 +1802,7 @@ public class BinaryParser extends BinaryStreamParser {
                 break;
             case Instructions.VECTOR:
                 checkSIMDSupport();
-                int vectorOpcode = read1() & 0xFF;
+                int vectorOpcode = readUnsignedInt32();
                 state.addVectorFlag();
                 switch (vectorOpcode) {
                     case Instructions.VECTOR_V128_LOAD:
