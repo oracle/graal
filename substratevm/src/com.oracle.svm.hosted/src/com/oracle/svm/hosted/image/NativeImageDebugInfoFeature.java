@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.image;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -97,6 +98,11 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
             bfdNameProvider.setNativeLibs(accessImpl.getNativeLibraries());
         }
+
+        /*
+         * Ensure ClassLoader.nameAndId is available at runtime for type lookup from gdb
+         */
+        access.registerAsAccessed(ReflectionUtil.lookupField(ClassLoader.class, "nameAndId"));
     }
 
     @Override
