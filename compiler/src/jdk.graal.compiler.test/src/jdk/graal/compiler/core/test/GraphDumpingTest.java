@@ -25,7 +25,6 @@
 package jdk.graal.compiler.core.test;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.Arrays;
 
 import org.graalvm.collections.EconomicMap;
@@ -67,7 +66,7 @@ public class GraphDumpingTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     @Test
     public void testDump() throws IOException {
-        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "GraphDumpingTest")) {
+        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory(this, "GraphDumpingTest")) {
             compileWithDumping("snippet01", temp);
         }
     }
@@ -75,7 +74,7 @@ public class GraphDumpingTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     @Test
     public void testInvalidNodeProperties() throws IOException {
-        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "GraphDumpingTest")) {
+        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory(this, "GraphDumpingTest")) {
             StructuredGraph graph = compileWithDumping("snippet02", temp);
 
             // introduce an invalid node with broken properties

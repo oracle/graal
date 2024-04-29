@@ -240,7 +240,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                     List<ZipProbe> initialZipProbes,
                     List<String> extraVmArgs,
                     String... mainClassAndArgs) throws IOException, InterruptedException {
-        final File dumpPath = new File(CompilationWrapperTest.class.getSimpleName() + "_" + System.currentTimeMillis()).getAbsoluteFile();
+        final Path dumpPath = getOutputDirectory(CompilationWrapperTest.class).resolve(CompilationWrapperTest.class.getSimpleName() + "_" + nowAsFileName());
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
         vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
         vmArgs.remove("-esa");
@@ -284,7 +284,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             Assert.assertTrue(line, m.find());
             String diagnosticOutputZip = m.group(1);
 
-            List<String> dumpPathEntries = Arrays.asList(dumpPath.list());
+            List<String> dumpPathEntries = List.of(dumpPath.toFile().list());
 
             File zip = new File(diagnosticOutputZip).getAbsoluteFile();
             Assert.assertTrue(zip.toString(), zip.exists());
@@ -324,7 +324,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                 zip.delete();
             }
         } finally {
-            Path directory = dumpPath.toPath();
+            Path directory = dumpPath;
             removeDirectory(directory);
         }
     }

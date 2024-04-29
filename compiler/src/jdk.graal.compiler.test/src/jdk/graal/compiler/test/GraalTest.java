@@ -31,13 +31,16 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
+import java.security.CodeSource;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -591,13 +594,61 @@ public class GraalTest {
         return createTimeout(milliseconds, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Find the "mxbuild" directory in the file system path of {@code testClass} if possible.
+     */
+    public static Path findMxBuildDirectory(Class<?> testClass) {
+        Class<?> tc = testClass == null ? GraalTest.class : testClass;
+        CodeSource codeSource = tc.getProtectionDomain().getCodeSource();
+        if (codeSource != null) {
+            URL location = codeSource.getLocation();
+            try {
+                Path path = Path.of(location.toURI());
+                for (Path c : path) {
+                    if (c.toString().equals("mxbuild") && Files.isDirectory(c)) {
+                        return c;
+                    }
+                }
+            } catch (URISyntaxException e) {
+                // ignore
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Gets the value of {@link Instant#now()} as a string suitable for use as a file name.
+     */
+    public static String nowAsFileName() {
+        // Sanitize for Windows by replacing ':' with '_'
+        return String.valueOf(Instant.now()).replace(':', '_');
+    }
+
+    /**
+     * Gets the directory under which output for {@code testClass} should be generated.
+     */
+    public static Path getOutputDirectory(Class<?> testClass) {
+        Path parent = findMxBuildDirectory(testClass);
+        if (parent == null) {
+            parent = Path.of("mxbuild");
+            if (!Files.isDirectory(parent)) {
+                parent = Path.of(".");
+            }
+        }
+        return parent.toAbsolutePath();
+    }
+
     public static class TemporaryDirectory implements AutoCloseable {
 
         public final Path path;
         private IOException closeException;
 
-        public TemporaryDirectory(Path dir, String prefix, FileAttribute<?>... attrs) throws IOException {
-            path = Files.createTempDirectory(dir == null ? Paths.get(".") : dir, prefix, attrs);
+        public TemporaryDirectory(Class<?> testClass, String prefix, FileAttribute<?>... attrs) throws IOException {
+            path = Files.createTempDirectory(getOutputDirectory(testClass), prefix, attrs);
+        }
+
+        public TemporaryDirectory(GraalTest test, String prefix, FileAttribute<?>... attrs) throws IOException {
+            path = Files.createTempDirectory(getOutputDirectory(test.getClass()), prefix, attrs);
         }
 
         @Override

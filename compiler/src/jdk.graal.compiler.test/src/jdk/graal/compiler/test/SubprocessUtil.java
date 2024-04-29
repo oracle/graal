@@ -496,7 +496,11 @@ public final class SubprocessUtil {
      *
      * Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
      */
-    private static final Path ARGFILES_DIRECTORY = Path.of("SubprocessUtil-argfiles").toAbsolutePath();
+    private static final Path ARGFILES_DIRECTORY = initArgfilesDirectory();
+
+    private static Path initArgfilesDirectory() {
+        return GraalTest.getOutputDirectory(SubprocessUtil.class).resolve("SubprocessUtil-argfiles");
+    }
 
     /**
      * Records whether {@link #ARGFILES_DIRECTORY} existed before the JVM started.
@@ -537,9 +541,7 @@ public final class SubprocessUtil {
         while (true) {
             try {
                 Path dir = Files.createDirectories(ARGFILES_DIRECTORY);
-                // Sanitize for Windows by replacing ':' with '_'
-                String now = String.valueOf(Instant.now()).replace(':', '_');
-                argfile = Files.createFile(dir.resolve(now + ".argfile"));
+                argfile = Files.createFile(dir.resolve(GraalTest.nowAsFileName() + ".argfile"));
                 break;
             } catch (FileAlreadyExistsException e) {
                 // try again

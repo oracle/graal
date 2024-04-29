@@ -46,7 +46,7 @@ public class InvokerSignatureMismatchTest extends CustomizedBytecodePatternTest 
     @Test
     public void test() throws Throwable {
         List<String> args = withoutDebuggerArguments(getVMCommandLine());
-        try (TemporaryDirectory temp = new TemporaryDirectory(null, getClass().getSimpleName())) {
+        try (TemporaryDirectory temp = new TemporaryDirectory(this, getClass().getSimpleName())) {
             args.add("--class-path=" + temp);
             args.add("--patch-module=java.base=" + temp);
             args.add("-XX:-TieredCompilation");
