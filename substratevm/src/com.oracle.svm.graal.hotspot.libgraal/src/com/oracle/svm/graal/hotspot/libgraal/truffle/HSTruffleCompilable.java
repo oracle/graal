@@ -75,6 +75,7 @@ import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.word.WordFactory;
 
 /**
  * Proxy for a {@code HotSpotOptimizedCallTarget} object in the HotSpot heap.
@@ -230,7 +231,7 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     @TruffleFromLibGraal(IsSameOrSplit)
     @Override
     public boolean isSameOrSplit(TruffleCompilable ast) {
-        JObject astHandle = ((HSTruffleCompilable) ast).getHandle();
+        JObject astHandle = ast == null ? WordFactory.nullPointer() : ((HSTruffleCompilable) ast).getHandle();
         return callIsSameOrSplit(calls, env(), getHandle(), astHandle);
     }
 
