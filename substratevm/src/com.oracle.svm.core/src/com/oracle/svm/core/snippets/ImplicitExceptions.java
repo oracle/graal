@@ -35,6 +35,7 @@ import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
@@ -106,6 +107,20 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor THROW_NEW_ASSERTION_ERROR_NULLARY = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewAssertionErrorNullary", NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ASSERTION_ERROR_OBJECT = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewAssertionErrorObject", NO_SIDE_EFFECT);
 
+    public static final SubstrateForeignCallDescriptor CREATE_OPT_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOptNullPointerException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_OPT_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOptOutOfBoundsException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_OPT_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOptClassCastException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_OPT_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOptArrayStoreException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_OPT_INCOMPATIBLE_CLASS_CHANGE_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOptIncompatibleClassChangeError",
+                    HAS_SIDE_EFFECT);
+
+    public static final SubstrateForeignCallDescriptor THROW_OPT_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwOptNullPointerException", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_OPT_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwOptOutOfBoundsException", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_OPT_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwOptClassCastException", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_OPT_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwOptArrayStoreException", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_OPT_INCOMPATIBLE_CLASS_CHANGE_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwOptIncompatibleClassChangeError",
+                    NO_SIDE_EFFECT);
+
     public static final SubstrateForeignCallDescriptor GET_CACHED_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedNullPointerException", HAS_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor GET_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedOutOfBoundsException", HAS_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor GET_CACHED_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedClassCastException", HAS_SIDE_EFFECT);
@@ -150,6 +165,9 @@ public class ImplicitExceptions {
                     THROW_CACHED_NULL_POINTER_EXCEPTION, THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION, THROW_CACHED_CLASS_CAST_EXCEPTION, THROW_CACHED_ARRAY_STORE_EXCEPTION,
                     THROW_CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR,
                     THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION, THROW_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION, THROW_CACHED_ARITHMETIC_EXCEPTION, THROW_CACHED_ASSERTION_ERROR,
+                    CREATE_OPT_NULL_POINTER_EXCEPTION, CREATE_OPT_OUT_OF_BOUNDS_EXCEPTION, CREATE_OPT_CLASS_CAST_EXCEPTION, CREATE_OPT_ARRAY_STORE_EXCEPTION,
+                    CREATE_OPT_INCOMPATIBLE_CLASS_CHANGE_ERROR,
+                    THROW_OPT_NULL_POINTER_EXCEPTION, THROW_OPT_OUT_OF_BOUNDS_EXCEPTION, THROW_OPT_CLASS_CAST_EXCEPTION, THROW_OPT_ARRAY_STORE_EXCEPTION, THROW_OPT_INCOMPATIBLE_CLASS_CHANGE_ERROR
     };
 
     private static final FastThreadLocalInt implicitExceptionsAreFatal = FastThreadLocalFactory.createInt("ImplicitExceptions.implicitExceptionsAreFatal");
@@ -404,6 +422,79 @@ public class ImplicitExceptions {
     private static void throwNewAssertionErrorObject(Object detailMessage) {
         vmErrorIfImplicitExceptionsAreFatal(false);
         throw new AssertionError(detailMessage);
+    }
+
+    private static final String IMPRECISE_STACK_MSG = "Stack trace is imprecise, the top frames are missing and/or have wrong line numbers. To get precise stack traces, build the image with option " +
+                    SubstrateOptionsParser.commandArgument(SubstrateOptions.ReduceImplicitExceptionStackTraceInformation, "-");
+
+    /** Foreign call: {@link #CREATE_OPT_NULL_POINTER_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static NullPointerException createOptNullPointerException() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        return new NullPointerException(IMPRECISE_STACK_MSG);
+    }
+
+    /** Foreign call: {@link #CREATE_OPT_OUT_OF_BOUNDS_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static ArrayIndexOutOfBoundsException createOptOutOfBoundsException() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        return new ArrayIndexOutOfBoundsException(IMPRECISE_STACK_MSG);
+    }
+
+    /** Foreign call: {@link #CREATE_OPT_CLASS_CAST_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static ClassCastException createOptClassCastException() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        return new ClassCastException(IMPRECISE_STACK_MSG);
+    }
+
+    /** Foreign call: {@link #CREATE_OPT_ARRAY_STORE_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static ArrayStoreException createOptArrayStoreException() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        return new ArrayStoreException(IMPRECISE_STACK_MSG);
+    }
+
+    /** Foreign call: {@link #CREATE_OPT_INCOMPATIBLE_CLASS_CHANGE_ERROR}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static IncompatibleClassChangeError createOptIncompatibleClassChangeError() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        return new IncompatibleClassChangeError(IMPRECISE_STACK_MSG);
+    }
+
+    /** Foreign call: {@link #THROW_OPT_NULL_POINTER_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwOptNullPointerException() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        throw new NullPointerException(IMPRECISE_STACK_MSG);
+    }
+
+    /** Foreign call: {@link #THROW_OPT_OUT_OF_BOUNDS_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwOptOutOfBoundsException() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        throw new ArrayIndexOutOfBoundsException(IMPRECISE_STACK_MSG);
+    }
+
+    /** Foreign call: {@link #THROW_OPT_CLASS_CAST_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwOptClassCastException() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        throw new ClassCastException(IMPRECISE_STACK_MSG);
+    }
+
+    /** Foreign call: {@link #THROW_OPT_ARRAY_STORE_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwOptArrayStoreException() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        throw new ArrayStoreException(IMPRECISE_STACK_MSG);
+    }
+
+    /** Foreign call: {@link #THROW_OPT_INCOMPATIBLE_CLASS_CHANGE_ERROR}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwOptIncompatibleClassChangeError() {
+        vmErrorIfImplicitExceptionsAreFatal(false);
+        throw new IncompatibleClassChangeError(IMPRECISE_STACK_MSG);
     }
 
     /** Foreign call: {@link #GET_CACHED_NULL_POINTER_EXCEPTION}. */
