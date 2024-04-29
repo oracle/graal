@@ -24,8 +24,11 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.debug.DebugContext;
@@ -140,11 +143,29 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                     };
                 };
 
+                Supplier<BasicProgbitsSectionImpl> makeGDBSectionImpl = () -> {
+                    var content = AssemblyBuffer.createOutputAssembler(objectFile.getByteOrder());
+                    // 1 -> python file
+                    content.writeByte((byte) 1);
+                    content.writeString("./svmhelpers.py");
+                    return new BasicProgbitsSectionImpl(content.getBlob()) {
+                        @Override
+                        public boolean isLoadable() {
+                            return false;
+                        }
+                    };
+                };
+
                 var imageClassLoader = accessImpl.getImageClassLoader();
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.classpath", makeSectionImpl.apply(DiagnosticUtils.getClassPath(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.modulepath", makeSectionImpl.apply(DiagnosticUtils.getModulePath(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(DiagnosticUtils.getBuilderArguments(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(DiagnosticUtils.getBuilderProperties()));
+
+                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib/svm/debug/svmhelpers.py");
+                if (Files.exists(svmDebugHelper)) {
+                    objectFile.newUserDefinedSection(".debug_gdb_scripts", makeGDBSectionImpl.get());
+                }
             }
         }
         ProgressReporter.singleton().setDebugInfoTimer(timer);
