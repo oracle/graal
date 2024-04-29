@@ -143,7 +143,7 @@ public class NativeImageOptions {
     @Option(help = "Allow MethodTypeFlow to see @Fold methods")//
     public static final HostedOptionKey<Boolean> AllowFoldMethods = new HostedOptionKey<>(false);
 
-    @APIOption(name = "report-unsupported-elements-at-runtime", deprecated = "The flag is not needed anymore as usage of unsupported elements is now reported at run time by default.")//
+    @APIOption(name = "report-unsupported-elements-at-runtime", deprecated = "The option is deprecated and will be removed in the future. The use of unsupported elements is always reported at run time.")//
     @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = Debug)//
     public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<>(true);
 
