@@ -57,18 +57,6 @@
       threads_per_node:: if self.is_numa then self.num_threads / std.length(self.numa_nodes) else self.num_threads,
     },
 
-<<<<<<< HEAD
-    x52:: common.linux_amd64 + self._bench_machine + {
-      machine_name:: "x52",
-      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
-      numa_nodes:: [0, 1],
-      default_numa_node:: 0,
-      num_threads:: 72
-    },
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 05e25e0674d (Drop x52 machine type)
     e3:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "e3",
       capabilities: ["e3", "tmpfs25g", "linux", "amd64"],
@@ -76,14 +64,6 @@
       default_numa_node:: 1,
       num_threads:: 256
     },
-    e4_8_64:: common.linux_amd64 + self._bench_machine + {
-      machine_name:: "e4_8_64",
-      capabilities+: ["tmpfs25g"],
-      numa_nodes:: [0],
-      default_numa_node:: 0,
-      num_threads:: 16
-    },
->>>>>>> 77b88ccb9b5 (CI E3 benchmarking migration)
     x82:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x82",
       capabilities+: ["no_frequency_scaling", "tmpfs25g"],
