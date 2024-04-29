@@ -180,7 +180,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   }),
 
   local deploy_graalvm_base = svm_common + common_os_deploy + name + task_spec(vm.check_structure) + build_base_graalvm_image + task_spec({
-      run +: vm.collect_profiles() + [
+      run +: vm.collect_profiles(mx_prefix=self.mx_vm_common) + [
         self.mx_vm_common + vm.vm_profiles + record_file_sizes,
         upload_file_sizes,
       ],

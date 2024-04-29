@@ -24,7 +24,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   libgraal_env: 'libgraal',
   custom_vm: {},
   vm_profiles:: [],
-  collect_profiles():: [],
+  collect_profiles(mx_prefix=vm_common.mx_vm_common):: [],
 
   mx_cmd_base_no_env: ['mx'],
 
