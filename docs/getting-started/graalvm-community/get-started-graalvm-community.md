@@ -67,7 +67,7 @@ Hello, World!
 Continue to [Native Image basics](../../reference-manual/native-image/NativeImageBasics.md) for more information about the technology.
 For users who are familiar with GraalVM Native Image but may have little experience using it, proceed to [User Guides](../../reference-manual/native-image/guides/guides.md).
 
-For more information on the Graal compiler, see the [compiler documentation](../../reference-manual/java/compiler.md). 
+For more information on the compiler, see [Graal Compiler](../../reference-manual/java/compiler.md). 
 Larger Java examples can be found in the [GraalVM Demos repository on GitHub](https://github.com/graalvm/graalvm-demos).
 
 ### Advanced Users

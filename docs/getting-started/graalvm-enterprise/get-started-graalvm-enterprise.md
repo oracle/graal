@@ -76,7 +76,7 @@ Hello, World!
 Continue to [Native Image basics](../../reference-manual/native-image/NativeImageBasics.md) to educate yourself about the technology.
 For users who are familiar with GraalVM Native Image but may have little experience using it, proceed to [User Guides](../../reference-manual/native-image/guides/guides.md).
 
-For more information on the Graal compiler, see the [compiler documentation](../../reference-manual/java/compiler.md). 
+For more information on the compiler, see the [Graal Compiler](../../reference-manual/java/compiler.md). 
 Larger Java examples can be found in the [GraalVM Demos repository on GitHub](https://github.com/graalvm/graalvm-demos).
 
 ### Oracle Cloud Infrastructure Users
@@ -88,6 +88,6 @@ This page focuses on using Oracle GraalVM with an Oracle Cloud Infrastructure Co
 
 Developers who are more experienced with GraalVM or want to do more with GraalVM can proceed directly to [Reference Manuals](../../reference-manual/reference-manuals.md) for in-depth documentation. 
 
-You can find information on GraalVM's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in the [Oracle GraalVM Java API Reference](https://docs.oracle.com/en/graalvm/jdk/21/sdk/index.html).
+You can find information on GraalVM's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in the [Oracle GraalVM Java API Reference](https://docs.oracle.com/en/graalvm/jdk/22/sdk/index.html).
 
 We also recommend checking the [GraalVM Team Blog](https://medium.com/graalvm).

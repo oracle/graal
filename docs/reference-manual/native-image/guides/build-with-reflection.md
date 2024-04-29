@@ -175,4 +175,4 @@ The following steps demonstrate how to use the agent, and its output, to create 
 
 * [Assisted Configuration with Tracing Agent](../AutomaticMetadataCollection.md#tracing-agent)
 * [Reachability Metadata: Reflection](../ReachabilityMetadata.md#reflection)
-* [java.lang.reflect Javadoc](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/reflect/package-summary.html)
+* [java.lang.reflect Javadoc](https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/lang/reflect/package-summary.html)
