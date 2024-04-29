@@ -33,6 +33,7 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.Map;
 
+import com.oracle.svm.core.VMInspectionOptions;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -78,6 +79,8 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
+import com.oracle.svm.core.nmt.NmtPreImageHeapDataAccess;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
@@ -238,13 +241,22 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         WordPointer isolatePtr = StackValue.get(WordPointer.class);
-        int error = Isolates.create(isolatePtr, parameters);
+        NmtPreImageHeapData nmtData = WordFactory.nullPointer();
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            nmtData = NmtPreImageHeapDataAccess.create();
+        }
+
+        int error = Isolates.create(isolatePtr, parameters, nmtData);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
         Isolate isolate = isolatePtr.read();
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
+        }
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NmtPreImageHeapDataAccess.trackAndTeardown(nmtData);
         }
 
         return createIsolate0(isolate, parameters, parsedArgs);
