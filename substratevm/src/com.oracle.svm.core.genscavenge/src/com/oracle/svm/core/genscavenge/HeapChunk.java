@@ -203,7 +203,7 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void setTopPointerCarefully(Header<?> that, Pointer newTop) {
+    public static void setTopPointerCarefully(Header<?> that, Pointer newTop) {
         assert getTopPointer(that).isNonNull() : "Not safe: top currently points to NULL.";
         assert getTopPointer(that).belowOrEqual(newTop) : "newTop too low.";
         assert newTop.belowOrEqual(getEndPointer(that)) : "newTop too high.";

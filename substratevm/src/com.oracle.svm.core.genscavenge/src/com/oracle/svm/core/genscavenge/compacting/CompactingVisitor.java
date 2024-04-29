@@ -35,27 +35,31 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 /** Moves sequences of live objects to their planned location during compaction. */
 public final class CompactingVisitor implements ObjectMoveInfo.Visitor {
     private AlignedHeapChunk.AlignedHeader chunk;
-    private UnsignedWord top;
+    private UnsignedWord oldChunkTop;
+
+    public void init(AlignedHeapChunk.AlignedHeader c) {
+        this.chunk = c;
+        this.oldChunkTop = HeapChunk.getTopPointer(c);
+        HeapChunk.setTopPointer(c, AlignedHeapChunk.getObjectsStart(c));
+    }
 
     @Override
     public boolean visit(Pointer p) {
-        Pointer newAddress = ObjectMoveInfo.getNewAddress(p);
-        if (newAddress.equal(p)) {
-            return true;
-        }
         UnsignedWord size = computeObjSeqSize(p);
         if (size.equal(0)) { // gap right at the chunk's start
+            assert p.equal(AlignedHeapChunk.getObjectsStart(chunk));
             return true;
         }
 
-        UnmanagedMemoryUtil.copy(p, newAddress, size);
-
-        // TODO: Find a more elegant way to set the top pointer during/after compaction.
-        AlignedHeapChunk.AlignedHeader newChunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(newAddress);
-        HeapChunk.setTopPointer(newChunk, newAddress.add(size));
-        if (chunk.notEqual(newChunk)) {
-            HeapChunk.setTopPointer(chunk, AlignedHeapChunk.getObjectsStart(chunk));
+        Pointer destAddress = ObjectMoveInfo.getNewAddress(p);
+        AlignedHeapChunk.AlignedHeader destChunk;
+        if (destAddress.equal(p)) {
+            destChunk = chunk;
+        } else {
+            UnmanagedMemoryUtil.copy(p, destAddress, size);
+            destChunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(destAddress);
         }
+        HeapChunk.setTopPointerCarefully(destChunk, destAddress.add(size));
         return true;
     }
 
@@ -63,14 +67,9 @@ public final class CompactingVisitor implements ObjectMoveInfo.Visitor {
     private UnsignedWord computeObjSeqSize(Pointer objSeqStart) {
         Pointer nextObjSeq = ObjectMoveInfo.getNextObjectSeqAddress(objSeqStart);
         if (nextObjSeq.isNull()) {
-            return top.subtract(objSeqStart); // last sequence of objects in chunk
+            return oldChunkTop.subtract(objSeqStart); // last sequence of objects in chunk
         }
         int gap = ObjectMoveInfo.getPrecedingGapSize(nextObjSeq);
         return nextObjSeq.subtract(gap).subtract(objSeqStart);
-    }
-
-    public void init(AlignedHeapChunk.AlignedHeader c) {
-        this.chunk = c;
-        this.top = HeapChunk.getTopPointer(c);
     }
 }
