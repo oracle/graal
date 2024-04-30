@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -219,6 +219,14 @@ public interface Feature {
          * @since 19.0
          */
         void registerAsInHeap(Class<?> type);
+
+        /**
+         * Registers the provided type as allocatable without running a constructor, via
+         * Unsafe.allocateInstance or via the JNI function AllocObject.
+         *
+         * @since 24.1
+         */
+        void registerAsUnsafeAllocated(Class<?> type);
 
         /**
          * Registers the provided field as accesses, i.e., the static analysis assumes the field is

@@ -940,7 +940,8 @@ public class NativeImageGenerator {
 
                 OptionClassFilter missingRegistrationClassFilter = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.ThrowMissingRegistrationErrors,
                                 SubstrateOptions.ThrowMissingRegistrationErrorsPaths);
-                ImageSingletons.add(MissingRegistrationSupport.class, new MissingRegistrationSupport(missingRegistrationClassFilter));
+                MissingRegistrationSupport missingRegistrationSupport = new MissingRegistrationSupport(missingRegistrationClassFilter);
+                ImageSingletons.add(MissingRegistrationSupport.class, missingRegistrationSupport);
 
                 if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(options)) {
                     ImageSingletons.add(ImageBuildStatistics.class, new ImageBuildStatistics());
@@ -967,7 +968,7 @@ public class NativeImageGenerator {
                 AnnotationSubstitutionProcessor annotationSubstitutions = createAnnotationSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);
                 CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
                 aUniverse = createAnalysisUniverse(options, target, loader, originalMetaAccess, annotationSubstitutions, cEnumProcessor,
-                                classInitializationSupport, Collections.singletonList(harnessSubstitutions));
+                                classInitializationSupport, Collections.singletonList(harnessSubstitutions), missingRegistrationSupport);
 
                 ImageLayerLoader imageLayerLoader = null;
                 if (SVMImageLayerSupport.singleton().loadAnalysis()) {
@@ -1091,10 +1092,10 @@ public class NativeImageGenerator {
 
     public static AnalysisUniverse createAnalysisUniverse(OptionValues options, TargetDescription target, ImageClassLoader loader, MetaAccessProvider originalMetaAccess,
                     AnnotationSubstitutionProcessor annotationSubstitutions, SubstitutionProcessor cEnumProcessor,
-                    ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions) {
+                    ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions, MissingRegistrationSupport missingRegistrationSupport) {
         SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(cEnumProcessor, annotationSubstitutions, additionalSubstitutions);
 
-        SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, loader, classInitializationSupport, annotationSubstitutions);
+        SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, loader, classInitializationSupport, annotationSubstitutions, missingRegistrationSupport);
 
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);

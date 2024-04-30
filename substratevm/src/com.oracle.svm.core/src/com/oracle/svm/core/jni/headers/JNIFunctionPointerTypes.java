@@ -45,6 +45,11 @@ public final class JNIFunctionPointerTypes {
         JNIObjectHandle invoke(JNIEnvironment env, CCharPointer name);
     }
 
+    public interface AllocObjectFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz);
+    }
+
     public interface GetMethodIDFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JNIMethodId invoke(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature);

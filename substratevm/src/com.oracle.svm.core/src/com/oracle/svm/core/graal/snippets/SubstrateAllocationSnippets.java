@@ -272,7 +272,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public DynamicHub validateNewInstanceClass(DynamicHub hub) {
         if (probability(EXTREMELY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.canInstantiateAsInstance())) {
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.canUnsafeInstantiateAsInstance())) {
                 return nonNullHub;
             }
         }
@@ -317,7 +317,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             throw new NullPointerException("Allocation type is null.");
         } else if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(hub.getLayoutEncoding())) {
             throw new InstantiationException("Can only allocate instance objects for concrete classes.");
-        } else if (!hub.isInstantiated()) {
+        } else if (!hub.canUnsafeInstantiateAsInstance()) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 MissingReflectionRegistrationUtils.forClass(hub.getTypeName());
             }

@@ -865,7 +865,7 @@ public class UniverseBuilder {
             hUniverse.hostVM().recordActivity();
 
             int layoutHelper;
-            boolean canInstantiateAsInstance = false;
+            boolean canUnsafeInstantiateAsInstance = false;
             int monitorOffset = 0;
             int identityHashOffset = 0;
             if (type.isInstanceClass()) {
@@ -879,10 +879,10 @@ public class UniverseBuilder {
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
                     layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
-                    canInstantiateAsInstance = type.isInstantiated() && HybridLayout.canInstantiateAsInstance(type);
+                    canUnsafeInstantiateAsInstance = type.wrapped.isUnsafeAllocated() && HybridLayout.canInstantiateAsInstance(type);
                 } else {
                     layoutHelper = LayoutEncoding.forPureInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
-                    canInstantiateAsInstance = type.isInstantiated();
+                    canUnsafeInstantiateAsInstance = type.wrapped.isUnsafeAllocated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
                 identityHashOffset = instanceClass.getIdentityHashOffset();
@@ -910,7 +910,7 @@ public class UniverseBuilder {
             DynamicHub hub = type.getHub();
             SerializationRegistry s = ImageSingletons.lookup(SerializationRegistry.class);
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset,
-                            referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance,
+                            referenceMapIndex, type.isInstantiated(), canUnsafeInstantiateAsInstance,
                             s.isRegisteredForSerialization(type.getJavaClass()));
 
             if (SubstrateOptions.closedTypeWorld()) {
