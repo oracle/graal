@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "20424ee856de472c2b0f38a6256700b62b6e7c20",
+                "version": "7fee5ebb09b95968b837d3e90b5a90b1cb855cb4",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -65,7 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "f131a6f8f5144cd6b80316842c4bdbb4e48e4509",
+                "version": "3469cedd034311b3242b311f6b5deffd4a8264e6",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
