@@ -9589,7 +9589,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(); // switch
                 b.end(); // try
                 b.startCatchBlock(type(Throwable.class), "t");
+                b.startIf().string("t != ex").end().startBlock();
                 b.statement("ex = resolveThrowable($root, " + localFrame() + ", bci, t)");
+                b.end();
                 b.statement("continue");
                 b.end();
             }
