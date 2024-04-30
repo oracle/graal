@@ -476,4 +476,44 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         new LoopUnswitchingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, getDefaultHighTierContext());
     }
+
+    static final double ULP = Math.ulp(0.25);
+
+    /**
+     * Simulate a profile that due to floating imprecision has branch probabilities summing to the
+     * next floating point number after 1.
+     */
+    public static int testImpreciseProfileSnippet(int a) {
+        int sum = 0;
+        for (int i = 0; i < 1000; i++) {
+            switch (a) {
+                case 0:
+                    GraalDirectives.injectSwitchCaseProbability(0.25);
+                    sum += 1;
+                    break;
+                case 1:
+                    GraalDirectives.injectSwitchCaseProbability(0.25);
+                    sum += 2;
+                    break;
+                case 2:
+                    GraalDirectives.injectSwitchCaseProbability(0.25);
+                    sum += 3;
+                    break;
+                default:
+                    GraalDirectives.injectSwitchCaseProbability(0.25 + ULP);
+                    sum += a;
+                    break;
+            }
+        }
+        return sum;
+    }
+
+    @Test
+    public void testImpreciseProfile() {
+        final StructuredGraph graph = parseEager("testImpreciseProfileSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        // Apply canonicalizer to inject switch probabilities
+        canonicalizer.apply(graph, getDefaultHighTierContext());
+        new LoopUnswitchingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, getDefaultHighTierContext());
+    }
 }

@@ -45,6 +45,7 @@ import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.Unroll
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
@@ -56,7 +57,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopBeginNode;
-import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
+import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -394,7 +395,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         StructuredGraph graph = loop.loopBegin().graph();
         OptionValues options = loop.loopBegin().getOptions();
 
-        boolean isTrusted = ProfileSource.isTrusted(loop.localFrequencySource());
+        boolean isTrusted = ProfileData.ProfileSource.isTrusted(loop.localFrequencySource());
         double loopFrequency = isTrusted ? loop.localLoopFrequency() : DefaultLoopFrequency.getValue(options);
         /* When a loop has a greater local loop frequency we allow a bigger change in code size */
         int maxDiff = LoopUnswitchTrivial.getValue(options) + (int) (LoopUnswitchFrequencyBoost.getValue(options) * (loopFrequency - 1.0));
@@ -428,7 +429,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         for (List<ControlSplitNode> split : controlSplits.getValues()) {
             boolean isTrusted = true;
             for (ControlSplitNode node : split) {
-                isTrusted = isTrusted && ProfileSource.isTrusted(node.getProfileData().getProfileSource());
+                isTrusted = isTrusted && ProfileData.ProfileSource.isTrusted(node.getProfileData().getProfileSource());
             }
 
             int approxCodeSizeChange = approxCodeSizeChange(loop, split);
@@ -578,7 +579,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
                         factor *= p;
                     }
                 }
-                assert 0 <= factor && factor <= 1 : "factor should be between 0 and 1, but is : " + factor;
+                assert ProfileData.isApproximatelyInRange(factor, 0.0, 1.0) : "factor should be between 0 and 1, but is : " + factor;
             } else {
                 debug.log("control split %s has an untrusted profile source", split);
                 factor = DefaultUnswitchFactor.getValue(options);
