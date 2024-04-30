@@ -521,6 +521,10 @@ public abstract class AbstractPolyglotImpl {
                         hostLanguageOnly, registerInActiveEngines, polyglotHostService);
     }
 
+    public void onEngineCreated(Object polyglotEngine) {
+        getNext().onEngineCreated(polyglotEngine);
+    }
+
     public abstract int getPriority();
 
     public void preInitializeEngine() {

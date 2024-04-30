@@ -91,6 +91,7 @@ The accepted values are:
 - `--engine.InliningInliningBudget` : The base inlining budget for language-agnostic inlining (default: 12000). Syntax: [1, inf)
 - `--engine.InliningRecursionDepth` : Maximum depth for recursive inlining (default: 2, usage: [0, inf)).
 - `--engine.HostCallStackHeadRoom=[1, inf)<B>|<KB>|<MB>|<GB>` : Stack space headroom for calls to the host.
+- `--engine.InterpreterCallStackHeadRoom=[0, inf)<B>|<KB>|<MB>|<GB>` : Stack space headroom for any interpreter call. Supported only in the AOT mode.
 - `--engine.IsolateMemoryProtection=true|false` : Enable memory protection for the isolate.
 - `--engine.IsolateOption.<key>=<value>` : Isolate VM options.
 ```

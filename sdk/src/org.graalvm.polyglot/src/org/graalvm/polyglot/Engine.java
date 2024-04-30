@@ -1774,6 +1774,10 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public void onEngineCreated(Object polyglotEngine) {
+        }
+
+        @Override
         public Object createHostLanguage(Object access) {
             throw noPolyglotImplementationFound();
         }
