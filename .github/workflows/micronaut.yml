@@ -60,8 +60,8 @@ env:
 permissions:
   contents: read # to fetch code (actions/checkout)
 
-concurrency: 
-  group: ${{github.workflow}}
+concurrency:
+  group: "workflow = ${{ github.workflow }}, ref = ${{ github.event.ref }}, pr = ${{ github.event.pull_request.id }}"
   cancel-in-progress: true
 
 jobs:

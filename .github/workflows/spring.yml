@@ -55,6 +55,10 @@ env:
   SPRING_PETCLINIC_PATH: ${{ github.workspace }}/spring-petclinic
   SPRING_JAVA_VERSION: 21
 
+concurrency:
+  group: "workflow = ${{ github.workflow }}, ref = ${{ github.event.ref }}, pr = ${{ github.event.pull_request.id }}"
+  cancel-in-progress: true
+
 permissions:
   contents: read # to fetch code (actions/checkout)
 
