@@ -2166,6 +2166,11 @@ final class EngineAccessor extends Accessor {
         public void setIsolatePolyglot(AbstractPolyglotImpl instance) {
             PolyglotImpl.setIsolatePolyglot(instance);
         }
+
+        @Override
+        public Object getEngineData(Object polyglotEngine) {
+            return ((PolyglotEngineImpl) polyglotEngine).runtimeData;
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

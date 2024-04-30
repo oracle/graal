@@ -364,6 +364,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     }
 
+    @Override
+    public void onEngineCreated(Object polyglotEngine) {
+    }
+
     private static void logTruffleRuntimeWarning(Map<String, String> options, OptionValuesImpl engineOptions, EngineLoggerProvider loggerProvider) {
         boolean warnInterpreterOnly;
         if (engineOptions == null) {
