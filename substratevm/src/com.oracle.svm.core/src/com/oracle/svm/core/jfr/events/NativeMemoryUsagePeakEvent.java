@@ -26,6 +26,7 @@
 package com.oracle.svm.core.jfr.events;
 
 import jdk.jfr.Category;
+import jdk.jfr.DataAmount;
 import jdk.jfr.Description;
 import jdk.jfr.Event;
 import jdk.jfr.Experimental;
@@ -42,7 +43,9 @@ import jdk.jfr.StackTrace;
 @StackTrace(false)
 public class NativeMemoryUsagePeakEvent extends Event {
     @Label("Memory Type") public String type;
-    @Label("Peak Reserved") public long peakReserved;
-    @Label("Peak Committed") public long peakCommitted;
+    @Label("Peak Reserved")//
+    @DataAmount public long peakReserved;
+    @Label("Peak Committed")//
+    @DataAmount public long peakCommitted;
     @Label("Count At Peak") public long countAtPeak;
 }
