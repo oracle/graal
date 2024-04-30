@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import com.oracle.svm.graal.isolated.IsolatedHandles;
 import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -117,8 +118,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
 
     @Override
     public boolean isSameOrSplit(TruffleCompilable ast) {
-        IsolatedCompilableTruffleAST other = (IsolatedCompilableTruffleAST) ast;
-        return isSameOrSplit0(IsolatedCompileContext.get().getClient(), handle, other.handle);
+        ClientHandle<SubstrateCompilableTruffleAST> astHandle = ast == null ? IsolatedHandles.nullHandle() : ((IsolatedCompilableTruffleAST) ast).handle;
+        return isSameOrSplit0(IsolatedCompileContext.get().getClient(), handle, astHandle);
     }
 
     @Override
@@ -224,7 +225,10 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
                     ClientHandle<SubstrateCompilableTruffleAST> compilableHandle, ClientHandle<SubstrateCompilableTruffleAST> otherHandle) {
 
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
-        SubstrateCompilableTruffleAST other = IsolatedCompileClient.get().unhand(otherHandle);
+        SubstrateCompilableTruffleAST other = null;
+        if (otherHandle.notEqual(IsolatedHandles.nullHandle())) {
+            other = IsolatedCompileClient.get().unhand(otherHandle);
+        }
         return compilable.isSameOrSplit(other);
     }
 
