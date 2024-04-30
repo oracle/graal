@@ -16,6 +16,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-47832) Experimental support for upcalls from foreign code and other improvements to our implementation of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 454](https://openjdk.org/jeps/454)) on AMD64. Must be enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
 * (GR-52314) `-XX:MissingRegistrationReportingMode` can now be used on program invocation instead of as a build option, to avoid a rebuild when debugging missing registration errors.
 * (GR-51086) Introduce a new `--static-nolibc` API option as a replacement for the experimental `-H:±StaticExecutableWithDynamicLibC` option.
+* (GR-52732) Introduce a new `ReduceImplicitExceptionStackTraceInformation` hosted option that reduces image size by reducing the runtime metadata for implicit exceptions, at the cost of stack trace precision. The option is diabled by default, but enabled with optimization level 3 and profile guided optimizations.
 * (GR-52534) Change the digest (used e.g. for symbol names) from SHA-1 encoded as a hex string (40 bytes) to 128-bit Murmur3 as a Base-62 string (22 bytes).
 * (GR-52578) Print information about embedded resources into `embedded-resources.json` using the `-H:+GenerateEmbeddedResourcesFile` option.
 * (GR-51172) Add support to catch OutOfMemoryError exceptions on native image if there is no memory left.

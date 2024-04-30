@@ -203,7 +203,7 @@ Therefore, reducing the number of [reachable methods](#glossary-reachability) al
 ##### <a name="glossary-code-area-origins"></a>Origins of Code Area
 To help users understand where the machine code of the code area comes from, the build output shows a breakdown of the top origins.
 An origin is a group of Java sources and can be a JAR file, a package name, or a class name, depending on the information available.
-The [`java.base` module](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/module-summary.html), for example, contains base classes from the JDK.
+The [`java.base` module](https://docs.oracle.com/en/java/javase/22/docs/api/java.base/module-summary.html), for example, contains base classes from the JDK.
 The `svm.jar` file, the `org.graalvm.nativeimage.base` module, and similar origins contain internal sources for the Native Image runtime.
 To reduce the size of the code area and with that, the total size of the native executable, re-evaluate the dependencies of your application based on the code area breakdown.
 Some libraries and frameworks are better prepared for Native Image than others, and newer versions of a library or framework may improve (or worsen) their code footprint. 
@@ -283,7 +283,7 @@ Also, before migrating to the new flag make sure to update all framework depende
 
 #### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
 
-The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/17/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
+The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/22/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
 Use the [tracing agent](AutomaticMetadataCollection.md) to collect such metadata for your application.
 Otherwise, your application is unlikely to work properly.
 If your application is not a desktop application (for example using Swing or AWT directly), you may want to re-evaluate whether the dependency on AWT is actually needed.

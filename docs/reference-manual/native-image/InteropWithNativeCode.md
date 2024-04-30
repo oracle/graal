@@ -11,7 +11,7 @@ redirect_from: /reference-manual/native-image/ImplementingNativeMethodsInJavaWit
 You can use Native Image to convert Java code into a **native shared library** and call it from a native (C/C++) application just like any C function. 
 There are two mechanisms for calling natively-compiled Java methods:
 
-- [JNI Invocation API](https://docs.oracle.com/en/java/javase/17/docs/specs/jni/invocation.html), an API to load the JVM into an arbitrary native application. The advantage of using JNI Invocation API is support for multiple, isolated execution environments within the same process. 
+- [JNI Invocation API](https://docs.oracle.com/en/java/javase/22/docs/specs/jni/invocation.html), an API to load the JVM into an arbitrary native application. The advantage of using JNI Invocation API is support for multiple, isolated execution environments within the same process. 
 - [Native Image C API](C-API.md), an API specific to GraalVM Native Image. The advantage of using Native Image C API is that you can determine what your API will look like, but parameter and return types must be non-object types.
 
 ### Related Documentation

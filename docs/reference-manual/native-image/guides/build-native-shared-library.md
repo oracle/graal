@@ -28,7 +28,7 @@ native-image --shared -jar <jarfile> -o <libraryname>
 ```
 
 GraalVM makes it easy to use C to call into a native shared library. 
-There are two primary mechanisms for calling a method (function) embedded in a native shared library: the [Native Image C API](../C-API.md) and the [JNI Invocation API](https://docs.oracle.com/en/java/javase/17/docs/specs/jni/invocation.html).
+There are two primary mechanisms for calling a method (function) embedded in a native shared library: the [Native Image C API](../C-API.md) and the [JNI Invocation API](https://docs.oracle.com/en/java/javase/22/docs/specs/jni/invocation.html).
 
 This guide describes how to use the **Native Image C API**. It consists of the following steps:
 1. Create and compile a Java class library containing at least one entrypoint method.

@@ -285,6 +285,14 @@ public class SubstrateOptions {
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.SourceLevelDebug.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.AOTTrivialInline.update(values, newLevel != OptimizationLevel.O0);
+
+            /*
+             * We do not want to enable this optimization yet by default, because it reduces the
+             * precision of implicit stack traces. But for optimized release builds, including pgo
+             * builds, it is a valuable image size reduction.
+             */
+            SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, newLevel == OptimizationLevel.O3);
+
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
@@ -1167,4 +1175,8 @@ public class SubstrateOptions {
                         "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
         public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
     }
+
+    @Option(help = "Reduce the amount of metadata in the image for implicit exceptions by removing inlining information from the stack trace. " +
+                    "This makes the image smaller, but also the stack trace of implicit exceptions less precise.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> ReduceImplicitExceptionStackTraceInformation = new HostedOptionKey<>(false);
 }
