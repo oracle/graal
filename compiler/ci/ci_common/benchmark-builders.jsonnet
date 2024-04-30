@@ -32,8 +32,8 @@
 
   local profiling_builds = std.flattenArrays([
     [
-    c.monthly + hw.e3 + jdk + cc.libgraal + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
-    c.monthly + hw.e3 + jdk + cc.libgraal + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
+    c.weekly + hw.e3 + jdk + cc.libgraal + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
+    c.weekly + hw.e3 + jdk + cc.libgraal + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
     ]
   for jdk in cc.bench_jdks
   for suite in bench.groups.profiled_suites
