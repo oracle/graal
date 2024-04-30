@@ -31,8 +31,8 @@
 #include <stdio.h>
 
 int main() {
-  puts("hello\n");
-  __asm__ __volatile__ ("dmb ish" : : : "memory");
-  puts("world\n");
-  return 0;
+    puts("hello\n");
+    __asm__ __volatile__("dmb ish" : : : "memory");
+    puts("world\n");
+    return 0;
 }
