@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.test;
 
 import java.util.Optional;
 
+import jdk.graal.compiler.debug.DebugOptions;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -72,7 +73,8 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     public void test01() {
         try (AutoCloseable c = new TTY.Filter()) {
-            OptionValues opt = new OptionValues(testOptions(), GraalOptions.FullUnroll, false);
+            // Do not capture graphs for expected compilation failures.
+            OptionValues opt = new OptionValues(testOptions(), GraalOptions.FullUnroll, false, DebugOptions.DumpOnError, false);
             test(opt, "snippet01");
             Assert.fail("Should have detected that the phase in this class does not retain the mustNotSafepoint flag of a loop begin");
         } catch (Throwable t) {
