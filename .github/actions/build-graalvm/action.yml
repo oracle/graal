@@ -2,6 +2,14 @@ name: Build GraalVM JDK
 description: 'Build GraalVM JDK and set up environment for testing'
 
 inputs:
+  native-images:
+    description: 'Internal GraalVM native images to build'
+    required: false
+    default: 'native-image'
+  components:
+    description: 'Internal GraalVM components to build'
+    required: false
+    default: 'Native Image'
   java-version:
     description: 'Java version to use'
     required: false
@@ -25,7 +33,6 @@ runs:
       uses: actions/checkout@v4
       with:
         repository: graalvm/mx
-        fetch-depth: 1
         ref: ${{ env.MX_VERSION }}
         path: ${{ env.MX_PATH }}
     - name: Set up Python
@@ -47,8 +54,8 @@ runs:
       shell: bash
       run: |
         cd substratevm
-        ${MX_PATH}/mx --java-home=${LABSJDK_HOME} --native=native-image --components="Native Image" build
-        ln -s $(${MX_PATH}/mx --java-home=${LABSJDK_HOME} --native=native-image --components="Native Image" graalvm-home) ${GRAALVM_HOME}
+        ${MX_PATH}/mx --java-home=${LABSJDK_HOME} --native-images="${{ inputs.native-images }}" --components="${{ inputs.components }}" build
+        ln -s $(${MX_PATH}/mx --java-home=${LABSJDK_HOME} --native-images="${{ inputs.native-images }}" --components="${{ inputs.components }}" graalvm-home) ${GRAALVM_HOME}
         ${GRAALVM_HOME}/bin/native-image --version
     - name: Set up JAVA_HOME
       if: ${{ inputs.java-version }} != ''

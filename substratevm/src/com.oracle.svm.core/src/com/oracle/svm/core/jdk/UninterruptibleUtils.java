@@ -394,13 +394,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UNSAFE.compareAndSetObject(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetReference(this, VALUE_OFFSET, expected, update);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("unchecked")
         public final T getAndSet(T newValue) {
-            return (T) UNSAFE.getAndSetObject(this, VALUE_OFFSET, newValue);
+            return (T) UNSAFE.getAndSetReference(this, VALUE_OFFSET, newValue);
         }
     }
 
@@ -712,5 +712,29 @@ public class UninterruptibleUtils {
     public interface CharReplacer {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         char replace(char val);
+    }
+
+    public static class CodeUtil {
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static long signExtend(long value, int inputBits) {
+            if (inputBits < 64) {
+                if ((value >>> (inputBits - 1) & 1) == 1) {
+                    return value | (-1L << inputBits);
+                } else {
+                    return value & ~(-1L << inputBits);
+                }
+            } else {
+                return value;
+            }
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static long zeroExtend(long value, int inputBits) {
+            if (inputBits < 64) {
+                return value & ~(-1L << inputBits);
+            } else {
+                return value;
+            }
+        }
     }
 }

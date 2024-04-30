@@ -18,22 +18,22 @@ permalink: /reference-manual/native-image/guides/debug-native-image-process/
 To build a native executable with debug information, provide the `-g` command-line option for `javac` when compiling the application, and then to the `native-image` builder. This enables source-level debugging, and the debugger (GDB) then correlates machine instructions with specific source lines in Java files.
 
 Adding `-g` to the `native-image` arguments causes debuginfo to be generated.
-Next to the image, there will be an `<imagename>.debug` file that contains debuginfo and a `sources` folder that contains Java source files, which the debugger uses to show sources for lineinfo. For example:
+Next to the image, there will be an _&lt;imagename&gt;.debug_ file that contains debuginfo and a _sources_ directory that contains Java source files, which the debugger uses to show sources for lineinfo. For example:
 ```
 hello_image
 hello_image.debug
 sources
 ```
-GDB automatically loads the `<imagename>.debug` file for a given native executable `<imagename>`. (There is a link between the image and its `*.debug`-file)
+GDB automatically loads the _&lt;imagename&gt;.debug_ file for a given native executable `<imagename>`. (There is a link between the image and its _*.debug_  file)
 
 > For a better debugging experience, we recommend combining `-g` with `-O0`.
-> The latter option disables inlining and other optimizations of the Graal compiler, which otherwise would be observable in the debugger (for example, the debugger may jump back and forth between lines instead of allowing you to step from one line to the next one).
-> At the same time, `-O0` also enables additional metadata to be collected in the compiler, which then helps the debugger to resolve, for example, local variables.
+The latter option disables inlining and other optimizations of the Graal compiler, which otherwise would be observable in the debugger (for example, the debugger may jump back and forth between lines instead of allowing you to step from one line to the next one).
+At the same time, `-O0` also enables additional metadata to be collected in the compiler, which then helps the debugger to resolve, for example, local variables.
 
 ### Using GDB with New Debug Information
 
 #### Image build information
-The `*.debug`-file contains additional information about the image build, which can be accessed as follows:
+The _*.debug_ file contains additional information about the image build, which can be accessed as follows:
 ```
 readelf -p .debug.svm.imagebuild.classpath hello_image.debug
 ```
@@ -107,7 +107,7 @@ If to complete with
 breakpoints in all variants of `add` are installed.
 
 #### Arrays
-Arrays have a **`data`-field** that can be accessed via an index to get the individual array elements, for example:
+Arrays have a **`data` field** that can be accessed via an index to get the individual array elements, for example:
 ```
 Thread 1 "hello_image" hit Breakpoint 1, hello.Hello::main(java.lang.String[]*) (args=0x7ff33f800898) at hello/Hello.java:76
 76	        Greeter greeter = Greeter.greeter(args);
@@ -138,7 +138,7 @@ $4 = (_z_.java.lang.String *) 0x27011a
 ```
 
 #### Strings
-To see the actual contents of a Java String object, look at its **`value`-field**, for example:
+To see the actual contents of a Java String object, look at its **`value` field**, for example:
 ```
 (gdb) p args.data[0]
 $4 = (_z_.java.lang.String *) 0x27011a
@@ -172,7 +172,7 @@ $3 = (_z_.byte[] *) 0x250119
 ```
 `value` is of type `byte[]`.
 
-As you already learned before, the elements of an array can be accessed via its `data`-field.
+As you already learned before, the elements of an array can be accessed via its `data` field.
 ```
 (gdb) p args.data[0].value.data
 $10 = 0x7ff33f8008c8 "this\376\376\376\376\200G\273\001\030\001'"
@@ -187,7 +187,7 @@ $13 = 116 't'
 ```
 
 The reason for the garbage after the last char is that Java String values are not 0-terminated (unlike C strings).
-To know where the garbage starts you can inspect the `len`-field.
+To know where the garbage starts you can inspect the `len` field.
 ```
 (gdb) p args.data[0].value.len
 $14 = 4
@@ -218,7 +218,7 @@ $18 = {
     }, <No data fields>}, <No data fields>}
 ```
 
-But you do have the `hub`-field, which points to the class-object of an object.
+But you do have the `hub` field, which points to the class-object of an object.
 Therefore, it allows you to determine the runtime-type of the Greeter object at address `0x7ff7f9101208`:
 ```
 (gdb) p greeter.hub
@@ -266,12 +266,12 @@ $24 = {
   name = 0x270119
 }
 ```
-Now you can see the `name`-field that only exists in the `NamedGreeter` subtype.
+Now you can see the `name` field that only exists in the `NamedGreeter` subtype.
 ```
 (gdb) p $rt_greeter.name
 $25 = (_z_.java.lang.String *) 0x270119
 ```
-So the `name`-field is of type String. You already know how to see the contents of a String:
+So the `name` field is of type String. You already know how to see the contents of a String:
 ```
 (gdb) p $rt_greeter.name.value.data
 $26 = 0x7ff7f91008c0 "FooBar\376\376\200G\273\001\027\001'"
@@ -448,9 +448,9 @@ Now stepping into the use-site of `min`, you see that value `14` was returned by
 ...
 ```
 
-#### Calling `svm_dbg_`-helper functions during debugging
+#### Calling `svm_dbg_` helper functions during debugging
 
-When the image gets built with `-H:+IncludeDebugHelperMethods`, additional `@CEntryPoint`-functions are defined that can be called from GDB during debugging, for example:
+When the image gets built with `-H:+IncludeDebugHelperMethods`, additional `@CEntryPoint` functions are defined that can be called from GDB during debugging, for example:
 ```
 (gdb) p greeter 
 $3 = (hello.Hello$Greeter *) 0x7ffff6881900
@@ -458,7 +458,7 @@ $3 = (hello.Hello$Greeter *) 0x7ffff6881900
 Here again, you have a local named `greeter` with the static-type `hello.Hello$Greeter`.
 To see its runtime-type, you can use the methods already described above.\
 
-Alternatively, you can make use of the `svm_dbg_`-helper functions.
+Alternatively, you can make use of the `svm_dbg_` helper functions.
 For example, from within the running debug session, you can call:
 ```java
 void svm_dbg_print_hub(graal_isolatethread_t* thread, size_t hubPtr)
@@ -477,8 +477,8 @@ Finally, before you can call `svm_dbg_print_hub`, make sure you have the **absol
 (gdb) p greeter.hub
 $4 = (_z_.java.lang.Class *) 0x837820 <java.io.ObjectOutputStream::ObjectOutputStream(java.io.OutputStream*)+1120>
 ```
-reveals that in the current situation, the `hub`-field in `greeter` holds a compressed reference to the hub (the `hub-type` is prefixed with `_z_.`). 
-Thus, you first need to get the absolute address of the hub field by using another `svm_dbg_`-helper method.
+reveals that in the current situation, the `hub` field in `greeter` holds a compressed reference to the hub (the `hub-type` is prefixed with `_z_.`). 
+Thus, you first need to get the absolute address of the hub field by using another `svm_dbg_` helper method.
 ```
 (gdb) call svm_dbg_obj_uncompress($r15, greeter.hub)
 $5 = 140737339160608
@@ -490,13 +490,13 @@ With the help of calling `svm_dbg_obj_uncompress`, you now know that the hub is 
 (gdb) call (void) svm_dbg_print_hub($r15, 0x7ffff71b7820)
 hello.Hello$NamedGreeter
 ```
-Both calls to `svm_dbg_`-helper can be combined into a single command line:
+Both calls to `svm_dbg_` helper can be combined into a single command line:
 ```
 (gdb) call (void) svm_dbg_print_hub($r15, svm_dbg_obj_uncompress($r15, greeter.hub))
 hello.Hello$NamedGreeter
 ```
 
-The following `svm_dbg_`-helper methods are currently defined:
+The following `svm_dbg_` helper methods are currently defined:
 
 ```
 int svm_dbg_ptr_isInImageHeap(graal_isolatethread_t* thread, size_t ptr);

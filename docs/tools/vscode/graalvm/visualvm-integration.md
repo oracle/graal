@@ -28,7 +28,7 @@ Once the project process starts, the Process node is updated to show its process
    - It starts VisualVM if no PID is selected in the Process node.
    - It starts VisualVM and opens the PID if selected in the Process node.
 
-4. If you continue and invoke the actions like Thread dump, Heap dump, CPU sampler, Memory sampler, JFR, the prompt will ask you which process to monitor by VisualVM:
+4. If you continue and invoke the actions such as Thread dump, Heap dump, CPU sampler, Memory sampler, JFR, the prompt will ask you which process to monitor by VisualVM:
 
    ![Select Java process to monitor by VisualVM](images/select_java_process_to_monitor.png)
   
@@ -134,7 +134,7 @@ The following settings can be configured using the Configure action:
   A definition of the CPU sampling filter. The filter controls which data are collected by the CPU sampler, and will be available for analysis in the live results and snapshot. The following choices are available:
 
     * **Include all classes**: data from all classes are collected, including project classes, classes of project libraries and other dependencies, and JDK classes
-    * **Exclude JDK classes**: data from all classes are collected, except of the JDK classes (like `java.*`, `com.sun.*`, `org.graalvm.*`, etc.)
+    * **Exclude JDK classes**: data from all classes are collected, except for the JDK classes (like `java.*`, `com.sun.*`, `org.graalvm.*`, and so on)
     * **Include only project classes**: only data from classes defined by the current project are collected
 
   By default, Include all classes choice is selected.

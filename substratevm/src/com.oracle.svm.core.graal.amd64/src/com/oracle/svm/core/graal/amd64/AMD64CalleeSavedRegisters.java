@@ -102,6 +102,12 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         }
 
         /*
+         * Handling of the rbp register is always done in the method prologue, so we remove it here
+         * and record whether it is callee saved.
+         */
+        boolean rbpCalleeSaved = calleeSavedRegisters.remove(AMD64.rbp);
+
+        /*
          * Reverse list so that CPU registers are spilled close to the beginning of the frame, i.e.,
          * with a closer-to-0 negative reference map index in the caller frame. That makes the
          * reference map encoding of the caller frame a bit smaller.
@@ -151,8 +157,17 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         int calleeSavedRegistersSizeInBytes = offset;
 
         int saveAreaOffsetInFrame = -(FrameAccess.returnAddressSize() +
-                        (SubstrateOptions.PreserveFramePointer.getValue() ? FrameAccess.wordSize() : 0) +
+                        FrameAccess.wordSize() + /* Space is always reserved for rbp. */
                         calleeSavedRegistersSizeInBytes);
+
+        if (rbpCalleeSaved) {
+            /*
+             * When rbp is callee saved, it is pushed onto the stack in the method prologue right
+             * after the return address, i.e., at the top of the callee save area, so we are just
+             * referencing that location here.
+             */
+            calleeSavedRegisterOffsets.put(AMD64.rbp, calleeSavedRegistersSizeInBytes);
+        }
 
         ImageSingletons.add(CalleeSavedRegisters.class,
                         new AMD64CalleeSavedRegisters(frameRegister, calleeSavedRegisters, calleeSavedXMMRegisters, calleeSavedMaskRegisters, calleeSavedRegisterOffsets,
@@ -537,7 +552,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
     @Fold
     static int offsetInFrameOrNull(Register register) {
         AMD64CalleeSavedRegisters that = AMD64CalleeSavedRegisters.singleton();
-        if (that.calleeSavedRegisters.contains(register)) {
+        if (that.calleeSaveable(register)) {
             return that.getOffsetInFrame(register);
         } else {
             return 0;

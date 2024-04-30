@@ -73,8 +73,8 @@ import com.oracle.truffle.api.nodes.NodeInterface;
  * </p>
  * <p>
  * The initializer expression of a cached parameter is defined using a subset of Java. This subset
- * includes field/parameter accesses, function calls, type exact infix comparisons (==, !=, <, <=,
- * >, >=), logical negation (!), logical disjunction (||), null, true, false, and integer literals.
+ * includes field/parameter accesses, function calls, type exact infix comparisons (==, !=, &lt;, &lt;=,
+ * &gt;, &gt;=), logical negation (!), logical disjunction (||), null, true, false, and integer literals.
  * The return type of the initializer expression must be assignable to the parameter type. If the
  * annotated parameter type is derived from {@link Node} then the {@link Node} instance is allowed
  * to use the {@link Node#replace(Node)} method to replace itself. Bound elements without receivers
@@ -197,7 +197,7 @@ import com.oracle.truffle.api.nodes.NodeInterface;
  * }
  *
  * int transformLocal(int operand) {
- *     return operand & 0x42;
+ *     return operand &amp; 0x42;
  * }
  *
  * </li>

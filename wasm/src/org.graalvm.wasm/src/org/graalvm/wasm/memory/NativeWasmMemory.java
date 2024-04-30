@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -247,7 +247,7 @@ class NativeWasmMemory extends WasmMemory {
         validateAddress(node, address, 16);
         byte[] bytes = new byte[16];
         unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, 16);
-        return Vector128.ofBytes(bytes);
+        return new Vector128(bytes);
     }
 
     @Override
@@ -302,6 +302,12 @@ class NativeWasmMemory extends WasmMemory {
     public void store_i64_32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
+    }
+
+    @Override
+    public void store_i128(Node node, long address, Vector128 value) {
+        validateAddress(node, address, 16);
+        unsafe.copyMemory(value.getBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +23,16 @@
 
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
+import com.oracle.truffle.espresso.vm.VM;
 
+@ExportLibrary(NodeLibrary.class)
 final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     @Child private CallableFromNative nativeMethod;
     private final Object env;
@@ -36,11 +42,6 @@ final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeI
         assert CallableFromNative.validParameterCount(factory, methodVersion);
         this.nativeMethod = insert(factory.create());
         this.env = env;
-    }
-
-    @Override
-    void beforeInstumentation(VirtualFrame frame) {
-        // no op
     }
 
     @Override
@@ -55,5 +56,22 @@ final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeI
             args = newArgs;
         }
         return nativeMethod.invokeDirect(env, args);
+    }
+
+    @Override
+    public int getBci(Frame frame) {
+        return VM.EspressoStackElement.NATIVE_BCI;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+        return new SubstitutionScope(frame.getArguments(), getMethodVersion());
     }
 }

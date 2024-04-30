@@ -29,11 +29,12 @@ import java.io.StringReader;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.util.json.JSONFormatter;
 import jdk.graal.compiler.util.json.JSONParser;
 import jdk.graal.compiler.util.json.JSONParserException;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class JSONParserTest {
 
@@ -50,7 +51,7 @@ public class JSONParserTest {
                     "}}";
 
     @Test
-    public void testSimpleJSONString() {
+    public void testSimpleJSONString() throws IOException {
         JSONParser parser = new JSONParser(simpleJSON);
         testSimpleIntl(parser);
     }
@@ -62,7 +63,7 @@ public class JSONParserTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static void testSimpleIntl(JSONParser parser) {
+    private static void testSimpleIntl(JSONParser parser) throws IOException {
         Object result = parser.parse();
 
         Assert.assertTrue(result != null);
@@ -130,7 +131,7 @@ public class JSONParserTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testFormatterTrivial() {
+    public void testFormatterTrivial() throws IOException {
         String json = "{\"a\": [\"\\u0019\", true, 42.5], \"b\": null}";
         JSONParser parser = new JSONParser(json);
         String result = JSONFormatter.formatJSON((EconomicMap<String, Object>) parser.parse());
@@ -139,7 +140,7 @@ public class JSONParserTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testFormatterSimpleJSON() {
+    public void testFormatterSimpleJSON() throws IOException {
         JSONParser parser = new JSONParser(simpleJSON);
         String result = JSONFormatter.formatJSON((EconomicMap<String, Object>) parser.parse(), true);
 
@@ -154,7 +155,7 @@ public class JSONParserTest {
     }
 
     @Test
-    public void parseAllowedKeysSimple() {
+    public void parseAllowedKeysSimple() throws IOException {
         String source = " { \"foo\": 1, \"notFoo\": 2, \"bar\": 3 } ";
         JSONParser parser = new JSONParser(source);
         EconomicMap<String, Object> map = parser.parseAllowedKeys(List.of("foo", "bar", "baz"));
@@ -164,7 +165,7 @@ public class JSONParserTest {
     }
 
     @Test
-    public void parseAllowedKeysEarlyExit() {
+    public void parseAllowedKeysEarlyExit() throws IOException {
         String source = "{\"foo\": 1, invalid syntax ";
         JSONParser parser = new JSONParser(source);
         EconomicMap<String, Object> map = parser.parseAllowedKeys(List.of("foo"));
@@ -173,12 +174,12 @@ public class JSONParserTest {
     }
 
     @Test
-    public void parseAllowedKeysEmpty() {
+    public void parseAllowedKeysEmpty() throws IOException {
         Assert.assertTrue(new JSONParser("invalid syntax").parseAllowedKeys(List.of()).isEmpty());
     }
 
     @Test
-    public void parseAllowedKeysErrors() {
+    public void parseAllowedKeysErrors() throws IOException {
         for (String source : List.of("", "[]", "{,}", "{\"a\": 1,}", "{\"a\": 1 \"")) {
             try {
                 new JSONParser(source).parseAllowedKeys(List.of("foo"));
@@ -188,7 +189,7 @@ public class JSONParserTest {
         }
     }
 
-    private static void testErrorIntl(String json, String expectedMessage) {
+    private static void testErrorIntl(String json, String expectedMessage) throws IOException {
         JSONParser parser = new JSONParser(json);
         try {
             parser.parse();

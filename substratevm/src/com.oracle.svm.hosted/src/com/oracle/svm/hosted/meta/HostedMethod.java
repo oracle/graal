@@ -51,6 +51,8 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -76,6 +78,7 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
@@ -91,11 +94,20 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
     public final AnalysisMethod wrapped;
+    /** A boxed relocated pointer to this method. */
+    public JavaConstant methodPointer;
 
     private final HostedType holder;
     private final ResolvedSignature<HostedType> signature;
     private final ConstantPool constantPool;
     private final ExceptionHandler[] handlers;
+    /**
+     * Contains the index of the method within the appropriate table.
+     *
+     * Within the closed type world, there exists a single table which describes all methods.
+     * However, within the open type world, each type and interface has a unique table, so this
+     * index is relative to the start of the appropriate table.
+     */
     int vtableIndex = -1;
 
     /**
@@ -200,6 +212,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         this.uniqueShortName = uniqueShortName;
         this.multiMethodKey = multiMethodKey;
         this.multiMethodMap = multiMethodMap;
+        /*
+         * Cache a method pointer for base layer methods. Cross layer direct calls are currently
+         * lowered to indirect calls.
+         */
+        if (wrapped.isInBaseLayer()) {
+            BoxedRelocatedPointer pointer = new BoxedRelocatedPointer(new MethodPointer(wrapped));
+            this.methodPointer = wrapped.getUniverse().getSnippetReflection().forObject(pointer);
+        }
     }
 
     @Override
@@ -254,17 +274,33 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public boolean hasCodeOffsetInImage() {
+    public ImageCodeInfo getImageCodeInfo() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
-    public int getCodeOffsetInImage() {
+    public boolean forceIndirectCall() {
+        return wrapped.isInBaseLayer();
+    }
+
+    @Override
+    public JavaConstant getMethodPointer() {
+        assert forceIndirectCall();
+        return methodPointer;
+    }
+
+    @Override
+    public boolean hasImageCodeOffset() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
-    public int getDeoptOffsetInImage() {
+    public int getImageCodeOffset() {
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public int getImageCodeDeoptOffset() {
         int result = 0;
         HostedMethod deoptTarget = getMultiMethod(DEOPT_TARGET_METHOD);
         if (deoptTarget != null && deoptTarget.isCodeAddressOffsetValid()) {
@@ -466,7 +502,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean canBeInlined() {
-        return !hasNeverInlineDirective();
+        return wrapped.canBeInlined();
     }
 
     @Override

@@ -225,9 +225,6 @@ final class HostInteropReflect {
 
     @TruffleBoundary
     static Object newAdapterInstance(Node node, HostContext hostContext, Class<?> clazz, Object obj) throws IllegalArgumentException {
-        if (TruffleOptions.AOT) {
-            throw HostEngineException.unsupported(hostContext.access, "Unsupported target type.");
-        }
         HostClassDesc classDesc = HostClassDesc.forClass(hostContext, clazz);
         AdapterResult adapter = classDesc.getAdapter(hostContext);
         if (!adapter.isAutoConvertible()) {
@@ -267,15 +264,13 @@ final class HostInteropReflect {
         names.addAll(classDesc.getMethodNames(isStatic, includeInternal));
         if (isStatic) {
             names.add(STATIC_TO_CLASS);
-            if (!TruffleOptions.AOT) { // GR-13208: SVM does not support Class.getClasses() yet
-                if (Modifier.isPublic(clazz.getModifiers())) {
-                    // no support for non-static member types now
-                    for (Class<?> t : clazz.getClasses()) {
-                        if (!isStaticTypeOrInterface(t)) {
-                            continue;
-                        }
-                        names.add(t.getSimpleName());
+            if (Modifier.isPublic(clazz.getModifiers())) {
+                // no support for non-static member types now
+                for (Class<?> t : clazz.getClasses()) {
+                    if (!isStaticTypeOrInterface(t)) {
+                        continue;
                     }
+                    names.add(t.getSimpleName());
                 }
             }
         } else if (isClass) {

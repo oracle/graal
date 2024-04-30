@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.ref.Reference;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -44,20 +45,25 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.Word;
 
-public final class HeapVerifier {
+public class HeapVerifier {
     private static final ObjectVerifier OBJECT_VERIFIER = new ObjectVerifier();
     private static final ObjectReferenceVerifier REFERENCE_VERIFIER = new ObjectReferenceVerifier();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private HeapVerifier() {
+    public HeapVerifier() {
     }
 
-    public static boolean verify(Occasion occasion) {
+    @Fold
+    public static HeapVerifier singleton() {
+        return ImageSingletons.lookup(HeapVerifier.class);
+    }
+
+    public boolean verify(Occasion occasion) {
         boolean success = true;
         success &= verifyImageHeap();
         success &= verifyYoungGeneration(occasion);
@@ -66,7 +72,7 @@ public final class HeapVerifier {
         return success;
     }
 
-    private static boolean verifyImageHeap() {
+    protected boolean verifyImageHeap() {
         boolean success = true;
         for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
             success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());
@@ -123,7 +129,7 @@ public final class HeapVerifier {
         return success;
     }
 
-    private static boolean verifyRememberedSets() {
+    protected boolean verifyRememberedSets() {
         /*
          * After we are done with all other verifications, it is guaranteed that the heap is in a
          * reasonable state. Now, we can verify the remembered sets without having to worry about
@@ -265,7 +271,7 @@ public final class HeapVerifier {
 
         assert aChunk.isNonNull() ^ uChunk.isNonNull();
         HeapChunk.Header<?> chunk = aChunk.isNonNull() ? aChunk : uChunk;
-        if (CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
+        if (HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(obj)) {
             HeapChunk.Header<?> enclosingHeapChunk = HeapChunk.getEnclosingHeapChunk(obj);
             if (chunk.notEqual(enclosingHeapChunk)) {
                 Log.log().string("Object ").zhex(ptr).string(" should have ").zhex(chunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").zhex(enclosingHeapChunk).newline();

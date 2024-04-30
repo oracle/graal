@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -37,6 +38,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -58,10 +60,10 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.CInterfaceWrapper;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
-import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -91,46 +93,53 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
-    static CEntryPointCallStubMethod create(AnalysisMethod targetMethod, CEntryPointData entryPointData, AnalysisMetaAccess aMetaAccess) {
+    static CEntryPointCallStubMethod create(BigBang bb, AnalysisMethod targetMethod, CEntryPointData entryPointData) {
         MetaAccessProvider originalMetaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
         ResolvedJavaType declaringClass = originalMetaAccess.lookupJavaType(IsolateEnterStub.class);
         ConstantPool constantPool = IsolateEnterStub.getConstantPool(originalMetaAccess);
-        return new CEntryPointCallStubMethod(entryPointData, targetMethod, declaringClass, constantPool, aMetaAccess.getUniverse().getWordKind(), originalMetaAccess);
+        return new CEntryPointCallStubMethod(entryPointData, targetMethod, declaringClass, constantPool, bb.getMetaAccess());
     }
-
-    private static final JavaKind cEnumParameterKind = JavaKind.Int;
 
     private final CEntryPointData entryPointData;
     private final ResolvedJavaMethod targetMethod;
     private final ResolvedSignature<AnalysisType> targetSignature;
 
-    private CEntryPointCallStubMethod(CEntryPointData entryPointData, AnalysisMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool, JavaKind wordKind,
-                    MetaAccessProvider metaAccess) {
-        super(SubstrateUtil.uniqueStubName(targetMethod.getWrapped()), holderClass, createSignature(targetMethod, wordKind, metaAccess), holderConstantPool);
+    private CEntryPointCallStubMethod(CEntryPointData entryPointData, AnalysisMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool, AnalysisMetaAccess metaAccess) {
+        super(SubstrateUtil.uniqueStubName(targetMethod.getWrapped()), holderClass, createSignature(targetMethod, metaAccess), holderConstantPool);
         this.entryPointData = entryPointData;
         this.targetMethod = targetMethod.getWrapped();
         this.targetSignature = targetMethod.getSignature();
     }
 
     /**
-     * This method creates a new signature for the stub in which all @CEnum values are converted
-     * into their corresponding primitive type. In correspondence to how the @CEnum values are
-     * actually handled, parameters are transformed to the type specified by cEnumParameterKind and
-     * return type is transformed into the word type.
-     *
-     * @see CEnum
-     * @see CEntryPointCallStubMethod#adaptParameterTypes
-     * @see CEntryPointCallStubMethod#adaptReturnValue(HostedGraphKit, ValueNode)
+     * This method creates a new signature for the stub in which all {@link CEnum} values are
+     * converted to suitable primitive types.
      */
-    private static ResolvedSignature<ResolvedJavaType> createSignature(AnalysisMethod targetMethod, JavaKind wordKind, MetaAccessProvider metaAccess) {
-        ResolvedJavaType[] paramTypes = targetMethod.toParameterList().stream()
-                        .map(type -> type.getAnnotation(CEnum.class) != null ? metaAccess.lookupJavaType(cEnumParameterKind.toJavaClass()) : type.getWrapped())
-                        .toArray(ResolvedJavaType[]::new);
-        ResolvedJavaType returnType = targetMethod.getSignature().getReturnType().getWrapped();
-        if (returnType.getAnnotation(CEnum.class) != null) {
-            returnType = metaAccess.lookupJavaType(wordKind.toJavaClass());
+    private static ResolvedSignature<ResolvedJavaType> createSignature(AnalysisMethod method, AnalysisMetaAccess metaAccess) {
+        NativeLibraries nativeLibraries = NativeLibraries.singleton();
+        AnalysisType[] args = method.toParameterList().toArray(AnalysisType[]::new);
+
+        ResolvedJavaType[] patchedArgs = new ResolvedJavaType[args.length];
+        for (int i = 0; i < args.length; i++) {
+            if (CInterfaceEnumTool.isPrimitiveOrWord(args[i])) {
+                patchedArgs[i] = args[i].getWrapped();
+            } else {
+                /* Replace the CEnum with the corresponding primitive type. */
+                EnumInfo enumInfo = getEnumInfo(nativeLibraries, method, args[i], false);
+                patchedArgs[i] = CInterfaceEnumTool.getCEnumValueType(enumInfo, metaAccess).getWrapped();
+            }
         }
-        return ResolvedSignature.fromArray(paramTypes, returnType);
+
+        AnalysisType patchedReturnType = method.getSignature().getReturnType();
+        if (!CInterfaceEnumTool.isPrimitiveOrWord(patchedReturnType)) {
+            /*
+             * The return type is a @CEnum. Change the return type to Word because the C entry point
+             * will return some primitive value.
+             */
+            assert getEnumInfo(nativeLibraries, method, patchedReturnType, true) != null;
+            patchedReturnType = (AnalysisType) nativeLibraries.getWordTypes().getWordImplType();
+        }
+        return ResolvedSignature.fromArray(patchedArgs, patchedReturnType.getWrapped());
     }
 
     @Override
@@ -149,15 +158,17 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         }
 
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
-        NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
+        NativeLibraries nativeLibraries = NativeLibraries.singleton();
 
         List<AnalysisType> parameterTypes = new ArrayList<>(targetSignature.toParameterList(null));
         List<AnalysisType> parameterLoadTypes = new ArrayList<>(parameterTypes);
-        EnumInfo[] parameterEnumInfos;
 
-        parameterEnumInfos = adaptParameterTypes(nativeLibraries, kit, parameterTypes, parameterLoadTypes);
-
+        EnumInfo[] parameterEnumInfos = adaptParameterTypes(nativeLibraries, kit, parameterTypes, parameterLoadTypes);
         ValueNode[] args = kit.getInitialArguments().toArray(ValueNode.EMPTY_ARRAY);
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointPrologue(kit, method);
+        }
 
         InvokeWithExceptionNode invokePrologue = generatePrologue(kit, parameterLoadTypes, targetMethod.getParameterAnnotations(), args);
         if (invokePrologue != null) {
@@ -218,16 +229,21 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         patchNodeSourcePosition(invoke);
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
-        generateExceptionHandler(kit, exception, invoke.getStackKind());
+        generateExceptionHandler(method, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
 
-        generateEpilogueAndReturn(kit, invoke);
+        generateEpilogueAndReturn(method, kit, invoke);
         return kit.finalizeGraph();
     }
 
-    private void generateEpilogueAndReturn(HostedGraphKit kit, ValueNode value) {
+    private void generateEpilogueAndReturn(ResolvedJavaMethod method, HostedGraphKit kit, ValueNode value) {
         ValueNode returnValue = adaptReturnValue(kit, value);
         generateEpilogue(kit);
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointEpilogue(kit, method);
+        }
+
         kit.createReturn(returnValue, returnValue.getStackKind());
     }
 
@@ -248,6 +264,10 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                         "@%s method declared as built-in must not have a custom epilogue: %s", CEntryPoint.class.getSimpleName(), aTargetMethod);
         UserError.guarantee(entryPointData.getExceptionHandler() == CEntryPointData.DEFAULT_EXCEPTION_HANDLER,
                         "@%s method declared as built-in must not have a custom exception handler: %s", CEntryPoint.class.getSimpleName(), aTargetMethod);
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointPrologue(kit, method);
+        }
 
         ExecutionContextParameters executionContext = findExecutionContextParameters(kit, aTargetMethod.toParameterList(), aTargetMethod.getParameterAnnotations());
 
@@ -304,46 +324,64 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
 
-        generateExceptionHandler(kit, exception, invoke.getStackKind());
+        generateExceptionHandler(method, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointEpilogue(kit, method);
+        }
 
         kit.createReturn(invoke, aTargetMethod.getSignature().getReturnKind());
 
         return kit.finalizeGraph();
     }
 
+    /**
+     * The signature may contain Java object types. The only Java object types that we support at
+     * the moment are Java enums (annotated with @CEnum). This method replaces all Java enums with
+     * suitable primitive types.
+     */
     private EnumInfo[] adaptParameterTypes(NativeLibraries nativeLibraries, HostedGraphKit kit, List<AnalysisType> parameterTypes, List<AnalysisType> parameterLoadTypes) {
         EnumInfo[] parameterEnumInfos = null;
         for (int i = 0; i < parameterTypes.size(); i++) {
-            if (!parameterTypes.get(i).getJavaKind().isPrimitive() && !kit.getWordTypes().isWord(parameterTypes.get(i))) {
-                ElementInfo typeInfo = nativeLibraries.findElementInfo(parameterTypes.get(i));
-                if (typeInfo instanceof EnumInfo) {
-                    UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumLookupInfo.class::isInstance),
-                                    "Enum class %s needs a method that is annotated with @%s because it is used as a parameter of an entry point method: %s",
-                                    parameterTypes.get(i),
-                                    CEnumLookup.class.getSimpleName(),
-                                    targetMethod);
+            if (!CInterfaceEnumTool.isPrimitiveOrWord(parameterTypes.get(i))) {
+                EnumInfo enumInfo = getEnumInfo(nativeLibraries, targetMethod, parameterTypes.get(i), false);
+                UserError.guarantee(enumInfo.hasCEnumLookupMethods(),
+                                "Enum class %s needs a method that is annotated with @%s because it is used as a parameter of an entry point method: %s",
+                                parameterTypes.get(i), CEnumLookup.class.getSimpleName(), targetMethod);
 
-                    if (parameterEnumInfos == null) {
-                        parameterEnumInfos = new EnumInfo[parameterTypes.size()];
-                    }
-                    parameterEnumInfos[i] = (EnumInfo) typeInfo;
-
-                    parameterLoadTypes.set(i, kit.getMetaAccess().lookupJavaType(cEnumParameterKind.toJavaClass()));
-
-                    final int parameterIndex = i;
-                    FrameState initialState = kit.getGraph().start().stateAfter();
-                    Iterator<ValueNode> matchingNodes = initialState.values().filter(node -> ((ParameterNode) node).index() == parameterIndex).iterator();
-                    ValueNode parameterNode = matchingNodes.next();
-                    assert !matchingNodes.hasNext() && parameterNode.usages().filter(n -> n != initialState).isEmpty();
-                    parameterNode.setStamp(StampFactory.forKind(cEnumParameterKind));
-                } else {
-                    throw UserError.abort("Entry point method parameter types are restricted to primitive types, word types and enumerations (@%s): %s, given type was %s",
-                                    CEnum.class.getSimpleName(), targetMethod, parameterTypes.get(i));
+                if (parameterEnumInfos == null) {
+                    parameterEnumInfos = new EnumInfo[parameterTypes.size()];
                 }
+                parameterEnumInfos[i] = enumInfo;
+
+                /* The argument is a @CEnum, so change the type to a primitive type. */
+                AnalysisType paramType = CInterfaceEnumTool.getCEnumValueType(enumInfo, kit.getMetaAccess());
+                parameterLoadTypes.set(i, paramType);
+
+                final int parameterIndex = i;
+                FrameState initialState = kit.getGraph().start().stateAfter();
+                Iterator<ValueNode> matchingNodes = initialState.values().filter(node -> ((ParameterNode) node).index() == parameterIndex).iterator();
+                ValueNode parameterNode = matchingNodes.next();
+                assert !matchingNodes.hasNext() && parameterNode.usages().filter(n -> n != initialState).isEmpty();
+                parameterNode.setStamp(StampFactory.forKind(paramType.getJavaKind()));
             }
         }
         return parameterEnumInfos;
+    }
+
+    private static EnumInfo getEnumInfo(NativeLibraries nativeLibraries, ResolvedJavaMethod method, AnalysisType type, boolean isReturnType) {
+        ElementInfo typeInfo = nativeLibraries.findElementInfo(type);
+        if (typeInfo instanceof EnumInfo enumInfo) {
+            return enumInfo;
+        }
+
+        if (isReturnType) {
+            throw UserError.abort("Entry point method return types are restricted to primitive types, word types and enumerations (@%s): %s, given type was %s",
+                            CEnum.class.getSimpleName(), method, type);
+        }
+        throw UserError.abort("Entry point method parameter types are restricted to primitive types, word types and enumerations (@%s): %s, given type was %s",
+                        CEnum.class.getSimpleName(), method, type);
     }
 
     private static void adaptArgumentValues(HostedGraphKit kit, List<AnalysisType> parameterTypes, EnumInfo[] parameterEnumInfos, ValueNode[] args) {
@@ -351,8 +389,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             // These methods must be called after the prologue established a safe context
             for (int i = 0; i < parameterEnumInfos.length; i++) {
                 if (parameterEnumInfos[i] != null) {
-                    CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess());
-                    args[i] = tool.createEnumLookupInvoke(kit, parameterTypes.get(i), parameterEnumInfos[i], cEnumParameterKind, args[i]);
+                    args[i] = CInterfaceEnumTool.singleton().createInvokeLookupEnum(kit, parameterTypes.get(i), parameterEnumInfos[i], args[i]);
                 }
             }
         }
@@ -502,7 +539,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         return prologueValues;
     }
 
-    private void generateExceptionHandler(HostedGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
+    private void generateExceptionHandler(ResolvedJavaMethod method, HostedGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
         if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
             kit.append(leave);
@@ -537,7 +574,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             }
 
             /* The exception is handled, we can continue with the normal epilogue. */
-            generateEpilogueAndReturn(kit, returnValue);
+            generateEpilogueAndReturn(method, kit, returnValue);
 
             kit.exceptionPart(); // fail-safe for exceptions in exception handler
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
@@ -547,31 +584,23 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     }
 
     private ValueNode adaptReturnValue(HostedGraphKit kit, ValueNode value) {
-        ValueNode returnValue = value;
-        if (returnValue.getStackKind().isPrimitive()) {
-            return returnValue;
+        if (value.getStackKind().isPrimitive()) {
+            return value;
         }
-        AnalysisType returnType = targetSignature.getReturnType();
-        NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
-        ElementInfo typeInfo = nativeLibraries.findElementInfo(returnType);
-        if (typeInfo instanceof EnumInfo) {
-            // Always return enum values as a signed word because it should never be a problem if
-            // the caller expects a narrower integer type and the various checks already handle
-            // replacements with word types.
-            CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess());
-            JavaKind cEnumReturnType = kit.getWordTypes().getWordKind();
-            assert !cEnumReturnType.isUnsigned() : "requires correct representation of signed values";
-            returnValue = tool.startEnumValueInvokeWithException(kit, (EnumInfo) typeInfo, cEnumReturnType, returnValue);
-            kit.exceptionPart();
-            kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
-            kit.append(new LoweredDeadEndNode());
-            kit.endInvokeWithException();
 
-        } else {
-            throw UserError.abort("Entry point method return types are restricted to primitive types, word types and enumerations (@%s): %s",
-                            CEnum.class.getSimpleName(), targetMethod);
-        }
-        return returnValue;
+        /* The method returns a Java enum, so we need to convert the enum to a primitive value. */
+        AnalysisType returnType = targetSignature.getReturnType();
+        NativeLibraries nativeLibraries = NativeLibraries.singleton();
+
+        EnumInfo enumInfo = getEnumInfo(nativeLibraries, targetMethod, returnType, true);
+        ValueNode result = CInterfaceEnumTool.singleton().startInvokeWithExceptionEnumToValue(kit, enumInfo, CInterfaceEnumTool.getCEnumValueType(enumInfo, kit.getMetaAccess()), value);
+        result = kit.getGraph().unique(new ZeroExtendNode(result, kit.getWordTypes().getWordKind().getBitCount()));
+
+        kit.exceptionPart();
+        kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
+        kit.append(new LoweredDeadEndNode());
+        kit.endInvokeWithException();
+        return result;
     }
 
     private void generateEpilogue(HostedGraphKit kit) {

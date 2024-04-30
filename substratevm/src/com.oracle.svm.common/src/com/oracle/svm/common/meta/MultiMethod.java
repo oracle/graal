@@ -57,14 +57,18 @@ public interface MultiMethod {
     MultiMethodKey ORIGINAL_METHOD = new MultiMethodKey() {
         @Override
         public String toString() {
-            return "Original_Method_Key";
+            return "O";
         }
     };
 
     MultiMethodKey DEOPT_TARGET_METHOD = new MultiMethodKey() {
         @Override
         public String toString() {
-            return "Deopt_Target_Method_Key";
+            /*
+             * This string shows up in many method and symbol names in the generated image, so it
+             * must be short in order to not increase the image size.
+             */
+            return "D";
         }
     };
 

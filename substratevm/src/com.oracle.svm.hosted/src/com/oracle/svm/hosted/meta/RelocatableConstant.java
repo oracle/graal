@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.meta.MethodPointer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -108,5 +109,13 @@ public class RelocatableConstant implements JavaConstant, TypedConstant {
             return pointer == rc.pointer;
         }
         return false;
+    }
+
+    @Override
+    public String toValueString() {
+        if (pointer instanceof MethodPointer mp) {
+            return "relocatable method pointer: " + mp.getMethod().format("%H.%n(%p)") + ", isAbsolute: " + mp.isAbsolute();
+        }
+        return "relocatable constant";
     }
 }

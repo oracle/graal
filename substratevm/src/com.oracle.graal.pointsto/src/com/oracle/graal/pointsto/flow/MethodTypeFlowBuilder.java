@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -122,8 +122,11 @@ import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.NewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.java.UnsafeCompareAndExchangeNode;
@@ -142,6 +145,7 @@ import jdk.graal.compiler.phases.graph.MergeableState;
 import jdk.graal.compiler.phases.graph.PostOrderNodeIterator;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.graal.compiler.replacements.nodes.ObjectClone;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -253,6 +257,11 @@ public class MethodTypeFlowBuilder {
                 AnalysisType type = (AnalysisType) node.instanceClass();
                 type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
+            } else if (n instanceof NewInstanceWithExceptionNode) {
+                NewInstanceWithExceptionNode node = (NewInstanceWithExceptionNode) n;
+                AnalysisType type = (AnalysisType) node.instanceClass();
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+
             } else if (n instanceof VirtualObjectNode) {
                 VirtualObjectNode node = (VirtualObjectNode) n;
                 AnalysisType type = (AnalysisType) node.type();
@@ -263,8 +272,21 @@ public class MethodTypeFlowBuilder {
                 AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
                 type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
+            } else if (n instanceof NewArrayWithExceptionNode) {
+                NewArrayWithExceptionNode node = (NewArrayWithExceptionNode) n;
+                AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
+                AnalysisType type = ((AnalysisType) node.type());
+                for (int i = 0; i < node.dimensionCount(); i++) {
+                    type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                    type = type.getComponentType();
+                }
+
+            } else if (n instanceof NewMultiArrayWithExceptionNode) {
+                NewMultiArrayWithExceptionNode node = (NewMultiArrayWithExceptionNode) n;
                 AnalysisType type = ((AnalysisType) node.type());
                 for (int i = 0; i < node.dimensionCount(); i++) {
                     type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
@@ -373,7 +395,7 @@ public class MethodTypeFlowBuilder {
     /**
      * Unsafe access nodes whose offset is a {@link FieldOffsetProvider} are modeled directly as
      * field access type flows and therefore do not need unsafe registration.
-     * 
+     *
      * We do not want that a field is registered as unsafe accessed just so that we have the field
      * offset during debugging, so we also ignore {@link FrameState}. {@link StrengthenGraphs}
      * removes the node from the {@link FrameState} if it is not registered for unsafe access for
@@ -546,7 +568,7 @@ public class MethodTypeFlowBuilder {
                 if (input instanceof ConstantNode && !typeFlows.contains((ConstantNode) input)) {
                     ConstantNode node = (ConstantNode) input;
                     Constant constant = node.getValue();
-                    if (node.asJavaConstant() == null && constant instanceof VMConstant) {
+                    if (node.asJavaConstant() == null && (constant instanceof VMConstant || constant instanceof CStringConstant)) {
                         // do nothing
                     } else if (node.asJavaConstant().isNull()) {
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
@@ -597,6 +619,22 @@ public class MethodTypeFlowBuilder {
     protected void apply(boolean forceReparse, Object reason) {
         assert !processed : "can only call apply once per MethodTypeFlowBuilder";
         processed = true;
+
+        if (bb.getHostVM().useBaseLayer() && method.isInBaseLayer()) {
+            /*
+             * We don't need to analyze this method. We already know its return type state from the
+             * open world analysis. We just install a return flow to link it with its uses.
+             */
+            AnalysisType returnType = method.getSignature().getReturnType();
+            if (returnType.getJavaKind().isObject()) {
+                // GR-52421: the return type state should not be all-instantiated, it should be the
+                // persisted result of the open-world analysis
+                insertAllInstantiatedTypesReturn();
+            }
+            // GR-52421: verify that tracked parameter state is subset of persisted state
+            insertPlaceholderParamAndReturnFlows();
+            return;
+        }
 
         // assert method.getAnnotation(Fold.class) == null : method;
         if (handleNodeIntrinsic()) {
@@ -1174,10 +1212,10 @@ public class MethodTypeFlowBuilder {
         /*
          * The various Unsafe access nodes either only read, only write, or write-and-read directly
          * based on an offset. All three cases are handled similarly:
-         * 
+         *
          * 1) If we have precise information about the accessed field, we can model the access using
          * proper field access type flows.
-         * 
+         *
          * 2) If the accessed object is always an array, we ca model the access using array type
          * flows. The Unsafe access of an array is essentially an array access because we do not
          * have separate type flows for different array elements.

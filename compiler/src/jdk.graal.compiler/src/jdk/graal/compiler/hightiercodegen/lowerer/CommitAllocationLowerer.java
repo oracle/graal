@@ -34,7 +34,6 @@ import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -140,7 +139,7 @@ public class CommitAllocationLowerer {
      *         int[] array = new int[10];
      *         if (args.length > 5) {
      *             holder1 = array;
-     *         } else if (args.length < 1) {
+     *         } else if (args.length &lt; 1) {
      *             holder2 = array;
      *         } else {
      *             System.out.println(array.length);

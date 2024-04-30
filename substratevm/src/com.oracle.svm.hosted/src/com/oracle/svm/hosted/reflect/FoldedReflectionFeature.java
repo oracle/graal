@@ -101,8 +101,8 @@ public class FoldedReflectionFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        access.registerObjectReachableCallback(Executable.class, (analysisAccess, executable) -> executables.add(executable));
-        access.registerObjectReachableCallback(Field.class, (analysisAccess, field) -> fields.add(field));
+        access.registerObjectReachableCallback(Executable.class, (analysisAccess, executable, reason) -> executables.add(executable));
+        access.registerObjectReachableCallback(Field.class, (analysisAccess, field, reason) -> fields.add(field));
     }
 
     @Override

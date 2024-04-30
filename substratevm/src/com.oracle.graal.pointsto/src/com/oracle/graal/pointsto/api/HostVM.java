@@ -82,6 +82,10 @@ public abstract class HostVM {
         this.classReachabilityListeners = new ArrayList<>();
     }
 
+    public ClassLoader getClassLoader() {
+        return classLoader;
+    }
+
     public OptionValues options() {
         return options;
     }
@@ -154,6 +158,10 @@ public abstract class HostVM {
      * @param newValue the type to initialize
      */
     public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
+
+    public boolean useBaseLayer() {
+        return false;
+    }
 
     /**
      * Check if an {@link AnalysisType} is initialized.
@@ -246,15 +254,7 @@ public abstract class HostVM {
         return true;
     }
 
-    public void installInThread(@SuppressWarnings("unused") Object vmConfig) {
-        Thread.currentThread().setContextClassLoader(classLoader);
-    }
-
     public void clearInThread() {
-    }
-
-    public Object getConfiguration() {
-        return null;
     }
 
     public abstract Comparator<? super ResolvedJavaType> getTypeComparator();

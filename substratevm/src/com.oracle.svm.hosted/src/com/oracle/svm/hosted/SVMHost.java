@@ -36,6 +36,7 @@ import java.lang.reflect.Proxy;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -91,6 +92,7 @@ import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.ContinuationSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
@@ -138,6 +140,7 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
+import jdk.internal.loader.NativeLibraries;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -175,6 +178,9 @@ public class SVMHost extends HostVM {
 
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
 
+    private final boolean useBaseLayer;
+    private Set<Field> excludedFields;
+
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions) {
         super(options, loader.getClassLoader());
@@ -201,6 +207,15 @@ public class SVMHost extends HostVM {
         }
         fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
+        useBaseLayer = SVMImageLayerSupport.singleton().loadAnalysis();
+        if (SubstrateOptions.includeAll()) {
+            initializeExcludedFields();
+        }
+    }
+
+    @Override
+    public boolean useBaseLayer() {
+        return useBaseLayer;
     }
 
     protected InlineBeforeAnalysisPolicyUtils getInlineBeforeAnalysisPolicyUtils() {
@@ -274,17 +289,6 @@ public class SVMHost extends HostVM {
     @Override
     public boolean isRelocatedPointer(JavaConstant constant) {
         return constant instanceof RelocatableConstant;
-    }
-
-    @Override
-    public void installInThread(Object vmConfig) {
-        super.installInThread(vmConfig);
-        assert vmConfig == ImageSingletonsSupportImpl.HostedManagement.get();
-    }
-
-    @Override
-    public Object getConfiguration() {
-        return ImageSingletonsSupportImpl.HostedManagement.getAndAssertExists();
     }
 
     @Override
@@ -573,7 +577,7 @@ public class SVMHost extends HostVM {
                  */
                 new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMultiMethodKey()));
             }
-            UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
+            UninterruptibleAnnotationChecker.checkAfterParsing(method, graph, bb.getConstantReflectionProvider());
 
             optimizeAfterParsing(bb, method, graph);
             /*
@@ -769,6 +773,35 @@ public class SVMHost extends HostVM {
         return false;
     }
 
+    private void initializeExcludedFields() {
+        excludedFields = new HashSet<>();
+        /*
+         * These fields need to be folded as they are used in snippets, and they must be accessed
+         * without producing reads with side effects.
+         */
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "arrayHub"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "additionalFlags"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "layoutEncoding"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "numClassTypes"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "numInterfaceTypes"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldTypeCheckSlots"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "typeIDDepth"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "typeID"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "monitorOffset"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "hubType"));
+
+        /*
+         * Including this field makes ThreadLocalAllocation.getTlabDescriptorSize reachable through
+         * ThreadLocalAllocation.regularTLAB which is accessed with
+         * FastThreadLocalBytes.getSizeSupplier
+         */
+        excludedFields.add(ReflectionUtil.lookupField(VMThreadLocalInfo.class, "sizeSupplier"));
+        /* This field cannot be written to (see documentation) */
+        excludedFields.add(ReflectionUtil.lookupField(Counter.Group.class, "enabled"));
+        /* This field can contain a reference to a Thread, which is not allowed in the heap */
+        excludedFields.add(ReflectionUtil.lookupField(NativeLibraries.class, "nativeLibraryLockMap"));
+    }
+
     @Override
     public boolean isFieldIncluded(BigBang bb, Field field) {
         /*
@@ -778,10 +811,11 @@ public class SVMHost extends HostVM {
         if (field.getType().equals(CGlobalData.class)) {
             return false;
         }
-        /* This field cannot be written to (see documentation) */
-        if (field.equals(ReflectionUtil.lookupField(Counter.Group.class, "enabled"))) {
+
+        if (excludedFields.contains(field)) {
             return false;
         }
+
         /* Fields with those names are not allowed in the image */
         if (NativeImageGenerator.checkName(field.getType().getName() + "." + field.getName()) != null) {
             return false;

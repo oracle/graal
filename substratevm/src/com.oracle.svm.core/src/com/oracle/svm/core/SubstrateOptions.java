@@ -54,6 +54,7 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -101,6 +102,19 @@ public class SubstrateOptions {
     @APIOption(name = "shared")//
     @Option(help = "Build shared library")//
     public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
+
+    @Option(help = "Build a Native Image layer.")//
+    public static final HostedOptionKey<Boolean> ImageLayer = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            LayeredBaseImageAnalysis.update(values, newValue);
+            ClosedTypeWorld.update(values, !newValue);
+            PersistImageLayerAnalysis.update(values, newValue);
+            PersistImageLayerSingletons.update(values, newValue);
+            DeleteLocalSymbols.update(values, !newValue);
+            StripDebugInfo.update(values, !newValue);
+        }
+    };
 
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
@@ -150,7 +164,8 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Builds a statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    @APIOption(name = "static-nolibc")//
+    @Option(help = "Build statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false);
 
     @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
@@ -174,6 +189,7 @@ public class SubstrateOptions {
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
+    private static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
 
     @Fold
     public static boolean getSourceLevelDebug() {
@@ -322,8 +338,16 @@ public class SubstrateOptions {
         void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T newValue);
     }
 
+    public interface OptionEnabledHandler<T> {
+        void onOptionEnabled(EconomicMap<OptionKey<?>, Object> values);
+    }
+
     public static void setOptimizeValueUpdateHandler(ValueUpdateHandler<OptimizationLevel> updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
+    }
+
+    public static void setImageLayerEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {
+        SubstrateOptions.imageLayerEnabledHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
@@ -336,7 +360,8 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-    @Option(help = {"Directory of the image file to be generated", "Use the '-o' option instead."}, type = OptionType.User)//
+    @OptionMigrationMessage("Use the '-o' option instead.")//
+    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
     public static final class GCGroup implements APIOptionGroup {
@@ -406,9 +431,6 @@ public class SubstrateOptions {
 
     @Option(help = "Deprecated, has no effect.", deprecated = true) //
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
-
-    @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
-    public static final HostedOptionKey<Boolean> ForceNoROSectionRelocations = new HostedOptionKey<>(false);
 
     @Option(help = "Force no direct relocations to be present in the text section of the generated image", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
@@ -502,7 +524,7 @@ public class SubstrateOptions {
     @Option(help = "Silence build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputSilent = new HostedOptionKey<>(false);
 
-    @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
+    @Option(help = "Deprecated, option no longer has any effect.", type = OptionType.User, deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
     @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use '--color' instead.")//
@@ -526,7 +548,7 @@ public class SubstrateOptions {
     @BundleMember(role = BundleMember.Role.Output)//
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output conforms to the JSON schema located at: " +
-                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json", type = OptionType.User)//
+                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json", type = OptionType.User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
     public static final String NATIVE_IMAGE_OPTIONS_ENV_VAR = "NATIVE_IMAGE_OPTIONS";
@@ -624,6 +646,12 @@ public class SubstrateOptions {
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
+    @Fold
+    public static boolean hasFramePointer() {
+        /* We always push a frame pointer to a stack on AArch64 and RISCV64. */
+        return SubstrateOptions.PreserveFramePointer.getValue() || Platform.includedIn(Platform.AARCH64.class) || Platform.includedIn(Platform.RISCV64.class);
+    }
+
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
@@ -711,10 +739,6 @@ public class SubstrateOptions {
 
     @Option(help = "Check if native-toolchain is known to work with native-image", type = Expert)//
     public static final HostedOptionKey<Boolean> CheckToolchain = new HostedOptionKey<>(true);
-
-    @APIOption(name = "install-exit-handlers")//
-    @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
-    public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
@@ -886,6 +910,16 @@ public class SubstrateOptions {
         /** Use {@link SubstrateOptions#getPageSize()} instead. */
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
         protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
+
+        /** Use {@link SubstrateOptions#needsExitHandlers()} instead. */
+        @APIOption(name = "install-exit-handlers")//
+        @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
+        protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
+    }
+
+    @Fold
+    public static final boolean needsExitHandlers() {
+        return ConcealedOptions.InstallExitHandlers.getValue() || VMInspectionOptions.hasJfrSupport() || VMInspectionOptions.hasNativeMemoryTrackingSupport();
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -927,7 +961,7 @@ public class SubstrateOptions {
     @Option(help = "Enable Java Flight Recorder.")//
     public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false, Immutable);
 
-    @Option(help = "Start flight recording with options.")//
+    @Option(help = "file:doc-files/StartFlightRecordingHelp.txt")//
     public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("", Immutable);
 
     @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
@@ -986,6 +1020,9 @@ public class SubstrateOptions {
     @Option(help = "Determines if implicit exceptions are fatal if they don't have a stack trace.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> ImplicitExceptionWithoutStacktraceIsFatal = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Determines if frame anchors are verified at run-time.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> VerifyFrameAnchors = new HostedOptionKey<>(false);
+
     @SuppressWarnings("unused")//
     @APIOption(name = "configure-reflection-metadata")//
     @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert, deprecated = true)//
@@ -1041,7 +1078,7 @@ public class SubstrateOptions {
                     "\"Throw\" (default): Throw a MissingReflectionRegistrationError;",
                     "\"Exit\": Call System.exit() to avoid accidentally catching the error;",
                     "\"Warn\": Print a message to stdout, including a stack trace to see what caused the issue."})//
-    public static final HostedOptionKey<ReportingMode> MissingRegistrationReportingMode = new HostedOptionKey<>(
+    public static final RuntimeOptionKey<ReportingMode> MissingRegistrationReportingMode = new RuntimeOptionKey<>(
                     ReportingMode.Throw);
 
     @Option(help = "Instead of warning, throw IOExceptions for link-at-build-time resources at build time")//
@@ -1053,7 +1090,7 @@ public class SubstrateOptions {
     @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
     public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
 
-    @Option(help = "Force using legacy method handle intrinsics.", type = Expert, deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.1 and will be removed in a future release") //
+    @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 
     @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
@@ -1063,7 +1100,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     public static boolean includeAll() {
-        return IncludeAllFromPath.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
+        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
     }
 
     @Option(help = "Run layered image base layer open-world analysis. Includes all public types and methods that can be reached using normal Java access rules.")//
@@ -1079,6 +1116,34 @@ public class SubstrateOptions {
     public static boolean closedTypeWorld() {
         return ClosedTypeWorld.getValue();
     }
+
+    @Option(help = "Persist the image heap and the AnalysisUniverse (types, methods and fields) of the current build", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> PersistImageLayerAnalysis = new HostedOptionKey<>(false);
+
+    @Option(help = "Persist the layered image singletons of the current build", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> PersistImageLayerSingletons = new HostedOptionKey<>(false);
+
+    @Option(help = "Throws an exception on potential type conflict during heap persisting if enabled", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> AbortOnNameConflict = new HostedOptionKey<>(false);
+
+    @Option(help = "Names of layer snapshots produced by PersistImageLayer", type = OptionType.Debug) //
+    @BundleMember(role = BundleMember.Role.Input)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build()) {
+        @Override
+        public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
+            super.update(values, boxedValue);
+            ClosedTypeWorld.update(values, false);
+            if (imageLayerEnabledHandler != null) {
+                imageLayerEnabledHandler.onOptionEnabled(values);
+            }
+        }
+    };
+
+    @Option(help = "Load the image heap and the AnalysisUniverse into the current build", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> LoadImageLayerAnalysis = new HostedOptionKey<>(true);
+
+    @Option(help = "Load the layered image singleton information into the current build", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> LoadImageLayerSingletons = new HostedOptionKey<>(true);
 
     public static class TruffleStableOptions {
 

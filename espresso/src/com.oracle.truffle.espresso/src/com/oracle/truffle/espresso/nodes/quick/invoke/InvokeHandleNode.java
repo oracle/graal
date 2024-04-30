@@ -23,8 +23,8 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -35,7 +35,7 @@ public final class InvokeHandleNode extends InvokeQuickNode {
     private final boolean hasReceiver;
     private final int argCount;
 
-    public InvokeHandleNode(Method method, Klass accessingKlass, int top, int curBCI) {
+    public InvokeHandleNode(Method method, ObjectKlass accessingKlass, int top, int curBCI) {
         super(method, top, curBCI);
         this.hasReceiver = !method.isStatic();
         this.intrinsic = insert(method.spawnIntrinsicNode(getLanguage(), getContext().getMeta(), accessingKlass, method.getName(), method.getRawSignature()));

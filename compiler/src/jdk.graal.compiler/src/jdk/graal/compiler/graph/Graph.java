@@ -201,6 +201,10 @@ public class Graph implements EventCounter {
         return eventCounter;
     }
 
+    public int getCompressions() {
+        return compressions;
+    }
+
     private class NodeSourcePositionScope implements DebugCloseable {
         private final NodeSourcePosition previous;
 
@@ -1358,7 +1362,7 @@ public class Graph implements EventCounter {
         // nodes aren't removed from the type cache here - they will be removed during iteration
     }
 
-    public boolean verify() {
+    public final boolean verify() {
         verify(true);
         return true;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,20 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
+import com.oracle.truffle.espresso.vm.VM;
 
-final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl {
+@ExportLibrary(NodeLibrary.class)
+public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl {
     @Child private JavaSubstitution substitution;
 
     // Truffle does not want to report split on first call. Delay until the second.
@@ -60,11 +66,6 @@ final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl 
     }
 
     @Override
-    void beforeInstumentation(VirtualFrame frame) {
-        // no op
-    }
-
-    @Override
     Object execute(VirtualFrame frame) {
         return substitution.invoke(frame.getArguments());
     }
@@ -88,5 +89,26 @@ final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl 
     @Override
     boolean isTrivial() {
         return substitution.isTrivial();
+    }
+
+    @Override
+    public int getBci(Frame frame) {
+        if (getMethodVersion().isMethodNative()) {
+            return VM.EspressoStackElement.NATIVE_BCI;
+        } else {
+            return 0;
+        }
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+        return new SubstitutionScope(frame.getArguments(), getMethodVersion());
     }
 }

@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.util.EmptyArrays;
  *
  * <pre>
  * IntArrayBuffer buf = new IntArrayBuffer();
- * List<int[]> results = new ArrayList<>();
+ * List&lt;int[]> results = new ArrayList&lt;>();
  * for (Object obj : listOfThingsToProcess) {
  *     for (Object x : obj.thingsThatShouldBecomeInts()) {
  *         buf.add(someCalculation(x));
@@ -123,6 +123,18 @@ public class IntArrayBuffer extends AbstractArrayBuffer implements Iterable<Inte
     public void addAll(IntArrayBuffer o) {
         ensureCapacity(length + o.length);
         System.arraycopy(o.buf, 0, buf, length, o.length);
+    }
+
+    public int getLast() {
+        assert !isEmpty();
+        return get(length - 1);
+    }
+
+    public int removeLast() {
+        assert !isEmpty();
+        int last = getLast();
+        setLength(length - 1);
+        return last;
     }
 
     public int[] toArray() {

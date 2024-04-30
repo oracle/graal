@@ -2207,7 +2207,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.8 Add (Immediate) & set flags.
+     * C6.2.8 Add (Immediate) &amp; set flags.
      *
      * dst = src + aimm and sets condition flags.
      *
@@ -2241,7 +2241,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.319 Subtract (immediate) & set flags.
+     * C6.2.319 Subtract (immediate) &amp; set flags.
      *
      * dst = src - aimm and sets condition flags.
      *
@@ -2307,7 +2307,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.12 Bitwise AND (immediate).
      *
-     * dst = src & bimm.
+     * dst = src &amp; bimm.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
@@ -2322,9 +2322,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * 6.2.14 Bitwise AND (immediate) & set flags.
+     * 6.2.14 Bitwise AND (immediate) &amp; set flags.
      *
-     * dst = src & bimm and sets condition flags.
+     * dst = src &amp; bimm and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stack-pointer.
@@ -2390,7 +2390,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.193 Move wide with zero.
      *
-     * dst = uimm16 << shiftAmt.
+     * dst = uimm16 &lt;&lt; shiftAmt.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
@@ -2407,7 +2407,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.192 Move wide with NOT.
      *
-     * dst = ~(uimm16 << shiftAmt).
+     * dst = ~(uimm16 &lt;&lt; shiftAmt).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
@@ -2424,7 +2424,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.191 Move wide with keep.
      *
-     * dst<pos+15:pos> = uimm16.
+     * dst&lt;pos+15:pos> = uimm16.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
@@ -2507,7 +2507,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * Extracts a register from a pair of registers.
      *
-     * dst = src1:src2<lsb+31:lsb>
+     * dst = src1:src2&lt;lsb+31:lsb>
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2581,7 +2581,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.320 Subtract (shifted register) & set flags.
+     * C6.2.320 Subtract (shifted register) &amp; set flags.
      *
      * dst = src1 - shiftType(src2, imm) and sets condition flags.
      *
@@ -2609,7 +2609,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.3 Add (extended register).
      *
-     * dst = src1 + extendType(src2) << imm.
+     * dst = src1 + extendType(src2) &lt;&lt; imm.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
@@ -2625,9 +2625,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.7 Add (extended register) & set flags.
+     * C6.2.7 Add (extended register) &amp; set flags.
      *
-     * dst = src1 + extendType(src2) << imm and sets condition flags.
+     * dst = src1 + extendType(src2) &lt;&lt; imm and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2645,7 +2645,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.312 Subtract (extended register).
      *
-     * dst = src1 - extendType(src2) << imm.
+     * dst = src1 - extendType(src2) &lt;&lt; imm.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
@@ -2661,9 +2661,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.318 Subtract (extended register) & set flags.
+     * C6.2.318 Subtract (extended register) &amp; set flags.
      *
-     * dst = src1 - extendType(src2) << imm and sets flags.
+     * dst = src1 - extendType(src2) &lt;&lt; imm and sets flags.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2688,7 +2688,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.13 Bitwise AND (shifted register).
      *
-     * dst = src1 & shiftType(src2, imm).
+     * dst = src1 &amp; shiftType(src2, imm).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2704,9 +2704,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.15 Bitwise AND (shifted register) & set flags.
+     * C6.2.15 Bitwise AND (shifted register) &amp; set flags.
      *
-     * dst = src1 & shiftType(src2, imm) and sets condition flags.
+     * dst = src1 &amp; shiftType(src2, imm) and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2724,7 +2724,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.31 Bitwise Bit Clear (shifted register).
      *
-     * dst = src1 & ~(shiftType(src2, imm)).
+     * dst = src1 &amp; ~(shiftType(src2, imm)).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2740,9 +2740,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.32 Bitwise Bit Clear (shifted register) & set flags.
+     * C6.2.32 Bitwise Bit Clear (shifted register) &amp; set flags.
      *
-     * dst = src1 & ~(shiftType(src2, imm)) and sets condition flags.
+     * dst = src1 &amp; ~(shiftType(src2, imm)) and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2839,7 +2839,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.16 Arithmetic Shift Right (register).
      *
-     * dst = src1 >> (src2 & log2(size)).
+     * dst = src1 >> (src2 &amp; log2(size)).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2855,7 +2855,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.178 Logical Shift Left (register).
      *
-     * dst = src1 << (src2 & log2(size)).
+     * dst = src1 &lt;&lt; (src2 &amp; log2(size)).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2871,7 +2871,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.181 Logical Shift Right (register).
      *
-     * dst = src1 >>> (src2 & log2(size)).
+     * dst = src1 >>> (src2 &amp; log2(size)).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2887,7 +2887,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C6.2.229 Rotate right variable.
      *
-     * dst = rotateRight(src1, (src2 & (size - 1))).
+     * dst = rotateRight(src1, (src2 &amp; (size - 1))).
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -2917,7 +2917,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.2 Add with carry & set flags.
+     * C6.2.2 Add with carry &amp; set flags.
      *
      * dst = src1 + src2 + PSTATE.C, and sets condition flags.
      *
@@ -2949,7 +2949,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
-     * C6.2.232 Subtract with carry & set flags.
+     * C6.2.232 Subtract with carry &amp; set flags.
      *
      * dst = src1 - src2 + NOT(PSTATE.C), and sets condition flags.
      *
@@ -3736,7 +3736,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * C7.2.112 Floating-point Minimum (scalar).
      *
-     * dst = src1 < src2 ? src1 : src2.
+     * dst = src1 &lt; src2 ? src1 : src2.
      *
      * @param size register size.
      * @param dst floating point register. May not be null.

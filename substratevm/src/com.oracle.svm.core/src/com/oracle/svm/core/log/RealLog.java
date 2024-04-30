@@ -502,6 +502,11 @@ public class RealLog extends Log {
         return this;
     }
 
+    @Override
+    public int getIndentation() {
+        return indent;
+    }
+
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     private static byte digit(long d) {
         return (byte) (d + (d < 10 ? '0' : 'a' - 10));

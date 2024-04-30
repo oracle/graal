@@ -308,7 +308,7 @@ public class ReadConstantFoldingTest extends GraalCompilerTest {
     }
 
     private static Object getObject(Object object, long offset) {
-        return U.getObject(object, offset);
+        return U.getReference(object, offset);
     }
 
     public boolean readBooleanFromBooleanCastBoolean() {

@@ -48,36 +48,36 @@ Repeat the same for the `PATH` environment variable.
 
 ## Prerequisites for Native Image on Windows
 
-On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC). 
-You can use Visual Studio 2022 version 17.1.0 or later.
+On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC).
+Use **Visual Studio 2022 version 17.6.0 or later**.
 
 ### Install Visual Studio Build Tools and Windows SDK
 
-1. Download the Visual Studio Build Tools (C development environment) from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16){:target="_blank"}.
+1. Download the Visual Studio Build Tools 2022 or later (C development environment) from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16){:target="_blank"}.
 
-2. Start the Visual Studio Build Tools installation by clicking on the _.exe_ file, and then press Continue:
+2. Start the installation by opening the file you downloaded, and then click **Continue**:
 
     ![Install Visual Studio Build Tools](../img/visual_studio_installer.png)
 
-3. Check the **Desktop development with C++** box in the main window. Also, on the right side under Installation Details, choose **Windows SDK**, and click the Install button.
+3. Select the **Desktop development with C++** checkbox in the main window. On the right side under Installation Details, make sure that the two requirements, **Windows 11 SDK** and **MSVC (...) C++ x64/x86 build tools**, are selected. Continue by clicking **Install**.
 
     ![Select Desktop development with C++](../img/desktop_development_with_C.png)
 
-4. After the installation completes, reboot your system.
+You should now be able to build with GraalVM Native Image.
 
-5. Next ensure Windows SDK is indeed available. Open the Visual Studio Installer:
+### Checking Existing Visual Studio Installations
+
+If Visual Studio is already installed on your system, follow these steps to check that the correct components are installed.
+
+1. Open the Visual Studio Installer:
 
     ![Open the Visual Studio Installer](../img/open_vs_installer.png)
 
-6. Under the Installed tab, click Modify and choose Individual Components:
+2. Under the Installed tab, click **Modify** and choose **Individual Components**:
 
-    ![Visual Studio Installed Components](../img/visual-studio-installed-components.png)
+    ![Visual Studio Installed Components](../img/visual-studio-installed-components-modify.png)
 
-7. Then scroll to the bottom and check if Windows SDK is installed and confirm the build tools are checked:
-  
-    ![Windows SDK Installed](../img/windows-10-installed.png)
-
-Now that you have the Windows SDK and Visual Studio tooling installed, you can start using GraalVM Native Image.
+3. Then scroll to the bottom and confirm that the Windows 11 SDK and Visual Studio SDK checkboxes are selected. Now you can start using Native Image.
 
 ### Start Using Native Image
 
@@ -99,4 +99,4 @@ To build a project using the [Native Build Tools Gradle plugin](https://graalvm.
 gradlew.bat nativeCompile
 ```
 
-This guide was written for Windows 10, but should be valid for Windows 8 and 11.
+This guide was written for Windows 11, but should be valid for Windows 8 and 10.

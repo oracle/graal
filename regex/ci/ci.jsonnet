@@ -33,13 +33,14 @@
       ["git", "clone", ["mx", "urlrewrite", "https://github.com/graalvm/js-tests.git"], "../../js-tests"],
       ["mx", "-p", "../vm", "--dynamicimports", "/graal-js,js-tests", "checkout-downstream", "graal-js", "js-tests"],
       # run downstream gate from js-tests suite.
-      ["mx", "-p", "../../js-tests", "sversions"],
-      ["mx", "-p", "../../js-tests", "gate", "--no-warning-as-error", "--all-suites", "--tags", "build,Test262-default,TestV8-default,regex"],
+      ["cd", "../../js-tests"],
+      ["mx", "sversions"],
+      ["mx", "gate", "--no-warning-as-error", "--all-suites", "--tags", "build,Test262-default,TestV8-default,regex"],
     ],
     targets: ["gate"],
   },
 
-  builds: [utils.add_gate_predicate(b, ["sdk", "truffle", "regex", "compiler", "vm", "substratevm"]) for b in std.flattenArrays([
+  local _builds = [utils.add_gate_predicate(b, ["sdk", "truffle", "regex", "compiler", "vm", "substratevm"]) for b in std.flattenArrays([
     [
       common.linux_amd64  + jdk + regex_gate,
       common.linux_amd64  + jdk + regex_downstream_js,
@@ -48,4 +49,6 @@
       common.labsjdkLatest,
     ]
   ])],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

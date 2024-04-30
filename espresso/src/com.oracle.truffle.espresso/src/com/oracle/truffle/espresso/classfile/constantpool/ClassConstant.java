@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import static com.oracle.truffle.espresso.impl.ClassRegistry.classInModuleOfLoader;
+
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -35,6 +37,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -117,7 +120,7 @@ public interface ClassConstant extends PoolConstant {
          */
         @SuppressWarnings("try")
         @Override
-        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             try (EspressoLanguage.DisableSingleStepping ignored = accessingKlass.getLanguage().disableStepping()) {
                 CLASS_RESOLVE_COUNT.inc();
                 assert accessingKlass != null;
@@ -127,11 +130,30 @@ public interface ClassConstant extends PoolConstant {
                     EspressoContext context = pool.getContext();
                     Symbol<Symbol.Type> type = context.getTypes().fromName(klassName);
                     Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
-                    if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
+                    Klass checkedKlass = klass.getElementalType();
+                    if (!Klass.checkAccess(checkedKlass, accessingKlass, false)) {
                         Meta meta = context.getMeta();
                         context.getLogger().log(Level.FINE,
-                                        "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                        throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
+                                        "Access check of: " + checkedKlass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
+                        StringBuilder errorMessage = new StringBuilder("failed to access class ");
+                        errorMessage.append(checkedKlass.getExternalName()).append(" from class ").append(accessingKlass.getExternalName());
+                        if (context.getJavaVersion().modulesEnabled()) {
+                            errorMessage.append(" (");
+                            if (accessingKlass.module() == checkedKlass.module()) {
+                                errorMessage.append(checkedKlass.getExternalName());
+                                errorMessage.append(" and ");
+                                classInModuleOfLoader(accessingKlass, true, errorMessage, meta);
+                            } else {
+                                // checkedKlass is not an array type (getElementalType) nor a
+                                // primitive
+                                // type (it would have passed the access checks)
+                                classInModuleOfLoader((ObjectKlass) checkedKlass, false, errorMessage, meta);
+                                errorMessage.append("; ");
+                                classInModuleOfLoader(accessingKlass, false, errorMessage, meta);
+                            }
+                            errorMessage.append(")");
+                        }
+                        throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, errorMessage.toString());
                     }
 
                     return new Resolved(klass);
@@ -196,7 +218,7 @@ public interface ClassConstant extends PoolConstant {
         }
 
         @Override
-        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             CLASS_RESOLVE_COUNT.inc();
             assert accessingKlass != null;
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -257,7 +279,7 @@ public interface ClassConstant extends PoolConstant {
         }
 
         @Override
-        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             return new Resolved(resolved);
         }
 

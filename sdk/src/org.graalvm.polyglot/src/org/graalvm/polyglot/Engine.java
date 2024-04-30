@@ -612,11 +612,15 @@ public final class Engine implements AutoCloseable {
          * If one of the set option keys or values is invalid then an
          * {@link IllegalArgumentException} is thrown when the engine is {@link #build() built}. The
          * given key and value must not be <code>null</code>.
-         *
-         * @see Engine#getOptions() To list all available options for engines.
-         * @see Language#getOptions() To list all available options for a {@link Language language}.
-         * @see Instrument#getOptions() To list all available options for an {@link Instrument
-         *      instrument}.
+         * <p>
+         * See {@link Engine#getOptions()} to list all available options for engines.
+         * <p>
+         * See {@link Language#getOptions()} to list all available options for a {@link Language
+         * language}.
+         * <p>
+         * See {@link Instrument#getOptions()} to list all available options for an
+         * {@link Instrument instrument}.
+         * 
          * @since 19.0
          */
         public Builder option(String key, String value) {
@@ -2128,18 +2132,8 @@ public final class Engine implements AutoCloseable {
         }
 
         private static RuntimeException noPolyglotImplementationFound() {
-            if (PolyglotInvalid.class.getModule().isNamed()) {
-                return new IllegalStateException(
-                                "No language and polyglot implementation was found on the module-path. " +
-                                                "Make sure at last one language is added to the module-path. ");
-            } else {
-                return new IllegalStateException(
-                                "No language and polyglot implementation was found on the class-path. " +
-                                                "Make sure at last one language is added on the class-path. " +
-                                                "If you put a language on the class-path and you encounter this error then there could be a problem with isolated class loading. " +
-                                                "Use -Dpolyglotimpl.TraceClassPathIsolation=true to debug class loader islation problems. " +
-                                                "For best performance it is recommended to use polyglot from the module-path instead of the class-path.");
-            }
+            return new IllegalStateException("No language and polyglot implementation was found on the module-path. " +
+                            "Make sure at last one language is added to the module-path. ");
         }
 
         @Override

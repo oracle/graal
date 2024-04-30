@@ -29,6 +29,7 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
@@ -38,8 +39,6 @@ import jdk.graal.compiler.util.json.JSONParserException;
 
 public class SerializationConfigurationParser<C> extends ConfigurationParser {
 
-    public static final String NAME_KEY = "name";
-    public static final String TYPE_KEY = "type";
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
     private static final String SERIALIZATION_TYPES_KEY = "types";
     private static final String LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY = "lambdaCapturingTypes";
@@ -107,29 +106,18 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
             return;
         }
 
-        String targetSerializationClass;
-        Object typeObject = data.get(TYPE_KEY);
-        if (typeObject != null) {
-            if (typeObject instanceof String stringValue) {
-                targetSerializationClass = stringValue;
-            } else {
-                /*
-                 * We return if we find a future version of a type descriptor (as a JSON object)
-                 * instead of failing parsing.
-                 */
-                asMap(typeObject, "type descriptor should be a string or object");
-                return;
-            }
-        } else {
-            targetSerializationClass = asString(data.get(NAME_KEY));
+        Optional<String> targetSerializationClass;
+        targetSerializationClass = parseType(data);
+        if (targetSerializationClass.isEmpty()) {
+            return;
         }
 
         if (lambdaCapturingType) {
-            serializationSupport.registerLambdaCapturingClass(condition.get(), targetSerializationClass);
+            serializationSupport.registerLambdaCapturingClass(condition.get(), targetSerializationClass.get());
         } else {
             Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            serializationSupport.registerWithTargetConstructorClass(condition.get(), targetSerializationClass, customTargetConstructorClass);
+            serializationSupport.registerWithTargetConstructorClass(condition.get(), targetSerializationClass.get(), customTargetConstructorClass);
         }
     }
 }

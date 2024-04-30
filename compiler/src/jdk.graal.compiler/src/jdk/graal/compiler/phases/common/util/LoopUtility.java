@@ -29,22 +29,28 @@ import java.util.EnumSet;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.NodeEvent;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.loop.BasicInductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.LoopEx;
@@ -53,6 +59,38 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUtility {
+
+    public static boolean canTakeAbs(long l, int bits) {
+        try {
+            abs(l, bits);
+            return true;
+        } catch (ArithmeticException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Compute {@link Math#abs(long)} for the given arguments and the given bit size. Throw a
+     * {@link ArithmeticException} if the abs operation would overflow.
+     */
+    public static long abs(long l, int bits) throws ArithmeticException {
+        if (bits == 32) {
+            if (l == Integer.MIN_VALUE) {
+                throw new ArithmeticException("Abs on Integer.MIN_VALUE would cause an overflow because abs(Integer.MIN_VALUE) = Integer.MAX_VALUE + 1 which does not fit in int (32 bits)");
+            } else {
+                final int i = (int) l;
+                return Math.abs(i);
+            }
+        } else if (bits == 64) {
+            if (l == Long.MIN_VALUE) {
+                throw new ArithmeticException("Abs on Long.MIN_VALUE would cause an overflow because abs(Long.MIN_VALUE) = Long.MAX_VALUE + 1 which does not fit in long (64 bits)");
+            } else {
+                return Math.abs(l);
+            }
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
+    }
 
     /**
      * Determine if the def can use node {@code use} without the need for value proxies. This means
@@ -165,5 +203,56 @@ public class LoopUtility {
             ValueNode steppedInit = AddNode.create(phi.valueAt(0), MulNode.create(convertedIterations, iv.strideNode(), NodeView.DEFAULT), NodeView.DEFAULT);
             phi.setValueAt(0, graph.addOrUniqueWithInputs(steppedInit));
         }
+    }
+
+    /**
+     * Ensure that floating div nodes are correct and can be correctly verified after unrolling.
+     *
+     * A loop variant floating div node means the body of the loop guarantees that the div cannot
+     * trap. This guarantee is encoded in the stamps of the div inputs. Whatever iteration space the
+     * loop has, the div will not trap.
+     *
+     * Unrolling a loop does not change the iteration space of a loop nor the values used in the
+     * loop body, it just affects the backedge jump frequency. Thus, any div floating and valid to
+     * be floating before unrolling must be so after unrolling. However, unrolling copies versions
+     * of the loop body which affects stamp computation. The original stamps of loop phis can be set
+     * by various optimizations. After unrolling we may not have enough context information about
+     * the loop to deduce no trap can happen for the values inside the loop. This is a shortcoming
+     * in our stamp system where we do not connect the max trip count of a loop to the inferred
+     * stamp of an arithmetic operation. Thus, we manually inject the original stamps via pi nodes
+     * into the unrolled versions. This ensures the divs verify correctly.
+     */
+    public static void preserveCounterStampsForDivAfterUnroll(LoopEx loop) {
+        for (Node n : loop.inside().nodes()) {
+            if (n instanceof FloatingIntegerDivRemNode<?> idiv) {
+
+                StructuredGraph graph = idiv.graph();
+
+                ValueNode divisor = idiv.getY();
+                IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
+                ValueNode dividend = idiv.getX();
+                IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
+
+                GraalError.guarantee(!divisorStamp.contains(0), "Divisor stamp must not contain 0 for floating divs - that could trap %s", idiv);
+
+                boolean xInsideLoop = !loop.isOutsideLoop(dividend);
+                boolean yInsideLoop = !loop.isOutsideLoop(divisor);
+
+                if (yInsideLoop) {
+                    idiv.setY(piAnchorBeforeLoop(graph, divisor, divisorStamp, loop));
+                }
+                if (xInsideLoop) {
+                    idiv.setX(piAnchorBeforeLoop(graph, dividend, dividendStamp, loop));
+                }
+            }
+        }
+        loop.invalidateFragmentsAndIVs();
+        loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "After preserving idiv stamps");
+    }
+
+    private static PiNode piAnchorBeforeLoop(StructuredGraph graph, ValueNode v, Stamp s, LoopEx loop) {
+        ValueNode opaqueDivisor = graph.addWithoutUnique(new OpaqueValueNode(v));
+        // just anchor the pi before the loop, that dominates the other input
+        return graph.addWithoutUnique(new PiNode(opaqueDivisor, s, AbstractBeginNode.prevBegin(loop.loopBegin().forwardEnd())));
     }
 }

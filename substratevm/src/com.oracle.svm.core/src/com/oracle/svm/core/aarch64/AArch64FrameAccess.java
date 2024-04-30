@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.aarch64;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -35,6 +34,8 @@ import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.nodes.aarch64.AArch64XPACNode;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton(FrameAccess.class)
 @Platforms(Platform.AARCH64.class)
@@ -61,13 +62,6 @@ public class AArch64FrameAccess extends FrameAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer getReturnAddressLocation(Pointer sourceSp) {
         return sourceSp.subtract(returnAddressSize());
-    }
-
-    @Fold
-    @Override
-    public int savedBasePointerSize() {
-        // The base pointer is always saved with stp instruction on method entry
-        return wordSize();
     }
 
     @Override

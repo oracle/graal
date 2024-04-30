@@ -28,9 +28,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 
-import jdk.graal.compiler.phases.common.util.LoopUtility;
-import jdk.graal.compiler.phases.util.GraphOrder;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.cfg.Loop;
@@ -69,7 +69,8 @@ import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import org.graalvm.word.LocationIdentity;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
+import jdk.graal.compiler.phases.util.GraphOrder;
 
 /**
  * Optimization phase that performs global value numbering and loop invariant code motion on a
@@ -81,7 +82,7 @@ import org.graalvm.word.LocationIdentity;
  * an array length
  *
  * <pre>
- * for (int i = 0; i < arr.length; i++) {
+ * for (int i = 0; i &lt; arr.length; i++) {
  * // body
  * }
  * </pre>
@@ -94,7 +95,7 @@ import org.graalvm.word.LocationIdentity;
  * int i = 0;
  * while (true) {
  *     int len = arr.length;
- *     if (i < len) {
+ *     if (i &lt; len) {
  *         // body
  *         i++;
  *     }

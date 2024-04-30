@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
@@ -66,7 +67,7 @@ class AtomicFieldUpdaterFeature implements InternalFeature {
      * analysis, because that would mean that we missed an atomic field updater during static
      * analysis.
      */
-    private void processFieldUpdater(DuringAnalysisAccess access, Object updater) {
+    private void processFieldUpdater(DuringAnalysisAccess access, Object updater, ObjectScanner.ScanReason reason) {
         VMError.guarantee(!sealed, "New atomic field updater found after static analysis");
 
         Class<?> updaterClass = updater.getClass();
@@ -77,7 +78,7 @@ class AtomicFieldUpdaterFeature implements InternalFeature {
             if (!Modifier.isStatic(f.getModifiers())) {
                 long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(f);
                 if (fieldOffset == searchOffset) {
-                    access.registerAsUnsafeAccessed(f);
+                    ((FeatureImpl.DuringAnalysisAccessImpl) access).registerAsUnsafeAccessed(f, reason);
                     return;
                 }
             }

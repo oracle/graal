@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,6 +74,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.api.Vector128Shape;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.ExportIdentifier;
@@ -1808,17 +1809,239 @@ public class BinaryParser extends BinaryStreamParser {
                         load(state, V128_TYPE, 128, longMultiResult);
                         state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                         break;
-                    case Instructions.VECTOR_V128_CONST:
+                    case Instructions.VECTOR_V128_LOAD8X8_S:
+                    case Instructions.VECTOR_V128_LOAD8X8_U:
+                    case Instructions.VECTOR_V128_LOAD16X4_S:
+                    case Instructions.VECTOR_V128_LOAD16X4_U:
+                    case Instructions.VECTOR_V128_LOAD32X2_S:
+                    case Instructions.VECTOR_V128_LOAD32X2_U:
+                        load(state, V128_TYPE, 64, longMultiResult);
+                        state.addExtendedMemoryInstruction(vectorOpcode, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.VECTOR_V128_LOAD8_SPLAT:
+                        load(state, V128_TYPE, 8, longMultiResult);
+                        state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD8_SPLAT, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.VECTOR_V128_LOAD16_SPLAT:
+                        load(state, V128_TYPE, 16, longMultiResult);
+                        state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD16_SPLAT, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.VECTOR_V128_LOAD32_SPLAT:
+                        load(state, V128_TYPE, 32, longMultiResult);
+                        state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD32_SPLAT, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.VECTOR_V128_LOAD64_SPLAT:
+                        load(state, V128_TYPE, 64, longMultiResult);
+                        state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD64_SPLAT, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.VECTOR_V128_LOAD32_ZERO:
+                        load(state, V128_TYPE, 32, longMultiResult);
+                        state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD32_ZERO, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.VECTOR_V128_LOAD64_ZERO:
+                        load(state, V128_TYPE, 64, longMultiResult);
+                        state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD64_ZERO, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.VECTOR_V128_STORE:
+                        store(state, V128_TYPE, 128, longMultiResult);
+                        state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.VECTOR_V128_LOAD8_LANE: {
+                        state.popChecked(V128_TYPE);
+                        load(state, V128_TYPE, 8, longMultiResult);
+                        final byte laneIndex = read1();
+                        if (Byte.toUnsignedInt(laneIndex) >= 16) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.load8_lane", Byte.toUnsignedInt(laneIndex));
+                        }
+                        state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_LOAD8_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
+                                        laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_V128_LOAD16_LANE: {
+                        state.popChecked(V128_TYPE);
+                        load(state, V128_TYPE, 16, longMultiResult);
+                        final byte laneIndex = read1();
+                        if (Byte.toUnsignedInt(laneIndex) >= 8) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.load16_lane", Byte.toUnsignedInt(laneIndex));
+                        }
+                        state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_LOAD16_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
+                                        laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_V128_LOAD32_LANE: {
+                        state.popChecked(V128_TYPE);
+                        load(state, V128_TYPE, 32, longMultiResult);
+                        final byte laneIndex = read1();
+                        if (Byte.toUnsignedInt(laneIndex) >= 4) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.load32_lane", Byte.toUnsignedInt(laneIndex));
+                        }
+                        state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_LOAD32_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
+                                        laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_V128_LOAD64_LANE: {
+                        state.popChecked(V128_TYPE);
+                        load(state, V128_TYPE, 64, longMultiResult);
+                        final byte laneIndex = read1();
+                        if (Byte.toUnsignedInt(laneIndex) >= 2) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.load64_lane", Byte.toUnsignedInt(laneIndex));
+                        }
+                        state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_LOAD64_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
+                                        laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_V128_STORE8_LANE: {
+                        store(state, V128_TYPE, 8, longMultiResult);
+                        final byte laneIndex = read1();
+                        if (Byte.toUnsignedInt(laneIndex) >= 16) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.store8_lane", Byte.toUnsignedInt(laneIndex));
+                        }
+                        state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_STORE8_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
+                                        laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_V128_STORE16_LANE: {
+                        store(state, V128_TYPE, 16, longMultiResult);
+                        final byte laneIndex = read1();
+                        if (Byte.toUnsignedInt(laneIndex) >= 8) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.store16_lane", Byte.toUnsignedInt(laneIndex));
+                        }
+                        state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_STORE16_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
+                                        laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_V128_STORE32_LANE: {
+                        store(state, V128_TYPE, 32, longMultiResult);
+                        final byte laneIndex = read1();
+                        if (Byte.toUnsignedInt(laneIndex) >= 4) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.store32_lane", Byte.toUnsignedInt(laneIndex));
+                        }
+                        state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_STORE32_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
+                                        laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_V128_STORE64_LANE: {
+                        store(state, V128_TYPE, 64, longMultiResult);
+                        final byte laneIndex = read1();
+                        if (Byte.toUnsignedInt(laneIndex) >= 2) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.store64_lane", Byte.toUnsignedInt(laneIndex));
+                        }
+                        state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_STORE64_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
+                                        laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_V128_CONST: {
                         final Vector128 value = readUnsignedInt128();
                         state.push(V128_TYPE);
                         state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
                         break;
+                    }
+                    case Instructions.VECTOR_I8X16_SHUFFLE: {
+                        final Vector128 indices = readUnsignedInt128();
+                        for (byte index : indices.getBytes()) {
+                            if (Byte.toUnsignedInt(index) >= 32) {
+                                fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for i8x16.shuffle", Byte.toUnsignedInt(index));
+                            }
+                        }
+                        state.popChecked(V128_TYPE);
+                        state.popChecked(V128_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode, indices);
+                        break;
+                    }
+                    case Instructions.VECTOR_I8X16_EXTRACT_LANE_S:
+                    case Instructions.VECTOR_I8X16_EXTRACT_LANE_U:
+                    case Instructions.VECTOR_I16X8_EXTRACT_LANE_S:
+                    case Instructions.VECTOR_I16X8_EXTRACT_LANE_U:
+                    case Instructions.VECTOR_I32X4_EXTRACT_LANE:
+                    case Instructions.VECTOR_I64X2_EXTRACT_LANE:
+                    case Instructions.VECTOR_F32X4_EXTRACT_LANE:
+                    case Instructions.VECTOR_F64X2_EXTRACT_LANE: {
+                        final byte laneIndex = read1();
+                        Vector128Shape shape = Vector128Shape.ofInstruction(vectorOpcode);
+                        if (Byte.toUnsignedInt(laneIndex) >= shape.getDimension()) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for shape %s", Byte.toUnsignedInt(laneIndex), shape.toString());
+                        }
+                        state.popChecked(V128_TYPE);
+                        state.push(shape.getUnpackedType());
+                        state.addVectorLaneInstruction(vectorOpcode, laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_I8X16_REPLACE_LANE:
+                    case Instructions.VECTOR_I16X8_REPLACE_LANE:
+                    case Instructions.VECTOR_I32X4_REPLACE_LANE:
+                    case Instructions.VECTOR_I64X2_REPLACE_LANE:
+                    case Instructions.VECTOR_F32X4_REPLACE_LANE:
+                    case Instructions.VECTOR_F64X2_REPLACE_LANE: {
+                        final byte laneIndex = read1();
+                        Vector128Shape shape = Vector128Shape.ofInstruction(vectorOpcode);
+                        if (Byte.toUnsignedInt(laneIndex) >= shape.getDimension()) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for shape %s", Byte.toUnsignedInt(laneIndex), shape.toString());
+                        }
+                        state.popChecked(shape.getUnpackedType());
+                        state.popChecked(V128_TYPE);
+                        state.push(V128_TYPE);
+                        state.addVectorLaneInstruction(vectorOpcode, laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_I8X16_SPLAT:
+                    case Instructions.VECTOR_I16X8_SPLAT:
+                    case Instructions.VECTOR_I32X4_SPLAT:
+                    case Instructions.VECTOR_I64X2_SPLAT:
+                    case Instructions.VECTOR_F32X4_SPLAT:
+                    case Instructions.VECTOR_F64X2_SPLAT: {
+                        Vector128Shape shape = Vector128Shape.ofInstruction(vectorOpcode);
+                        state.popChecked(shape.getUnpackedType());
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode);
+                        break;
+                    }
                     case Instructions.VECTOR_V128_ANY_TRUE:
+                    case Instructions.VECTOR_I8X16_ALL_TRUE:
+                    case Instructions.VECTOR_I8X16_BITMASK:
+                    case Instructions.VECTOR_I16X8_ALL_TRUE:
+                    case Instructions.VECTOR_I16X8_BITMASK:
                     case Instructions.VECTOR_I32X4_ALL_TRUE:
+                    case Instructions.VECTOR_I32X4_BITMASK:
+                    case Instructions.VECTOR_I64X2_ALL_TRUE:
+                    case Instructions.VECTOR_I64X2_BITMASK:
                         state.popChecked(V128_TYPE);
                         state.push(I32_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
+                    case Instructions.VECTOR_V128_NOT:
+                    case Instructions.VECTOR_I8X16_ABS:
+                    case Instructions.VECTOR_I8X16_NEG:
+                    case Instructions.VECTOR_I8X16_POPCNT:
+                    case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U:
+                    case Instructions.VECTOR_I16X8_ABS:
+                    case Instructions.VECTOR_I16X8_NEG:
+                    case Instructions.VECTOR_I16X8_EXTEND_LOW_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTEND_LOW_I8X16_U:
+                    case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8X16_U:
+                    case Instructions.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S:
+                    case Instructions.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U:
+                    case Instructions.VECTOR_I32X4_ABS:
+                    case Instructions.VECTOR_I32X4_NEG:
+                    case Instructions.VECTOR_I32X4_EXTEND_LOW_I16X8_S:
+                    case Instructions.VECTOR_I32X4_EXTEND_HIGH_I16X8_S:
+                    case Instructions.VECTOR_I32X4_EXTEND_LOW_I16X8_U:
+                    case Instructions.VECTOR_I32X4_EXTEND_HIGH_I16X8_U:
+                    case Instructions.VECTOR_I64X2_ABS:
+                    case Instructions.VECTOR_I64X2_NEG:
+                    case Instructions.VECTOR_I64X2_EXTEND_LOW_I32X4_S:
+                    case Instructions.VECTOR_I64X2_EXTEND_HIGH_I32X4_S:
+                    case Instructions.VECTOR_I64X2_EXTEND_LOW_I32X4_U:
+                    case Instructions.VECTOR_I64X2_EXTEND_HIGH_I32X4_U:
+                    case Instructions.VECTOR_F32X4_CEIL:
+                    case Instructions.VECTOR_F32X4_FLOOR:
+                    case Instructions.VECTOR_F32X4_TRUNC:
+                    case Instructions.VECTOR_F32X4_NEAREST:
+                    case Instructions.VECTOR_F32X4_ABS:
+                    case Instructions.VECTOR_F32X4_NEG:
+                    case Instructions.VECTOR_F32X4_SQRT:
                     case Instructions.VECTOR_F64X2_CEIL:
                     case Instructions.VECTOR_F64X2_FLOOR:
                     case Instructions.VECTOR_F64X2_TRUNC:
@@ -1826,19 +2049,132 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_F64X2_ABS:
                     case Instructions.VECTOR_F64X2_NEG:
                     case Instructions.VECTOR_F64X2_SQRT:
+                    case Instructions.VECTOR_I32X4_TRUNC_SAT_F32X4_S:
+                    case Instructions.VECTOR_I32X4_TRUNC_SAT_F32X4_U:
+                    case Instructions.VECTOR_F32X4_CONVERT_I32X4_S:
+                    case Instructions.VECTOR_F32X4_CONVERT_I32X4_U:
+                    case Instructions.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO:
+                    case Instructions.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO:
+                    case Instructions.VECTOR_F64X2_CONVERT_LOW_I32X4_S:
+                    case Instructions.VECTOR_F64X2_CONVERT_LOW_I32X4_U:
+                    case Instructions.VECTOR_F32X4_DEMOTE_F64X2_ZERO:
+                    case Instructions.VECTOR_F64X2_PROMOTE_LOW_F32X4:
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
+                    case Instructions.VECTOR_I8X16_SWIZZLE:
+                    case Instructions.VECTOR_I8X16_EQ:
+                    case Instructions.VECTOR_I8X16_NE:
+                    case Instructions.VECTOR_I8X16_LT_S:
+                    case Instructions.VECTOR_I8X16_LT_U:
+                    case Instructions.VECTOR_I8X16_GT_S:
+                    case Instructions.VECTOR_I8X16_GT_U:
+                    case Instructions.VECTOR_I8X16_LE_S:
+                    case Instructions.VECTOR_I8X16_LE_U:
+                    case Instructions.VECTOR_I8X16_GE_S:
+                    case Instructions.VECTOR_I8X16_GE_U:
+                    case Instructions.VECTOR_I16X8_EQ:
+                    case Instructions.VECTOR_I16X8_NE:
+                    case Instructions.VECTOR_I16X8_LT_S:
+                    case Instructions.VECTOR_I16X8_LT_U:
+                    case Instructions.VECTOR_I16X8_GT_S:
+                    case Instructions.VECTOR_I16X8_GT_U:
+                    case Instructions.VECTOR_I16X8_LE_S:
+                    case Instructions.VECTOR_I16X8_LE_U:
+                    case Instructions.VECTOR_I16X8_GE_S:
+                    case Instructions.VECTOR_I16X8_GE_U:
+                    case Instructions.VECTOR_I32X4_EQ:
+                    case Instructions.VECTOR_I32X4_NE:
+                    case Instructions.VECTOR_I32X4_LT_S:
+                    case Instructions.VECTOR_I32X4_LT_U:
+                    case Instructions.VECTOR_I32X4_GT_S:
+                    case Instructions.VECTOR_I32X4_GT_U:
+                    case Instructions.VECTOR_I32X4_LE_S:
+                    case Instructions.VECTOR_I32X4_LE_U:
+                    case Instructions.VECTOR_I32X4_GE_S:
+                    case Instructions.VECTOR_I32X4_GE_U:
+                    case Instructions.VECTOR_I64X2_EQ:
+                    case Instructions.VECTOR_I64X2_NE:
+                    case Instructions.VECTOR_I64X2_LT_S:
+                    case Instructions.VECTOR_I64X2_GT_S:
+                    case Instructions.VECTOR_I64X2_LE_S:
+                    case Instructions.VECTOR_I64X2_GE_S:
+                    case Instructions.VECTOR_F32X4_EQ:
+                    case Instructions.VECTOR_F32X4_NE:
+                    case Instructions.VECTOR_F32X4_LT:
+                    case Instructions.VECTOR_F32X4_GT:
+                    case Instructions.VECTOR_F32X4_LE:
+                    case Instructions.VECTOR_F32X4_GE:
                     case Instructions.VECTOR_F64X2_EQ:
                     case Instructions.VECTOR_F64X2_NE:
                     case Instructions.VECTOR_F64X2_LT:
                     case Instructions.VECTOR_F64X2_GT:
                     case Instructions.VECTOR_F64X2_LE:
                     case Instructions.VECTOR_F64X2_GE:
+                    case Instructions.VECTOR_V128_AND:
+                    case Instructions.VECTOR_V128_ANDNOT:
+                    case Instructions.VECTOR_V128_OR:
+                    case Instructions.VECTOR_V128_XOR:
+                    case Instructions.VECTOR_I8X16_NARROW_I16X8_S:
+                    case Instructions.VECTOR_I8X16_NARROW_I16X8_U:
+                    case Instructions.VECTOR_I8X16_ADD:
+                    case Instructions.VECTOR_I8X16_ADD_SAT_S:
+                    case Instructions.VECTOR_I8X16_ADD_SAT_U:
+                    case Instructions.VECTOR_I8X16_SUB:
+                    case Instructions.VECTOR_I8X16_SUB_SAT_S:
+                    case Instructions.VECTOR_I8X16_SUB_SAT_U:
+                    case Instructions.VECTOR_I8X16_MIN_S:
+                    case Instructions.VECTOR_I8X16_MIN_U:
+                    case Instructions.VECTOR_I8X16_MAX_S:
+                    case Instructions.VECTOR_I8X16_MAX_U:
+                    case Instructions.VECTOR_I8X16_AVGR_U:
+                    case Instructions.VECTOR_I16X8_Q15MULR_SAT_S:
+                    case Instructions.VECTOR_I16X8_NARROW_I32X4_S:
+                    case Instructions.VECTOR_I16X8_NARROW_I32X4_U:
+                    case Instructions.VECTOR_I16X8_ADD:
+                    case Instructions.VECTOR_I16X8_ADD_SAT_S:
+                    case Instructions.VECTOR_I16X8_ADD_SAT_U:
+                    case Instructions.VECTOR_I16X8_SUB:
+                    case Instructions.VECTOR_I16X8_SUB_SAT_S:
+                    case Instructions.VECTOR_I16X8_SUB_SAT_U:
+                    case Instructions.VECTOR_I16X8_MUL:
+                    case Instructions.VECTOR_I16X8_MIN_S:
+                    case Instructions.VECTOR_I16X8_MIN_U:
+                    case Instructions.VECTOR_I16X8_MAX_S:
+                    case Instructions.VECTOR_I16X8_MAX_U:
+                    case Instructions.VECTOR_I16X8_AVGR_U:
+                    case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8X16_U:
+                    case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U:
                     case Instructions.VECTOR_I32X4_ADD:
                     case Instructions.VECTOR_I32X4_SUB:
                     case Instructions.VECTOR_I32X4_MUL:
+                    case Instructions.VECTOR_I32X4_MIN_S:
+                    case Instructions.VECTOR_I32X4_MIN_U:
+                    case Instructions.VECTOR_I32X4_MAX_S:
+                    case Instructions.VECTOR_I32X4_MAX_U:
+                    case Instructions.VECTOR_I32X4_DOT_I16X8_S:
+                    case Instructions.VECTOR_I32X4_EXTMUL_LOW_I16X8_S:
+                    case Instructions.VECTOR_I32X4_EXTMUL_HIGH_I16X8_S:
+                    case Instructions.VECTOR_I32X4_EXTMUL_LOW_I16X8_U:
+                    case Instructions.VECTOR_I32X4_EXTMUL_HIGH_I16X8_U:
+                    case Instructions.VECTOR_I64X2_ADD:
+                    case Instructions.VECTOR_I64X2_SUB:
+                    case Instructions.VECTOR_I64X2_MUL:
+                    case Instructions.VECTOR_I64X2_EXTMUL_LOW_I32X4_S:
+                    case Instructions.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S:
+                    case Instructions.VECTOR_I64X2_EXTMUL_LOW_I32X4_U:
+                    case Instructions.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U:
+                    case Instructions.VECTOR_F32X4_ADD:
+                    case Instructions.VECTOR_F32X4_SUB:
+                    case Instructions.VECTOR_F32X4_MUL:
+                    case Instructions.VECTOR_F32X4_DIV:
+                    case Instructions.VECTOR_F32X4_MIN:
+                    case Instructions.VECTOR_F32X4_MAX:
+                    case Instructions.VECTOR_F32X4_PMIN:
+                    case Instructions.VECTOR_F32X4_PMAX:
                     case Instructions.VECTOR_F64X2_ADD:
                     case Instructions.VECTOR_F64X2_SUB:
                     case Instructions.VECTOR_F64X2_MUL:
@@ -1847,6 +2183,30 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_F64X2_MAX:
                     case Instructions.VECTOR_F64X2_PMIN:
                     case Instructions.VECTOR_F64X2_PMAX:
+                        state.popChecked(V128_TYPE);
+                        state.popChecked(V128_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode);
+                        break;
+                    case Instructions.VECTOR_I8X16_SHL:
+                    case Instructions.VECTOR_I8X16_SHR_S:
+                    case Instructions.VECTOR_I8X16_SHR_U:
+                    case Instructions.VECTOR_I16X8_SHL:
+                    case Instructions.VECTOR_I16X8_SHR_S:
+                    case Instructions.VECTOR_I16X8_SHR_U:
+                    case Instructions.VECTOR_I32X4_SHL:
+                    case Instructions.VECTOR_I32X4_SHR_S:
+                    case Instructions.VECTOR_I32X4_SHR_U:
+                    case Instructions.VECTOR_I64X2_SHL:
+                    case Instructions.VECTOR_I64X2_SHR_S:
+                    case Instructions.VECTOR_I64X2_SHR_U:
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(V128_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode);
+                        break;
+                    case Instructions.VECTOR_V128_BITSELECT:
+                        state.popChecked(V128_TYPE);
                         state.popChecked(V128_TYPE);
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
@@ -2078,15 +2438,6 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     break;
                 }
-                case Instructions.VECTOR_V128_CONST: {
-                    final Vector128 value = readUnsignedInt128();
-                    state.push(V128_TYPE);
-                    state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
-                    if (calculable) {
-                        stack.add(value);
-                    }
-                    break;
-                }
                 case Instructions.REF_NULL:
                     checkBulkMemoryAndRefTypesSupport(opcode);
                     final byte type = readRefType();
@@ -2160,6 +2511,25 @@ public class BinaryParser extends BinaryStreamParser {
                         });
                     }
                     break;
+                case Instructions.VECTOR:
+                    checkSIMDSupport();
+                    int vectorOpcode = read1() & 0xFF;
+                    state.addVectorFlag();
+                    switch (vectorOpcode) {
+                        case Instructions.VECTOR_V128_CONST: {
+                            final Vector128 value = readUnsignedInt128();
+                            state.push(V128_TYPE);
+                            state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
+                            if (calculable) {
+                                stack.add(value);
+                            }
+                            break;
+                        }
+                        default:
+                            fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                            break;
+                    }
+                    break;
                 default:
                     fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
                     break;
@@ -2204,7 +2574,6 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_CONST:
                 case Instructions.F32_CONST:
                 case Instructions.F64_CONST:
-                case Instructions.VECTOR_V128_CONST:
                     throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
                 case Instructions.I32_ADD:
                 case Instructions.I32_SUB:
@@ -2239,6 +2608,15 @@ public class BinaryParser extends BinaryStreamParser {
                     assertByteEqual(valueType, elemType, Failure.TYPE_MISMATCH);
                     functionIndices[index] = ((long) I32_TYPE << 32) | globalIndex;
                     break;
+                case Instructions.VECTOR:
+                    checkSIMDSupport();
+                    int vectorOpcode = read1() & 0xFF;
+                    switch (vectorOpcode) {
+                        case Instructions.VECTOR_V128_CONST:
+                            throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                        default:
+                            throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                    }
                 default:
                     throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X", opcode);
             }
@@ -2811,7 +3189,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int i = 0; i < 16; i++) {
             bytes[i] = read1();
         }
-        return Vector128.ofBytes(bytes);
+        return new Vector128(bytes);
     }
 
     /**

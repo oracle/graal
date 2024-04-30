@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -660,9 +660,9 @@ public final class Context implements AutoCloseable {
      * assert context.asValue("42").isString();
      * assert context.asValue('c').isString();
      * assert context.asValue(new String[0]).hasArrayElements();
-     * assert context.asValue(new ArrayList<>()).isHostObject();
-     * assert context.asValue(new ArrayList<>()).hasArrayElements();
-     * assert context.asValue((Supplier<Integer>) () -> 42).execute().asInt() == 42;
+     * assert context.asValue(new ArrayList&lt;&gt;()).isHostObject();
+     * assert context.asValue(new ArrayList&lt;&gt;()).hasArrayElements();
+     * assert context.asValue((Supplier&lt;Integer&gt;) () -> 42).execute().asInt() == 42;
      * </pre>
      *
      * <h1>Mapping to Java methods and fields</h1>

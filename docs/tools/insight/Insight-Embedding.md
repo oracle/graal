@@ -9,7 +9,7 @@ permalink: /tools/graalvm-insight/embedding/
 
 ## Embedding Insight into Java
 
-GraalVM languages (languages implemented with the Truffle framework, i.e., JavaScript, Python, Ruby, R) can be embedded into custom Java applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html).
+Graal languages (languages implemented with the Truffle framework, such as JavaScript, Python, Ruby, and R) can be embedded into custom Java applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html).
 GraalVM Insight can also be controlled via the same API. Like:
 
 ```java
@@ -22,7 +22,7 @@ AutoCloseable handle = access.apply(agentSrc);
 Obtain `Engine` for `Context` and ask for the `insight` instrument.
 <p>
 Then create `Source` with the GraalVM Insight script and apply it while obtaining its instrumentation handle.
-Use `handle.close()` to disable all the script's instrumentations when when no longer needed.
+Use `handle.close()` to disable all the script's instrumentation when no longer needed.
 For Example:
 
 ```java
@@ -71,11 +71,11 @@ See [Embedding Dependency Setup](../../reference-manual/embedding/embed-language
 
 ### Ignoring Internal Scripts
 
-Often one wants to treat certain code written in a dynamic language as a priviledged one.
+Often one wants to treat certain code written in a dynamic language as a privileged one.
 Imagine various bindings to OS concepts or other features of one's application.
 Such scripts are better to remain blackboxed and hidden from GraalVM Insight instrumentation capabilities.
 
-To hide priviledged scripts from sight, [mark them as internal](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#internal-boolean-).
+To hide privileged scripts from sight, [mark them as internal](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#internal-boolean-).
 By default GraalVM Insight ignores and does not process internal scripts.
 
 ### Extending Functionality of Insight Scripts
@@ -174,7 +174,7 @@ When writing your own `adminserver.js`, pay attention to security.
 Only an authorized person should apply arbitrary hooks to your application.
 Do not open the admin server port to everybody.
 
-### What to Read Rext
+### What to Read Next
 
-To learn more about Insight and find some usecases, go to the [Insight Manual](Insight-Manual.md).
+To learn more about Insight and find some use cases, go to the [Insight Manual](Insight-Manual.md).
 It starts with an obligatory _HelloWorld_ example and then demonstrates more challenging tasks.

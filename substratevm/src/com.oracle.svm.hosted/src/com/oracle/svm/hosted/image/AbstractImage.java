@@ -27,8 +27,6 @@ package com.oracle.svm.hosted.image;
 import java.nio.file.Path;
 import java.util.List;
 
-import jdk.graal.compiler.debug.DebugContext;
-
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
@@ -36,6 +34,8 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+
+import jdk.graal.compiler.debug.DebugContext;
 
 public abstract class AbstractImage {
 
@@ -50,6 +50,13 @@ public abstract class AbstractImage {
     protected int debugInfoSize = -1; // for build output reporting
 
     public enum NativeImageKind {
+        /* IMAGE_LAYER mimics a SHARED_LIBRARY. */
+        IMAGE_LAYER(false, true) {
+            @Override
+            public String getFilenameSuffix() {
+                return ".gso"; // Graal shared object
+            }
+        },
         SHARED_LIBRARY(false) {
             @Override
             public String getFilenameSuffix() {
@@ -65,10 +72,16 @@ public abstract class AbstractImage {
         STATIC_EXECUTABLE(true);
 
         public final boolean isExecutable;
+        public final boolean isImageLayer;
         public final String mainEntryPointName;
 
         NativeImageKind(boolean executable) {
+            this(executable, false);
+        }
+
+        NativeImageKind(boolean executable, boolean imageLayer) {
             isExecutable = executable;
+            isImageLayer = imageLayer;
             mainEntryPointName = executable ? "main" : "run_main";
         }
 
@@ -126,6 +139,8 @@ public abstract class AbstractImage {
         return switch (k) {
             case SHARED_LIBRARY ->
                 new SharedLibraryImageViaCC(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
+            case IMAGE_LAYER ->
+                new ImageLayerViaCC(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
             case EXECUTABLE, STATIC_EXECUTABLE ->
                 new ExecutableImageViaCC(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
         };

@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.java;
 
-import static jdk.graal.compiler.java.LambdaUtils.digest;
-
 import java.util.List;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -44,6 +42,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -86,7 +85,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
 
     /**
      * The format of the invoked methods passed to {@link ResolvedJavaMethod#format(String)}, which
-     * is {@link LambdaUtils#digest hashed} later.
+     * is {@link Digest#digest hashed} later.
      */
     private static final String INVOKED_METHOD_FORMAT = "%H.%n(%P)%R";
 
@@ -183,7 +182,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
         Matcher matcher = MH_METHOD_PATTERN.matcher(lambdaName);
         StringBuilder sb = new StringBuilder();
         invokedMethods.forEach((targetMethod) -> sb.append(targetMethod.format(INVOKED_METHOD_FORMAT)));
-        return matcher.replaceFirst(Matcher.quoteReplacement(MH_PREFIX + digest(sb.toString())));
+        return matcher.replaceFirst(Matcher.quoteReplacement(MH_PREFIX + Digest.digest(sb.toString())));
     }
 
     /**
@@ -207,6 +206,6 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
         Matcher matcher = LAMBDA_METHOD_PATTERN.matcher(lambdaName);
         StringBuilder sb = new StringBuilder();
         invokedMethods.forEach((targetMethod) -> sb.append(targetMethod.format(INVOKED_METHOD_FORMAT)));
-        return matcher.replaceFirst(Matcher.quoteReplacement(LAMBDA_PREFIX + digest(sb.toString())));
+        return matcher.replaceFirst(Matcher.quoteReplacement(LAMBDA_PREFIX + Digest.digest(sb.toString())));
     }
 }

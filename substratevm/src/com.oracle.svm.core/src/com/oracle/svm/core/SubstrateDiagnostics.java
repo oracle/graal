@@ -58,6 +58,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
@@ -110,8 +111,6 @@ public class SubstrateDiagnostics {
     private static final ImageCodeLocationInfoPrinter imageCodeLocationInfoPrinter = new ImageCodeLocationInfoPrinter();
     private static final Stage0StackFramePrintVisitor[] printVisitors = new Stage0StackFramePrintVisitor[]{new StackFramePrintVisitor(), new Stage1StackFramePrintVisitor(),
                     new Stage0StackFramePrintVisitor()};
-
-    private static volatile boolean loopOnFatalError;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setOnlyAttachedForCrashHandler(IsolateThread thread) {
@@ -273,7 +272,7 @@ public class SubstrateDiagnostics {
          * In the debugger, it is possible to change the value of loopOnFatalError to false if
          * necessary.
          */
-        while (loopOnFatalError) {
+        while (Options.shouldLoopOnFatalError()) {
             PauseNode.pause();
         }
 
@@ -718,32 +717,6 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpTopDeoptimizedFrame extends DiagnosticThunk {
-        @Override
-        public int maxInvocationCount() {
-            return 1;
-        }
-
-        @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            Pointer sp = context.getStackPointer();
-            CodePointer ip = context.getInstructionPointer();
-
-            if (sp.isNonNull() && ip.isNonNull()) {
-                long totalFrameSize = getTotalFrameSize(sp, ip);
-                DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
-                if (deoptFrame != null) {
-                    log.string("Top frame info:").indent(true);
-                    log.string("RSP ").zhex(sp).string(" frame was deoptimized:").newline();
-                    log.string("SourcePC ").zhex(deoptFrame.getSourcePC()).newline();
-                    log.string("SourceTotalFrameSize ").signed(totalFrameSize).newline();
-                    log.indent(false);
-                }
-            }
-        }
-    }
-
     private static class DumpThreads extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
@@ -957,11 +930,14 @@ public class SubstrateDiagnostics {
                 log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
             }
 
-            CodeInfo info = CodeInfoTable.getImageCodeInfo();
-            Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
-            UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
-            Pointer codeEnd = codeStart.add(codeSize).subtract(1);
-            log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+            CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();
+            do {
+                Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
+                UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
+                Pointer codeEnd = codeStart.add(codeSize).subtract(1);
+                log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+                info = CodeInfoAccess.getNextImageCodeInfo(info);
+            } while (info.isNonNull());
 
             log.indent(false);
         }
@@ -1127,25 +1103,28 @@ public class SubstrateDiagnostics {
          * NOTE: this method may only be called by a single thread.
          */
         public boolean printLocationInfo(Log log, UnsignedWord value) {
-            CodeInfo imageCodeInfo = CodeInfoTable.getImageCodeInfo();
-            if (imageCodeInfo.equal(value)) {
-                log.string("is the image CodeInfo object");
-                return true;
-            }
-
-            UnsignedWord codeInfoEnd = ((UnsignedWord) imageCodeInfo).add(CodeInfoAccess.getSizeOfCodeInfo());
-            if (value.aboveOrEqual((UnsignedWord) imageCodeInfo) && value.belowThan(codeInfoEnd)) {
-                log.string("points inside the image CodeInfo object ").zhex(imageCodeInfo);
-                return true;
-            }
-
-            if (CodeInfoAccess.contains(imageCodeInfo, (CodePointer) value)) {
-                log.string("points into AOT compiled code ");
-                FrameInfoQueryResult compilationRoot = getCompilationRoot(imageCodeInfo, (CodePointer) value);
-                if (compilationRoot != null) {
-                    compilationRoot.log(log);
+            CodeInfo imageCodeInfo = CodeInfoTable.getFirstImageCodeInfo();
+            while (imageCodeInfo.isNonNull()) {
+                if (imageCodeInfo.equal(value)) {
+                    log.string("is an image CodeInfo object");
+                    return true;
                 }
-                return true;
+
+                UnsignedWord codeInfoEnd = ((UnsignedWord) imageCodeInfo).add(CodeInfoAccess.getSizeOfCodeInfo());
+                if (value.aboveOrEqual((UnsignedWord) imageCodeInfo) && value.belowThan(codeInfoEnd)) {
+                    log.string("points inside the image CodeInfo object ").zhex(imageCodeInfo);
+                    return true;
+                }
+
+                if (CodeInfoAccess.contains(imageCodeInfo, (CodePointer) value)) {
+                    log.string("points into AOT compiled code ");
+                    FrameInfoQueryResult compilationRoot = getCompilationRoot(imageCodeInfo, (CodePointer) value);
+                    if (compilationRoot != null) {
+                        compilationRoot.log(log);
+                    }
+                    return true;
+                }
+                imageCodeInfo = CodeInfoAccess.getNextImageCodeInfo(imageCodeInfo);
             }
 
             return false;
@@ -1254,9 +1233,6 @@ public class SubstrateDiagnostics {
             thunks.add(new DumpRegisters());
             thunks.add(new DumpInstructions());
             thunks.add(new DumpTopOfCurrentThreadStack());
-            if (RuntimeCompilation.isEnabled()) {
-                thunks.add(new DumpTopDeoptimizedFrame());
-            }
             thunks.add(new DumpCurrentThreadLocals());
             thunks.add(new DumpCurrentThreadFrameAnchors());
             thunks.add(new DumpCurrentThreadDecodedStackTrace());
@@ -1336,14 +1312,41 @@ public class SubstrateDiagnostics {
         }
     }
 
+    @AutomaticallyRegisteredImageSingleton
     public static class Options {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
         public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 super.onValueUpdate(values, oldValue, newValue);
-                SubstrateDiagnostics.loopOnFatalError = newValue;
+
+                /*
+                 * Copy the value to a field in the image heap so that it is safe to access. During
+                 * image build, it can happen that the singleton does not exist yet. In that case,
+                 * the value will be copied to the image heap when executing the constructor of the
+                 * singleton. This is a bit cumbersome but necessary because we can't use a static
+                 * field.
+                 */
+                if (ImageSingletons.contains(Options.class)) {
+                    Options.singleton().loopOnFatalError = newValue;
+                }
             }
         };
+
+        private volatile boolean loopOnFatalError;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public Options() {
+            this.loopOnFatalError = Options.LoopOnFatalError.getValue();
+        }
+
+        @Fold
+        static Options singleton() {
+            return ImageSingletons.lookup(Options.class);
+        }
+
+        public static boolean shouldLoopOnFatalError() {
+            return singleton().loopOnFatalError;
+        }
     }
 }

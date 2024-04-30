@@ -133,7 +133,7 @@ public abstract class TruffleSafepoint {
      * &#64;TruffleBoundary
      * int sum(int[] array) {
      *     int sum = 0;
-     *     for (int i = 0; i < array.length; i++) {
+     *     for (int i = 0; i &lt; array.length; i++) {
      *         sum += array[i];
      *
      *         TruffleSafepoint.poll();
@@ -307,7 +307,7 @@ public abstract class TruffleSafepoint {
      * {@link #setBlockedThreadInterruptibleFunction(Node, InterruptibleFunction, Object)}.
      *
      * <pre>
-     * Queue<Object> queue = new ArrayBlockingQueue<>(10);
+     * Queue&lt;Object&gt; queue = new ArrayBlockingQueue&lt;&gt;(10);
      * TruffleSafepoint sp = TruffleSafepoint.getCurrent();
      * sp.setBlockedFunction(location, Interrupter.THREAD_INTERRUPT, BlockingQueue::take, queue, null, null);
      * </pre>

@@ -41,13 +41,15 @@
 
 from __future__ import print_function
 
+import collections.abc
 import os.path
 import time
 import signal
 import threading
 import json
 import argparse
-from typing import List, Optional, Set
+from enum import Enum
+from typing import List, Optional, Set, Collection, Union
 
 import mx
 import mx_benchmark
@@ -185,6 +187,24 @@ def strip_args_with_number(strip_args, args):
     return list(result)
 
 
+class Stage(Enum):
+    AGENT = "agent"
+    INSTRUMENT_IMAGE = "instrument-image"
+    INSTRUMENT_RUN = "instrument-run"
+    IMAGE = "image"
+    RUN = "run"
+
+    def __str__(self):
+        return self.value
+
+    def is_image(self) -> bool:
+        """Whether this is an image stage (a stage that performs an image build)"""
+        return self in [Stage.INSTRUMENT_IMAGE, Stage.IMAGE]
+
+    def is_instrument(self) -> bool:
+        """Whether this is an image stage (a stage that performs an image build)"""
+        return self in [Stage.INSTRUMENT_IMAGE, Stage.INSTRUMENT_RUN]
+
 class StagesInfo:
     """
     Holds information about benchmark stages that should be persisted across multiple stages in the same
@@ -202,17 +222,17 @@ class StagesInfo:
       This information is only available if :attr:`is_set_up` returns ``True``.
     """
 
-    def __init__(self, requested_stages: List[str], fallback_mode: bool = False):
+    def __init__(self, requested_stages: List[Stage], fallback_mode: bool = False):
         """
         :param requested_stages: List of stages requested by the user. See also :meth:`NativeImageBenchmarkMixin.stages`
                                  and :attr:`StagesInfo.effective_stages`
         """
         self._is_set_up: bool = False
         self._requested_stages = requested_stages
-        self._removed_stages: Set[str] = set()
-        self._effective_stages: Optional[List[str]] = None
-        self._stages_till_now: List[str] = []
-        self._requested_stage: Optional[str] = None
+        self._removed_stages: Set[Stage] = set()
+        self._effective_stages: Optional[List[Stage]] = None
+        self._stages_till_now: List[Stage] = []
+        self._requested_stage: Optional[Stage] = None
         # Computed lazily
         self._skip_current_stage: Optional[bool] = None
         self._failed: bool = False
@@ -226,7 +246,7 @@ class StagesInfo:
     def is_set_up(self) -> bool:
         return self._is_set_up
 
-    def setup(self, removed_stages: Set[str]) -> None:
+    def setup(self, removed_stages: Set[Stage]) -> None:
         """
         Fully configures the object with information about removed stages.
 
@@ -246,7 +266,7 @@ class StagesInfo:
             self._is_set_up = True
 
     @property
-    def effective_stages(self) -> List[str]:
+    def effective_stages(self) -> List[Stage]:
         """
         List of stages that are actually executed for this benchmark (is equal to requested_stages - removed_stages)
         """
@@ -256,11 +276,11 @@ class StagesInfo:
     @property
     def skip_current_stage(self) -> bool:
         if self._skip_current_stage is None:
-            self._skip_current_stage = self._requested_stage not in self.effective_stages
+            self._skip_current_stage = self.requested_stage not in self.effective_stages
         return self._skip_current_stage
 
     @property
-    def requested_stage(self) -> str:
+    def requested_stage(self) -> Stage:
         """
         The stage that was last requested to be executed.
         It is not guaranteed that this stage will be executed, it could be a skipped stage (see
@@ -273,14 +293,14 @@ class StagesInfo:
         return self._requested_stage
 
     @property
-    def effective_stage(self) -> Optional[str]:
+    def effective_stage(self) -> Optional[Stage]:
         """
         Same as :meth:`StagesInfo.requested_stage`, but returns None if the stage is skipped.
         """
         return None if self.skip_current_stage else self.requested_stage
 
     @property
-    def last_stage(self) -> str:
+    def last_stage(self) -> Stage:
         return self.effective_stages[-1]
 
     @property
@@ -288,7 +308,7 @@ class StagesInfo:
         return self._failed
 
     @property
-    def stages_till_now(self) -> List[str]:
+    def stages_till_now(self) -> List[Stage]:
         """
         List of stages executed so far, all of which have been successful.
 
@@ -296,7 +316,7 @@ class StagesInfo:
         """
         return self._stages_till_now
 
-    def change_stage(self, stage_name: str) -> None:
+    def change_stage(self, stage_name: Stage) -> None:
         self._requested_stage = stage_name
         # Force recomputation
         self._skip_current_stage = None
@@ -310,6 +330,28 @@ class StagesInfo:
         assert self.is_set_up
         """Called when the current stage finished with an error"""
         self._failed = True
+
+    def should_produce_datapoints(self, stages: Union[None, Stage, Collection[Stage]] = None) -> bool:
+        """
+        Whether, under the current configuration, datapoints should be produced for any of the given stage.
+
+        In fallback mode, we only produce datapoints for the ``image`` and ``run`` stage because stages are not run
+        individually and datapoints from other stages may not be distinguishable from the ``image`` and ``run`` stage.
+
+        :param stages: If None, the current effective stage is used. A single stage will be treated as a singleton list
+        """
+
+        if not stages:
+            stages = [self.effective_stage]
+        elif not isinstance(stages, collections.abc.Collection):
+            stages = [stages]
+
+        if self.fallback_mode:
+            # In fallback mode, all datapoints are generated at once and not in a specific stage, checking whether the
+            # given stage matches the current stage will almost never yield the sensible result
+            return not {Stage.IMAGE, Stage.RUN}.isdisjoint(stages)
+        else:
+            return self.effective_stage in stages
 
 
 class NativeImageBenchmarkMixin(object):
@@ -345,7 +387,7 @@ class NativeImageBenchmarkMixin(object):
     benchmark output or by writing some Native Image specific logic (with :meth:`is_native_mode`)
     An example for such a workaround are :class:`mx_benchmark.JMHBenchmarkSuiteBase` and its subclasses (see
     ``get_jmh_result_file``, its usages and its Native Image specific implementation in
-    :class:`mx_java_benchmark.JMHNativeImageBenchmarkMixin`)
+    :class:`mx_graal_benchmark.JMHNativeImageBenchmarkMixin`)
 
     If the benchmark suite itself dispatches into the VM multiple times (in addition to the mixin doing it once per
     stage), care must be taken in which order this happens.
@@ -357,6 +399,7 @@ class NativeImageBenchmarkMixin(object):
 
     If these limitations cannot be worked around, using the fallback mode may be required, with the caveat that it
     provides limited functionality.
+    This was done for example in :meth:`mx_graal_benchmark.JMHNativeImageBenchmarkMixin.fallback_mode_reason`.
 
     Fallback Mode
     -------------
@@ -371,7 +414,12 @@ class NativeImageBenchmarkMixin(object):
     Because of that, only the output of the ``image`` and ``run`` stages is returned from the VM (the remainder is still
     printed, but not used for regex matching when creating datapoints).
 
-    Additionally, the user cannot select only a subset of stages to run (using ``-Dnative-image.benchmark.stages``).
+    In addition, the ``NativeImageVM`` will not produce any rules to generate extra datapoints (e.g. for image build
+    metrics). If the benchmark suite dispatches into the VM multiple times (like for JMH with
+    ``--jmh-run-individually``), those rules cannot work correctly since they cannot know for which individual benchmark
+    to produce datapoint(s).
+
+    Finally, the user cannot select only a subset of stages to run (using ``-Dnative-image.benchmark.stages``).
     All stages required for that benchmark are always run together.
     """
 
@@ -444,7 +492,7 @@ class NativeImageBenchmarkMixin(object):
         return datapoints
 
     @staticmethod
-    def _inject_stage_keys(dps: DataPoints, stage: str) -> None:
+    def _inject_stage_keys(dps: DataPoints, stage: Stage) -> None:
         """
         Modifies the ``host-vm-config`` key based on the current stage.
         For the agent and instrument stages ``-agent`` and ``-instrument`` are appended to distinguish the datapoints
@@ -454,11 +502,11 @@ class NativeImageBenchmarkMixin(object):
         :param stage: The stage the datapoints were generated in
         """
 
-        if stage == "agent":
+        if stage == Stage.AGENT:
             host_vm_suffix = "-agent"
-        elif stage in ["instrument-image", "instrument-run"]:
+        elif stage in [Stage.INSTRUMENT_IMAGE, Stage.INSTRUMENT_RUN]:
             host_vm_suffix = "-instrument"
-        elif stage in ["image", "run"]:
+        elif stage in [Stage.IMAGE, Stage.RUN]:
             host_vm_suffix = ""
         else:
             raise ValueError(f"Unknown stage {stage}")
@@ -466,16 +514,24 @@ class NativeImageBenchmarkMixin(object):
         for dp in dps:
             dp["host-vm-config"] += host_vm_suffix
 
-    def run_stage(self, vm, stage, command, out, err, cwd, nonZeroIsFatal):
+    def run_stage(self, vm, stage: Stage, command, out, err, cwd, nonZeroIsFatal):
         final_command = command
-        if stage == 'run':
+        # Apply command mapper hooks (e.g. trackers) for all stages that run benchmark workloads
+        # We cannot apply them for the image stages because the datapoints are indistinguishable from datapoints
+        # produced in the corresponding run stages.
+        if stage in [Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN] and self.stages_info.should_produce_datapoints(stage):
             final_command = self.apply_command_mapper_hooks(command, vm)
-
         return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
     def is_native_mode(self, bm_suite_args: List[str]):
         """Checks whether the given arguments request a Native Image benchmark"""
-        return "native-image" in self.jvm(bm_suite_args)
+        jvm_flag = self.jvm(bm_suite_args)
+        if not jvm_flag:
+            # In case the --jvm argument was not given explicitly, let the registry load the appropriate vm and extract
+            # the name from there.
+            # This is much more expensive, so it is only used as a fallback
+            jvm_flag = self.get_vm_registry().get_vm_from_suite_args(bm_suite_args).name()
+        return "native-image" in jvm_flag
 
     def apply_command_mapper_hooks(self, cmd, vm):
         return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
@@ -551,7 +607,7 @@ class NativeImageBenchmarkMixin(object):
         else:
             return None
 
-    def stages(self, bm_suite_args: List[str]) -> List[str]:
+    def stages(self, bm_suite_args: List[str]) -> List[Stage]:
         """
         Benchmark stages requested by the user with ``-Dnative-image.benchmark.stages=``.
 
@@ -568,7 +624,7 @@ class NativeImageBenchmarkMixin(object):
                 f"Arguments: {bm_suite_args}"
             )
 
-        return parsed_arg.split(',') if parsed_arg else self.default_stages()
+        return list(map(Stage, parsed_arg.split(',') if parsed_arg else self.default_stages()))
 
     def default_stages(self) -> List[str]:
         """Default list of stages to run if none have been specified."""
@@ -841,12 +897,17 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     def get_env(self):
         return {}
 
-    def run_stage(self, vm, stage, server_command, out, err, cwd, nonZeroIsFatal):
-        if 'image' in stage:
+    def get_image_env(self):
+        # Use the existing environment by default.
+        return os.environ
+
+    def run_stage(self, vm, stage: Stage, server_command, out, err, cwd, nonZeroIsFatal):
+        if stage.is_image():
             # For image stages, we just run the given command
-            return super(BaseMicroserviceBenchmarkSuite, self).run_stage(vm, stage, server_command, out, err, cwd, nonZeroIsFatal)
+            with PatchEnv(self.get_image_env()):
+                return super(BaseMicroserviceBenchmarkSuite, self).run_stage(vm, stage, server_command, out, err, cwd, nonZeroIsFatal)
         else:
-            if stage == 'run':
+            if stage == Stage.RUN:
                 serverCommandWithTracker = self.apply_command_mapper_hooks(server_command, vm)
 
                 mx_benchmark.disable_tracker()
@@ -855,7 +916,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
                 # Measure time-to-first-response multiple times (without any command mapper hooks as those affect the measurement significantly)
                 for _ in range(self.NumMeasureTimeToFirstResponse):
-                    with EmptyEnv(self.get_env()):
+                    with PatchEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self])
                         returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                         measurementThread.join()
@@ -863,7 +924,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 # Measure startup performance (without RSS tracker)
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
                     returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     measurementThread.join()
@@ -871,7 +932,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                     mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 # Measure peak performance (with all command mapper hooks)
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
                     returnCode = mx.run(serverCommandWithTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     measurementThread.join()
@@ -881,7 +942,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 if self.measureLatency:
                     if not any([c.get("requests-per-second") for c in self.loadConfiguration("latency")]):
                         # Calibrate for latency measurements (without RSS tracker) if no fixed request rate has been provided in the config
-                        with EmptyEnv(self.get_env()):
+                        with PatchEnv(self.get_env()):
                             measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
                             returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                             measurementThread.join()
@@ -889,7 +950,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                             mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                     # Measure latency (without RSS tracker)
-                    with EmptyEnv(self.get_env()):
+                    with PatchEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
                         returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                         measurementThread.join()
@@ -897,15 +958,15 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 return returnCode
-            elif stage == 'agent' or 'instrument-run' in stage:
+            elif stage in [Stage.AGENT, Stage.INSTRUMENT_RUN]:
                 # For the agent and the instrumented run, it is sufficient to run the peak performance workload.
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self, False])
                     returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     measurementThread.join()
                 return returnCode
             else:
-                mx.abort("Unexpected stage: " + stage)
+                mx.abort(f"Unexpected stage: {stage}")
 
     def startDaemonThread(self, target, args):
         def true_target(*true_target_args):
@@ -984,7 +1045,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
                 mx.disable_command_mapper_hooks()
                 for _ in range(self.NumMeasureTimeToFirstResponse):
-                    with EmptyEnv(self.get_env()):
+                    with PatchEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, [self])
                         datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                         measurementThread.join()
@@ -993,7 +1054,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             if self.measureStartup:
                 # Measure startup performance (without RSS tracker)
                 mx_benchmark.disable_tracker()
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
                     datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                     measurementThread.join()
@@ -1001,7 +1062,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
             if self.measurePeak:
                 # Measure peak performance (with all command mapper hooks)
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
                     datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                     measurementThread.join()
@@ -1010,13 +1071,13 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 if not [c.get("requests-per-second") for c in self.loadConfiguration("latency") if c.get("requests-per-second")]:
                     # Calibrate for latency measurements (without RSS tracker) if no fixed request rate has been provided in the config
                     mx_benchmark.disable_tracker()
-                    with EmptyEnv(self.get_env()):
+                    with PatchEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
                         datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                         measurementThread.join()
 
                 # Measure latency (without RSS tracker)
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
                     datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                     measurementThread.join()
@@ -1046,13 +1107,12 @@ class NativeImageBundleBasedBenchmarkMixin(object):
         executable_jar = self._get_single_file_with_extension_from_dist(".jar")
         return self.vmArgs(bmSuiteArgs) + ["-jar", executable_jar]
 
-    def create_bundle_image_build_arguments(self):
+    def get_bundle_path(self):
         if self.uses_bundles():
-            return [f'--bundle-apply={self._get_single_file_with_extension_from_dist(".nib")}']
-        return []
+            return self._get_single_file_with_extension_from_dist(".nib")
 
 
-class EmptyEnv:
+class PatchEnv:
     def __init__(self, env):
         self.env = env
 

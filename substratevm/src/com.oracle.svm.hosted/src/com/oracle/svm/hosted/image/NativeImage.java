@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.SubstrateUtil.mangleName;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
@@ -431,12 +432,10 @@ public abstract class NativeImage extends AbstractImage {
             final NativeTextSectionImpl textImpl = NativeTextSectionImpl.factory(textBuffer, objectFile, codeCache);
             textSection = objectFile.newProgbitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), false, true, textImpl);
 
-            boolean writable = SubstrateOptions.ForceNoROSectionRelocations.getValue();
-
             // Read-only data section
             final RelocatableBuffer roDataBuffer = new RelocatableBuffer(roSectionSize, objectFile.getByteOrder());
             final ProgbitsSectionImpl roDataImpl = new BasicProgbitsSectionImpl(roDataBuffer.getBackingArray());
-            roDataSection = objectFile.newProgbitsSection(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), writable, false, roDataImpl);
+            roDataSection = objectFile.newProgbitsSection(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), false, false, roDataImpl);
 
             // Read-write data section
             final RelocatableBuffer rwDataBuffer = new RelocatableBuffer(rwSectionSize, objectFile.getByteOrder());
@@ -466,13 +465,19 @@ public abstract class NativeImage extends AbstractImage {
             // Dynamic linkers/loaders generally don't ensure any alignment to more than page
             // boundaries, so we take care of this ourselves in CommittedMemoryProvider, if we can.
             int alignment = objectFile.getPageSize();
-            RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(imageHeapSize, objectFile.getByteOrder());
+
+            // Manually add padding to the SVM_HEAP section, because when SpawnIsolates are disabled
+            // we operate with mprotect on it with page size granularity.
+            long paddedImageHeapSize = SpawnIsolates.getValue() ? imageHeapSize : NumUtil.roundUp(imageHeapSize, alignment);
+            RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(paddedImageHeapSize, objectFile.getByteOrder());
+
             ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBackingArray());
-            heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), alignment, writable, false, heapSectionImpl);
+            // Note: On isolate startup the read only part of the heap will be set up as such.
+            heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), alignment, true, false, heapSectionImpl);
             objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
             long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
-            assert !SubstrateOptions.SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) sectionOffsetOfARelocatablePointer) == 0L;
+            assert !SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) sectionOffsetOfARelocatablePointer) == 0L;
 
             defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
             defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, imageHeapSize);
@@ -589,7 +594,7 @@ public abstract class NativeImage extends AbstractImage {
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
         HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
-        if (!target.isCompiled()) {
+        if (!target.isCompiled() && !target.wrapped.isInBaseLayer()) {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
         // A reference to a method. Mark the relocation site using the symbol name.
@@ -910,27 +915,21 @@ public abstract class NativeImage extends AbstractImage {
                 }
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
-                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
-                    final String symName = localSymbolNameForMethod(pair.getLeft());
-                    final String signatureString = pair.getLeft().getUniqueShortName();
-                    final HostedMethod existing = methodsBySignature.get(signatureString);
-                    HostedMethod current = pair.getLeft();
-                    if (existing != null) {
-                        /*
-                         * We've hit a signature with multiple methods. Choose the "more specific"
-                         * of the two methods, i.e. the overriding covariant signature.
-                         */
-                        HostedType existingReturnType = existing.getSignature().getReturnType();
-                        HostedType currentReturnType = current.getSignature().getReturnType();
-                        if (existingReturnType.isAssignableFrom(currentReturnType)) {
-                            /* current is more specific than existing */
-                            final HostedMethod replaced = methodsBySignature.put(signatureString, current);
-                            assert replaced.equals(existing);
-                        }
-                    } else {
-                        methodsBySignature.put(signatureString, current);
+
+                if (codeCache.getBaseLayerMethods() != null) {
+                    // define base layer methods symbols
+                    for (HostedMethod current : codeCache.getBaseLayerMethods()) {
+                        final String symName = localSymbolNameForMethod(current);
+                        final String signatureString = current.getUniqueShortName();
+                        defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, null);
                     }
-                    defineMethodSymbol(symName, false, textSection, current, pair.getRight());
+                }
+
+                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
+                    HostedMethod current = pair.getLeft();
+                    final String symName = localSymbolNameForMethod(current);
+                    final String signatureString = current.getUniqueShortName();
+                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, pair.getRight());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -971,6 +970,27 @@ public abstract class NativeImage extends AbstractImage {
                  */
                 codeCache.writeCode(textBuffer);
             }
+        }
+
+        private void defineMethodSymbol(Section textSection, HostedMethod current, Map<String, HostedMethod> methodsBySignature,
+                        String signatureString, String symName, CompilationResult compilationResult) {
+            final HostedMethod existing = methodsBySignature.get(signatureString);
+            if (existing != null) {
+                /*
+                 * We've hit a signature with multiple methods. Choose the "more specific" of the
+                 * two methods, i.e. the overriding covariant signature.
+                 */
+                HostedType existingReturnType = existing.getSignature().getReturnType();
+                HostedType currentReturnType = current.getSignature().getReturnType();
+                if (existingReturnType.isAssignableFrom(currentReturnType)) {
+                    /* current is more specific than existing */
+                    final HostedMethod replaced = methodsBySignature.put(signatureString, current);
+                    assert replaced.equals(existing);
+                }
+            } else {
+                methodsBySignature.put(signatureString, current);
+            }
+            defineMethodSymbol(symName, false, textSection, current, compilationResult);
         }
 
         protected NativeTextSectionImpl(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {

@@ -68,7 +68,7 @@ public class AArch64TruffleCallBoundaryInstrumentationFactory extends TruffleCal
                         CompressEncoding encoding = config.getOopEncoding();
                         masm.ldr(32, spillRegister, AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset));
                         Register base = encoding.hasBase() ? registers.getHeapBaseRegister() : null;
-                        AArch64HotSpotMove.UncompressPointer.emitUncompressCode(masm, spillRegister, spillRegister, base, encoding.getShift(), true);
+                        AArch64HotSpotMove.UncompressPointer.emitUncompressCode(masm, spillRegister, spillRegister, base, encoding, true);
                     } else {
                         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset);
                         masm.ldr(64, spillRegister, address);

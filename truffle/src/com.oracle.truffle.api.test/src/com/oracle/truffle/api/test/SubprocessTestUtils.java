@@ -45,6 +45,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.management.LockInfo;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
@@ -67,19 +71,24 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.sun.tools.attach.VirtualMachine;
-import com.sun.tools.attach.VirtualMachineDescriptor;
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+
+import org.graalvm.nativeimage.ImageInfo;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
+import com.sun.tools.attach.VirtualMachine;
+import com.sun.tools.attach.VirtualMachineDescriptor;
+import org.junit.rules.TestRule;
+import org.junit.rules.Timeout;
+import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 /**
  * Support for executing Truffle tests in a sub-process with filtered compilation failure options.
@@ -167,6 +176,31 @@ public final class SubprocessTestUtils {
         AtomicReference<Subprocess> process = new AtomicReference<>();
         newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(prependedVmOptions).onExit((p) -> process.set(p)).run();
         return process.get();
+    }
+
+    /**
+     * Executes action in a sub-process with filtered compilation failure options. Also disables
+     * assertions for the classes in {@code daClasses}
+     *
+     * @param testClass the test enclosing class.
+     * @param action the test to execute.
+     * @param daClasses the classes whose assertions should be disabled.
+     * @param additionalVmOptions additional vm option added to java arguments. Prepend
+     *            {@link #TO_REMOVE_PREFIX} to remove item from existing vm options.
+     * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
+     *         Returns {@code null} for a caller run in a sub-process.
+     * @see SubprocessTestUtils
+     */
+    public static Subprocess executeInSubprocessWithAssertionsDisabled(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, List<Class<?>> daClasses, String... additionalVmOptions)
+                    throws IOException, InterruptedException {
+        String[] vmOptionsWithAssertionsDisabled = getAssertionsDisabledOptions(daClasses);
+        AtomicReference<Subprocess> process = new AtomicReference<>();
+        newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(additionalVmOptions).postfixVmOption(vmOptionsWithAssertionsDisabled).onExit((p) -> process.set(p)).run();
+        return process.get();
+    }
+
+    private static String[] getAssertionsDisabledOptions(List<Class<?>> daClasses) {
+        return daClasses.stream().map((c) -> "-da:" + c.getName()).toArray(String[]::new);
     }
 
     /**
@@ -427,6 +461,67 @@ public final class SubprocessTestUtils {
             }
         }
 
+    }
+
+    /**
+     * A marker annotation for test methods that create subprocesses. This annotation is necessary
+     * for the proper functioning of {@link #disableForParentProcess(TestRule) disabling test rules
+     * in the parent process}.
+     */
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface WithSubprocess {
+    }
+
+    /**
+     * Creates a {@link TestRule} that enables you to disable certain rules for a test method when
+     * creating a subprocess. One notable use case is for tests employing the {@link Timeout} rule.
+     * When a test method creates a subprocess, the {@link Timeout} rule must not be enabled in the
+     * parent process. Otherwise, the parent process may be terminated prematurely before the
+     * subprocess completes the actual test.
+     * <p>
+     * To ensure proper functionality, it's crucial to annotate test methods creating subprocesses
+     * with {@link WithSubprocess}.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     * public static class ForkedTest {
+     *
+     *     &#064;Rule public TestRule timeout = disableForParentProcess(new Timeout(20));
+     *
+     *     &#064;Test
+     *     &#064;WithSubprocess
+     *     public void test() {
+     *         SubprocessTestUtils.newBuilder(BytecodeOSRNodeTest.class, () -> {
+     *             assertTrue(performTest());
+     *         }).run();
+     *     }
+     * }
+     * </pre>
+     *
+     * @param base the {@link TestRule} to disable in the parent process.
+     */
+    public static TestRule disableForParentProcess(TestRule base) {
+        return new DisableForSubprocess(base);
+    }
+
+    private static final class DisableForSubprocess implements TestRule {
+
+        private final TestRule rule;
+
+        DisableForSubprocess(TestRule rule) {
+            this.rule = rule;
+        }
+
+        @Override
+        public Statement apply(Statement base, Description description) {
+            if (!isSubprocess() && description.getAnnotation(WithSubprocess.class) != null) {
+                return base;
+            } else {
+                return rule.apply(base, description);
+            }
+        }
     }
 
     // Methods and constants copied from jdk.graal.compiler.test.SubprocessUtil

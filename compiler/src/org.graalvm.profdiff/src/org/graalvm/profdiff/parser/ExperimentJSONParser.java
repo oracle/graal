@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.ExperimentId;
+
 import jdk.graal.compiler.util.json.JSONParser;
 import jdk.graal.compiler.util.json.JSONParserException;
 
@@ -190,7 +191,7 @@ public class ExperimentJSONParser {
      * @throws ExperimentParserError failed to parse the experiment
      * @see JSONParser#parseAllowedKeys(List)
      */
-    public JSONMap parseAllowedKeys(List<String> allowedKeys, String source) throws ExperimentParserError {
+    public JSONMap parseAllowedKeys(List<String> allowedKeys, String source) throws ExperimentParserError, IOException {
         try {
             return new JSONMap(new JSONParser(source).parseAllowedKeys(allowedKeys));
         } catch (JSONParserException parserException) {

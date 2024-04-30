@@ -103,7 +103,7 @@ public abstract class AssemblerTest extends GraalTest {
             RegisterConfig registerConfig = codeCache.getRegisterConfig();
             CompilationIdentifier compilationId = backend.getCompilationIdentifier(method);
             StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).compilationId(compilationId).build();
-            RegisterAllocationConfig registerAllocationConfig = backend.newRegisterAllocationConfig(null, null);
+            RegisterAllocationConfig registerAllocationConfig = backend.newRegisterAllocationConfig(null, null, null);
             CallingConvention cc = ((LIRGenerationProvider) backend).newLIRGenerationResult(compilationId, null, registerAllocationConfig, graph, null).getCallingConvention();
 
             CompilationResult compResult = new CompilationResult(graph.compilationId());

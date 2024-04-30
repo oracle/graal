@@ -1,0 +1,2 @@
+# incompatible printf types
+gcc-5.2.0/gcc/testsuite/g++.dg/tc1/dr20.C

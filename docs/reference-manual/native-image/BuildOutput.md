@@ -15,7 +15,7 @@ redirect_from: /reference-manual/native-image/BuildOutput/
 Here you will find information about the build output of GraalVM Native Image.
 Below is the example output when building a native executable of the `HelloWorld` class:
 
-```shell
+```
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
@@ -107,7 +107,7 @@ The C compiler executable, vendor, target architecture, and version info used by
 #### <a name="glossary-gc"></a>Garbage Collector
 The garbage collector used within the generated executable:
 - The *Serial GC* is the default GC and optimized for low memory footprint and small Java heap sizes.
-- The *G1 GC* (not available in GraalVM Community Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
+- The *G1 GC* (not available in GraalVM Community Edition) is a multithreaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
 - The *Epsilon GC* does not perform any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
 
 For more information see the [docs on Memory Management](MemoryManagement.md).
@@ -116,7 +116,7 @@ For more information see the [docs on Memory Management](MemoryManagement.md).
 By default, the heap size is limited to a certain percentage of your system memory, allowing the garbage collector to freely allocate memory according to its policy.
 Use the `-Xmx` option when invoking your native executable (for example `./myapp -Xmx64m` for 64MB) to limit the maximum heap size for a lower and more predictable memory footprint.
 This can also improve latency in some cases.
-Use the `-R:MaxHeapSize` option when building with Native Image to pre-configure the maximum heap size.
+Use the `-R:MaxHeapSize` option when building with Native Image to preconfigure the maximum heap size.
 
 #### <a name="glossary-user-specific-features"></a>User-Specific Features
 All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
@@ -130,7 +130,7 @@ If you rely on experimental features and would like an option to be considered s
 
 #### <a name="glossary-picked-up-ni-options"></a>Picked up `NATIVE_IMAGE_OPTIONS`
 Additional build options picked up via the `NATIVE_IMAGE_OPTIONS` environment variable.
-Similar to `JAVA_TOOL_OPTIONS`, the value of the environment variable is prepended to the options supplied to `native-image`.
+Similar to `JAVA_TOOL_OPTIONS`, the value of the environment variable is prefixed to the options supplied to `native-image`.
 Argument files are not allowed to be passed via `NATIVE_IMAGE_OPTIONS`.
 The `NATIVE_IMAGE_OPTIONS` environment variable is designed to be used by users, build environments, or tools to inject additional build options.
 
@@ -165,8 +165,8 @@ Large numbers can cause significant reflection overheads, slow down the build pr
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
 The number of types, fields, and methods that are registered for [JNI](JNI.md) access.
 
-#### <a name="glossary-foreign-downcall-registrations"></a>Foreign functions stubs
-The number of downcalls registered for [foreign](ForeignInterface.md) function access.
+#### <a name="glossary-foreign-downcall-and-upcall-registrations"></a>Foreign functions stubs
+The number of downcalls and upcalls registered for [foreign](ForeignInterface.md) function access.
 
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.
@@ -188,8 +188,8 @@ The progress indicator visualizes the number of inlining iterations.
 In this stage, the Graal compiler compiles all reachable methods to machine code.
 The progress indicator is printed periodically at an increasing interval.
 
-### <a name="stage-layouting"></a>Layouting Methods
-In this stage, compiled methods are layouted.
+### <a name="stage-layouting"></a>Laying Out Methods
+In this stage, compiled methods are laid out.
 The progress indicator is printed periodically at an increasing interval.
 
 ### <a name="stage-creating"></a>Creating Image
@@ -218,6 +218,9 @@ Therefore, this can also include `byte[]` objects from application code.
 ##### <a name="glossary-embedded-resources"></a>Embedded Resources Stored in `byte[]`
 The total size of all `byte[]` objects used for storing resources (for example, files accessed via `Class.getResource()`) within the native binary.
 The number of resources is shown in the [Heap](#glossary-image-heap) section.
+A list of all resources including additional information such as their module, name, origin, and size are included in the [build reports](BuildOptions.md#build-output-and-build-report).
+This information can also be requested in the JSON format using the `-H:+GenerateEmbeddedResourcesFile` option.
+Such a JSON file validates against the JSON schema defined in [`embedded-resources-schema-v1.0.0.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/embedded-resources-schema-v1.0.0.json).
 
 ##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
 The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).
@@ -259,11 +262,11 @@ For more information, see [Inspection Tool](InspectTool.md)
 
 #### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
 Control-Flow Integrity (CFI) can be enforced with the experimental `-H:CFI=HW` option.
-This feature is currently only available for Linux AArch64 and leverages pointer authentication codes (PAC) to ensure integrity of a function's return address.
+This feature is currently only available for code compiled by Graal for Linux AArch64 and leverages pointer authentication codes (PAC) to ensure integrity of a function's return address.
 
 #### <a name="glossary-sw-cfi"></a>Software Control-Flow Integrity (CFI)
-Control-Flow Integrity (CFI) can be enforced in software with the experimental `-H:CFI=SW_NONATIVE` or `-H:CFI=SW` option.
-This feature is currently only available for Linux AMD64 and validates targets of indirect branches and method returns.
+Control-Flow Integrity (CFI) can be enforced in software with the experimental `-H:CFI=SW_NONATIVE` option.
+This feature is currently only available for code compiled by Graal for Linux AMD64 and validates targets of indirect branches and method returns.
 
 ## Recommendations
 
@@ -356,7 +359,7 @@ This schema also contains descriptions for each possible artifact type and expla
 
 The build output produced by the `native-image` builder is designed for humans, can evolve with new releases, and should thus not be parsed in any way by tools.
 Instead, use the `-H:BuildOutputJSONFile=<file.json>` option to instruct the builder to produce machine-readable build output in JSON format that can be used, for example, for building monitoring tools.
-Such a JSON file validates against the JSON schema defined in [`build-output-schema-v0.9.2.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json).
+Such a JSON file validates against the JSON schema defined in [`build-output-schema-v0.9.3.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json).
 Note that a JSON file is produced if and only if a build succeeds.
 
 The following example illustrates how this could be used in a CI/CD build pipeline to check that the number of reachable methods does not exceed a certain threshold:

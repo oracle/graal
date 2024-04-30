@@ -334,7 +334,7 @@ public class LoopEx {
                             // signed: i < MAX_INT
                         } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedUpperBound()) {
                             unsigned = true;
-                        } else if (!iv.isConstantStride() || Math.abs(iv.constantStride()) != 1 || initStamp.upperBound() > limitStamp.lowerBound()) {
+                        } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.upperBound() > limitStamp.lowerBound()) {
                             return false;
                         }
                     } else if (iv.direction() == InductionVariable.Direction.Down) {
@@ -342,7 +342,7 @@ public class LoopEx {
                             // signed: MIN_INT > i
                         } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedLowerBound()) {
                             unsigned = true;
-                        } else if (!iv.isConstantStride() || Math.abs(iv.constantStride()) != 1 || initStamp.lowerBound() < limitStamp.upperBound()) {
+                        } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.lowerBound() < limitStamp.upperBound()) {
                             return false;
                         }
                     } else {
@@ -387,6 +387,15 @@ public class LoopEx {
             return true;
         }
         return false;
+    }
+
+    public static boolean absStrideIsOne(InductionVariable limitCheckedIV) {
+        /*
+         * While Math.abs can overflow for MIN_VALUE it is fine here. In case of overflow we still
+         * get a value != 1 (namely MIN_VALUE again). Overflow handling for the limit checked IV is
+         * done in CountedLoopInfo and is an orthogonal issue.
+         */
+        return Math.abs(limitCheckedIV.constantStride()) == 1;
     }
 
     public boolean isCfgLoopExit(AbstractBeginNode begin) {
@@ -517,7 +526,7 @@ public class LoopEx {
                     boolean isValidConvert = op instanceof PiNode || op instanceof SignExtendNode;
                     if (!isValidConvert && op instanceof ZeroExtendNode) {
                         ZeroExtendNode zeroExtendNode = (ZeroExtendNode) op;
-                        isValidConvert = zeroExtendNode.isInputAlwaysPositive() || ((IntegerStamp) zeroExtendNode.stamp(NodeView.DEFAULT)).isPositive();
+                        isValidConvert = ((IntegerStamp) zeroExtendNode.stamp(NodeView.DEFAULT)).isPositive();
                     }
                     if (!isValidConvert && op instanceof NarrowNode) {
                         NarrowNode narrow = (NarrowNode) op;

@@ -1,0 +1,2 @@
+# the following test runs fine on sulong, but the reference executable fails
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/tls/run-le.c.dir

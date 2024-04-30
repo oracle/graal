@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import com.oracle.truffle.regex.charset.ClassSetContents;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -53,6 +52,7 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
@@ -370,8 +370,8 @@ public final class RegexASTBuilder {
     public void nextSequence() {
         if (!tryMergeSingleCharClassAlternations()) {
             curSequence = curGroup.addSequence(ast);
-            curTerm = null;
         }
+        curTerm = null;
     }
 
     private void addTerm(Term term) {
@@ -583,13 +583,17 @@ public final class RegexASTBuilder {
         addBackReference(token, false);
     }
 
+    public void addBackReference(Token.BackReference token, boolean ignoreCase) {
+        addBackReference(token, ignoreCase, false);
+    }
+
     /**
      * Adds a new {@link BackReference} to the current {@link Sequence}.
      * 
      * @param token aside from the source sections, this contains the number of the group being
      *            referenced
      */
-    public void addBackReference(Token.BackReference token, boolean ignoreCase) {
+    public void addBackReference(Token.BackReference token, boolean ignoreCase, boolean ignoreCaseAltMode) {
         assert token.kind == Token.Kind.backReference;
         BackReference backReference = ast.createBackReference(token.getGroupNumbers());
         ast.addSourceSection(backReference, token);
@@ -621,6 +625,9 @@ public final class RegexASTBuilder {
         }
         if (ignoreCase) {
             backReference.setIgnoreCaseReference();
+        }
+        if (ignoreCaseAltMode) {
+            backReference.setIgnoreCaseReferenceAltMode();
         }
     }
 
@@ -745,7 +752,7 @@ public final class RegexASTBuilder {
             Term prevTerm = curSequence.getTerms().get(curSequence.size() - 2);
             if (prevTerm.isQuantifiableTerm()) {
                 QuantifiableTerm prev = prevTerm.asQuantifiableTerm();
-                if (prev.hasQuantifier() && curTerm.asQuantifiableTerm().equalsSemantic(prev, true)) {
+                if (prev.hasQuantifier() && prev.getQuantifier().isGreedy() == quantifier.isGreedy() && curTerm.asQuantifiableTerm().equalsSemantic(prev, true)) {
                     removeCurTerm();
                     long min = (long) prev.getQuantifier().getMin() + quantifier.getMin();
                     long max = prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : (long) prev.getQuantifier().getMax() + quantifier.getMax();
@@ -756,7 +763,7 @@ public final class RegexASTBuilder {
                     if (max > Integer.MAX_VALUE) {
                         max = -1;
                     }
-                    setQuantifier(prev, Token.createQuantifier((int) min, (int) max, prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
+                    setQuantifier(prev, Token.createQuantifier((int) min, (int) max, quantifier.isGreedy(), false, quantifier.isSingleChar()));
                 }
             }
         }

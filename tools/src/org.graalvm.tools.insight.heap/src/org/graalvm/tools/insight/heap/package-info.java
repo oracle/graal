@@ -43,7 +43,8 @@
  * {@link org.graalvm.tools.insight.Insight} scripts. One can also enable {@code heap} object in the
  * Insight scripts and capture the generated heaps in supplied {@link java.io.OutputStream} use:
  * 
- * {@codesnippet org.graalvm.tools.insight.test.heap.HeapObjectStreamTest}
+ * {@snippet file = "org/graalvm/tools/insight/test/heap/HeapObjectStreamTest.java" region =
+ * "org.graalvm.tools.insight.test.heap.HeapObjectStreamTest"}
  * 
  * Whenever {@code heap.dump(...)} is called to <a target="_blank" href=
  * "https://github.com/oracle/graal/blob/master/docs/tools/insight/Insight-Manual.md#heap-dumping">perform

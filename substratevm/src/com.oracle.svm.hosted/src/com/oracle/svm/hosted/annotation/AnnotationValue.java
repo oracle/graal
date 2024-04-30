@@ -35,9 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.internal.reflect.ConstantPool;
-import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.AnnotationParser;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.annotation.TypeNotPresentExceptionProxy;
@@ -135,31 +133,6 @@ public final class AnnotationValue extends AnnotationMemberValue {
             types.addAll(memberValue.getTypes());
         }
         return types;
-    }
-
-    @Override
-    public List<String> getStrings() {
-        if (isAnnotationFormatException()) {
-            return List.of();
-        }
-        List<String> strings = new ArrayList<>();
-        members.forEach((memberName, memberValue) -> {
-            strings.add(memberName);
-            strings.addAll(memberValue.getStrings());
-        });
-        return strings;
-    }
-
-    @Override
-    public List<JavaConstant> getExceptionProxies(SnippetReflectionProvider snippetReflection) {
-        if (isAnnotationFormatException()) {
-            return List.of();
-        }
-        List<JavaConstant> exceptionProxies = new ArrayList<>();
-        for (AnnotationMemberValue memberValue : members.values()) {
-            exceptionProxies.addAll(memberValue.getExceptionProxies(snippetReflection));
-        }
-        return exceptionProxies;
     }
 
     @Override

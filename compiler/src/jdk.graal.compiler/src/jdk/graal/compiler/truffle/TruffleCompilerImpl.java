@@ -214,6 +214,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
      */
     protected abstract OptionValues getGraalOptions();
 
+    /**
+     * Parse general options configured for the compiler, e.g. default values set with
+     * OptionKey=value (with no prefix), from {@code options}, storing parsed options in
+     * {@code values}.
+     */
+    protected abstract void parseGraalOptions(String[] options, EconomicMap<OptionKey<?>, Object> values);
+
     @SuppressWarnings("try")
     public final void doCompile(TruffleCompilation compilation, TruffleCompilerListener listener) {
         TruffleCompilable compilable = compilation.getCompilable();
@@ -244,8 +251,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             OptionValues graalOptions = getGraalOptions();
             Map<String, String> options = compilable.getCompilerOptions();
             EconomicMap<OptionKey<?>, Object> map = parseOptions(options);
+            graalOptions = TruffleCompilerOptions.updateValues(graalOptions);
             map.putAll(graalOptions.getMap());
-            TruffleCompilerOptions.updateValues(graalOptions);
             return new OptionValues(map);
         });
     }
@@ -708,6 +715,12 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         @Override
         public String toString() {
             return compilable.toString();
+        }
+
+        @Override
+        protected void parseRetryOptions(String[] optionSettings, EconomicMap<OptionKey<?>, Object> values) {
+            parseGraalOptions(optionSettings, values);
+            // No support for Truffle-specific retry options for now
         }
 
         @SuppressWarnings("try")

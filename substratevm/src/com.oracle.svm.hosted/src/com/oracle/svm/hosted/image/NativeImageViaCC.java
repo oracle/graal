@@ -38,8 +38,6 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
@@ -57,6 +55,9 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+
 public abstract class NativeImageViaCC extends NativeImage {
 
     public NativeImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
@@ -69,10 +70,6 @@ public abstract class NativeImageViaCC extends NativeImage {
         if (linkerOutput.contains("access beyond end of merged section")) {
             potentialCauses.add("Native Image is using a linker that appears to be incompatible with the tool chain used to build the JDK static libraries. " +
                             "The latter is typically shown in the output of `java -Xinternalversion`.");
-        }
-        if (SubstrateOptions.ForceNoROSectionRelocations.getValue() && (linkerOutput.contains("fatal error: cannot find ") ||
-                        linkerOutput.contains("error: invalid linker name in argument"))) {
-            potentialCauses.add(SubstrateOptions.ForceNoROSectionRelocations.getName() + " option cannot be used if ld.gold linker is missing from the host system");
         }
 
         Pattern p = Pattern.compile(".*cannot find -l([^\\s]+)\\s.*", Pattern.DOTALL);
@@ -114,11 +111,11 @@ public abstract class NativeImageViaCC extends NativeImage {
 
             try {
                 List<String> cmd = inv.getCommand();
-                runLinkerCommand(imageName, inv, cmd, imageKind.isExecutable);
+                runLinkerCommand(imageName, inv, cmd, imageKind);
             } catch (RuntimeException e) {
                 if (inv.shouldRunFallback(e.getMessage())) {
                     List<String> cmd = inv.getFallbackCommand();
-                    runLinkerCommand(imageName, inv, cmd, imageKind.isExecutable);
+                    runLinkerCommand(imageName, inv, cmd, imageKind);
                 } else {
                     throw e;
                 }
@@ -128,7 +125,7 @@ public abstract class NativeImageViaCC extends NativeImage {
         }
     }
 
-    private void runLinkerCommand(String imageName, LinkerInvocation inv, List<String> cmd, boolean imageKindIsExecutable) {
+    private void runLinkerCommand(String imageName, LinkerInvocation inv, List<String> cmd, NativeImageKind kind) {
         Process linkerProcess = null;
         String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
         try {
@@ -153,9 +150,9 @@ public abstract class NativeImageViaCC extends NativeImage {
 
             Path imagePath = inv.getOutputFile();
             imageFileSize = (int) imagePath.toFile().length();
-            BuildArtifacts.singleton().add(imageKindIsExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIBRARY, imagePath);
+            BuildArtifacts.singleton().add(kind.isExecutable ? ArtifactType.EXECUTABLE : kind.isImageLayer ? ArtifactType.IMAGE_LAYER : ArtifactType.SHARED_LIBRARY, imagePath);
 
-            if (Platform.includedIn(Platform.WINDOWS.class) && !imageKindIsExecutable) {
+            if (Platform.includedIn(Platform.WINDOWS.class) && !kind.isExecutable) {
                 /* Provide an import library for the built shared library. */
                 Path importLib = inv.getTempDirectory().resolve(imageName + ".lib");
                 Path importLibCopy = Files.copy(importLib, imagePath.resolveSibling(importLib.getFileName()), StandardCopyOption.REPLACE_EXISTING);

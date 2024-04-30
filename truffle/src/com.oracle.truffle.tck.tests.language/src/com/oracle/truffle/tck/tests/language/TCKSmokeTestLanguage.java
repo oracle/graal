@@ -141,14 +141,11 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
 
     private static final class UnsafeCallNode extends BaseNode {
         private static final Unsafe UNSAFE;
-        private static final long VALUE_OFFSET;
         static {
             try {
                 Field f = Unsafe.class.getDeclaredField("theUnsafe");
                 f.setAccessible(true);
                 UNSAFE = (Unsafe) f.get(null);
-                f = Integer.class.getDeclaredField("value");
-                VALUE_OFFSET = getFieldOffset(f);
             } catch (ReflectiveOperationException e) {
                 throw new RuntimeException(e);
             }
@@ -165,16 +162,25 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
             doBehindBoundaryUnsafeAccess();
         }
 
+        @TruffleBoundary
+        static long getFieldOffset(Class<?> clazz, String value) {
+            try {
+                return getFieldOffset(clazz.getDeclaredField(value));
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         static void doUnsafeAccess() {
             int i = 42;
-            int result = UNSAFE.getInt(i, VALUE_OFFSET);
+            int result = UNSAFE.getInt(i, getFieldOffset(Integer.class, "value"));
             assert i == result;
         }
 
         @TruffleBoundary
         static void doBehindBoundaryUnsafeAccess() {
             int i = 23;
-            int result = UNSAFE.getInt(i, VALUE_OFFSET);
+            int result = UNSAFE.getInt(i, getFieldOffset(Integer.class, "value"));
             assert i == result;
         }
     }

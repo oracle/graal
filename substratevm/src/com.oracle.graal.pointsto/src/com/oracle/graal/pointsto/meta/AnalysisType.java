@@ -37,7 +37,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -45,6 +44,7 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -139,6 +139,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     AnalysisType superClass;
 
     private final int id;
+    /** Marks a type loaded from a base layer. */
+    private final boolean isInBaseLayer;
 
     private final JavaKind storageKind;
     private final boolean isCloneableWithAllocation;
@@ -293,7 +295,27 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         /* Set id after accessing super types, so that all these types get a lower id number. */
-        this.id = universe.nextTypeId.getAndIncrement();
+        if (wrapped instanceof BaseLayerType baseLayerType) {
+            this.id = baseLayerType.getId();
+            this.isInBaseLayer = true;
+        } else if (universe.hostVM().useBaseLayer()) {
+            int tid = universe.getImageLayerLoader().lookupHostedTypeInBaseLayer(this);
+            if (tid != -1) {
+                /*
+                 * This id is the actual link between the corresponding type from the base layer and
+                 * this new type.
+                 */
+                this.id = tid;
+                this.isInBaseLayer = true;
+            } else {
+                this.id = universe.computeNextTypeId();
+                this.isInBaseLayer = false;
+            }
+        } else {
+            this.id = universe.computeNextTypeId();
+            this.isInBaseLayer = false;
+        }
+
         /*
          * Only after setting the id, the hashCode and compareTo methods work properly. So only now
          * it is allowed to put the type into a hashmap, e.g., invoke addSubType.
@@ -369,6 +391,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public int getId() {
         return id;
+    }
+
+    public boolean isInBaseLayer() {
+        return isInBaseLayer;
     }
 
     public AnalysisObject getContextInsensitiveAnalysisObject() {
@@ -602,6 +628,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             scheduledTypeReachableNotifications = futures;
         }
 
+        if (isInBaseLayer && !(wrapped instanceof BaseLayerType)) {
+            /*
+             * Since the analysis of the type is skipped, the fields have to be created manually to
+             * ensure their flags are loaded from the base layer. Not creating the fields would
+             * cause inconsistency issues between the size of objects from the base and the
+             * extension layers.
+             */
+            getInstanceFields(true);
+            getStaticFields();
+        }
+
         universe.notifyReachableType();
         universe.hostVM.checkForbidden(this, UsageKind.Reachable);
         if (isArray()) {
@@ -631,7 +668,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
     }
 
-    public <T> void registerObjectReachableCallback(BiConsumer<DuringAnalysisAccess, T> callback) {
+    public <T> void registerObjectReachableCallback(ObjectReachableCallback<T> callback) {
         ConcurrentLightHashSet.addElement(this, objectReachableCallbacksUpdater, callback);
         /* Register the callback with already discovered subtypes too. */
         for (AnalysisType subType : subTypes) {
@@ -642,8 +679,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
     }
 
-    public <T> void notifyObjectReachable(DuringAnalysisAccess access, T object) {
-        ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (BiConsumer<DuringAnalysisAccess, T> c) -> c.accept(access, object));
+    public <T> void notifyObjectReachable(DuringAnalysisAccess access, T object, ScanReason reason) {
+        ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (ObjectReachableCallback<T> c) -> c.doCallback(access, object, reason));
     }
 
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
@@ -1040,7 +1077,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         /* Register the object reachability callbacks with the newly discovered subtype. */
         if (!subType.equals(this)) {
             /* Subtypes include this type itself. */
-            ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (BiConsumer<DuringAnalysisAccess, Object> callback) -> subType.registerObjectReachableCallback(callback));
+            ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (ObjectReachableCallback<Object> callback) -> subType.registerObjectReachableCallback(callback));
         }
         assert result : "Tried to add a " + subType + " which is already registered";
     }

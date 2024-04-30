@@ -80,7 +80,7 @@ public class GameOfLife {
                 }
             }
         }
-        // The cell needs to be subtracted from its neighbours as it was counted before
+        // The cell needs to be subtracted from its neighbors as it was counted before
         aliveNeighbours -= grid[l][m];
         return aliveNeighbours;
     }
@@ -144,7 +144,7 @@ native-image -cp . GameOfLife -o gameoflife-default
 ```
 
 Now you can move on to building a PGO-enabled native image. 
-For that, you first need to build an "instrumented binary" that will produce a profile for the runtime behaviour of the application by adding the `--pgo-instrumented` option and specifying a different name, as follows:
+For that, you first need to build an "instrumented binary" that will produce a profile for the runtime behavior of the application by adding the `--pgo-instrumented` option and specifying a different name, as follows:
 ```bash
 native-image  --pgo-instrument -cp . GameOfLife -o gameoflife-instrumented
 ```
@@ -216,7 +216,7 @@ du -hs gameoflife-pgo
 As you can see, the PGO-optimized native executable is approximately 15% smaller than the default native build.
 
 This is because the profiles provided for the optimizing build allow the compiler to differentiate between which code is important for performance
-(i.e., hot code), and which is not important (i.e., cold code, such as error handling).
+("hot code"), and which is not important ("cold code", such as error handling).
 With this differentiation available, the compiler can decide to focus more heavily on optimizing the hot code and less, or not at all, on the cold code.
 This is a similar approach to what a JVM does - identifies the hot parts of the code at run time and compile those parts at run time.
 The main difference is that  Native Image PGO does the profiling and the optimizing ahead-of-time.

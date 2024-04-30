@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
  *  - substratevm/src/com.oracle.svm.native.libchelper/include/amd64hotspotcpuinfo.h
  *  - substratevm/src/com.oracle.svm.native.libchelper/src/cpuid.c
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+14/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L313")
 @CLibrary(value = "libchelper", requireStatic = true)
 public class AMD64LibCHelper {
     @Platforms(Platform.AMD64.class)
@@ -298,6 +298,10 @@ public class AMD64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fAVX512_IFMA();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX_IFMA();
     }
     // Checkstyle: resume
 }

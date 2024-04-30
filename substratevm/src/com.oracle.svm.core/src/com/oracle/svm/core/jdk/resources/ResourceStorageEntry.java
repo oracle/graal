@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,16 +28,19 @@ package com.oracle.svm.core.jdk.resources;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 public final class ResourceStorageEntry extends ResourceStorageEntryBase {
 
     private final boolean isDirectory;
     private final boolean fromJar;
-    private final List<byte[]> data;
+    private List<byte[]> data;
 
     public ResourceStorageEntry(boolean isDirectory, boolean fromJar) {
         this.isDirectory = isDirectory;
         this.fromJar = fromJar;
-        this.data = new ArrayList<>();
+        this.data = List.of();
     }
 
     @Override
@@ -53,6 +56,16 @@ public final class ResourceStorageEntry extends ResourceStorageEntryBase {
     @Override
     public List<byte[]> getData() {
         return data;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @Override
+    public void addData(byte[] datum) {
+        List<byte[]> newData = new ArrayList<>(data.size() + 1);
+        newData.addAll(data);
+        newData.add(datum);
+        /* Always use a compact, immutable data structure in the image heap. */
+        data = List.copyOf(newData);
     }
 
     @Override

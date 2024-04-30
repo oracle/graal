@@ -61,7 +61,7 @@ public class CounterFeature implements InternalFeature {
         if (enabledGroups.size() > 0) {
             enabledGroups.sort(Comparator.comparing(g -> g.name));
             ImageSingletons.add(CounterSupport.class, new CounterSupport(enabledGroups.toArray(new Group[0])));
-            RuntimeSupport.getRuntimeSupport().addShutdownHook(CounterSupport::logValues);
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(CounterSupport.shutdownHook());
         }
     }
 }

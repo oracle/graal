@@ -1470,8 +1470,17 @@ suite = {
       "vpath" : True,
       "variants" : ["executable-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
+      "os" : {
+        "windows" : {
+          "cmakeConfig" : {
+            "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
+          },
+        },
+        "<others>": {
+          "cmakeConfig" : {
+            "CMAKE_C_FLAGS" : "-Wno-everything",
+          },
+        },
       },
       "dependencies" : ["SULONG_TEST"],
       "buildDependencies" : [
@@ -1490,8 +1499,17 @@ suite = {
       "vpath" : True,
       "variants" : ["executable-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_CXX_FLAGS" : "-Wno-everything",
+      "os" : {
+        "windows" : {
+          "cmakeConfig" : {
+            "CMAKE_CXX_FLAGS" : "-Wno-everything -include stdio.h",
+          },
+        },
+        "<others>": {
+          "cmakeConfig" : {
+            "CMAKE_CXX_FLAGS" : "-Wno-everything",
+          },
+        },
       },
       "dependencies" : ["SULONG_TEST"],
       "buildDependencies" : [
@@ -1665,6 +1683,10 @@ suite = {
           "com.oracle.truffle.llvm.runtime.config.ConfigurationFactory",
           "com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider",
         ],
+        "requires": [
+          "org.graalvm.collections",
+          "org.graalvm.polyglot",
+        ],
       },
       "useModulePath" : True,
       "subDir" : "projects",
@@ -1750,6 +1772,11 @@ suite = {
         "exports" : [
           "* to org.graalvm.llvm.nativemode",
         ],
+        "requires": [
+          "org.graalvm.collections",
+          "org.graalvm.polyglot",
+          "org.graalvm.truffle",
+        ],
       },
       "useModulePath" : True,
       "subDir" : "projects",
@@ -1813,6 +1840,9 @@ suite = {
         "name" : "org.graalvm.llvm.launcher",
         "exports" : [
           "com.oracle.truffle.llvm.launcher to org.graalvm.launcher",
+        ],
+        "requires": [
+          "org.graalvm.polyglot",
         ],
       },
       "useModulePath" : True,

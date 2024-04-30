@@ -200,7 +200,7 @@ public class ThreadStackPrinter {
                 return 'D';
             } else if (!isCompilationRoot) {
                 return 'i';
-            } else if (codeInfo == CodeInfoTable.getImageCodeInfo()) {
+            } else if (codeInfo.isNonNull() && CodeInfoAccess.isAOTImageCode(codeInfo)) {
                 return 'A';
             } else {
                 return 'J';

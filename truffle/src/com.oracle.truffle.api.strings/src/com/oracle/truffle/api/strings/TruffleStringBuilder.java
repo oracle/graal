@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -488,7 +488,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     if (codepoint > 0x7f) {
                         sb.updateCodeRange(TSCodeRange.get8Bit());
                     }
-                    sb.ensureCapacityS0(node, repeat, bufferGrowProfile, errorProfile);
+                    sb.ensureCapacityWithStride(node, repeat, bufferGrowProfile, errorProfile);
                     for (int i = 0; i < repeat; i++) {
                         TStringOps.writeToByteArray(sb.buf, sb.stride, sb.length++, codepoint);
                     }
@@ -588,22 +588,22 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.length += repeat;
             } else {
                 assert isUnsupportedEncoding(sb.encoding);
+                JCodings jcodings = JCodings.getInstance();
                 if (Integer.compareUnsigned(codepoint, 0x10ffff) > 0) {
                     throw InternalErrors.invalidCodePoint(codepoint);
                 }
-                JCodings.Encoding jCodingsEnc = JCodings.getInstance().get(sb.encoding);
-                int length = JCodings.getInstance().getCodePointLength(jCodingsEnc, codepoint);
+                int length = jcodings.getCodePointLength(sb.encoding, codepoint);
                 if (!(sb.encoding.is7BitCompatible() && codepoint <= 0x7f)) {
-                    sb.updateCodeRange(TSCodeRange.getValid(JCodings.getInstance().isSingleByte(jCodingsEnc)));
+                    sb.updateCodeRange(TSCodeRange.getValid(jcodings.isSingleByte(sb.encoding)));
                 }
                 if (length < 1) {
                     throw InternalErrors.invalidCodePoint(codepoint);
                 }
                 sb.ensureCapacityWithStride(node, length * repeat, bufferGrowProfile, errorProfile);
                 for (int i = 0; i < repeat; i++) {
-                    int ret = JCodings.getInstance().writeCodePoint(jCodingsEnc, codepoint, sb.buf, sb.length);
-                    if (ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, sb.buf, sb.length, sb.length + length) != ret ||
-                                    JCodings.getInstance().readCodePoint(jCodingsEnc, sb.buf, sb.length, sb.length + length, DecodingErrorHandler.RETURN_NEGATIVE) != codepoint) {
+                    int ret = jcodings.writeCodePoint(sb.encoding, codepoint, sb.buf, sb.length);
+                    if (ret != length || jcodings.getCodePointLength(sb.encoding, sb.buf, sb.length, sb.length + length) != ret ||
+                                    jcodings.readCodePoint(sb.encoding, sb.buf, sb.length, sb.length + length, DecodingErrorHandler.RETURN_NEGATIVE) != codepoint) {
                         throw InternalErrors.invalidCodePoint(codepoint);
                     }
                     sb.length += length;

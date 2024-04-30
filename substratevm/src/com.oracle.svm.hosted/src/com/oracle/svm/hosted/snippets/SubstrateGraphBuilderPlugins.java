@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,6 +133,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvoca
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
@@ -222,7 +223,7 @@ public class SubstrateGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode patternNode) {
                     String pattern = asConstantObject(b, String.class, patternNode);
                     if (pattern != null) {
-                        b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(pattern), reason));
+                        b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(loader, pattern), reason));
                         return true;
                     }
                     return false;
@@ -297,7 +298,7 @@ public class SubstrateGraphBuilderPlugins {
      * serialization/deserialization.</li>
      * </ul>
      */
-    private static void parsePatternAndRegister(String pattern) {
+    private static void parsePatternAndRegister(ImageClassLoader loader, String pattern) {
         String[] patterns = pattern.split(";");
         for (String p : patterns) {
             int nameLen = p.length();
@@ -324,12 +325,9 @@ public class SubstrateGraphBuilderPlugins {
                     final String className = p.substring(poffset, nameLen - 1);
                     if (!negate) {
                         if (className.endsWith(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING)) {
-                            try {
-                                String lambdaHolderName = LambdaUtils.capturingClass(className);
-                                RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));
-                            } catch (ClassNotFoundException e) {
-                                // no class, no registration
-                            }
+                            String lambdaHolderName = LambdaUtils.capturingClass(className);
+                            // If the class cannot be loaded, there will be no registration
+                            loader.findClass(lambdaHolderName).ifPresent(RuntimeSerialization::registerLambdaCapturingClass);
                         }
                     }
                 }
@@ -340,15 +338,12 @@ public class SubstrateGraphBuilderPlugins {
                 }
                 // Pattern is a class name
                 if (!negate) {
-                    try {
-                        /* Support arrays of non-primitive types */
-                        if (name.startsWith("[") && name.contains("[L") && !name.endsWith(";")) {
-                            name += ";";
-                        }
-                        RuntimeSerialization.register(Class.forName(name, false, Thread.currentThread().getContextClassLoader()));
-                    } catch (ClassNotFoundException e) {
-                        // no class, no registration
+                    /* Support arrays of non-primitive types */
+                    if (name.startsWith("[") && name.contains("[L") && !name.endsWith(";")) {
+                        name += ";";
                     }
+                    // If the class cannot be loaded, there will be no registration
+                    loader.findClass(name).ifPresent(RuntimeSerialization::register);
                 }
             }
         }
@@ -817,7 +812,12 @@ public class SubstrateGraphBuilderPlugins {
                 ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
                 EnsureClassInitializedNode ensureInitialized = b.append(new EnsureClassInitializedNode(clazzNonNull));
                 ensureInitialized.setStateAfter(b.getInvocationPluginBeforeState());
-                DynamicNewInstanceNode.createAndPush(b, clazzNonNull);
+
+                if (b.currentBlockCatchesOOM()) {
+                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazzNonNull);
+                } else {
+                    DynamicNewInstanceNode.createAndPush(b, clazzNonNull);
+                }
                 return true;
             }
         });
@@ -860,7 +860,7 @@ public class SubstrateGraphBuilderPlugins {
 
         /* Emits a null-check for the otherwise unused receiver. */
         receiver.get(true);
-        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(targetField.getType().isPrimitive()));
+        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(b.getMetaAccess().lookupJavaField(targetField)));
         return true;
     }
 

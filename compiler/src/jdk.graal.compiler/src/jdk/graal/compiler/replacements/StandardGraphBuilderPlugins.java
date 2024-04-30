@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,6 +79,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -140,6 +141,7 @@ import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
 import jdk.graal.compiler.nodes.extended.SwitchCaseProbabilityNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.extended.UnsafeMemoryLoadNode;
@@ -155,14 +157,21 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvoca
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.java.AllocateWithExceptionNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
+import jdk.graal.compiler.nodes.java.DynamicNewArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewArrayWithExceptionNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.NewInstanceWithExceptionNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.ReachabilityFenceNode;
 import jdk.graal.compiler.nodes.java.RegisterFinalizerNode;
 import jdk.graal.compiler.nodes.java.UnsafeCompareAndExchangeNode;
@@ -170,6 +179,7 @@ import jdk.graal.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.ConstantFoldUtil;
 import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
@@ -211,6 +221,7 @@ import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
@@ -500,7 +511,11 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
                 ValueNode componentTypeNonNull = b.nullCheckedValue(componentType);
                 ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(length);
-                b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentTypeNonNull, lengthPositive, true));
+                if (b.currentBlockCatchesOOM()) {
+                    b.addPush(JavaKind.Object, new DynamicNewArrayWithExceptionNode(componentTypeNonNull, lengthPositive));
+                } else {
+                    b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentTypeNonNull, lengthPositive, true));
+                }
                 return true;
             }
         });
@@ -518,7 +533,9 @@ public class StandardGraphBuilderPlugins {
 
                 ValueNode array;
                 if (isArrayGuard != null) {
-                    AbstractObjectStamp alwaysArrayStamp = ((AbstractObjectStamp) objectNonNull.stamp(NodeView.DEFAULT)).asAlwaysArray();
+                    // The ObjectIsArrayNode only proves the array property for the stamp and not
+                    // the nullness property, so properly record that and not the nullness.
+                    AbstractObjectStamp alwaysArrayStamp = ((AbstractObjectStamp) StampFactory.object()).asAlwaysArray();
                     array = b.add(new PiNode(objectNonNull, alwaysArrayStamp, isArrayGuard.asNode()));
                 } else {
                     array = objectNonNull;
@@ -558,7 +575,12 @@ public class StandardGraphBuilderPlugins {
              * "Object" to "Reference", but kept the "Object" version as deprecated. We want to
              * intrinsify both variants, to avoid problems with Uninterruptible methods in Native
              * Image.
+             *
+             * As of JDK-8327729 (resolved in JDK 23), the "Object" versions have been removed.
              */
+            if (JavaVersionUtil.JAVA_SPEC >= 23) {
+                return new String[]{"Reference"};
+            }
             return new String[]{"Object", "Reference"};
         } else {
             return new String[]{kind.name()};
@@ -683,7 +705,7 @@ public class StandardGraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get(true);
-                        createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndWriteNode(obj, offset, value, kind, loc));
+                        createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndWriteNode(obj, offset, value, kind, loc), AtomicReadAndWriteNode.class);
                         return true;
                     }
                 });
@@ -694,7 +716,7 @@ public class StandardGraphBuilderPlugins {
                         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                             // Emits a null-check for the otherwise unused receiver
                             unsafe.get(true);
-                            createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndAddNode(obj, offset, delta, kind, loc));
+                            createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndAddNode(obj, offset, delta, kind, loc), AtomicReadAndAddNode.class);
                             return true;
                         }
                     });
@@ -1445,9 +1467,9 @@ public class StandardGraphBuilderPlugins {
             }
         }
 
-        protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor) {
+        protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor, Class<? extends TrackedUnsafeAccess> constructorClass) {
             StructuredGraph graph = b.getGraph();
-            graph.markUnsafeAccess();
+            graph.markUnsafeAccess(constructorClass);
             /* For unsafe access object pointers can only be stored in the heap */
             if (unsafeAccessKind == JavaKind.Object) {
                 ValueNode object = value;
@@ -1527,7 +1549,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get(true);
             b.addPush(returnKind, new UnsafeMemoryLoadNode(address, unsafeAccessKind, OFF_HEAP_LOCATION));
-            b.getGraph().markUnsafeAccess();
+            b.getGraph().markUnsafeAccess(UnsafeMemoryLoadNode.class);
             return true;
         }
 
@@ -1543,7 +1565,7 @@ public class StandardGraphBuilderPlugins {
             unsafe.get(true);
             // Note that non-ordered raw accesses can be turned into floatable field accesses.
             UnsafeNodeConstructor unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
-            createUnsafeAccess(object, b, unsafeNodeConstructor);
+            createUnsafeAccess(object, b, unsafeNodeConstructor, RawLoadNode.class);
             return true;
         }
     }
@@ -1567,7 +1589,7 @@ public class StandardGraphBuilderPlugins {
             unsafe.get(true);
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
             b.add(new UnsafeMemoryStoreNode(address, maskedValue, unsafeAccessKind, OFF_HEAP_LOCATION));
-            b.getGraph().markUnsafeAccess();
+            b.getGraph().markUnsafeAccess(UnsafeMemoryStoreNode.class);
             return true;
         }
 
@@ -1582,7 +1604,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get(true);
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
-            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, memoryOrder));
+            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, memoryOrder), RawStoreNode.class);
             return true;
         }
     }
@@ -1603,9 +1625,9 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get(true);
             if (isLogic) {
-                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndSwapNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder));
+                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndSwapNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder), UnsafeCompareAndSwapNode.class);
             } else {
-                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndExchangeNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder));
+                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndExchangeNode(obj, offset, expected, newValue, unsafeAccessKind, loc, memoryOrder), UnsafeCompareAndExchangeNode.class);
             }
             return true;
         }
@@ -1696,7 +1718,8 @@ public class StandardGraphBuilderPlugins {
             return Objects.requireNonNull(snippetReflection.asObject(type, value.asJavaConstant()), value + " must be a non-null compile time constant");
         }
 
-        static void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, boolean withSpeculation) {
+        @SuppressWarnings("hiding")
+        void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, boolean withSpeculation) {
             SpeculationReason speculationReason = null;
             if (withSpeculation) {
                 BytecodePosition pos = new BytecodePosition(null, b.getMethod(), b.bci());
@@ -1705,7 +1728,8 @@ public class StandardGraphBuilderPlugins {
             add(b, action, reason, speculationReason);
         }
 
-        static void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, SpeculationReason speculationReason) {
+        @SuppressWarnings("hiding")
+        DeoptimizeNode add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, SpeculationReason speculationReason) {
             Speculation speculation = SpeculationLog.NO_SPECULATION;
             if (speculationReason != null) {
                 GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is needed to use `deoptimize with speculation`");
@@ -1713,7 +1737,23 @@ public class StandardGraphBuilderPlugins {
                     speculation = b.getGraph().getSpeculationLog().speculate(speculationReason);
                 }
             }
-            b.add(new DeoptimizeNode(action, reason, speculation));
+            return b.add(new DeoptimizeNode(action, reason, speculation));
+        }
+    }
+
+    static class PreciseDeoptimizePlugin extends DeoptimizePlugin {
+
+        PreciseDeoptimizePlugin(SnippetReflectionProvider snippetReflection, DeoptimizationAction action, DeoptimizationReason reason, Boolean withSpeculation,
+                        String name, Type... argumentTypes) {
+            super(snippetReflection, action, reason, withSpeculation, name, argumentTypes);
+        }
+
+        @Override
+        DeoptimizeNode add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, SpeculationReason speculationReason) {
+            b.add(new StateSplitProxyNode());
+            DeoptimizeNode deopt = super.add(b, action, reason, speculationReason);
+            deopt.mayConvertToGuard(false);
+            return deopt;
         }
     }
 
@@ -1725,6 +1765,7 @@ public class StandardGraphBuilderPlugins {
                         "deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, boolean.class));
         r.register(new DeoptimizePlugin(snippetReflection, null, null, null,
                         "deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, SpeculationReason.class));
+        r.register(new PreciseDeoptimizePlugin(snippetReflection, None, TransferToInterpreter, false, "preciseDeoptimize"));
 
         r.register(new RequiredInlineOnlyInvocationPlugin("inCompiledCode") {
             @Override
@@ -1781,6 +1822,22 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
                 b.addPush(JavaKind.Long, new SideEffectNode(a));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("positivePi", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
+                BeginNode begin = b.add(new BeginNode());
+                b.addPush(JavaKind.Int, PiNode.create(n, StampFactory.positiveInt().improveWith(n.stamp(NodeView.DEFAULT)), begin));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("positivePi", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
+                BeginNode begin = b.add(new BeginNode());
+                b.addPush(JavaKind.Long, PiNode.create(n, IntegerStamp.create(64, 0, Long.MAX_VALUE).improveWith(n.stamp(NodeView.DEFAULT)), begin));
                 return true;
             }
         });
@@ -1889,6 +1946,15 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
+        r.register(new RequiredInlineOnlyInvocationPlugin("ensureAllocatedHere", Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                registerEnsureAllocatedHereIntrinsic(b, object);
+                return true;
+            }
+
+        });
+
         r.register(new RequiredInlineOnlyInvocationPlugin("ensureVirtualized", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
@@ -1974,6 +2040,42 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
+    }
+
+    public static void registerEnsureAllocatedHereIntrinsic(GraphBuilderContext b, ValueNode object) {
+        if (object instanceof AllocateWithExceptionNode) {
+            // already wrapped (using the intrinsic in a try block)
+            b.push(JavaKind.Object, object);
+            return;
+        }
+        FixedNode lastNode = null;
+        if (object instanceof NewInstanceNode ni) {
+            NewInstanceWithExceptionNode niwe = b.addPush(JavaKind.Object, new NewInstanceWithExceptionNode(ni.instanceClass(), true));
+            // niwe.setOriginalAllocation(ni);
+            lastNode = niwe;
+        } else if (object instanceof NewArrayNode na) {
+            NewArrayWithExceptionNode nawe = b.addPush(JavaKind.Object, new NewArrayWithExceptionNode(na.elementType(), na.length(), true));
+            // nawe.setOriginalAllocation(na);
+            lastNode = nawe;
+        } else if (object instanceof NewMultiArrayNode nma) {
+            NewMultiArrayWithExceptionNode nmawe = b.addPush(JavaKind.Object, new NewMultiArrayWithExceptionNode(nma.type(), nma.dimensions()));
+            // nmawe.setOriginalAllocation(nma);
+            lastNode = nmawe;
+        } else {
+            throw GraalError.shouldNotReachHere("Can use GraalDirectives.ensureAllocatedHere only with newinstance, newarray or multianewarray bytecode but found " + object);
+        }
+        GraalError.guarantee(lastNode != null, "Must have found a proper allocation at this point");
+        if (!(object == lastNode.predecessor())) {
+            throw GraalError.shouldNotReachHere(String.format(
+                            "Can only use GraalDirectives.ensureAllocatedHere intrinsic if there is no control flow (statements) between the allocation and the call to ensureAllocatedHere %s->%s",
+                            object, lastNode));
+        }
+        if (object.hasMoreThanOneUsage()) {
+            throw GraalError.shouldNotReachHere(String.format("Can only use GraalDirectives.ensureAllocatedHere intrinsic if the parameter allocation is freshly allocated and not a local variable"));
+        }
+        object.replaceAtUsages(lastNode);
+        GraphUtil.unlinkFixedNode((FixedWithNextNode) object);
+        object.safeDelete();
     }
 
     private static void registerJMHBlackholePlugins(InvocationPlugins plugins, Replacements replacements) {

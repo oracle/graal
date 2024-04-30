@@ -43,10 +43,10 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -146,15 +146,12 @@ public class MethodHandleFeature implements InternalFeature {
             referencedKeySetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
         }
 
-        if (!SubstrateOptions.UseOldMethodHandleIntrinsics.getValue()) {
-            /*
-             * Renaming is not crucial with old method handle intrinsics, so if those are requested
-             * explicitly, disable renaming to offer a fallback in case it causes problems.
-             */
-            var accessImpl = (DuringSetupAccessImpl) access;
-            substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
-            accessImpl.registerSubstitutionProcessor(substitutionProcessor);
-        }
+        var accessImpl = (DuringSetupAccessImpl) access;
+        substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
+        accessImpl.registerSubstitutionProcessor(substitutionProcessor);
+
+        accessImpl.registerObjectReachableCallback(memberNameClass, (a1, member, reason) -> registerHeapMemberName((Member) member));
+        accessImpl.registerObjectReachableCallback(MethodType.class, (a1, methodType, reason) -> registerHeapMethodType(methodType));
     }
 
     @Override
@@ -230,19 +227,22 @@ public class MethodHandleFeature implements InternalFeature {
                                 ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
                                 ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
                                 originalMap.forEach((key, speciesData) -> {
-                                    if (isSpeciesReachable(speciesData)) {
+                                    if (isSpeciesTypeInstantiated(speciesData)) {
                                         filteredMap.put(key, speciesData);
                                     }
                                 });
                                 return filteredMap;
                             }
 
-                            private boolean isSpeciesReachable(Object speciesData) {
+                            private boolean isSpeciesTypeInstantiated(Object speciesData) {
                                 Class<?> speciesClass = ReflectionUtil.readField(speciesDataClass, "speciesCode", speciesData);
                                 Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
-                                return analysisType.isPresent() && analysisType.get().isReachable();
+                                return analysisType.isPresent() && analysisType.get().isInstantiated();
                             }
                         });
+        access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle"), "ACCESSOR_FORMS"),
+                        NewEmptyArrayFieldValueTransformer.INSTANCE);
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType"), "internTable"),
                         (receiver, originalValue) -> runtimeMethodTypeInternTable);
@@ -455,5 +455,9 @@ public class MethodHandleFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         assert substitutionProcessor == null || substitutionProcessor.checkAllTypeNames();
+    }
+
+    public MethodHandleInvokerRenamingSubstitutionProcessor getMethodHandleSubstitutionProcessor() {
+        return substitutionProcessor;
     }
 }

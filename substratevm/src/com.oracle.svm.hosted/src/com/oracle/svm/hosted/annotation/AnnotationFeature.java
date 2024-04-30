@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -56,7 +57,8 @@ public class AnnotationFeature implements InternalFeature {
      * which notifies us for every reachable {@link Annotation} object in the heap and then checking
      * if it is an annotation that was materialized by the JDK, i.e., it is a {@link Proxy}.
      */
-    private void registerDeclaredMethods(@SuppressWarnings("unused") DuringAnalysisAccess access, Annotation annotation) {
+    @SuppressWarnings("unused")
+    private void registerDeclaredMethods(DuringAnalysisAccess access, Annotation annotation, ObjectScanner.ScanReason reason) {
         if (Proxy.isProxyClass(annotation.getClass())) {
             Class<? extends Annotation> annotationType = annotation.annotationType();
             if (processedTypes.add(annotationType)) {

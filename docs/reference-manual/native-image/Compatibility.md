@@ -101,7 +101,7 @@ For non-standard patterns, field offsets can be recomputed manually using the an
 
 Java has some optional specifications that a Java implementation can use for debugging and monitoring Java programs, including JVMTI.
 They help you monitor the Java VM at runtime for events such as compilation, for example, which do not occur in most native images.
-These interfaces are built on the assumption that Java bytecodes are available at run time, which is not the case for native images built with the closed-world optimization.
+These interfaces are built on the assumption that Java bytecode is available at run time, which is not the case for native images built with the closed-world optimization.
 Because the `native-image` builder generates a native executable, users must use native debuggers and monitoring tools (such as GDB or VTune) rather than tools targeted for Java.
 JVMTI and other bytecode-based tools are not supported with Native Image.
 

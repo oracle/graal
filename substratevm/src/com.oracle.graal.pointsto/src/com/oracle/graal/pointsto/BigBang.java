@@ -109,6 +109,10 @@ public interface BigBang extends ReachabilityAnalysis {
     }
 
     @SuppressWarnings("unused")
+    default void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes) {
+    }
+
+    @SuppressWarnings("unused")
     default void onTypeInstantiated(AnalysisType type, UsageKind usageKind) {
     }
 

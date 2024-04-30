@@ -36,12 +36,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.java.LambdaUtils;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.java.LambdaUtils;
 
 public class SerializationSupport implements SerializationRegistry {
 
@@ -87,7 +89,7 @@ public class SerializationSupport implements SerializationRegistry {
 
     private final Constructor<?> stubConstructor;
 
-    private static final class SerializationLookupKey {
+    public static final class SerializationLookupKey {
         private final Class<?> declaringClass;
         private final Class<?> targetConstructorClass;
 
@@ -95,6 +97,14 @@ public class SerializationSupport implements SerializationRegistry {
             assert declaringClass != null && targetConstructorClass != null;
             this.declaringClass = declaringClass;
             this.targetConstructorClass = targetConstructorClass;
+        }
+
+        public Class<?> getDeclaringClass() {
+            return declaringClass;
+        }
+
+        public Class<?> getTargetConstructorClass() {
+            return targetConstructorClass;
         }
 
         @Override
@@ -127,6 +137,17 @@ public class SerializationSupport implements SerializationRegistry {
     public Object addConstructorAccessor(Class<?> declaringClass, Class<?> targetConstructorClass, Object constructorAccessor) {
         SerializationLookupKey key = new SerializationLookupKey(declaringClass, targetConstructorClass);
         return constructorAccessors.putIfAbsent(key, constructorAccessor);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SerializationLookupKey getKeyFromConstructorAccessorClass(Class<?> constructorAccessorClass) {
+        MapCursor<SerializationLookupKey, Object> cursor = constructorAccessors.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getValue().getClass().equals(constructorAccessorClass)) {
+                return cursor.getKey();
+            }
+        }
+        return null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) private final Set<Class<?>> classes = ConcurrentHashMap.newKeySet();

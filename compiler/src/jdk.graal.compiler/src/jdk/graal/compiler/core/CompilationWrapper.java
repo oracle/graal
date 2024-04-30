@@ -41,13 +41,17 @@ import java.io.PrintStream;
 import java.util.Formatter;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.vm.ci.code.BailoutException;
 
@@ -336,23 +340,7 @@ public abstract class CompilationWrapper<T> {
                 TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
             }
 
-            String diagnoseLevel = DebugOptions.DiagnoseDumpLevel.getValue(initialOptions);
-
-            // pre GR-51012 this was just a number - we still want to support the old numeric values
-            boolean isOldLevel = diagnoseLevel.matches("-?\\d+");
-            if (isOldLevel) {
-                diagnoseLevel = ":" + diagnoseLevel;
-            }
-
-            OptionValues retryOptions = new OptionValues(initialOptions,
-                            Dump, diagnoseLevel,
-                            MethodFilter, null,
-                            Count, "",
-                            Time, "",
-                            DumpPath, dumpPath,
-                            PrintBackendCFG, true,
-                            TrackNodeSourcePosition, true);
-
+            OptionValues retryOptions = getRetryOptions(initialOptions, dumpPath);
             ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
             PrintStream ps = new PrintStream(logBaos);
             try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps);
@@ -377,6 +365,34 @@ public abstract class CompilationWrapper<T> {
                 return postRetry(action, handleException(cause));
             }
         }
+    }
+
+    /**
+     * Parses options to be used for retry compilations, storing the result in {@code values}. Any
+     * defaults already present in {@code values} should be overridden by the parsed options.
+     *
+     * @param options an array of options, obtained from the value of
+     *            {@link DebugOptions#DiagnoseOptions}.
+     * @param values the object in which to store the parsed values.
+     */
+    protected abstract void parseRetryOptions(String[] options, EconomicMap<OptionKey<?>, Object> values);
+
+    private OptionValues getRetryOptions(OptionValues initialOptions, String dumpPath) {
+        EconomicMap<OptionKey<?>, Object> values = EconomicMap.create(initialOptions.getMap());
+        /*
+         * Override values in initialOptions with useful defaults, but let them be overridden in
+         * turn if explicitly set in DiagnoseOptions.
+         */
+        values.put(MethodFilter, null);
+        values.put(Count, "");
+        values.put(Time, "");
+        values.put(DumpPath, dumpPath);
+        values.put(PrintBackendCFG, true);
+        values.put(TrackNodeSourcePosition, true);
+
+        String diagnoseOptions = DebugOptions.DiagnoseOptions.getValue(initialOptions);
+        parseRetryOptions(OptionsParser.splitOptions(diagnoseOptions), values);
+        return new OptionValues(values);
     }
 
     private T postRetry(ExceptionAction action, T res) {

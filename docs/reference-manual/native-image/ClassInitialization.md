@@ -12,7 +12,7 @@ The semantics of Java requires that a class is initialized the first time it is 
 Class initialization has negative consequences for compiling Java applications ahead-of-time for the following two reasons:
 
 * It significantly degrades the performance of a native executable: every access to a class (via a field or method) requires a check to ensure the class is already initialized. Without optimization, this can reduce performance by more than twofold.
-* It increases the amount of computation--and time--to startup an application. For example, the simple "Hello, World!" application requires more than 300 classes to be initialized.
+* It increases the amount of computation&mdash;and time&mdash;to start up an application. For example, the simple "Hello, World!" application requires more than 300 classes to be initialized.
 
 To reduce the negative impact of class initialization, Native Image supports class initialization at build time: it can initialize classes when it builds an executable, making runtime initialization and checks unnecessary.
 All the static state from initialized classes is stored in the executable.

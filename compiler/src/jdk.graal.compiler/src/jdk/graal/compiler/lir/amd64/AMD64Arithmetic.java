@@ -35,7 +35,6 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -105,6 +104,11 @@ public enum AMD64Arithmetic {
             assert (opcode.name().startsWith("F") && result.getPlatformKind() == AMD64Kind.SINGLE && x.getPlatformKind() == AMD64Kind.SINGLE && y.getPlatformKind() == AMD64Kind.SINGLE) ||
                             (opcode.name().startsWith("D") && result.getPlatformKind() == AMD64Kind.DOUBLE && x.getPlatformKind() == AMD64Kind.DOUBLE &&
                                             y.getPlatformKind() == AMD64Kind.DOUBLE) : Assertions.errorMessage(x, y, result);
+        }
+
+        @Override
+        public boolean modifiesStackPointer() {
+            return true;
         }
     }
 }

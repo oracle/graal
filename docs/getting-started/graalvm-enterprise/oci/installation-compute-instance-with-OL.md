@@ -3,7 +3,7 @@ layout: ohc
 permalink: /getting-started/oci/compute-instance/
 ---
 
-# Oracle GraalVM on OCI Compute Instances with Oracle Linux
+# Oracle GraalVM on an OCI Compute Instance with Oracle Linux
 
 This guide describes how to install Oracle GraalVM on an Oracle Cloud Infrastructure (OCI) Compute instance with Oracle Linux 7, 8, and 9.
 For complete beginners, [start with this tutorial to create and launch your first Linux instance](https://docs.oracle.com/iaas/Content/GSG/Reference/overviewworkflow.htm).
@@ -18,8 +18,8 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 
 For convenience, Oracle GraalVM RPMs are available in the Oracle YUM repository.
 RPMs for Oracle GraalVM for JDK 17, JDK 21, and JDK 22 are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-22-native-image`, respectively.
-These Oracle GraalVM distributions include a JDK and Natime Image.
-Each Oracle GraalVM RPM is self-contained and all required dependencies will be automatically resolved during the installation.
+These Oracle GraalVM distributions include a JDK and the Native Image tool.
+Each Oracle GraalVM RPM is self-contained and all required dependencies will be automatically resolved during installation.
 
 That means that OCI customers can use Oracle GraalVM in their compute instances, just like any other Java Development Kit, by installing it with `yum`, `dnf`, or `microdnf` default package managers, depending on the Oracle Linux version.
 
@@ -35,7 +35,7 @@ The installation steps may differ per Oracle Linux version or package manager.
 
 ### Oracle Linux 7
 
-1. Install newer devtoolset with GCC version 10 (required by Oracle GraalVM Native Image):
+1. Install a newer devtoolset with GCC version 10 (required by Oracle GraalVM Native Image):
    ```shell
    sudo yum -y install oracle-softwarecollection-release-el7
    ```
@@ -111,7 +111,7 @@ sudo dnf install graalvm-22-native-image
 Configure environment variables to point to the Oracle GraalVM installation for this SSH session. 
 After installation, the package files are placed in the _/usr/lib64/graalvm_ directory, and binaries in _bin_ accordingly.
 
-1. Set the `PATH` and `JAVA_HOME` environment variables in the bash configuration to point to Oracle GraalVM with the following commands:
+1. Set the values of the `PATH` and `JAVA_HOME` environment variables in the bash configuration to point to the location of the Oracle GraalVM installation with the following commands:
    ```shell
    echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm-java22" >> ~/.bashrc
    ```

@@ -104,7 +104,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         controller.endSession();
 
         // resume all threads
-        controller.resumeAll(true);
+        controller.forceResumeAll();
 
         if (prepareForReconnect) {
             // replace the controller instance
@@ -142,8 +142,10 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
                 handshakeThread.start();
             }
         } catch (IOException e) {
-            printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
-            printStackTrace(e);
+            if (!isResetting()) {
+                printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
+                printStackTrace(e);
+            }
         }
     }
 

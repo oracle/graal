@@ -50,6 +50,10 @@ public final class MethodPointerStamp extends MetaspacePointerStamp {
         return METHOD_NON_NULL;
     }
 
+    public static MethodPointerStamp methodAlwaysNull() {
+        return METHOD_ALWAYS_NULL;
+    }
+
     private MethodPointerStamp(boolean nonNull, boolean alwaysNull) {
         super(nonNull, alwaysNull);
     }

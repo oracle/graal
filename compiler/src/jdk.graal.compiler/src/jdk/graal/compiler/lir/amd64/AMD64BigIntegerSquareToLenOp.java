@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.lir.amd64.AMD64BigIntegerMulAddOp.multiplyAdd64;
+import static jdk.graal.compiler.lir.amd64.AMD64BigIntegerMulAddOp.multiplyAdd64Bmi2;
+import static jdk.graal.compiler.lir.amd64.AMD64BigIntegerMulAddOp.useBMI2Instructions;
 import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.r12;
@@ -37,9 +40,6 @@ import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.lir.amd64.AMD64BigIntegerMulAddOp.multiplyAdd64;
-import static jdk.graal.compiler.lir.amd64.AMD64BigIntegerMulAddOp.multiplyAdd64Bmi2;
-import static jdk.graal.compiler.lir.amd64.AMD64BigIntegerMulAddOp.useBMI2Instructions;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
@@ -50,7 +50,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
@@ -375,5 +374,10 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
         masm.movl(tmp3, new AMD64Address(x, len, Stride.S4, -4));
         masm.andl(tmp3, 1);
         masm.orl(new AMD64Address(z, zlen, Stride.S4, -4), tmp3);
+    }
+
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
     }
 }

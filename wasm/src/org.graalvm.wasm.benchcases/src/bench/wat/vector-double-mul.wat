@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 (module
   (type $int_func (func (result i32)))
   (type $proc (func))
+  (type $teardown_func (func (param i32)))
 
   (global $iterations i32 (i32.const 10000000))
 
@@ -48,7 +49,7 @@
 
   (func (export "benchmarkSetupEach") (type $proc))
 
-  (func (export "benchmarkTeardownEach") (type $proc))
+  (func (export "benchmarkTeardownEach") (type $teardown_func))
 
   (func (export "benchmarkRun") (type $int_func)
     (local $i i32)

@@ -74,6 +74,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import org.graalvm.polyglot.Engine;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -282,7 +283,8 @@ public final class TruffleBaseFeature implements InternalFeature {
      * Register all fields accessed by a InlinedField for an instance field or a static field as
      * unsafe accessed, which is necessary for correctness of the static analysis.
      */
-    private void processInlinedField(@SuppressWarnings("unused") DuringAnalysisAccess access, InlinableField inlinableField) {
+    @SuppressWarnings("unused")
+    private void processInlinedField(DuringAnalysisAccess access, InlinableField inlinableField, ObjectScanner.ScanReason reason) {
         if (processedInlinedFields.putIfAbsent(inlinableField, true) == null) {
             VMError.guarantee(markAsUnsafeAccessed != null, "New InlinedField found after static analysis");
             try {
@@ -510,7 +512,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         libraryFactoryCacheField = access.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
             var classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-            access.registerObjectReachableCallback(TruffleFile.class, (ignore, file) -> checkTruffleFile(classInitializationSupport, file));
+            access.registerObjectReachableCallback(TruffleFile.class, (a1, file, reason) -> checkTruffleFile(classInitializationSupport, file));
         }
 
         if (needsAllEncodings) {

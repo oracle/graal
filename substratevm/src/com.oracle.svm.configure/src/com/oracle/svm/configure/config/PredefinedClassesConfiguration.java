@@ -34,14 +34,15 @@ import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
-import com.oracle.svm.core.hub.PredefinedClassesSupport;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.Digest;
 
 public final class PredefinedClassesConfiguration extends ConfigurationBase<PredefinedClassesConfiguration, PredefinedClassesConfiguration.Predicate> {
     private final Path[] classDestinationDirs;
@@ -91,7 +92,7 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
     }
 
     public void add(String nameInfo, byte[] classData) {
-        String hash = PredefinedClassesSupport.hash(classData, 0, classData.length);
+        String hash = Digest.digest(classData);
         if (shouldExcludeClassWithHash != null && shouldExcludeClassWithHash.test(hash)) {
             return;
         }

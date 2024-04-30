@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 
 @CContext(value = LibMDependencies.class)
 public class PosixLibM {
@@ -41,7 +42,7 @@ public class PosixLibM {
 class LibMDependencies implements CContext.Directives {
     @Override
     public boolean isInConfiguration() {
-        return HasJfrSupport.get();
+        return HasJfrSupport.get() || JfrExecutionSamplerSupported.isSupported();
     }
 
     @Override

@@ -497,11 +497,14 @@
     linux_amd64_jdk_latest_builds +
     linux_amd64_jdk_latestDebug_builds,
 
-  builds: if
+  local _builds = if
       self.check_manifest(gates,     all_builds, std.thisFile, "gates").result &&
       self.check_manifest(dailies,   all_builds, std.thisFile, "dailies").result &&
       self.check_manifest(weeklies,  all_builds, std.thisFile, "weeklies").result &&
       self.check_manifest(monthlies, all_builds, std.thisFile, "monthlies").result
     then
       all_builds + (import '../ci_includes/bootstrap_extra.libsonnet').builds
+  ,
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

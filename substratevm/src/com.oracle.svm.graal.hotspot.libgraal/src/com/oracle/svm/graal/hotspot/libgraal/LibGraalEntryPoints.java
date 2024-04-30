@@ -374,7 +374,7 @@ public final class LibGraalEntryPoints {
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
             try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
                 OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
-                CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, eagerResolving, installAsDefault);
+                CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, false, eagerResolving, installAsDefault);
                 if (profilePathBufferAddress > 0) {
                     String profileLoadPath = CTypeConversion.toJavaString(WordFactory.pointer(profilePathBufferAddress));
                     options = new OptionValues(options, Options.LoadProfiles, profileLoadPath);

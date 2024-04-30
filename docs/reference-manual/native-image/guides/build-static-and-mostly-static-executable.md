@@ -16,7 +16,7 @@ However, you can create a statically linked or mostly-static linked native execu
 A static native executable is easy to distribute and deploy on a slim or distroless container (a scratch container).
 You can create a static native executable by statically linking it against [musl-libc](https://musl.libc.org/), a lightweight, fast and simple `libc` implementation.
 
-**A mostly-static native executable** is a binary that links everything (`zlib`, JDK shared libraries) except the standard C library, `libc`. This is an alternative option to staticly linking everything. Also, depending on the user's code, it may link `libstdc+` and `libgcc`.
+**A mostly-static native executable** is a binary that links everything (`zlib`, JDK shared libraries) except the standard C library, `libc`. This is an alternative option to statically linking everything. Also, depending on the user's code, it may link `libstdc+` and `libgcc`.
 This approach is ideal for deployment on a distroless container image.
 
 > Note: This currently only works when linked against `libc`.
@@ -114,13 +114,13 @@ With GraalVM Native Image you can build a mostly-static native executable that s
 To build a mostly-static native executable, use this command:
 
 ```shell
-native-image -H:+StaticExecutableWithDynamicLibC [other arguments] <Class>
+native-image --static-nolibc [other arguments] <Class>
 ```
 
-To build a  a mostly-static native executable for the above `EnvMap` demo, run:
+To build a mostly-static native executable for the above `EnvMap` demo, run:
 
 ```shell
-native-image -H:+StaticExecutableWithDynamicLibC EnvMap
+native-image --static-nolibc EnvMap
 ```
 
 This produces a native executable that statically links all involved libraries (including JDK shared libraries) except for `libc`. This includes `zlib`. Also, depending on the user's code, it may link `libstdc+` and `libgcc`.

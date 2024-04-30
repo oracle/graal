@@ -58,12 +58,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import org.graalvm.home.HomeFinder;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -78,8 +82,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
-import org.graalvm.home.HomeFinder;
-import org.graalvm.polyglot.SandboxPolicy;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -316,6 +318,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return first.providerAdapter.getProviderClass() == second.providerAdapter.getProviderClass();
     }
 
+    @SuppressWarnings("deprecation")
     private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into, Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
@@ -367,6 +370,16 @@ final class LanguageCache implements Comparable<LanguageCache> {
         boolean interactive = reg.interactive();
         boolean internal = reg.internal();
         boolean needsAllEncodings = reg.needsAllEncodings();
+        if (!needsAllEncodings) {
+            if (providerModule.isNamed()) {
+                Optional<Module> jcodingsModule = providerModule.getLayer().findModule("org.graalvm.shadowed.jcodings");
+                needsAllEncodings = jcodingsModule.isPresent() && providerModule.canRead(jcodingsModule.get());
+            } else {
+                // If language is on the class path, assume needsAllEncodings=true.
+                // If jcodings is not actually available, it will be disabled either way.
+                needsAllEncodings = true;
+            }
+        }
         Set<String> servicesClassNames = new TreeSet<>(providerAdapter.getServicesClassNames());
         SandboxPolicy sandboxPolicy = reg.sandbox();
         Map<String, InternalResourceCache> resources = new HashMap<>();

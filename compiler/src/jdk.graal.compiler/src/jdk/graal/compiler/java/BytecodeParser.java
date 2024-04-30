@@ -261,6 +261,7 @@ import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
@@ -402,6 +403,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.ExplicitOOMEExceptionEdges;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
@@ -411,6 +413,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPluginContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.java.AllocateWithExceptionNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.FinalFieldBarrierNode;
@@ -423,8 +426,11 @@ import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.NewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.RegisterFinalizerNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
@@ -443,6 +449,7 @@ import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -974,6 +981,15 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
         int level = TraceBytecodeParserLevel.getValue(options);
         this.traceLevel = level != 0 ? refineTraceLevel(level) : 0;
+
+        /*
+         * If some code (via graph builder config) requested to not use allocations with exceptions
+         * or the user explicitly we disable it.
+         */
+        boolean userUseAllocWithException = BytecodeParserOptions.DoNotMoveAllocationsWithOOMEHandlers.getValue(graph.getOptions());
+        this.disableExplicitAllocationExceptionEdges = !userUseAllocWithException || graphBuilderConfig.oomeExceptionEdges() == ExplicitOOMEExceptionEdges.DisableOOMEExceptionEdges;
+        this.calleeInOOMEBlock = graphBuilderConfig.oomeExceptionEdges() == ExplicitOOMEExceptionEdges.ForceOOMEExceptionEdges;
+        assert !disableExplicitAllocationExceptionEdges || !calleeInOOMEBlock : Assertions.errorMessage("Cannot force callee to have exception edges if we explicitly disable them everywhere");
     }
 
     /**
@@ -1205,20 +1221,82 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         return stateAfterStart;
     }
 
-    private static final SpeculationReasonGroup UNRESOLVED = new SpeculationReasonGroup("Unresolved", ResolvedJavaMethod.class, int.class);
+    /**
+     * A standard SpeculationReasonGroup definition that defaults to method and bci as the default
+     * base context. Extra arguments beyond those can be added as necessary.
+     */
+    static class ParserSpeculation {
+        static final Class<?>[] defaultSignature = {ResolvedJavaMethod.class, int.class};
 
-    public static final CounterKey unresolvedSpeculationTaken = DebugContext.counter("BytecodeParser_UnresolvedSpeculation_Taken");
-    public static final CounterKey unresolvedSpeculationNotTaken = DebugContext.counter("BytecodeParser_UnresolvedSpeculation_NotTaken");
+        final SpeculationReasonGroup speculation;
+        final CounterKey taken;
+        final CounterKey notTaken;
+
+        ParserSpeculation(String name, Class<?>... extra) {
+            Class<?>[] signature = defaultSignature;
+            if (extra.length != 0) {
+                Class<?>[] newSignature = Arrays.copyOf(signature, signature.length + extra.length);
+                System.arraycopy(extra, 0, newSignature, signature.length, extra.length);
+                signature = newSignature;
+            }
+            speculation = new SpeculationReasonGroup(name, signature);
+
+            taken = DebugContext.counter("BytecodeParser_" + name + "Speculation_Taken");
+            notTaken = DebugContext.counter("BytecodeParser_" + name + "Speculation_NotTaken");
+        }
+
+        SpeculationLog.SpeculationReason createSpeculationReason(ResolvedJavaMethod method, int bci, Object... extra) {
+            if (extra.length != 0) {
+                Object[] arguments = new Object[2 + extra.length];
+                arguments[0] = method;
+                arguments[1] = bci;
+                System.arraycopy(extra, 0, arguments, 2, extra.length);
+                return speculation.createSpeculationReason(arguments);
+            } else {
+                return speculation.createSpeculationReason(method, bci);
+            }
+        }
+    }
+
+    private static final ParserSpeculation UNRESOLVED = new ParserSpeculation("Unresolved");
+
+    private static final ParserSpeculation UNRESOLVED_CATCH_TYPE = new ParserSpeculation("UnresolvedCatchType", int.class);
 
     /**
      * Returns a speculation object if it's possible to speculate on an unresolved type or field at
      * the current bytecode location.
      */
     protected SpeculationLog.Speculation mayUseUnresolved(int bci) {
-        if (graphBuilderConfig.usePreciseUnresolvedDeopts()) {
-            return null;
+        ensureBytecodeMayBeUnresolved();
+        return mayUseSpeculation(bci, UNRESOLVED);
+    }
+
+    /**
+     * Ensure that the current bytecode can be unresolved.
+     */
+    protected void ensureBytecodeMayBeUnresolved() {
+        int bytecode = stream.currentBC();
+        switch (bytecode) {
+            case GETFIELD:
+            case GETSTATIC:
+            case PUTFIELD:
+            case PUTSTATIC:
+            case LDC:
+            case LDC2_W:
+            case LDC_W:
+            case CHECKCAST:
+            case INSTANCEOF:
+            case INVOKEDYNAMIC:
+            case INVOKEINTERFACE:
+            case INVOKESPECIAL:
+            case INVOKEVIRTUAL:
+            case INVOKESTATIC:
+            case NEW:
+            case NEWARRAY:
+            case ANEWARRAY:
+                return;
         }
-        return mayUseSpeculation(bci, UNRESOLVED, unresolvedSpeculationTaken, unresolvedSpeculationNotTaken);
+        throw new GraalError("bytecode %s can't use precise deopts", Bytecodes.nameOf(bytecode));
     }
 
     protected void appendUnresolvedDeopt() {
@@ -1226,27 +1304,66 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
          * Make sure we didn't pop something that we shouldn't have from the stack between
          * processing the opcode and emitting the deopt, which could cause an underflow.
          */
-        if (currentBlock.isInstructionBlock()) {
-            GraalError.guarantee(frameState.stackSize() + Bytecodes.stackEffectOf(stream.currentBC()) >= 0, "Stack underflow at unresolved deopt");
+        GraalError.guarantee(!currentBlock.isInstructionBlock() ||
+                        frameState.stackSize() + Bytecodes.stackEffectOf(stream.currentBC()) >= 0, "Stack underflow at unresolved deopt");
+
+        SpeculationLog.Speculation speculation;
+        boolean usePreciseFrameState = false;
+        if (graphBuilderConfig.usePreciseUnresolvedDeopts()) {
+            speculation = SpeculationLog.NO_SPECULATION;
+            usePreciseFrameState = currentBlock.isInstructionBlock();
+        } else if (graph.getSpeculationLog() == null) {
+            // Just emit normal deopts for this case. This should really only occur in a test setup
+            speculation = SpeculationLog.NO_SPECULATION;
+        } else {
+            if (currentBlock.isInstructionBlock()) {
+                speculation = mayUseUnresolved(bci());
+                if (speculation == null) {
+                    /*
+                     * A previous speculation on this unresolved bytecode failed. This means that we
+                     * previously deopted at this position. The interpreter should have resolved the
+                     * item we need here. However, due to inlining and our use of imprecise frame
+                     * states, we may have deopted to and invalidated the callee of this method
+                     * rather than this method itself. Prevent a deopt loop by capturing a precise
+                     * state.
+                     */
+                    usePreciseFrameState = true;
+                }
+            } else if (currentBlock instanceof ExceptionDispatchBlock dispatchBlock) {
+                /*
+                 * This is part of the exception dispatch path so there is no actual unresolved
+                 * bytecode so we can't use a precise frame state deopt. In the case where the
+                 * speculation fails mayConvertToGuard will still be set to false to keep the deopt
+                 * point lower in the graph.
+                 */
+                speculation = mayUseSpeculation(dispatchBlock.deoptBci, UNRESOLVED_CATCH_TYPE, dispatchBlock.handlerID);
+            } else {
+                throw GraalError.shouldNotReachHere("Unexpected block " + currentBlock);
+            }
         }
 
-        SpeculationLog.Speculation speculation = mayUseUnresolved(bci());
-        if (speculation == null) {
-            /*
-             * A previous speculation on this unresolved item failed. This means that we previously
-             * deopted at this position. The interpreter should have resolved the item we need here.
-             * However, due to inlining and our use of imprecise frame states, we may have deopted
-             * to and invalidated the callee of this method rather than this method itself. Prevent
-             * a deopt loop by capturing a precise state.
-             */
-            speculation = SpeculationLog.NO_SPECULATION;
+        if (usePreciseFrameState) {
+            // Only use precise FrameStates for real instruction blocks. The FrameState when parsing
+            // an ExceptionDispatchBlock isn't the correct deopt location.
             StateSplitProxyNode stateSplit = append(new StateSplitProxyNode());
             stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
         }
+
+        if (speculation == null) {
+            speculation = SpeculationLog.NO_SPECULATION;
+        }
+
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved, speculation));
-        if (graphBuilderConfig.usePreciseUnresolvedDeopts()) {
+        if ((graphBuilderConfig.usePreciseUnresolvedDeopts() ||
+                        speculation.equals(SpeculationLog.NO_SPECULATION) && graph.getSpeculationLog() != null)) {
+            /*
+             * If the speculation is no NO_SPECULATION and the graph has a valid speculation log
+             * then the speculation has failed, so don't permit this deopt to be converted into a
+             * guard.
+             */
             deopt.mayConvertToGuard(false);
         }
+
         /*
          * Track source position for deopt nodes even if
          * GraphBuilderConfiguration.trackNodeSourcePosition is not set.
@@ -1355,6 +1472,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      */
     protected void handleUnresolvedExceptionType(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
+        assert currentBlock instanceof ExceptionDispatchBlock : "unresolved types should only appear in ExceptionDispatchBlock: " + currentBlock;
         appendUnresolvedDeopt();
     }
 
@@ -1852,6 +1970,19 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     protected final ConstantPool constantPool;
     protected final IntrinsicContext intrinsicContext;
 
+    /**
+     * Flag indicating if we are parsing a callee in the course of inlining and the invocation in
+     * the caller was in a try block that is covered by a catch of an {@link OutOfMemoryError}. For
+     * such callees we do not move allocations to avoid moving an out of memory triggering
+     * allocation out of the try block.
+     */
+    protected boolean calleeInOOMEBlock;
+
+    /**
+     * It was requested for this graph to never emit {@link AllocateWithExceptionNode}.
+     */
+    protected final boolean disableExplicitAllocationExceptionEdges;
+
     protected InvocationPluginContext invocationPluginContext;
 
     @Override
@@ -2010,6 +2141,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
         if (referencedType != null) {
             invoke.callTarget().setReferencedType(referencedType);
+        }
+        if (currentBlockCatchesOOM()) {
+            invoke.setInOOMETry(true);
         }
         return invoke;
     }
@@ -2607,6 +2741,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                         : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args)
                                         : new InliningScope(this, targetMethod, args))) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
+            if (currentBlockCatchesOOM()) {
+                parser.calleeInOOMEBlock = true;
+            }
             boolean targetIsSubstitution = parsingIntrinsic();
             FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph, graphBuilderConfig.retainLocalVariables() && !targetIsSubstitution);
             if (!targetMethod.isStatic()) {
@@ -2831,8 +2968,13 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
     }
 
-    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci) {
-        if (frameState.lockDepth(false) == 0) {
+    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean epilogue) {
+        // If a bytecode attempts to pop the last lock in a synchronized method then this method
+        // doesn't having properly matching locks so we should bailout. Normally this is detected by
+        // the final exit underflowing the lock stack but there is no guarantee that the exit is
+        // ever parsed so we should bailout here instead.
+        int expectedDepth = frameState.getMethod().isSynchronized() && !epilogue ? 1 : 0;
+        if (frameState.lockDepth(false) == expectedDepth) {
             throw bailout("unbalanced monitors: too many exits");
         }
         MonitorIdNode monitorId = frameState.peekMonitorId();
@@ -3098,17 +3240,14 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         state.clearNonLiveLocals(block, liveness, true);
     }
 
-    private static final SpeculationReasonGroup UNREACHED_CODE = new SpeculationReasonGroup("UnreachedCode", ResolvedJavaMethod.class, int.class);
-
-    public static final CounterKey unreachedCodeSpeculationTaken = DebugContext.counter("BytecodeParser_UnreachedCodeSpeculation_Taken");
-    public static final CounterKey unreachedCodeSpeculationNotTaken = DebugContext.counter("BytecodeParser_UnreachedCodeSpeculation_NotTaken");
+    private static final ParserSpeculation UNREACHED_CODE = new ParserSpeculation("UnreachedCode");
 
     /**
      * Returns a speculation object if it's possible to speculate on an unreached code guard at the
      * current bytecode location.
      */
     private SpeculationLog.Speculation mayUseUnreachedCode(int bci) {
-        return mayUseSpeculation(bci, UNREACHED_CODE, unreachedCodeSpeculationTaken, unreachedCodeSpeculationNotTaken);
+        return mayUseSpeculation(bci, UNREACHED_CODE);
     }
 
     private FixedNode createTarget(double probability, BciBlock block, FrameStateBuilder stateAfter) {
@@ -3331,7 +3470,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     // push the return value on the stack
                     frameState.push(currentReturnValueKind, currentReturnValue);
                 }
-                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci);
+                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, true);
                 assert !frameState.rethrowException();
             }
             if (frameState.lockDepth(false) != 0) {
@@ -4508,33 +4647,30 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
     }
 
-    private static final SpeculationReasonGroup FALLBACK_TYPECHECK = new SpeculationReasonGroup("FallbackTypeCheck", ResolvedJavaMethod.class, int.class);
-
-    public static final CounterKey fallBackSpeculationTaken = DebugContext.counter("BytecodeParser_FallBackSpeculation_Taken");
-    public static final CounterKey fallBackSpeculationNotTaken = DebugContext.counter("BytecodeParser_FallBackSpeculation_NotTaken");
+    private static final ParserSpeculation FALLBACK_TYPECHECK = new ParserSpeculation("FallbackTypeCheck");
 
     /**
      * Returns a speculation object if it's possible to speculate on a type check at the current
      * bytecode location.
      */
     private SpeculationLog.Speculation mayUseTypeProfile() {
-        return mayUseSpeculation(bci(), FALLBACK_TYPECHECK, fallBackSpeculationTaken, fallBackSpeculationNotTaken);
+        return mayUseSpeculation(bci(), FALLBACK_TYPECHECK);
     }
 
     /**
      * Returns a speculation object if it's possible to speculate on the given {@code reason} at the
      * bytecode location indicated by the BCI. Returns {@code null} otherwise.
      */
-    private SpeculationLog.Speculation mayUseSpeculation(int bci, SpeculationReasonGroup reason, CounterKey speculationTaken, CounterKey speculationNotTaken) {
+    private SpeculationLog.Speculation mayUseSpeculation(int bci, ParserSpeculation reason, Object... extra) {
         SpeculationLog speculationLog = graph.getSpeculationLog();
         SpeculationLog.Speculation speculation = null;
         if (speculationLog != null) {
-            SpeculationLog.SpeculationReason speculationReason = reason.createSpeculationReason(getMethod(), bci);
+            SpeculationLog.SpeculationReason speculationReason = reason.createSpeculationReason(getMethod(), bci, extra);
             if (speculationLog.maySpeculate(speculationReason)) {
                 speculation = speculationLog.speculate(speculationReason);
-                speculationTaken.increment(debug);
+                reason.taken.increment(debug);
             } else {
-                speculationNotTaken.increment(debug);
+                reason.notTaken.increment(debug);
             }
         }
         return speculation;
@@ -4712,7 +4848,63 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             }
         }
 
-        frameState.push(JavaKind.Object, append(new NewInstanceNode(resolvedType, true)));
+        createNewInstance(resolvedType);
+    }
+
+    /**
+     * Note that we only handle {@link OutOfMemoryError} catch blocks here and no subclasses.
+     * JVMS-6.3 states that virtual machine errors only include OutOfMemoryError for allocation
+     * failures.
+     */
+    @Override
+    public boolean currentBlockCatchesOOM() {
+        if (disableExplicitAllocationExceptionEdges) {
+            return false;
+        }
+        if (calleeInOOMEBlock) {
+            return true;
+        }
+        boolean inOOMETry = false;
+        if (currentBlock.exceptionDispatchBlock() != null) {
+            ExceptionDispatchBlock edb = (ExceptionDispatchBlock) currentBlock.exceptionDispatchBlock();
+            ExceptionHandler handler = edb.handler;
+            if (handler != null) {
+                JavaType catchType = handler.getCatchType();
+                // catch type can be null for java.lang.Throwable which catches everything
+                inOOMETry = catchType != null && catchType.equals(getMetaAccess().lookupJavaType(OutOfMemoryError.class));
+            }
+        }
+        return inOOMETry;
+    }
+
+    private void createNewInstance(ResolvedJavaType resolvedType) {
+        if (currentBlockCatchesOOM()) {
+            NewInstanceWithExceptionNode ni = new NewInstanceWithExceptionNode(resolvedType, true);
+            frameState.push(JavaKind.Object, append(ni));
+            setStateAfter(ni);
+        } else {
+            frameState.push(JavaKind.Object, append(new NewInstanceNode(resolvedType, true)));
+        }
+    }
+
+    private void createNewArray(ResolvedJavaType resolvedType, ValueNode length) {
+        if (currentBlockCatchesOOM()) {
+            NewArrayWithExceptionNode nawe = new NewArrayWithExceptionNode(resolvedType, length, true);
+            frameState.push(JavaKind.Object, append(nawe));
+            setStateAfter(nawe);
+        } else {
+            frameState.push(JavaKind.Object, append(new NewArrayNode(resolvedType, length, true)));
+        }
+    }
+
+    private void generateNewMultIArray(ResolvedJavaType resolvedType, ValueNode[] dims) {
+        if (currentBlockCatchesOOM()) {
+            NewMultiArrayWithExceptionNode nmanwe = new NewMultiArrayWithExceptionNode(resolvedType, dims);
+            frameState.push(JavaKind.Object, append(nmanwe));
+            setStateAfter(nmanwe);
+        } else {
+            frameState.push(JavaKind.Object, append(new NewMultiArrayNode(resolvedType, dims)));
+        }
     }
 
     /**
@@ -4755,7 +4947,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             }
         }
 
-        frameState.push(JavaKind.Object, append(new NewArrayNode(elementType, length, true)));
+        createNewArray(elementType, length);
     }
 
     private void genNewObjectArray(int cpi) {
@@ -4785,7 +4977,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             }
         }
 
-        frameState.push(JavaKind.Object, append(new NewArrayNode(resolvedType, length, true)));
+        createNewArray(resolvedType, length);
     }
 
     private void genNewMultiArray(int cpi) {
@@ -4804,23 +4996,19 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     private void genNewMultiArray(ResolvedJavaType resolvedType, int rank, ValueNode[] dims) {
-
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (classInitializationPlugin != null) {
             classInitializationPlugin.apply(this, resolvedType, this::createCurrentFrameState);
         }
-
         for (int i = rank - 1; i >= 0; i--) {
             dims[i] = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
         }
-
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             if (plugin.handleNewMultiArray(this, resolvedType, dims)) {
                 return;
             }
         }
-
-        frameState.push(JavaKind.Object, append(new NewMultiArrayNode(resolvedType, dims)));
+        generateNewMultIArray(resolvedType, dims);
     }
 
     protected void genGetField(int cpi, int opcode) {
@@ -5485,7 +5673,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             case CHECKCAST      : genCheckCast(stream.readCPI()); break;
             case INSTANCEOF     : genInstanceOf(stream.readCPI()); break;
             case MONITORENTER   : genMonitorEnter(frameState.pop(JavaKind.Object), stream.nextBCI()); break;
-            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI()); break;
+            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), false); break;
             case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;

@@ -12,7 +12,7 @@ Java reflection support (the `java.lang.reflect.*` API) enables Java code to exa
 (Note: loading classes with `Class.forName(String)` are included here since it is closely related to reflection.)
 
 Native Image fully supports reflection in ahead-of-time compiled images.
-It may require additional configuration when reflection is used in ways that are unpredictable for the static analysis (e.g., depending on user input).
+It may require additional configuration when reflection is used in ways that are unpredictable for the static analysis (for example, depending on user input).
 Examining and accessing program elements through `java.lang.reflect.*` or loading classes with `Class.forName(String)` at run time can require preparing additional metadata for those program elements in the image.
 This metadata must be stored in the image already when it is created ahead of time.
 To reduce both the overall file size of images and the overhead of maintaining configuration, it is nonetheless recommended to avoid the use of reflection when possible.
@@ -36,7 +36,7 @@ The analysis intercepts calls to `Class.forName(String)`, `Class.forName(String,
 
 If the arguments to these calls can be reduced to a constant, Native Image tries to resolve the target elements.
 If the target elements can be resolved, the calls are removed and instead the target elements are embedded in the code.
-If the target elements cannot be resolved, e.g., a class is not on the classpath or it does not declare a field/method/constructor, then the calls are replaced with a snippet that throws the appropriate exception at run time.
+If the target elements cannot be resolved, for example, a class is not on the classpath or it does not declare a field/method/constructor, then the calls are replaced with a snippet that throws the appropriate exception at run time.
 The benefits are twofold.
 First, at run time there are no calls to the Reflection API.
 Second, GraalVM can employ constant folding and optimize the code further.
@@ -46,7 +46,7 @@ For example, the call `Class.forName(String)` will be replaced with a `Class` li
 Additionally, a call to `Class.getMethod(String, Class[])` will be processed only if the contents of the `Class[]` argument can be determined with certainty.
 This last restriction is due to the fact that Java does not have immutable arrays.
 Therefore, all the changes to the array between the time it is allocated and the time it is passed as an argument need to be tracked.
-The analysis follows a simple rule: if all the writes to the array happen in linear sections of code, i.e., no control flow splits, then the array is effectively constant for the purpose of analyzing the call.
+The analysis follows a simple rule: if all the writes to the array happen in linear sections of code (in other words, no control flow splits), then the array is effectively constant for the purpose of analyzing the call.
 
 That is why the analysis does not accept `Class[]` arguments coming from static fields, since the contents of those can change at any time, even if the fields are final.
 Although this may seem too restrictive, it covers the most commonly used patterns of the Reflection API calls.
@@ -132,7 +132,7 @@ Here, `reflectconfig` is a JSON file in the following format (use `--expert-opti
 The configuration distinguishes between methods and constructors that can be invoked during execution via `Method.invoke(Object, Object...)` or `Constructor.newInstance(Object...)` and those that can not.
 Including a function in the configuration without invocation capabilities helps the static analysis correctly assess its reachability status and results in smaller binary sizes.
 The function metadata is then accessible at runtime like it would for any other registered reflection method or constructor, but trying to call the function will result in a runtime error.
-The configuration fields prefixed by `query` or `queried` only include the metadata, while the other ones (e.g., `methods`) enable runtime invocation.
+The configuration fields prefixed by `query` or `queried` only include the metadata, while the other ones (for example, `methods`) enable runtime invocation.
 
 The native image builder generates reflection metadata for all classes, methods, and fields referenced in that file.
 The `queryAllPublicConstructors`, `queryAllDeclaredConstructors`, `queryAllPublicMethods`, `queryAllDeclaredMethods`, `allPublicConstructors`, `allDeclaredConstructors`, `allPublicMethods`, `allDeclaredMethods`, `allPublicFields`, `allDeclaredFields`, `allPublicClasses`, and `allDeclaredClasses` attributes can be used to automatically include an entire set of members of a class.
@@ -149,7 +149,7 @@ Also, `-H:ReflectionConfigurationResources` can be specified to load one or seve
 Querying the methods and constructor of `java.lang.Object` does not require configuration. The Java access rules still apply.
 Likewise, when using the [strict metadata mode](#strict-metadata-mode), it is possible to query the public or declared fields, methods and constructors of `java.lang.Object`, primitive classes and array classes without requiring a configuration entry.
 These queries return empty arrays in most cases, except for `java.lang.Object` methods and constructors and array public methods (all inherited from `java.lang.Object`). The image size impact of this inclusion is therefore minimal.
-On the other hand, it is necessary to register these methods and constructors if they need to be reflectively invoked at run-time, via `Method.invoke()` or `Constructor.newInstance()`.
+On the other hand, it is necessary to register these methods and constructors if they need to be reflectively invoked at runtime, via `Method.invoke()` or `Constructor.newInstance()`.
 
 ## Conditional Configuration
 

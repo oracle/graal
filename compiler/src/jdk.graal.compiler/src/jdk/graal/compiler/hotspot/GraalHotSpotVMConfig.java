@@ -150,7 +150,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final String onSpinWaitInst = getFlag("OnSpinWaitInst", String.class, "none", osArch.equals("aarch64"));
     public final int onSpinWaitInstCount = getFlag("OnSpinWaitInstCount", Integer.class, 0, osArch.equals("aarch64"));
 
-    public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class) || ropProtection;
+    private final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class);
+
+    // Force standard frame prolog for stubs so that stack walking works correctly. This avoids
+    // the problem where an hs_err stack trace is missing the Java caller frame.
+    public boolean preserveFramePointer(boolean isStub) {
+        return preserveFramePointer || ropProtection || isStub;
+    }
 
     public final int diagnoseSyncOnValueBasedClasses = getFlag("DiagnoseSyncOnValueBasedClasses", Integer.class);
 
@@ -401,6 +407,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      * throw an exception during code installation.
      */
     public final int maxOopMapStackOffset = getFieldValue("CompilerToVM::Data::_max_oop_map_stack_offset", Integer.class, "int");
+
+    /**
+     * Address of {@code _should_notify_object_alloc}, which, if non-zero, modifies the intrinsic
+     * for {@code Unsafe.allocateInstance} to deopt when
+     * {@code *shouldNotifyObjectAllocAddress != 0}.
+     */
+    public final long shouldNotifyObjectAllocAddress = getFieldValue("CompilerToVM::Data::_should_notify_object_alloc", Long.class, "int*", 0L, JDK >= 23);
 
     // G1 Collector Related Values.
     public final byte dirtyCardValue = getConstant("CardTable::dirty_card", Byte.class);
