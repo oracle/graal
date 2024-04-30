@@ -2024,12 +2024,10 @@ def native_image_on_jvm(args, **kwargs):
             args.append("-D" + key + "=" + value)
 
     arg = [executable]
-    debug_args = []
     jdk = get_jdk()
     if jdk.debug_args and not mx.is_debug_disabled():
-        debug_args = jdk.debug_args
-    for cur_arg in debug_args:
-        args.insert(0, '--vm.' + cur_arg[1:])
+        for cur_arg in jdk.debug_args:
+            args.insert(0, '--vm.' + cur_arg[1:])
     jacoco_args = mx_gate.get_jacoco_agent_args(agent_option_prefix='-J')
     if jacoco_args is not None:
         arg += jacoco_args
@@ -2042,12 +2040,10 @@ def native_image_configure_on_jvm(args, **kwargs):
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
 
-    debug_args = []
     jdk = get_jdk()
     if jdk.debug_args and not mx.is_debug_disabled():
-        debug_args = jdk.debug_args
-    for cur_arg in debug_args:
-        args.insert(0, '--vm.' + cur_arg[1:])
+        for cur_arg in jdk.debug_args:
+            args.insert(0, '--vm.' + cur_arg[1:])
     mx.run([executable] + args, **kwargs)
 
 
