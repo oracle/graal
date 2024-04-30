@@ -53,6 +53,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -352,6 +353,23 @@ public class ExceptionInterceptionTest {
             assertTrue(ex.getCause() instanceof StackOverflowError);
         }
     }
+
+    @Test
+    public void testInterceptsOnceWithExceptionalEpilog() {
+        BytecodeNodeInterceptsTruffleWithEpilog root = BytecodeNodeInterceptsTruffleWithEpilogGen.create(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot(null);
+            b.emitThrowTruffleException();
+            b.endRoot();
+        }).getNode(0);
+
+        try {
+            root.getCallTarget().call(true);
+            Assert.fail("call should have thrown an exception");
+        } catch (MyException ex) {
+            // expected
+        }
+        assertEquals(1, root.interceptCount);
+    }
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
@@ -590,6 +608,37 @@ abstract class BytecodeNodeInterceptsInternal extends RootNode implements Byteco
         @Specialization
         public static Object perform() {
             throw new StackOverflowError(MESSAGE);
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+abstract class BytecodeNodeInterceptsTruffleWithEpilog extends RootNode implements BytecodeRootNode {
+    public int interceptCount = 0;
+
+    protected BytecodeNodeInterceptsTruffleWithEpilog(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    public AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) {
+        interceptCount++;
+        return ex;
+    }
+
+    @Operation
+    public static final class ThrowTruffleException {
+        @Specialization
+        public static Object perform() {
+            throw new MyException(null);
+        }
+    }
+
+    @EpilogExceptional
+    public static final class DoNothingEpilog {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doNothing(AbstractTruffleException ate) {
+            // do nothing
         }
     }
 }
