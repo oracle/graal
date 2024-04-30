@@ -43,21 +43,18 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * {@link PlanningVisitor} decides where objects will be moved and uses the methods of this class to
- * store this information in a structure directly before each contiguous sequence of live objects.
- * This avoids reserving space in each object that will be used only for compaction, but also
- * requires more passes over the heap and more expensive accesses to determine the new location of
- * objects.
+ * store this information in a structure directly before each contiguous sequence of live objects,
+ * where there is always a sufficiently large gap formed by unreachable objects. This avoids
+ * reserving space in objects that is needed only for compaction, but also requires more passes over
+ * the heap and more expensive accesses to determine the new location of objects.
  * <p>
  * The structure contains the following fields:
  * <ul>
  * <li>New location:<br>
  * Provides the new address of the sequence of objects after compaction.</li>
- * <li>Gap size:<br>
- * The number of unused bytes preceding the start of the object sequence, which includes the
- * structure itself. The size of the object sequence is computed by taking the offset of the *next*
- * object sequence, then accessing its gap size, and subtracting it from the next object sequence's
- * offset.</li>
- * <li>Next object sequence offset:<br>
+ * <li>Size:<br>
+ * The number of live object bytes that the sequence consists of.</li>
+ * <li>Next sequence offset:<br>
  * The number of bytes between the start of this object sequence and the subsequent object sequence.
  * This forms a singly-linked list over all object sequences (and their structures) in an aligned
  * chunk. An offset of 0 means that there are no more objects in the chunk.</li>
@@ -67,10 +64,10 @@ import jdk.graal.compiler.api.replacements.Fold;
  * 
  * <pre>
  * With 8-byte object references:
- * ------------------------+======================+==================+=============================+---------------------
- *  ... gap (unused bytes) | new location (8B/4B) | gap size (4B/2B) | next obj seq offset (4B/2B) | live objects ...
- * ------------------------+======================+==================+=============================+---------------------
- *                                                                                                 ^- object sequence start
+ * ------------------------+======================+==============+=========================+-------------------
+ *  ... gap (unused bytes) | new location (8B/4B) | size (4B/2B) | next seq offset (4B/2B) | live objects ...
+ * ------------------------+======================+==============+=========================+-------------------
+ *                                                                                         ^- object sequence start
  * </pre>
  */
 public final class ObjectMoveInfo {
@@ -103,48 +100,50 @@ public final class ObjectMoveInfo {
         }
     }
 
-    static void setPrecedingGapSize(Pointer objSeqStart, int gapSize) {
+    static void setObjectSeqSize(Pointer objSeqStart, UnsignedWord nbytes) {
         if (useCompressedLayout()) {
-            int data = gapSize / ConfigurationValues.getObjectLayout().getAlignment();
-            objSeqStart.writeShort(-4, (short) data);
+            UnsignedWord value = nbytes.unsignedDivide(ConfigurationValues.getObjectLayout().getAlignment());
+            objSeqStart.writeShort(-4, (short) value.rawValue());
         } else {
-            objSeqStart.writeInt(-8, gapSize);
+            objSeqStart.writeInt(-8, (int) nbytes.rawValue());
         }
-        assert getPrecedingGapSize(objSeqStart) == gapSize;
+        assert getObjectSeqSize(objSeqStart).equal(nbytes);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static int getPrecedingGapSize(Pointer objSeqStart) {
+    static UnsignedWord getObjectSeqSize(Pointer objSeqStart) {
         if (useCompressedLayout()) {
-            return (objSeqStart.readShort(-4) & 0xffff) * ConfigurationValues.getObjectLayout().getAlignment();
+            UnsignedWord value = WordFactory.unsigned(objSeqStart.readShort(-4) & 0xffff);
+            return value.multiply(ConfigurationValues.getObjectLayout().getAlignment());
         } else {
-            return objSeqStart.readInt(-8);
+            return WordFactory.unsigned(objSeqStart.readInt(-8));
         }
     }
 
-    static void setNextObjectSeqOffset(Pointer objSeqStart, int offset) {
+    static void setNextObjectSeqOffset(Pointer objSeqStart, UnsignedWord offset) {
         if (useCompressedLayout()) {
-            int data = offset / ConfigurationValues.getObjectLayout().getAlignment();
-            objSeqStart.writeShort(-2, (short) data);
+            UnsignedWord value = offset.unsignedDivide(ConfigurationValues.getObjectLayout().getAlignment());
+            objSeqStart.writeShort(-2, (short) value.rawValue());
         } else {
-            objSeqStart.writeInt(-4, offset);
+            objSeqStart.writeInt(-4, (int) offset.rawValue());
         }
-        assert getNextObjectSeqOffset(objSeqStart) == offset;
+        assert getNextObjectSeqOffset(objSeqStart).equal(offset);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static int getNextObjectSeqOffset(Pointer objSeqStart) {
+    static UnsignedWord getNextObjectSeqOffset(Pointer objSeqStart) {
         if (useCompressedLayout()) {
-            return (objSeqStart.readShort(-2) & 0xffff) * ConfigurationValues.getObjectLayout().getAlignment();
+            UnsignedWord value = WordFactory.unsigned(objSeqStart.readShort(-2) & 0xffff);
+            return value.multiply(ConfigurationValues.getObjectLayout().getAlignment());
         } else {
-            return objSeqStart.readInt(-4);
+            return WordFactory.unsigned(objSeqStart.readInt(-4));
         }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static Pointer getNextObjectSeqAddress(Pointer objSeqStart) {
-        int offset = getNextObjectSeqOffset(objSeqStart);
-        if (offset == 0) {
+        UnsignedWord offset = getNextObjectSeqOffset(objSeqStart);
+        if (offset.equal(0)) {
             return WordFactory.nullPointer();
         }
         return objSeqStart.add(offset);
@@ -163,27 +162,13 @@ public final class ObjectMoveInfo {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void walkObjects(AlignedHeapChunk.AlignedHeader chunkHeader, ObjectFixupVisitor visitor) {
-        Pointer top = HeapChunk.getTopPointer(chunkHeader);
-
         Pointer p = AlignedHeapChunk.getObjectsStart(chunkHeader);
-        Pointer nextObjSeq = p;
-        while (p.belowThan(top)) {
-            Pointer objSeqEnd;
-            if (nextObjSeq.isNonNull()) {
-                objSeqEnd = nextObjSeq.subtract(getPrecedingGapSize(nextObjSeq));
-                if (p.aboveOrEqual(objSeqEnd)) { // skip over gap
-                    p = nextObjSeq;
-                    nextObjSeq = getNextObjectSeqAddress(nextObjSeq);
-                    continue;
-                }
-                assert objSeqEnd.belowOrEqual(top);
-            } else {
-                objSeqEnd = top;
-            }
-            while (p.belowThan(objSeqEnd)) {
-                assert p.belowThan(top) && top.equal(HeapChunk.getTopPointer(chunkHeader));
-                assert nextObjSeq.isNull() || objSeqEnd.equal(nextObjSeq.subtract(getPrecedingGapSize(nextObjSeq)));
-
+        do {
+            Pointer nextObjSeq = getNextObjectSeqAddress(p);
+            Pointer objSeqEnd = p.add(getObjectSeqSize(p));
+            assert objSeqEnd.belowOrEqual(HeapChunk.getTopPointer(chunkHeader));
+            while (p.notEqual(objSeqEnd)) {
+                assert p.belowThan(objSeqEnd);
                 Object obj = p.toObject();
                 UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
                 if (!visitor.visitObjectInline(obj)) {
@@ -191,7 +176,8 @@ public final class ObjectMoveInfo {
                 }
                 p = p.add(objSize);
             }
-        }
+            p = nextObjSeq;
+        } while (p.isNonNull());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -213,10 +199,9 @@ public final class ObjectMoveInfo {
             objSeq = nextObjSeq;
             nextObjSeq = getNextObjectSeqAddress(objSeq);
         }
-        if (nextObjSeq.isNonNull() && nextObjSeq.subtract(getPrecedingGapSize(nextObjSeq)).belowOrEqual(objPointer)) {
+        if (objPointer.aboveOrEqual(objSeq.add(getObjectSeqSize(objSeq)))) {
             return WordFactory.nullPointer(); // object did not survive, in gap between objects
         }
-        assert objSeq.belowOrEqual(objPointer);
 
         Pointer newObjSeqAddress = getNewAddress(objSeq);
         Pointer objOffset = objPointer.subtract(objSeq);
@@ -230,14 +215,24 @@ public final class ObjectMoveInfo {
     @AlwaysInline("GC performance: enables non-virtual visitor call")
     public static void visit(AlignedHeapChunk.AlignedHeader chunk, Visitor visitor) {
         Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
-        while (p.isNonNull()) {
-            // Note that the visitor might overwrite our move info, so retrieve it eagerly.
-            Pointer next = getNextObjectSeqAddress(p);
-            if (!visitor.visit(p)) {
+        UnsignedWord size = getObjectSeqSize(p);
+        Pointer newAddress = getNewAddress(p);
+        Pointer next = getNextObjectSeqAddress(p);
+        do {
+            // The visitor might overwrite the current and/or next move info, so read it eagerly.
+            UnsignedWord nextSize = next.isNonNull() ? getObjectSeqSize(next) : WordFactory.zero();
+            Pointer nextNewAddress = next.isNonNull() ? getNewAddress(next) : WordFactory.nullPointer();
+            Pointer nextNext = next.isNonNull() ? getNextObjectSeqAddress(next) : WordFactory.nullPointer();
+
+            if (!visitor.visit(p, size, newAddress, next)) {
                 return;
             }
+
             p = next;
-        }
+            size = nextSize;
+            newAddress = nextNewAddress;
+            next = nextNext;
+        } while (p.isNonNull());
     }
 
     /** A closure to be applied to sequences of objects. */
@@ -248,7 +243,7 @@ public final class ObjectMoveInfo {
          *
          * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
          */
-        boolean visit(Pointer p);
+        boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq);
     }
 
     private ObjectMoveInfo() {

@@ -71,8 +71,8 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
         /* Initialize the move info structure at the chunk's object start location. */
         ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
-        ObjectMoveInfo.setPrecedingGapSize(objSeq, 0);
-        ObjectMoveInfo.setNextObjectSeqOffset(objSeq, 0);
+        ObjectMoveInfo.setObjectSeqSize(objSeq, WordFactory.zero());
+        ObjectMoveInfo.setNextObjectSeqOffset(objSeq, WordFactory.zero());
 
         BrickTable.setEntry(chunk, brickIndex, objSeq);
 
@@ -106,13 +106,11 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
                 if (gapSize.notEqual(0)) { // end of a gap, start of an object sequence
                     // Link previous move info to here.
-                    int offset = (int) p.subtract(objSeq).rawValue();
-                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, offset);
+                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, p.subtract(objSeq));
 
-                    // Initialize move info.
+                    // Initialize new move info.
                     objSeq = p;
-                    ObjectMoveInfo.setPrecedingGapSize(objSeq, (int) gapSize.rawValue());
-                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, 0);
+                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, WordFactory.zero());
 
                     totalUnusedBytes = totalUnusedBytes.add(gapSize);
                     gapSize = WordFactory.zero();
@@ -123,6 +121,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                 if (objSeqSize.notEqual(0)) { // end of an object sequence
                     Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
                     ObjectMoveInfo.setNewAddress(objSeq, newAddress);
+                    ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
 
                     objSeqSize = WordFactory.zero();
 
@@ -145,6 +144,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         } else if (objSeqSize.notEqual(0)) {
             Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
             ObjectMoveInfo.setNewAddress(objSeq, newAddress);
+            ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
         }
 
         totalUnusedBytes = totalUnusedBytes.add(HeapChunk.getEndOffset(chunk).subtract(HeapChunk.getTopOffset(chunk)));
@@ -199,8 +199,8 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
     private static class ResetNewLocationsForSweepingVisitor implements ObjectMoveInfo.Visitor {
         @Override
-        public boolean visit(Pointer p) {
-            ObjectMoveInfo.setNewAddress(p, p);
+        public boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq) {
+            ObjectMoveInfo.setNewAddress(objSeq, objSeq);
             return true;
         }
     }

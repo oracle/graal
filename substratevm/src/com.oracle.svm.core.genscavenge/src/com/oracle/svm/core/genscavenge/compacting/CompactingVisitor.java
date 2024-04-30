@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge.compacting;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
@@ -35,41 +34,27 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 /** Moves sequences of live objects to their planned location during compaction. */
 public final class CompactingVisitor implements ObjectMoveInfo.Visitor {
     private AlignedHeapChunk.AlignedHeader chunk;
-    private UnsignedWord oldChunkTop;
 
     public void init(AlignedHeapChunk.AlignedHeader c) {
         this.chunk = c;
-        this.oldChunkTop = HeapChunk.getTopPointer(c);
         HeapChunk.setTopPointer(c, AlignedHeapChunk.getObjectsStart(c));
     }
 
     @Override
-    public boolean visit(Pointer p) {
-        UnsignedWord size = computeObjSeqSize(p);
+    public boolean visit(Pointer objSeq, UnsignedWord size, Pointer destAddress, Pointer nextObjSeq) {
         if (size.equal(0)) { // gap right at the chunk's start
-            assert p.equal(AlignedHeapChunk.getObjectsStart(chunk));
+            assert objSeq.equal(AlignedHeapChunk.getObjectsStart(chunk));
             return true;
         }
 
-        Pointer destAddress = ObjectMoveInfo.getNewAddress(p);
         AlignedHeapChunk.AlignedHeader destChunk;
-        if (destAddress.equal(p)) {
+        if (destAddress.equal(objSeq)) {
             destChunk = chunk;
         } else {
-            UnmanagedMemoryUtil.copy(p, destAddress, size);
+            UnmanagedMemoryUtil.copy(objSeq, destAddress, size);
             destChunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(destAddress);
         }
         HeapChunk.setTopPointerCarefully(destChunk, destAddress.add(size));
         return true;
-    }
-
-    @AlwaysInline("GC performance")
-    private UnsignedWord computeObjSeqSize(Pointer objSeqStart) {
-        Pointer nextObjSeq = ObjectMoveInfo.getNextObjectSeqAddress(objSeqStart);
-        if (nextObjSeq.isNull()) {
-            return oldChunkTop.subtract(objSeqStart); // last sequence of objects in chunk
-        }
-        int gap = ObjectMoveInfo.getPrecedingGapSize(nextObjSeq);
-        return nextObjSeq.subtract(gap).subtract(objSeqStart);
     }
 }

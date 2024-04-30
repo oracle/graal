@@ -27,12 +27,14 @@ package com.oracle.svm.core.genscavenge.compacting;
 import static jdk.graal.compiler.replacements.AllocationSnippets.FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED;
 
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -54,19 +56,21 @@ public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
     }
 
     @Override
-    public boolean visit(Pointer p) {
-        int size = ObjectMoveInfo.getPrecedingGapSize(p);
-        if (size != 0) {
-            Pointer gap = p.subtract(size);
-            writeFillerObjectAt(gap, size);
+    public boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq) {
+        if (nextObjSeq.isNonNull()) {
+            Pointer gapStart = objSeq.add(size);
+            assert gapStart.belowOrEqual(nextObjSeq);
+            if (gapStart.notEqual(nextObjSeq)) {
+                writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart));
+            }
         }
         return true;
     }
 
-    private static void writeFillerObjectAt(Pointer p, int size) {
-        assert size > 0;
-        if (size >= byteArrayMinSize()) {
-            int length = size - byteArrayBaseOffset();
+    private static void writeFillerObjectAt(Pointer p, UnsignedWord size) {
+        assert size.aboveThan(0);
+        if (size.aboveOrEqual(byteArrayMinSize())) {
+            int length = UnsignedUtils.safeToInt(size.subtract(byteArrayBaseOffset()));
             FormatArrayNode.formatArray(p, byte[].class, length, true, false, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
         } else {
             FormatObjectNode.formatObject(p, FillerObject.class, true, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
