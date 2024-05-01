@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+import java.util.List;
+
 public interface ImageSingletonLoader {
     int readInt(String keyName);
+
+    List<Integer> readIntList(String keyName);
 }

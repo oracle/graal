@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+import java.util.List;
+
 public interface ImageSingletonWriter {
     void writeInt(String keyName, int value);
+
+    void writeIntList(String keyName, List<Integer> value);
 }

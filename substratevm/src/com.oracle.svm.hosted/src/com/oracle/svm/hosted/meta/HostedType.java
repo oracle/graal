@@ -59,6 +59,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
 
+    boolean loadedFromPriorLayer;
     protected int typeID;
     protected HostedType uniqueConcreteImplementation;
     protected HostedMethod[] allDeclaredMethods;
@@ -261,6 +262,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     public HostedType getUniqueConcreteImplementation() {
         return uniqueConcreteImplementation;
+    }
+
+    public void loadTypeID(int newTypeID) {
+        this.typeID = newTypeID;
+        this.loadedFromPriorLayer = true;
     }
 
     @Override

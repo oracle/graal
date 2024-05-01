@@ -39,12 +39,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.OpenTypeWorldFeature;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 
@@ -157,12 +156,15 @@ public final class TypeCheckBuilder {
 
     public static int buildTypeMetadata(HostedUniverse hUniverse, Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
         var builder = new TypeCheckBuilder(types, objectType, cloneableType, serializableType);
-        builder.buildTypeInformation(hUniverse);
         if (SubstrateOptions.closedTypeWorld()) {
+            builder.buildTypeInformation(hUniverse, 0);
             builder.calculateClosedTypeWorldTypeMetadata();
             return builder.getNumTypeCheckSlots();
         } else {
+            int startingTypeID = OpenTypeWorldFeature.loadTypeInfo(builder.heightOrderedTypes);
+            builder.buildTypeInformation(hUniverse, startingTypeID);
             builder.calculateOpenTypeWorldTypeMetadata();
+            OpenTypeWorldFeature.persistTypeInfo(builder.heightOrderedTypes);
             return UNINITIALIZED_TYPECHECK_SLOTS;
         }
     }
@@ -447,17 +449,21 @@ public final class TypeCheckBuilder {
      *
      * The stamps are calculated by performing a dataflow analysis of the {@link #subtypeMap}.
      */
-    public void buildTypeInformation(HostedUniverse hUniverse) {
+    public void buildTypeInformation(HostedUniverse hUniverse, int startingTypeID) {
         hUniverse.orderedTypes = heightOrderedTypes;
-        ImageSingletons.lookup(DynamicHubSupport.class).setMaxTypeId(heightOrderedTypes.size());
 
-        for (int i = 0; i < heightOrderedTypes.size(); i++) {
-            HostedType type = heightOrderedTypes.get(i);
-            boolean uninitialized = type.typeID == -1 && type.subTypes == null;
-            VMError.guarantee(uninitialized, "Type initialized multiple times: %s", type);
-            type.typeID = i;
+        int nextTypeID = startingTypeID;
+        for (HostedType type : heightOrderedTypes) {
+            if (type.typeID != -1) {
+                assert type.loadedFromPriorLayer && type.typeID < startingTypeID : "Type initialized multiple times: " + type;
+            } else {
+                type.typeID = nextTypeID++;
+            }
+            VMError.guarantee(type.subTypes == null, "Type initialized multiple times: %s", type);
             type.subTypes = subtypeMap.get(type).toArray(HostedType.EMPTY_ARRAY);
         }
+
+        DynamicHubSupport.singleton().setMaxTypeId(nextTypeID);
 
         /*
          * Search through list in reverse order so that all of a type's subtypes are traversed
