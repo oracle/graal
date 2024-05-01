@@ -23,7 +23,7 @@ If omitted, the compiler configuration with the highest auto-selection priority 
 To see the available configurations, supply the value `help` to this option.
 
     The names of the compiler configurations and their semantics are:
-    * `enterprise`: Produces highly optimized code with a possible trade-off to compilation time. <a href="https://www.oracle.com/java/graalvm/" class="enterprise">[Oracle GraalVM]</a>
+    * `enterprise`: Produces highly optimized code with a possible trade-off to compilation time (only available in Oracle GraalVM).
     * `community`: Produces reasonably optimized code with a faster compilation time.
     * `economy`: Compiles as fast as possible with less optimal throughput of the generated code.
 
@@ -48,18 +48,11 @@ To see the available configurations, supply the value `help` to this option.
 
 ### Performance Tuning Options
 
-* `-Djdk.graal.UsePriorityInlining={ true | false }`: To disable use of the advanced inlining
-algorithm that favours throughput over compilation speed. (Default: `true`.) <a href="https://www.oracle.com/uk/java/graalvm/" class="enterprise">[Oracle GraalVM]</a>
-* `-Djdk.graal.Vectorization={ true | false }`: To disable the auto vectorization optimization. (Default: `true`.)
-<a href="https://www.oracle.com/uk/java/graalvm/" class="enterprise">[Oracle GraalVM]</a>
-* `-Djdk.graal.OptDuplication={ true | false }`: To disable the [path duplication optimization](http://ssw.jku.at/General/Staff/Leopoldseder/DBDS_CGO18_Preprint.pdf). (Default: `true`.) <a href="https://www.oracle.com/uk/java/graalvm/" class="enterprise">[Oracle GraalVM]</a>
+* `-Djdk.graal.UsePriorityInlining={ true | false }`: To disable use of the advanced inlining algorithm that favours throughput over compilation speed (only available in Oracle GraalVM). (Default: `true`.)
+* `-Djdk.graal.Vectorization={ true | false }`: To disable the auto vectorization optimization (only available in Oracle GraalVM). (Default: `true`.)
+* `-Djdk.graal.OptDuplication={ true | false }`: To disable the [path duplication optimization](http://ssw.jku.at/General/Staff/Leopoldseder/DBDS_CGO18_Preprint.pdf) (only available in Oracle GraalVM). (Default: `true`.) 
 * `-Djdk.graal.TuneInlinerExploration=<value>`: To tune for better peak performance or faster warmup.
-It automatically adjusts values governing the effort spent during inlining. The value of the option is
-a float clamped between `-1` and `1` inclusive. Anything below
-`0` reduces inlining effort and anything above `0` increases
-inlining effort. In general, peak performance is improved with more inlining effort
-while less inlining effort improves warmup (albeit to a lower peak). Note that this
-option is only a heuristic and the optimal value can differ from application to application. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
+It automatically adjusts values governing the effort spent during inlining. The value of the option is a float clamped between `-1` and `1` inclusive. Anything below `0` reduces inlining effort and anything above `0` increases inlining effort. In general, peak performance is improved with more inlining effort while less inlining effort improves warmup (albeit to a lower peak). Note that this option is only a heuristic and the optimal value can differ from application to application (only available in Oracle GraalVM).
 * `-Djdk.graal.TraceInlining={ true | false }`: To enable tracing of inlining decisions. This can be used for advanced tuning where it may be possible to change the source code of the application. (Default: `false`.) 
     The output format is shown below:
 
