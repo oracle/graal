@@ -79,7 +79,7 @@ Thread[main,5,main]
 ## Creating a Flame Graph from CPU Sampler
 
 The histogram output from CPUSampler can be quite large, making it difficult to analyze.
-Additionally, as a flat format it is nto possible to analyze a call graph as that information simply is not encoded in the output.
+Additionally, as a flat format it is not possible to analyze a call graph as that information simply is not encoded in the output.
 A flame graph shows the entire call graph.
 Its structure makes it considerably simpler to see where the application time is being spent.
 
