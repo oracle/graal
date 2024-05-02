@@ -62,9 +62,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -520,7 +520,7 @@ final class Target_java_lang_Math {
 @Substitute
 final class Target_java_lang_ClassValue {
 
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JavaLangSubstitutions.ClassValueInitializer.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassValueInitializer.class)//
     private final ConcurrentMap<Class<?>, Object> values;
 
     @Substitute
@@ -557,6 +557,25 @@ final class Target_java_lang_ClassValue {
     @Substitute
     private void remove(Class<?> type) {
         values.remove(type);
+    }
+}
+
+class ClassValueInitializer implements FieldValueTransformerWithAvailability {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        ClassValue<?> v = (ClassValue<?>) receiver;
+        Map<Class<?>, Object> map = ClassValueSupport.getValues().get(v);
+        assert map != null;
+        return map;
+    }
+
+    @Override
+    public ValueAvailability valueAvailability() {
+        /*
+         * We want to wait to constant fold this value until all possible HotSpot initialization
+         * code has run.
+         */
+        return ValueAvailability.AfterAnalysis;
     }
 }
 
@@ -699,29 +718,4 @@ final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransf
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
 
-    public static final class ClassValueSupport {
-
-        /**
-         * Marker value that replaces null values in the
-         * {@link java.util.concurrent.ConcurrentHashMap}.
-         */
-        public static final Object NULL_MARKER = new Object();
-
-        final Map<ClassValue<?>, Map<Class<?>, Object>> values;
-
-        public ClassValueSupport(Map<ClassValue<?>, Map<Class<?>, Object>> map) {
-            values = map;
-        }
-    }
-
-    static class ClassValueInitializer implements FieldValueTransformer {
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            ClassValueSupport support = ImageSingletons.lookup(ClassValueSupport.class);
-            ClassValue<?> v = (ClassValue<?>) receiver;
-            Map<Class<?>, Object> map = support.values.get(v);
-            assert map != null;
-            return map;
-        }
-    }
 }
