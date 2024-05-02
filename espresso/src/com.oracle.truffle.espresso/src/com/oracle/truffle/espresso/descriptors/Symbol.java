@@ -628,6 +628,7 @@ public final class Symbol<T> extends ByteSequence {
         // Continuations
         public static final Symbol<Name> suspend = StaticSymbols.putName("suspend");
         public static final Symbol<Name> stackFrameHead = StaticSymbols.putName("stackFrameHead");
+        public static final Symbol<Name> HIDDEN_CONTINUATION_FRAME_RECORD = StaticSymbols.putName("0HIDDEN_CONTINUATION_FRAME_RECORD");
         public static final Symbol<Name> pointers = StaticSymbols.putName("pointers");
         public static final Symbol<Name> primitives = StaticSymbols.putName("primitives");
         public static final Symbol<Name> method = StaticSymbols.putName("method");
@@ -1022,6 +1023,8 @@ public final class Symbol<T> extends ByteSequence {
                         "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord;");
         public static final Symbol<Type> com_oracle_truffle_espresso_continuations_Continuation = StaticSymbols.putType(
                         "Lcom/oracle/truffle/espresso/continuations/Continuation;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/continuations/IllegalMaterializedRecordException;");
 
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");

@@ -68,6 +68,7 @@ public final class HostFrameRecord {
         long[] primitives = new long[fd.size()];
         fd.importFromFrame(frame, objects, primitives);
         HostFrameRecord hfr = new HostFrameRecord(fd, objects, primitives, bci, top, m, next);
+        // Result is trusted, but it never hurts to assert that.
         assert hfr.verify(EspressoContext.get(null).getMeta(), true);
         return hfr;
     }
@@ -123,10 +124,32 @@ public final class HostFrameRecord {
     }
 
     /**
+     * Converts the entire linked list of host records to guest records.
+     */
+    public StaticObject copyToGuest(Meta meta) {
+        // Convert the linked list from host to guest.
+        HostFrameRecord cursor = this;
+        StaticObject guestHead = null;
+        StaticObject guestCursor = null;
+        while (cursor != null) {
+            StaticObject next = cursor.copyToGuestSingle(meta);
+            if (guestHead == null) {
+                guestHead = next;
+            }
+            if (guestCursor != null) {
+                meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.setObject(guestCursor, next);
+            }
+            guestCursor = next;
+            cursor = cursor.next;
+        }
+        return guestHead;
+    }
+
+    /**
      * Copies this single record into a newly allocated guest-side object that the guest can then
      * serialize, deserialize and resume. Does <i>not</i> set the {@code next} pointer.
      */
-    public @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord;") StaticObject copyToGuest(Meta meta) {
+    public @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord;") StaticObject copyToGuestSingle(Meta meta) {
         // Manually build the guest record.
         var guestRecord = meta.getAllocator().createNew(meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
         meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers.setObject(guestRecord, StaticObject.wrap(objects, meta));

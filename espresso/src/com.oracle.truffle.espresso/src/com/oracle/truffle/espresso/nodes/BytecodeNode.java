@@ -563,6 +563,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         getRoot().setContinuationHostFrameRecord(frame, record);
 
+        // Host records are trusted, but it never hurts to assert that.
         assert record.verify(getMeta(), true);
         record.exportToFrame(frame);
 

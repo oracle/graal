@@ -1931,6 +1931,7 @@ public final class Meta extends ContextAccessImpl {
         public final Method com_oracle_truffle_espresso_continuations_Continuation_run;
         public final Method com_oracle_truffle_espresso_continuations_Continuation_suspend;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead;
+        public final Field HIDDEN_CONTINUATION_FRAME_RECORD;
         public final ObjectKlass com_oracle_truffle_espresso_continuations_Continuation_FrameRecord;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives;
@@ -1938,6 +1939,7 @@ public final class Meta extends ContextAccessImpl {
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_top;
+        public final ObjectKlass com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException;
 
         private ContinuumSupport() {
             ObjectKlass com_oracle_truffle_espresso_continuations_Continuation = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation);
@@ -1945,6 +1947,7 @@ public final class Meta extends ContextAccessImpl {
             com_oracle_truffle_espresso_continuations_Continuation_suspend = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredMethod(Name.suspend, Signature._void);
             com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredField(Name.stackFrameHead,
                             Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
+            HIDDEN_CONTINUATION_FRAME_RECORD = com_oracle_truffle_espresso_continuations_Continuation.requireHiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
                             Name.pointers, Type.java_lang_Object_array);
@@ -1958,6 +1961,8 @@ public final class Meta extends ContextAccessImpl {
                             Name.bci, Type._int);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_top = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
                             Name.top, Type._int);
+            com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException = loadKlassWithBootClassLoader(
+                            Type.com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException);
         }
     }
 

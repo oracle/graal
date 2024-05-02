@@ -124,7 +124,7 @@ public final class Continuation implements Externalizable {
 
     // region Suspended state
 
-    // This field is set by the VM after a suspend.
+    // This field is initialized after calling ensureMaterialized().
     private volatile FrameRecord stackFrameHead;
 
     /**
@@ -137,6 +137,21 @@ public final class Continuation implements Externalizable {
      * <p>
      * The contents of the arrays should be treated as opaque.
      * </p>
+     *
+     * <p>
+     * Note that the VM ensures on {@link #ensureDematerialized() dematerialization} that the record
+     * is valid. Here are the requirements for a record to be considered valid by the VM:
+     * </p>
+     * <ul>
+     * <li>{@link #bci} must point to an invoke opcode in {@link #method}</li>
+     * <li>If this frame record is the last on the stack, then {@link #method} is
+     * {@link Continuation#suspend() Continuation.suspend()}</li>
+     * <li>Otherwise, {@link #next}.{@link #method} had the same Name and Signature than the
+     * {@code CONSTANT_Methodref_info} reference constant pointed to by the invoke opcode at
+     * {@link #bci}. Furthermore, a {@code loading constraint} is recorded for the return type.</li>
+     * <li>The stack and locals information recorded in {@link #pointers} and {@link #primitives} is
+     * consistent with {@code verification types} for the given {@link #bci}.</li>
+     * </ul>
      */
     private static final class FrameRecord {
         /**
@@ -373,26 +388,29 @@ public final class Continuation implements Externalizable {
      * rethrown here. The continuation is then no longer usable and must be discarded.
      * </p>
      *
-     * @throws IllegalStateException if the {@link #getState()} is not {@link State#SUSPENDED}.
+     * @throws IllegalStateException if the {@link #getState()} is not {@link State#SUSPENDED}, or
+     *             if the {@link #stackFrameHead} contains erroneous data.
      */
     public void resume() {
         if (!isSupported()) {
             throw new UnsupportedOperationException("Continuations must be run on the Java on Truffle JVM with the java.Continuum option set to true.");
         }
+
         // Are we in the special waiting-to-start state?
         if (updateState(State.NEW, State.RUNNING)) {
             // Enable the use of suspend capabilities.
             setExclusiveOwner();
             try {
                 start0();
-
             } finally {
                 clearExclusiveOwner();
             }
         } else if (updateState(State.SUSPENDED, State.RUNNING)) {
-            assert stackFrameHead != null;
             setExclusiveOwner();
             try {
+                // We are ready to resume, make sure the VM has the most up-to-date frames
+                ensureDematerialized();
+                assert stackFrameHead == null;
                 resume0();
             } finally {
                 clearExclusiveOwner();
@@ -430,11 +448,12 @@ public final class Continuation implements Externalizable {
      */
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-        var currentState = lock();
+        State currentState = lock();
         if (currentState == State.RUNNING) {
             throw new IllegalStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
         }
         try {
+            ensureMaterialized();
             // We start by writing out a header byte. The high nibble contains a major version. Old
             // libraries will refuse to deserialize continuations with a higher version than what
             // they recognize. New libraries may choose to continue supporting the old formats. The
@@ -700,7 +719,7 @@ public final class Continuation implements Externalizable {
 
     // region Implementation
 
-    private static final boolean ASSERTIONS_ENABLED = Continuation.class.desiredAssertionStatus();
+    private static final boolean ASSERTIONS_ENABLED = areAssertionsEnabled();
 
     /**
      * Invoked by the VM. This is the first frame in the continuation. We get here from inside the
@@ -734,6 +753,65 @@ public final class Continuation implements Externalizable {
             }
         } finally {
             stackFrameHead = null;
+        }
+    }
+
+    /**
+     * Ensures that any VM-specific state is materialized in this object. If this continuation has
+     * been {@link #suspend() suspended}, then on a successful return, {@link #stackFrameHead} will
+     * be non-null. On an unsuspended continuation, this call has no visible effect.
+     * <p>
+     * {@link #ensureDematerialized()} will need to be called for the VM to be aware of the new
+     * frames.
+     */
+    private void ensureMaterialized() {
+        if (stackFrameHead != null) {
+            // frame already materialized.
+            return;
+        }
+        synchronized (this) {
+            if (stackFrameHead != null) {
+                return;
+            }
+            State current = lock();
+            try {
+                materialize0();
+            } finally {
+                unlock(current);
+            }
+        }
+    }
+
+    /**
+     * Communicates to the VM that it should consume {@link #stackFrameHead} for resuming. If the
+     * call completes, {@link #stackFrameHead} will be null.
+     *
+     * @throws IllegalMaterializedRecordException If the recorded frames cannot be dematerialized.
+     *             This can happen, for example, if the recorded frames contain an unexpected object
+     *             that the VM does not expect to see where it should resume.
+     */
+    private void ensureDematerialized() {
+        if (stackFrameHead == null) {
+            // No frame to dematerialize
+            return;
+        }
+        synchronized (this) {
+            if (stackFrameHead == null) {
+                return;
+            }
+            if (getState() == State.RUNNING) {
+                dematerialize0();
+            } else {
+                State state = lock();
+                try {
+                    dematerialize0();
+                } finally {
+                    unlock(state);
+                }
+            }
+            if (stackFrameHead != null) {
+                throw new IllegalMaterializedRecordException("Failed to dematerialize continuation frames.");
+            }
         }
     }
 
@@ -795,5 +873,16 @@ public final class Continuation implements Externalizable {
     private native void resume0();
 
     private native void suspend0();
+
+    private native void materialize0();
+
+    private native void dematerialize0();
     // endregion
+
+    @SuppressWarnings("all")
+    private static boolean areAssertionsEnabled() {
+        boolean enabled = false;
+        assert enabled = true;
+        return enabled;
+    }
 }

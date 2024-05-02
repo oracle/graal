@@ -261,7 +261,7 @@ public class EspressoFrameDescriptor {
 
     static void guarantee(boolean condition, String message, Meta meta) {
         if (!condition) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, message);
+            throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException, message);
         }
     }
 

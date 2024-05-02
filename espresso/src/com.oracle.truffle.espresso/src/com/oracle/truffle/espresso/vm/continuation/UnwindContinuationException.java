@@ -23,9 +23,7 @@
 
 package com.oracle.truffle.espresso.vm.continuation;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
@@ -44,25 +42,5 @@ public class UnwindContinuationException extends ControlFlowException {
 
     public StaticObject getContinuation() {
         return continuation;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public StaticObject toGuest(Meta meta) {
-        // Convert the linked list from host to guest.
-        HostFrameRecord cursor = head;
-        StaticObject guestHead = null;
-        StaticObject guestCursor = null;
-        while (cursor != null) {
-            StaticObject next = cursor.copyToGuest(meta);
-            if (guestHead == null) {
-                guestHead = next;
-            }
-            if (guestCursor != null) {
-                meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.setObject(guestCursor, next);
-            }
-            guestCursor = next;
-            cursor = cursor.next;
-        }
-        return guestHead;
     }
 }
