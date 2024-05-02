@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -69,7 +70,7 @@ final class InternalResourceRoots {
      * This field is reset to {@code null} by the {@code TruffleBaseFeature} before writing the
      * native image heap.
      */
-    private static volatile Set<Root> roots;
+    private static volatile Map<Collection<EngineAccessor.AbstractClassLoaderSupplier>, Set<Root>> roots;
 
     private InternalResourceRoots() {
     }
@@ -81,16 +82,27 @@ final class InternalResourceRoots {
      */
     static synchronized void ensureInitialized() {
         if (roots == null) {
+            roots = new HashMap<>();
+        }
+        List<EngineAccessor.AbstractClassLoaderSupplier> loaders = loaders();
+        if (!roots.containsKey(loaders)) {
+            Set<Root> res;
             if (InternalResourceCache.usesInternalResources()) {
-                roots = computeRoots(findDefaultRoot());
+                res = computeRoots(findDefaultRoot());
             } else {
-                roots = Set.of();
+                res = Set.of();
             }
+            roots.put(loaders, res);
         }
     }
 
+    private static List<EngineAccessor.AbstractClassLoaderSupplier> loaders() {
+        return TruffleOptions.AOT ? List.of() : EngineAccessor.locatorOrDefaultLoaders();
+    }
+
     static Root findRoot(Path hostPath) {
-        for (Root root : roots) {
+        Set<Root> rootsSet = roots.get(loaders());
+        for (Root root : rootsSet) {
             if (hostPath.startsWith(root.path)) {
                 return root;
             }
@@ -139,20 +151,22 @@ final class InternalResourceRoots {
      */
     @SuppressWarnings("unused")
     private static synchronized void setTestCacheRoot(Path newRoot, boolean nativeImageRuntime) {
-        if (roots != null) {
-            for (Root root : roots) {
+        if (roots == null) {
+            roots = new HashMap<>();
+        }
+        List<EngineAccessor.AbstractClassLoaderSupplier> loaders = loaders();
+        if (roots.containsKey(loaders)) {
+            for (Root root : roots.remove(loaders)) {
                 for (InternalResourceCache cache : root.caches()) {
                     cache.clearCache();
                 }
             }
         }
         if (newRoot != null) {
-            roots = computeRoots(Pair.create(newRoot, nativeImageRuntime ? Root.Kind.UNVERSIONED : Root.Kind.VERSIONED));
+            roots.put(loaders, computeRoots(Pair.create(newRoot, nativeImageRuntime ? Root.Kind.UNVERSIONED : Root.Kind.VERSIONED)));
         } else if (nativeImageRuntime) {
             var defaultRoots = findDefaultRoot();
-            roots = computeRoots(Pair.create(defaultRoots.getLeft(), Root.Kind.UNVERSIONED));
-        } else {
-            roots = null;
+            roots.put(loaders, computeRoots(Pair.create(defaultRoots.getLeft(), Root.Kind.UNVERSIONED)));
         }
     }
 
