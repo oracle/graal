@@ -156,7 +156,7 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
          * indicating the presence of unstructured locking which is not supported. No additional
          * arguments are allowed.
          */
-        UNSTRUCTURED_LOCKING(0, IllegalMonitorStateException.class, "Unstructured locking is not supported");
+        UNSTRUCTURED_LOCKING(0, IllegalMonitorStateException.class, "Unstructured locking encountered. Native Image enforces structured locking (JVMS 2.11.10)");
 
         final int numArguments;
         final Class<? extends Throwable> exceptionClass;

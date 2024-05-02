@@ -2986,9 +2986,10 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
     protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean needsNullCheck) {
         /*
-         * This null check ensures Java spec compatibility, where a NPE has precedence over an
-         * IllegalMonitorStateException. In the presence of structured locking, this check should
-         * fold away, as the non-nullness is already proven by the corresponding monitorenter.
+         * This null check ensures Java spec compatibility, where a NullPointerException has
+         * precedence over an IllegalMonitorStateException. In the presence of structured locking,
+         * this check should fold away, as the non-nullness is already proven by the corresponding
+         * monitorenter.
          */
         ValueNode maybeNullCheckedX = needsNullCheck ? maybeEmitExplicitNullCheck(x) : x;
         /*
@@ -5836,13 +5837,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * {@link GraphBuilderConfiguration#retainLocalVariables()} is true.
      */
     protected boolean mustClearNonLiveLocalsAtOSREntry() {
-        return true;
-    }
-
-    /**
-     * Determines if the locked objects of two FrameStateBuilders must be identical during merging.
-     */
-    public boolean mustEnforceLockObjectEquality() {
         return true;
     }
 }

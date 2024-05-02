@@ -35,7 +35,6 @@ import static jdk.graal.compiler.bytecode.Bytecodes.POP2;
 import static jdk.graal.compiler.bytecode.Bytecodes.SWAP;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static jdk.graal.compiler.nodes.FrameState.TWO_SLOT_MARKER;
-import static jdk.graal.compiler.nodes.util.GraphUtil.originalValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -517,14 +516,6 @@ public final class FrameStateBuilder implements SideEffectsState {
                     continue;
                 }
                 throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - monitors do not match", other));
-            }
-            /*
-             * ID's match now also the objects should match. However, the parser might not see an
-             * actual equality. Depending on a parser flag, (seemingly) different locked objects can
-             * still be merged which defers the consequences of wrong locks to the run time.
-             */
-            if (parser.mustEnforceLockObjectEquality() && originalValue(lockedObjects[i], false) != originalValue(other.lockedObjects[i], false)) {
-                throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - locked objects do not match", other));
             }
         }
     }

@@ -652,11 +652,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        public boolean mustEnforceLockObjectEquality() {
-            return false;
-        }
-
-        @Override
         protected void handleUnstructuredLocking(String msg, boolean isDeadEnd) {
             ValueNode methodSynchronizedObjectSnapshot = methodSynchronizedObject;
             if (getDispatchBlock(bci()) == blockMap.getUnwindBlock()) {
@@ -691,7 +686,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         protected void handleMismatchAtMonitorexit() {
             genReleaseMonitors(true);
-            genThrowUnsupportedFeatureError("Unexpected lock object at monitorexit. Unstructured locking is not supported.");
+            genThrowUnsupportedFeatureError("Unexpected lock object at monitorexit. Native Image enforces structured locking (JVMS 2.11.10)");
         }
 
         @Override
@@ -748,7 +743,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             lastInstr = ifNode.falseSuccessor();
             frameState = target.getState().copy();
             genReleaseMonitors(true);
-            genThrowUnsupportedFeatureError("Incompatible lock states at merge. Possibly due to unstructured locking, which is not supported.");
+            genThrowUnsupportedFeatureError("Incompatible lock states at merge. Native Image enforces structured locking (JVMS 2.11.10)");
 
             /*
              * Update the never entered (true) branch to have a matching lock stack with the

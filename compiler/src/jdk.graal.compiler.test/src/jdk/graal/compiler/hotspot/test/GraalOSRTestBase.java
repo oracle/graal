@@ -103,7 +103,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
 
         List<Integer> backedgeBcis = new ArrayList<>();
         for (BciBlockMapping.BciBlock block : bciBlockMapping.getBlocks()) {
-            // ignore exception entries, as it is not sure that they are ever reached
+            // ignore exception entries, as they may never be reached
             if (block.getStartBci() != -1 && !block.isExceptionEntry()) {
                 int bci = block.getEndBci();
                 for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
