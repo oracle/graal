@@ -49,6 +49,8 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
+
 public final class VMInspectionOptions {
     private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
     private static final String MONITORING_DEFAULT_NAME = "<deprecated-default>";
@@ -82,6 +84,11 @@ public final class VMInspectionOptions {
 
     @Option(help = "Print native memory tracking statistics on shutdown if native memory tracking is enabled.", type = OptionType.User) //
     public static final RuntimeOptionKey<Boolean> PrintNMTStatistics = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Path of the file or directory in which NMT report dumps are created. An empty value means a default file " +
+                    "name will be used. An existing directory means the dump will be placed in the directory and have " +
+                    "the default file name.") //
+    public static final RuntimeOptionKey<String> NmtDumpPath = new RuntimeOptionKey<>("", Immutable);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void validateEnableMonitoringFeatures(@SuppressWarnings("unused") OptionKey<?> optionKey) {
