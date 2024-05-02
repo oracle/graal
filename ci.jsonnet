@@ -45,7 +45,7 @@ local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
   assert std.length(std.toString(import 'ci/ci_common/common.jsonnet')) > 0,
   ci_resources:: (import 'ci/ci_common/ci-resources.libsonnet'),
   overlay: graal_common.ci.overlay,
-  specVersion: "3",
+  specVersion: "4",
   builds: [common.add_excludes_guard(b) for b in (
     common.with_components(compiler.builds, ["compiler"]) +
     common.with_components(wasm.builds, ["wasm"]) +
