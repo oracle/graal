@@ -33,7 +33,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
-import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
@@ -48,8 +47,6 @@ import jdk.graal.compiler.word.Word;
  * or overwrite dead objects.
  */
 public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
-    private static final ResetNewLocationsForSweepingVisitor RESET_NEW_LOCATIONS_FOR_SWEEPING_VISITOR = new ResetNewLocationsForSweepingVisitor();
-
     private AlignedHeapChunk.AlignedHeader allocChunk;
     private Pointer allocPointer;
 
@@ -65,9 +62,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         Pointer objSeq = AlignedHeapChunk.getObjectsStart(chunk);
         UnsignedWord gapSize = WordFactory.zero();
         UnsignedWord objSeqSize = WordFactory.zero();
-
         UnsignedWord brickIndex = WordFactory.zero();
-        UnsignedWord totalUnusedBytes = WordFactory.zero();
 
         /* Initialize the move info structure at the chunk's object start location. */
         ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
@@ -112,7 +107,6 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                     objSeq = p;
                     ObjectMoveInfo.setNextObjectSeqOffset(objSeq, WordFactory.zero());
 
-                    totalUnusedBytes = totalUnusedBytes.add(gapSize);
                     gapSize = WordFactory.zero();
                 }
 
@@ -147,12 +141,6 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
             ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
         }
 
-        totalUnusedBytes = totalUnusedBytes.add(HeapChunk.getEndOffset(chunk).subtract(HeapChunk.getTopOffset(chunk)));
-        if (!sweeping && shouldSweepBasedOnFragmentation(totalUnusedBytes)) {
-            sweeping = true;
-            chunk.setShouldSweepInsteadOfCompact(true);
-            ObjectMoveInfo.visit(chunk, RESET_NEW_LOCATIONS_FOR_SWEEPING_VISITOR);
-        }
         if (sweeping) {
             /*
              * Continue allocating for compaction after the swept memory. Note that this forfeits
@@ -187,21 +175,8 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         return p;
     }
 
-    private static boolean shouldSweepBasedOnFragmentation(UnsignedWord unusedBytes) {
-        UnsignedWord limit = HeapParameters.getAlignedHeapChunkSize().unsignedDivide(16);
-        return unusedBytes.aboveOrEqual(0) && unusedBytes.belowThan(limit);
-    }
-
     public void init(Space space) {
         allocChunk = space.getFirstAlignedHeapChunk();
         allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
-    }
-
-    private static class ResetNewLocationsForSweepingVisitor implements ObjectMoveInfo.Visitor {
-        @Override
-        public boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq) {
-            ObjectMoveInfo.setNewAddress(objSeq, objSeq);
-            return true;
-        }
     }
 }
