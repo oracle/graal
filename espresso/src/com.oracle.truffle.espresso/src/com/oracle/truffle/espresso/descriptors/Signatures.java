@@ -221,6 +221,65 @@ public final class Signatures {
     }
 
     /**
+     * Gives an iterable over the signatures. Can be parameterized to iterate in reverse order, or
+     * whether to include the return type.
+     */
+    public static Iterable<Symbol<Type>> iterable(final Symbol<Type>[] signature, boolean reverse, boolean withReturnType) {
+        return new SignatureIter(signature, reverse, withReturnType);
+    }
+
+    private static final class SignatureIter implements Iterable<Symbol<Type>>, Iterator<Symbol<Type>> {
+        private final Symbol<Type>[] signature;
+        private final int start;
+        private final int end;
+        private final int step;
+
+        private int pos;
+
+        private SignatureIter(final Symbol<Type>[] signature, boolean reverse, boolean withReturnType) {
+            this.signature = signature;
+            int tmpStart = 0;
+            int tmpEnd = Signatures.parameterCount(signature);
+            int tmpStep = 1;
+            if (withReturnType) {
+                tmpEnd = signature.length;
+            }
+            this.pos = tmpStart;
+            if (reverse) {
+                tmpStep = -1;
+                this.pos = tmpEnd;
+            }
+            this.start = tmpStart;
+            this.end = tmpEnd;
+            this.step = tmpStep;
+        }
+
+        @Override
+        public Iterator<Symbol<Type>> iterator() {
+            return this;
+        }
+
+        @Override
+        public boolean hasNext() {
+            int next = nextIdx();
+            return next >= start && next < end;
+        }
+
+        @Override
+        public Symbol<Type> next() {
+            assert hasNext();
+            int nextIdx = nextIdx();
+            Symbol<Type> next = signature[nextIdx];
+            this.pos = nextIdx;
+            return next;
+        }
+
+        private int nextIdx() {
+            return pos + step;
+        }
+    }
+
+    /**
      * Validates a raw signature.
      */
     public static boolean isValid(Symbol<Signature> signature) {

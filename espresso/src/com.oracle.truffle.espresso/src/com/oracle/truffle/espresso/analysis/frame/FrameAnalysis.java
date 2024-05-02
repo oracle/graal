@@ -285,12 +285,12 @@ public final class FrameAnalysis {
     }
 
     private static void popSignature(Symbol<Type>[] sig, boolean isStatic, Builder frame) {
-        for (int i = 0; i < Signatures.parameterCount(sig); i++) {
-            JavaKind k = Signatures.parameterKind(sig, i);
+        for (Symbol<Type> t : Signatures.iterable(sig, true, false)) {
+            JavaKind k = Types.getJavaKind(t).getStackKind();
             frame.pop(k);
         }
         if (!isStatic) {
-            frame.pop();
+            frame.pop(JavaKind.Object);
         }
     }
 
