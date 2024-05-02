@@ -26,20 +26,25 @@
 
 package com.oracle.svm.test.jfr;
 
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.util.List;
 
-import static org.junit.Assert.assertTrue;
+import org.junit.Assume;
+import org.junit.Test;
+
+import com.oracle.svm.core.OS;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
 
 public class TestJdkContainerEvents extends JfrRecordingTest {
     private static final long PERIOD_MS = 10;
 
     @Test
     public void test() throws Throwable {
+        Assume.assumeTrue("Container support is limited to Linux", OS.LINUX.isCurrent());
         String[] events = new String[]{"jdk.ContainerCPUThrottling", "jdk.ContainerCPUUsage",
                         "jdk.ContainerConfiguration", "jdk.ContainerIOUsage", "jdk.ContainerMemoryUsage"};
 
