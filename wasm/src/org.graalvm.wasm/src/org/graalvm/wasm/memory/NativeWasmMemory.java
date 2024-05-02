@@ -899,7 +899,7 @@ class NativeWasmMemory extends WasmMemory {
         if (!this.isShared()) {
             return 0;
         }
-        return invokeNotifyCallback(address, count);
+        return invokeNotifyCallback(node, address, count);
     }
 
     @Override
@@ -910,7 +910,7 @@ class NativeWasmMemory extends WasmMemory {
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, false);
+        return invokeWaitCallback(node, address, expected, timeout, false);
     }
 
     @Override
@@ -921,7 +921,7 @@ class NativeWasmMemory extends WasmMemory {
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, true);
+        return invokeWaitCallback(node, address, expected, timeout, true);
     }
 
     @Override

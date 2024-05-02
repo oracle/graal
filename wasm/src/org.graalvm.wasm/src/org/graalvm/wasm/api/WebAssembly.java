@@ -81,6 +81,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -142,6 +143,7 @@ public class WebAssembly extends Dictionary {
         final Object prev = innerTruffleContext.enter(null);
         try {
             final WasmContext instanceContext = WasmContext.get(null);
+            instanceContext.inheritCallbacksFromParentContext(currentContext);
             WasmInstance instance = instantiateModule(module, importObject, instanceContext, innerTruffleContext);
             instanceContext.linker().tryLink(instance);
             return instance;
@@ -705,24 +707,33 @@ public class WebAssembly extends Dictionary {
     }
 
     private static Object memSetGrowCallback(Object[] args) {
+        checkArgumentCount(args, 1);
         InteropLibrary lib = InteropLibrary.getUncached();
-        if (!(args[0] instanceof WasmMemory)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        if (args.length > 1) {
+            // TODO: drop this branch after JS adopts the single-argument version
+            if (!(args[0] instanceof WasmMemory)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be executable");
+            }
+            if (!lib.isExecutable(args[1])) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+            }
+            return memSetGrowCallback(args[1]);
         }
-        if (!lib.isExecutable(args[1])) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+        if (!lib.isExecutable(args[0])) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Argument must be executable");
         }
-        WasmMemory memory = (WasmMemory) args[0];
-        return memSetGrowCallback(memory, args[1]);
+        return memSetGrowCallback(args[0]);
     }
 
-    private static Object memSetGrowCallback(WasmMemory memory, Object callback) {
-        memory.setGrowCallback(callback);
+    private static Object memSetGrowCallback(Object callback) {
+        WasmContext context = WasmContext.get(null);
+        context.setMemGrowCallback(callback);
         return WasmConstant.VOID;
     }
 
     public static void invokeMemGrowCallback(WasmMemory memory) {
-        Object callback = memory.getGrowCallback();
+        WasmContext context = WasmContext.get(null);
+        Object callback = context.getMemGrowCallback();
         if (callback != null) {
             InteropLibrary lib = InteropLibrary.getUncached();
             try {
@@ -734,24 +745,33 @@ public class WebAssembly extends Dictionary {
     }
 
     private static Object memSetNotifyCallback(Object[] args) {
+        checkArgumentCount(args, 1);
         InteropLibrary lib = InteropLibrary.getUncached();
-        if (!(args[0] instanceof WasmMemory)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        if (args.length > 1) {
+            // TODO: drop this branch after JS adopts the single-argument version
+            if (!(args[0] instanceof WasmMemory)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be executable");
+            }
+            if (!lib.isExecutable(args[1])) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+            }
+            return memSetNotifyCallback(args[1]);
         }
-        if (!lib.isExecutable(args[1])) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+        if (!lib.isExecutable(args[0])) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Argument must be executable");
         }
-        WasmMemory memory = (WasmMemory) args[0];
-        return memSetNotifyCallback(memory, args[1]);
+        return memSetNotifyCallback(args[0]);
     }
 
-    private static Object memSetNotifyCallback(WasmMemory memory, Object callback) {
-        memory.setNotifyCallback(callback);
+    private static Object memSetNotifyCallback(Object callback) {
+        WasmContext context = WasmContext.get(null);
+        context.setMemNotifyCallback(callback);
         return WasmConstant.VOID;
     }
 
-    public static int invokeMemNotifyCallback(WasmMemory memory, long address, int count) {
-        Object callback = memory.getNotifyCallback();
+    public static int invokeMemNotifyCallback(Node node, WasmMemory memory, long address, int count) {
+        WasmContext context = WasmContext.get(node);
+        Object callback = context.getMemNotifyCallback();
         if (callback != null) {
             InteropLibrary lib = InteropLibrary.getUncached();
             try {
@@ -764,24 +784,33 @@ public class WebAssembly extends Dictionary {
     }
 
     private static Object memSetWaitCallback(Object[] args) {
+        checkArgumentCount(args, 1);
         InteropLibrary lib = InteropLibrary.getUncached();
-        if (!(args[0] instanceof WasmMemory)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        if (args.length > 1) {
+            // TODO: drop this branch after JS adopts the single-argument version
+            if (!(args[0] instanceof WasmMemory)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be executable");
+            }
+            if (!lib.isExecutable(args[1])) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+            }
+            return memSetWaitCallback(args[1]);
         }
-        if (!lib.isExecutable(args[1])) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+        if (!lib.isExecutable(args[0])) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Argument must be executable");
         }
-        WasmMemory memory = (WasmMemory) args[0];
-        return memSetWaitCallback(memory, args[1]);
+        return memSetWaitCallback(args[0]);
     }
 
-    private static Object memSetWaitCallback(WasmMemory memory, Object callback) {
-        memory.setWaitCallback(callback);
+    private static Object memSetWaitCallback(Object callback) {
+        WasmContext context = WasmContext.get(null);
+        context.setMemWaitCallback(callback);
         return WasmConstant.VOID;
     }
 
-    public static int invokeMemWaitCallback(WasmMemory memory, long address, long expected, long timeout, boolean is64) {
-        Object callback = memory.getWaitCallback();
+    public static int invokeMemWaitCallback(Node node, WasmMemory memory, long address, long expected, long timeout, boolean is64) {
+        WasmContext context = WasmContext.get(node);
+        Object callback = context.getMemWaitCallback();
         if (callback != null) {
             InteropLibrary lib = InteropLibrary.getUncached();
             try {
