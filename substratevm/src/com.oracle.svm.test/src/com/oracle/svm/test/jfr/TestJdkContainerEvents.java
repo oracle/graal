@@ -69,20 +69,21 @@ public class TestJdkContainerEvents extends JfrRecordingTest {
         boolean foundContainerMemoryUsage = false;
         boolean foundContainerConfiguration = false;
         for (RecordedEvent e : events) {
-            if (e.getEventType().getName().equals("jdk.ContainerCPUThrottling")) {
+            String name = e.getEventType().getName();
+            if (name.equals("jdk.ContainerCPUThrottling")) {
                 foundContainerCPUThrottling = true;
-            } else if (e.getEventType().getName().equals("jdk.ContainerCPUUsage") &&
+            } else if (name.equals("jdk.ContainerCPUUsage") &&
                             e.getLong("cpuTime") > 0 &&
                             e.getLong("cpuSystemTime") > 0 &&
                             e.getLong("cpuUserTime") > 0) {
                 foundContainerCPUUsage = true;
-            } else if (e.getEventType().getName().equals("jdk.ContainerIOUsage")) {
+            } else if (name.equals("jdk.ContainerIOUsage")) {
                 foundContainerIOUsage = true;
-            } else if (e.getEventType().getName().equals("jdk.ContainerMemoryUsage") &&
+            } else if (name.equals("jdk.ContainerMemoryUsage") &&
                             e.getLong("memoryUsage") > 0 &&
                             e.getLong("swapMemoryUsage") > 0) {
                 foundContainerMemoryUsage = true;
-            } else if (e.getEventType().getName().equals("jdk.ContainerConfiguration") &&
+            } else if (name.equals("jdk.ContainerConfiguration") &&
                             e.getLong("effectiveCpuCount") > 0) {
                 /*
                  * It's also worth checking hostTotalMemory and hostTotalSwapMemory are > 0 or -1

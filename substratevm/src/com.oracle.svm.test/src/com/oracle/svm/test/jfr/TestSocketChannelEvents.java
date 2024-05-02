@@ -28,18 +28,17 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Test;
-
 import java.io.IOException;
-
 import java.net.InetSocketAddress;
-
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.List;
+
+import org.junit.Test;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
 
 public class TestSocketChannelEvents extends JfrRecordingTest {
     public static final String MESSAGE = "hello server";
@@ -73,9 +72,11 @@ public class TestSocketChannelEvents extends JfrRecordingTest {
         boolean foundSocketRead = false;
         boolean foundSocketWrite = false;
         for (RecordedEvent e : events) {
-            if (e.getString("host").equals(HOST) && e.getEventType().getName().equals("jdk.SocketRead") && e.getLong("bytesRead") == MESSAGE.getBytes().length) {
+            String name = e.getEventType().getName();
+            String host = e.getString("host");
+            if (host.equals(HOST) && name.equals("jdk.SocketRead") && e.getLong("bytesRead") == MESSAGE.getBytes().length) {
                 foundSocketRead = true;
-            } else if (e.getString("host").equals(HOST) && e.getEventType().getName().equals("jdk.SocketWrite") && e.getLong("bytesWritten") == MESSAGE.getBytes().length &&
+            } else if (host.equals(HOST) && name.equals("jdk.SocketWrite") && e.getLong("bytesWritten") == MESSAGE.getBytes().length &&
                             e.getLong("port") == PORT) {
                 foundSocketWrite = true;
             }
@@ -88,12 +89,14 @@ public class TestSocketChannelEvents extends JfrRecordingTest {
         SocketChannel socketChannel;
 
         public void startConnection(String ip, int port) throws InterruptedException {
-            try {
-                socketChannel = SocketChannel.open(new InetSocketAddress(ip, port));
-            } catch (Exception e) {
-                // Keep trying until server begins accepting connections.
-                Thread.sleep(100);
-                startConnection(ip, port);
+            while (true) {
+                try {
+                    socketChannel = SocketChannel.open(new InetSocketAddress(ip, port));
+                    break;
+                } catch (Exception e) {
+                    // Keep trying until server begins accepting connections.
+                    Thread.sleep(100);
+                }
             }
         }
 

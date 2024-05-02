@@ -26,15 +26,17 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.core.jfr.JfrEvent;
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.util.List;
 
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
 
 public class TestFlightRecorderEvents extends JfrRecordingTest {
     private static final long THRESHOLD = 12345678;
@@ -55,12 +57,13 @@ public class TestFlightRecorderEvents extends JfrRecordingTest {
         boolean foundActiveRecording = false;
         boolean foundActiveSetting = false;
         for (RecordedEvent e : events) {
-            if (e.getEventType().getName().equals("jdk.ActiveSetting") &&
+            String name = e.getEventType().getName();
+            if (name.equals("jdk.ActiveSetting") &&
                             e.getLong("id") == JfrEvent.ThreadPark.getId() &&
                             e.getString("name").equals("threshold") &&
                             e.getString("value").equals(THRESHOLD + " ns")) {
                 foundActiveSetting = true;
-            } else if (e.getEventType().getName().equals("jdk.ActiveRecording") &&
+            } else if (name.equals("jdk.ActiveRecording") &&
                             e.getLong("maxSize") == MAX_SIZE) {
                 foundActiveRecording = true;
             }
