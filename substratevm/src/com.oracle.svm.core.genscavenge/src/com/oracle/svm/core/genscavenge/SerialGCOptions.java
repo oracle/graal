@@ -103,6 +103,10 @@ public final class SerialGCOptions {
     @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
+    /* Option should be renamed, see GR-53798. */
+    @Option(help = "Ignore the maximum heap size while in VM-internal code.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMOperation = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
+
     private SerialGCOptions() {
     }
 
