@@ -85,7 +85,7 @@ public abstract class NodesState {
     public final Node[] valueNumberableLeafNodes;
     public final NodePair[] valueEqualsNodePairs;
 
-    public final static class NodePair {
+    public static final class NodePair {
         public final Node n1;
         public final Node n2;
 
