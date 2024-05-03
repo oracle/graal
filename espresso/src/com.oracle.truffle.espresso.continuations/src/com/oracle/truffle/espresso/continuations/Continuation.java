@@ -390,6 +390,8 @@ public final class Continuation implements Externalizable {
      *
      * @throws IllegalStateException if the {@link #getState()} is not {@link State#SUSPENDED}, or
      *             if the {@link #stackFrameHead} contains erroneous data.
+     * @throws IllegalMaterializedRecordException if the VM rejects the frames recorded in
+     *             {@link #stackFrameHead}.
      */
     public void resume() {
         if (!isSupported()) {
