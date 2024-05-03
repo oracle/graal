@@ -248,8 +248,8 @@ public class EspressoFrameDescriptor {
         guarantee(primitives.length == kinds.length, cat("Invalid primitives array length: ", pointers.length), meta);
         for (int i = 0; i < kinds.length; i++) {
             JavaKind k = kinds[i];
-            boolean checkNullObject = (k == JavaKind.Illegal) || (k.isPrimitive());
-            boolean checkZeroPrim = (k == JavaKind.Illegal) || (!k.isPrimitive());
+            boolean checkNullObject = k.isPrimitive();
+            boolean checkZeroPrim = !k.isPrimitive();
             if (checkNullObject) {
                 guarantee(StaticObject.isNull(pointers[i]), cat("Non-null object in pointers array at slot: ", i, ", but expected a ", k.toString()), meta);
             }

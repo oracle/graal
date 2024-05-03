@@ -69,7 +69,7 @@ public final class HostFrameRecord {
         fd.importFromFrame(frame, objects, primitives);
         HostFrameRecord hfr = new HostFrameRecord(fd, objects, primitives, bci, top, m, next);
         // Result is trusted, but it never hurts to assert that.
-        assert hfr.verify(EspressoContext.get(null).getMeta(), true);
+        assert hfr.verify(m.getMethod().getMeta(), true);
         return hfr;
     }
 

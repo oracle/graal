@@ -128,7 +128,7 @@ public abstract class InvokeInterface extends EspressoNode {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             // the receiver's klass is not the single implementor, i.e. does not implement the
-            // interfaceinterface
+            // interface
             if (receiver.getKlass() != implementor) {
                 notAnImplementorProfile.enter();
                 throw reportNotAnImplementor(receiver.getKlass());
