@@ -26,6 +26,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-40931 Virtual threads with a polyglot context are now experimentally supported on HotSpot. Experimental because access to caller frames in write or materialize mode is not yet supported and maximum 65535 threads concurrently accessing the context.
 * GR-40931 Using virtual threads in a native-image will now emulate virtual threads using platform threads until Loom support for Truffle languages in native-image is implemented.
 * GR-40931 Added [`TruffleThreadBuilder#virtual()`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleThreadBuilder.html#virtual(boolean)) for languages to create virtual threads.
+* GR-53454 Added warning in the annotation processor when `@ReportPolymorphism` is used incorrectly.
 
 ## Version 24.0.0
 

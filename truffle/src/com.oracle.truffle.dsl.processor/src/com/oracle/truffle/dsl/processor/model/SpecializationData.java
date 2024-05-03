@@ -366,6 +366,7 @@ public final class SpecializationData extends TemplateMethod {
         this.reachesFallback = reachesFallback;
     }
 
+    /** == !@ReportPolymorphism.Exclude. */
     public boolean isReportPolymorphism() {
         return reportPolymorphism;
     }
