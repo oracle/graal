@@ -1613,7 +1613,7 @@ public abstract class Node implements Cloneable, Formattable {
         return id;
     }
 
-    /**
+    /*
      * Do not overwrite the equality test of a node in subclasses. Equality tests must rely solely
      * on identity.
      */

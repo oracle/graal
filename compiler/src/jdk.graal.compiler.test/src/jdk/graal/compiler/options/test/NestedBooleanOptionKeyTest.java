@@ -23,7 +23,7 @@
  * questions.
  */
 
-/**
+/*
  * @test
  * @run junit jdk.vm.ci.options.test.NestedBooleanOptionKeyTest
  */
@@ -39,13 +39,14 @@ import static jdk.graal.compiler.options.test.NestedBooleanOptionKeyTest.Options
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.options.NestedBooleanOptionKey;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class NestedBooleanOptionKeyTest {
 
