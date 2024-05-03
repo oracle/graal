@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -60,8 +61,8 @@ public class BootstrapMethodConfiguration implements InternalFeature {
     }
 
     /*
-     * Map used to cache the BootstrapMethodInfo and reuse it for duplicated bytecode, avoiding to
-     * execute the bootstrap method for the same bci and method pair. This can happen during
+     * Map used to cache the BootstrapMethodInfo and reuse it for duplicated bytecode, avoiding
+     * execution of the bootstrap method for the same bci and method pair. This can happen during
      * bytecode parsing as some blocks are duplicated, or for methods that are parsed multiple times
      * (see MultiMethod).
      */
@@ -105,11 +106,15 @@ public class BootstrapMethodConfiguration implements InternalFeature {
         Method enumSwitch = ReflectionUtil.lookupMethod(SwitchBootstraps.class, "enumSwitch", MethodHandles.Lookup.class, String.class, MethodType.class, Object[].class);
 
         /* Bootstrap method used for retrieving the value of static final processors. */
-        Class<?> templateRuntime = ReflectionUtil.lookupClass(false, "java.lang.runtime.TemplateRuntime");
-        Method processStringTemplate = ReflectionUtil.lookupMethod(templateRuntime, "processStringTemplate", MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class,
-                        String[].class);
-
-        indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch, enumSwitch, processStringTemplate);
+        if (JavaVersionUtil.JAVA_SPEC < 23) {
+            Class<?> templateRuntime = ReflectionUtil.lookupClass(false, "java.lang.runtime.TemplateRuntime");
+            Method processStringTemplate = ReflectionUtil.lookupMethod(templateRuntime, "processStringTemplate", MethodHandles.Lookup.class, String.class, MethodType.class, MethodHandle.class,
+                            String[].class);
+            indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch, enumSwitch, processStringTemplate);
+        } else {
+            // JDK-8329948 removed the String Template feature
+            indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch, enumSwitch);
+        }
 
         /* Bootstrap methods used for various dynamic constants. */
         Method nullConstant = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "nullConstant", MethodHandles.Lookup.class, String.class, Class.class);
@@ -130,14 +135,19 @@ public class BootstrapMethodConfiguration implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
-        /*
-         * Those methods are used by ObjectMethods.bootstrap to combine the Strings of the records
-         * into one String
-         */
-        Class<?> stringConcatHelper = ReflectionUtil.lookupClass(false, "java.lang.StringConcatHelper");
-        Class<?> formatConcatItem = ReflectionUtil.lookupClass(false, "jdk.internal.util.FormatConcatItem");
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(stringConcatHelper, "prepend", long.class, byte[].class, formatConcatItem, String.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(stringConcatHelper, "mix", long.class, formatConcatItem));
+        if (JavaVersionUtil.JAVA_SPEC < 23) {
+            /*
+             * Those methods are used by ObjectMethods.bootstrap to combine the Strings of the
+             * records into one String
+             */
+
+            Class<?> stringConcatHelper = ReflectionUtil.lookupClass(false, "java.lang.StringConcatHelper");
+            Class<?> formatConcatItem = ReflectionUtil.lookupClass(false, "jdk.internal.util.FormatConcatItem");
+            RuntimeReflection.register(ReflectionUtil.lookupMethod(stringConcatHelper, "prepend", long.class, byte[].class, formatConcatItem, String.class));
+            RuntimeReflection.register(ReflectionUtil.lookupMethod(stringConcatHelper, "mix", long.class, formatConcatItem));
+        } else {
+            // JDK-8329948 removed the String Template feature
+        }
     }
 
     /**
