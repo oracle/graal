@@ -20,15 +20,13 @@ If you want only class `C1` in package `p` to be initialized at runtime, use:
 --initialize-at-run-time=p.C1
 ```
 
-The whole class hierarchy can be initialized at build time by passing `--initialize-at-build-time` on the command line.
-
 You can also programmatically specify Class initialization using the [`RuntimeClassInitialization` class](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/RuntimeClassInitialization.java) from the [Native Image Feature interface](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/Feature.java).
 
-This guide demonstrates how to build a native executable by running the class initializer at run time, and then at build time, and compares the two approaches. 
+This guide demonstrates how to build a native executable by running the class initializer at runtime, and then at build time, and compares the two approaches. 
 
 ## Run a Demo
 
-For the demo part, you will run a simple XML SAX parser Java application, listing top five most viewed Java talks in 2023. 
+For the demo part, you will run a simple Java application that uses an XML SAX parser to list some Java talks from 2023. 
 The Java SAX parser is event-based, and does not load a complete XML document into memory, but reads it sequentially, unlike a DOM parser.
 
 ### Prerequisite 
@@ -87,14 +85,14 @@ For other installation options, visit the [Downloads section](https://www.graalv
     javac SaxXMLParser.java
     ```
   
-3. Build a native executable, running the class initializer at runtime:
+3. Build a native executable, explicitly running the class initializer at runtime:
     ```bash
     native-image --initialize-at-run-time=SaxXMLParser -o runtime-parser SaxXMLParser
     ```
-    The `-o` option specifies the name for the output file. 
-    If your Java project structure is different, make sure to pass necessary JAR file(s) on the classpath using `-cp <ClasspathForYourProject>`.
+    You can leave out the `--initialize-at-run-time=SaxXMLParser` option in this example because the class initializer of `SaxXMLParser` parses XML to initialize the `document` field, which means it is not safe to initialize the class at build time automatically.
+    The `-o` option specifies the name of the output file. 
 
-4. Run the application from a native executable and `time` the results:
+4. Run and `time` the native application:
     ```bash
     time ./runtime-parser
     ```
@@ -110,17 +108,17 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ```
     The application parses the XML data at runtime.
 
-    Check the file size which should be 19M:
+    Check the file size which should be around 19M:
     ```
     du -sh runtime-parser
     ```
 
-5.  Next, build a native executable initializing `SaxXMLParser` at build time, and providing a different name for the output file to differentiate from the previous build:
+5.  Next, build a native executable initializing `SaxXMLParser` at build time, and providing a different name for the output file to differentiate it from the previous build:
     ```bash
     native-image --initialize-at-build-time=SaxXMLParser -o buildtime-parser SaxXMLParser
     ```
-    
-6. Run the second executable and `time` the results for comparison:
+
+6. Run and `time` the second executable for comparison:
     ```bash
     time ./buildtime-parser
     ```
@@ -128,23 +126,66 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ```
     Talks loaded via XML:
     - Asynchronous Programming in Java: Options to Choose from by Venkat Subramaniam
-    - Anatomy of a Spring Boot App with Clean Architecture by Steve Pember
-    - Java in the Cloud with GraalVM by Alina Yurenko
-    - Bootiful Spring Boot 3 by Josh Long
-    - Spring I/O 2023 - Keynote
+    (...)
     ./buildtime-parser  0.00s user 0.00s system 43% cpu 0.019 total
     ```
-    Check the file size which should decrease to 13M:
+    Check the file size which should decrease to around 13M:
     ```
     du -sh buildtime-parser
     ```
-    The file size change is due to the fact that Native Image runs the static initializer at build time, parsing the XML data, and saving only the object into the executable. 
-    Another valuable criteria for analyzing such a small Java application performance is the number of instructions, which you can obtain using the [Linux `perf` profiler](../PerfProfiling.md).
+    The file size change is because Native Image runs the static initializer at build time, parsing the XML data, and persisting only the `Document` object in the executable.
+    As a result, the majority of the XML parsing infrastructure does not become reachable when Native Image statically analyzes the application and is, therefore, not included in the executable.
 
-    [insert a screenshot]
+Another valuable criterion for profiling applications more accurately is the number of instructions, which can be obtained using the [Linux `perf` profiler](../PerfProfiling.md).
+
+For example, for this demo application, the number of instructions decreased by almost 30% (from 11.8M to 8.6M) in the case of build-time class initialization:
+```bash
+perf stat ./runtime-parser 
+Talks loaded via XML:
+- Asynchronous Programming in Java: Options to Choose from by Venkat Subramaniam
+(...)
+ Performance counter stats for './runtime-parser':
+(...)                   
+        11,323,415      cycles                           #    3.252 GHz                       
+        11,781,338      instructions                     #    1.04  insn per cycle            
+         2,264,670      branches                         #  650.307 M/sec                     
+            28,583      branch-misses                    #    1.26% of all branches           
+(...)   
+       0.003817438 seconds time elapsed
+       0.000000000 seconds user
+       0.003878000 seconds sys 
+```
+```bash
+perf stat ./buildtime-parser 
+Talks loaded via XML:
+- Asynchronous Programming in Java: Options to Choose from by Venkat Subramaniam
+(...)
+ Performance counter stats for './buildtime-parser':
+(...)                    
+         9,534,318      cycles                           #    3.870 GHz                       
+         8,609,249      instructions                     #    0.90  insn per cycle            
+         1,640,540      branches                         #  665.818 M/sec                     
+            23,490      branch-misses                    #    1.43% of all branches           
+(...)
+       0.003119519 seconds time elapsed
+       0.001113000 seconds user
+       0.002226000 seconds sys 
+```
+
+This demonstrates how Native Image can shift work from runtime to build time: when the class is initialized at build time, the XML data is parsed when the executable is being built and only the parsed `Document` object is included.
+This not only makes the executable smaller in file size, but also faster to run: when the executable runs, the `Document` object already exists and only needs to be printed.
+
+To ensure native executables built with Native Image are as compatible as possible with the HotSpot behavior, application classes that cannot be safely initialized at build time, are initialized at runtime.
+You as a user, or a framework that you use, must explicitly request build-time initialization for certain classes to benefit from smaller file sizes and faster times to run.
+Include the right data structures to avoid the image size blowing up instead.
+We also recommend to use `--initialize-at-build-time` with single classes only. 
+It may be that you need to add a lot of `--initialize-at-build-time` entries. 
+Note that incorrect build-time initialization can lead from dysfunctional behavior to including sensitive data such as passwords or encryption keys, problems that are to be avoided in production settings.
+
+### Conclusion
 
 This guide demonstrated how you can influence the default `native-image` class initialization policy, and configure it to initialize a specific class at build time, depending on the use case. 
-The other benefits of the build-time versus run-time initialization are described in [Class Initialization in Native Image](../ClassInitialization.md), but, in short, build-time initialization can significantly improve the application efficiency.
+The benefits of the build-time versus run-time initialization are described in [Class Initialization in Native Image](../ClassInitialization.md), but, in short, build-time initialization can significantly decrease the overall file size and improve the runtime of your application when used correctly.
 
 ### Related Documentation
 
