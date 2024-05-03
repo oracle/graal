@@ -47,12 +47,11 @@ import java.util.ConcurrentModificationException;
  * Example:
  *
  * <pre>{@code
- * try (var objectBuilder = JsonBuilder.object(writer)) {
+ * try (var objectBuilder = jsonWriter.objectBuilder()) {
  *     objectBuilder.append("key", "value");
  *     try (var arrayBuilder = objectBuilder.append("arrayKey").array()) {
  *         // Using objectBuilder in here would cause an exception
- *         arrayBuilder.append(1);
- *         arrayBuilder.append(4);
+ *         arrayBuilder.append(1).append(4);
  *     }
  * }
  * }</pre>
@@ -88,6 +87,8 @@ public class JsonBuilder {
 
     /**
      * Start building a JSON object.
+     *
+     * @see ObjectBuilder
      */
     public static ObjectBuilder object(JsonWriter writer) throws IOException {
         return value(writer).object();
@@ -95,6 +96,8 @@ public class JsonBuilder {
 
     /**
      * Start building a JSON array.
+     *
+     * @see ArrayBuilder
      */
     public static ArrayBuilder array(JsonWriter writer) throws IOException {
         return value(writer).array();
@@ -102,6 +105,8 @@ public class JsonBuilder {
 
     /**
      * Start building an arbitrary JSON value.
+     *
+     * @see ValueBuilder
      */
     public static ValueBuilder value(JsonWriter writer) {
         return new JsonBuilder(writer).new ValueBuilder(null);
@@ -154,6 +159,8 @@ public class JsonBuilder {
     /**
      * Builds a single well-formed JSON object.
      * <p>
+     * Instance must be closed when all key-values are written.
+     * <p>
      * Entries can be appended using either {@link #append(String, Object)} or
      * {@link #append(String)}.
      */
@@ -204,6 +211,8 @@ public class JsonBuilder {
     /**
      * Builds a single well-formed JSON array.
      * <p>
+     * Instance must be closed when all elements are written.
+     * <p>
      * Entries can be appended using either {@link #append(Object)} or {@link #nextEntry()}.
      */
     public class ArrayBuilder extends ExclusiveBuilder implements AutoCloseable {
@@ -250,6 +259,9 @@ public class JsonBuilder {
 
     /**
      * Builder responsible for writing exactly one JSON value.
+     * <p>
+     * Instance does not have to closed (and does not expose any such functionality). It performs
+     * clean up automatically when it has produced a complete JSON value.
      * <p>
      * Either an object (see {@link #object()}), an array (see {@link #array()}), or an arbitrary
      * Java object (is converted to a JSON object, see {@link #value(Object)}).
