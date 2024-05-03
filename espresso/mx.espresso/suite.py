@@ -139,17 +139,6 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
-        "com.oracle.truffle.espresso.resources.runtime": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "truffle:TRUFFLE_API",
-            ],
-            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "javaCompliance": "17+",
-            "checkstyle": "com.oracle.truffle.espresso",
-        },
-
         "com.oracle.truffle.espresso.processor": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -481,26 +470,6 @@ suite = {
                 },
             },
             "maven": False,
-        },
-
-        "ESPRESSO_RUNTIME_RESOURCES": {
-            "platformDependent": True,
-            "moduleInfo": {
-                "name": "org.graalvm.espresso.resources.runtime",
-            },
-            "distDependencies": [
-                "truffle:TRUFFLE_API",
-            ],
-            "dependencies": [
-                "com.oracle.truffle.espresso.resources.runtime",
-                "ESPRESSO_RUNTIME_DIR",
-            ],
-            "compress": True,
-            "useModulePath": True,
-            "description": "Runtime environment used by the Java on Truffle (aka Espresso) implementation",
-            "maven" : {
-                "tag": ["default", "public"],
-            },
         },
 
         "ESPRESSO_SUPPORT": {
