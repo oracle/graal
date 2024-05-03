@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class InvokeDynamicCallSiteNode extends QuickNode {
@@ -68,7 +69,14 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         if (hasAppendix) {
             args[args.length - 1] = appendix;
         }
-        Object result = callNode.call(args);
+        EspressoThreadLocalState tls = getLanguage().getThreadLocalState();
+        tls.blockContinuationSuspension();
+        Object result;
+        try {
+            result = callNode.call(args);
+        } finally {
+            tls.unblockContinuationSuspension();
+        }
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
