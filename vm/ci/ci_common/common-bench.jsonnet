@@ -9,7 +9,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     result_file:: 'results.json',
     upload:: ['bench-uploader.py', self.result_file],
     upload_and_wait_for_indexing:: self.upload + ['--wait-for-indexing'],
-    capabilities+: ['tmpfs25g', 'x52'],
+    capabilities+: ['tmpfs25g', 'e3'],
     timelimit: '1:30:00',
   },
 
@@ -38,6 +38,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ENABLE_POLYBENCH_HPC: 'yes',
       POLYBENCH_HPC_EXTRA_HEADERS: '/cm/shared/apps/papi/papi-5.5.1/include',
       POLYBENCH_HPC_PAPI_LIB_DIR: '/cm/shared/apps/papi/papi-5.5.1/lib',
+      LIBPFM_FORCE_PMU: 'amd64'
     },
   },
 
@@ -89,7 +90,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
   },
 
   vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*', polybench_vm_config='native-interpreter'): self.vm_bench_polybench_linux_common(env=env) + self.polybench_hpc_linux_common + {
-    local machine_name = "x52",     // restricting ourselves to x52 machines since we know hardware performance counters work properly there
+    local machine_name = "e3",     // restricting ourselves to specific hardware to ensure performance counters work there
     machine_name_prefix:: "gate-",
     capabilities+: [machine_name],
     run+: [
@@ -196,7 +197,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     timelimit: '55:00',
   },
 
-  x52_js_bench_compilation_throughput(pgo): self.vm_bench_common + common.heap.default + {
+  js_bench_compilation_throughput(pgo): self.vm_bench_common + common.heap.default + {
     local mx_libgraal = ["mx", "--env", repo_config.vm.mx_env.libgraal],
 
     setup+: [
@@ -260,8 +261,8 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java17-linux-amd64', notify_groups:: ['polybench']},
 
-    vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput(true) + vm.vm_java_17 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-pgo-throughput-js-typescript-java17-linux-amd64' },
-    vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput(false) + vm.vm_java_17 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-java17-linux-amd64' },
+    vm_common.bench_daily_vm_linux_amd64 + self.js_bench_compilation_throughput(true) + vm.vm_java_17 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-pgo-throughput-js-typescript-java17-linux-amd64' },
+    vm_common.bench_daily_vm_linux_amd64 + self.js_bench_compilation_throughput(false) + vm.vm_java_17 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-java17-linux-amd64' },
 
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64() + {
       # Override `self.vm_bench_js_linux_amd64.run`

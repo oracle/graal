@@ -162,7 +162,7 @@
 
     # BENCHMARKS
 
-    bench_hw.x52 + common.oraclejdk17 + bench_common + {
+    bench_hw.e3 + common.oraclejdk17 + bench_common + {
       name: "bench-truffle-jmh-17",
       notify_groups:: ["truffle_bench"],
       run: [
