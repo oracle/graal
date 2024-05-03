@@ -83,7 +83,11 @@ public final class ReferenceHandlerThread implements Runnable {
         } catch (InterruptedException e) {
             VMError.guarantee(VMThreads.isTearingDown(), "Reference Handler should only be interrupted during tear-down");
         } catch (Throwable t) {
-            VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
+            if (t instanceof OutOfMemoryError && VMThreads.isTearingDown()) {
+                // Likely failed to allocate the InterruptedException, ignore either way.
+            } else {
+                VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
+            }
         }
     }
 
