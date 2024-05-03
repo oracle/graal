@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -442,8 +442,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                  * This processing converges because the merge processing always makes the starting
                  * state more generic, e.g., adding phis instead of non-phi values.
                  */
+                boolean[] knownAliveLoopEnds = new boolean[loop.numBackedges()];
                 for (int iteration = 0; iteration < 10; iteration++) {
-                    try (Indent i = debug.logAndIndent("================== Process Loop Effects Closure: block:%s begin node:%s", loop.getHeader(), loop.getHeader().getBeginNode())) {
+                    try (Indent i = debug.logAndIndent("================== Process Loop Effects Closure: block:%s begin node:%s iteration:%s", loop.getHeader(), loop.getHeader().getBeginNode(),
+                                    iteration)) {
                         LoopInfo<BlockT> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(lastMergedState));
 
                         List<BlockT> states = new ArrayList<>();
@@ -475,6 +477,26 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
                             return info.exitStates;
                         } else {
+                            /*
+                             * Check monotonicity: Once an iteration over the loop has determined
+                             * that a certain loop end is reachable (the state at that end is
+                             * alive), a later iteration must not conclude that that loop end is
+                             * unreachable (the state is dead). This would mean that analysis
+                             * information became more precise. But it can only become less precise
+                             * as we try to converge towards a fixed point.
+                             */
+                            GraalError.guarantee(info.endStates.size() == knownAliveLoopEnds.length,
+                                            "should have the same number of end states as loop ends: %s / %s",
+                                            info.endStates.size(), knownAliveLoopEnds.length);
+                            int endIndex = 0;
+                            for (BlockT endState : info.endStates) {
+                                GraalError.guarantee(!(knownAliveLoopEnds[endIndex] && endState.isDead()),
+                                                "%s: monotonicity violated, state at loop end %s should remain alive but is dead: %s",
+                                                loop, endIndex, endState);
+                                knownAliveLoopEnds[endIndex] |= !endState.isDead();
+                                endIndex++;
+                            }
+
                             lastMergedState = mergeProcessor.newState;
                             for (HIRBlock block : loop.getBlocks()) {
                                 blockEffects.get(block).clear();
