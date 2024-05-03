@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -56,62 +60,74 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         throw new UnwindContinuationException(self);
     }
 
-    @SuppressWarnings("try")
     @Substitution(hasReceiver = true)
-    static void resume0(StaticObject self,
-                    @Inject EspressoLanguage lang, @Inject Meta meta, @Inject EspressoContext context) {
+    abstract static class Resume0 extends SubstitutionNode {
+        abstract void execute(StaticObject self);
 
-        // This method is an intrinsic and the act of invoking one of those blocks the ability
-        // to call suspend, so we have to undo that first.
-        EspressoThreadLocalState tls = lang.getThreadLocalState();
-        if (tls.isInContinuation()) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Cannot resume a continuation while already running in a continuation.");
-        }
-        HostFrameRecord stack = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
-        if (stack == null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Continuation was not properly dematerialized.");
-        }
-        assert stack.verify(meta, false);
+        @SuppressWarnings("try")
+        @Specialization
+        static void resume0(StaticObject self,
+                        @Bind("getLanguage()") EspressoLanguage lang, @Bind("getMeta()") Meta meta,
+                        // TODO: separate entry point. Have a separate call target for rewinds
+                        @Cached("create(meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getCallTarget())") DirectCallNode rewind) {
+            // This method is an intrinsic and the act of invoking one of those blocks the ability
+            // to call suspend, so we have to undo that first.
+            EspressoThreadLocalState tls = lang.getThreadLocalState();
+            if (tls.isInContinuation()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Cannot resume a continuation while already running in a continuation.");
+            }
+            HostFrameRecord stack = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
+            if (stack == null) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Continuation was not properly dematerialized.");
+            }
+            assert stack.verify(meta, false);
+            // Consume the stack.
+            meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, null, true);
 
-        // The entry node will unpack the head frame record into the stack and then pass the
-        // remaining records into the bytecode interpreter, which will then pass them down the stack
-        // until everything is fully unwound.
-        try (var scope = tls.continuationScope()) {
-            // TODO separate entry point: cannot invokeDirect because the # of arguments doesn't
-            // match the signature
-            meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getCallTarget().call(stack);
-        } catch (UnwindContinuationException unwind) {
-            assert unwind.getContinuation() == self;
-            meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, unwind.head);
-            // Allow reporting of stepping in this thread again. It was blocked by the call to
-            // suspend0()
-            tls.enableSingleStepping();
+            // The entry node will unpack the head frame record into the stack and then pass the
+            // remaining records into the bytecode interpreter, which will then pass them down the
+            // stack until everything is fully unwound.
+            try (var scope = tls.continuationScope()) {
+                rewind.call(stack);
+            } catch (UnwindContinuationException unwind) {
+                assert unwind.getContinuation() == self;
+                meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, unwind.head);
+                // Allow reporting of stepping in this thread again. It was blocked by the call to
+                // suspend0()
+                tls.enableSingleStepping();
+            }
         }
     }
 
-    @SuppressWarnings("try")
     @Substitution(hasReceiver = true)
-    static void start0(StaticObject self, @Inject Meta meta) {
-        EspressoLanguage language = meta.getLanguage();
-        // This method is an intrinsic and the act of invoking one of those blocks the ability
-        // to call suspend, so we have to undo that first.
-        EspressoThreadLocalState tls = language.getThreadLocalState();
-        if (tls.isInContinuation()) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Cannot resume a continuation while already running in a continuation.");
-        }
+    abstract static class Start0 extends SubstitutionNode {
+        abstract void execute(StaticObject self);
 
-        try (var scope = tls.continuationScope()) {
-            // The run method is private in Continuation and is the continuation delimiter. Frames
-            // from run onwards will be unwound on suspend, and rewound on resume.
-            meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(self);
-        } catch (UnwindContinuationException unwind) {
-            assert unwind.getContinuation() == self;
-            // Guest called suspend(). By the time we get here the frame info has been gathered up
-            // into host-side objects so we just need to copy the data into the guest world.
-            meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, unwind.head);
-            // Allow reporting of stepping in this thread again. It was blocked by the call to
-            // suspend0()
-            tls.enableSingleStepping();
+        @SuppressWarnings("try")
+        @Specialization
+        void start0(StaticObject self,
+                        @Bind("getMeta()") Meta meta, @Bind("getLanguage()") EspressoLanguage lang,
+                        @Cached("create(meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getCallTarget())") DirectCallNode runCall) {
+            // This method is an intrinsic and the act of invoking one of those blocks the ability
+            // to call suspend, so we have to undo that first.
+            EspressoThreadLocalState tls = lang.getThreadLocalState();
+            if (tls.isInContinuation()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Cannot resume a continuation while already running in a continuation.");
+            }
+
+            try (var scope = tls.continuationScope()) {
+                // The run method is private in Continuation and is the continuation delimiter.
+                // Frames from run onwards will be unwound on suspend, and rewound on resume.
+                runCall.call(self);
+            } catch (UnwindContinuationException unwind) {
+                assert unwind.getContinuation() == self;
+                // Guest called suspend(). By the time we get here the frame info has been gathered
+                // up into host-side objects so we just need to copy the data into the guest world.
+                meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, unwind.head);
+                // Allow reporting of stepping in this thread again. It was blocked by the call to
+                // suspend0()
+                tls.enableSingleStepping();
+            }
         }
     }
 

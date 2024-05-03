@@ -603,6 +603,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         var hostFrameRecord = getRoot().getContinuationHostFrameRecord(frame);
         assert hostFrameRecord != null;  // If this fires this class has been edited
         var nextFrameRecord = hostFrameRecord.next;
+        // Clear cookie so the records can be reclaimed.
+        getRoot().clearCookie(frame);
 
         int slotsNeededForReturnType;
         if (nextFrameRecord != null) {

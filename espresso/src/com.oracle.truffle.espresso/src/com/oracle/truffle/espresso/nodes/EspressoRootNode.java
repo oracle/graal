@@ -251,6 +251,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return null;
     }
 
+    public final void clearCookie(Frame frame) {
+        frame.setAuxiliarySlot(cookieSlot, null);
+    }
+
     private FrameCookie getCookie(Frame frame) {
         initCookieSlot(frame);
         return (FrameCookie) frame.getAuxiliarySlot(cookieSlot);
