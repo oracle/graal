@@ -134,17 +134,17 @@ public final class SerialGCOptions {
 
     @Fold
     public static boolean useCompactingOldGen() {
-        if (ConcealedOptions.CompactingOldGen.getValue()) {
-            if (!useRememberedSet()) {
-                throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
-                                SubstrateOptionsParser.commandArgument(ConcealedOptions.UseRememberedSet, "+"));
-            }
-            if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue() > ObjectMoveInfo.MAX_CHUNK_SIZE) {
-                throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
-                                SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value below or equal to " + ObjectMoveInfo.MAX_CHUNK_SIZE + ">"));
-            }
-            return true;
+        if (SubstrateOptions.UseEpsilonGC.getValue() || !ConcealedOptions.CompactingOldGen.getValue()) {
+            return false;
         }
-        return false;
+        if (!useRememberedSet()) {
+            throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
+                            SubstrateOptionsParser.commandArgument(ConcealedOptions.UseRememberedSet, "+"));
+        }
+        if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue() > ObjectMoveInfo.MAX_CHUNK_SIZE) {
+            throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
+                            SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value below or equal to " + ObjectMoveInfo.MAX_CHUNK_SIZE + ">"));
+        }
+        return true;
     }
 }
