@@ -732,24 +732,8 @@ public final class ModuleLayerFeature implements InternalFeature {
         public Module getRuntimeModuleForHostedModule(Module hostedModule, boolean optional) {
             if (hostedModule.isNamed()) {
                 return getRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), optional);
-            }
-
-            /*
-             * EVERYONE and ALL_UNNAMED modules are unnamed module instances that are used as
-             * markers throughout the JDK and therefore we need them in the image heap.
-             *
-             * We make an optimization that all hosted unnamed modules except EVERYONE module have
-             * the same runtime unnamed module. This does not break the module visibility semantics
-             * as unnamed modules can access all named modules, and visibility modifications that
-             * include unnamed modules do not depend on the actual instance, but only on the fact
-             * that the module is unnamed e.g., calling addExports from/to an unnamed module will do
-             * nothing.
-             */
-
-            if (hostedModule == everyoneModule) {
-                return everyoneModule;
             } else {
-                return allUnnamedModule;
+                return hostedModule;
             }
         }
 
@@ -779,7 +763,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             if (hostedModule.isNamed()) {
                 return getOrCreateRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), hostedModule.getDescriptor());
             } else {
-                return hostedModule == everyoneModule ? everyoneModule : allUnnamedModule;
+                return hostedModule;
             }
         }
 
