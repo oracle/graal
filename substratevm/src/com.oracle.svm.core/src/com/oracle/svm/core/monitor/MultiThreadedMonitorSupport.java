@@ -39,6 +39,7 @@ import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.annotate.Alias;
@@ -471,15 +472,20 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             if (existingMonitor != null || !createIfNotExisting) {
                 return existingMonitor;
             }
-            long startTicks = JfrTicks.elapsedTicks();
-            JavaMonitor newMonitor = newMonitorLock();
-            JavaMonitor previousEntry = additionalMonitors.put(obj, newMonitor);
-            VMError.guarantee(previousEntry == null, "Replaced monitor in secondary storage map");
-            JavaMonitorInflateEvent.emit(obj, startTicks, cause);
-            return newMonitor;
+            return createMonitorAndAddToMap(obj, cause);
         } finally {
             additionalMonitorsLock.unlock();
         }
+    }
+
+    @NeverInline("Prevent deadlocks in case of an OutOfMemoryError.")
+    private JavaMonitor createMonitorAndAddToMap(Object obj, MonitorInflationCause cause) {
+        long startTicks = JfrTicks.elapsedTicks();
+        JavaMonitor newMonitor = newMonitorLock();
+        JavaMonitor previousEntry = additionalMonitors.put(obj, newMonitor);
+        VMError.guarantee(previousEntry == null, "Replaced monitor in secondary storage map");
+        JavaMonitorInflateEvent.emit(obj, startTicks, cause);
+        return newMonitor;
     }
 
     protected JavaMonitor newMonitorLock() {

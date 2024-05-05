@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -208,6 +209,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isYellowZoneAvailable() {
         return yellowZoneStateTL.get() > STATE_YELLOW_ENABLED;
     }
