@@ -90,7 +90,7 @@ public class JsonBuilder {
      *
      * @see ObjectBuilder
      */
-    public static ObjectBuilder object(JsonWriter writer) throws IOException {
+    static ObjectBuilder object(JsonWriter writer) throws IOException {
         return value(writer).object();
     }
 
@@ -99,7 +99,7 @@ public class JsonBuilder {
      *
      * @see ArrayBuilder
      */
-    public static ArrayBuilder array(JsonWriter writer) throws IOException {
+    static ArrayBuilder array(JsonWriter writer) throws IOException {
         return value(writer).array();
     }
 
@@ -108,7 +108,7 @@ public class JsonBuilder {
      *
      * @see ValueBuilder
      */
-    public static ValueBuilder value(JsonWriter writer) {
+    static ValueBuilder value(JsonWriter writer) {
         return new JsonBuilder(writer).new ValueBuilder(null);
     }
 
