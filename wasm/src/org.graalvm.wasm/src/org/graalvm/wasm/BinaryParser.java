@@ -1525,7 +1525,7 @@ public class BinaryParser extends BinaryStreamParser {
                 break;
             case Instructions.ATOMIC:
                 checkThreadsSupport(opcode);
-                int atomicOpcode = read1() & 0xFF;
+                int atomicOpcode = readUnsignedInt32();
                 state.addAtomicFlag();
                 switch (atomicOpcode) {
                     case Instructions.ATOMIC_NOTIFY:
