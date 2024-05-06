@@ -34,13 +34,14 @@ import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 
 public interface ReflectionHostedSupport {
     Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses();
 
-    Map<AnalysisField, Field> getReflectionFields();
+    Map<AnalysisField, ConditionalRuntimeValue<Field>> getReflectionFields();
 
-    Map<AnalysisMethod, Executable> getReflectionExecutables();
+    Map<AnalysisMethod, ConditionalRuntimeValue<Executable>> getReflectionExecutables();
 
     Object getAccessor(AnalysisMethod method);
 

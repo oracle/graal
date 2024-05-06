@@ -34,11 +34,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 
 import sun.reflect.generics.repository.MethodRepository;
@@ -60,7 +62,15 @@ public final class Target_java_lang_reflect_Method {
 
     @Alias //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
-    Target_jdk_internal_reflect_MethodAccessor methodAccessor;
+    public Target_jdk_internal_reflect_MethodAccessor methodAccessor;
+
+    /**
+     * We need this indirection to use {@link #acquireMethodAccessor()} for checking if run-time
+     * conditions for this method are satisfied.
+     */
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset) //
+    Target_jdk_internal_reflect_MethodAccessor methodAccessorFromMetadata;
 
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
@@ -71,12 +81,18 @@ public final class Target_java_lang_reflect_Method {
     @Alias
     native Target_java_lang_reflect_Method copy();
 
+    /**
+     * Encoded field, will fetch the value from {@link #methodAccessorFromMetadata} and check the
+     * conditions.
+     */
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
-        if (methodAccessor == null) {
+        assert methodAccessorFromMetadata != null || methodAccessor != null : "This method has likely be called without checking if methodAccessor is null so it is in inconsistent state.";
+        RuntimeConditionSet conditions = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).conditions;
+        if (methodAccessorFromMetadata == null || !conditions.satisfied()) {
             throw MissingReflectionRegistrationUtils.errorForQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
         }
-        return methodAccessor;
+        return methodAccessorFromMetadata;
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {

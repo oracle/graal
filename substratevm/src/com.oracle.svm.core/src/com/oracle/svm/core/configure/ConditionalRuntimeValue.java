@@ -24,13 +24,8 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.util.Set;
-import java.util.function.Predicate;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.util.VMError;
 
 /**
  * A image-heap stored {@link ConditionalRuntimeValue#value} that is guarded by run-time computed
@@ -42,20 +37,11 @@ import com.oracle.svm.core.util.VMError;
  * @param <T> type of the stored value.
  */
 public final class ConditionalRuntimeValue<T> {
-    private final Class<?>[] conditions;
-    private boolean satisfied;
+    RuntimeConditionSet conditions;
     volatile T value;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public ConditionalRuntimeValue(Set<Class<?>> conditions, T value) {
-        if (!conditions.isEmpty()) {
-            this.conditions = conditions.toArray(Class[]::new);
-        } else {
-            this.conditions = null;
-            satisfied = true;
-        }
-
-        VMError.guarantee(conditions.stream().noneMatch(c -> c.equals(Object.class)), "java.lang.Object must not be in conditions as it is always true.");
+    public ConditionalRuntimeValue(RuntimeConditionSet conditions, T value) {
+        this.conditions = conditions;
         this.value = value;
     }
 
@@ -64,25 +50,20 @@ public final class ConditionalRuntimeValue<T> {
         return value;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public Set<Class<?>> getConditions() {
-        return conditions == null ? Set.of() : Set.of(conditions);
+    public RuntimeConditionSet getConditions() {
+        return conditions;
     }
 
-    public T getValue(Predicate<Class<?>> conditionSatisfied) {
-        if (satisfied) {
+    public T getValue() {
+        if (conditions.satisfied()) {
             return value;
         } else {
-            for (Class<?> element : conditions) {
-                if (conditionSatisfied.test(element)) {
-                    satisfied = true;
-                    break;
-                }
-            }
-            if (satisfied) {
-                return value;
-            }
+            return null;
         }
-        return null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void updateValue(T newValue) {
+        this.value = newValue;
     }
 }

@@ -100,15 +100,14 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
             checkHasExactlyOneAttribute(data, "serialization descriptor object", List.of(TYPE_KEY, NAME_KEY));
         }
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data);
-        var condition = conditionResolver.resolveCondition(unresolvedCondition);
-        if (!condition.isPresent()) {
+        Optional<ConfigurationTypeDescriptor> targetSerializationClass = parseTypeOrName(data);
+        if (targetSerializationClass.isEmpty()) {
             return;
         }
 
-        Optional<ConfigurationTypeDescriptor> targetSerializationClass;
-        targetSerializationClass = parseType(data);
-        if (targetSerializationClass.isEmpty()) {
+        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, targetSerializationClass.get().isType());
+        var condition = conditionResolver.resolveCondition(unresolvedCondition);
+        if (!condition.isPresent()) {
             return;
         }
 

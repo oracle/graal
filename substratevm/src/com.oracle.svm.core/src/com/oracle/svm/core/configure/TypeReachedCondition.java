@@ -22,57 +22,54 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.configure;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.Objects;
+import java.util.Set;
 
-import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.core.hub.DynamicHub;
 
-public record NamedConfigurationTypeDescriptor(String name, boolean type) implements ConfigurationTypeDescriptor {
+/**
+ * This condition allows a runtime value to be access if {@link #type} is reached at run time.
+ */
+public final class TypeReachedCondition implements RuntimeCondition {
+    final Class<?> type;
 
-    public NamedConfigurationTypeDescriptor(String name) {
-        this(name, false);
-    }
-
-    public NamedConfigurationTypeDescriptor(String name, boolean type) {
-        this.name = ConfigurationTypeDescriptor.checkQualifiedJavaName(name);
+    TypeReachedCondition(Class<?> type) {
         this.type = type;
     }
 
     @Override
-    public boolean isType() {
-        return type;
+    public boolean isSatisfied() {
+        return DynamicHub.fromClass(type).isReached();
     }
 
     @Override
-    public Kind getDescriptorType() {
-        return Kind.NAMED;
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        TypeReachedCondition that = (TypeReachedCondition) o;
+        return Objects.equals(type, that.type);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(type);
+    }
+
+    @Override
+    public Set<Class<?>> getTypesForEncoding() {
+        return Set.of(type);
     }
 
     @Override
     public String toString() {
-        return name;
+        return type.getName();
     }
-
-    @Override
-    public Collection<String> getAllQualifiedJavaNames() {
-        return Collections.singleton(name);
-    }
-
-    @Override
-    public int compareTo(ConfigurationTypeDescriptor other) {
-        if (other instanceof NamedConfigurationTypeDescriptor namedOther) {
-            return name.compareTo(namedOther.name);
-        } else {
-            return getDescriptorType().compareTo(other.getDescriptorType());
-        }
-    }
-
-    @Override
-    public void printJson(JsonWriter writer) throws IOException {
-        writer.quote(name);
-    }
-
 }

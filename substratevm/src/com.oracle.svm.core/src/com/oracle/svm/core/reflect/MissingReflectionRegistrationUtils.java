@@ -136,7 +136,7 @@ public final class MissingReflectionRegistrationUtils {
                         ERROR_EMPHASIS_INDENT + elementDescriptor +
                         System.lineSeparator() +
                         System.lineSeparator() +
-                        " without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
+                        "without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
                         (note != null ? "Note: " + note + " " : "") +
                         "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#" + helpLink + " for help.";
     }
