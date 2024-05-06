@@ -46,6 +46,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.frame.Frame;
 
 @RunWith(Parameterized.class)
@@ -93,7 +95,9 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
         });
 
         Frame frame = (Frame) foo.getCallTarget().call();
-        Object[] locals = foo.getLocals(frame);
+        BytecodeNode bytecode = foo.getBytecodeNode();
+        Instruction instr = bytecode.getInstructionsAsList().get(6);
+        Object[] locals = foo.getBytecodeNode().getLocalValues(instr.getBytecodeIndex(), frame);
         assertArrayEquals(new Object[]{42L, "abcd", true}, locals);
     }
 
@@ -139,7 +143,9 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
         });
 
         Frame frame = (Frame) foo.getCallTarget().call();
-        Object[] locals = foo.getLocals(frame);
+        BytecodeNode bytecode = foo.getBytecodeNode();
+        Instruction instr = bytecode.getInstructionsAsList().get(6);
+        Object[] locals = bytecode.getLocalValues(instr.getBytecodeIndex(), frame);
         assertArrayEquals(new Object[]{42L, "abcd", null}, locals);
     }
 }

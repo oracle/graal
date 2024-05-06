@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -53,7 +54,10 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
  * they are still undefined. Executing it throws an
  * {@link SLUndefinedNameException#undefinedFunction exception}.
  */
-public class SLUndefinedFunctionRootNode extends SLRootNode {
+public final class SLUndefinedFunctionRootNode extends SLRootNode {
+
+    private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
+
     private final TruffleString name;
 
     public SLUndefinedFunctionRootNode(SLLanguage language, TruffleString name) {
@@ -74,6 +78,20 @@ public class SLUndefinedFunctionRootNode extends SLRootNode {
     @Override
     public SLExpressionNode getBodyNode() {
         return null;
+    }
+
+    @Override
+    public Object[] getLocalNames(FrameInstance frame) {
+        return EMPTY_OBJECT_ARRAY;
+    }
+
+    @Override
+    public Object[] getLocalValues(FrameInstance frame) {
+        return EMPTY_OBJECT_ARRAY;
+    }
+
+    @Override
+    public void setLocalValues(FrameInstance frame, Object[] args) {
     }
 
     @Override

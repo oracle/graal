@@ -42,14 +42,11 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -91,7 +88,6 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                     return null;
                 }
                 CallTarget callTarget = frameInstance.getCallTarget();
-                Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
                 RootNode rn = ((RootCallTarget) callTarget).getRootNode();
                 // ignore internal or interop stack frames
                 if (rn.isInternal() || rn.getLanguageInfo() == null) {
@@ -102,20 +98,25 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                 }
                 str.appendStringUncached(FRAME);
                 str.appendStringUncached(getRootNodeName(rn));
-                boolean isOperation = rn instanceof BytecodeRootNode;
-                FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
-                int count = frameDescriptor.getNumberOfSlots();
-                for (int i = 0; i < count; i++) {
-                    TruffleString slotName = (TruffleString) frameDescriptor.getSlotName(i);
-                    if (isOperation && slotName == null) {
-                        // The operation interpreter allocates space for its own locals. We can
-                        // ignore those.
-                        continue;
+
+                if (rn instanceof SLRootNode slRoot) {
+                    Object[] values = slRoot.getLocalValues(frameInstance);
+                    Object[] names = slRoot.getLocalNames(frameInstance);
+                    for (int i = 0; i < values.length; i++) {
+                        TruffleString slotName = (TruffleString) names[i];
+                        if (slotName == null) {
+                            // The operation interpreter allocates space for its own locals. We can
+                            // ignore those.
+                            continue;
+                        }
+                        Object value = values[i];
+                        if (value != null) {
+                            str.appendStringUncached(SEPARATOR);
+                            str.appendStringUncached(slotName == null ? UNKNOWN : slotName);
+                            str.appendStringUncached(EQUALS);
+                            str.appendStringUncached(SLStrings.fromObject(value));
+                        }
                     }
-                    str.appendStringUncached(SEPARATOR);
-                    str.appendStringUncached(slotName == null ? UNKNOWN : slotName);
-                    str.appendStringUncached(EQUALS);
-                    str.appendStringUncached(SLStrings.fromObject(frame.getValue(i)));
                 }
                 return null;
             }

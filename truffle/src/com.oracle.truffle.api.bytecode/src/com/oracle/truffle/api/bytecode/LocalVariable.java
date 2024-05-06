@@ -40,82 +40,89 @@
  */
 package com.oracle.truffle.api.bytecode;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.library.DynamicDispatchLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 
 /**
- * Class that implements tag tree {@link NodeLibrary} dispatch for tag tree items. This class is
- * only intended to be used when implementing a custom {@link GenerateBytecode#tagTreeNodeLibrary()
- * tag tree node library}.
- *
- * <p>
- * All implementations of this class are intended to be generated and are not supposed to be
- * implemented manually.
- *
  * @since 24.1
  */
-@ExportLibrary(DynamicDispatchLibrary.class)
-public abstract class TagTreeNode extends Node implements TagTree {
+public abstract class LocalVariable {
 
     /**
-     * Allows to access the language instance associated with this node.
+     * @since 24.1
+     */
+    public LocalVariable(Object token) {
+        BytecodeRootNodes.checkToken(token);
+    }
+
+    public int getStartIndex() {
+        return -1;
+    }
+
+    public int getEndIndex() {
+        return -1;
+    }
+
+    /**
+     * Returns the local index used when accessing local values with a local accessor like
+     * {@link BytecodeNode#getLocalValue(int, Frame, int)}. Always returns an integer greater or
+     * equal to zero. Note that the local offset can only be read if the current bytecode index is
+     * between {@link #getStartIndex()} and {@link #getEndIndex()}(exclusive).
      *
      * @since 24.1
      */
-    protected abstract Class<? extends TruffleLanguage<?>> getLanguage();
+    public abstract int getLocalOffset();
+
+    public abstract int getLocalIndex();
 
     /**
-     * Returns the currently used {@link NodeLibrary} exports for this tag library.
+     * Returns the type profile that was collected for this local. Returns <code>null</code> if no
+     * profile was yet collected or the interpreter does not collect profiles.
      *
      * @since 24.1
      */
-    @ExportMessage
-    protected Class<?> dispatch() {
-        return TagTreeNodeExports.class;
-    }
+    public abstract FrameSlotKind getTypeProfile();
 
-    public BytecodeNode getBytecodeNode() {
-        return BytecodeNode.get(this);
-    }
+    public abstract Object getInfo();
+
+    public abstract Object getName();
 
     @Override
     public String toString() {
-        StringBuilder b = new StringBuilder();
-        b.append(format(this));
-
-        // source section is only accessible if adopted
-        if (getParent() != null) {
-            SourceSection section = getSourceSection();
-            if (section != null) {
-                b.append(" ");
-                b.append(SourceInformation.formatSourceSection(section, 60));
-            }
-        }
-        return b.toString();
-    }
-
-    static String format(TagTreeNode b) {
-        return String.format("(%04x .. %04x %s)", b.getStartBci(), b.getEndBci(), b.getTagsString());
-    }
-
-    final String getTagsString() {
-        StringBuilder b = new StringBuilder();
+        StringBuilder b = new StringBuilder("LocalVariable[");
+        int startIndex = getStartIndex();
         String sep = "";
-        for (Class<? extends Tag> tag : getTags()) {
-            String tagId = Tag.getIdentifier(tag);
-            if (tagId == null) {
-                tagId = tag.getSimpleName();
-            }
-            b.append(sep);
-            b.append(tagId);
-            sep = ",";
+        if (startIndex != -1) {
+            b.append(String.format("%03x-%03x", getStartIndex(), getEndIndex()));
+            sep = ", ";
         }
+
+        b.append(sep);
+        b.append("index=");
+        b.append(getLocalIndex());
+
+        b.append(sep);
+        b.append("offset=");
+        b.append(getLocalOffset());
+
+        Object name = getName();
+        if (name != null) {
+            b.append(", name=");
+            b.append(name);
+        }
+
+        Object info = getInfo();
+        if (info != null) {
+            b.append(", info=");
+            b.append(info);
+        }
+
+        FrameSlotKind kind = getTypeProfile();
+        if (kind != null) {
+            b.append(", profile=");
+            b.append(kind.toString());
+        }
+        b.append("]");
         return b.toString();
     }
 

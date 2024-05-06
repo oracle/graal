@@ -56,7 +56,6 @@ import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.Instruction;
-import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 

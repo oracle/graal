@@ -54,6 +54,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * @since 24.1
  */
 public abstract class ContinuationRootNode extends RootNode {
+
     protected ContinuationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
@@ -72,11 +73,6 @@ public abstract class ContinuationRootNode extends RootNode {
      */
     public abstract BytecodeLocation getLocation();
 
-    /**
-     * Returns the locals stored in the frame at the point that execution was suspended.
-     *
-     * @see BytecodeRootNode#getLocals
-     * @since 24.1
-     */
-    public abstract Object[] getLocals(Frame frame);
+    protected abstract Frame findFrame(Frame frame);
+
 }

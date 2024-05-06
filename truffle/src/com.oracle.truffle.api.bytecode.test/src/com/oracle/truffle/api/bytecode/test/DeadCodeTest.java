@@ -779,6 +779,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.argument",
                         "pop",
                         "throw",
+                        "clear.local",
                         "load.constant",
                         "return");
         node.getBytecodeNode().getInstructionsAsList().stream() //

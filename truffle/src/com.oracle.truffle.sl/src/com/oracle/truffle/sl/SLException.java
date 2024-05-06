@@ -95,7 +95,6 @@ public class SLException extends AbstractBytecodeTruffleException {
         result.append("Type error");
 
         SLException ex = new SLException("", location, bci);
-
         if (location != null) {
             SourceSection ss = ex.getEncapsulatingSourceSection();
             if (ss != null && ss.isAvailable()) {

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugValue.HeapValue;
+import com.oracle.truffle.api.debug.SuspendedContext.CallerEventContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
@@ -315,7 +316,7 @@ public final class DebugStackFrame {
             if (!NodeLibrary.getUncached().hasScope(node, frame)) {
                 return null;
             }
-            Object scope = NodeLibrary.getUncached().getScope(node, frame, isEnter());
+            Object scope = NodeLibrary.getUncached().getScope(node, frame, isEnterScope());
             return new DebugScope(scope, session, event, node, frame, root);
         } catch (ThreadDeath td) {
             throw td;
@@ -324,8 +325,17 @@ public final class DebugStackFrame {
         }
     }
 
-    private boolean isEnter() {
-        return depth == 0 && SuspendAnchor.BEFORE.equals(event.getSuspendAnchor());
+    private boolean isEnterScope() {
+        if (depth == 0 && !(event.getContext() instanceof CallerEventContext)) {
+            return SuspendAnchor.BEFORE.equals(event.getSuspendAnchor());
+        } else {
+            /*
+             * If we are on a stack trace element and not at the current location or at a caller
+             * event context all we can do is to use the enter scope, as the leave scope might have
+             * variables that are not yet in scope.
+             */
+            return true;
+        }
     }
 
     /**

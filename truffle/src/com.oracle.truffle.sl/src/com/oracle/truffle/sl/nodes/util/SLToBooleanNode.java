@@ -46,6 +46,9 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
@@ -55,6 +58,7 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 @NodeInfo(shortName = "toBoolean")
 @OperationProxy.Proxyable
 public abstract class SLToBooleanNode extends SLExpressionNode {
+
     @Override
     public abstract boolean executeBoolean(VirtualFrame vrame);
 
@@ -63,8 +67,20 @@ public abstract class SLToBooleanNode extends SLExpressionNode {
         return value;
     }
 
+    @Specialization(guards = "lib.isBoolean(value)", limit = "3")
+    public static boolean doInterop(Object value,
+                    @Bind("this") Node node, @Bind("$bci") int bci,
+                    @CachedLibrary("value") InteropLibrary lib) {
+        try {
+            return lib.asBoolean(value);
+        } catch (UnsupportedMessageException e) {
+            return doFallback(value, node, bci);
+        }
+    }
+
     @Fallback
     public static boolean doFallback(Object value, @Bind("this") Node node, @Bind("$bci") int bci) {
         throw SLException.typeError(node, "toBoolean", bci, value);
     }
+
 }

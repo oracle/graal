@@ -38,18 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode;
+package com.oracle.truffle.sl.bytecode;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.TagTreeNode;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -59,19 +63,38 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLStrings;
 
 @ExportLibrary(value = NodeLibrary.class, receiverType = TagTreeNode.class)
-@SuppressWarnings({"static-method"})
-final class TagTreeNodeExports {
+@SuppressWarnings({"static-method", "unused"})
+final class SLBytecodeScopeExports {
 
     @ExportMessage
-    @SuppressWarnings("unused")
+    static boolean hasRootInstance(TagTreeNode node, Frame frame) {
+        return getRootInstanceSlowPath(node) != null;
+    }
+
+    @ExportMessage
+    static Object getRootInstance(TagTreeNode node, Frame frame) throws UnsupportedMessageException {
+        // The instance of the current RootNode is a function of the same name.
+        return getRootInstanceSlowPath(node);
+    }
+
+    @TruffleBoundary
+    private static Object getRootInstanceSlowPath(TagTreeNode node) {
+        return SLContext.get(node).getFunctionRegistry().getFunction(SLStrings.getSLRootName(node.getRootNode()));
+    }
+
+    @ExportMessage
     static boolean hasScope(TagTreeNode node, Frame frame) {
         return true;
     }
 
     @ExportMessage
-    static Object getScope(TagTreeNode node, Frame frame, boolean nodeEnter) {
+    static Object getScope(TagTreeNode node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
         return new Scope(node, frame, nodeEnter);
     }
 
@@ -82,6 +105,8 @@ final class TagTreeNodeExports {
         @NeverDefault final TagTreeNode node;
         @NeverDefault final int bci;
 
+        final boolean rootScope;
+
         final Frame frame;
 
         private Map<String, Integer> nameToIndex;
@@ -90,14 +115,16 @@ final class TagTreeNodeExports {
             this.bytecode = node.getBytecodeNode();
             this.node = node;
             this.frame = frame;
+            this.rootScope = node.hasTag(RootTag.class);
             this.bci = nodeEnter ? node.getStartBci() : node.getEndBci();
         }
 
         @ExportMessage
         boolean accepts(@Shared @Cached("this.bytecode") BytecodeNode cachedBytecode,
                         @Shared @Cached("this.node") TagTreeNode cachedNode,
-                        @Shared @Cached("this.bci") int cachedBci) {
-            return this.bytecode == cachedBytecode && this.bci == cachedBci && this.node == cachedNode;
+                        @Shared @Cached("this.bci") int cachedBci,
+                        @Shared @Cached("this.rootScope") boolean cachedRootScope) {
+            return this.bytecode == cachedBytecode && this.bci == cachedBci && this.node == cachedNode && this.rootScope == cachedRootScope;
         }
 
         @ExportMessage
@@ -107,8 +134,8 @@ final class TagTreeNodeExports {
 
         @ExportMessage
         Class<? extends TruffleLanguage<?>> getLanguage(
-                        @Shared @Cached("this.node") TagTreeNode cachedNode) {
-            return cachedNode.getLanguage();
+                        @Shared @Cached("this.node") TagTreeNode cachedNode) throws UnsupportedMessageException {
+            return SLLanguage.class;
         }
 
         @ExportMessage
@@ -124,40 +151,47 @@ final class TagTreeNodeExports {
         @ExportMessage
         static class ReadMember {
 
-            @SuppressWarnings("unused")
             @Specialization(guards = {"equalsString(cachedMember, member)"}, limit = "5")
             static Object doCached(Scope scope, String member,
                             @Shared @Cached("scope.bytecode") BytecodeNode cachedBytecode,
                             @Shared @Cached("scope.bci") int cachedBci,
+                            @Shared @Cached(value = "scope.rootScope", neverDefault = false) boolean cachedRootScope,
                             @Cached("member") String cachedMember,
                             @Cached("scope.slotToIndex(cachedMember)") int index) throws UnsupportedMessageException {
-                if (index == -1 || scope.frame == null) {
+                if (index == -1) {
                     throw UnsupportedMessageException.create();
                 }
-                Object o = cachedBytecode.getLocalValue(cachedBci, scope.frame, index);
-                if (o == null) {
-                    o = Null.INSTANCE;
+                Frame frame = scope.frame;
+                if (frame == null) {
+                    return SLNull.SINGLETON;
                 }
-                return o;
+                if (cachedRootScope) {
+                    return frame.getArguments()[index];
+                } else {
+                    Object o = cachedBytecode.getLocalValue(cachedBci, frame, index);
+                    if (o == null) {
+                        o = SLNull.SINGLETON;
+                    }
+                    return o;
+                }
             }
 
             @Specialization(replaces = "doCached")
             @TruffleBoundary
             static Object doGeneric(Scope scope, String member) throws UnsupportedMessageException {
-                return doCached(scope, member, scope.bytecode, scope.bci, member, scope.slotToIndex(member));
+                return doCached(scope, member, scope.bytecode, scope.bci, scope.rootScope, member, scope.slotToIndex(member));
             }
 
         }
 
         @ExportMessage
         Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return new Members(bytecode, bci);
+            return new Members(this);
         }
 
         @ExportMessage
         static class IsMemberReadable {
 
-            @SuppressWarnings("unused")
             @Specialization(guards = {"equalsString(cachedMember, member)"}, limit = "5")
             static boolean doCached(Scope scope, String member,
                             @Cached("member") String cachedMember,
@@ -175,7 +209,6 @@ final class TagTreeNodeExports {
         @ExportMessage
         static class IsMemberModifiable {
 
-            @SuppressWarnings("unused")
             @Specialization(guards = {"equalsString(cachedMember, member)"}, limit = "5")
             static boolean doCached(Scope scope, String member,
                             @Cached("member") String cachedMember,
@@ -192,23 +225,27 @@ final class TagTreeNodeExports {
 
         @ExportMessage
         static class WriteMember {
-            @SuppressWarnings("unused")
             @Specialization(guards = {"equalsString(cachedMember, member)"}, limit = "5")
             static void doCached(Scope scope, String member, Object value,
                             @Shared @Cached("scope.bytecode") BytecodeNode cachedBytecode,
                             @Shared @Cached("scope.bci") int cachedBci,
+                            @Shared @Cached(value = "scope.rootScope", neverDefault = false) boolean cachedRootScope,
                             @Cached("member") String cachedMember,
                             @Cached("scope.slotToIndex(cachedMember)") int index) throws UnknownIdentifierException, UnsupportedMessageException {
                 if (index == -1 || scope.frame == null) {
                     throw UnsupportedMessageException.create();
                 }
-                cachedBytecode.setLocalValue(cachedBci, scope.frame, index, value);
+                if (cachedRootScope) {
+                    scope.frame.getArguments()[index] = value;
+                } else {
+                    cachedBytecode.setLocalValue(cachedBci, scope.frame, index, value);
+                }
             }
 
             @Specialization(replaces = "doCached")
             @TruffleBoundary
             static void doGeneric(Scope scope, String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
-                doCached(scope, member, value, scope.bytecode, scope.bci, member, scope.slotToIndex(member));
+                doCached(scope, member, value, scope.bytecode, scope.bci, scope.rootScope, member, scope.slotToIndex(member));
             }
         }
 
@@ -266,26 +303,34 @@ final class TagTreeNodeExports {
         private Map<String, Integer> createNameToIndex() {
             Map<String, Integer> locals = new LinkedHashMap<>();
             int index = 0;
-            for (Object local : this.bytecode.getLocalNames(this.bci)) {
-                String name = null;
-                if (local != null) {
-                    try {
-                        name = InteropLibrary.getUncached().asString(local);
-                    } catch (UnsupportedMessageException e) {
-                    }
-                }
-                if (name == null) {
-                    name = "local" + index;
-                }
+            Object[] names;
+            if (this.rootScope) {
+                SLBytecodeRootNode root = (SLBytecodeRootNode) this.node.getBytecodeNode().getBytecodeRootNode();
+                names = root.getArgumentNames();
+            } else {
+                names = this.bytecode.getLocalNames(this.bci);
+            }
+            for (Object local : names) {
+                String name = resolveLocalName(local);
                 locals.put(name, index);
                 index++;
             }
             return locals;
         }
 
-        @TruffleBoundary
+        private String resolveLocalName(Object local) {
+            String name = null;
+            if (local != null) {
+                try {
+                    name = InteropLibrary.getUncached().asString(local);
+                } catch (UnsupportedMessageException e) {
+                }
+            }
+            return name;
+        }
+
         private Members createMembers() {
-            return new Members(this.bytecode, this.bci);
+            return new Members(this);
         }
 
         @TruffleBoundary
@@ -297,12 +342,11 @@ final class TagTreeNodeExports {
 
     @ExportLibrary(InteropLibrary.class)
     static final class Members implements TruffleObject {
-        final BytecodeNode bytecode;
-        final int bci;
 
-        Members(BytecodeNode bytecode, int bci) {
-            this.bytecode = bytecode;
-            this.bci = bci;
+        final Scope scope;
+
+        Members(Scope scope) {
+            this.scope = scope;
         }
 
         @ExportMessage
@@ -313,7 +357,11 @@ final class TagTreeNodeExports {
         @ExportMessage
         @TruffleBoundary
         long getArraySize() {
-            return bytecode.getLocalCount(bci);
+            if (scope.rootScope) {
+                return ((SLBytecodeRootNode) scope.bytecode.getBytecodeRootNode()).parameterCount;
+            } else {
+                return scope.bytecode.getLocalCount(scope.bci);
+            }
         }
 
         @ExportMessage
@@ -323,12 +371,10 @@ final class TagTreeNodeExports {
             if (index < 0 || index >= size) {
                 throw InvalidArrayIndexException.create(index);
             }
-
-            Object localName = bytecode.getLocalName(bci, (int) index);
-            if (localName == null) {
-                return "local" + index;
+            if (scope.rootScope) {
+                return scope.bytecode.getLocals().get((int) index).getName();
             } else {
-                return localName;
+                return scope.bytecode.getLocalName(scope.bci, (int) index);
             }
         }
 
@@ -336,21 +382,6 @@ final class TagTreeNodeExports {
         boolean isArrayElementReadable(long index) {
             return index >= 0 && index < getArraySize();
         }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class Null implements TruffleObject {
-
-        private static final Null INSTANCE = new Null();
-
-        private Null() {
-        }
-
-        @ExportMessage
-        boolean isNull() {
-            return true;
-        }
-
     }
 
 }

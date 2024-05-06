@@ -64,9 +64,10 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
@@ -75,11 +76,10 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -97,7 +97,7 @@ public class LocalHelpersTest {
     @Parameter(0) public Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass;
 
     public static BytecodeLocal makeLocal(BytecodeNodeWithLocalIntrospectionBuilder b, String name) {
-        return b.createLocal(FrameSlotKind.Illegal, name, null);
+        return b.createLocal(name, null);
     }
 
     @SuppressWarnings("unchecked")
@@ -121,7 +121,7 @@ public class LocalHelpersTest {
     public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
                     BytecodeParser<T> builder) {
         BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
-        return nodes.getNode(nodes.count() - 1);
+        return nodes.getNode(0);
     }
 
     public <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(BytecodeParser<T> builder) {
@@ -200,7 +200,7 @@ public class LocalHelpersTest {
             b.endBlock();
 
             BytecodeNodeWithLocalIntrospection rootNode = b.endRoot();
-            rootNode.reservedLocalIndex = rootNode.getLocalIndex(bar);
+            rootNode.reservedLocalIndex = bar.getLocalOffset();
         });
 
         assertEquals(42, root.getCallTarget().call(123, 42));
@@ -499,7 +499,7 @@ public class LocalHelpersTest {
             b.endBlock();
 
             BytecodeNodeWithLocalIntrospection rootNode = b.endRoot();
-            rootNode.reservedLocalIndex = rootNode.getLocalIndex(bar);
+            rootNode.reservedLocalIndex = bar.getLocalOffset();
         });
 
         assertEquals(new Pair(42L, 777L), root.getCallTarget().call(777L));
@@ -585,14 +585,14 @@ public class LocalHelpersTest {
         assertEquals(3, frames.size());
 
         // <anon>
-        assertNull(BytecodeRootNode.getLocals(frames.get(0)));
+        assertNull(BytecodeNode.getLocalValues(frames.get(0)));
 
         // bar
-        Object[] barLocals = BytecodeRootNode.getLocals(frames.get(1));
+        Object[] barLocals = BytecodeNode.getLocalValues(frames.get(1));
         assertArrayEquals(new Object[]{42}, barLocals);
 
         // foo
-        Object[] fooLocals = BytecodeRootNode.getLocals(frames.get(2));
+        Object[] fooLocals = BytecodeNode.getLocalValues(frames.get(2));
         assertArrayEquals(new Object[]{123}, fooLocals);
     }
 
@@ -615,9 +615,9 @@ public class LocalHelpersTest {
         CallTarget collectFrames = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                List<FrameInstance> frames = new ArrayList<>();
+                List<Object[]> frames = new ArrayList<>();
                 Truffle.getRuntime().iterateFrames(f -> {
-                    frames.add(f);
+                    frames.add(BytecodeNode.getLocalValues(f));
                     return null;
                 });
                 return frames;
@@ -627,7 +627,6 @@ public class LocalHelpersTest {
         BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
             b.beginRoot(null);
 
-            b.beginBlock();
             BytecodeLocal y = makeLocal(b, "y");
 
             b.beginStoreLocal(y);
@@ -642,15 +641,11 @@ public class LocalHelpersTest {
             b.endInvoke();
             b.endReturn();
 
-            b.endBlock();
-
             b.endRoot();
         });
 
         BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
             b.beginRoot(null);
-
-            b.beginBlock();
             BytecodeLocal x = makeLocal(b, "x");
 
             b.beginStoreLocal(x);
@@ -669,8 +664,6 @@ public class LocalHelpersTest {
             b.endContinue();
             b.endReturn();
 
-            b.endBlock();
-
             b.endRoot();
         });
 
@@ -678,18 +671,18 @@ public class LocalHelpersTest {
         assertTrue(result instanceof List<?>);
 
         @SuppressWarnings("unchecked")
-        List<FrameInstance> frames = (List<FrameInstance>) result;
+        List<Object[]> frames = (List<Object[]>) result;
         assertEquals(3, frames.size());
 
         // <anon>
-        assertNull(BytecodeRootNode.getLocals(frames.get(0)));
+        assertNull(frames.get(0));
 
         // bar
-        Object[] barLocals = BytecodeRootNode.getLocals(frames.get(1));
+        Object[] barLocals = frames.get(1);
         assertArrayEquals(new Object[]{42}, barLocals);
 
         // foo
-        Object[] fooLocals = BytecodeRootNode.getLocals(frames.get(2));
+        Object[] fooLocals = frames.get(2);
         assertArrayEquals(new Object[]{123}, fooLocals);
     }
 
@@ -702,9 +695,9 @@ public class LocalHelpersTest {
 
             b.beginBlock();
 
-            b.createLocal(FrameSlotKind.Illegal, "foo", fooInfo);
-            b.createLocal(FrameSlotKind.Illegal, "bar", null);
-            b.createLocal(FrameSlotKind.Illegal, null, bazInfo);
+            b.createLocal("foo", fooInfo);
+            b.createLocal("bar", null);
+            b.createLocal(null, bazInfo);
 
             b.beginReturn();
             b.emitLoadConstant(42);
@@ -715,8 +708,8 @@ public class LocalHelpersTest {
             b.endRoot();
         });
 
-        assertArrayEquals(new Object[]{"foo", "bar", null}, root.getLocalNames());
-        assertArrayEquals(new Object[]{fooInfo, null, bazInfo}, root.getLocalInfos());
+        assertArrayEquals(new Object[]{"foo", "bar", null}, root.getBytecodeNode().getLocalNames(0));
+        assertArrayEquals(new Object[]{fooInfo, null, bazInfo}, root.getBytecodeNode().getLocalInfos(0));
     }
 }
 
@@ -736,9 +729,11 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     @Operation
     public static final class GetLocals {
         @Specialization
-        public static Map<String, Object> getLocals(VirtualFrame frame, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
-            Object[] locals = bytecodeRootNode.getLocals(frame);
-            return makeMap(bytecodeRootNode.getLocalNames(), locals);
+        public static Map<String, Object> getLocals(VirtualFrame frame,
+                        @Bind("$bytecode") BytecodeNode node,
+                        @Bind("$bci") int bci) {
+            Object[] locals = node.getLocalValues(bci, frame);
+            return makeMap(node.getLocalNames(bci), locals);
         }
 
         @TruffleBoundary
@@ -755,34 +750,44 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     @Operation
     public static final class GetLocal {
         @Specialization
-        public static Object perform(VirtualFrame frame, int i, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
-            return bytecodeRootNode.getLocal(frame, i);
+        public static Object perform(VirtualFrame frame, int i,
+                        @Bind("$bytecode") BytecodeNode node,
+                        @Bind("$bci") int bci) {
+            return node.getLocalValue(bci, frame, i);
         }
     }
 
     @Operation
     public static final class GetLocalUsingBytecodeLocalIndex {
         @Specialization
-        public static Object perform(VirtualFrame frame, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
-            assert bytecodeRootNode.reservedLocalIndex != -1;
-            return bytecodeRootNode.getLocal(frame, bytecodeRootNode.reservedLocalIndex);
+        public static Object perform(VirtualFrame frame,
+                        @Bind("$root") BytecodeNodeWithLocalIntrospection root,
+                        @Bind("$bytecode") BytecodeNode node,
+                        @Bind("$bci") int bci) {
+            assert root.reservedLocalIndex != -1;
+            return node.getLocalValue(bci, frame, root.reservedLocalIndex);
         }
     }
 
     @Operation
     public static final class SetLocal {
         @Specialization
-        public static void perform(VirtualFrame frame, int i, Object value, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
-            bytecodeRootNode.setLocal(frame, i, value);
+        public static void perform(VirtualFrame frame, int i, Object value,
+                        @Bind("$bytecode") BytecodeNode node,
+                        @Bind("$bci") int bci) {
+            node.setLocalValue(bci, frame, i, value);
         }
     }
 
     @Operation
     public static final class SetLocalUsingBytecodeLocalIndex {
         @Specialization
-        public static void perform(VirtualFrame frame, Object value, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
-            assert bytecodeRootNode.reservedLocalIndex != -1;
-            bytecodeRootNode.setLocal(frame, bytecodeRootNode.reservedLocalIndex, value);
+        public static void perform(VirtualFrame frame, Object value,
+                        @Bind("$root") BytecodeNodeWithLocalIntrospection root,
+                        @Bind("$bytecode") BytecodeNode node,
+                        @Bind("$bci") int bci) {
+            assert root.reservedLocalIndex != -1;
+            node.setLocalValue(bci, frame, root.reservedLocalIndex, value);
         }
     }
 

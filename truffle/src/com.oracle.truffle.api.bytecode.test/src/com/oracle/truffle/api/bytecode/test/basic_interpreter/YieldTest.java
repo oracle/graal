@@ -345,7 +345,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         ContinuationResult r1 = (ContinuationResult) rootNode.getCallTarget().call();
         BytecodeLocation before = (BytecodeLocation) r1.getResult();
 
-        if (!hasUncached(interpreterClass)) {
+        if (!run.hasUncachedIntereter()) {
             /**
              * Tricky behaviour: interpreters that don't have an uncached interpreter start with
              * uninitialized bytecode. Though rootNode will transition to cached on first execution,

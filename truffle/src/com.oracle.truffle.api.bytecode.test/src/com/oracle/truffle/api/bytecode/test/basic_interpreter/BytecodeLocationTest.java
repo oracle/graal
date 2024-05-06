@@ -45,7 +45,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
@@ -55,7 +54,6 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
-import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;

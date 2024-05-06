@@ -81,7 +81,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -244,7 +243,7 @@ public class TagTest extends AbstractInstructionTest {
                         "load.local",
                         "tag.leave",
                         "return");
-        boolean[] isInstrumentation = new boolean[] {true, false, false, true, true, false, true, false};
+        boolean[] isInstrumentation = new boolean[]{true, false, false, true, true, false, true, false};
         List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
         for (int i = 0; i < instructions.size(); i++) {
             assertEquals(isInstrumentation[i], instructions.get(i).isInstrumentation());
@@ -268,12 +267,19 @@ public class TagTest extends AbstractInstructionTest {
 
         QuickeningCounts counts = assertQuickenings(node, 8, 4);
 
+        instructions = node.getBytecodeNode().getInstructionsAsList();
+        int enter1 = instructions.get(0).getBytecodeIndex();
+        int leave1 = instructions.get(3).getBytecodeIndex();
+
+        int enter2 = instructions.get(4).getBytecodeIndex();
+        int leave2 = instructions.get(6).getBytecodeIndex();
+
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0007, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0007, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0009, 0x000d, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0009, 0x0000d, 42, StatementTag.class));
+                        new Event(EventKind.ENTER, enter1, leave1, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter1, leave1, null, StatementTag.class),
+                        new Event(EventKind.ENTER, enter2, leave2, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter2, leave2, 42, StatementTag.class));
 
         assertStable(counts, node);
 
@@ -368,12 +374,18 @@ public class TagTest extends AbstractInstructionTest {
 
         QuickeningCounts counts = assertQuickenings(node, 0, 0);
 
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int enter1 = instructions.get(0).getBytecodeIndex();
+        int leave1 = instructions.get(3).getBytecodeIndex();
+        int enter2 = instructions.get(4).getBytecodeIndex();
+        int leave2 = instructions.get(6).getBytecodeIndex();
+
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0007, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0007, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0009, 0x000d, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0009, 0x000d, 42, StatementTag.class));
+                        new Event(EventKind.ENTER, enter1, leave1, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter1, leave1, null, StatementTag.class),
+                        new Event(EventKind.ENTER, enter2, leave2, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter2, leave2, 42, StatementTag.class));
 
         assertStable(counts, node);
     }
@@ -483,16 +495,27 @@ public class TagTest extends AbstractInstructionTest {
 
         QuickeningCounts counts = assertQuickenings(node, 0, 0);
 
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int enter1 = instructions.get(0).getBytecodeIndex();
+        int enter2 = instructions.get(1).getBytecodeIndex();
+        int leave2 = instructions.get(3).getBytecodeIndex();
+        int leave1 = instructions.get(5).getBytecodeIndex();
+
+        int enter3 = instructions.get(6).getBytecodeIndex();
+        int enter4 = instructions.get(7).getBytecodeIndex();
+        int leave4 = instructions.get(9).getBytecodeIndex();
+        int leave3 = instructions.get(10).getBytecodeIndex();
+
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x000C, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0002, 0x0006, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0006, 42, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000C, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x000e, 0x0017, null, StatementTag.class, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0010, 0x0014, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0010, 0x0014, 42, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x000e, 0x0017, 42, StatementTag.class, ExpressionTag.class));
+                        new Event(EventKind.ENTER, enter1, leave1, null, StatementTag.class),
+                        new Event(EventKind.ENTER, enter2, leave2, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter2, leave2, 42, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter1, leave1, null, StatementTag.class),
+                        new Event(EventKind.ENTER, enter3, leave3, null, StatementTag.class, ExpressionTag.class),
+                        new Event(EventKind.ENTER, enter4, leave4, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter4, leave4, 42, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter3, leave3, 42, StatementTag.class, ExpressionTag.class));
 
         assertStable(counts, node);
     }
@@ -574,16 +597,27 @@ public class TagTest extends AbstractInstructionTest {
 
         QuickeningCounts counts = assertQuickenings(node, 12, 4);
 
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int enter1 = instructions.get(0).getBytecodeIndex();
+        int enter2 = instructions.get(1).getBytecodeIndex();
+        int leave2 = instructions.get(3).getBytecodeIndex();
+        int leave1 = instructions.get(5).getBytecodeIndex();
+
+        int enter3 = instructions.get(6).getBytecodeIndex();
+        int enter4 = instructions.get(7).getBytecodeIndex();
+        int leave4 = instructions.get(9).getBytecodeIndex();
+        int leave3 = instructions.get(10).getBytecodeIndex();
+
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x000C, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0002, 0x0006, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0006, 42, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000C, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x000e, 0x0017, null, StatementTag.class, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x0010, 0x0014, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0010, 0x0014, 42, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x000e, 0x0017, 42, StatementTag.class, ExpressionTag.class));
+                        new Event(EventKind.ENTER, enter1, leave1, null, StatementTag.class),
+                        new Event(EventKind.ENTER, enter2, leave2, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter2, leave2, 42, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter1, leave1, null, StatementTag.class),
+                        new Event(EventKind.ENTER, enter3, leave3, null, StatementTag.class, ExpressionTag.class),
+                        new Event(EventKind.ENTER, enter4, leave4, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter4, leave4, 42, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter3, leave3, 42, StatementTag.class, ExpressionTag.class));
 
         assertStable(counts, node);
     }
@@ -1418,8 +1452,8 @@ public class TagTest extends AbstractInstructionTest {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
 
-            BytecodeLocal l1 = b.createLocal(FrameSlotKind.Illegal, "l1", "l1_info");
-            BytecodeLocal l2 = b.createLocal(FrameSlotKind.Illegal,
+            BytecodeLocal l1 = b.createLocal("l1", "l1_info");
+            BytecodeLocal l2 = b.createLocal(
                             TruffleString.fromJavaStringUncached("l2", Encoding.UTF_16), "l2_info");
 
             b.beginStoreLocal(l1);

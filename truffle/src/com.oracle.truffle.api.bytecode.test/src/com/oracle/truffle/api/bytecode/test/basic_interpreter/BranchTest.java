@@ -73,6 +73,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         assertEquals(1L, root.call());
     }
 
+
     @Test
     public void testBranchBackward() {
         // x = 0;

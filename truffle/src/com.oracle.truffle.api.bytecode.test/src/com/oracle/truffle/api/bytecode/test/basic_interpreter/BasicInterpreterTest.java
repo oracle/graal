@@ -625,7 +625,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.emitLoadConstant(1L);
             b.endStoreLocal();
 
-
             b.beginInvoke();
 
                 b.beginRoot(LANGUAGE);
@@ -1016,7 +1015,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertInstructionEquals(instructions.get(1), 2, "load.argument");
         assertInstructionEquals(instructions.get(2), 4, "c.AddOperation");
         // With BE, the add instruction's encoding includes its child indices.
-        int beOffset = hasBE(interpreterClass) ? 2 : 0;
+        int beOffset = run.hasBoxingElimination() ? 2 : 0;
         assertInstructionEquals(instructions.get(3), 6 + beOffset, "return");
 
     }
@@ -1112,8 +1111,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             // @formatter:on
         });
 
-        BytecodeIntrospection data = node.getIntrospectionData();
-        List<ExceptionHandler> handlers = data.getExceptionHandlers();
+        List<ExceptionHandler> handlers = node.getBytecodeNode().getExceptionHandlers();
 
         /**
          * The Finally handler should guard three ranges: from the start to the early return, from
@@ -1161,7 +1159,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             // @formatter:on
         });
         // one range (everything up until the return)
-        assertEquals(1, node.getIntrospectionData().getExceptionHandlers().size());
+        assertEquals(1, node.getBytecodeNode().getExceptionHandlers().size());
 
         // test case: branch out
         node = parseNode("introspectionDataEmptyHandlers", b -> {
@@ -1187,7 +1185,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             // @formatter:on
         });
         // one range (everything up until the branch)
-        assertEquals(1, node.getIntrospectionData().getExceptionHandlers().size());
+        assertEquals(1, node.getBytecodeNode().getExceptionHandlers().size());
 
         // test case: early return with branch, and instrumentation in the middle.
         node = parseNode("introspectionDataEmptyHandlers", b -> {
@@ -1216,12 +1214,12 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             // @formatter:on
         });
         // without instrumentation, one range (everything up until the return)
-        assertEquals(1, node.getIntrospectionData().getExceptionHandlers().size());
+        assertEquals(1, node.getBytecodeNode().getExceptionHandlers().size());
 
         // with instrumentation, two ranges (everything up until the return, and the instrumentation
         // instruction)
         node.getRootNodes().update(createBytecodeConfigBuilder().addInstrumentation(BasicInterpreter.PrintHere.class).build());
-        List<ExceptionHandler> handlers = node.getIntrospectionData().getExceptionHandlers();
+        List<ExceptionHandler> handlers = node.getBytecodeNode().getExceptionHandlers();
         assertEquals(2, handlers.size());
         assertEquals(handlers.get(0).getHandlerIndex(), handlers.get(1).getHandlerIndex());
         assertTrue(handlers.get(0).getEndIndex() < handlers.get(1).getStartIndex());
@@ -1405,7 +1403,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testCloneUninitializedUnquicken() {
-        assumeTrue(hasBE(interpreterClass));
+        assumeTrue(run.hasBoxingElimination());
 
         BasicInterpreter node = parseNode("cloneUninitializedUnquicken", b -> {
             b.beginRoot(LANGUAGE);

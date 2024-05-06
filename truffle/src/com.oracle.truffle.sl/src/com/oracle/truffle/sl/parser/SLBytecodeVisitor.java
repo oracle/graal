@@ -64,6 +64,8 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import com.oracle.truffle.api.source.Source;
@@ -104,11 +106,11 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
     private static final boolean DO_LOG_NODE_CREATION = false;
     private static final boolean FORCE_SERIALIZE = false;
-    private static final boolean FORCE_MATERIALZE_COMPLETE = true;
+    private static final boolean FORCE_MATERIALZE_COMPLETE = false;
 
     private static final Class<?>[] EXPRESSION = new Class[]{ExpressionTag.class};
     private static final Class<?>[] READ_VARIABLE = new Class[]{ExpressionTag.class, ReadVariableTag.class};
-    private static final Class<?>[] WRITE_VARIABLE = new Class[]{StatementTag.class, ExpressionTag.class, WriteVariableTag.class};
+    private static final Class<?>[] WRITE_VARIABLE = new Class[]{ExpressionTag.class, WriteVariableTag.class};
     private static final Class<?>[] STATEMENT = new Class[]{StatementTag.class};
     private static final Class<?>[] CONDITION = new Class[]{StatementTag.class, ExpressionTag.class};
     private static final Class<?>[] CALL = new Class[]{CallTag.class, ExpressionTag.class};
@@ -135,7 +137,6 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             } else {
                 nodes = SLBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, slParser);
             }
-
         }
 
         for (SLBytecodeRootNode node : nodes.getNodes()) {
@@ -173,7 +174,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
     private BytecodeLabel breakLabel;
     private BytecodeLabel continueLabel;
 
-    private final ArrayList<BytecodeLocal> locals = new ArrayList<>();
+    private final ArrayList<Object> locals = new ArrayList<>();
 
     private void beginSourceSection(Token token) throws AssertionError {
         b.beginSourceSection(token.getStartIndex(), token.getText().length());
@@ -188,13 +189,14 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         b.beginSourceSection(functionStartPos, functionEndPos - functionStartPos + 1);
         b.beginRoot(language);
 
+        b.beginTag(RootTag.class);
+        b.beginBlock();
         int parameterCount = enterFunction(ctx).size();
-
         for (int i = 0; i < parameterCount; i++) {
             Token paramToken = ctx.IDENTIFIER(i + 1).getSymbol();
 
             TruffleString paramName = asTruffleString(paramToken, false);
-            BytecodeLocal argLocal = b.createLocal(FrameSlotKind.Illegal, paramName, null);
+            BytecodeLocal argLocal = b.createLocal(paramName, null);
             locals.add(argLocal);
 
             b.beginStoreLocal(argLocal);
@@ -205,21 +207,24 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             b.endSourceSection();
             b.endStoreLocal();
         }
-
+        b.beginTag(RootBodyTag.class);
         b.beginBlock();
-
         visit(ctx.body);
-
         exitFunction();
         locals.clear();
 
         b.endBlock();
+
+        b.endTag(RootBodyTag.class);
+        b.endBlock();
+        b.endTag(RootTag.class);
 
         b.beginReturn();
         b.emitLoadConstant(SLNull.SINGLETON);
         b.endReturn();
 
         SLBytecodeRootNode node = b.endRoot();
+        node.setParameterCount(parameterCount);
         node.setTSName(name);
 
         b.endSourceSection();
@@ -231,8 +236,8 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         b.beginBlock();
 
         List<TruffleString> newLocals = enterBlock(ctx);
-        for (TruffleString newLocal : newLocals) {
-            locals.add(b.createLocal(FrameSlotKind.Illegal, newLocal, null));
+        for (TruffleString local : newLocals) {
+            locals.add(local);
         }
 
         for (StatementContext child : ctx.statement()) {
@@ -240,6 +245,8 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         }
 
         exitBlock();
+
+        b.toString();
 
         b.endBlock();
         return null;
@@ -317,11 +324,11 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         b.emitLabel(continueLabel);
         b.beginWhile();
 
-        beginAttribution(CONDITION, ctx.condition);
         b.beginSLToBoolean();
+        beginAttribution(CONDITION, ctx.condition);
         visit(ctx.condition);
-        b.endSLToBoolean();
         endAttribution(CONDITION);
+        b.endSLToBoolean();
 
         visit(ctx.body);
         b.endWhile();
@@ -604,7 +611,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             int localIdx = getNameIndex(ident);
             if (localIdx != -1) {
                 beginAttribution(READ_VARIABLE, ident);
-                b.emitLoadLocal(locals.get(localIdx));
+                b.emitLoadLocal(accessLocal(localIdx));
                 endAttribution(READ_VARIABLE);
             } else {
                 beginAttribution(EXPRESSION, ident);
@@ -635,11 +642,12 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 assert localIdx != -1;
 
                 beginAttribution(WRITE_VARIABLE, ident.getStartIndex(), lastCtx.getStop().getStopIndex());
+                BytecodeLocal local = accessLocal(localIdx);
                 b.beginBlock();
-                b.beginStoreLocal(locals.get(localIdx));
+                b.beginStoreLocal(local);
                 visit(lastCtx.expression());
                 b.endStoreLocal();
-                b.emitLoadLocal(locals.get(localIdx));
+                b.emitLoadLocal(local);
                 b.endBlock();
                 endAttribution(WRITE_VARIABLE);
 
@@ -681,6 +689,15 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             visit(lastCtx.expression());
             b.endSLReadProperty();
         }
+    }
+
+    private BytecodeLocal accessLocal(int localIdx) {
+        Object local = locals.get(localIdx);
+        if (local instanceof TruffleString s) {
+            local = b.createLocal(s, null);
+            locals.set(localIdx, local);
+        }
+        return (BytecodeLocal) local;
     }
 
     @Override

@@ -126,12 +126,12 @@ public abstract class ExceptionHandler {
                 description = "epilog.exceptional";
                 break;
             case TAG:
-                description = String.format("tag.exceptional tag(%s)", getTagTree());
+                description = String.format("tag.exceptional %s", ((TagTreeNode) getTagTree()).getTagsString());
                 break;
             default:
                 throw new AssertionError("Invalid handler kind");
         }
-        return String.format("[%04x : %04x] -> %s", getStartIndex(), getEndIndex(), description);
+        return String.format("[%04x .. %04x] %s", getStartIndex(), getEndIndex(), description);
     }
 
     /**

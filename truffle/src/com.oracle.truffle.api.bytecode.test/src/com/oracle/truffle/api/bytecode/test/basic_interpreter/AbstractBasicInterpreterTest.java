@@ -68,10 +68,10 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
-import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
@@ -81,6 +81,37 @@ import com.oracle.truffle.api.source.Source;
 
 @RunWith(Parameterized.class)
 public abstract class AbstractBasicInterpreterTest {
+
+    public record TestRun(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize) {
+
+        public boolean hasBoxingElimination() {
+            return interpreterClass == BasicInterpreterWithBE.class ||
+                            interpreterClass == BasicInterpreterProductionLocalScopes.class ||
+                            interpreterClass == BasicInterpreterProductionGlobalScopes.class;
+        }
+
+        public boolean hasUncachedIntereter() {
+            return interpreterClass == BasicInterpreterWithUncached.class ||
+                            interpreterClass == BasicInterpreterProductionLocalScopes.class ||
+                            interpreterClass == BasicInterpreterProductionGlobalScopes.class;
+        }
+
+        public boolean hasGlobalScopes() {
+            return interpreterClass == BasicInterpreterWithGlobalScopes.class ||
+                            interpreterClass == BasicInterpreterProductionGlobalScopes.class;
+        }
+
+        public boolean hasLocalScopes() {
+            return !hasGlobalScopes();
+        }
+
+        @Override
+        public String toString() {
+            return interpreterClass.getSimpleName() + "[serialize=" + testSerialize + "]";
+        }
+
+    }
+
     protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     public static final BytecodeSerializer SERIALIZER = new BytecodeSerializer() {
@@ -157,38 +188,37 @@ public abstract class AbstractBasicInterpreterTest {
 
     @Rule public ExpectedException thrown = ExpectedException.none();
 
-    @Parameters(name = "{0}_{1}")
-    public static List<Object[]> getParameters() {
-        List<Object[]> result = new ArrayList<>();
-        for (Class<?> interpreterClass : allInterpreters()) {
-            result.add(new Object[]{interpreterClass, false});
-            result.add(new Object[]{interpreterClass, true});
+    @Parameters(name = "{0}")
+    public static List<TestRun> getParameters() {
+        List<TestRun> result = new ArrayList<>();
+        for (Class<? extends BasicInterpreter> interpreterClass : allInterpreters()) {
+            result.add(new TestRun(interpreterClass, false));
+            result.add(new TestRun(interpreterClass, true));
         }
         return result;
     }
 
-    @Parameter(0) public Class<? extends BasicInterpreter> interpreterClass;
-    @Parameter(1) public Boolean testSerialize;
+    @Parameter(0) public TestRun run;
 
     public <T extends BasicInterpreterBuilder> RootCallTarget parse(String rootName, BytecodeParser<T> builder) {
-        BytecodeRootNode rootNode = parseNode(interpreterClass, testSerialize, rootName, builder);
+        BytecodeRootNode rootNode = parseNode(run.interpreterClass, run.testSerialize, rootName, builder);
         return ((RootNode) rootNode).getCallTarget();
     }
 
     public <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(String rootName, BytecodeParser<T> builder) {
-        return parseNode(interpreterClass, testSerialize, rootName, builder);
+        return parseNode(run.interpreterClass, run.testSerialize, rootName, builder);
     }
 
     public <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(String rootName, BytecodeParser<T> builder) {
-        return parseNodeWithSource(interpreterClass, testSerialize, rootName, builder);
+        return parseNodeWithSource(run.interpreterClass, run.testSerialize, rootName, builder);
     }
 
     public <T extends BasicInterpreterBuilder> BytecodeRootNodes<BasicInterpreter> createNodes(BytecodeConfig config, BytecodeParser<T> builder) {
-        return createNodes(interpreterClass, testSerialize, config, builder);
+        return createNodes(run.interpreterClass, run.testSerialize, config, builder);
     }
 
     public BytecodeConfig.Builder createBytecodeConfigBuilder() {
-        return invokeNewConfigBuilder(interpreterClass);
+        return invokeNewConfigBuilder(run.interpreterClass);
     }
 
     /**
@@ -229,7 +259,7 @@ public abstract class AbstractBasicInterpreterTest {
     public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName,
                     BytecodeParser<T> builder) {
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.DEFAULT, builder);
-        BasicInterpreter op = nodes.getNode(nodes.count() - 1);
+        BasicInterpreter op = nodes.getNode(0);
         op.setName(rootName);
         return op;
     }
@@ -237,7 +267,7 @@ public abstract class AbstractBasicInterpreterTest {
     public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName,
                     BytecodeParser<T> builder) {
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
-        BasicInterpreter op = nodes.getNode(nodes.count() - 1);
+        BasicInterpreter op = nodes.getNode(0);
         op.setName(rootName);
         return op;
     }
@@ -305,6 +335,7 @@ public abstract class AbstractBasicInterpreterTest {
             assertArrayEquals((short[]) readField(expectedBytecode, "bytecodes"), (short[]) readField(actualBytecode, "bytecodes"));
             assertConstantsEqual((Object[]) readField(expectedBytecode, "constants"), (Object[]) readField(actualBytecode, "constants"));
             assertArrayEquals((int[]) readField(expectedBytecode, "handlers"), (int[]) readField(actualBytecode, "handlers"));
+            assertArrayEquals((int[]) readField(expectedBytecode, "locals"), (int[]) readField(actualBytecode, "locals"));
         }
     }
 
@@ -362,15 +393,7 @@ public abstract class AbstractBasicInterpreterTest {
 
     public static List<Class<? extends BasicInterpreter>> allInterpreters() {
         return List.of(BasicInterpreterBase.class, BasicInterpreterUnsafe.class, BasicInterpreterWithUncached.class, BasicInterpreterWithBE.class, BasicInterpreterWithOptimizations.class,
-                        BasicInterpreterProduction.class);
-    }
-
-    public static boolean hasUncached(Class<? extends BasicInterpreter> c) {
-        return c == BasicInterpreterWithUncached.class || c == BasicInterpreterProduction.class;
-    }
-
-    public static boolean hasBE(Class<? extends BasicInterpreter> c) {
-        return c == BasicInterpreterWithBE.class || c == BasicInterpreterProduction.class;
+                        BasicInterpreterWithGlobalScopes.class, BasicInterpreterProductionGlobalScopes.class, BasicInterpreterProductionLocalScopes.class);
     }
 
 }

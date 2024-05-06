@@ -84,11 +84,38 @@ public abstract class SourceInformation {
 
     @Override
     public final String toString() {
-        Object sourceSection = getSourceSection();
+        SourceSection sourceSection = getSourceSection();
+        String sourceText;
         if (sourceSection == null) {
-            sourceSection = "<none>";
+            sourceText = "<none>";
+        } else {
+            sourceText = formatSourceSection(sourceSection, 60);
         }
-        return String.format("[%04x .. %04x] %s", getStartIndex(), getEndIndex(), sourceSection);
+        return String.format("[%04x .. %04x] %s", getStartIndex(), getEndIndex(), sourceText);
+    }
+
+    static final String formatSourceSection(SourceSection section, int maxCharacters) {
+        String characters;
+        if (section.getSource().hasCharacters()) {
+            characters = limitCharacters(section.getCharacters(), maxCharacters).toString();
+            characters = characters.replace("\n", "\\n");
+        } else {
+            characters = "";
+        }
+        return String.format("%s %3s:%-3s-%3s:%-3s   %s",
+                        limitCharacters(section.getSource().getName(), 40),
+                        section.getStartLine(),
+                        section.getStartColumn(),
+                        section.getEndLine(),
+                        section.getEndColumn(),
+                        characters);
+    }
+
+    private static CharSequence limitCharacters(CharSequence characters, int maxCharacters) {
+        if (characters.length() > maxCharacters) {
+            return characters.subSequence(0, maxCharacters - 3).toString() + "...";
+        }
+        return characters;
     }
 
 }

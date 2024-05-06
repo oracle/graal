@@ -51,6 +51,8 @@ public interface TagTree {
 
     List<Class<? extends Tag>> getTags();
 
+    boolean hasTag(Class<? extends Tag> tag);
+
     int getStartBci();
 
     int getEndBci();
