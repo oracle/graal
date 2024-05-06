@@ -513,9 +513,6 @@ public class WebAssembly extends Dictionary {
         WasmTable table = (WasmTable) args[0];
         int delta = (Integer) args[1];
         if (args.length > 2) {
-            if (InteropLibrary.getUncached().isNull(args[2])) {
-                return tableGrow(table, delta, WasmConstant.NULL);
-            }
             return tableGrow(table, delta, args[2]);
         }
         return tableGrow(table, delta, WasmConstant.NULL);
@@ -868,22 +865,13 @@ public class WebAssembly extends Dictionary {
                 case f64:
                     return new DefaultWasmGlobal(valueType, mutable, Double.doubleToRawLongBits(valueInterop.asDouble(value)));
                 case anyfunc:
-                    if (!refTypes) {
+                    if (!refTypes || !(value == WasmConstant.NULL || value instanceof WasmFunctionInstance)) {
                         throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
                     }
-                    if (valueInterop.isNull(value)) {
-                        return new DefaultWasmGlobal(valueType, mutable, WasmConstant.NULL);
-                    } else if (value instanceof WasmFunctionInstance) {
-                        return new DefaultWasmGlobal(valueType, mutable, value);
-                    }
-                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
-
+                    return new DefaultWasmGlobal(valueType, mutable, value);
                 case externref:
                     if (!refTypes) {
                         throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
-                    }
-                    if (valueInterop.isNull(value)) {
-                        return new DefaultWasmGlobal(valueType, mutable, WasmConstant.NULL);
                     }
                     return new DefaultWasmGlobal(valueType, mutable, value);
                 default:
@@ -964,9 +952,7 @@ public class WebAssembly extends Dictionary {
                 if (!refTypes) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled");
                 }
-                if (InteropLibrary.getUncached(value).isNull(value)) {
-                    global.storeObject(WasmConstant.NULL);
-                } else if (!(value instanceof WasmFunctionInstance)) {
+                if (!(value == WasmConstant.NULL || value instanceof WasmFunctionInstance)) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 } else {
                     global.storeObject(value);
@@ -976,11 +962,7 @@ public class WebAssembly extends Dictionary {
                 if (!refTypes) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled");
                 }
-                if (InteropLibrary.getUncached(value).isNull(value)) {
-                    global.storeObject(WasmConstant.NULL);
-                } else {
-                    global.storeObject(value);
-                }
+                global.storeObject(value);
                 break;
         }
         return WasmConstant.VOID;
