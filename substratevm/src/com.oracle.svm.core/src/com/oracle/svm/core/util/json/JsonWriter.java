@@ -73,7 +73,7 @@ public class JsonWriter implements AutoCloseable {
      * While the builder is active, this class must not be used directly for printing, it may
      * otherwise produce invalid JSON.
      */
-    public JsonBuilder.ValueBuilder valueBuilder() throws IOException {
+    public JsonBuilder.ValueBuilder valueBuilder() {
         return JsonBuilder.value(this);
     }
 
