@@ -698,7 +698,7 @@ public class SerializationTutorial {
         // First, let's parse the nodes normally and test the behaviour.
         BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(BytecodeConfig.DEFAULT, MULTIPLE_ROOT_NODES_PARSER);
         assertEquals(3, nodes.count());
-        SerializableBytecodeNode rootNode = nodes.getNode(2);
+        SerializableBytecodeNode rootNode = nodes.getNode(0);
         doTestMultipleRootNodes(rootNode);
 
         // Now, let's do a serialize + deserialize round trip and test the behaviour.
@@ -713,7 +713,7 @@ public class SerializationTutorial {
                         new ExampleBytecodeDeserializerWithRootNodes());
 
         assertEquals(3, roundTripNodes.count());
-        SerializableBytecodeNode roundTripRootNode = roundTripNodes.getNode(2);
+        SerializableBytecodeNode roundTripRootNode = roundTripNodes.getNode(0);
         doTestMultipleRootNodes(roundTripRootNode);
     }
 }

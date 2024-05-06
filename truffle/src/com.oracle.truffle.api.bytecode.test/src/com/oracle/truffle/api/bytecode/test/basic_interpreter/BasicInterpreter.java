@@ -68,8 +68,8 @@ import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -95,9 +95,12 @@ import com.oracle.truffle.api.nodes.RootNode;
                                 boolean.class, long.class}, decisionsFile = "basic_interpreter_quickening_only.json")),
                 @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, //
                                 decisionsFile = "basic_interpreter_decisions.json")),
+                @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = false, enableTagInstrumentation = true)),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "Production", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, enableUncachedInterpreter = true, //
-                                boxingEliminationTypes = {long.class}, decisionsFile = "basic_interpreter_decisions.json"))
+                @Variant(suffix = "ProductionLocalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = true, enableTagInstrumentation = true, enableUncachedInterpreter = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, decisionsFile = "basic_interpreter_decisions.json")),
+                @Variant(suffix = "ProductionGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = false, enableTagInstrumentation = true, enableUncachedInterpreter = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, decisionsFile = "basic_interpreter_decisions.json"))
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE)
@@ -115,11 +118,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
     @Override
     public String getName() {
-        return name;
-    }
-
-    @Override
-    public String toString() {
         return name;
     }
 
@@ -370,16 +368,20 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     @Operation
     public static final class CopyLocalsToFrame {
         @Specialization
-        public static Frame doSomeLocals(VirtualFrame frame, long length, @Bind("$root") BasicInterpreter rootNode) {
+        public static Frame doSomeLocals(VirtualFrame frame, long length,
+                        @Bind("$bytecode") BytecodeNode bytecodeNode,
+                        @Bind("$bci") int bci) {
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
-            rootNode.copyLocals(frame, newFrame, (int) length);
+            bytecodeNode.copyLocalValues(bci, frame, newFrame, 0, (int) length);
             return newFrame;
         }
 
         @Specialization(guards = {"length == null"})
-        public static Frame doAllLocals(VirtualFrame frame, @SuppressWarnings("unused") Object length, @Bind("$root") BasicInterpreter rootNode) {
+        public static Frame doAllLocals(VirtualFrame frame, @SuppressWarnings("unused") Object length,
+                        @Bind("$bytecode") BytecodeNode bytecodeNode,
+                        @Bind("$bci") int bci) {
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
-            rootNode.copyLocals(frame, newFrame);
+            bytecodeNode.copyLocalValues(bci, frame, newFrame);
             return newFrame;
         }
     }

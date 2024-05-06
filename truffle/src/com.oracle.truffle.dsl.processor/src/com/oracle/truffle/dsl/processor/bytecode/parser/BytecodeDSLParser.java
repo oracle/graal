@@ -220,6 +220,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableTagInstrumentation = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTagInstrumentation");
         model.enableRootTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootTagging");
         model.enableRootBodyTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootBodyTagging");
+        model.enableLocalScoping = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableLocalScoping");
 
         model.addDefault();
 
@@ -349,14 +350,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         ElementUtils.findMethod(types.BytecodeOSRNode, "getOSRMetadata"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "setOSRMetadata"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "storeParentFrameInArguments"),
-                        ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "getLocalIndex"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "getLocal"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "getLocals"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "getLocalNames"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "getLocalInfos"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "copyLocals", 2),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "copyLocals", 3));
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments"));
 
         for (ExecutableElement override : overrides) {
             ExecutableElement declared = ElementUtils.findMethod(typeElement, override.getSimpleName().toString());
@@ -578,6 +572,19 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
          * enable boxing elimination.
          */
         if (model.usesBoxingElimination()) {
+
+            if (model.enableLocalScoping) {
+                // clearLocal does never lookup the type so not needed.
+                model.loadLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "localIndex");
+                model.storeLocalOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "localIndex");
+
+                model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "localIndex");
+                model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "localIndex");
+            }
+
+            model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_ROOT, "rootIndex");
+            model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_ROOT, "rootIndex");
+
             for (OperationModel operation : model.getOperations()) {
                 if (operation.kind != OperationKind.CUSTOM && operation.kind != OperationKind.CUSTOM_INSTRUMENTATION) {
                     continue;

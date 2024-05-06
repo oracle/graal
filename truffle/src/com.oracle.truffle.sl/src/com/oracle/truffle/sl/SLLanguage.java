@@ -220,6 +220,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String MIME_TYPE = "application/x-sl";
     private static final Source BUILTIN_SOURCE = Source.newBuilder(SLLanguage.ID, "", "SL builtin").build();
 
+    private static final boolean TRACE_INSTRUMENTATION_TREE = false;
+
     public static final TruffleString.Encoding STRING_ENCODING = TruffleString.Encoding.UTF_16;
 
     private final Assumption singleContext = Truffle.getRuntime().createAssumption("Single SL context.");
@@ -364,9 +366,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             targets = SLNodeVisitor.parseSL(this, source);
         }
 
-        for (RootCallTarget node : targets.values()) {
-            System.out.println(node.getRootNode().getQualifiedName());
-            printInstrumentationTree(System.out, "  ", node.getRootNode());
+        if (TRACE_INSTRUMENTATION_TREE) {
+            for (RootCallTarget node : targets.values()) {
+                System.out.println(node.getRootNode().getQualifiedName());
+                printInstrumentationTree(System.out, "  ", node.getRootNode());
+            }
         }
 
         RootCallTarget rootTarget = targets.get(SLStrings.MAIN);

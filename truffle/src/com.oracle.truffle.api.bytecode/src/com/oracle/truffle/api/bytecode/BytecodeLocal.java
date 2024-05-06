@@ -61,7 +61,10 @@ public abstract class BytecodeLocal {
      *
      * @since 24.1
      */
-    public BytecodeLocal() {
-
+    public BytecodeLocal(Object token) {
+        BytecodeRootNodes.checkToken(token);
     }
+
+    public abstract int getLocalOffset();
+
 }

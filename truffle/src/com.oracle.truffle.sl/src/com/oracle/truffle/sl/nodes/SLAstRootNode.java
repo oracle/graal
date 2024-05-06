@@ -40,18 +40,36 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
+import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
+import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
+import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 
-public class SLAstRootNode extends SLRootNode {
+public final class SLAstRootNode extends SLRootNode {
 
     @Child private SLExpressionNode bodyNode;
 
     private final SourceSection sourceSection;
     private final TruffleString name;
+
+    @CompilationFinal(dimensions = 1) private SLWriteLocalVariableNode[] argumentNodesCache;
 
     public SLAstRootNode(SLLanguage language, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, TruffleString name) {
         super(language, frameDescriptor);
@@ -78,6 +96,79 @@ public class SLAstRootNode extends SLRootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         return bodyNode.executeGeneric(frame);
+    }
+
+    @Override
+    public void setLocalValues(FrameInstance frameInstance, Object[] args) {
+        Frame frame = frameInstance.getFrame(FrameAccess.READ_WRITE);
+        FrameDescriptor fd = getFrameDescriptor();
+        int values = fd.getNumberOfSlots();
+        for (int i = 0; i < values; i++) {
+            frame.setObject(i, args[i]);
+        }
+    }
+
+    @Override
+    public Object[] getLocalNames(FrameInstance frameInstance) {
+        FrameDescriptor fd = getFrameDescriptor();
+        int values = fd.getNumberOfSlots();
+        Object[] localNames = new Object[values];
+        for (int i = 0; i < values; i++) {
+            localNames[i] = fd.getSlotName(i);
+        }
+        return localNames;
+    }
+
+    @Override
+    public Object[] getLocalValues(FrameInstance frameInstance) {
+        Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
+        FrameDescriptor fd = getFrameDescriptor();
+        int values = fd.getNumberOfSlots();
+        Object[] localNames = new Object[values];
+        for (int i = 0; i < values; i++) {
+            localNames[i] = frame.getValue(i);
+        }
+        return localNames;
+    }
+
+    public final SLWriteLocalVariableNode[] getDeclaredArguments() {
+        SLWriteLocalVariableNode[] argumentNodes = argumentNodesCache;
+        if (argumentNodes == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            argumentNodesCache = argumentNodes = findArgumentNodes();
+        }
+        return argumentNodes;
+    }
+
+    private SLWriteLocalVariableNode[] findArgumentNodes() {
+        List<SLWriteLocalVariableNode> writeArgNodes = new ArrayList<>(4);
+        NodeUtil.forEachChild(this.getBodyNode(), new NodeVisitor() {
+
+            private SLWriteLocalVariableNode wn; // The current write node containing a slot
+
+            @Override
+            public boolean visit(Node node) {
+                // When there is a write node, search for SLReadArgumentNode among its children:
+                if (node instanceof InstrumentableNode.WrapperNode) {
+                    return NodeUtil.forEachChild(node, this);
+                }
+                if (node instanceof SLWriteLocalVariableNode) {
+                    wn = (SLWriteLocalVariableNode) node;
+                    boolean all = NodeUtil.forEachChild(node, this);
+                    wn = null;
+                    return all;
+                } else if (wn != null && (node instanceof SLReadArgumentNode)) {
+                    writeArgNodes.add(wn);
+                    return true;
+                } else if (wn == null && (node instanceof SLStatementNode && !(node instanceof SLBlockNode || node instanceof SLFunctionBodyNode))) {
+                    // A different SL node - we're done.
+                    return false;
+                } else {
+                    return NodeUtil.forEachChild(node, this);
+                }
+            }
+        });
+        return writeArgNodes.toArray(new SLWriteLocalVariableNode[writeArgNodes.size()]);
     }
 
 }

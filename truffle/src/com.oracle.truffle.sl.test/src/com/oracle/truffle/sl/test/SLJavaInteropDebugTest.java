@@ -236,7 +236,7 @@ public class SLJavaInteropDebugTest extends AbstractSLTest {
                 assertEquals(frameInfo[frameInfoIndex], element.getName());
                 Integer line = (Integer) frameInfo[frameInfoIndex + 2];
                 if (line != null && frameInfoIndex > 0) {
-                    assertEquals((int) line, element.getSourceSection().getStartLine());
+                    assertEquals("Invalid line in stack trace at index " + frameInfoIndex + ".", (int) line, element.getSourceSection().getStartLine());
                 } else {
                     assertNull(element.getSourceSection());
                 }

@@ -48,6 +48,7 @@ import java.util.NoSuchElementException;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 
 public abstract class Instruction {
 
@@ -71,18 +72,67 @@ public abstract class Instruction {
 
     public abstract boolean isInstrumentation();
 
+    public final SourceSection getSourceSection() {
+        BytecodeNode bytecode = getBytecodeNode();
+        if (bytecode.getSourceInformation() == null) {
+            // avoid materialization of source info
+            return null;
+        }
+        return bytecode.findSourceLocation(getBytecodeIndex());
+    }
+
+    public final SourceSection[] getSourceSections() {
+        BytecodeNode bytecode = getBytecodeNode();
+        if (bytecode.getSourceInformation() == null) {
+            // avoid materialization of source info
+            return null;
+        }
+        return getBytecodeNode().findSourceLocations(getBytecodeIndex());
+    }
+
+    public final int getNextBytecodeIndex() {
+        return getBytecodeIndex() + getArguments().size() + 1;
+    }
+
     protected abstract Instruction next();
 
     @Override
     public String toString() {
+        return formatInstruction(this, 40, 60);
+    }
+
+    static String formatInstruction(Instruction instruction, int maxLabelWidth, int maxArgumentWidth) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("[%03x] ", getBytecodeIndex()));
-        sb.append(String.format("%03x ", getOperationCode()));
-        sb.append(String.format("%-30s", getName()));
-        for (Argument a : getArguments()) {
-            sb.append(' ').append(a.toString());
+        String label = formatLabel(instruction);
+        sb.append(label);
+        appendSpaces(sb, maxLabelWidth - label.length());
+        String arguments = formatArguments(instruction);
+        sb.append(arguments);
+        appendSpaces(sb, maxArgumentWidth - arguments.length());
+        SourceSection s = instruction.getSourceSection();
+        if (s != null) {
+            sb.append(" | ");
+            sb.append(SourceInformation.formatSourceSection(s, 60));
         }
         return sb.toString();
+    }
+
+    private static void appendSpaces(StringBuilder sb, int spaces) {
+        for (int i = 0; i < spaces; i++) {
+            sb.append(' ');
+        }
+    }
+
+    static String formatLabel(Instruction instruction) {
+        return String.format("[%03x] %03x %s", instruction.getBytecodeIndex(), instruction.getOperationCode(), instruction.getName());
+    }
+
+    static String formatArguments(Instruction instruction) {
+        StringBuilder b = new StringBuilder(" ");
+        for (Argument a : instruction.getArguments()) {
+            b.append(' ').append(a.toString());
+        }
+        return b.toString();
     }
 
     public abstract static class Argument {
@@ -115,6 +165,14 @@ public abstract class Instruction {
             throw unsupported();
         }
 
+        public int asLocalOffset() {
+            throw unsupported();
+        }
+
+        public int asLocalIndex() {
+            throw unsupported();
+        }
+
         public BranchProfile asBranchProfile() {
             throw unsupported();
         }
@@ -135,6 +193,10 @@ public abstract class Instruction {
         @Override
         public final String toString() {
             switch (getKind()) {
+                case LOCAL_OFFSET:
+                    return String.format("%s(%d)", getName(), asLocalOffset());
+                case LOCAL_INDEX:
+                    return String.format("%s(%d)", getName(), asLocalIndex());
                 case INTEGER:
                     return String.format("%s(%d)", getName(), asInteger());
                 case CONSTANT:
@@ -146,17 +208,17 @@ public abstract class Instruction {
                 case BRANCH_PROFILE:
                     return String.format("%s(%s)", getName(), asBranchProfile().toString());
                 case TAG_NODE:
-                    return String.format("%s(%s)", getName(), printTagProfile(asTagNode()));
+                    return String.format("%s%s", getName(), printTagProfile((TagTreeNode) asTagNode()));
                 default:
-                    throw new UnsupportedOperationException("Unexpected value: " + this);
+                    throw new UnsupportedOperationException("Unexpected argument kind " + getKind());
             }
         }
 
-        private static String printTagProfile(Object o) {
+        private static String printTagProfile(TagTreeNode o) {
             if (o == null) {
                 return "null";
             }
-            return o.toString();
+            return TagTreeNode.format(o);
         }
 
         private String printNodeProfile(Object o) {
@@ -221,6 +283,8 @@ public abstract class Instruction {
             CONSTANT,
             BYTECODE_INDEX,
             INTEGER,
+            LOCAL_OFFSET,
+            LOCAL_INDEX,
             NODE_PROFILE,
             BRANCH_PROFILE,
             TAG_NODE;

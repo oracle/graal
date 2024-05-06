@@ -141,7 +141,6 @@ public final class FrameDescriptor implements Cloneable {
         this.indexedSlotNames = null;
         this.indexedSlotInfos = null;
         this.descriptorInfo = null;
-
         this.defaultValue = defaultValue;
     }
 
@@ -151,7 +150,6 @@ public final class FrameDescriptor implements Cloneable {
         this.indexedSlotNames = indexedSlotNames;
         this.indexedSlotInfos = indexedSlotInfos;
         this.descriptorInfo = info;
-
         this.defaultValue = defaultValue;
     }
 

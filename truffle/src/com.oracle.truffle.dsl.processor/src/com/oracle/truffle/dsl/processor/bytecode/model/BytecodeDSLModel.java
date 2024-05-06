@@ -114,6 +114,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableTagInstrumentation;
     public boolean enableRootTagging;
     public boolean enableRootBodyTagging;
+    public boolean enableLocalScoping;
 
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
@@ -137,8 +138,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel finallyTryOperation;
     public OperationModel loadConstantOperation;
     public OperationModel loadLocalOperation;
+    public OperationModel loadLocalMaterializedOperation;
     public OperationModel tagOperation;
     public OperationModel storeLocalOperation;
+    public OperationModel storeLocalMaterializedOperation;
     public OperationModel ifThenOperation;
     public OperationModel ifThenElseOperation;
     public OperationModel returnOperation;
@@ -165,6 +168,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel tagEnterInstruction;
     public InstructionModel tagLeaveValueInstruction;
     public InstructionModel tagLeaveVoidInstruction;
+    public InstructionModel clearLocalInstruction;
 
     public final List<CustomOperationModel> instrumentations = new ArrayList<>();
     public ExportsData tagTreeNodeLibrary;
@@ -222,7 +226,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target") //
                         .addImmediate(ImmediateKind.BRANCH_PROFILE, "branch_profile");
         throwInstruction = instruction(InstructionKind.THROW, "throw", signature(void.class, void.class)) //
-                        .addImmediate(ImmediateKind.INTEGER, "exception_local");
+                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "exception_local");
         loadConstantInstruction = instruction(InstructionKind.LOAD_CONSTANT, "load.constant", signature(Object.class)) //
                         .addImmediate(ImmediateKind.CONSTANT, "constant");
 
@@ -288,28 +292,28 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setNumChildren(0) //
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL, "load.local", signature(Object.class)) //
-                                        .addImmediate(ImmediateKind.INTEGER, "index"));
-        operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized") //
+                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
+        loadLocalMaterializedOperation = operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat", signature(Object.class, Object.class)) //
-                                        .addImmediate(ImmediateKind.INTEGER, "index"));
+                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         storeLocalOperation = operation(OperationKind.STORE_LOCAL, "StoreLocal") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setVoid(true) //
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL, "store.local", signature(void.class, Object.class)) //
-                                        .addImmediate(ImmediateKind.INTEGER, "index"));
-        operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized") //
+                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
+        storeLocalMaterializedOperation = operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized") //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, true) //
                         .setVoid(true) //
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         signature(void.class, Object.class, Object.class)) //
-                                                        .addImmediate(ImmediateKind.INTEGER, "index"));
+                                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         returnOperation = operation(OperationKind.RETURN, "Return") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
@@ -357,6 +361,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
         mergeVariadicInstruction = instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic", signature(Object.class, Object.class));
         storeNullInstruction = instruction(InstructionKind.STORE_NULL, "constant_null", signature(Object.class));
+
+        clearLocalInstruction = instruction(InstructionKind.CLEAR_LOCAL, "clear.local", signature(void.class));
+        clearLocalInstruction.addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset");
 
     }
 

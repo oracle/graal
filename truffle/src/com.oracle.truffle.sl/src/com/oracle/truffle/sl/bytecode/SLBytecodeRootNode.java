@@ -43,21 +43,24 @@ package com.oracle.truffle.sl.bytecode;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
-import com.oracle.truffle.api.debug.DebuggerTags.AlwaysHalt;
 import com.oracle.truffle.api.bytecode.Variadic;
+import com.oracle.truffle.api.debug.DebuggerTags.AlwaysHalt;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -93,7 +96,12 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
                 languageClass = SLLanguage.class, //
                 decisionsFile = "decisions.json", //
                 boxingEliminationTypes = {long.class, boolean.class}, //
-                enableSerialization = true, //
+                /*
+                 * Simple language needs to run code before the root tag to set local variables, so
+                 * we disable implicit root and root-body tagging.
+                 */
+                enableRootBodyTagging = false, enableRootTagging = false, //
+                tagTreeNodeLibrary = SLBytecodeScopeExports.class, enableSerialization = true, //
                 enableTagInstrumentation = true)
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
@@ -111,17 +119,35 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLToBooleanNode.class)
 @ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, operator = Operator.AND_RETURN_CONVERTED)
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, operator = Operator.OR_RETURN_CONVERTED)
-public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode {
+public abstract sealed class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode permits SLBytecodeRootNodeGen {
 
     protected SLBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super((SLLanguage) language, frameDescriptor);
     }
 
     protected TruffleString tsName;
+    protected int parameterCount;
 
     @Override
     public SLExpressionNode getBodyNode() {
         return null;
+    }
+
+    public final Object[] getArgumentNames() {
+        Object[] names = new Object[parameterCount];
+        int index = 0;
+        for (LocalVariable var : getBytecodeNode().getLocals().subList(0, parameterCount)) {
+            names[index++] = var.getName();
+        }
+        return names;
+    }
+
+    public void setParameterCount(int localCount) {
+        this.parameterCount = localCount;
+    }
+
+    public int getParameterCount() {
+        return parameterCount;
     }
 
     @Override
@@ -131,6 +157,21 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
 
     public void setTSName(TruffleString tsName) {
         this.tsName = tsName;
+    }
+
+    @Override
+    public void setLocalValues(FrameInstance frame, Object[] args) {
+        BytecodeNode.setLocalValues(frame, args);
+    }
+
+    @Override
+    public final Object[] getLocalNames(FrameInstance frame) {
+        return BytecodeNode.getLocalNames(frame);
+    }
+
+    @Override
+    public final Object[] getLocalValues(FrameInstance frame) {
+        return BytecodeNode.getLocalValues(frame);
     }
 
     // see also SLReadArgumentNode

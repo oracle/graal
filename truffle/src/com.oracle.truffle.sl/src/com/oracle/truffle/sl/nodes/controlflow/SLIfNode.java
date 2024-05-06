@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.sl.nodes.controlflow;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
-import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
 import com.oracle.truffle.sl.nodes.util.SLToBooleanNodeGen;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNodeGen;
 
@@ -57,7 +58,7 @@ public final class SLIfNode extends SLStatementNode {
      * result value. We do not have a node type that can only return a {@code boolean} value, so
      * {@link #evaluateCondition executing the condition} can lead to a type error.
      */
-    @Child private SLToBooleanNode conditionNode;
+    @Child private SLExpressionNode conditionNode;
 
     /** Statement (or {@link SLBlockNode block}) executed when the condition is true. */
     @Child private SLStatementNode thenPartNode;
@@ -76,6 +77,7 @@ public final class SLIfNode extends SLStatementNode {
 
     public SLIfNode(SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
         this.conditionNode = SLToBooleanNodeGen.create(SLUnboxNodeGen.create(conditionNode));
+        this.conditionNode.setSourceSection(conditionNode.getSourceCharIndex(), conditionNode.getSourceLength());
         this.thenPartNode = thenPartNode;
         this.elsePartNode = elsePartNode;
     }
@@ -86,7 +88,7 @@ public final class SLIfNode extends SLStatementNode {
          * In the interpreter, record profiling information that the condition was executed and with
          * which outcome.
          */
-        if (condition.profile(conditionNode.executeBoolean(frame))) {
+        if (condition.profile(evaluateCondition(frame))) {
             /* Execute the then-branch. */
             thenPartNode.executeVoid(frame);
         } else {
@@ -94,6 +96,18 @@ public final class SLIfNode extends SLStatementNode {
             if (elsePartNode != null) {
                 elsePartNode.executeVoid(frame);
             }
+        }
+    }
+
+    private boolean evaluateCondition(VirtualFrame frame) {
+        try {
+            /*
+             * The condition must evaluate to a boolean value, so we call the boolean-specialized
+             * execute method.
+             */
+            return conditionNode.executeBoolean(frame);
+        } catch (UnexpectedResultException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
         }
     }
 }

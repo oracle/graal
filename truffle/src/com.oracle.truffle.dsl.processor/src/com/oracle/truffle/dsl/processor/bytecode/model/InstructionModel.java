@@ -67,6 +67,7 @@ public final class InstructionModel implements PrettyPrintable {
         LOAD_ARGUMENT,
         LOAD_CONSTANT,
         LOAD_LOCAL,
+        CLEAR_LOCAL,
         LOAD_LOCAL_MATERIALIZED,
         STORE_LOCAL,
         STORE_LOCAL_MATERIALIZED,
@@ -87,6 +88,20 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public enum ImmediateKind {
+        /**
+         * Relative local offset into the frame. Without boxing elimination or local scoping
+         * localOffset == localIndex.
+         */
+        LOCAL_OFFSET("localOffset"),
+        /**
+         * Local index into the locals table. Without boxing elimination or local scoping
+         * localOffset == localIndex.
+         */
+        LOCAL_INDEX("localIndex"),
+        /**
+         * Index into BytecodeRootNodes.nodes. Necessary for boxing elimination.
+         */
+        LOCAL_ROOT("localRoot"),
         INTEGER("int"),
         BYTECODE_INDEX("bci"),
         CONSTANT("const"),

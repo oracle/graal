@@ -49,9 +49,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -1477,16 +1478,20 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         @Operation
         static final class GetLocals {
             @Specialization
-            static Object[] perform(VirtualFrame frame, @Bind("$root") BoxingEliminationTestRootNode root) {
-                return root.getLocals(frame);
+            static Object[] perform(VirtualFrame frame,
+                            @Bind("$bytecode") BytecodeNode bytecode,
+                            @Bind("$bci") int bci) {
+                return bytecode.getLocalValues(bci, frame);
             }
         }
 
         @Operation
         static final class GetLocal {
             @Specialization
-            static Object perform(VirtualFrame frame, int i, @Bind("$root") BoxingEliminationTestRootNode root) {
-                return root.getLocal(frame, i);
+            static Object perform(VirtualFrame frame, int i,
+                            @Bind("$bytecode") BytecodeNode bytecode,
+                            @Bind("$bci") int bci) {
+                return bytecode.getLocalValue(bci, frame, i);
             }
         }
     }

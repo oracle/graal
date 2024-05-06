@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -23,6 +24,11 @@ public class AbstractSLTest {
     }
 
     @Parameter(0) public RunMode mode;
+
+    @Test
+    public void dummy() {
+        // only to make the runner happy
+    }
 
     protected Engine.Builder newEngineBuilder(String... languages) {
         var b = Engine.newBuilder(languages);

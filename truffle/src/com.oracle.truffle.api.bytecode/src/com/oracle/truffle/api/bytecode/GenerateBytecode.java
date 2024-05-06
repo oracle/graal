@@ -45,7 +45,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
@@ -233,7 +235,9 @@ public @interface GenerateBytecode {
      * Whether to use unsafe array accesses.
      * <p>
      * Unsafe accesses are faster, but they do not perform array bounds checks. This means it is
-     * possible (though unlikely) for unsafe accesses to cause undefined behaviour.
+     * possible (though unlikely) for unsafe accesses to cause undefined behaviour. Undefined
+     * behavior may only happen due to a bug in the Bytecode DSL implementation and not language
+     * implementation code.
      *
      * @since 24.1
      */
@@ -250,6 +254,39 @@ public @interface GenerateBytecode {
      * @since 24.1
      */
     boolean enableYield() default false;
+
+    /**
+     * Enables local variable scoping for this interpreter. By default local variable scoping is
+     * enabled (<code>true</code>). Depending on whether this flag is enabled the behavior of local
+     * variables change significantly, hence changing this flag is a breaking change for previously
+     * API and should be determined relatively early in the development of a language.
+     * <p>
+     * If local scoping is enabled then all local variables are scoped with the parent block. If no
+     * block is currently on the operation stack then the local variable will be scoped with their
+     * respective root. Local variables that are no longer in scope are automatically
+     * {@link Frame#clear(int) cleared} when their block or root ends. When local variables are read
+     * or written without an instruction using the methods in {@link BytecodeNode} then a
+     * compilation final bytecode index must be passed. For example,
+     * {@link BytecodeNode#getLocalValues(int, Frame)} requires a valid
+     * {@link CompilerAsserts#partialEvaluationConstant(boolean) partial evaluation constant}
+     * bytecode index parameter to determine which values are currently accessible. The life-time of
+     * local variables can be accessed using {@link LocalVariable#getStartIndex()} and
+     * {@link LocalVariable#getEndIndex()}.
+     * <p>
+     * If local scoping is disabled all local variables get their unique absolute index in the frame
+     * independent of the current source location. This means that when reading the values
+     * {@link BytecodeNode#getLocalValues(int, Frame) current local values} the bytecode index
+     * parameter has no effect. With scoping disabled no additional meta-data needs to be emitted
+     * for the life-time of local variables, hence {@link BytecodeNode#getLocals()} returns local
+     * variables without life-time ranges.
+     * <p>
+     * Primarily local variable scoping is intended to be disabled if the implemented language does
+     * not use local variable scoping, but it can also be useful if the default local variable
+     * scoping is not flexible enough and custom scoping rules are needed.
+     *
+     * @since 24.1
+     */
+    boolean enableLocalScoping() default true;
 
     /**
      * Whether quickened bytecodes should be emitted.
