@@ -278,6 +278,14 @@ public class BytecodeDSLBuiltins {
                                             new OperationArgument(new ArrayCodeTypeMirror(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"))//
                             .setInstruction(m.tagLeaveValueInstruction);
 
+            if (m.enableYield) {
+                m.tagYieldInstruction = m.instruction(InstructionKind.TAG_YIELD, "tag.yield", m.signature(Object.class, Object.class));
+                m.tagYieldInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+
+                m.tagResumeInstruction = m.instruction(InstructionKind.TAG_RESUME, "tag.resume", m.signature(void.class));
+                m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+            }
+
         }
 
         m.popVariadicInstruction = new InstructionModel[9];

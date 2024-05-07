@@ -2606,6 +2606,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createAllocateBranchProfile());
             if (model.enableYield) {
                 builder.add(createAllocateContinuationConstant());
+
+                if (model.enableTagInstrumentation) {
+                    builder.add(createDoEmitTagYield());
+                    builder.add(createDoEmitTagResume());
+                }
             }
             builder.add(createInFinallyTryHandler());
 
@@ -4264,6 +4269,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     emitCastCurrentOperationData(b, operation);
                     b.statement("markReachable(operationData.finallyReachable && operationData.tryReachable || operationData.catchReachable)").end();
                     break;
+                case YIELD:
+                    if (model.enableTagInstrumentation) {
+                        b.statement("doEmitTagYield()");
+                    }
+                    buildEmitOperationInstruction(b, operation);
+
+                    if (model.enableTagInstrumentation) {
+                        b.statement("doEmitTagResume()");
+                    }
+                    break;
                 case RETURN:
                     emitCastCurrentOperationData(b, operation);
                     b.statement("doEmitReturn(operationData.childBci)");
@@ -4954,9 +4969,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startIf().string("reachable").end().startBlock();
                     b.startStatement().startCall("continuationLocations.add");
                     b.startNew(continuationLocation.asType()).string("constantPoolIndex").string("bci + " + operation.instruction.getInstructionLength()).string("currentStackHeight").end();
-                    b.end(2);
-                    b.end();
-
+                    b.end(2); // statement + call
+                    b.end(); // if block
                     b.end();
                     yield new String[]{"constantPoolIndex"};
                 }
@@ -6232,6 +6246,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case TAG_ENTER:
                 case TAG_LEAVE:
                 case TAG_LEAVE_VOID:
+                case TAG_RESUME:
+                case TAG_YIELD:
                 case LOAD_LOCAL_MATERIALIZED:
                 case THROW:
                 case YIELD:
@@ -6548,6 +6564,63 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // for
 
             emitFinallyLeaveSetNewGuardBci(b, model.returnInstruction);
+
+            return ex;
+        }
+
+        /**
+         * Before emitting a yield, we may need to emit additional instructions for tag
+         * instrumentation.
+         */
+        private CodeExecutableElement createDoEmitTagYield() {
+            if (!model.enableTagInstrumentation || !model.enableYield) {
+                throw new AssertionError("cannot produce method");
+            }
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitTagYield");
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
+            b.startSwitch().string("operationStack[i].operation").end().startBlock();
+
+            OperationModel op = model.findOperation(OperationKind.TAG);
+            b.startCase().tree(createOperationConstant(op)).end();
+            b.startBlock();
+            emitCastOperationData(b, op, "i");
+            buildEmitInstruction(b, model.tagYieldInstruction, "operationData.nodeId");
+            b.statement("break");
+            b.end(); // case tag
+
+            b.end(); // switch
+            b.end(); // for
+
+            return ex;
+        }
+
+        /**
+         * Before emitting a yield, we may need to emit additional instructions for tag
+         * instrumentation.
+         */
+        private CodeExecutableElement createDoEmitTagResume() {
+            if (!model.enableTagInstrumentation || !model.enableYield) {
+                throw new AssertionError("cannot produce method");
+            }
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitTagResume");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startFor().string("int i = 0; i <  operationSp; i++").end().startBlock();
+            b.startSwitch().string("operationStack[i].operation").end().startBlock();
+            OperationModel op = model.findOperation(OperationKind.TAG);
+            b.startCase().tree(createOperationConstant(op)).end();
+            b.startBlock();
+            emitCastOperationData(b, op, "i");
+            buildEmitInstruction(b, model.tagResumeInstruction, "operationData.nodeId");
+            b.statement("break");
+            b.end(); // case tag
+
+            b.end(); // switch
+            b.end(); // for
 
             return ex;
         }
@@ -10694,9 +10767,25 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("continue loop");
                         b.end();
                         break;
+                    case TAG_RESUME:
+                        b.startStatement();
+                        b.startCall(lookupTagResume(instr).getSimpleName().toString());
+                        b.string("frame");
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                        break;
                     case TAG_ENTER:
                         b.startStatement();
                         b.startCall(lookupTagEnter(instr).getSimpleName().toString());
+                        b.string("frame");
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                        break;
+                    case TAG_YIELD:
+                        b.startStatement();
+                        b.startCall(lookupTagYield(instr).getSimpleName().toString());
                         b.string("frame");
                         b.string("bc").string("bci").string("sp");
                         b.end();
@@ -11478,6 +11567,68 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return ((targetSp) << 16) | targetBci");
             b.end();
 
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupTagResume(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"));
+
+            method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
+
+            CodeTreeBuilder b = method.createBuilder();
+            InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
+            b.startDeclaration(tagNode.asType(), "tagNode");
+            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.end();
+            b.statement("tagNode.findProbe().onResume(frame)");
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupTagYield(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"));
+
+            method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
+
+            CodeTreeBuilder b = method.createBuilder();
+
+            b.startDeclaration(type(Object.class), "returnValue");
+            startRequireFrame(b, type(Object.class));
+            b.string("frame");
+            b.string("sp - 1");
+            b.end();
+            b.end(); // declaration
+
+            InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
+            b.startDeclaration(tagNode.asType(), "tagNode");
+            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.end();
+            b.statement("tagNode.findProbe().onYield(frame, returnValue)");
+
+            doInstructionMethods.put(instr, method);
             return method;
 
         }

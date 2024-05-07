@@ -778,6 +778,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         genericQuickening.returnTypeQuickening = false;
                         genericQuickening.specializedType = null;
                         break;
+                    case TAG_YIELD:
+                        // no boxing elimination needed for yielding
+                        // we are always returning and returns do not support boxing elimination.
+                        break;
                     case TAG_LEAVE:
                         instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
                         instruction.specializedType = context.getType(Object.class);
