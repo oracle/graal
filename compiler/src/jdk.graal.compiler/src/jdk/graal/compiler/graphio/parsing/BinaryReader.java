@@ -55,12 +55,9 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Deque;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -92,7 +89,6 @@ import jdk.graal.compiler.graphio.parsing.model.InputGraph;
  * replace ConstantPool in the reader (useful for partial reading).
  */
 public class BinaryReader implements GraphParser, ModelControl {
-    private static final boolean POOL_STATS = Boolean.getBoolean(BinaryReader.class.getName() + ".poolStats");
     private static final Logger LOG = Logger.getLogger(BinaryReader.class.getName());
 
     private final Logger instLog;
@@ -620,7 +616,6 @@ public class BinaryReader implements GraphParser, ModelControl {
     private Object addPoolEntry(Class<?> klass) throws IOException {
         char index = dataSource.readShort();
         int type = dataSource.readByte();
-        int size = 0;
         assert assertObjectType(klass, type) : "Wrong object type : " + klass + " != " + type;
         Object obj;
         switch (type) {
@@ -637,10 +632,8 @@ public class BinaryReader implements GraphParser, ModelControl {
                     for (int i = 0; i < len; i++) {
                         values[i] = readPoolObject(String.class);
                     }
-                    size = 2 + name.length();
                     obj = new EnumKlass(name, values);
                 } else if (klasstype == KLASS) {
-                    size = name.length();
                     obj = new Klass(name);
                 } else {
                     throw new IOException("unknown klass type : " + klasstype);
@@ -651,7 +644,6 @@ public class BinaryReader implements GraphParser, ModelControl {
                 EnumKlass enumClass = readPoolObject(EnumKlass.class);
                 int ordinal = dataSource.readInt();
                 obj = new EnumValue(enumClass, ordinal);
-                size = 2;
                 break;
             }
             case POOL_NODE_CLASS: {
@@ -663,7 +655,6 @@ public class BinaryReader implements GraphParser, ModelControl {
                     className = nodeClass.toString();
                 }
                 String nameTemplate = dataSource.readString();
-                size = nameTemplate.length();
                 int inputCount = dataSource.readShort();
                 List<TypedPort> inputs = new ArrayList<>(inputCount);
                 for (int i = 0; i < inputCount; i++) {
@@ -753,64 +744,12 @@ public class BinaryReader implements GraphParser, ModelControl {
             }
             case POOL_STRING: {
                 obj = dataSource.readString();
-                size = obj.toString().length();
                 break;
             }
             default:
                 throw new IOException("unknown pool type");
         }
-        if (POOL_STATS) {
-            recordNewEntry(obj, size);
-        }
         return constantPool.addPoolEntry(index, obj, -1);
-    }
-
-    /**
-     * Each value holds 2 ints - 0 is the approx size of the data, 1 is the number of addPooLEntry
-     * calls for this value - the number of redundant appearances in the constant pool.
-     */
-    private final Map<Object, int[]> poolEntries = new LinkedHashMap<>(100, 0.8f, true);
-
-    private void recordNewEntry(Object data, int size) {
-        // TODO: the stats can be compacted from time to time - e.g. if the number of objects goes
-        // large,
-        // entries with < N usages can be removed in a hope they are rare.
-        int[] v = poolEntries.get(data);
-        if (v == null) {
-            v = new int[]{size, 0};
-            poolEntries.put(data, v);
-        }
-        v[1]++;
-    }
-
-    public void dumpPoolStats() {
-        if (poolEntries.isEmpty()) {
-            return;
-        }
-        List<Map.Entry<Object, int[]>> entries = new ArrayList<>(poolEntries.entrySet());
-        entries.sort(Comparator.comparingInt(o -> o.getValue()[0] * o.getValue()[1]));
-        int oneSize = 0;
-        int totalSize = 0;
-        for (Map.Entry<Object, int[]> e : poolEntries.entrySet()) {
-            oneSize += e.getValue()[0];
-            totalSize += e.getValue()[1] * e.getValue()[0];
-        }
-        // ignore small overhead
-        if (totalSize < oneSize * 2) {
-            return;
-        }
-        // ignore small # of duplications
-        if (entries.get(entries.size() - 1).getValue()[1] < 10) {
-            return;
-        }
-        instLog.log(Level.FINE, "Dumping cpool statistics");
-        instLog.log(Level.FINE, "Total {0} values, {1} size of useful data, {2} size with redefinitions", new Object[]{poolEntries.size(), oneSize, totalSize});
-        instLog.log(Level.FINE, "Dumping the most consuming entries:");
-        int count = 0;
-        for (int i = entries.size() - 1; count < 50 && i >= 0; i--, count++) {
-            Map.Entry<Object, int[]> e = entries.get(i);
-            instLog.log(Level.FINE, "#{0}\t: {1}, size {2}, redefinitions {3}", new Object[]{count, e.getKey(), e.getValue()[0] * e.getValue()[1], e.getValue()[1]});
-        }
     }
 
     private Object readPropertyObject(String key) throws IOException {
@@ -889,7 +828,6 @@ public class BinaryReader implements GraphParser, ModelControl {
         } finally {
             // also terminates the builder
             closeDanglingGroups();
-            dumpPoolStats();
         }
         return builder.rootDocument();
     }
