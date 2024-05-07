@@ -6580,6 +6580,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitTagYield");
 
             CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("tags == 0").end().startBlock();
+            b.returnDefault();
+            b.end();
 
             b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
             b.startSwitch().string("operationStack[i].operation").end().startBlock();
@@ -6609,6 +6612,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitTagResume");
             CodeTreeBuilder b = ex.createBuilder();
+
+            b.startIf().string("tags == 0").end().startBlock();
+            b.returnDefault();
+            b.end();
+
             b.startFor().string("int i = 0; i <  operationSp; i++").end().startBlock();
             b.startSwitch().string("operationStack[i].operation").end().startBlock();
             OperationModel op = model.findOperation(OperationKind.TAG);
@@ -8589,11 +8597,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
 
                 b.startCase().string("Object").end();
-                b.startCase().string("Illegal").end();
                 b.startCaseBlock();
-
                 b.startReturn();
                 startExpectFrame(b, "frame", type(Object.class), false).string("frameIndex").end();
+                b.end();
+                b.end(); // case block
+
+                b.startCase().string("Illegal").end();
+                b.startCaseBlock();
+                b.startReturn();
+                b.string("frame.getFrameDescriptor().getDefaultValue()");
                 b.end();
                 b.end(); // case block
 
