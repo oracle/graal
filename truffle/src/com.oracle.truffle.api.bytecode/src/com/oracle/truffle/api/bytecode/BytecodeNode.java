@@ -480,6 +480,14 @@ public abstract class BytecodeNode extends Node {
      */
     @TruffleBoundary
     public final String dump(BytecodeLocation highlighedLocation) {
+        try {
+            return dumpImpl(highlighedLocation);
+        } catch (Throwable t) {
+            return "<dump error>";
+        }
+    }
+
+    private String dumpImpl(BytecodeLocation highlighedLocation) {
         if (highlighedLocation != null && highlighedLocation.getBytecodeNode() != this) {
             throw new IllegalArgumentException("Invalid highlighted location. Belongs to a different BytecodeNode.");
         }

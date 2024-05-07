@@ -41,12 +41,10 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -121,93 +119,6 @@ public final class InstructionModel implements PrettyPrintable {
 
     public record InstructionImmediate(int offset, ImmediateKind kind, String name) {
 
-    }
-
-    public static final class Signature {
-        public final ProcessorContext context = ProcessorContext.getInstance();
-        // Number of value parameters (includes the variadic parameter, if it exists).
-        public final int valueCount;
-        public final boolean isVariadic;
-        public final int localSetterCount;
-        public final int localSetterRangeCount;
-        public final boolean isVoid;
-
-        public final TypeMirror returnType;
-        public final List<TypeMirror> argumentTypes;
-
-        public Signature(TypeMirror returnType, List<TypeMirror> types) {
-            this(returnType, types, false, 0, 0);
-        }
-
-        public Signature(TypeMirror returnType, List<TypeMirror> types, boolean hasVariadic, int localSetterCount, int localSetterRangeCount) {
-            this.returnType = returnType;
-            this.argumentTypes = Collections.unmodifiableList(types);
-            this.valueCount = types.size();
-            this.isVariadic = hasVariadic;
-            this.localSetterCount = localSetterCount;
-            this.localSetterRangeCount = localSetterRangeCount;
-            this.isVoid = ElementUtils.isVoid(returnType);
-        }
-
-        public TypeMirror getGenericType(int i) {
-            assert i > 0 && i < valueCount;
-            if (isVariadicParameter(i)) {
-                return context.getType(Object[].class);
-            }
-            return context.getType(Object.class);
-        }
-
-        public TypeMirror getGenericReturnType() {
-            if (isVoid) {
-                return context.getType(void.class);
-            } else {
-                return context.getType(Object.class);
-            }
-        }
-
-        public TypeMirror getSpecializedType(int i) {
-            assert i > 0 && i < valueCount;
-            if (isVariadicParameter(i)) {
-                return context.getType(Object[].class);
-            }
-            return argumentTypes.get(i);
-        }
-
-        public boolean isVariadicParameter(int i) {
-            return isVariadic && i == valueCount - 1;
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder();
-
-            sb.append(ElementUtils.getSimpleName(returnType)).append(" ");
-            sb.append("(");
-
-            for (int i = 0; i < valueCount; i++) {
-                sb.append(ElementUtils.getSimpleName(argumentTypes.get(i)));
-                if (isVariadic && i == valueCount - 1) {
-                    sb.append("...");
-                }
-                sb.append(", ");
-            }
-
-            for (int i = 0; i < localSetterCount; i++) {
-                sb.append("local, ");
-            }
-
-            for (int i = 0; i < localSetterRangeCount; i++) {
-                sb.append("localRange, ");
-            }
-
-            if (sb.charAt(sb.length() - 1) == ' ') {
-                sb.delete(sb.length() - 2, sb.length());
-            }
-
-            sb.append(')');
-
-            return sb.toString();
-        }
     }
 
     private int id = -1;

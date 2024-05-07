@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readBc;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readConst;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -51,6 +54,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
@@ -127,11 +131,23 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private boolean buildChildExecution(CodeTreeBuilder b, FrameState frameState, String frame, int idx) {
         int index = idx;
 
-        if (index < instruction.signature.valueCount) {
+        if (index < instruction.signature.getConstantOperandsBeforeCount()) {
+            TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(index).type();
+            if (!ElementUtils.isObject(constantOperandType)) {
+                b.cast(constantOperandType);
+            }
+            List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
+            InstructionImmediate imm = imms.get(index);
+            b.string(readConst(readBc("$bc", "$bci + " + imm.offset()), "$bytecode.constants"));
+            return false;
+        }
+
+        index -= instruction.signature.getConstantOperandsBeforeCount();
+        if (index < instruction.signature.dynamicOperandCount) {
             TypeMirror targetType = instruction.signature.getSpecializedType(index);
             TypeMirror genericType = instruction.signature.getGenericType(index);
             TypeMirror expectedType = instruction.isQuickening() ? targetType : genericType;
-            String stackIndex = "$sp - " + (instruction.signature.valueCount - index);
+            String stackIndex = "$sp - " + (instruction.signature.dynamicOperandCount - index);
             if (instruction.getQuickeningRoot().needsBoxingElimination(model, idx)) {
                 if (frameState.getMode().isFastPath()) {
                     b.startStatement();
@@ -165,8 +181,19 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         }
 
-        index -= instruction.signature.valueCount;
+        index -= instruction.signature.dynamicOperandCount;
+        if (index < instruction.signature.getConstantOperandsAfterCount()) {
+            TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(index).type();
+            if (!ElementUtils.isObject(constantOperandType)) {
+                b.cast(constantOperandType);
+            }
+            List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
+            InstructionImmediate imm = imms.get(instruction.signature.getConstantOperandsBeforeCount() + index);
+            b.string(readConst(readBc("$bc", "$bci + " + imm.offset()), "$bytecode.constants"));
+            return false;
+        }
 
+        index -= instruction.signature.getConstantOperandsAfterCount();
         if (index < instruction.signature.localSetterCount) {
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.LOCAL_SETTER);
             InstructionImmediate imm = imms.get(index);
@@ -275,7 +302,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 // not a valid target instruction -> selected only by parent
                 continue;
             }
-            for (int index = 0; index < quickening.signature.valueCount; index++) {
+            for (int index = 0; index < quickening.signature.dynamicOperandCount; index++) {
                 if (model.isBoxingEliminated(quickening.signature.getSpecializedType(index))) {
                     boxingEliminated.add(index);
                 }
