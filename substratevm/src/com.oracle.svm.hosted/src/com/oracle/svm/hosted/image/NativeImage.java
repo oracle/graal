@@ -971,7 +971,7 @@ public abstract class NativeImage extends AbstractImage {
                     HostedMethod current = pair.getLeft();
                     final String symName = localSymbolNameForMethod(current);
                     final String signatureString = current.getUniqueShortName();
-                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, SubstrateOptions.InternalSymbolsAreGlobal.getValue(), pair.getRight());
+                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, SVMImageLayerSupport.singleton().persistAnalysis(), pair.getRight());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {

@@ -113,7 +113,6 @@ public class SubstrateOptions {
             PersistImageLayerAnalysis.update(values, newValue);
             PersistImageLayerSingletons.update(values, newValue);
             StripDebugInfo.update(values, !newValue);
-            InternalSymbolsAreGlobal.update(values, newValue);
             AOTTrivialInline.update(values, !newValue);
             if (imageLayerEnabledHandler != null) {
                 imageLayerEnabledHandler.onOptionEnabled(values);
