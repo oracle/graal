@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,7 +54,6 @@ import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -93,7 +93,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -1496,23 +1495,37 @@ public class TagTest extends AbstractInstructionTest {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
 
+            b.beginTag(StatementTag.class);
             BytecodeLocal l1 = b.createLocal("l1", "l1_info");
-            BytecodeLocal l2 = b.createLocal(
-                            TruffleString.fromJavaStringUncached("l2", Encoding.UTF_16), "l2_info");
-
             b.beginStoreLocal(l1);
+            b.beginTag(ExpressionTag.class);
             b.emitLoadConstant(42);
+            b.endTag(ExpressionTag.class);
             b.endStoreLocal();
+            b.endTag(StatementTag.class);
 
-            b.beginStoreLocal(l1);
+            b.beginBlock();
+
+            b.beginTag(StatementTag.class);
+            BytecodeLocal l2 = b.createLocal("l2", "l2_info");
+            b.beginStoreLocal(l2);
             b.beginTag(ExpressionTag.class);
             b.emitLoadLocal(l1);
             b.endTag(ExpressionTag.class);
             b.endStoreLocal();
+            b.endTag(StatementTag.class);
 
-            b.beginStoreLocal(l2);
+            b.endBlock();
+
+            b.beginTag(StatementTag.class);
+            BytecodeLocal l3 = b.createLocal(
+                            TruffleString.fromJavaStringUncached("l3", Encoding.UTF_16), "l3_info");
+            b.beginStoreLocal(l3);
+            b.beginTag(ExpressionTag.class);
             b.emitLoadConstant(41);
+            b.endTag(ExpressionTag.class);
             b.endStoreLocal();
+            b.endTag(StatementTag.class);
 
             b.beginReturn();
             b.emitLoadLocal(l1);
@@ -1520,38 +1533,91 @@ public class TagTest extends AbstractInstructionTest {
 
             b.endRoot();
         });
-        instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), (c) -> {
+
+        List<List<ExpectedLocal>> onEnterLocalsExpression = List.of(
+                        List.of(new ExpectedLocal("l1", null)),
+                        List.of(new ExpectedLocal("l1", 42),
+                                        new ExpectedLocal("l2", null)),
+                        List.of(new ExpectedLocal("l1", 42),
+                                        new ExpectedLocal("l3", null)));
+
+        List<List<ExpectedLocal>> onReturnLocalsExpression = List.of(
+                        List.of(new ExpectedLocal("l1", null)),
+                        List.of(new ExpectedLocal("l1", 42),
+                                        new ExpectedLocal("l2", null)),
+                        List.of(new ExpectedLocal("l1", 42),
+                                        new ExpectedLocal("l3", null)));
+        assertLocals(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(),
+                        onEnterLocalsExpression,
+                        onReturnLocalsExpression);
+
+        List<List<ExpectedLocal>> onEnterLocalsStatement = List.of(
+                        List.of(),
+                        List.of(new ExpectedLocal("l1", 42)),
+                        List.of(new ExpectedLocal("l1", 42)));
+
+        List<List<ExpectedLocal>> onReturnLocalsStatement = List.of(
+                        List.of(new ExpectedLocal("l1", 42)),
+                        List.of(new ExpectedLocal("l1", 42),
+                                        new ExpectedLocal("l2", 42)),
+                        List.of(new ExpectedLocal("l1", 42),
+                                        new ExpectedLocal("l3", 41)));
+
+        assertLocals(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(),
+                        onEnterLocalsStatement,
+                        onReturnLocalsStatement);
+
+        node.getCallTarget().call();
+    }
+
+    private void assertLocals(SourceSectionFilter filter, List<List<ExpectedLocal>> onEnterLocals, List<List<ExpectedLocal>> onLeaveLocals) {
+        AtomicInteger enterIndex = new AtomicInteger(0);
+        AtomicInteger returnIndex = new AtomicInteger(0);
+        instrumenter.attachExecutionEventFactory(filter, (c) -> {
             return new ExecutionEventNode() {
+
                 @Override
                 protected void onEnter(VirtualFrame frame) {
-                    assertScope(frame.materialize(), c.getInstrumentedNode());
+                    int index = enterIndex.getAndIncrement();
+                    assertScope(frame.materialize(), index, true, onEnterLocals.get(index));
+                }
+
+                @Override
+                protected void onReturnValue(VirtualFrame frame, Object result) {
+                    int index = returnIndex.getAndIncrement();
+                    assertScope(frame.materialize(), index, false, onLeaveLocals.get(index));
+
                 }
 
                 @TruffleBoundary
-                private void assertScope(Frame frame, Node instruementedNode) {
+                private void assertScope(Frame frame, int index, boolean enter, List<ExpectedLocal> locals) {
                     try {
-                        Object scope = NODE_LIBRARY.getScope(instruementedNode, frame, true);
+                        Node instrumentedScope = c.getInstrumentedNode();
+                        Object scope = NODE_LIBRARY.getScope(instrumentedScope, frame, enter);
                         Object members = INTEROP.getMembers(scope);
-                        assertEquals(2, INTEROP.getArraySize(members));
-                        Object l1 = INTEROP.readArrayElement(members, 0L);
-                        Object l2 = INTEROP.readArrayElement(members, 1L);
-                        assertEquals("l1", INTEROP.asString(l1));
-                        assertEquals("l2", INTEROP.asString(l2));
+                        assertEquals(locals.size(), INTEROP.getArraySize(members));
 
-                        Object l1Value = INTEROP.readMember(scope, "l1");
-                        Object l2Value = INTEROP.readMember(scope, "l2");
+                        for (int i = 0; i < locals.size(); i++) {
+                            ExpectedLocal expectedLocal = locals.get(i);
 
-                        assertEquals(42, l1Value);
-
-                    } catch (InteropException e) {
-                        throw CompilerDirectives.shouldNotReachHere(e);
+                            Object actualName = INTEROP.readArrayElement(members, i);
+                            assertEquals(expectedLocal.name(), INTEROP.asString(actualName));
+                            Object actualValue = INTEROP.readMember(scope, INTEROP.asString(actualName));
+                            if (expectedLocal.value() == null) {
+                                assertTrue(INTEROP.isNull(actualValue));
+                            } else {
+                                assertEquals(expectedLocal.value(), actualValue);
+                            }
+                        }
+                    } catch (Throwable e) {
+                        throw CompilerDirectives.shouldNotReachHere("Failed index " + index + " " + (enter ? "enter" : "return"), e);
                     }
                 }
-
             };
         });
-        node.getCallTarget().call();
+    }
 
+    record ExpectedLocal(String name, Object value) {
     }
 
     @SuppressWarnings("serial")
@@ -1629,7 +1695,6 @@ public class TagTest extends AbstractInstructionTest {
                 throw new TestException(node, bci);
             }
         }
-
     }
 
     @GenerateBytecode(languageClass = TagTestLanguage.class, //
