@@ -143,12 +143,7 @@ public final class ModuleSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void accessToUnnamedModule(Module from, Module to, String pn) {
-        Modules.addOpens(from, pn, to);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void accessToAllUnnamedModule(Module from, String pn) {
-        Modules.addOpensToAllUnnamed(from, pn);
+    public static void accessModule(Access access, Module accessingModule, Module declaringModule, String packageName) {
+        access.giveAccess(accessingModule, declaringModule, packageName);
     }
 }
