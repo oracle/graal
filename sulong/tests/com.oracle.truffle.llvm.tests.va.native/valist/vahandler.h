@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,8 +32,21 @@
 
 #include <stdarg.h>
 
+struct Varargs {
+    const struct VarargsInterface *functions;
+};
+struct VarargsInterface {
+    int (*pop_int)(struct Varargs *);
+};
+struct VarargsV {
+    struct Varargs base;
+    va_list args;
+};
+
 typedef double (*vahandler)(int, va_list);
 typedef double (*vahandler_ptr)(int, va_list *);
+
+typedef double (*struct_varargs_handler)(int, struct Varargs *);
 
 struct A {
     int x;

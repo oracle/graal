@@ -22,12 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.core.jdk;
 
-import java.util.List;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import org.graalvm.nativeimage.ImageSingletons;
 
-public interface ImageSingletonWriter {
-    void writeInt(String keyName, int value);
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-    void writeIntList(String keyName, List<Integer> value);
+@AutomaticallyRegisteredImageSingleton
+public final class ClassValueSupport {
+
+    /**
+     * Marker value that replaces null values in the {@link java.util.concurrent.ConcurrentHashMap}.
+     */
+    public static final Object NULL_MARKER = new Object();
+
+    private final Map<ClassValue<?>, Map<Class<?>, Object>> values = new ConcurrentHashMap<>();
+
+    public static Map<ClassValue<?>, Map<Class<?>, Object>> getValues() {
+        return ImageSingletons.lookup(ClassValueSupport.class).values;
+    }
 }

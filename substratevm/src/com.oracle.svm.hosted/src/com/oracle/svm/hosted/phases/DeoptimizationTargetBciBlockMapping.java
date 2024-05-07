@@ -288,9 +288,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      * Checking whether this bci corresponds to a deopt entry point.
      */
     private boolean isRegisteredDeoptEntry(int bci, FrameState.StackState stackState) {
-        ResolvedJavaMethod method = code.getMethod();
-        SubstrateCompilationDirectives directives = SubstrateCompilationDirectives.singleton();
-        return directives.isRegisteredDeoptTarget(method) && directives.isRegisteredDeoptEntry((MultiMethod) method, bci, stackState);
+        return SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry((MultiMethod) code.getMethod(), bci, stackState);
     }
 
     /* A new block must be created for all places where a DeoptEntryNode will be inserted. */

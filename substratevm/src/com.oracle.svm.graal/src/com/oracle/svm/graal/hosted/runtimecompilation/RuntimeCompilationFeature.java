@@ -333,12 +333,12 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         if (registeredRuntimeCompilations.add(aMethod)) {
             aMethod.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
             /*
-             * For static methods it is important to also register the deopt targets to ensure the
-             * method will be linked appropriately. However, we do not need to make the entire flow
-             * until we see what FrameStates exist.
+             * For static methods it is important to also register the runtime and deopt targets as
+             * roots to ensure the methods will be linked appropriately. However, we do not need to
+             * make the entire flow for the deopt version until we see what FrameStates exist within
+             * the runtime version.
              */
-            var deoptMethod = aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
-            SubstrateCompilationDirectives.singleton().registerDeoptTarget(deoptMethod);
+            getStubDeoptVersion(aMethod);
             config.registerAsRoot(aMethod, true, "Runtime compilation, registered in " + RuntimeCompilationFeature.class, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
         }
 
@@ -747,6 +747,9 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 /*
                  * Because this graph will have its flowgraph immediately updated after this, there
                  * is no reason to make this method's flowgraph a stub on creation.
+                 *
+                 * We intentionally do not call getFullDeoptVersion because we want to wait until
+                 * all deopt entries are registered before triggering the flow update.
                  */
                 Collection<ResolvedJavaMethod> recomputeMethods = DeoptimizationUtils.registerDeoptEntries(graph, registeredRuntimeCompilations.contains(origMethod),
                                 (deoptEntryMethod -> ((PointsToAnalysisMethod) deoptEntryMethod).getOrCreateMultiMethod(DEOPT_TARGET_METHOD)));
@@ -896,7 +899,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
              * (i.e., all calls to this method are inlined), then the method's full flow will not
              * need to be created.
              */
-            AnalysisMethod runtimeMethod = method.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+            AnalysisMethod runtimeMethod = getStubRuntimeVersion(method);
             return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(runtimeMethod);
         }
 
@@ -938,6 +941,32 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private static <T extends AnalysisMethod> T getStubDeoptVersion(T implementation) {
+        return (T) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends AnalysisMethod> T getFullDeoptVersion(BigBang bb, T implementation, InvokeTypeFlow parsingReason) {
+        PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD);
+        PointsToAnalysis analysis = (PointsToAnalysis) bb;
+        runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, true);
+        return (T) runtimeMethod;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends AnalysisMethod> T getStubRuntimeVersion(T implementation) {
+        return (T) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends AnalysisMethod> T getFullRuntimeVersion(BigBang bb, T implementation, InvokeTypeFlow parsingReason) {
+        PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
+        PointsToAnalysis analysis = (PointsToAnalysis) bb;
+        runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, false);
+        return (T) runtimeMethod;
+    }
+
     private class RuntimeCompilationAnalysisPolicy implements HostVM.MultiMethodAnalysisPolicy {
 
         @Override
@@ -967,9 +996,9 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                  * method, so deopt targets must be created for them as well.
                  */
                 if (registeredRuntimeCompilation) {
-                    return List.of(implementation, getStubDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
+                    return List.of(implementation, getStubDeoptVersion(implementation), getFullRuntimeVersion(bb, implementation, invokeFlow));
                 } else if (SubstrateCompilationDirectives.singleton().isFrameInformationRequired(implementation)) {
-                    return List.of(implementation, getDeoptVersion(bb, implementation, true, invokeFlow));
+                    return List.of(implementation, getFullDeoptVersion(bb, implementation, invokeFlow));
                 } else if (DeoptimizationUtils.canDeoptForTesting(implementation, false, () -> false)) {
                     /*
                      * If the target is registered for deoptimization, then we must also make a
@@ -991,7 +1020,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                      * runtime deoptimizes).
                      */
                     if (runtimeCompilationCandidate) {
-                        return List.of(implementation, getStubDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
+                        return List.of(implementation, getStubDeoptVersion(implementation), getFullRuntimeVersion(bb, implementation, invokeFlow));
                     } else {
                         /*
                          * If this method cannot be jitted, then only the original implementation is
@@ -1011,7 +1040,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                      * runtime compiled method's invoke.
                      */
                     if (runtimeCompilationCandidate) {
-                        return List.of(implementation, getStubDeoptVersion(implementation), getRuntimeVersion(bb, implementation, false, invokeFlow));
+                        return List.of(implementation, getStubDeoptVersion(implementation), getStubRuntimeVersion(implementation));
                     } else {
                         /*
                          * If this method cannot be jitted, then only the original implementation is
@@ -1022,44 +1051,6 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 }
             }
 
-        }
-
-        protected <T extends AnalysisMethod> T getStubDeoptVersion(T implementation) {
-            /*
-             * Flows for deopt versions are only created once a frame state for the method is seen
-             * within a runtime compiled method.
-             */
-            return getDeoptVersion(null, implementation, false, null);
-        }
-
-        @SuppressWarnings("unchecked")
-        protected <T extends AnalysisMethod> T getDeoptVersion(BigBang bb, T implementation, boolean createFlow, InvokeTypeFlow parsingReason) {
-            if (createFlow) {
-                PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD);
-                PointsToAnalysis analysis = (PointsToAnalysis) bb;
-                runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, true);
-                return (T) runtimeMethod;
-            } else {
-                /*
-                 * If a flow is not needed then temporarily a stub can be created.
-                 */
-                return (T) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        protected <T extends AnalysisMethod> T getRuntimeVersion(BigBang bb, T implementation, boolean createFlow, InvokeTypeFlow parsingReason) {
-            if (createFlow) {
-                PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
-                PointsToAnalysis analysis = (PointsToAnalysis) bb;
-                runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, false);
-                return (T) runtimeMethod;
-            } else {
-                /*
-                 * If a flow is not needed then temporarily a stub can be created.
-                 */
-                return (T) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
-            }
         }
 
         @Override
