@@ -148,7 +148,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             TypeMirror genericType = instruction.signature.getGenericType(index);
             TypeMirror expectedType = instruction.isQuickening() ? targetType : genericType;
             String stackIndex = "$sp - " + (instruction.signature.dynamicOperandCount - index);
-            if (instruction.getQuickeningRoot().needsBoxingElimination(model, idx)) {
+            if (instruction.getQuickeningRoot().needsBoxingElimination(model, index)) {
                 if (frameState.getMode().isFastPath()) {
                     b.startStatement();
                     if (ElementUtils.needsCastTo(expectedType, targetType)) {

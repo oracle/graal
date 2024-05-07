@@ -206,7 +206,6 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
             return replacement;
         }
     }
-
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
@@ -286,12 +285,12 @@ abstract class ConstantOperandErrorRootNode extends RootNode implements Bytecode
         public static void doOperation(VirtualFrame frame,
                         int const1,
                         Object dynamic1,
-                        @ExpectError("Parameter type String incompatible with constant operand type double.") String const2) {
+                        @ExpectError("Constant operand parameter must have type double.") String const2) {
         }
 
         @Specialization
         public static void doOperation2(VirtualFrame frame,
-                        @ExpectError("Parameter type double incompatible with constant operand type int.") double const1,
+                        @ExpectError("Constant operand parameter must have type int.") double const1,
                         Object dynamic1,
                         double const2) {
         }
@@ -306,18 +305,18 @@ abstract class ConstantOperandErrorRootNode extends RootNode implements Bytecode
         @Specialization
         public static void doOperation(VirtualFrame frame,
                         int const1,
-                        @ExpectError("Parameter type int incompatible with constant operand type String.") int const2,
+                        @ExpectError("Constant operand parameter must have type String.") int const2,
                         Object dynamic1,
                         double const3,
-                        @ExpectError("Parameter type double incompatible with constant operand type int[].") double const4) {
+                        @ExpectError("Constant operand parameter must have type int[].") double const4) {
         }
 
         @Specialization
         public static void doOperation2(VirtualFrame frame,
-                        @ExpectError("Parameter type double incompatible with constant operand type int.") double const1,
+                        @ExpectError("Constant operand parameter must have type int.") double const1,
                         String const2,
                         Object dynamic1,
-                        @ExpectError("Parameter type String incompatible with constant operand type double.") String const3,
+                        @ExpectError("Constant operand parameter must have type double.") String const3,
                         int[] const4) {
         }
     }

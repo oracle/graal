@@ -82,7 +82,7 @@ public final class Signature {
     }
 
     public TypeMirror getGenericType(int i) {
-        assert i > 0 && i < dynamicOperandCount;
+        assert i >= 0 && i < dynamicOperandCount;
         if (isVariadicParameter(i)) {
             return context.getType(Object[].class);
         }

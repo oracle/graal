@@ -287,8 +287,8 @@ public class SignatureParser {
         }
         TypeMirror parameterType = constantOperandParam.asType();
         TypeMirror constantType = constantOperand.type();
-        if (!isAssignable(parameterType, constantType)) {
-            errorTarget.addError(constantOperandParam, "Parameter type %s incompatible with constant operand type %s.", getSimpleName(parameterType), getSimpleName(constantType));
+        if (!ElementUtils.typeEquals(parameterType, constantType)) {
+            errorTarget.addError(constantOperandParam, "Constant operand parameter must have type %s.", getSimpleName(constantType));
             return false;
         }
         return true;
