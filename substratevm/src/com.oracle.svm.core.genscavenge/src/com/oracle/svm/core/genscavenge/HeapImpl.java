@@ -751,10 +751,10 @@ public final class HeapImpl extends Heap {
 
         if (allowJavaHeapAccess) {
             // Accessing spaces and chunks is safe if we prevent a GC.
-            if (isInYoungGen(ptr)) {
+            if (youngGeneration.isInSpace(ptr)) {
                 log.string("points into the young generation");
                 return true;
-            } else if (isInOldGen(ptr)) {
+            } else if (oldGeneration.isInSpace(ptr)) {
                 log.string("points into the old generation");
                 return true;
             }
@@ -769,51 +769,7 @@ public final class HeapImpl extends Heap {
     }
 
     boolean isInHeap(Pointer ptr) {
-        return isInImageHeap(ptr) || isInYoungGen(ptr) || isInOldGen(ptr);
-    }
-
-    @Uninterruptible(reason = "Prevent that chunks are freed.")
-    private boolean isInYoungGen(Pointer ptr) {
-        if (findPointerInSpace(youngGeneration.getEden(), ptr)) {
-            return true;
-        }
-
-        for (int i = 0; i < youngGeneration.getMaxSurvivorSpaces(); i++) {
-            if (findPointerInSpace(youngGeneration.getSurvivorFromSpaceAt(i), ptr)) {
-                return true;
-            }
-            if (findPointerInSpace(youngGeneration.getSurvivorToSpaceAt(i), ptr)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Uninterruptible(reason = "Prevent that chunks are freed.")
-    private boolean isInOldGen(Pointer ptr) {
-        return oldGeneration.isInSpace(ptr);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static boolean findPointerInSpace(Space space, Pointer p) {
-        AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
-        while (aChunk.isNonNull()) {
-            Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);
-            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(aChunk))) {
-                return true;
-            }
-            aChunk = HeapChunk.getNext(aChunk);
-        }
-
-        UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
-        while (uChunk.isNonNull()) {
-            Pointer start = UnalignedHeapChunk.getObjectStart(uChunk);
-            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(uChunk))) {
-                return true;
-            }
-            uChunk = HeapChunk.getNext(uChunk);
-        }
-        return false;
+        return isInImageHeap(ptr) || youngGeneration.isInSpace(ptr) || oldGeneration.isInSpace(ptr);
     }
 
     private static boolean printTlabInfo(Log log, Pointer ptr) {

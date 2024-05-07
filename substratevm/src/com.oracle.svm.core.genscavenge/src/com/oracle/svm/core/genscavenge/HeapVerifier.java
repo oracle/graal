@@ -196,6 +196,11 @@ public class HeapVerifier {
                 success = false;
             }
 
+            if (aChunk.getShouldSweepInsteadOfCompact()) {
+                Log.log().string("Aligned chunk ").zhex(aChunk).string(" is marked for sweeping while this should only be used during collections.").newline();
+                success = false;
+            }
+
             OBJECT_VERIFIER.initialize(aChunk, WordFactory.nullPointer());
             AlignedHeapChunk.walkObjects(aChunk, OBJECT_VERIFIER);
             aChunk = HeapChunk.getNext(aChunk);

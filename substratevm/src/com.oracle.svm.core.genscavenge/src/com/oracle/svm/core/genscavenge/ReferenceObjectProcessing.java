@@ -250,8 +250,9 @@ final class ReferenceObjectProcessing {
     }
 
     static void updateForwardedRefs() {
-        Reference<?> current = rememberedRefsList;
+        assert SerialGCOptions.useCompactingOldGen();
 
+        Reference<?> current = rememberedRefsList;
         while (current != null) {
             // Get the next node (the last node has a cyclic reference to self).
             Reference<?> next = ReferenceInternals.getNextDiscovered(current);

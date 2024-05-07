@@ -32,6 +32,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
+import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -45,14 +46,18 @@ import jdk.vm.ci.meta.JavaKind;
  * cannot encounter them (and their broken references).
  */
 public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
+    private static final Class<?> ARRAY_CLASS = FillerArray.class;
+    private static final JavaKind ARRAY_ELEMENT_KIND = JavaKind.Int;
+    private static final int ARRAY_ELEMENT_SIZE = ARRAY_ELEMENT_KIND.getByteCount();
+
     @Fold
-    static int byteArrayMinSize() {
-        return NumUtil.safeToInt(ConfigurationValues.getObjectLayout().getArraySize(JavaKind.Byte, 0, false));
+    static int arrayMinSize() {
+        return NumUtil.safeToInt(ConfigurationValues.getObjectLayout().getArraySize(ARRAY_ELEMENT_KIND, 0, false));
     }
 
     @Fold
-    static int byteArrayBaseOffset() {
-        return ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
+    static int arrayBaseOffset() {
+        return ConfigurationValues.getObjectLayout().getArrayBaseOffset(ARRAY_ELEMENT_KIND);
     }
 
     @Override
@@ -69,9 +74,9 @@ public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
 
     private static void writeFillerObjectAt(Pointer p, UnsignedWord size) {
         assert size.aboveThan(0);
-        if (size.aboveOrEqual(byteArrayMinSize())) {
-            int length = UnsignedUtils.safeToInt(size.subtract(byteArrayBaseOffset()));
-            FormatArrayNode.formatArray(p, byte[].class, length, true, false, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
+        if (size.aboveOrEqual(arrayMinSize())) {
+            int length = UnsignedUtils.safeToInt(size.subtract(arrayBaseOffset()).unsignedDivide(ARRAY_ELEMENT_SIZE));
+            FormatArrayNode.formatArray(p, ARRAY_CLASS, length, true, false, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
         } else {
             FormatObjectNode.formatObject(p, FillerObject.class, true, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
         }

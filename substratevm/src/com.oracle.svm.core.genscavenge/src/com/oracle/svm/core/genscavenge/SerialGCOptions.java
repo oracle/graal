@@ -112,7 +112,7 @@ public final class SerialGCOptions {
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
         @Option(help = "Collect old generation by compacting in-place instead of copying.", type = OptionType.Expert) //
-        public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+        public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(true, SerialGCOptions::validateCompactingOldGen);
 
         @Option(help = "Determines if a remembered set is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
@@ -127,16 +127,11 @@ public final class SerialGCOptions {
         }
     }
 
-    @Fold
-    public static boolean useRememberedSet() {
-        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
-    }
-
-    @Fold
-    public static boolean useCompactingOldGen() {
-        if (SubstrateOptions.UseEpsilonGC.getValue() || !ConcealedOptions.CompactingOldGen.getValue()) {
-            return false;
+    private static void validateCompactingOldGen(HostedOptionKey<Boolean> compactingOldGen) {
+        if (!compactingOldGen.getValue()) {
+            return;
         }
+        serialGCOnly(compactingOldGen);
         if (!useRememberedSet()) {
             throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
                             SubstrateOptionsParser.commandArgument(ConcealedOptions.UseRememberedSet, "+"));
@@ -145,6 +140,15 @@ public final class SerialGCOptions {
             throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
                             SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<value below or equal to " + ObjectMoveInfo.MAX_CHUNK_SIZE + ">"));
         }
-        return true;
+    }
+
+    @Fold
+    public static boolean useRememberedSet() {
+        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
+    }
+
+    @Fold
+    public static boolean useCompactingOldGen() {
+        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.CompactingOldGen.getValue();
     }
 }

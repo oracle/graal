@@ -54,6 +54,11 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
     public PlanningVisitor() {
     }
 
+    public void init(Space space) {
+        allocChunk = space.getFirstAlignedHeapChunk();
+        allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
+    }
+
     @Override
     public boolean visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
         boolean sweeping = chunk.getShouldSweepInsteadOfCompact();
@@ -71,26 +76,26 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
         BrickTable.setEntry(chunk, brickIndex, objSeq);
 
-        Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
+        Pointer p = objSeq;
         while (p.belowThan(initialTop)) {
             Word header = ObjectHeaderImpl.readHeaderFromPointer(p);
-            Object obj = p.toObject();
 
             UnsignedWord objSize;
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
                 /*
                  * If an object was copied from a chunk that won't be swept and forwarding was put
-                 * in place, it was because we needed to add an identity hash code field.
+                 * in place, it was because we needed to add an identity hash code field to the
+                 * object, and we need the object's original size here.
                  */
                 assert !sweeping && ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
                 Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(p, header);
                 objSize = LayoutEncoding.getSizeFromObjectWithoutOptionalIdHashFieldInGC(forwardedObj);
             } else {
-                objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
+                objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObject());
             }
 
             if (ObjectHeaderImpl.isMarkedHeader(header)) {
-                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(obj);
+                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(p.toObject());
 
                 /*
                  * Adding the optional identity hash field would increase an object's size, so we
@@ -111,6 +116,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                 }
 
                 objSeqSize = objSeqSize.add(objSize);
+
             } else { // not marked, i.e. not alive and start of a gap of yet unknown size
                 if (objSeqSize.notEqual(0)) { // end of an object sequence
                     Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
@@ -132,8 +138,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         }
         assert gapSize.equal(0) || objSeqSize.equal(0);
 
-        /* A gap at the end of the chunk requires updating the chunk top. */
-        if (gapSize.notEqual(0)) {
+        if (gapSize.notEqual(0)) { // truncate gap at chunk end
             chunk.setTopOffset(chunk.getTopOffset().subtract(gapSize));
         } else if (objSeqSize.notEqual(0)) {
             Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
@@ -147,6 +152,9 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
              * unused memory in the chunks before, but the order of objects must stay the same
              * across all chunks. If chunks end up completely empty however, they will be released
              * after compaction.
+             *
+             * GR-54021: it should be possible to avoid this limitation by sweeping chunks without
+             * ObjectMoveInfo and brick tables and potentially even do the sweeping right here.
              */
             this.allocChunk = chunk;
             this.allocPointer = HeapChunk.getTopPointer(chunk);
@@ -168,15 +176,11 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         if (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
             allocChunk = HeapChunk.getNext(allocChunk);
             assert allocChunk.isNonNull();
+            assert !allocChunk.getShouldSweepInsteadOfCompact();
 
             p = AlignedHeapChunk.getObjectsStart(allocChunk);
             allocPointer = p.add(size);
         }
         return p;
-    }
-
-    public void init(Space space) {
-        allocChunk = space.getFirstAlignedHeapChunk();
-        allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
     }
 }

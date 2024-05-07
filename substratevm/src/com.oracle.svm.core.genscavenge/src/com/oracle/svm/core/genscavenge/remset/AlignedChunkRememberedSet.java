@@ -276,7 +276,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static Pointer getCardTableStart(AlignedHeader chunk) {
+    static Pointer getCardTableStart(AlignedHeader chunk) {
         return getCardTableStart(HeapChunk.asPointer(chunk));
     }
 

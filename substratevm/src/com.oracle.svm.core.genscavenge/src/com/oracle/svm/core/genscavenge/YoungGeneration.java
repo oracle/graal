@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -334,5 +335,20 @@ public final class YoungGeneration extends Generation {
     @Override
     public void checkSanityAfterCollection() {
         assert eden.isEmpty() : "eden should be empty after a collection.";
+    }
+
+    boolean isInSpace(Pointer ptr) {
+        if (getEden().contains(ptr)) {
+            return true;
+        }
+        for (int i = 0; i < getMaxSurvivorSpaces(); i++) {
+            if (getSurvivorFromSpaceAt(i).contains(ptr)) {
+                return true;
+            }
+            if (getSurvivorToSpaceAt(i).contains(ptr)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

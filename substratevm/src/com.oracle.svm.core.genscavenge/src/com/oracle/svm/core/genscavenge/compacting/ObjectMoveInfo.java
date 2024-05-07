@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge.compacting;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -44,14 +45,18 @@ import jdk.graal.compiler.api.replacements.Fold;
 /**
  * {@link PlanningVisitor} decides where objects will be moved and uses the methods of this class to
  * store this information in a structure directly before each contiguous sequence of live objects,
- * where there is always a sufficiently large gap formed by unreachable objects. This avoids
- * reserving space in objects that is needed only for compaction, but also requires more passes over
- * the heap and more expensive accesses to determine the new location of objects.
+ * where there is always a sufficiently large gap formed by unreachable objects (because the
+ * structure fits the minimum object size). This avoids reserving space in objects that is needed
+ * only for compaction, but also requires more passes over the heap and more expensive accesses to
+ * determine the new location of objects.
  * <p>
- * The structure contains the following fields:
+ * The structure consists of the following fields, which are sized according to whether 8-byte or
+ * compressed 4-byte object references are in use, and in the latter case themselves use compression
+ * by shifting the (zero) object alignment bits.
  * <ul>
  * <li>New location:<br>
- * Provides the new address of the sequence of objects after compaction.</li>
+ * Provides the new address of the sequence of objects after compaction. This address can be outside
+ * of the current chunk.</li>
  * <li>Size:<br>
  * The number of live object bytes that the sequence consists of.</li>
  * <li>Next sequence offset:<br>
@@ -59,11 +64,10 @@ import jdk.graal.compiler.api.replacements.Fold;
  * This forms a singly-linked list over all object sequences (and their structures) in an aligned
  * chunk. An offset of 0 means that there are no more objects in the chunk.</li>
  * </ul>
- *
- * Binary layout (sizes with 8-byte/4-byte object references):
+ * The binary layout is as follows, with sizes given for both 8-byte/4-byte object references. The
+ * fields are arranged so that accesses to them are aligned.
  * 
  * <pre>
- * With 8-byte object references:
  * ------------------------+======================+==============+=========================+-------------------
  *  ... gap (unused bytes) | new location (8B/4B) | size (4B/2B) | next seq offset (4B/2B) | live objects ...
  * ------------------------+======================+==============+=========================+-------------------
@@ -73,7 +77,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 public final class ObjectMoveInfo {
 
     /**
-     * The maximum size of aligned heap chunks, based on 2 bytes for gap size and next object
+     * The maximum size of aligned heap chunks, based on 2 bytes for the size and the next object
      * sequence offset and an object alignment of 8 bytes.
      */
     public static final int MAX_CHUNK_SIZE = ~(~0xffff * 8) + 1;
@@ -172,7 +176,7 @@ public final class ObjectMoveInfo {
                 Object obj = p.toObject();
                 UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
                 if (!visitor.visitObjectInline(obj)) {
-                    return;
+                    throw VMError.shouldNotReachHereAtRuntime();
                 }
                 p = p.add(objSize);
             }

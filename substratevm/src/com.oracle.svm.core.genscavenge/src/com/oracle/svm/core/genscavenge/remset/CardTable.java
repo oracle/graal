@@ -45,8 +45,10 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UnsignedUtils;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -118,7 +120,13 @@ final class CardTable {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int readEntry(Pointer table, UnsignedWord index) {
-        return table.readByte(index);
+        byte entry = table.readByte(index);
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(entry == CLEAN_ENTRY || entry == DIRTY_ENTRY, "valid entry");
+        } else {
+            assert entry == CLEAN_ENTRY || entry == DIRTY_ENTRY;
+        }
+        return entry;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

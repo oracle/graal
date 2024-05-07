@@ -90,7 +90,7 @@ public final class BrickTable {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static Pointer getBrickTableStart(AlignedHeapChunk.AlignedHeader chunk) {
-        return HeapChunk.asPointer(chunk).add(AlignedChunkRememberedSet.getCardTableStartOffset());
+        return AlignedChunkRememberedSet.getCardTableStart(chunk);
     }
 
     private BrickTable() {

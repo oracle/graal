@@ -27,14 +27,12 @@ package com.oracle.svm.core.genscavenge.compacting;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.vm.ci.code.CodeUtil.K;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -42,12 +40,19 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.ObjectAccess;
 
+/**
+ * LIFO stack for objects to visit during the mark phase. Without it, recursive calls could exhaust
+ * the {@linkplain com.oracle.svm.core.stack.StackOverflowCheck yellow zone stack space} during GC.
+ */
 public final class MarkStack {
-    private static final int SEGMENT_SIZE = 64 * K - /* for any malloc overhead */ 32;
+    private static final int SEGMENT_SIZE = 64 * K - /* avoid potential malloc() overallocation */ 64;
 
     @Fold
     static int entriesPerSegment() {
@@ -92,7 +97,7 @@ public final class MarkStack {
                 Segment t = top;
                 top = top.getNext();
                 cursor = entriesPerSegment();
-                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(t);
+                NullableNativeMemory.free(t);
             } else {
                 // keep a single segment
             }
@@ -104,7 +109,7 @@ public final class MarkStack {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isEmpty() {
-        assert cursor != 0 || top.getNext().isNull() : "should see cursor == 0 only with a single segment";
+        assert cursor != 0 || top.isNull() || top.getNext().isNull() : "should see cursor == 0 only with a single segment (or none)";
         return top.isNull() || cursor == 0;
     }
 
@@ -123,7 +128,8 @@ public final class MarkStack {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static Segment allocateSegment(Segment next) {
         UnsignedWord size = WordFactory.unsigned(SEGMENT_SIZE);
-        Segment segment = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
+        Segment segment = NullableNativeMemory.malloc(size, NmtCategory.GC);
+        VMError.guarantee(segment.isNonNull(), "Could not allocate mark stack memory: malloc() returned null.");
         segment.setNext(next);
         return segment;
     }
@@ -133,5 +139,14 @@ public final class MarkStack {
     private static UnsignedWord getOffsetAtIndex(int index) {
         int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         return WordFactory.unsigned(index).multiply(refSize).add(SizeOf.unsigned(Segment.class));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void tearDown() {
+        if (top.isNonNull()) {
+            assert top.getNext().isNull();
+            NullableNativeMemory.free(top);
+            top = WordFactory.nullPointer();
+        }
     }
 }

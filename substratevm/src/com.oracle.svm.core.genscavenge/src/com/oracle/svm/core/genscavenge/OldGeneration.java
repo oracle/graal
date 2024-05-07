@@ -24,11 +24,17 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.VMError;
 
 public abstract class OldGeneration extends Generation {
     OldGeneration(String name) {
@@ -36,16 +42,13 @@ public abstract class OldGeneration extends Generation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    abstract void beginPromotion(YoungGeneration youngGen, boolean incrementalGc);
+    abstract void beginPromotion(boolean incrementalGc);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     abstract void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     abstract boolean scanGreyObjects(boolean incrementalGc);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    abstract AlignedHeapChunk.AlignedHeader requestAlignedChunk();
 
     abstract void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser);
 
@@ -58,7 +61,6 @@ public abstract class OldGeneration extends Generation {
 
     abstract UnsignedWord computeObjectBytes();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     abstract boolean isInSpace(Pointer ptr);
 
     abstract boolean verifyRememberedSets();
@@ -67,4 +69,15 @@ public abstract class OldGeneration extends Generation {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     abstract void tearDown();
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    AlignedHeapChunk.AlignedHeader requestAlignedChunk() {
+        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
+        AlignedHeapChunk.AlignedHeader chunk = HeapImpl.getChunkProvider().produceAlignedChunk();
+        if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, chunk.isNull())) {
+            throw VMError.shouldNotReachHere("OldGeneration.requestAlignedChunk: failure to allocate aligned chunk");
+        }
+        RememberedSet.get().enableRememberedSetForChunk(chunk);
+        return chunk;
+    }
 }

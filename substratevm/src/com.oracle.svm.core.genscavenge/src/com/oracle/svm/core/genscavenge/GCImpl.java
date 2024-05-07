@@ -999,7 +999,7 @@ public final class GCImpl implements GC {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void beginPromotion(boolean isIncremental) {
         HeapImpl heap = HeapImpl.getHeapImpl();
-        heap.getOldGeneration().beginPromotion(heap.getYoungGeneration(), isIncremental);
+        heap.getOldGeneration().beginPromotion(isIncremental);
         if (isIncremental) {
             heap.getYoungGeneration().beginPromotion();
         }
@@ -1084,7 +1084,7 @@ public final class GCImpl implements GC {
             boolean isAligned = ObjectHeaderImpl.isAlignedObject(referent);
             Header<?> originalChunk = getChunk(referent, isAligned);
             Space originalSpace = HeapChunk.getSpace(originalChunk);
-            if (originalSpace.isFromSpace() || originalSpace.isCompactingOldSpace()) {
+            if (originalSpace.isFromSpace() || (originalSpace.isCompactingOldSpace() && completeCollection)) {
                 boolean promoted = false;
                 if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
                     promoted = heap.getYoungGeneration().promotePinnedObject(referent, originalChunk, isAligned, originalSpace);

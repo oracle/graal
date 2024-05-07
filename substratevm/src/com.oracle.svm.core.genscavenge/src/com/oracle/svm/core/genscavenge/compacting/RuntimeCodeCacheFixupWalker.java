@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.genscavenge.compacting;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -30,14 +30,15 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
-import com.oracle.svm.core.genscavenge.compacting.ObjectRefFixupVisitor;
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
 
 /** Before compaction, updates references from {@link CodeInfo} structures. */
-final class RuntimeCodeCacheFixupWalker implements CodeInfoVisitor {
+public final class RuntimeCodeCacheFixupWalker implements CodeInfoVisitor {
     private final ObjectRefFixupVisitor visitor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    RuntimeCodeCacheFixupWalker(ObjectRefFixupVisitor visitor) {
+    public RuntimeCodeCacheFixupWalker(ObjectRefFixupVisitor visitor) {
+        assert SerialGCOptions.useCompactingOldGen();
         this.visitor = visitor;
     }
 

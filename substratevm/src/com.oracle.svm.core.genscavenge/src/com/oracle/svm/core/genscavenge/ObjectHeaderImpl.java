@@ -358,14 +358,14 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setMarked(Object o) {
-        if (!SerialGCOptions.useCompactingOldGen()) {
+        if (!SerialGCOptions.useCompactingOldGen()) { // not guarantee(): always folds, prevent call
             throw VMError.shouldNotReachHere("Only for compacting GC.");
         }
         UnsignedWord header = readHeaderFromObject(o);
         assert header.and(FORWARDED_OR_MARKED2_BIT).equal(0) : "forwarded or already marked";
         /*
          * The remembered bit is already set if the object was in the old generation before, or
-         * unset if it was only just absorbed from the young generation.
+         * unset if it was only just absorbed from the young generation, in which case we set it.
          */
         writeHeaderToObject(o, header.or(MARKED_BITS));
     }
@@ -398,7 +398,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isForwardedHeader(UnsignedWord header) {
-        return header.and(REMSET_OR_MARKED1_BIT.or(FORWARDED_OR_MARKED2_BIT)).equal(FORWARDED_OR_MARKED2_BIT);
+        return header.and(MARKED_BITS).equal(FORWARDED_OR_MARKED2_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

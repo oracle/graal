@@ -177,6 +177,17 @@ public final class Space {
         return true;
     }
 
+    boolean walkAlignedHeapChunks(AlignedHeapChunk.Visitor visitor) {
+        AlignedHeapChunk.AlignedHeader chunk = getFirstAlignedHeapChunk();
+        while (chunk.isNonNull()) {
+            if (!visitor.visitChunk(chunk)) {
+                return false;
+            }
+            chunk = HeapChunk.getNext(chunk);
+        }
+        return true;
+    }
+
     public void logUsage(Log log, boolean logIfEmpty) {
         UnsignedWord chunkBytes;
         if (isEdenSpace() && !VMOperation.isGCInProgress()) {
@@ -526,17 +537,6 @@ public final class Space {
         assert src.isEmpty();
     }
 
-    boolean walkAlignedHeapChunks(AlignedHeapChunk.Visitor visitor) {
-        AlignedHeapChunk.AlignedHeader chunk = getFirstAlignedHeapChunk();
-        while (chunk.isNonNull()) {
-            if (!visitor.visitChunk(chunk)) {
-                return false;
-            }
-            chunk = HeapChunk.getNext(chunk);
-        }
-        return true;
-    }
-
     /**
      * This value is only updated during a GC. Be careful when calling this method during a GC as it
      * might wrongly include chunks that will be freed at the end of the GC.
@@ -595,5 +595,26 @@ public final class Space {
             uChunk = HeapChunk.getNext(uChunk);
         }
         return result;
+    }
+
+    boolean contains(Pointer p) {
+        AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
+        while (aChunk.isNonNull()) {
+            Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);
+            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(aChunk))) {
+                return true;
+            }
+            aChunk = HeapChunk.getNext(aChunk);
+        }
+
+        UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
+        while (uChunk.isNonNull()) {
+            Pointer start = UnalignedHeapChunk.getObjectStart(uChunk);
+            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(uChunk))) {
+                return true;
+            }
+            uChunk = HeapChunk.getNext(uChunk);
+        }
+        return false;
     }
 }

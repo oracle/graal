@@ -52,17 +52,14 @@ import jdk.graal.compiler.word.Word;
  * Most allocation within a AlignedHeapChunk is via fast-path allocation snippets, but a slow-path
  * allocation method is available.
  * <p>
- * Objects in a AlignedHeapChunk have to be promoted by copying from their current HeapChunk to a
- * destination HeapChunk.
- * <p>
- * An AlignedHeapChunk is laid out:
+ * An AlignedHeapChunk is laid out as follows:
  *
  * <pre>
- * +===============+-------+--------+----------------------+
- * | AlignedHeader | Card  | First  | Object ...           |
- * | Fields        | Table | Object |                      |
- * |               |       | Table  |                      |
- * +===============+-------+--------+----------------------+
+ * +===============+-------+--------+-----------------+-----------------+
+ * | AlignedHeader | Card  | First  | Initial Object  | Object ...      |
+ * | Fields        | Table | Object | Move Info (only |                 |
+ * |               |       | Table  | Compacting GC)  |                 |
+ * +===============+-------+--------+-----------------+-----------------+
  * </pre>
  *
  * The size of both the CardTable and the FirstObjectTable depends on the used {@link RememberedSet}
@@ -105,6 +102,10 @@ public final class AlignedHeapChunk {
 
     public static Pointer getObjectsEnd(AlignedHeader that) {
         return HeapChunk.getEndPointer(that);
+    }
+
+    public static boolean isEmpty(AlignedHeader that) {
+        return HeapChunk.getTopOffset(that).equal(getObjectsStartOffset());
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */

@@ -62,7 +62,9 @@ public final class ObjectRefFixupVisitor implements ObjectReferenceVisitor {
         Object original = p.toObject();
         if (ObjectHeaderImpl.isAlignedObject(original)) {
             Pointer newLocation = ObjectMoveInfo.getNewObjectAddress(p);
-            assert newLocation.isNonNull() || holderObject == null || holderObject instanceof Reference<?>;
+            assert newLocation.isNonNull() //
+                            || holderObject == null // references from CodeInfo, invalidated or weak
+                            || holderObject instanceof Reference<?>; // cleared referent
 
             obj = newLocation.toObject();
             ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);

@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
-import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -38,8 +35,6 @@ import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
@@ -109,7 +104,7 @@ final class CopyingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void beginPromotion(YoungGeneration youngGen, boolean incrementalGc) {
+    void beginPromotion(boolean incrementalGc) {
         if (incrementalGc) {
             emptyFromSpaceIntoToSpace();
         }
@@ -161,9 +156,8 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isInSpace(Pointer ptr) {
-        return HeapImpl.findPointerInSpace(fromSpace, ptr) || HeapImpl.findPointerInSpace(toSpace, ptr);
+        return fromSpace.contains(ptr) || toSpace.contains(ptr);
     }
 
     @Override
@@ -214,18 +208,6 @@ final class CopyingOldGeneration extends OldGeneration {
     @Override
     UnsignedWord computeObjectBytes() {
         return fromSpace.computeObjectBytes().add(toSpace.computeObjectBytes());
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    AlignedHeapChunk.AlignedHeader requestAlignedChunk() {
-        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
-        AlignedHeapChunk.AlignedHeader chunk = HeapImpl.getChunkProvider().produceAlignedChunk();
-        if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, chunk.isNull())) {
-            throw VMError.shouldNotReachHere("OldGeneration.requestAlignedChunk: failure to allocate aligned chunk");
-        }
-        RememberedSet.get().enableRememberedSetForChunk(chunk);
-        return chunk;
     }
 
     @Override
