@@ -30,7 +30,13 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.util.ReflectionUtil;
+import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -53,6 +59,8 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
@@ -106,6 +114,16 @@ class NativeImageDebugInfoFeature implements InternalFeature {
          * Ensure ClassLoader.nameAndId is available at runtime for type lookup from gdb
          */
         access.registerAsAccessed(ReflectionUtil.lookupField(ClassLoader.class, "nameAndId"));
+
+        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+        CGlobalData<PointerBase> compressedShift = CGlobalDataFactory.createWord(WordFactory.signed(compressEncoding.getShift()), "__svm_compressed_shift");
+        CGlobalData<PointerBase> useHeapBase = CGlobalDataFactory.createWord(WordFactory.unsigned(compressEncoding.hasBase() ? 1 : 0), "__svm_use_heap_base");
+        CGlobalData<PointerBase> oopTagsMask = CGlobalDataFactory.createWord(WordFactory.unsigned(Heap.getHeap().getObjectHeader().getReservedBitsMask()), "__svm_oop_tags_mask");
+        CGlobalData<PointerBase> objectAlignment = CGlobalDataFactory.createWord(WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment()), "__svm_object_alignment");
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(compressedShift);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(useHeapBase);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(oopTagsMask);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(objectAlignment);
     }
 
     @Override
