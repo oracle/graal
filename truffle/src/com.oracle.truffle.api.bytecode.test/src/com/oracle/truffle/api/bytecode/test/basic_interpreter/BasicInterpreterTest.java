@@ -493,6 +493,38 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testAddConstant() {
+        // return 40 + arg0
+        RootCallTarget root = parse("addConstant", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginAddConstantOperation(40L);
+            b.emitLoadArgument(0);
+            b.endAddConstantOperation();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call(2L));
+    }
+
+    @Test
+    public void testAddConstantAtEnd() {
+        // return arg0 + 40
+        RootCallTarget root = parse("addConstantAtEnd", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginAddConstantOperationAtEnd();
+            b.emitLoadArgument(0);
+            b.endAddConstantOperationAtEnd(40L);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call(2L));
+    }
+
+    @Test
     public void testNestedFunctions() {
         // return (() -> return 1)();
 
@@ -1446,6 +1478,86 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "return");
         // clone call should work like usual
         assertEquals(42L, cloned.getCallTarget().call(2L));
+    }
+
+    @Test
+    public void testConstantOperandBoxingElimination() {
+        assumeTrue(run.hasBoxingElimination());
+
+        BasicInterpreter node = parseNode("constantOperandBoxingElimination", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginAddConstantOperation(40L);
+            b.emitLoadArgument(0);
+            b.endAddConstantOperation();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.argument",
+                        "c.AddConstantOperation",
+                        "return");
+
+        node.getBytecodeNode().setUncachedThreshold(0); // ensure we use cached
+        assertEquals(42L, node.getCallTarget().call(2L));
+
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.argument$Long",
+                        "c.AddConstantOperation$AddLongs",
+                        "return");
+
+        assertEquals("401", node.getCallTarget().call("1"));
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.argument",
+                        "c.AddConstantOperation",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call(2L));
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.argument",
+                        "c.AddConstantOperation",
+                        "return");
+    }
+
+    @Test
+    public void testConstantOperandAtEndBoxingElimination() {
+        assumeTrue(run.hasBoxingElimination());
+
+        BasicInterpreter node = parseNode("constantOperandAtEndBoxingElimination", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginAddConstantOperationAtEnd();
+            b.emitLoadArgument(0);
+            b.endAddConstantOperationAtEnd(40L);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.argument",
+                        "c.AddConstantOperationAtEnd",
+                        "return");
+
+        node.getBytecodeNode().setUncachedThreshold(0); // ensure we use cached
+        assertEquals(42L, node.getCallTarget().call(2L));
+
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.argument$Long",
+                        "c.AddConstantOperationAtEnd$AddLongs",
+                        "return");
+
+        assertEquals("140", node.getCallTarget().call("1"));
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.argument",
+                        "c.AddConstantOperationAtEnd",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call(2L));
+        AbstractInstructionTest.assertInstructions(node,
+                        "load.argument",
+                        "c.AddConstantOperationAtEnd",
+                        "return");
     }
 
     @Test

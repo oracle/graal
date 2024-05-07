@@ -3054,14 +3054,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("int ", argumentName, " = buffer.readInt()");
                     } else if (operation.kind == OperationKind.TAG && i == 0) {
                         b.startStatement().type(argType).string(" ", argumentName, " = TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))").end();
-                    } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
+                    } else {
                         b.startStatement().type(argType).string(" ", argumentName, " = ");
                         if (!ElementUtils.isObject(argType)) {
                             b.cast(argType);
                         }
                         b.string("consts.get(buffer.readShort())").end();
-                    } else {
-                        throw new UnsupportedOperationException("cannot deserialize: " + argType);
                     }
                 }
 
@@ -3093,7 +3091,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("Class<?>[] newTags = TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))");
                         b.statement("end", operation.name, "(newTags)");
                     } else {
-                        b.statement("end", operation.name, "()");
+                        for (int i = 0; i < operation.operationEndArguments.length; i++) {
+                            TypeMirror argType = operation.operationEndArguments[i].type();
+                            String argumentName = operation.getOperationEndArgumentName(i);
+
+                            b.startStatement().type(argType).string(" ", argumentName, " = ");
+                            if (!ElementUtils.isObject(argType)) {
+                                b.cast(argType);
+                            }
+                            b.string("consts.get(buffer.readShort())").end();
+
+                        }
+
+                        b.startStatement().startCall("end" + operation.name);
+                        for (int i = 0; i < operation.operationEndArguments.length; i++) {
+                            b.string(operation.getOperationEndArgumentName(i));
+                        }
+                        b.end(2);
                     }
 
                     b.statement("break");
@@ -3873,12 +3887,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         serializationElements.writeInt(after, argumentName);
                     } else if (operation.kind == OperationKind.TAG && i == 0) {
                         serializationElements.writeInt(after, "encodedTags");
-                    } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
+                    } else {
                         String index = argumentName + "_index";
                         b.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
                         serializationElements.writeShort(after, index);
-                    } else {
-                        throw new UnsupportedOperationException("cannot serialize: " + argType);
                     }
                 }
                 serializationElements.writeShort(b, serializationElements.codeBegin[operation.id]);
@@ -4097,13 +4109,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (model.enableSerialization && !operation.isInternal) {
                 b.startIf().string("serialization != null").end().startBlock();
-                serializationWrapException(b, () -> {
-                    serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
-                    if (operation.kind == OperationKind.TAG) {
-                        serializationElements.writeInt(b, "encodedTags");
-                    }
-                    b.statement("return");
-                });
+                createSerializeEnd(operation, b);
+                b.statement("return");
                 b.end();
             }
 
@@ -4355,6 +4362,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             return ex;
+        }
+
+        private void createSerializeEnd(OperationModel operation, CodeTreeBuilder b) {
+            serializationWrapException(b, () -> {
+                CodeTreeBuilder after = CodeTreeBuilder.createBuilder();
+                for (int i = 0; i < operation.operationEndArguments.length; i++) {
+                    String argumentName = operation.getOperationEndArgumentName(i);
+                    String index = argumentName + "_index";
+                    b.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
+                    serializationElements.writeShort(after, index);
+                }
+                serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
+                if (operation.kind == OperationKind.TAG) {
+                    serializationElements.writeInt(b, "encodedTags");
+                }
+
+                b.tree(after.build());
+            });
         }
 
         private void createEndLocalsBlock(CodeTreeBuilder b, boolean isRoot) {
@@ -10893,7 +10918,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         emitInvalidate(b);
                         break;
                     case CUSTOM:
-
                         results.add(buildCustomInstructionExecute(b, instr));
                         break;
                     case SUPERINSTRUCTION:
@@ -12709,6 +12733,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (evaluatedArg != null) {
                 b.string(evaluatedArg);
             } else if (tier.isUncached()) {
+                for (int i = 0; i < instr.signature.getConstantOperandsBeforeCount(); i++) {
+                    TypeMirror constantOperandType = instr.operation.constantOperands.before().get(i).type();
+                    b.startGroup();
+                    if (!ElementUtils.isObject(constantOperandType)) {
+                        b.cast(constantOperandType);
+                    }
+                    List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.CONSTANT);
+                    InstructionImmediate imm = imms.get(i);
+                    b.string(readConst(readBc("bci + " + imm.offset())));
+                    b.end();
+                }
+
                 for (int i = 0; i < instr.signature.dynamicOperandCount; i++) {
                     TypeMirror targetType = instr.signature.getGenericType(i);
                     b.startGroup();
@@ -12716,6 +12752,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.cast(targetType);
                     }
                     b.string(getFrameObject("sp - " + (instr.signature.dynamicOperandCount - i)));
+                    b.end();
+                }
+
+                for (int i = 0; i < instr.signature.getConstantOperandsAfterCount(); i++) {
+                    TypeMirror constantOperandType = instr.operation.constantOperands.after().get(i).type();
+                    b.startGroup();
+                    if (!ElementUtils.isObject(constantOperandType)) {
+                        b.cast(constantOperandType);
+                    }
+                    List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.CONSTANT);
+                    InstructionImmediate imm = imms.get(i);
+                    b.string(readConst(readBc("bci + " + imm.offset())));
                     b.end();
                 }
 

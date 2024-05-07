@@ -53,6 +53,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
@@ -176,6 +177,34 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         @TruffleBoundary
         public static String addStrings(String lhs, String rhs) {
             return lhs + rhs;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = long.class)
+    static final class AddConstantOperation {
+        @Specialization
+        public static long addLongs(long constantLhs, long rhs) {
+            return constantLhs + rhs;
+        }
+
+        @Specialization
+        public static String addStrings(long constantLhs, String rhs) {
+            return constantLhs + rhs;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = long.class, specifyAtEnd = true)
+    static final class AddConstantOperationAtEnd {
+        @Specialization
+        public static long addLongs(long lhs, long constantRhs) {
+            return lhs + constantRhs;
+        }
+
+        @Specialization
+        public static String addStrings(String lhs, long constantRhs) {
+            return lhs + constantRhs;
         }
     }
 

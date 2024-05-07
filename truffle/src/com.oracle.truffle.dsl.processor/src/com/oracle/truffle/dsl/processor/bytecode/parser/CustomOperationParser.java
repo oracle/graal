@@ -666,7 +666,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (shouldGenerateUncached(originalTypeElement)) {
             generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
         }
-        generatedNode.addAll(createExecuteMethods(signature, originalTypeElement));
+        generatedNode.addAll(createExecuteMethods(signature, originalTypeElement, constantOperands));
 
         /*
          * Add @NodeChildren to this node for each argument to the operation. These get used by
@@ -743,19 +743,19 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return ex;
     }
 
-    private List<CodeExecutableElement> createExecuteMethods(Signature signature, TypeElement typeElement) {
+    private List<CodeExecutableElement> createExecuteMethods(Signature signature, TypeElement typeElement, ConstantOperands constantOperands) {
         List<CodeExecutableElement> result = new ArrayList<>();
 
-        result.add(createExecuteMethod(signature, "executeObject", signature.returnType, false, false));
+        result.add(createExecuteMethod(signature, "executeObject", signature.returnType, constantOperands, false, false));
 
         if (shouldGenerateUncached(typeElement)) {
-            result.add(createExecuteMethod(signature, "executeUncached", signature.returnType, false, true));
+            result.add(createExecuteMethod(signature, "executeUncached", signature.returnType, constantOperands, false, true));
         }
 
         return result;
     }
 
-    private CodeExecutableElement createExecuteMethod(Signature signature, String name, TypeMirror type, boolean withUnexpected, boolean uncached) {
+    private CodeExecutableElement createExecuteMethod(Signature signature, String name, TypeMirror type, ConstantOperands constantOperands, boolean withUnexpected, boolean uncached) {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, ABSTRACT), type, name);
         if (withUnexpected) {
             ex.addThrownType(types.UnexpectedResultException);
@@ -763,10 +763,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
 
-        // TODO support operand constants in uncached
         if (uncached) {
+            for (int i = 0; i < constantOperands.before().size(); i++) {
+                ex.addParameter(new CodeVariableElement(constantOperands.before().get(i).type(), signature.constantOperandsBefore.get(i)));
+            }
             for (int i = 0; i < signature.dynamicOperandCount; i++) {
                 ex.addParameter(new CodeVariableElement(signature.getGenericType(i), "child" + i + "Value"));
+            }
+            for (int i = 0; i < constantOperands.after().size(); i++) {
+                ex.addParameter(new CodeVariableElement(constantOperands.after().get(i).type(), signature.constantOperandsAfter.get(i)));
             }
             for (int i = 0; i < signature.localSetterCount; i++) {
                 ex.addParameter(new CodeVariableElement(types.LocalSetter, "localSetter" + i + "Value"));
