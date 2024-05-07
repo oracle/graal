@@ -172,12 +172,15 @@ public final class ModuleLayerFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
 
-        Set<Module> runtimeImageNamedModules = accessImpl.getUniverse().getTypes()
+        Set<Module> runtimeImageModules = accessImpl.getUniverse().getTypes()
                         .stream()
                         .filter(ModuleLayerFeature::typeIsReachable)
                         .map(t -> t.getJavaClass().getModule())
                         .filter(Module::isNamed)
                         .collect(Collectors.toSet());
+
+        Set<Module> runtimeImageNamedModules = runtimeImageModules.stream().filter(Module::isNamed).collect(Collectors.toSet());
+        Set<Module> runtimeImageUnnamedModules = runtimeImageModules.stream().filter(Predicate.not(Module::isNamed)).collect(Collectors.toSet());
 
         /*
          * Parse explicitly added modules via --add-modules. This is done early as this information
@@ -228,7 +231,7 @@ public final class ModuleLayerFeature implements InternalFeature {
          * Ensure that runtime modules have the same relations (i.e., reads, opens and exports) as
          * the originals.
          */
-        replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, runtimeImageNamedModules);
+        replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, runtimeImageNamedModules, runtimeImageUnnamedModules);
         replicateNativeAccess(runtimeImageNamedModules);
     }
 
@@ -431,26 +434,28 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
     }
 
-    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableNamedModules) {
+    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableNamedModules, Set<Module> analysisReachableUnnamedModules) {
         List<Module> applicationModules = findApplicationModules(runtimeBootLayer, cl.applicationModulePath());
 
-        Map<Module, Module> modulePairs = analysisReachableNamedModules
+        Map<Module, Module> namedModulePairs = analysisReachableNamedModules
                         .stream()
                         .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
-        modulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.allUnnamedModule);
-        modulePairs.put(moduleLayerFeatureUtils.everyoneModule, moduleLayerFeatureUtils.everyoneModule);
+        Map<Module, Module> unnamedModulePairs = analysisReachableUnnamedModules
+                        .stream()
+                        .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
+        unnamedModulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.allUnnamedModule);
+        unnamedModulePairs.put(moduleLayerFeatureUtils.everyoneModule, moduleLayerFeatureUtils.everyoneModule);
 
         Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
         assert builderModule != null;
 
         try {
-            for (Map.Entry<Module, Module> e1 : modulePairs.entrySet()) {
+            for (Map.Entry<Module, Module> e1 : namedModulePairs.entrySet()) {
                 Module hostedFrom = e1.getKey();
-                if (!hostedFrom.isNamed()) {
-                    continue;
-                }
                 Module runtimeFrom = e1.getValue();
-                for (Map.Entry<Module, Module> e2 : modulePairs.entrySet()) {
+                Set<Map.Entry<Module, Module>> allModules = new HashSet<>(namedModulePairs.entrySet());
+                allModules.addAll(unnamedModulePairs.entrySet());
+                for (Map.Entry<Module, Module> e2 : allModules) {
                     Module hostedTo = e2.getKey();
                     if (hostedTo == hostedFrom) {
                         continue;
