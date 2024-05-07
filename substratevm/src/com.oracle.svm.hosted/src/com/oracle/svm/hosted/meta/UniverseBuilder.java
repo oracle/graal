@@ -769,7 +769,7 @@ public class UniverseBuilder {
         int nextObjectField = 0;
 
         @SuppressWarnings("unchecked")
-        List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[hUniverse.getTypes().size()];
+        List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[DynamicHubSupport.singleton().getMaxTypeId()];
 
         for (HostedField field : fields) {
             if (skipStaticField(field)) {
@@ -816,7 +816,7 @@ public class UniverseBuilder {
 
     @SuppressWarnings("unchecked")
     private void collectDeclaredMethods() {
-        List<HostedMethod>[] methodsOfType = (ArrayList<HostedMethod>[]) new ArrayList<?>[hUniverse.getTypes().size()];
+        List<HostedMethod>[] methodsOfType = (ArrayList<HostedMethod>[]) new ArrayList<?>[DynamicHubSupport.singleton().getMaxTypeId()];
         for (HostedMethod method : hUniverse.methods.values()) {
             int typeId = method.getDeclaringClass().getTypeID();
             List<HostedMethod> list = methodsOfType[typeId];
