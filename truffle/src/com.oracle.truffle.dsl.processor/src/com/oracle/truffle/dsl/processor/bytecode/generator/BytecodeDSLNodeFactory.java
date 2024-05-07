@@ -139,6 +139,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     public static final String BCI_IDX = "BCI_IDX";
     public static final String COROUTINE_FRAME_IDX = "COROUTINE_FRAME_IDX";
     public static final String EPILOG_EXCEPTION_IDX = "EPILOG_EXCEPTION_IDX";
+    public static final String EMPTY_INT_ARRAY = "EMPTY_INT_ARRAY";
 
     // Bytecode version encoding: [tags][instrumentations][source bit]
     public static final int MAX_TAGS = 32;
@@ -202,7 +203,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         this.model = model;
         bytecodeNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
         emptyObjectArray = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
-        addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), int[].class, "EMPTY_INT_ARRAY", "new int[0]");
+        addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), int[].class, EMPTY_INT_ARRAY, "new int[0]");
         fastAccess = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.BytecodeDSLAccess, "ACCESS");
         fastAccess.setInit(createFastAccessFieldInitializer());
 
@@ -2028,6 +2029,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             name = "CustomOperationData";
                             fields = List.of(//
                                             field(arrayOf(context.getType(int.class)), "childBcis").asFinal(),
+                                            field(arrayOf(context.getType(int.class)), "constants").asFinal(),
                                             field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs());
                         }
                         break;
@@ -2094,7 +2096,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 final String name;
                 boolean isFinal;
                 boolean isVarArgs;
-                // if null, field is taken as constructor parameter
+                // If initializer is null, the field value is required as a constructor parameter
                 String initializer;
 
                 DataClassField(TypeMirror type, String name) {
@@ -3033,9 +3035,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("builtNodes.add(null)");
                 }
 
-                for (int i = 0; i < operation.operationArguments.length; i++) {
-                    TypeMirror argType = operation.operationArguments[i].type();
-                    String argumentName = operation.getOperationArgumentName(i);
+                for (int i = 0; i < operation.operationBeginArguments.length; i++) {
+                    TypeMirror argType = operation.operationBeginArguments[i].type();
+                    String argumentName = operation.getOperationBeginArgumentName(i);
                     if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
                         continue; // language is already available as a parameter
                     } else if (ElementUtils.typeEquals(argType, types.BytecodeLocal)) {
@@ -3070,8 +3072,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startCall("emit" + operation.name);
                 }
 
-                for (int i = 0; i < operation.operationArguments.length; i++) {
-                    b.string(operation.getOperationArgumentName(i));
+                for (int i = 0; i < operation.operationBeginArguments.length; i++) {
+                    b.string(operation.getOperationBeginArgumentName(i));
                 }
 
                 b.end(2); // statement, call
@@ -3475,9 +3477,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             List<String> javadoc = new ArrayList<>(1);
             javadoc.add(sb.toString());
 
-            if (operation.operationArguments.length != 0) {
+            if (operation.operationBeginArguments.length != 0) {
                 javadoc.add("");
-                for (OperationArgument argument : operation.operationArguments) {
+                for (OperationArgument argument : operation.operationBeginArguments) {
                     javadoc.add(argument.toJavadocParam());
                 }
             }
@@ -3502,10 +3504,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             Modifier visibility = operation.isInternal ? PRIVATE : PUBLIC;
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), context.getType(void.class), "begin" + operation.name);
 
-            for (OperationArgument arg : operation.operationArguments) {
+            for (OperationArgument arg : operation.operationBeginArguments) {
                 ex.addParameter(arg.toVariableElement());
             }
-            ex.setVarArgs(operation.operationArgumentVarArgs);
+            ex.setVarArgs(operation.operationBeginArgumentVarArgs);
             addBeginOrEmitOperationDoc(operation, ex);
 
             CodeTreeBuilder b = ex.createBuilder();
@@ -3603,14 +3605,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                     break;
                 case SOURCE:
-                    b.startIf().string(operation.getOperationArgumentName(0) + ".hasBytes()").end().startBlock();
+                    b.startIf().string(operation.getOperationBeginArgumentName(0) + ".hasBytes()").end().startBlock();
                     b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Byte-based sources are not supported.").end(2);
                     b.end();
 
-                    b.statement("int index = sources.indexOf(" + operation.getOperationArgumentName(0) + ")");
+                    b.statement("int index = sources.indexOf(" + operation.getOperationBeginArgumentName(0) + ")");
                     b.startIf().string("index == -1").end().startBlock();
                     b.statement("index = sources.size()");
-                    b.statement("sources.add(" + operation.getOperationArgumentName(0) + ")");
+                    b.statement("sources.add(" + operation.getOperationBeginArgumentName(0) + ")");
                     b.end();
                     b.statement("operationData.sourceIndex = index");
                     break;
@@ -3639,8 +3641,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end().startElseBlock();
                     b.statement("operationData.beginBci = bci");
                     b.end();
-                    b.statement("operationData.start = " + operation.getOperationArgumentName(0));
-                    b.statement("operationData.length = " + operation.getOperationArgumentName(1));
+                    b.statement("operationData.start = " + operation.getOperationBeginArgumentName(0));
+                    b.statement("operationData.length = " + operation.getOperationBeginArgumentName(1));
                     break;
                 case WHILE:
                     if (model.enableTracing) {
@@ -3686,7 +3688,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private void createThrowInvalidScope(CodeTreeBuilder b, OperationModel operation) {
-            b.startStatement().startCall(getValidateScope().getSimpleName().toString()).string(operation.getOperationArgumentName(0)).end().end();
+            b.startStatement().startCall(getValidateScope().getSimpleName().toString()).string(operation.getOperationBeginArgumentName(0)).end().end();
         }
 
         private CodeExecutableElement createBeginRoot(OperationModel rootOperation) {
@@ -3853,9 +3855,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
 
                 CodeTreeBuilder after = CodeTreeBuilder.createBuilder();
-                for (int i = 0; i < operation.operationArguments.length; i++) {
-                    TypeMirror argType = operation.operationArguments[i].type();
-                    String argumentName = operation.getOperationArgumentName(i);
+                for (int i = 0; i < operation.operationBeginArguments.length; i++) {
+                    TypeMirror argType = operation.operationBeginArguments[i].type();
+                    String argumentName = operation.getOperationBeginArgumentName(i);
                     if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
                         b.statement("serialization.language = language");
                     } else if (ElementUtils.typeEquals(argType, types.BytecodeLocal)) {
@@ -3890,13 +3892,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return switch (operation.kind) {
                 case STORE_LOCAL, STORE_LOCAL_MATERIALIZED -> {
                     if (model.usesBoxingElimination()) {
-                        yield createOperationData(className, "(BytecodeLocalImpl)" + operation.getOperationArgumentName(0), UNINIT);
+                        yield createOperationData(className, "(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0), UNINIT);
                     } else {
-                        yield CodeTreeBuilder.singleString("(BytecodeLocalImpl)" + operation.getOperationArgumentName(0));
+                        yield CodeTreeBuilder.singleString("(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0));
                     }
                 }
                 case LOAD_LOCAL_MATERIALIZED, LOAD_LOCAL -> {
-                    yield CodeTreeBuilder.singleString("(BytecodeLocalImpl)" + operation.getOperationArgumentName(0));
+                    yield CodeTreeBuilder.singleString("(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0));
                 }
                 case IF_THEN -> createOperationData(className, UNINIT, "this.reachable");
                 case IF_THEN_ELSE -> createOperationData(className, UNINIT, UNINIT, "this.reachable", "this.reachable");
@@ -3908,7 +3910,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                 }
                 case WHILE -> createOperationData(className, "bci", UNINIT, "this.reachable");
-                case TRY_CATCH -> createOperationData(className, "bci", "currentStackHeight", "((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").frameIndex", UNINIT, UNINIT, UNINIT,
+                case TRY_CATCH -> createOperationData(className, "bci", "currentStackHeight", "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex", UNINIT, UNINIT,
+                                UNINIT,
                                 "this.reachable", "this.reachable", "this.reachable");
                 case FINALLY_TRY, FINALLY_TRY_CATCH -> {
                     // set finallyTryContext inside createFinallyTryX before calling beginOperation
@@ -3921,7 +3924,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.string("finallyTryContext");
                     b.end(2);
 
-                    String exceptionLocal = CodeTreeBuilder.createBuilder().cast(bytecodeLocalImpl.asType()).string(operation.getOperationArgumentName(0)).toString();
+                    String exceptionLocal = CodeTreeBuilder.createBuilder().cast(bytecodeLocalImpl.asType()).string(operation.getOperationBeginArgumentName(0)).toString();
                     String catchReachable = (operation.kind == OperationKind.FINALLY_TRY_CATCH) ? "this.reachable" : "false";
 
                     yield createOperationData(className, exceptionLocal, "finallyTryContext", "this.reachable", "this.reachable", "this.reachable", catchReachable);
@@ -3930,24 +3933,49 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (operation.isTransparent) {
                         yield createOperationData(className, "false", UNINIT);
                     } else {
+                        int constantArguments = operation.instruction.signature.getConstantOperandsBeforeCount();
+                        int localSetterArguments = operation.instruction.signature.localSetterCount + operation.instruction.signature.localSetterRangeCount;
+                        assert localSetterArguments == operation.operationBeginArguments.length - constantArguments;
+
+                        // [childBcis, constants, locals...]
+                        String[] args = new String[2 + localSetterArguments];
+
                         CodeTreeBuilder childBciArrayBuilder = CodeTreeBuilder.createBuilder();
-                        childBciArrayBuilder.startNewArray(arrayOf(context.getType(int.class)), null);
-                        for (InstructionImmediate immediate : operation.instruction.getImmediates()) {
-                            if (immediate.kind() == ImmediateKind.BYTECODE_INDEX) {
+                        int numChildBcis = operation.instruction.getImmediates(ImmediateKind.BYTECODE_INDEX).size();
+                        if (numChildBcis == 0) {
+                            args[0] = EMPTY_INT_ARRAY;
+                        } else {
+                            childBciArrayBuilder.startNewArray(arrayOf(context.getType(int.class)), null);
+                            for (int i = 0; i < numChildBcis; i++) {
                                 childBciArrayBuilder.string(UNINIT);
                             }
+                            childBciArrayBuilder.end();
+                            args[0] = childBciArrayBuilder.toString();
                         }
-                        childBciArrayBuilder.end();
 
-                        String[] args = new String[operation.operationArguments.length + 1];
-                        args[0] = childBciArrayBuilder.toString();
-                        for (int i = 0; i < operation.operationArguments.length; i++) {
-                            if (operation.operationArguments[i].type().getKind() == TypeKind.ARRAY) {
+                        CodeTreeBuilder constantsArrayBuilder = CodeTreeBuilder.createBuilder();
+                        if (constantArguments == 0) {
+                            args[1] = EMPTY_INT_ARRAY;
+                        } else {
+                            constantsArrayBuilder.startNewArray(arrayOf(context.getType(int.class)), null);
+                            for (int i = 0; i < constantArguments; i++) {
+                                String constantName = operation.instruction.signature.constantOperandsBefore.get(i);
+                                String constantPoolIndex = constantName + "Index";
+                                b.declaration(type(int.class), constantPoolIndex, "constantPool.addConstant(" + constantName + ")");
+                                constantsArrayBuilder.string(constantPoolIndex);
+                            }
+                            constantsArrayBuilder.end();
+                            args[1] = constantsArrayBuilder.toString();
+                        }
+
+                        for (int i = 0; i < localSetterArguments; i++) {
+                            OperationArgument arg = operation.operationBeginArguments[constantArguments + i];
+                            if (arg.type().getKind() == TypeKind.ARRAY) {
                                 // cast to Object to avoid Java interpreting the array as desugared
                                 // varargs
-                                args[i + 1] = "(Object) " + operation.getOperationArgumentName(i);
+                                args[i + 2] = "(Object) " + arg.name();
                             } else {
-                                args[i + 1] = operation.getOperationArgumentName(i);
+                                args[i + 2] = arg.name();
                             }
                         }
 
@@ -4039,6 +4067,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (operation.kind == OperationKind.TAG) {
                 ex.setVarArgs(true);
                 ex.addParameter(new CodeVariableElement(arrayOf(context.getDeclaredType(Class.class)), "newTags"));
+            } else {
+                for (OperationArgument arg : operation.operationEndArguments) {
+                    ex.addParameter(arg.toVariableElement());
+                }
             }
 
             addEndOperationDoc(operation, ex);
@@ -4426,7 +4458,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("handlers_").startStaticCall(type(Arrays.class), "copyOf").string("exHandlers").string("exHandlerCount").end().end();
             b.startAssign("sources_").string("sources").end();
             b.startAssign("numNodes_").string("numNodes").end();
-            b.startAssign("locals_").string("locals == null ? EMPTY_INT_ARRAY : ").startStaticCall(type(Arrays.class), "copyOf").string("locals").string("numLocals * LOCALS_LENGTH").end().end();
+            b.startAssign("locals_").string("locals == null ? " + EMPTY_INT_ARRAY + " : ").startStaticCall(type(Arrays.class), "copyOf").string("locals").string(
+                            "numLocals * LOCALS_LENGTH").end().end();
             b.end();
 
             if (model.enableTagInstrumentation) {
@@ -4714,10 +4747,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case LOAD_LOCAL -> {
                     if (model.enableLocalScoping && model.usesBoxingElimination()) {
                         yield new String[]{
-                                        "((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").frameIndex",
-                                        "((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").localIndex"};
+                                        "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex",
+                                        "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").localIndex"};
                     } else {
-                        yield new String[]{"((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").frameIndex"};
+                        yield new String[]{"((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex"};
                     }
                 }
                 case STORE_LOCAL -> {
@@ -4771,10 +4804,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                 }
                 case RETURN -> new String[]{};
-                case LOAD_ARGUMENT -> new String[]{operation.getOperationArgumentName(0)};
-                case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationArgumentName(0) + ")"};
+                case LOAD_ARGUMENT -> new String[]{operation.getOperationBeginArgumentName(0)};
+                case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationBeginArgumentName(0) + ")"};
                 case BRANCH -> {
-                    b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationArgumentName(0)).end();
+                    b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationBeginArgumentName(0)).end();
 
                     b.statement("boolean isFound = false");
                     b.startFor().string("int i = 0; i < " + sp + "; i++").end().startBlock();
@@ -4857,11 +4890,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createEmit(OperationModel operation) {
             Modifier visibility = operation.isInternal ? PRIVATE : PUBLIC;
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), context.getType(void.class), "emit" + operation.name);
-            ex.setVarArgs(operation.operationArgumentVarArgs);
+            ex.setVarArgs(operation.operationBeginArgumentVarArgs);
 
-            for (OperationArgument arg : operation.operationArguments) {
+            for (OperationArgument arg : operation.operationBeginArguments) {
                 ex.addParameter(arg.toVariableElement());
             }
+            assert operation.operationEndArguments.length == 0;
 
             addBeginOrEmitOperationDoc(operation, ex);
 
@@ -4902,7 +4936,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (operation.kind == OperationKind.LABEL) {
-                b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationArgumentName(0)).end();
+                b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationBeginArgumentName(0)).end();
 
                 b.startIf().string("labelImpl.isDefined()").end().startBlock();
                 emitThrowIllegalStateException(b, "\"BytecodeLabel already emitted. Each label must be emitted exactly once.\"");
@@ -4952,7 +4986,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (instruction.signature.isVariadic) {
                 // Before emitting a variadic instruction, we need to emit instructions to merge all
                 // of the operands on the stack into one array.
-                b.statement("doEmitVariadic(operation.childCount - " + (instruction.signature.valueCount - 1) + ")");
+                b.statement("doEmitVariadic(operation.childCount - " + (instruction.signature.dynamicOperandCount - 1) + ")");
             }
 
             if (customChildBci != null && operation.numChildren > 1) {
@@ -4973,7 +5007,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             List<InstructionImmediate> immediates = instruction.getImmediates();
             String[] args = new String[immediates.size()];
 
-            int childNodeIndex = 0;
+            int childBciIndex = 0;
+            int constantIndex = 0;
             int localSetterIndex = 0;
             int localSetterRangeIndex = 0;
             for (int i = 0; i < immediates.size(); i++) {
@@ -4984,26 +5019,47 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             yield customChildBci;
                         } else {
                             if (operation.isTransparent) {
-                                if (childNodeIndex != 0) {
+                                if (childBciIndex != 0) {
                                     throw new AssertionError("Unexpected transparent child.");
                                 }
-                                childNodeIndex++;
+                                childBciIndex++;
                                 yield "operationData.childBci";
                             } else {
-                                String child = "child" + childNodeIndex;
-                                b.startAssign("int " + child);
-                                b.string("operationData.childBcis[" + childNodeIndex + "]");
-                                b.end();
-                                childNodeIndex++;
-                                yield child;
+                                String childBci = "childBci" + childBciIndex;
+                                b.declaration(type(int.class), childBci, "operationData.childBcis[" + childBciIndex + "]");
+                                childBciIndex++;
+                                yield childBci;
                             }
                         }
+                    }
+                    case CONSTANT -> {
+                        String constantPoolIndex;
+                        if (constantIndex < instruction.signature.getConstantOperandsBeforeCount()) {
+                            String constantName = instruction.signature.constantOperandsBefore.get(constantIndex);
+                            constantPoolIndex = constantName + "Index";
+                            b.startDeclaration(type(int.class), constantPoolIndex);
+                            if (inEmit) {
+                                assert operation.getOperationBeginArgumentName(constantIndex).equals(constantName);
+                                b.string("constantPool.addConstant(" + constantName + ")");
+                            } else {
+                                b.string("operationData.constants[" + constantIndex + "]");
+                            }
+                            b.end();
+                        } else {
+                            int constantOperandsAfterIndex = constantIndex - instruction.signature.getConstantOperandsBeforeCount();
+                            String constantName = instruction.signature.constantOperandsAfter.get(constantOperandsAfterIndex);
+                            constantPoolIndex = constantName + "Index";
+                            assert operation.getOperationEndArgumentName(constantOperandsAfterIndex).equals(constantName);
+                            b.declaration(type(int.class), constantPoolIndex, "constantPool.addConstant(" + constantName + ")");
+                        }
+                        constantIndex++;
+                        yield constantPoolIndex;
                     }
                     case LOCAL_SETTER -> {
                         String arg = "localSetter" + localSetterIndex;
                         b.startAssign("int " + arg);
                         if (inEmit) {
-                            b.string("((BytecodeLocalImpl) " + operation.getOperationArgumentName(localSetterIndex) + ").frameIndex");
+                            b.string("((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(localSetterIndex) + ").frameIndex");
                         } else {
                             b.string("((BytecodeLocalImpl) operationData.locals[" + localSetterIndex + "]).frameIndex");
                         }
@@ -5024,7 +5080,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         // Get array of locals (from named argument/operation Stack).
                         b.startAssign("BytecodeLocal[] " + locals);
                         if (inEmit) {
-                            b.string(operation.getOperationArgumentName(localSetterIndex + localSetterRangeIndex));
+                            b.string(operation.getOperationBeginArgumentName(localSetterIndex + localSetterRangeIndex));
                         } else {
                             b.string("(BytecodeLocal[]) operationData.locals[" + (localSetterIndex + localSetterRangeIndex) + "]");
                         }
@@ -5059,8 +5115,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                     case NODE_PROFILE -> "allocateNode()";
                     case TAG_NODE -> "node";
-
-                    case LOCAL_OFFSET, LOCAL_INDEX, LOCAL_ROOT, INTEGER, CONSTANT, BRANCH_PROFILE -> throw new AssertionError(
+                    case LOCAL_OFFSET, LOCAL_INDEX, LOCAL_ROOT, INTEGER, BRANCH_PROFILE -> throw new AssertionError(
                                     "Operation " + operation.name + " takes an immediate " + immediate.name() + " with unexpected kind " + immediate.kind() +
                                                     ". This is a bug in the Bytecode DSL processor.");
                 };
@@ -5528,7 +5583,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         int immediateIndex = 0;
                         boolean elseIf = false;
                         boolean operationDataEmitted = false;
-                        for (int valueIndex = 0; valueIndex < op.instruction.signature.valueCount; valueIndex++) {
+                        for (int valueIndex = 0; valueIndex < op.instruction.signature.dynamicOperandCount; valueIndex++) {
                             if (op.instruction.needsBoxingElimination(model, valueIndex)) {
                                 if (!operationDataEmitted) {
                                     emitCastOperationData(b, op, "operationSp - 1");
@@ -6087,7 +6142,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     stackEffect = -1;
                     break;
                 case CUSTOM:
-                    int delta = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
+                    int delta = (instr.signature.isVoid ? 0 : 1) - instr.signature.dynamicOperandCount;
                     stackEffect = delta;
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
@@ -12514,7 +12569,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = helper.createBuilder();
 
             // Since an instruction produces at most one value, stackEffect is at most 1.
-            int stackEffect = (isVoid ? 0 : 1) - instr.signature.valueCount;
+            int stackEffect = (isVoid ? 0 : 1) - instr.signature.dynamicOperandCount;
 
             if (customInstructionMayReadBci(instr)) {
                 storeBciInFrameIfNecessary(b);
@@ -12654,13 +12709,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (evaluatedArg != null) {
                 b.string(evaluatedArg);
             } else if (tier.isUncached()) {
-                for (int i = 0; i < instr.signature.valueCount; i++) {
+                for (int i = 0; i < instr.signature.dynamicOperandCount; i++) {
                     TypeMirror targetType = instr.signature.getGenericType(i);
                     b.startGroup();
                     if (!ElementUtils.isObject(targetType)) {
                         b.cast(targetType);
                     }
-                    b.string(getFrameObject("sp - " + (instr.signature.valueCount - i)));
+                    b.string(getFrameObject("sp - " + (instr.signature.dynamicOperandCount - i)));
                     b.end();
                 }
 
@@ -13226,7 +13281,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return readBc("bc", index);
     }
 
-    private static String readBc(String bc, String index) {
+    public static String readBc(String bc, String index) {
         return String.format("ACCESS.shortArrayRead(%s, %s)", bc, index);
     }
 
@@ -13234,7 +13289,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return readConst(index, "constants");
     }
 
-    private static String readConst(String index, String constants) {
+    public static String readConst(String index, String constants) {
         return String.format("ACCESS.objectArrayRead(%s, %s)", constants, index);
     }
 
@@ -13614,7 +13669,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             private CodeExecutableElement createBegin(OperationModel operation) {
                 CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
-                for (OperationArgument arg : operation.operationArguments) {
+                for (OperationArgument arg : operation.operationBeginArguments) {
                     ex.addParameter(arg.toVariableElement());
                 }
                 return createMethodStub(ex);
@@ -13628,7 +13683,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             private CodeExecutableElement createEmit(OperationModel operation) {
                 CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "emit" + operation.name);
-                for (OperationArgument arg : operation.operationArguments) {
+                for (OperationArgument arg : operation.operationBeginArguments) {
                     ex.addParameter(arg.toVariableElement());
                 }
                 return createMethodStub(ex);

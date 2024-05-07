@@ -1379,6 +1379,15 @@ public class ElementUtils {
         return false;
     }
 
+    public static boolean typeEqualsAny(TypeMirror type1, List<? extends TypeMirror> types) {
+        for (TypeMirror type2 : types) {
+            if (typeEquals(type1, type2)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean areTypesCompatible(TypeMirror type1, TypeMirror type2) {
         if (typeEquals(type1, type2)) {
             return true;

@@ -62,7 +62,6 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -238,7 +237,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setVariadic(0) //
                         .setTransparent(true) //
                         .setChildrenMustBeValues(false) //
-                        .setOperationArguments(new OperationArgument(types.TruffleLanguage, "language", "the language to associate with the root node"));
+                        .setOperationBeginArguments(new OperationArgument(types.TruffleLanguage, "language", "the language to associate with the root node"));
         ifThenOperation = operation(OperationKind.IF_THEN, "IfThen") //
                         .setVoid(true) //
                         .setNumChildren(2) //
@@ -259,58 +258,58 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind the caught exception to"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind the caught exception to"));
         finallyTryOperation = operation(OperationKind.FINALLY_TRY, "FinallyTry") //
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind a thrown exception to (if available)"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind a thrown exception to (if available)"));
         operation(OperationKind.FINALLY_TRY_CATCH, "FinallyTryCatch") //
                         .setVoid(true) //
                         .setNumChildren(3) //
                         .setChildrenMustBeValues(false, false, false) //
-                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind a thrown exception to"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind a thrown exception to"));
         operation(OperationKind.LABEL, "Label") //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationArguments(new OperationArgument(types.BytecodeLabel, "label", "the label to define"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLabel, "label", "the label to define"));
         operation(OperationKind.BRANCH, "Branch") //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationArguments(new OperationArgument(types.BytecodeLabel, "label", "the label to branch to")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLabel, "label", "the label to branch to")) //
                         .setInstruction(branchInstruction);
         loadConstantOperation = operation(OperationKind.LOAD_CONSTANT, "LoadConstant") //
                         .setNumChildren(0) //
-                        .setOperationArguments(new OperationArgument(context.getType(Object.class), "constant", "the constant value to load")) //
+                        .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), "constant", "the constant value to load")) //
                         .setInstruction(loadConstantInstruction);
         operation(OperationKind.LOAD_ARGUMENT, "LoadArgument") //
                         .setNumChildren(0) //
-                        .setOperationArguments(new OperationArgument(context.getType(int.class), "index", "the index of the argument to load")) //
+                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), "index", "the index of the argument to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", signature(Object.class))//
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
         loadLocalOperation = operation(OperationKind.LOAD_LOCAL, "LoadLocal") //
                         .setNumChildren(0) //
-                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL, "load.local", signature(Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         loadLocalMaterializedOperation = operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
-                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat", signature(Object.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         storeLocalOperation = operation(OperationKind.STORE_LOCAL, "StoreLocal") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setVoid(true) //
-                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL, "store.local", signature(void.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         storeLocalMaterializedOperation = operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized") //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, true) //
                         .setVoid(true) //
-                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         signature(void.class, Object.class, Object.class)) //
                                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
@@ -330,13 +329,13 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setChildrenMustBeValues(false) //
                         .setTransparent(true) //
                         .setRequiresParentRoot(false) //
-                        .setOperationArguments(new OperationArgument(types.Source, "source", "the source object to associate with the enclosed operations"));
+                        .setOperationBeginArguments(new OperationArgument(types.Source, "source", "the source object to associate with the enclosed operations"));
         sourceSectionOperation = operation(OperationKind.SOURCE_SECTION, "SourceSection") //
                         .setVariadic(0) //
                         .setChildrenMustBeValues(false)//
                         .setTransparent(true) //
                         .setRequiresParentRoot(false) //
-                        .setOperationArguments(new OperationArgument(context.getType(int.class), "index", "the starting character index of the source section"),
+                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), "index", "the starting character index of the source section"),
                                         new OperationArgument(context.getType(int.class), "length", "the length (in characters) of the source section"));
 
         if (enableTagInstrumentation) {
@@ -348,8 +347,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             tagLeaveVoidInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             tagOperation = operation(OperationKind.TAG, "Tag") //
                             .setNumChildren(1) //
-                            .setOperationArgumentVarArgs(true) //
-                            .setOperationArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"))//
+                            .setOperationBeginArgumentVarArgs(true) //
+                            .setOperationBeginArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"))//
                             .setInstruction(tagLeaveValueInstruction);
 
         }

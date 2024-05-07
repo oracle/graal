@@ -336,30 +336,30 @@ public class ErrorTests {
         @Operation
         public static final class BadSignatureOperation {
             @Specialization
-            public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic parameters.") Object b) {
+            public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic operands must precede variadic operands.") Object b) {
             }
 
             @Specialization
-            public static void valueAfterSetter(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+            public static void valueAfterSetter(LocalSetter a, @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") Object b) {
             }
 
             @Specialization
-            public static void valueAfterSetterRange(LocalSetterRange a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+            public static void valueAfterSetterRange(LocalSetterRange a, @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") Object b) {
             }
 
             @Specialization
             public static void variadicAfterSetter(LocalSetter a,
-                            @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
+                            @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
             }
 
             @Specialization
             public static void variadicAfterSetterRange(LocalSetterRange a,
-                            @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
+                            @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
             }
 
             @Specialization
             public static void multipleVariadic(@Variadic Object[] a,
-                            @ExpectError("Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
+                            @ExpectError("Multiple variadic operands not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
             }
 
             @Specialization
@@ -376,7 +376,7 @@ public class ErrorTests {
 
             @Fallback
             public static void doFallback(Object a,
-                            @ExpectError("Value parameters to @Fallback specializations of Operation nodes must have type Object.") int b) {
+                            @ExpectError("Operands to @Fallback specializations of Operation nodes must have type Object.") int b) {
             }
         }
 
@@ -540,30 +540,30 @@ public class ErrorTests {
     @OperationProxy.Proxyable
     public static final class BadSignatureOperationProxy {
         @Specialization
-        public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic parameters.") Object b) {
+        public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic operands must precede variadic operands.") Object b) {
         }
 
         @Specialization
-        public static void valueAfterSetter(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+        public static void valueAfterSetter(LocalSetter a, @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") Object b) {
         }
 
         @Specialization
-        public static void valueAfterSetterRange(LocalSetterRange a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+        public static void valueAfterSetterRange(LocalSetterRange a, @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") Object b) {
         }
 
         @Specialization
         public static void variadicAfterSetter(LocalSetter a,
-                        @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
+                        @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
         }
 
         @Specialization
         public static void variadicAfterSetterRange(LocalSetterRange a,
-                        @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
+                        @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
         }
 
         @Specialization
         public static void multipleVariadic(@Variadic Object[] a,
-                        @ExpectError("Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
+                        @ExpectError("Multiple variadic operands not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
         }
 
         @Specialization
@@ -647,7 +647,7 @@ public class ErrorTests {
 
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({
-                    "Specializations for boolean converter ToBooleanBadReturn must only take one value parameter and return boolean.",
+                    "Specializations for boolean converter ToBooleanBadReturn must only take one operand and return boolean.",
                     "Encountered errors using ToBooleanBadOperation as a boolean converter. These errors must be resolved before the DSL can proceed."
     })
     @ShortCircuitOperation(name = "Foo", operator = Operator.AND_RETURN_VALUE, booleanConverter = BadBooleanConverterTest.ToBooleanBadReturn.class)

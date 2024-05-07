@@ -65,11 +65,13 @@ public class TruffleTypes {
                     TruffleTypes.EXPECT_ERROR_CLASS_NAME1,
                     TruffleTypes.EXPECT_ERROR_CLASS_NAME2,
                     TruffleTypes.EXPECT_ERROR_CLASS_NAME3,
-                    TruffleTypes.EXPECT_WARNING_CLASS_NAME1
+                    TruffleTypes.EXPECT_WARNING_CLASS_NAME1,
+                    TruffleTypes.EXPECT_WARNING_CLASS_NAME2,
     };
     public static final String ALWAYS_SLOW_PATH_MODE_NAME = "com.oracle.truffle.api.dsl.test.AlwaysGenerateOnlySlowPath";
     public static final String DISABLE_STATE_BITWIDTH_MODIFICATION = "com.oracle.truffle.api.dsl.test.DisableStateBitWidthModfication";
     public static final String EXPECT_WARNING_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectWarning";
+    public static final String EXPECT_WARNING_CLASS_NAME2 = "com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME3 = "com.oracle.truffle.api.bytecode.test.error_tests.ExpectError";
@@ -361,6 +363,7 @@ public class TruffleTypes {
     public static final String BytecodeLocation_Name = "com.oracle.truffle.api.bytecode.BytecodeLocation";
     public static final String BytecodeTier_Name = "com.oracle.truffle.api.bytecode.BytecodeTier";
     public static final String BytecodeSupport_Name = "com.oracle.truffle.api.bytecode.BytecodeSupport";
+    public static final String ConstantOperand_Name = "com.oracle.truffle.api.bytecode.ConstantOperand";
     public static final String ContinuationResult_Name = "com.oracle.truffle.api.bytecode.ContinuationResult";
     public static final String ContinuationRootNode_Name = "com.oracle.truffle.api.bytecode.ContinuationRootNode";
     public static final String EpilogReturn_Name = "com.oracle.truffle.api.bytecode.EpilogReturn";
@@ -416,6 +419,7 @@ public class TruffleTypes {
     public final DeclaredType BytecodeLocation = c.getDeclaredTypeOptional(BytecodeLocation_Name);
     public final DeclaredType BytecodeTier = c.getDeclaredTypeOptional(BytecodeTier_Name);
     public final DeclaredType BytecodeSupport = c.getDeclaredTypeOptional(BytecodeSupport_Name);
+    public final DeclaredType ConstantOperand = c.getDeclaredTypeOptional(ConstantOperand_Name);
     public final DeclaredType ContinuationResult = c.getDeclaredTypeOptional(ContinuationResult_Name);
     public final DeclaredType ContinuationRootNode = c.getDeclaredTypeOptional(ContinuationRootNode_Name);
     public final DeclaredType EpilogReturn = c.getDeclaredTypeOptional(EpilogReturn_Name);

@@ -84,13 +84,13 @@ import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.CommonInstructionDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.QuickenDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.SuperInstructionDecision;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
@@ -665,6 +665,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             }).toList();
 
             for (List<SpecializationData> includedSpecializations : resolvedQuickenings) {
+                assert !includedSpecializations.isEmpty();
+                MessageContainer customOperation = includedSpecializations.get(0).getNode();
+
                 String name;
                 if (includedSpecializations.size() == operation.instruction.nodeData.getSpecializations().size()) {
                     // all specializations included
@@ -672,7 +675,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 } else {
                     name = String.join("#", includedSpecializations.stream().map((s) -> s.getId()).toList());
                 }
-                Signature signature = CustomOperationParser.createPolymorphicSignature(includedSpecializations.stream().map(s -> s.getMethod()).toList(), null, null);
+                List<ExecutableElement> includedSpecializationElements = includedSpecializations.stream().map(s -> s.getMethod()).toList();
+                List<Signature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(includedSpecializationElements, customOperation, operation.constantOperands);
+                assert !customOperation.hasErrors();
+                Signature signature = SignatureParser.createPolymorphicSignature(includedSpecializationSignatures, includedSpecializationElements, customOperation, operation.constantOperands);
                 InstructionModel baseInstruction = operation.instruction;
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
                 quickenedInstruction.filteredSpecializations = includedSpecializations;
@@ -687,7 +693,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             for (InstructionModel instruction : model.getInstructions().toArray(InstructionModel[]::new)) {
                 switch (instruction.kind) {
                     case CUSTOM:
-                        for (int i = 0; i < instruction.signature.valueCount; i++) {
+                        for (int i = 0; i < instruction.signature.dynamicOperandCount; i++) {
                             if (instruction.getQuickeningRoot().needsBoxingElimination(model, i)) {
                                 instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(i));
                             }
@@ -741,7 +747,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             specializedInstruction.returnTypeQuickening = false;
                             specializedInstruction.specializedType = boxedType;
 
-                            Signature newSignature = new Signature(boxedType, specializedInstruction.signature.argumentTypes);
+                            Signature newSignature = new Signature(boxedType, specializedInstruction.signature.operandTypes);
                             InstructionModel argumentQuickening = model.quickenInstruction(specializedInstruction,
                                             newSignature,
                                             "unboxed");
@@ -782,7 +788,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             specializedInstruction.returnTypeQuickening = false;
                             specializedInstruction.specializedType = boxedType;
 
-                            Signature newSignature = new Signature(boxedType, instruction.signature.argumentTypes);
+                            Signature newSignature = new Signature(boxedType, instruction.signature.operandTypes);
                             InstructionModel argumentQuickening = model.quickenInstruction(specializedInstruction,
                                             newSignature,
                                             "unboxed");
@@ -807,7 +813,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             specializedInstruction.returnTypeQuickening = false;
                             specializedInstruction.specializedType = boxedType;
 
-                            Signature newSignature = new Signature(boxedType, instruction.signature.argumentTypes);
+                            Signature newSignature = new Signature(boxedType, instruction.signature.operandTypes);
                             InstructionModel argumentQuickening = model.quickenInstruction(specializedInstruction,
                                             newSignature,
                                             "unboxed");

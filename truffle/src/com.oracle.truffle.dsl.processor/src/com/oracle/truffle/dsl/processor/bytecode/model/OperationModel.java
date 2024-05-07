@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.Arrays;
+import java.util.List;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -90,6 +91,14 @@ public class OperationModel implements PrettyPrintable {
 
     private static final OperationArgument[] EMPTY_ARGUMENTS = new OperationArgument[0];
 
+    public record ConstantOperands(List<ConstantOperandModel> before, List<ConstantOperandModel> after) {
+        public static final ConstantOperands NONE = new ConstantOperands(List.of(), List.of());
+
+        public boolean hasConstantOperands() {
+            return this != NONE;
+        }
+    }
+
     public final BytecodeDSLModel parent;
     public final int id;
     public final OperationKind kind;
@@ -116,8 +125,10 @@ public class OperationModel implements PrettyPrintable {
     public int numChildren;
 
     public InstructionModel instruction;
-    public OperationArgument[] operationArguments = EMPTY_ARGUMENTS;
-    public boolean operationArgumentVarArgs = false;
+    public ConstantOperands constantOperands = null;
+    public OperationArgument[] operationBeginArguments = EMPTY_ARGUMENTS;
+    public OperationArgument[] operationEndArguments = EMPTY_ARGUMENTS;
+    public boolean operationBeginArgumentVarArgs = false;
 
     public CustomOperationModel customModel;
 
@@ -188,26 +199,30 @@ public class OperationModel implements PrettyPrintable {
         return this;
     }
 
-    public OperationModel setOperationArgumentVarArgs(boolean varArgs) {
-        this.operationArgumentVarArgs = varArgs;
+    public OperationModel setOperationBeginArgumentVarArgs(boolean varArgs) {
+        this.operationBeginArgumentVarArgs = varArgs;
         return this;
     }
 
-    public OperationModel setOperationArguments(OperationArgument... operationArguments) {
-        if (this.operationArguments != null) {
-            assert this.operationArguments.length == operationArguments.length;
+    public OperationModel setOperationBeginArguments(OperationArgument... operationBeginArguments) {
+        if (this.operationBeginArguments != null) {
+            assert this.operationBeginArguments.length == operationBeginArguments.length;
         }
-        this.operationArguments = operationArguments;
+        this.operationBeginArguments = operationBeginArguments;
         return this;
+    }
+
+    public String getOperationBeginArgumentName(int i) {
+        return operationBeginArguments[i].name;
+    }
+
+    public String getOperationEndArgumentName(int i) {
+        return operationEndArguments[i].name;
     }
 
     public OperationModel setInternal() {
         this.isInternal = true;
         return this;
-    }
-
-    public String getOperationArgumentName(int i) {
-        return operationArguments[i].name;
     }
 
     @Override

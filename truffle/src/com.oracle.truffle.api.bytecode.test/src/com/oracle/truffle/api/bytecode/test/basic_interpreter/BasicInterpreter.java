@@ -97,10 +97,11 @@ import com.oracle.truffle.api.nodes.RootNode;
                                 decisionsFile = "basic_interpreter_decisions.json")),
                 @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = false, enableTagInstrumentation = true)),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "ProductionLocalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = true, enableTagInstrumentation = true, enableUncachedInterpreter = true, //
-                                boxingEliminationTypes = {boolean.class, long.class}, decisionsFile = "basic_interpreter_decisions.json")),
-                @Variant(suffix = "ProductionGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = false, enableTagInstrumentation = true, enableUncachedInterpreter = true, //
-                                boxingEliminationTypes = {boolean.class, long.class}, decisionsFile = "basic_interpreter_decisions.json"))
+                @Variant(suffix = "ProductionLocalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = true, enableTagInstrumentation = true, //
+                                enableUncachedInterpreter = true, boxingEliminationTypes = {boolean.class, long.class}, decisionsFile = "basic_interpreter_decisions.json")),
+                @Variant(suffix = "ProductionGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = false, //
+                                enableTagInstrumentation = true, enableUncachedInterpreter = true, boxingEliminationTypes = {boolean.class,
+                                                long.class}, decisionsFile = "basic_interpreter_decisions.json"))
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE)
