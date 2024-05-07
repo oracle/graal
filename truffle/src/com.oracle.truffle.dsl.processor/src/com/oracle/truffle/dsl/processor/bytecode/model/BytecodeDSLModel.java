@@ -165,6 +165,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel tagEnterInstruction;
     public InstructionModel tagLeaveValueInstruction;
     public InstructionModel tagLeaveVoidInstruction;
+    public InstructionModel tagYieldInstruction;
+    public InstructionModel tagResumeInstruction;
     public InstructionModel clearLocalInstruction;
 
     public final List<CustomOperationModel> instrumentations = new ArrayList<>();

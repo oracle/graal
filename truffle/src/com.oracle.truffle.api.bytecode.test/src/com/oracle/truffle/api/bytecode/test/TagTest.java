@@ -144,6 +144,8 @@ public class TagTest extends AbstractInstructionTest {
         RETURN_VALUE,
         UNWIND,
         EXCEPTIONAL,
+        YIELD,
+        RESUME,
     }
 
     @SuppressWarnings("unchecked")
@@ -161,28 +163,41 @@ public class TagTest extends AbstractInstructionTest {
 
                 @Override
                 public void onEnter(VirtualFrame f) {
-                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), EventKind.ENTER, tree.getStartBci(), tree.getEndBci(), null,
-                                    tree.getTags().toArray(Class[]::new)));
+                    emitEvent(EventKind.ENTER, null);
                 }
 
                 @Override
                 public void onReturnValue(VirtualFrame f, Object arg) {
-                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), EventKind.RETURN_VALUE, tree.getStartBci(), tree.getEndBci(), arg,
-                                    tree.getTags().toArray(Class[]::new)));
+                    emitEvent(EventKind.RETURN_VALUE, arg);
                 }
 
                 @Override
                 protected Object onUnwind(VirtualFrame frame, Object info) {
-                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), EventKind.UNWIND, tree.getStartBci(), tree.getEndBci(), info,
-                                    tree.getTags().toArray(Class[]::new)));
+                    emitEvent(EventKind.UNWIND, info);
                     return null;
                 }
 
                 @Override
                 public void onReturnExceptional(VirtualFrame frame, Throwable t) {
-                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), EventKind.EXCEPTIONAL, tree.getStartBci(), tree.getEndBci(), t,
+                    emitEvent(EventKind.EXCEPTIONAL, t);
+                }
+
+                @Override
+                protected void onYield(VirtualFrame frame, Object value) {
+                    emitEvent(EventKind.YIELD, value);
+                }
+
+                @Override
+                protected void onResume(VirtualFrame frame) {
+                    emitEvent(EventKind.RESUME, null);
+                }
+
+                @TruffleBoundary
+                private void emitEvent(EventKind kind, Object arg) {
+                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), kind, tree.getStartBci(), tree.getEndBci(), arg,
                                     tree.getTags().toArray(Class[]::new)));
                 }
+
             };
         });
         return events;
@@ -413,7 +428,13 @@ public class TagTest extends AbstractInstructionTest {
                 }
             }
         } catch (AssertionError e) {
-            System.out.println(node.dump());
+            System.err.println("Actual events:");
+            for (Event event : actualEvents) {
+                System.err.println(event);
+            }
+
+            System.err.println("Dump:");
+            System.err.println(node.dump());
             throw e;
         }
     }
@@ -1356,12 +1377,9 @@ public class TagTest extends AbstractInstructionTest {
                         new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x0010, 42, RootTag.class));
-
     }
 
-    // TODO enable and fix this test once we properly emit enter events for each exit
     @Test
-    @Ignore
     public void testYield() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
@@ -1389,14 +1407,21 @@ public class TagTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "tag.enter",
                         "load.constant",
+                        "tag.yield",
                         "yield",
+                        "tag.resume",
                         "tag.leave",
                         "return");
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int enter = instructions.get(0).getBytecodeIndex();
+        int leave = instructions.get(5).getBytecodeIndex();
 
         assertEquals(123, cont.continueWith(123));
         assertEvents(node,
                         events,
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0006, 123, ExpressionTag.class));
+                        new Event(EventKind.RESUME, enter, leave, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter, leave, 123, ExpressionTag.class));
 
         events.clear();
 
@@ -1406,8 +1431,10 @@ public class TagTest extends AbstractInstructionTest {
         assertEquals(321, cont.continueWith(321));
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0006, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0006, 321, ExpressionTag.class));
+                        new Event(EventKind.ENTER, enter, leave, null, ExpressionTag.class),
+                        new Event(EventKind.YIELD, enter, leave, 42, ExpressionTag.class),
+                        new Event(EventKind.RESUME, enter, leave, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter, leave, 321, ExpressionTag.class));
 
         // Add a second instrumentation while the continuation is suspended. It should resume at the
         // proper location.
@@ -1419,17 +1446,30 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.enter",
                         "tag.enter",
                         "load.constant",
+                        "tag.yield",
+                        "tag.yield",
                         "yield",
+                        "tag.resume",
+                        "tag.resume",
                         "tag.leave",
                         "tag.leave",
                         "return",
                         "tag.leave",
                         "return");
+
+        instructions = node.getBytecodeNode().getInstructionsAsList();
+        int enter1 = instructions.get(0).getBytecodeIndex();
+        int leave1 = instructions.get(11).getBytecodeIndex();
+        int enter2 = instructions.get(1).getBytecodeIndex();
+        int leave2 = instructions.get(8).getBytecodeIndex();
+
         assertEquals(456, cont.continueWith(456));
         assertEvents(node,
                         events,
-                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, 456, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000f, 456, RootBodyTag.class));
+                        new Event(EventKind.RESUME, enter1, leave1, null, RootBodyTag.class),
+                        new Event(EventKind.RESUME, enter2, leave2, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter2, leave2, 456, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter1, leave1, 456, RootBodyTag.class));
         events.clear();
 
         // Now, four events should fire.
@@ -1438,10 +1478,14 @@ public class TagTest extends AbstractInstructionTest {
         assertEquals(333, cont.continueWith(333));
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x000f, null, RootBodyTag.class),
-                        new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, 333, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000f, 333, RootBodyTag.class));
+                        new Event(EventKind.ENTER, enter1, leave1, null, RootBodyTag.class),
+                        new Event(EventKind.ENTER, enter2, leave2, null, ExpressionTag.class),
+                        new Event(EventKind.YIELD, enter2, leave2, 42, ExpressionTag.class),
+                        new Event(EventKind.YIELD, enter1, leave1, 42, RootBodyTag.class),
+                        new Event(EventKind.RESUME, enter1, leave1, null, RootBodyTag.class),
+                        new Event(EventKind.RESUME, enter2, leave2, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter2, leave2, 333, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter1, leave1, 333, RootBodyTag.class));
     }
 
     private static final NodeLibrary NODE_LIBRARY = NodeLibrary.getUncached();
