@@ -907,7 +907,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     @Override
     @TruffleBoundary
     public int atomic_wait32(Node node, long address, int expected, long timeout) {
-        validateAtomicAddress(node, address, 4);
+        validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
@@ -918,7 +918,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     @Override
     @TruffleBoundary
     public int atomic_wait64(Node node, long address, long expected, long timeout) {
-        validateAtomicAddress(node, address, 8);
+        validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
