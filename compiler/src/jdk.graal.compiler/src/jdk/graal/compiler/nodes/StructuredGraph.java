@@ -103,14 +103,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private final NodeMap<HIRBlock> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
         public final SchedulingStrategy strategy;
-        public final int edgeModCount;
 
-        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, SchedulingStrategy strategy, int edgeModCount) {
+        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, SchedulingStrategy strategy) {
             this.cfg = cfg;
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
             this.strategy = strategy;
-            this.edgeModCount = edgeModCount;
         }
 
         public ControlFlowGraph getCFG() {
@@ -307,8 +305,29 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final Assumptions assumptions;
 
     private ScheduleResult lastSchedule;
-
     private ControlFlowGraph lastCFG;
+
+    private final CacheInvalidationListener cacheInvalidationListener;
+
+    private final class CacheInvalidationListener extends NodeEventListener {
+
+        private boolean lastCFGValid;
+        private boolean lastScheduleValid;
+
+        @Override
+        public void changed(NodeEvent e, Node node) {
+            lastCFGValid = false;
+            lastScheduleValid = false;
+        }
+    }
+
+    public boolean isLastScheduleValid() {
+        return cacheInvalidationListener.lastScheduleValid;
+    }
+
+    public boolean isLastCFGValid() {
+        return cacheInvalidationListener.lastCFGValid;
+    }
 
     private InliningLog inliningLog;
 
@@ -382,11 +401,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isStructuredOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
+        this.cacheInvalidationListener = new CacheInvalidationListener();
     }
 
     public void setLastSchedule(ScheduleResult result) {
         GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
+        cacheInvalidationListener.lastScheduleValid = result != null;
     }
 
     public ScheduleResult getLastSchedule() {
@@ -404,6 +425,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void setLastCFG(ControlFlowGraph cfg) {
         lastCFG = cfg;
+        cacheInvalidationListener.lastCFGValid = cfg != null;
     }
 
     public void clearLastCFG() {

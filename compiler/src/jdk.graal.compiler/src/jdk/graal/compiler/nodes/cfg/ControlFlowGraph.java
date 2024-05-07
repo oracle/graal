@@ -106,7 +106,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     public static final double MAX_RELATIVE_FREQUENCY = 1 / MIN_RELATIVE_FREQUENCY;
 
     public final StructuredGraph graph;
-    private final int edgeModCount;
     private BuildConfig buildConfig;
 
     private NodeMap<HIRBlock> nodeToBlock;
@@ -148,7 +147,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
         try (DebugCloseable c = CFG_MEMORY.start(graph.getDebug())) {
             ControlFlowGraph cfg;
-            if (lastCFG != null && (lastCFG.edgeModCount == graph.getEdgeModificationCount()) && (lastCFG.buildConfig.backendBlocks == backendBlocks)) {
+            if (lastCFG != null && graph.isLastCFGValid() && (lastCFG.buildConfig.backendBlocks == backendBlocks)) {
                 if (lastCFG.buildConfig.hasAllParams(backendBlocks, connectBlocks, computeFrequency, computeLoops, computeDominators, computePostdominators)) {
                     return lastCFG;
                 }
@@ -507,7 +506,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     private ControlFlowGraph(StructuredGraph graph) {
         this.graph = graph;
         this.nodeToBlock = graph.createNodeMap();
-        this.edgeModCount = graph.getEdgeModificationCount();
         this.buildConfig = new BuildConfig();
     }
 

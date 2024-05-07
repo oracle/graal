@@ -167,7 +167,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
     @Override
     public boolean shouldApply(StructuredGraph graph) {
         ScheduleResult prev = graph.getLastSchedule();
-        return prev == null || prev.edgeModCount != graph.getEdgeModificationCount() || prev.strategy != this.selectedStrategy;
+        return prev == null || !graph.isLastScheduleValid() || prev.strategy != this.selectedStrategy;
     }
 
     @Override
@@ -193,7 +193,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
     private static boolean shouldApply(StructuredGraph graph, SchedulingStrategy strategy) {
         ScheduleResult prev = graph.getLastSchedule();
-        return prev == null || prev.edgeModCount != graph.getEdgeModificationCount() || prev.strategy != strategy;
+        return prev == null || !graph.isLastScheduleValid() || prev.strategy != strategy;
     }
 
     public static void runWithoutContextOptimizations(StructuredGraph graph, SchedulingStrategy strategy, ControlFlowGraph cfg, boolean immutable) {
@@ -263,7 +263,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
             cfg.setNodeToBlock(currentNodeMap);
 
-            graph.setLastSchedule(new ScheduleResult(this.cfg, this.nodeToBlockMap, this.blockToNodesMap, selectedStrategy, graph.getEdgeModificationCount()));
+            graph.setLastSchedule(new ScheduleResult(this.cfg, this.nodeToBlockMap, this.blockToNodesMap, selectedStrategy));
         }
 
         @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "false positive found by findbugs")
