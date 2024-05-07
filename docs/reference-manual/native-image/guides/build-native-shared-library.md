@@ -8,7 +8,6 @@ permalink: /reference-manual/native-image/guides/build-native-shared-library/
 # Build a Native Shared Library
 
 To build a native shared library, pass the command-line argument `--shared` to the `native-image` tool, as follows:
-
 ```shell
 native-image <class name> --shared
 ```
@@ -21,7 +20,6 @@ native-image -jar <jarfile> --shared
 The resulting native shared library will have the `main()` method of the given Java class as its entrypoint method.
 
 If your library does not include a `main()` method, use the `-o` command-line option to specify the library name, as follows:
-
 ```shell
 native-image --shared -o <libraryname> <class name>
 native-image --shared -jar <jarfile> -o <libraryname>
@@ -49,7 +47,6 @@ To export any other Java method:
 * Provide a unique name for the method. If you give two exposed methods the same name, the `native-image` builder will fail with the `duplicate symbol` message. If you do not specify the name in the annotation, you must provide the `-o <libraryName>` option at build time.
 
 Below is an example of the entrypoint method:
-
 ```java
 @CEntryPoint(name = "function_name")
 static int add(IsolateThread thread, int a, int b) {
@@ -69,13 +66,14 @@ A native shared library can have an unlimited number of entrypoints, for example
 ### Run a Demo
 
 In the following example, you create a small Java class library (containing one class), use `native-image` to create a shared library from the class library, and then create a small C application that uses that shared library.
-The C application takes a string as its argument, passes it to the shared library, and prints environment variables that contain the argument.
+The C application takes a String as its argument, passes it to the shared library, and prints environment variables that contain the argument.
 
-1. Make sure you have installed GraalVM.
-The easiest way to install it is with [SDKMAN!](https://sdkman.io/jdks#graal).
-For other installation options, visit the [Downloads page](https://www.graalvm.org/downloads/).
+### Prerequisite 
+Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Save the following Java code to a file named _LibEnvMap.java_:
+1. Save the following Java code to a file named _LibEnvMap.java_:
 
     ```java
     import java.util.Map;
@@ -105,12 +103,12 @@ For other installation options, visit the [Downloads page](https://www.graalvm.o
     ```
     Notice how the method `filterEnv()` is identified as an entrypoint using the `@CEntryPoint` annotation and the method is given a name as a argument to the annotation. 
 
-3. Compile the Java code and build a native shared library, as follows:
+2. Compile the Java code and build a native shared library, as follows:
     ```shell
-    $JAVA_HOME/bin/javac LibEnvMap.java
+    javac LibEnvMap.java
     ```
     ```shell
-    $JAVA_HOME/bin/native-image -o libenvmap --shared 
+    native-image -o libenvmap --shared 
     ```
 
     It produces the following artifacts:
@@ -127,8 +125,7 @@ For other installation options, visit the [Downloads page](https://www.graalvm.o
 
     If you work with C or C++, use these header files directly. For other languages, such as Java, use the function declarations in the headers to set up your foreign call bindings. 
 
-4. Create a C application, _main.c_, in the same directory containing the following code:
-
+3. Create a C application, _main.c_, in the same directory containing the following code:
     ```c
     #include <stdio.h>
     #include <stdlib.h>
@@ -157,14 +154,13 @@ For other installation options, visit the [Downloads page](https://www.graalvm.o
     
     The statement `#include "libenvmap.h"` loads the native shared library.
 
-
-5. Compile _main.c_ using the `clang` compiler available on your system:
+4. Compile _main.c_ using the `clang` compiler available on your system:
     ```shell
     clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c 
     ```
-    It creates an executable file `main`.
+    It creates an executable file _main_.
 
-6. Run the C application by passing a string as an argument. For example:
+5. Run the C application by passing a string as an argument. For example:
     ```shell
     ./main USER
     ```
