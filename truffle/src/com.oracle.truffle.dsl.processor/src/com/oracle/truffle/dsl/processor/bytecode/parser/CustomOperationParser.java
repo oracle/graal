@@ -211,7 +211,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             throw new AssertionError("Signature could not be computed, but no error was reported");
         }
 
-        produceConstantOperandWarnings(signature, signatures, constantOperands, customOperation);
+        produceConstantOperandWarnings(signature, signatures, constantOperands, customOperation, mirror);
 
         if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
             validateInstrumentationSignature(customOperation, signature);
@@ -264,7 +264,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return customOperation;
     }
 
-    private static void produceConstantOperandWarnings(Signature polymorphicSignature, List<Signature> signatures, ConstantOperands constantOperands, CustomOperationModel customOperation) {
+    private void produceConstantOperandWarnings(Signature polymorphicSignature, List<Signature> signatures, ConstantOperands constantOperands, CustomOperationModel customOperation,
+                    AnnotationMirror mirror) {
         for (int i = 0; i < constantOperands.before().size(); i++) {
             ConstantOperandModel constantOperand = constantOperands.before().get(i);
             Collection<String> operandNames = getConstantOperandNamesBefore(signatures, constantOperand, i);
@@ -273,7 +274,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                                 "Specializations use multiple different names for this operand (%s). It is recommended to use the same name in each specialization or to explicitly provide a name for the operand.",
                                 operandNames);
             }
-            warnIfSpecifyAtEndUnnecessary(polymorphicSignature, constantOperand, customOperation);
+            warnIfSpecifyAtEndUnnecessary(polymorphicSignature, constantOperand, customOperation, mirror);
         }
 
         for (int i = 0; i < constantOperands.after().size(); i++) {
@@ -284,7 +285,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                                 "Specializations use multiple different names for this operand (%s). It is recommended to use the same name in each specialization or to explicitly provide a name for the operand.",
                                 operandNames);
             }
-            warnIfSpecifyAtEndUnnecessary(polymorphicSignature, constantOperand, customOperation);
+            warnIfSpecifyAtEndUnnecessary(polymorphicSignature, constantOperand, customOperation, mirror);
         }
 
     }
@@ -311,7 +312,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return result;
     }
 
-    private static void warnIfSpecifyAtEndUnnecessary(Signature polymorphicSignature, ConstantOperandModel constantOperand, CustomOperationModel customOperation) {
+    private void warnIfSpecifyAtEndUnnecessary(Signature polymorphicSignature, ConstantOperandModel constantOperand, CustomOperationModel customOperation, AnnotationMirror mirror) {
+        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
+            // This flag affects whether the constant is supplied to beginRoot or endRoot.
+            return;
+        }
+
         if (polymorphicSignature.dynamicOperandCount == 0 && constantOperand.specifyAtEnd() != null) {
             customOperation.addWarning(constantOperand.mirror(),
                             ElementUtils.getAnnotationValue(constantOperand.mirror(), "specifyAtEnd"),
@@ -322,27 +328,27 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     private void validateInstrumentationSignature(CustomOperationModel customOperation, Signature signature) {
         if (signature.dynamicOperandCount > 1) {
-            customOperation.addError(String.format("An @%s operation cannot have more than one operand. " +
+            customOperation.addError(String.format("An @%s operation cannot have more than one dynamic operand. " +
                             "Instrumentations must have transparent stack effects. " + //
                             "Remove the additional operands to resolve this.",
                             getSimpleName(types.Instrumentation)));
         } else if (signature.isVariadic) {
-            customOperation.addError(String.format("An @%s operation cannot use @%s for one of its operands. " +
+            customOperation.addError(String.format("An @%s operation cannot use @%s for its dynamic operand. " +
                             "Instrumentations must have transparent stack effects. " + //
                             "Remove the variadic annotation to resolve this.",
                             getSimpleName(types.Instrumentation),
                             getSimpleName(types.Variadic)));
         } else if (!signature.isVoid && signature.dynamicOperandCount != 1) {
-            customOperation.addError(String.format("An @%s operation cannot have a return value without also specifying a single operand. " +
+            customOperation.addError(String.format("An @%s operation cannot have a return value without also specifying a single dynamic operand. " +
                             "Instrumentations must have transparent stack effects. " + //
-                            "Use void as the return type or specify a single operand value to resolve this.",
+                            "Use void as the return type or specify a single dynamic operand value to resolve this.",
                             getSimpleName(types.Instrumentation)));
         }
     }
 
     private void validatePrologSignature(CustomOperationModel customOperation, Signature signature) {
         if (signature.dynamicOperandCount > 0) {
-            customOperation.addError(String.format("A @%s operation cannot have any operands. " +
+            customOperation.addError(String.format("A @%s operation cannot have any dynamic operands. " +
                             "Remove the operands to resolve this.",
                             getSimpleName(types.Prolog)));
         } else if (!signature.isVoid) {
@@ -354,7 +360,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     private void validateEpilogReturnSignature(CustomOperationModel customOperation, Signature signature) {
         if (signature.dynamicOperandCount != 1) {
-            customOperation.addError(String.format("An @%s operation must have exactly one operand for the returned value. " +
+            customOperation.addError(String.format("An @%s operation must have exactly one dynamic operand for the returned value. " +
                             "Update all specializations to take one operand to resolve this.",
                             getSimpleName(types.EpilogReturn)));
         } else if (signature.isVoid) {
@@ -368,7 +374,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     private void validateEpilogExceptionalSignature(CustomOperationModel customOperation, Signature signature, List<ExecutableElement> specializations, List<Signature> allSignatures) {
         if (signature.dynamicOperandCount != 1) {
-            customOperation.addError(String.format("An @%s operation must have exactly one operand for the exception. " +
+            customOperation.addError(String.format("An @%s operation must have exactly one dynamic operand for the exception. " +
                             "Update all specializations to take one operand to resolve this.",
                             getSimpleName(types.EpilogExceptional)));
             return;
@@ -498,7 +504,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         Signature sig = result.operation.instruction.signature;
         if (!returnsBoolean || sig.dynamicOperandCount != 1 || sig.isVariadic || sig.localSetterCount > 0 || sig.localSetterRangeCount > 0) {
             parent.addError(mirror, ElementUtils.getAnnotationValue(mirror, "booleanConverter"),
-                            "Specializations for boolean converter %s must only take one operand and return boolean.", getSimpleName(typeElement));
+                            "Specializations for boolean converter %s must only take one dynamic operand and return boolean.", getSimpleName(typeElement));
             return null;
         }
 

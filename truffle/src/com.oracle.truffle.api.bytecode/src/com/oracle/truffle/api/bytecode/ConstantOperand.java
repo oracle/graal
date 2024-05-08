@@ -49,29 +49,67 @@ import java.lang.annotation.Target;
 import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
 
 /**
- * TODO
+ * Defines a constant operand for an operation. Constant operands are supported for
+ * {@link Operation}, {@link Instrumentation}, and {@link Prolog} operations.
+ * <p>
+ * Constant operands have a few benefits:
+ * <ul>
+ * <li>In contrast to dynamic operands, which are computed by executing the "children" of an
+ * operation at run time, constant operands are specified at parse time and require no run-time
+ * computation.
+ * <li>Constant operands are {@link CompilerDirectives#partialEvaluationConstant partial evaluation
+ * constants}. Though an interpreter can use {@code LoadConstant} operations to supply dynamic
+ * operands, those constants are *not guaranteed to be partial evaluation constants*.
+ * <li>{@link Instrumentation} and {@link Prolog} operations are restricted and cannot encode
+ * arbitrary dynamic operands. Constant operands can be used to encode other information needed by
+ * these operations.
+ * </ul>
+ *
+ * When an operation declares a constant operand, each specialization must declare a parameter for
+ * the operand before the dynamic operands. The parameter should have the exact {@link #type()} of
+ * the constant operand.
+ * <p>
+ * When parsing the operation, a constant must be supplied as an additional parameter to the
+ * {@code begin} or {@code emit} method of the {@link BytecodeBuilder}. Constant operands to the
+ * {@link Prolog} should be supplied to the {@code beginRoot} method.
+ *
+ * @since 24.1
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 @Repeatable(Repeat.class)
 public @interface ConstantOperand {
     /**
-     * TODO
+     * The type of the constant operand. All specializations must declare a parameter with this
+     * exact type.
+     *
+     * @since 24.1
      */
     Class<?> type();
 
     /**
-     * TODO
+     * Optional name for the constant operand. When this field is not provided, the Bytecode DSL
+     * will infer a name from the specializations' parameter.
      */
     String operandName() default "";
 
     /**
-     * TODO
+     * Optional documentation for the constant operand. This documentation is included in the
+     * javadoc for the generated interpreter.
      */
     String javadoc() default "";
 
     /**
-     * TODO
+     * By default, constant operands appear before dynamic operands and are specified to the
+     * operation's {@code begin} method of the {@link BytecodeBuilder}. When {@link #specifyAtEnd()}
+     * is {@code true}, the constant operand instead appears after dynamic operands and is specified
+     * to the operation's {@code end} method.
+     * <p>
+     * In some cases, it may be more convenient to specify a constant operand after parsing the
+     * child operations; for example, the constant may only be known after traversing child ASTs.
+     * <p>
+     * This flag is meaningless if the operation is not the {@link Prolog} and does not take dynamic
+     * operands, since all constant operands will be supplied to a single {@code emit} method.
      */
     boolean specifyAtEnd() default false;
 

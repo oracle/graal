@@ -49,7 +49,8 @@ import java.lang.annotation.Target;
  * Defines a prolog operation that executes before the body of a Root operation.
  * <p>
  * A prolog operation is defined the same way as an {@link Operation}. It has the additional
- * restriction that it must have no operands and must declare a {@code void} return type.
+ * restriction that it must have no dynamic operands and must declare a {@code void} return type. It
+ * can declare {@link ConstantOperand constant operands}.
  * <p>
  * The prolog is guarded by exception intercept methods (e.g.,
  * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}) as well as the

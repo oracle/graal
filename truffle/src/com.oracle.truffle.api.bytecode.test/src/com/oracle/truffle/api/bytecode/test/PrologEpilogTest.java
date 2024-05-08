@@ -622,7 +622,7 @@ abstract class BadPrologErrorNode extends RootNode implements BytecodeRootNode {
         super(language, frameDescriptor);
     }
 
-    @ExpectError("A @Prolog operation cannot have any operands. Remove the operands to resolve this.")
+    @ExpectError("A @Prolog operation cannot have any dynamic operands. Remove the operands to resolve this.")
     @Prolog
     public static final class BadProlog {
         @Specialization
@@ -654,7 +654,7 @@ abstract class BadEpilogErrorNode extends RootNode implements BytecodeRootNode {
         super(language, frameDescriptor);
     }
 
-    @ExpectError("An @EpilogReturn operation must have exactly one operand for the returned value. Update all specializations to take one operand to resolve this.")
+    @ExpectError("An @EpilogReturn operation must have exactly one dynamic operand for the returned value. Update all specializations to take one operand to resolve this.")
     @EpilogReturn
     public static final class BadEpilog {
         @Specialization
@@ -692,7 +692,7 @@ abstract class BadExceptionalEpilogErrorNode1 extends RootNode implements Byteco
         super(language, frameDescriptor);
     }
 
-    @ExpectError("An @EpilogExceptional operation must have exactly one operand for the exception. Update all specializations to take one operand to resolve this.")
+    @ExpectError("An @EpilogExceptional operation must have exactly one dynamic operand for the exception. Update all specializations to take one operand to resolve this.")
     @EpilogExceptional
     public static final class BadEpilog {
         @Specialization

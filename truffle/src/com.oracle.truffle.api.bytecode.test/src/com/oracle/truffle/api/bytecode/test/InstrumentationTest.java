@@ -510,7 +510,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
             }
         }
 
-        @ExpectError("An @Instrumentation operation cannot have more than one operand. " +
+        @ExpectError("An @Instrumentation operation cannot have more than one dynamic operand. " +
                         "Instrumentations must have transparent stack effects. " + //
                         "Remove the additional operands to resolve this.")
         @Instrumentation
@@ -522,9 +522,9 @@ public class InstrumentationTest extends AbstractInstructionTest {
             }
         }
 
-        @ExpectError("An @Instrumentation operation cannot have a return value without also specifying a single operand. " + //
+        @ExpectError("An @Instrumentation operation cannot have a return value without also specifying a single dynamic operand. " + //
                         "Instrumentations must have transparent stack effects. " + //
-                        "Use void as the return type or specify a single operand value to resolve this.")
+                        "Use void as the return type or specify a single dynamic operand value to resolve this.")
         @Instrumentation
         static final class InvalidInstrumentation2 {
 
@@ -534,7 +534,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
             }
         }
 
-        @ExpectError("An @Instrumentation operation cannot use @Variadic for one of its operands. " + //
+        @ExpectError("An @Instrumentation operation cannot use @Variadic for its dynamic operand. " + //
                         "Instrumentations must have transparent stack effects. Remove the variadic annotation to resolve this.")
         @Instrumentation
         static final class InvalidInstrumentation3 {

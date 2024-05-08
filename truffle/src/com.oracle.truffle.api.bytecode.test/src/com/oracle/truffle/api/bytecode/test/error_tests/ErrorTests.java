@@ -647,7 +647,7 @@ public class ErrorTests {
 
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({
-                    "Specializations for boolean converter ToBooleanBadReturn must only take one operand and return boolean.",
+                    "Specializations for boolean converter ToBooleanBadReturn must only take one dynamic operand and return boolean.",
                     "Encountered errors using ToBooleanBadOperation as a boolean converter. These errors must be resolved before the DSL can proceed."
     })
     @ShortCircuitOperation(name = "Foo", operator = Operator.AND_RETURN_VALUE, booleanConverter = BadBooleanConverterTest.ToBooleanBadReturn.class)
