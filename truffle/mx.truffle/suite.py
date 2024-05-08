@@ -2304,6 +2304,7 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.shadowed.icu4j",
         "requires" : [
+          "static java.desktop",
         ],
         "exports" : [
           # Qualified exports.
