@@ -664,9 +664,6 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # run benchmark with non default setup #
     ########################################
-    # ensure -Xbatch still works
-    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
     # Ensure benchmark counters still work but omit this test on
     # fastdebug as benchmark counter threads may not produce

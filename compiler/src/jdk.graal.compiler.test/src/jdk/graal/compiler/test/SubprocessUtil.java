@@ -28,9 +28,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
@@ -257,21 +259,36 @@ public final class SubprocessUtil {
         private boolean preserveArgfileOnExit;
 
         private static final List<Subprocess> subprocessesWithArgfiles = new ArrayList<>();
+
         static {
             Runtime.getRuntime().addShutdownHook(new Thread("SubprocessArgFileCleanUp") {
                 @Override
                 public void run() {
                     synchronized (subprocessesWithArgfiles) {
+                        int preserved = 0;
                         for (Subprocess s : subprocessesWithArgfiles) {
-                            if (s.argfile != null && !s.preserveArgfileOnExit && Files.exists(s.argfile)) {
-                                try {
-                                    Files.delete(s.argfile);
-                                    if (DEBUG) {
-                                        System.out.println("deleted " + s.argfile);
+                            if (s.argfile != null && Files.exists(s.argfile)) {
+                                if (!s.preserveArgfileOnExit) {
+                                    try {
+                                        Files.delete(s.argfile);
+                                        if (DEBUG) {
+                                            System.out.println("deleted " + s.argfile);
+                                        }
+                                    } catch (IOException e) {
+                                        System.err.println(e);
                                     }
-                                } catch (IOException e) {
-                                    System.err.println(e);
+                                } else {
+                                    preserved++;
                                 }
+                            }
+                        }
+                        if (preserved != 0) {
+                            System.out.printf("Preserved %d argfile(s) in %s%n", preserved, ARGFILES_DIRECTORY);
+                        } else if (!ARGFILE_DIRECTORY_EXISTED && Files.exists(ARGFILES_DIRECTORY)) {
+                            try {
+                                Files.delete(ARGFILES_DIRECTORY);
+                            } catch (IOException e) {
+                                System.err.printf("Error deleting %s: %s%n", ARGFILES_DIRECTORY, e);
                             }
                         }
                     }
@@ -287,6 +304,7 @@ public final class SubprocessUtil {
             this.output = output;
             this.timedOut = timedOut;
             this.argfile = argfile;
+            assert argfile == null || argfile.startsWith(ARGFILES_DIRECTORY);
             synchronized (subprocessesWithArgfiles) {
                 subprocessesWithArgfiles.add(this);
             }
@@ -474,19 +492,34 @@ public final class SubprocessUtil {
     private static final Set<String> EXECUTABLES_USING_ARGFILES = Set.of("java", "java.exe", "javac", "javac.exe");
 
     /**
+     * Directory in which argfiles will be {@linkplain #createArgfile created}.
+     *
+     * Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
+     */
+    private static final Path ARGFILES_DIRECTORY = initArgfilesDirectory();
+
+    private static Path initArgfilesDirectory() {
+        return GraalTest.getOutputDirectory(SubprocessUtil.class).resolve("SubprocessUtil-argfiles");
+    }
+
+    /**
+     * Records whether {@link #ARGFILES_DIRECTORY} existed before the JVM started.
+     */
+    private static final boolean ARGFILE_DIRECTORY_EXISTED = Files.exists(ARGFILES_DIRECTORY);
+
+    /**
      * Creates an argfile for {@code command} if {@code command.get(0)} denotes an
      * {@linkplain #EXECUTABLES_USING_ARGFILES executable supporting argfiles}.
      *
-     * @see "https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html#java-command-line-argument-files"
      * @return the created argfile or null
+     * @see "https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html#java-command-line-argument-files"
      */
     public static Path makeArgfile(List<String> command) {
         File exe = new File(command.get(0));
         if (EXECUTABLES_USING_ARGFILES.contains(exe.getName())) {
             expandArgFileArgs(command);
             try {
-                // Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
-                Path argfile = Files.createTempFile(SubprocessUtil.class.getName() + ".", ".argfile");
+                Path argfile = createArgfile();
                 String content = expandArgFileArgs(command).stream().map(SubprocessUtil::quoteArgfileArgument).collect(Collectors.joining("\n"));
                 Files.writeString(argfile, "# " + content);
                 return argfile;
@@ -495,6 +528,26 @@ public final class SubprocessUtil {
             }
         }
         return null;
+    }
+
+    /**
+     * Creates a new file in {@link #ARGFILES_DIRECTORY} whose base name is the string value of
+     * {@link Instant#now()} and whose extension is ".argfile".
+     * <p>
+     * Example file name: 2024-04-28T13_09_57.078935Z.argfile
+     */
+    private static Path createArgfile() throws IOException {
+        Path argfile;
+        while (true) {
+            try {
+                Path dir = Files.createDirectories(ARGFILES_DIRECTORY);
+                argfile = Files.createFile(dir.resolve(GraalTest.nowAsFileName() + ".argfile"));
+                break;
+            } catch (FileAlreadyExistsException e) {
+                // try again
+            }
+        }
+        return argfile;
     }
 
     /**
