@@ -27,6 +27,7 @@ package com.oracle.svm.core.hub;
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,9 +35,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
@@ -48,25 +51,40 @@ public final class ClassForNameSupport {
         return ImageSingletons.lookup(ClassForNameSupport.class);
     }
 
+    private record Entry(ClassLoader loader, String className) {
+        private static Entry of(String className) {
+            return of(null, className);
+        }
+
+        private static Entry of(Class<?> clazz) {
+            return of(clazz.getClassLoader(), clazz.getName());
+        }
+
+        private static Entry of(ClassLoader loader, String className) {
+            return new Entry(loader, className);
+        }
+    }
+
     /** The map used to collect registered classes. */
-    private final EconomicMap<String, ConditionalRuntimeValue<Object>> knownClasses = ImageHeapMap.create();
+    private final EconomicMap<Entry, ConditionalRuntimeValue<Object>> knownClasses = ImageHeapMap.create();
 
     private static final Object NEGATIVE_QUERY = new Object();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(Class<?> clazz) {
-        registerClass(ConfigurationCondition.alwaysTrue(), clazz);
+    public void registerClass(Class<?> clazz, Function<ClassLoader, ClassLoader> getRuntimeClassLoaderFunc) {
+        registerClass(ConfigurationCondition.alwaysTrue(), clazz, getRuntimeClassLoaderFunc);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerClass(ConfigurationCondition condition, Class<?> clazz, Function<ClassLoader, ClassLoader> getRuntimeClassLoaderFunc) {
         assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
         }
         synchronized (knownClasses) {
             String name = clazz.getName();
-            ConditionalRuntimeValue<Object> exisingEntry = knownClasses.get(name);
+            Entry entry = Entry.of(getRuntimeClassLoaderFunc.apply(clazz.getClassLoader()), name);
+            ConditionalRuntimeValue<Object> exisingEntry = knownClasses.get(entry);
             Object currentValue = exisingEntry == null ? null : exisingEntry.getValueUnconditionally();
 
             /* TODO: Remove workaround once GR-53985 is implemented */
@@ -85,14 +103,14 @@ public final class ClassForNameSupport {
                             currentValue == clazz) {
                 currentValue = clazz;
                 var cond = updateConditionalValue(exisingEntry, currentValue, condition);
-                knownClasses.put(name, cond);
+                knownClasses.put(entry, cond);
             } else if (currentValue instanceof Throwable) { // failed at linking time
                 var cond = updateConditionalValue(exisingEntry, currentValue, condition);
                 /*
                  * If the class has already been seen as throwing an error, we don't overwrite this
                  * error. Nevertheless, we have to update the set of conditionals to be correct.
                  */
-                knownClasses.put(name, cond);
+                knownClasses.put(entry, cond);
             } else {
                 throw VMError.shouldNotReachHere("""
                                 Invalid Class.forName value for %s: %s
@@ -140,7 +158,7 @@ public final class ClassForNameSupport {
 
     private void updateCondition(ConfigurationCondition condition, String className, Object value) {
         synchronized (knownClasses) {
-            var runtimeConditions = knownClasses.putIfAbsent(className, new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition), value));
+            var runtimeConditions = knownClasses.putIfAbsent(Entry.of(className), new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition), value));
             if (runtimeConditions != null) {
                 runtimeConditions.getConditions().addCondition(condition);
             }
@@ -163,9 +181,13 @@ public final class ClassForNameSupport {
         if (className == null) {
             return null;
         }
-        var conditional = knownClasses.get(className);
+        var conditional = knownClasses.get(Entry.of(classLoader, className));
         Object result = conditional == null ? null : conditional.getValue();
-        if (result == NEGATIVE_QUERY || className.endsWith("[]")) {
+        if (result == NEGATIVE_QUERY) {
+            assert classLoader == null : "Unexpected NEGATIVE_QUERY result from classloader " + classLoader;
+            /* The class was registered for reflective access but not available at build-time */
+            result = new ClassNotFoundException(className);
+        } else if (className.endsWith("[]")) {
             /* Querying array classes with their "TypeName[]" name always throws */
             result = new ClassNotFoundException(className);
         }
@@ -187,7 +209,7 @@ public final class ClassForNameSupport {
                 throw (ClassNotFoundException) result;
             }
         } else if (result == null) {
-            if (throwMissingRegistrationErrors()) {
+            if (classLoader == null && throwMissingRegistrationErrors()) {
                 MissingReflectionRegistrationUtils.forClass(className);
             }
 
@@ -206,11 +228,28 @@ public final class ClassForNameSupport {
 
     public RuntimeConditionSet getConditionFor(Class<?> jClass) {
         Objects.requireNonNull(jClass);
-        ConditionalRuntimeValue<Object> conditionalClass = knownClasses.get(jClass.getName());
+        ConditionalRuntimeValue<Object> conditionalClass = knownClasses.get(Entry.of(jClass));
         if (conditionalClass == null) {
             return RuntimeConditionSet.unmodifiableEmptySet();
         } else {
             return conditionalClass.getConditions();
         }
+    }
+
+    public Class<?> dynamicHubForName0(String name, ClassLoader loader) throws ClassNotFoundException {
+        ClassLoader current = loader;
+        while (true) {
+            Class<?> result = forNameOrNull(name, current);
+            if (result != null) {
+                return result;
+            }
+            if (current != null) {
+                Target_java_lang_ClassLoader loaderInternal = SubstrateUtil.cast(current, Target_java_lang_ClassLoader.class);
+                current = SubstrateUtil.cast(loaderInternal.parent, ClassLoader.class);
+            } else {
+                break;
+            }
+        }
+        throw new ClassNotFoundException(name);
     }
 }

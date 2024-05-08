@@ -55,7 +55,7 @@ import jdk.internal.loader.NativeLibrary;
 @SuppressWarnings("static-method")
 public final class Target_java_lang_ClassLoader {
 
-    @Alias private Target_java_lang_ClassLoader parent;
+    @Alias public Target_java_lang_ClassLoader parent;
 
     /**
      * This field can be safely deleted, but that would require substituting the entire constructor
@@ -117,6 +117,9 @@ public final class Target_java_lang_ClassLoader {
     protected native Class<?> findLoadedClass(String name);
 
     @Alias
+    static native Class<?> findBootstrapClassOrNull(String name);
+
+    @Alias
     protected native Class<?> findClass(String name);
 
     @Substitute
@@ -126,25 +129,24 @@ public final class Target_java_lang_ClassLoader {
         if (clazz != null) {
             return clazz;
         }
+        try {
+            if (parent != null) {
+                clazz = parent.loadClass(name);
+            } else {
+                clazz = findBootstrapClassOrNull(name);
+            }
+            if (clazz != null) {
+                return clazz;
+            }
+        } catch (ClassNotFoundException ignored) {
+            // not found in parent loader
+        }
+
         if (!PredefinedClassesSupport.hasBytecodeClasses()) {
             throw new ClassNotFoundException(name);
         }
-        if (parent != null) {
-            try {
-                clazz = parent.loadClass(name);
-                if (clazz != null) {
-                    return clazz;
-                }
-            } catch (ClassNotFoundException ignored) {
-                // not found in parent loader
-            }
-        }
         return findClass(name);
     }
-
-    // JDK-8265605
-    @Delete
-    static native Class<?> findBootstrapClassOrNull(String name);
 
     @Substitute
     @SuppressWarnings("unused")
@@ -166,6 +168,12 @@ public final class Target_java_lang_ClassLoader {
     @SuppressWarnings({"unused"}) //
     private Class<?> findLoadedClass0(String name) {
         return ClassForNameSupport.singleton().forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
+    }
+
+    @Substitute //
+    @SuppressWarnings({"unused"}) //
+    private static Class<?> findBootstrapClass(String name) {
+        return ClassForNameSupport.singleton().forNameOrNull(name, null);
     }
 
     /**
@@ -308,10 +316,6 @@ public final class Target_java_lang_ClassLoader {
         }
         return PredefinedClassesSupport.loadClass(loader, actualName.replace('/', '.'), b, off, b.length, null);
     }
-
-    // JDK-8265605
-    @Delete
-    private static native Class<?> findBootstrapClass(String name);
 
     @Delete
     private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();

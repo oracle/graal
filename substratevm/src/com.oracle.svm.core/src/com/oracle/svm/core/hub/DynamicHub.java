@@ -1454,12 +1454,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     @CallerSensitiveAdapter
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
-        /*
-         * The module system is not supported for now, therefore the module parameter is ignored and
-         * we use the class loader of the caller class instead of the module's loader.
-         */
         try {
-            return forName(className, false, caller.getClassLoader(), caller);
+            return forName(className, false, module.getClassLoader(), caller);
         } catch (ClassNotFoundException e) {
             return null;
         }
@@ -1473,20 +1469,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     @CallerSensitiveAdapter
-    private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
+    private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws ClassNotFoundException {
         if (name == null) {
             throw new NullPointerException();
         }
-        Class<?> result;
-        try {
-            result = ClassForNameSupport.singleton().forName(name, loader);
-        } catch (ClassNotFoundException e) {
-            if (loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
-                result = loader.loadClass(name); // may throw
-            } else {
-                throw e;
-            }
-        }
+        Class<?> result = ClassForNameSupport.singleton().dynamicHubForName0(name, loader);
         if (initialize) {
             DynamicHub.fromClass(result).ensureInitialized();
         }
