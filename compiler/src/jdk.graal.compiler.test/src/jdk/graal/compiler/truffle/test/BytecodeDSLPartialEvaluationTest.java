@@ -104,6 +104,28 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void testAddThreeConstantsWithConstantOperands() {
+        // return 40 + 22 + - 20;
+
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "addThreeConstantsWithConstantOperands", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAddConstantOperationAtEnd();
+            b.beginAddConstantOperation(40L);
+            b.emitLoadConstant(22L);
+            b.endAddConstantOperation();
+            b.endAddConstantOperationAtEnd(-20L);
+
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertPartialEvalEquals(supplier(42L), root);
+    }
+
+    @Test
     public void testSum() {
         // @formatter:off
         // i = 0;

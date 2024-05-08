@@ -44,9 +44,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -59,6 +63,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.Instruction.Argument;
 import com.oracle.truffle.api.bytecode.SourceInformation;
 import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
@@ -71,22 +76,90 @@ import com.oracle.truffle.api.source.Source;
  */
 @RunWith(Parameterized.class)
 public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
+    private record ExpectedArgument(String name, Argument.Kind kind, Object value) {
+    }
+
+    private record ExpectedInstruction(String name, Integer bci, Boolean instrumented, ExpectedArgument[] arguments) {
+
+        private ExpectedInstruction withBci(Integer newBci) {
+            return new ExpectedInstruction(name, newBci, instrumented, arguments);
+        }
+
+        static final class Builder {
+            String name;
+            Integer bci;
+            Boolean instrumented;
+            List<ExpectedArgument> arguments;
+
+            private Builder(String name) {
+                this.name = name;
+                this.arguments = new ArrayList<>();
+            }
+
+            private Builder bci(Integer newBci) {
+                this.bci = newBci;
+                return this;
+            }
+
+            private Builder instrumented(Boolean newInstrumented) {
+                this.instrumented = newInstrumented;
+                return this;
+            }
+
+            private Builder arg(String argName, Argument.Kind kind, Object value) {
+                this.arguments.add(new ExpectedArgument(argName, kind, value));
+                return this;
+            }
+
+            private ExpectedInstruction build() {
+                return new ExpectedInstruction(name, bci, instrumented, arguments.toArray(new ExpectedArgument[0]));
+            }
+        }
+
+    }
+
+    private static ExpectedInstruction.Builder instr(String name) {
+        return new ExpectedInstruction.Builder(name);
+    }
+
+    private static void assertInstructionsEqual(List<Instruction> actualInstructions, ExpectedInstruction... expectedInstructions) {
+        if (actualInstructions.size() != expectedInstructions.length) {
+            fail(String.format("Expected %d instructions, but %d found.\nExpected: %s.\nActual: %s", expectedInstructions.length, actualInstructions.size(), expectedInstructions, actualInstructions));
+        }
+        int bci = 0;
+        for (int i = 0; i < expectedInstructions.length; i++) {
+            assertInstructionEquals(actualInstructions.get(i), expectedInstructions[i].withBci(bci));
+            bci = actualInstructions.get(i).getNextBytecodeIndex();
+        }
+    }
+
+    private static void assertInstructionEquals(Instruction actual, ExpectedInstruction expected) {
+        assertEquals(expected.name, actual.getName());
+        if (expected.bci != null) {
+            assertEquals(expected.bci.intValue(), actual.getBytecodeIndex());
+        }
+        if (expected.instrumented != null) {
+            assertEquals(expected.instrumented.booleanValue(), actual.isInstrumentation());
+        }
+        if (expected.arguments.length > 0) {
+            Map<String, Argument> args = actual.getArguments().stream().collect(Collectors.toMap(Argument::getName, arg -> arg));
+            for (ExpectedArgument expectedArgument : expected.arguments) {
+                Argument actualArgument = args.get(expectedArgument.name);
+                if (actualArgument == null) {
+                    fail(String.format("Argument %s missing from instruction %s", expectedArgument.name, actual.getName()));
+                }
+                assertEquals(expectedArgument.kind, actualArgument.getKind());
+                Object actualValue = switch (expectedArgument.kind) {
+                    case CONSTANT -> actualArgument.asConstant();
+                    case INTEGER -> actualArgument.asInteger();
+                    default -> throw new AssertionError(String.format("Testing arguments of kind %s not yet implemented", expectedArgument.kind));
+                };
+                assertEquals(expectedArgument.value, actualValue);
+            }
+        }
+    }
+
     // @formatter:off
-
-    private static void assertInstructionEquals(Instruction instr, Integer bci, String name) {
-        assertInstructionEquals(instr, bci, name, null);
-    }
-
-    private static void assertInstructionEquals(Instruction instr, Integer bci, String name, Boolean instrumentation) {
-        if (bci != null) {
-            assertEquals(bci.intValue(), instr.getBytecodeIndex());
-        }
-        assertEquals(name, instr.getName());
-        if (instrumentation != null) {
-            assertEquals(instrumentation.booleanValue(), instr.isInstrumentation());
-        }
-    }
-
     @Test
     public void testAdd() {
         // return arg0 + arg1;
@@ -1040,16 +1113,36 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                            instr("load.argument").arg("index", Argument.Kind.INTEGER, 0).build(),
+                            instr("load.argument").arg("index", Argument.Kind.INTEGER, 1).build(),
+                            instr("c.AddOperation").build(),
+                            instr("return").build()
+                        );
+    }
 
-        assertEquals(4, instructions.size());
-        assertInstructionEquals(instructions.get(0), 0, "load.argument");
-        assertInstructionEquals(instructions.get(1), 2, "load.argument");
-        assertInstructionEquals(instructions.get(2), 4, "c.AddOperation");
-        // With BE, the add instruction's encoding includes its child indices.
-        int beOffset = run.hasBoxingElimination() ? 2 : 0;
-        assertInstructionEquals(instructions.get(3), 6 + beOffset, "return");
+    @Test
+    public void testIntrospectionDataInstructionsWithConstant() {
+        BasicInterpreter node = parseNode("introspectionDataInstructions", b -> {
+            b.beginRoot(LANGUAGE);
 
+            b.beginReturn();
+            b.beginAddConstantOperation(10L);
+            b.beginAddConstantOperationAtEnd();
+            b.emitLoadArgument(0);
+            b.endAddConstantOperationAtEnd(30L);
+            b.endAddConstantOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                        instr("load.argument").arg("index", Argument.Kind.INTEGER, 0).build(),
+                        instr("c.AddConstantOperationAtEnd").arg("constantRhs", Argument.Kind.CONSTANT, 30L).build(),
+                        instr("c.AddConstantOperation").arg("constantLhs", Argument.Kind.CONSTANT, 10L).build(),
+                        instr("return").build()
+                    );
     }
 
     @Test
@@ -1339,22 +1432,20 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
-        assertEquals(4, instructions.size());
-        assertInstructionEquals(instructions.get(0), null, "load.argument", false);
-        assertInstructionEquals(instructions.get(1), null, "load.argument", false);
-        assertInstructionEquals(instructions.get(2), null, "c.AddOperation", false);
-        assertInstructionEquals(instructions.get(3), null, "return", false);
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                        instr("load.argument").instrumented(false).build(),
+                        instr("load.argument").instrumented(false).build(),
+                        instr("c.AddOperation").instrumented(false).build(),
+                        instr("return").instrumented(false).build());
 
         node.getRootNodes().update(createBytecodeConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build());
 
-        instructions = node.getBytecodeNode().getInstructionsAsList();
-        assertEquals(5, instructions.size());
-        assertInstructionEquals(instructions.get(0), null, "load.argument", false);
-        assertInstructionEquals(instructions.get(1), null, "load.argument", false);
-        assertInstructionEquals(instructions.get(2), null, "c.IncrementValue", true);
-        assertInstructionEquals(instructions.get(3), null, "c.AddOperation", false);
-        assertInstructionEquals(instructions.get(4), null, "return", false);
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                        instr("load.argument").instrumented(false).build(),
+                        instr("load.argument").instrumented(false).build(),
+                        instr("c.IncrementValue").instrumented(true).build(),
+                        instr("c.AddOperation").instrumented(false).build(),
+                        instr("return").instrumented(false).build());
     }
 
     @Test
@@ -1579,16 +1670,17 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // todo these tests do not pass, since quickening is not implemented yet properly
 
         List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int bci = instructions.get(1).getNextBytecodeIndex();
 
-        assertInstructionEquals(instructions.get(2), 2, "c.AddOperation");
+        assertInstructionEquals(instructions.get(2), instr("c.AddOperation").bci(bci).build());
 
         assertEquals(3L, node.getCallTarget().call(1L, 2L));
 
-        assertInstructionEquals(instructions.get(2), 2, "c.AddOperation.q.AddLongs");
+        assertInstructionEquals(instructions.get(2), instr("c.AddOperation.q.AddLongs").bci(bci).build());
 
         assertEquals("foobar", node.getCallTarget().call("foo", "bar"));
 
-        assertInstructionEquals(instructions.get(2), 2, "c.AddOperation");
+        assertInstructionEquals(instructions.get(2), instr("c.AddOperation").bci(bci).build());
     }
 
     @Test
@@ -1610,7 +1702,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // todo these tests do not pass, since quickening is not implemented yet properly
 
         List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int bci = instructions.get(0).getNextBytecodeIndex();
 
-        assertInstructionEquals(instructions.get(1), 1, "si.load.argument.c.LessThanOperation");
+        assertInstructionEquals(instructions.get(1), instr("si.load.argument.c.LessThanOperation").bci(bci).build());
     }
 }
