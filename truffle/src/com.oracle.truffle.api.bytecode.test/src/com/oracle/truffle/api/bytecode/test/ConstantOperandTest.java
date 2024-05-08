@@ -42,7 +42,9 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
@@ -58,9 +60,11 @@ import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.test.ConstantOperandTestRootNode.ReplaceValue;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -150,6 +154,29 @@ public class ConstantOperandTest {
         assertEquals(42, root.getCallTarget().call(123));
     }
 
+    @Test
+    public void testConstantOperandsInProlog() {
+        ConstantOperandsInPrologTestRootNode root = ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot(LANGUAGE, "foo");
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot(1);
+        }).getNode(0);
+        assertEquals(42L, root.getCallTarget().call());
+        assertEquals(List.of("foo", 1), root.prologEvents);
+
+        ConstantOperandsInPrologTestRootNode root2 = ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot(LANGUAGE, "bar");
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot(5);
+        }).getNode(0);
+        assertEquals(42L, root2.getCallTarget().call());
+        assertEquals(List.of("bar", 5), root2.prologEvents);
+    }
+
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
@@ -160,7 +187,7 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
     }
 
     @Operation
-    @ConstantOperand(type = int.class)
+    @ConstantOperand(type = int.class, javadoc = "The value to be divided")
     public static final class DivConstantDividend {
         @Specialization
         public static int doInts(int constantOperand, int dynamicOperand) {
@@ -169,7 +196,7 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
     }
 
     @Operation
-    @ConstantOperand(type = int.class, specifyAtEnd = true)
+    @ConstantOperand(type = int.class, javadoc = "The value to divide by", specifyAtEnd = true)
     public static final class DivConstantDivisor {
         @Specialization
         public static int doInts(int dynamicOperand, int constantOperand) {
@@ -206,6 +233,28 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
             return replacement;
         }
     }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+abstract class ConstantOperandsInPrologTestRootNode extends RootNode implements BytecodeRootNode {
+    public final List<Object> prologEvents = new ArrayList<>();
+
+    protected ConstantOperandsInPrologTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @Prolog
+    @ConstantOperand(type = String.class)
+    @ConstantOperand(type = int.class, specifyAtEnd = true)
+    public static final class PrologOperation {
+        @Specialization
+        @TruffleBoundary
+        public static void doVoid(String name, int nodeCount, @Bind("$root") ConstantOperandsInPrologTestRootNode root) {
+            root.prologEvents.add(name);
+            root.prologEvents.add(nodeCount);
+        }
+    }
+
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)

@@ -1885,12 +1885,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 switch (operation.kind) {
                     case ROOT:
                         name = "RootData";
-                        fields = List.of(//
+                        fields = new ArrayList<>(5);
+                        fields.addAll(List.of(//
                                         field(types.TruffleLanguage, "language").asFinal(),
                                         field(type(int.class), "index").asFinal(),
                                         field(type(boolean.class), "producedValue").withInitializer("false"),
                                         field(type(int.class), "childBci").withInitializer(UNINIT),
-                                        field(type(boolean.class), "reachable").withInitializer("true"));
+                                        field(type(boolean.class), "reachable").withInitializer("true")));
+                        if (model.prolog != null && model.prolog.operation.operationEndArguments.length != 0) {
+                            fields.add(field(type(int.class), "prologBci").withInitializer(UNINIT));
+                        }
                         if (model.enableLocalScoping) {
                             superType = scopeDataType.asType();
                         }
@@ -2571,6 +2575,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createCreateBranchStackHeightMapping());
 
             for (OperationModel operation : model.getOperations()) {
+                if (omitBuilderMethods(operation)) {
+                    continue;
+                }
+
                 if (operation.hasChildren()) {
                     builder.add(createBegin(operation));
                     builder.add(createEnd(operation));
@@ -2618,6 +2626,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.addAll(doEmitInstructionMethods.values());
 
             return builder;
+        }
+
+        private boolean omitBuilderMethods(OperationModel operation) {
+            // These operations are emitted automatically. The builder methods are unnecessary.
+            return (model.prolog != null && model.prolog.operation == operation) ||
+                            (model.epilogExceptional != null && model.epilogExceptional.operation == operation);
         }
 
         private CodeExecutableElement createMarkReachable() {
@@ -3708,8 +3722,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createBeginRoot(OperationModel rootOperation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "beginRoot");
             ex.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
-
-            addDoc(ex, true, """
+            String javadoc = """
                             Begins a new root node.
 
                             This method should always be invoked before subsequent builder methods, which generate and validate bytecode for the root node. The resultant root node is returned by {@link #endRoot}.
@@ -3717,7 +3730,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             This method can be called while generating another root node. Bytecode generation for the first root node suspends until generation for the second root node finishes (the second is not "nested" in the first).
 
                             @param language the Truffle language to associate with the root node.
-                            """);
+                            """;
+
+            if (model.prolog != null) {
+                for (OperationArgument operationArgument : model.prolog.operation.operationBeginArguments) {
+                    ex.addParameter(operationArgument.toVariableElement());
+                    javadoc += operationArgument.toJavadocParam() + "\n";
+                }
+            }
+
+            addDoc(ex, true, javadoc);
 
             CodeTreeBuilder b = ex.getBuilder();
 
@@ -3780,6 +3802,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 // If prolog defined, emit prolog before Root's child.
                 if (model.prolog != null) {
+                    if (model.prolog.operation.operationEndArguments.length != 0) {
+                        // If the prolog has end constants, we'll need to patch them in endRoot.
+                        b.statement("operationData.prologBci = bci");
+                    }
+
                     buildEmitOperationInstruction(b, model.prolog.operation);
                 }
                 if (model.epilogReturn != null) {
@@ -4397,12 +4424,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createEndRoot(OperationModel rootOperation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), model.templateType.asType(), "endRoot");
-
-            addDoc(ex, true, """
+            String javadoc = """
                             Finishes generating bytecode for the current root node.
 
-                            @returns the root node with generated bytecode.
-                            """);
+                            """;
+            if (model.prolog != null) {
+                for (OperationArgument operationArgument : model.prolog.operation.operationEndArguments) {
+                    ex.addParameter(operationArgument.toVariableElement());
+                    javadoc += operationArgument.toJavadocParam() + "\n";
+                }
+            }
+
+            javadoc += "@returns the root node with generated bytecode.\n";
+            addDoc(ex, true, javadoc);
 
             CodeTreeBuilder b = ex.getBuilder();
 
@@ -4415,7 +4449,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            b.declaration("int", "rootEndBci", "this.bci");
             if (needsRootBlock()) {
                 emitCastOperationData(b, model.blockOperation, "operationSp - 1", "blockOperation");
                 b.startIf().string("!blockOperation.producedValue").end().startBlock();
@@ -4431,6 +4464,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (model.prolog != null || model.epilogExceptional != null || model.epilogReturn != null) {
+                if (model.prolog != null) {
+                    // Patch the end constants.
+                    for (OperationArgument operationArgument : model.prolog.operation.operationEndArguments) {
+                        InstructionImmediate immediate = model.prolog.operation.instruction.getImmediate(operationArgument.name());
+                        b.statement(writeBc("operationData.prologBci + " + immediate.offset(), "(short) constantPool.addConstant(" + operationArgument.name() + ")"));
+                    }
+                }
+
                 if (model.enableRootBodyTagging) {
                     buildEnd(b, model.tagOperation, lookupTagConstant(types.StandardTags_RootBodyTag).getSimpleName().toString());
                 }
@@ -5073,9 +5114,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         } else {
                             int constantOperandsAfterIndex = constantIndex - instruction.signature.getConstantOperandsBeforeCount();
                             String constantName = instruction.signature.constantOperandsAfter.get(constantOperandsAfterIndex);
-                            constantPoolIndex = constantName + "Index";
                             assert operation.getOperationEndArgumentName(constantOperandsAfterIndex).equals(constantName);
-                            b.declaration(type(int.class), constantPoolIndex, "constantPool.addConstant(" + constantName + ")");
+                            constantPoolIndex = constantName + "Index";
+                            b.startDeclaration(type(int.class), constantPoolIndex);
+                            if (model.prolog != null && operation == model.prolog.operation) {
+                                /**
+                                 * Special case: when emitting the prolog in beginRoot, end
+                                 * constants are not yet known. They will be patched in endRoot.
+                                 */
+                                b.string(UNINIT);
+                            } else {
+                                b.string("constantPool.addConstant(" + constantName + ")");
+                            }
+                            b.end();
                         }
                         constantIndex++;
                         yield constantPoolIndex;

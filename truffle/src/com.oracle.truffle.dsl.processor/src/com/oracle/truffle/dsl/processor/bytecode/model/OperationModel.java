@@ -85,7 +85,8 @@ public class OperationModel implements PrettyPrintable {
         }
 
         public String toJavadocParam() {
-            return String.format("@param %s %s.", name, doc);
+            String docPart = doc.isEmpty() ? "" : String.format(" %s.", doc);
+            return String.format("@param %s%s", name, docPart);
         }
     }
 
