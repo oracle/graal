@@ -100,7 +100,6 @@ import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
-import jdk.graal.compiler.phases.common.InsertGuardFencesPhase;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -132,7 +131,6 @@ import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethod;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
@@ -164,6 +162,7 @@ import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.InsertGuardFencesPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
@@ -430,18 +429,12 @@ public class TruffleFeature implements InternalFeature {
 
         /* Support for deprecated bytecode osr frame transfer: GR-38296 */
         config.registerSubtypeReachabilityHandler((acc, klass) -> {
-            DuringAnalysisAccessImpl impl = (DuringAnalysisAccessImpl) acc;
             /* Pass known reachable classes to the initializer: it will decide there what to do. */
-            Boolean modified = TruffleBaseFeature.invokeStaticMethod(
+            TruffleBaseFeature.invokeStaticMethod(
                             "com.oracle.truffle.runtime.BytecodeOSRRootNode",
                             "initializeClassUsingDeprecatedFrameTransfer",
                             Collections.singleton(Class.class),
                             klass);
-            if (modified != null && modified) {
-                if (!impl.concurrentReachabilityHandlers()) {
-                    impl.requireAnalysisIteration();
-                }
-            }
         }, BytecodeOSRNode.class);
     }
 

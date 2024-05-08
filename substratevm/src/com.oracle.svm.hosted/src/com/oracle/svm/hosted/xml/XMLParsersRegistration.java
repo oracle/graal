@@ -47,9 +47,6 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
         List<String> parserClasses = xmlParserClasses();
         registerReflectionClasses(access, parserClasses);
         registerResources();
-        if (!access.concurrentReachabilityHandlers()) {
-            access.requireAnalysisIteration();
-        }
     }
 
     abstract List<String> xmlParserClasses();
