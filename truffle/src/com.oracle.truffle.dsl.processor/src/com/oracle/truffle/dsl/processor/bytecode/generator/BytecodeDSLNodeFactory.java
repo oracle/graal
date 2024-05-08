@@ -13593,7 +13593,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     /**
      * User code directly references some generated types and methods, like builder methods. When
      * there is an error in the model, this factory generates stubs for the user-accessible names to
-     * prevent the compiler for emitting many unhelpful error messages about unknown types/methods.
+     * prevent the compiler from emitting many unhelpful error messages about unknown types/methods.
      */
     public static final class ErrorFactory {
         private final ProcessorContext context = ProcessorContext.getInstance();
@@ -13695,46 +13695,42 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 builder.setEnclosingElement(bytecodeNodeGen);
                 mergeSuppressWarnings(builder, "all");
 
-                builder.add(createMethodStub(new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal")));
-                builder.add(createMethodStub(new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLabel, "createLabel")));
+                builder.add(createMethodStub("createLocal", types.BytecodeLocal));
+                builder.add(createMethodStub("createLabel", types.BytecodeLabel));
 
                 for (OperationModel operation : model.getOperations()) {
-                    if (operation.hasChildren()) {
-                        builder.add(createBegin(operation));
-                        builder.add(createEnd(operation));
-                    } else {
-                        builder.add(createEmit(operation));
-                    }
+                    /**
+                     * If parsing fails, we may not know if the operation takes dynamic operands
+                     * (e.g., it could have only constant operands). Conservatively generate stubs
+                     * for all three builder methods.
+                     */
+                    builder.add(createBegin(operation));
+                    builder.add(createEnd(operation));
+                    builder.add(createEmit(operation));
                 }
 
                 return builder;
             }
 
-            private CodeExecutableElement createMethodStub(CodeExecutableElement method) {
-                emitThrowNotImplemented(method.createBuilder());
-                return method;
+            private CodeExecutableElement createMethodStub(String name, TypeMirror returnType) {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), returnType, name);
+                ex.addParameter(new CodeVariableElement(context.getDeclaredType(Object.class), "args"));
+                ex.setVarArgs(true);
+                emitThrowNotImplemented(ex.createBuilder());
+                return ex;
             }
 
             private CodeExecutableElement createBegin(OperationModel operation) {
-                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
-                for (OperationArgument arg : operation.operationBeginArguments) {
-                    ex.addParameter(arg.toVariableElement());
-                }
-                return createMethodStub(ex);
+                return createMethodStub("begin" + operation.name, context.getType(void.class));
             }
 
             private CodeExecutableElement createEnd(OperationModel operation) {
-                return createMethodStub(new CodeExecutableElement(Set.of(PUBLIC),
-                                operation.kind == OperationKind.ROOT ? model.templateType.asType() : context.getType(void.class),
-                                "end" + operation.name));
+                return createMethodStub("end" + operation.name,
+                                operation.kind == OperationKind.ROOT ? model.templateType.asType() : context.getType(void.class));
             }
 
             private CodeExecutableElement createEmit(OperationModel operation) {
-                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "emit" + operation.name);
-                for (OperationArgument arg : operation.operationBeginArguments) {
-                    ex.addParameter(arg.toVariableElement());
-                }
-                return createMethodStub(ex);
+                return createMethodStub("emit" + operation.name, context.getType(void.class));
             }
         }
     }
