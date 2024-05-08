@@ -417,7 +417,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             ConstantOperandModel constantOperand = constantOperands.before().get(i);
             arguments[i] = new OperationArgument(
                             constantOperand.type(),
-                            signature.constantOperandsBefore.get(i),
+                            sanitizeConstantArgumentName(signature.constantOperandsBefore.get(i)),
                             constantOperand.doc());
         }
 
@@ -444,10 +444,14 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             ConstantOperandModel constantOperand = constantOperands.after().get(i);
             arguments[i] = new OperationArgument(
                             constantOperand.type(),
-                            signature.constantOperandsAfter.get(i),
+                            sanitizeConstantArgumentName(signature.constantOperandsAfter.get(i)),
                             constantOperand.doc());
         }
         return arguments;
+    }
+
+    private static String sanitizeConstantArgumentName(String name) {
+        return name + "Value";
     }
 
     public CustomOperationModel parseCustomShortCircuitOperation(TypeElement typeElement, AnnotationMirror mirror) {
