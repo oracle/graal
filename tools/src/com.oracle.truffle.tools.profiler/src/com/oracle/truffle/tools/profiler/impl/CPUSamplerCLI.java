@@ -47,7 +47,6 @@ import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.CPUSamplerData;
@@ -223,7 +222,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
         PrintStream out = chooseOutputStream(env);
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        List<CPUSamplerData> data = sampler.getDataList();
         OptionValues options = env.getOptions();
         switch (chooseOutput(options)) {
             case HISTOGRAM:
@@ -278,15 +277,15 @@ class CPUSamplerCLI extends ProfilerCLI {
         return OUTPUT.getDefaultValue();
     }
 
-    private static void printSamplingCallTree(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
-        for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
-            new SamplingCallTree(entry.getValue(), options).print(out);
+    private static void printSamplingCallTree(PrintStream out, OptionValues options, List<CPUSamplerData> data) {
+        for (CPUSamplerData entry : data) {
+            new SamplingCallTree(entry, options).print(out);
         }
     }
 
-    private static void printSamplingHistogram(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
-        for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
-            new SamplingHistogram(entry.getValue(), options).print(out);
+    private static void printSamplingHistogram(PrintStream out, OptionValues options, List<CPUSamplerData> data) {
+        for (CPUSamplerData entry : data) {
+            new SamplingHistogram(entry, options).print(out);
         }
     }
 
@@ -309,7 +308,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static boolean sampleDurationTooLong(CPUSampler sampler) {
-        for (CPUSamplerData value : sampler.getData().values()) {
+        for (CPUSamplerData value : sampler.getDataList()) {
             if (value.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod() * MILLIS_TO_NANOS) {
                 return true;
             }
@@ -321,13 +320,13 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println("-------------------------------------------------------------------------------- ");
     }
 
-    private static void printSamplingJson(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
+    private static void printSamplingJson(PrintStream out, OptionValues options, List<CPUSamplerData> data) {
         boolean gatheredHitTimes = options.get(GATHER_HIT_TIMES);
         JSONObject output = new JSONObject();
         output.put("tool", CPUSamplerInstrument.ID);
         output.put("version", CPUSamplerInstrument.VERSION);
         JSONArray contexts = new JSONArray();
-        for (CPUSamplerData samplerData : data.values()) {
+        for (CPUSamplerData samplerData : data) {
             contexts.put(perContextData(samplerData, gatheredHitTimes));
         }
         output.put("contexts", contexts);

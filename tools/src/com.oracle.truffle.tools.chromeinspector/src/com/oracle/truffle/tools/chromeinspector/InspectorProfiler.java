@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
@@ -127,12 +126,12 @@ public final class InspectorProfiler extends ProfilerDomain {
     @Override
     public Params stop() {
         long time = System.currentTimeMillis();
-        Map<TruffleContext, CPUSamplerData> data;
+        List<CPUSamplerData> data;
         long period;
         synchronized (sampler) {
             sampler.setCollecting(false);
             sampler.setGatherSelfHitTimes(oldGatherSelfHitTimes);
-            data = sampler.getData();
+            data = sampler.getDataList();
             sampler.clearData();
             period = sampler.getPeriod();
         }
@@ -141,9 +140,9 @@ public final class InspectorProfiler extends ProfilerDomain {
         return profile;
     }
 
-    private static Collection<ProfilerNode<CPUSampler.Payload>> getRootNodes(Map<TruffleContext, CPUSamplerData> data) {
+    private static Collection<ProfilerNode<CPUSampler.Payload>> getRootNodes(List<CPUSamplerData> data) {
         Collection<ProfilerNode<CPUSampler.Payload>> retVal = new ArrayList<>();
-        for (CPUSamplerData samplerData : data.values()) {
+        for (CPUSamplerData samplerData : data) {
             for (Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes : samplerData.getThreadData().values()) {
                 retVal.addAll(profilerNodes);
             }
@@ -151,8 +150,8 @@ public final class InspectorProfiler extends ProfilerDomain {
         return retVal;
     }
 
-    private static long getSampleCount(Map<TruffleContext, CPUSamplerData> data) {
-        return data.values().stream().map(CPUSamplerData::getSamples).reduce(0L, Long::sum);
+    private static long getSampleCount(List<CPUSamplerData> data) {
+        return data.stream().map(CPUSamplerData::getSamples).reduce(0L, Long::sum);
     }
 
     @Override
