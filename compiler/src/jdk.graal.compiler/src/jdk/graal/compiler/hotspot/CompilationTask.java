@@ -461,7 +461,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             }
         }
 
-        ProfileReplaySupport result = ProfileReplaySupport.profileReplayPrologue(debug, graalRuntime.getHostProviders(), entryBCI, method, profileProvider, profileSaveFilter);
+        ProfileReplaySupport result = ProfileReplaySupport.profileReplayPrologue(debug, entryBCI, method, profileProvider, profileSaveFilter);
         try {
             return compilation.run(debug);
         } finally {
