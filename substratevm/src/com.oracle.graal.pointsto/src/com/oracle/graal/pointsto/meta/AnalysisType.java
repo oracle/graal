@@ -346,9 +346,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private AnalysisType[] convertTypes(ResolvedJavaType[] originalTypes) {
         List<AnalysisType> result = new ArrayList<>(originalTypes.length);
         for (ResolvedJavaType originalType : originalTypes) {
-            if (universe.hostVM.skipInterface(universe, originalType, wrapped)) {
-                continue;
-            }
             result.add(universe.lookup(originalType));
         }
         return result.toArray(new AnalysisType[result.size()]);
