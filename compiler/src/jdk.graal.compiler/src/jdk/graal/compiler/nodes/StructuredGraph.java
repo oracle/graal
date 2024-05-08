@@ -308,6 +308,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private ControlFlowGraph lastCFG;
 
     private final CacheInvalidationListener cacheInvalidationListener;
+    private NodeEventScope cacheInvalidationNES;
 
     private final class CacheInvalidationListener extends NodeEventListener {
 
@@ -318,6 +319,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         public void changed(NodeEvent e, Node node) {
             lastCFGValid = false;
             lastScheduleValid = false;
+            disableCacheInvalidationListener();
         }
     }
 
@@ -327,6 +329,19 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public boolean isLastCFGValid() {
         return cacheInvalidationListener.lastCFGValid;
+    }
+
+    private void enableCacheInvalidationListener() {
+        if (cacheInvalidationNES == null) {
+            cacheInvalidationNES = this.trackNodeEvents(cacheInvalidationListener);
+        }
+    }
+
+    private void disableCacheInvalidationListener() {
+        if (cacheInvalidationNES != null) {
+            cacheInvalidationNES.close();
+            cacheInvalidationNES = null;
+        }
     }
 
     private InliningLog inliningLog;
@@ -408,6 +423,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
         cacheInvalidationListener.lastScheduleValid = result != null;
+        if (result != null) {
+            enableCacheInvalidationListener();
+        }
     }
 
     public ScheduleResult getLastSchedule() {
@@ -426,6 +444,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public void setLastCFG(ControlFlowGraph cfg) {
         lastCFG = cfg;
         cacheInvalidationListener.lastCFGValid = cfg != null;
+        if (cfg != null) {
+            enableCacheInvalidationListener();
+        }
     }
 
     public void clearLastCFG() {

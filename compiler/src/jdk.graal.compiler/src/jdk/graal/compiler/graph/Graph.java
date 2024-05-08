@@ -807,7 +807,10 @@ public class Graph implements EventCounter {
      * {@linkplain #close() closed}.
      */
     public final class NodeEventScope implements AutoCloseable {
+        private final NodeEventListener listener;
+
         NodeEventScope(NodeEventListener listener) {
+            this.listener = listener;
             if (nodeEventListener == null) {
                 nodeEventListener = listener;
             } else {
@@ -818,10 +821,36 @@ public class Graph implements EventCounter {
         @Override
         public void close() {
             assert nodeEventListener != null;
-            if (nodeEventListener instanceof ChainedNodeEventListener) {
-                nodeEventListener = ((ChainedNodeEventListener) nodeEventListener).next;
+            NodeEventListener cur = nodeEventListener;
+            ChainedNodeEventListener last = null;
+            ChainedNodeEventListener beforeLast = null;
+
+            while (cur instanceof ChainedNodeEventListener chainedListener && chainedListener.head != this.listener) {
+                beforeLast = last;
+                last = chainedListener;
+                cur = chainedListener.next;
+            }
+            if (cur instanceof ChainedNodeEventListener chainedListener) {
+                if (last == null) {
+                    // remove first chained listener
+                    nodeEventListener = chainedListener.next;
+                } else {
+                    // remove any other chained listener
+                    last.next = chainedListener.next;
+                }
             } else {
-                nodeEventListener = null;
+                assert cur == this.listener : "Unexpected NodeEventListener: " + listener;
+                // remove last listener in chain
+                if (last == null) {
+                    // chain contains only the listener to remove
+                    nodeEventListener = null;
+                } else if (beforeLast == null) {
+                    // only one listener left after removal; unbox it
+                    nodeEventListener = last.head;
+                } else {
+                    // unbox the now last listener in the chain
+                    beforeLast.next = last.head;
+                }
             }
         }
     }
