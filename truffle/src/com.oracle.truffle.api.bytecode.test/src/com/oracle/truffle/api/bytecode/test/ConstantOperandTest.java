@@ -249,9 +249,9 @@ abstract class ConstantOperandsInPrologTestRootNode extends RootNode implements 
     public static final class PrologOperation {
         @Specialization
         @TruffleBoundary
-        public static void doVoid(String name, int nodeCount, @Bind("$root") ConstantOperandsInPrologTestRootNode root) {
+        public static void doVoid(String name, int number, @Bind("$root") ConstantOperandsInPrologTestRootNode root) {
             root.prologEvents.add(name);
-            root.prologEvents.add(nodeCount);
+            root.prologEvents.add(number);
         }
     }
 

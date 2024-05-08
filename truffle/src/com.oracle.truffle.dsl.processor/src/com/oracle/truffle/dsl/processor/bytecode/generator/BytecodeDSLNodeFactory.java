@@ -3998,9 +3998,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         } else {
                             constantsArrayBuilder.startNewArray(arrayOf(context.getType(int.class)), null);
                             for (int i = 0; i < constantArguments; i++) {
-                                String constantName = operation.instruction.signature.constantOperandsBefore.get(i);
-                                String constantPoolIndex = constantName + "Index";
-                                b.declaration(type(int.class), constantPoolIndex, "constantPool.addConstant(" + constantName + ")");
+                                String argumentName = operation.getOperationBeginArgumentName(i);
+                                String constantPoolIndex = operation.instruction.signature.constantOperandsBefore.get(i) + "Index";
+                                b.declaration(type(int.class), constantPoolIndex, "constantPool.addConstant(" + argumentName + ")");
                                 constantsArrayBuilder.string(constantPoolIndex);
                             }
                             constantsArrayBuilder.end();
@@ -4466,9 +4466,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.prolog != null || model.epilogExceptional != null || model.epilogReturn != null) {
                 if (model.prolog != null) {
                     // Patch the end constants.
-                    for (OperationArgument operationArgument : model.prolog.operation.operationEndArguments) {
-                        InstructionImmediate immediate = model.prolog.operation.instruction.getImmediate(operationArgument.name());
-                        b.statement(writeBc("operationData.prologBci + " + immediate.offset(), "(short) constantPool.addConstant(" + operationArgument.name() + ")"));
+                    OperationModel prologOperation = model.prolog.operation;
+                    List<InstructionImmediate> constantOperands = prologOperation.instruction.getImmediates(ImmediateKind.CONSTANT);
+                    int endConstantsOffset = prologOperation.constantOperands.before().size();
+                    for (int i = 0; i < prologOperation.operationEndArguments.length; i++) {
+                        InstructionImmediate immediate = constantOperands.get(endConstantsOffset + i);
+                        b.statement(writeBc("operationData.prologBci + " + immediate.offset(), "(short) constantPool.addConstant(" + prologOperation.operationEndArguments[i].name() + ")"));
                     }
                 }
 
@@ -5105,8 +5108,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             constantPoolIndex = constantName + "Index";
                             b.startDeclaration(type(int.class), constantPoolIndex);
                             if (inEmit) {
-                                assert operation.getOperationBeginArgumentName(constantIndex).equals(constantName);
-                                b.string("constantPool.addConstant(" + constantName + ")");
+                                String argumentName = operation.getOperationBeginArgumentName(constantIndex);
+                                b.string("constantPool.addConstant(" + argumentName + ")");
                             } else {
                                 b.string("operationData.constants[" + constantIndex + "]");
                             }
@@ -5114,7 +5117,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         } else {
                             int constantOperandsAfterIndex = constantIndex - instruction.signature.getConstantOperandsBeforeCount();
                             String constantName = instruction.signature.constantOperandsAfter.get(constantOperandsAfterIndex);
-                            assert operation.getOperationEndArgumentName(constantOperandsAfterIndex).equals(constantName);
                             constantPoolIndex = constantName + "Index";
                             b.startDeclaration(type(int.class), constantPoolIndex);
                             if (model.prolog != null && operation == model.prolog.operation) {
@@ -5124,7 +5126,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                  */
                                 b.string(UNINIT);
                             } else {
-                                b.string("constantPool.addConstant(" + constantName + ")");
+                                String argumentName = operation.getOperationEndArgumentName(constantOperandsAfterIndex);
+                                b.string("constantPool.addConstant(" + argumentName + ")");
                             }
                             b.end();
                         }
