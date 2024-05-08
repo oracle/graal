@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import org.graalvm.home.Version;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -114,6 +116,10 @@ public class ExceptionNFITest extends NFITest {
      */
     @Test(expected = MyException.class)
     public void testCheckException(@Inject(NativeCheckException.class) CallTarget target) {
+        /*
+         * The exceptionCheck API was introduced in 24.0.0.
+         */
+        Assume.assumeTrue(Version.getCurrent().compareTo(24, 0) >= 0);
         target.call(MyException.THROW, SuccessException.THROW);
     }
 
@@ -122,6 +128,10 @@ public class ExceptionNFITest extends NFITest {
      */
     @Test(expected = SuccessException.class)
     public void testCheckNoException(@Inject(NativeCheckException.class) CallTarget target) {
+        /*
+         * The exceptionCheck API was introduced in 24.0.0.
+         */
+        Assume.assumeTrue(Version.getCurrent().compareTo(24, 0) >= 0);
         target.call(NOOP, SuccessException.THROW);
     }
 }
