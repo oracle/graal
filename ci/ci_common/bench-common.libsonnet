@@ -122,7 +122,9 @@
 
   generate_fork_tags(suite_obj):: if std.objectHasAll(suite_obj, "tags") && std.objectHasAll(suite_obj.tags, "opt_post_merge") then {
     tags: {opt_post_merge: [tag +"-many-forks" for tag in suite_obj.tags.opt_post_merge]},
-  } else {},
+  } else {
+    tags: {}
+  },
 
   generate_fork_builds(suite_obj, subdir='compiler', forks_file_base_name=null)::
     /* based on a benchmark suite definition, generates the many forks version based on the hidden fields
