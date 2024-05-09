@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -46,7 +45,6 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -63,7 +61,6 @@ import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
@@ -78,9 +75,8 @@ import jdk.vm.ci.meta.Signature;
 
 public abstract class AnalysisType extends AnalysisElement implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
-    @SuppressWarnings("rawtypes")//
-    private static final AtomicReferenceFieldUpdater<AnalysisType, ConcurrentHashMap> UNSAFE_ACCESS_FIELDS_UPDATER = //
-                    AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, ConcurrentHashMap.class, "unsafeAccessedFields");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> UNSAFE_ACCESS_FIELDS_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "unsafeAccessedFields");
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, AnalysisObject> UNIQUE_CONSTANT_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, AnalysisObject.class, "uniqueConstant");
@@ -124,15 +120,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
-    private boolean unsafeAccessedFieldsRegistered;
 
-    /**
-     * Unsafe accessed fields for this type.
-     *
-     * This field can be initialized during the multithreaded analysis phase in case of the computed
-     * value fields, thus we use the UNSAFE_ACCESS_FIELDS_UPDATER to initialize it.
-     */
-    private volatile ConcurrentHashMap<UnsafePartitionKind, Collection<AnalysisField>> unsafeAccessedFields;
+    @SuppressWarnings("unused") private volatile Object unsafeAccessedFields;
 
     /** Immediate subtypes and this type itself. */
     private final Set<AnalysisType> subTypes;
@@ -803,67 +792,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * This is controlled by the isUnsafeAccessed flag in the AnalysField. Also, a field cannot be
      * part of more than one partitions.
      */
-    public void registerUnsafeAccessedField(AnalysisField field, UnsafePartitionKind partitionKind) {
-
-        unsafeAccessedFieldsRegistered = true;
-
-        if (unsafeAccessedFields == null) {
-            /* Lazily initialize the map, not all types have unsafe accessed fields. */
-            UNSAFE_ACCESS_FIELDS_UPDATER.compareAndSet(this, null, new ConcurrentHashMap<>());
-        }
-
-        Collection<AnalysisField> unsafePartition = unsafeAccessedFields.get(partitionKind);
-        if (unsafePartition == null) {
-            /*
-             * We use a thread safe collection to store an unsafe accessed fields partition. Since
-             * elements can be added to it concurrently using a non thread safe collection, such as
-             * an array list, can result in null being added to the list. Since we don't need index
-             * access ConcurrentLinkedQueue is a good match.
-             */
-            Collection<AnalysisField> newPartition = new ConcurrentLinkedQueue<>();
-            Collection<AnalysisField> oldPartition = unsafeAccessedFields.putIfAbsent(partitionKind, newPartition);
-            unsafePartition = oldPartition != null ? oldPartition : newPartition;
-        }
-
-        assert !unsafePartition.contains(field) : "Field " + field + " already registered as unsafe accessed with " + this;
-        unsafePartition.add(field);
+    public void registerUnsafeAccessedField(AnalysisField field) {
+        ConcurrentLightHashSet.addElement(this, UNSAFE_ACCESS_FIELDS_UPDATER, field);
     }
 
-    private boolean hasUnsafeAccessedFields() {
+    public Collection<AnalysisField> unsafeAccessedFields() {
         /*
-         * Walk up the inheritance chain, as soon as we encounter a class that has unsafe accessed
-         * fields we return true, otherwise we reach the top of the hierarchy and return false.
-         *
-         * Since unsafe accessed fields can be registered on the fly, i.e., during the analysis, we
-         * cannot cache this result. If we cached the result and the result was false, i.e., no
-         * unsafe accessed fields were registered yet, we would have to invalidate it when a field
-         * is registered as unsafe during the analysis and then walk down the type hierarchy and
-         * invalidate the cached value of all the sub-types.
-         */
-        return unsafeAccessedFieldsRegistered || (getSuperclass() != null && getSuperclass().hasUnsafeAccessedFields());
-    }
-
-    public List<AnalysisField> unsafeAccessedFields() {
-        return unsafeAccessedFields(DefaultUnsafePartition.get());
-    }
-
-    public List<AnalysisField> unsafeAccessedFields(UnsafePartitionKind partitionKind) {
-        if (!hasUnsafeAccessedFields()) {
-            /*
-             * Do a quick check if this type has unsafe accessed fields before constructing the data
-             * structures holding all the unsafe accessed fields: the ones of this type and the ones
-             * up its type hierarchy.
-             */
-            return Collections.emptyList();
-        }
-        return allUnsafeAccessedFields(partitionKind);
-    }
-
-    private List<AnalysisField> allUnsafeAccessedFields(UnsafePartitionKind partitionKind) {
-        /*
-         * Walk up the type hierarchy and build the unsafe partition containing all the unsafe
-         * fields of the current type and all its super types. The unsafePartition collection
-         * doesn't need to be thread safe since updates to it are only done on the current thread.
+         * Walk up the type hierarchy and collect all the unsafe fields of the current type and all
+         * its super types. We optimize for the most likely outcome: the returned list is empty.
          *
          * The resulting list could be cached but the caching mechanism is complicated by
          * registering unsafe accessed fields during the analysis. When a field is registered as
@@ -873,14 +809,23 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * Caching would still be possible, but it would be unnecessary complicated and prone to
          * race conditions.
          */
-        List<AnalysisField> unsafePartition = new ArrayList<>();
-        unsafePartition.addAll(unsafeAccessedFields != null && unsafeAccessedFields.containsKey(partitionKind) ? unsafeAccessedFields.get(partitionKind) : Collections.emptyList());
-        if (getSuperclass() != null) {
-            List<AnalysisField> superFileds = getSuperclass().allUnsafeAccessedFields(partitionKind);
-            unsafePartition.addAll(superFileds);
+        Collection<AnalysisField> result = null;
+        for (AnalysisType cur = this; cur != null; cur = cur.getSuperclass()) {
+            Collection<AnalysisField> curFields = ConcurrentLightHashSet.getElements(cur, UNSAFE_ACCESS_FIELDS_UPDATER);
+            if (curFields.size() > 0) {
+                if (result == null) {
+                    /* First type with unsafe fields, no need for a copy yet. */
+                    result = curFields;
+                } else {
+                    if (!(result instanceof ArrayList)) {
+                        /* Second type with unsafe fields, we need our own list to accumulate. */
+                        result = new ArrayList<>(result);
+                    }
+                    result.addAll(curFields);
+                }
+            }
         }
-
-        return unsafePartition;
+        return result == null ? List.of() : result;
     }
 
     public boolean isInstantiated() {
