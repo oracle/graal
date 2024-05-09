@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,28 @@
  */
 package com.oracle.truffle.nfi.backend.spi;
 
-import com.oracle.truffle.api.ContextThreadLocal;
-
 /**
- * Service interface for languages that implement a backend for the Truffle NFI.
+ * Thread-local state of the NFI that is shared between different backends.
  */
-public interface NFIBackendFactory {
+public final class NFIState {
 
-    /**
-     * Provides the backend id. NFI backends can be selected by using the "with &lt;id&gt;" syntax.
-     */
-    String getBackendId();
+    private Throwable pendingException;
 
-    /**
-     * Create an instance of an {@link NFIBackend}.
-     */
-    NFIBackend createBackend(ContextThreadLocal<NFIState> state);
+    // for faster query from JNI
+    boolean hasPendingException;
+
+    public Throwable getPendingException() {
+        return pendingException;
+    }
+
+    public void setPendingException(Throwable t) {
+        assert t != null;
+        pendingException = t;
+        hasPendingException = true;
+    }
+
+    public void clearPendingException() {
+        pendingException = null;
+        hasPendingException = false;
+    }
 }

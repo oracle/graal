@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,22 +38,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.backend.spi;
-
-import com.oracle.truffle.api.ContextThreadLocal;
+package com.oracle.truffle.nfi.backend.libffi;
 
 /**
- * Service interface for languages that implement a backend for the Truffle NFI.
+ * Versioning for libtrufflenfi.so and the corresponding SVM implementation.
+ *
+ * On Hotspot, the Java code of the NFI libffi backend is working together with a JNI native
+ * library. On SVM, this native library doesn't exist. Instead, substitutions written in system java
+ * are used. That means the interface of functions substituted by SVM can not be changed without
+ * breaking compatibility of the Truffle NFI maven artifact with older versions of SVM.
+ *
+ * This version number can be used to make changes in a compatible way. For example, instead of
+ * changing the signature of a native method that's substituted by SVM, a new method can be
+ * introduced, and the Java code can use this version number to decide whether to call the old or
+ * the new method.
+ *
+ * Version history:
+ * <ul>
+ * <li>0 "old" versions, before this version check was introduced
+ * <li>1 first version with this version check
+ * <li>2 introduced thread-local NFIState and cross-backend exception propagation
+ * </ul>
  */
-public interface NFIBackendFactory {
+final class NativeLibVersion {
 
-    /**
-     * Provides the backend id. NFI backends can be selected by using the "with &lt;id&gt;" syntax.
-     */
-    String getBackendId();
+    public static int get() {
+        return VERSION;
+    }
 
-    /**
-     * Create an instance of an {@link NFIBackend}.
-     */
-    NFIBackend createBackend(ContextThreadLocal<NFIState> state);
+    private static final int VERSION;
+
+    static {
+        int version;
+        try {
+            version = getLibTruffleNFIVersion();
+        } catch (UnsatisfiedLinkError e) {
+            // older than the first version that introduced version checks
+            version = 0;
+        }
+        VERSION = version;
+    }
+
+    private static native int getLibTruffleNFIVersion();
 }

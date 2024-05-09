@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,6 +102,8 @@ struct __TruffleContextInternal {
     jfieldID RetPatches_patches;
     jfieldID RetPatches_objects;
 
+    jfieldID NFIState_hasPendingException;
+
     jclass NativeArgumentBuffer_Pointer;
     jfieldID NativeArgumentBuffer_Pointer_pointer;
 
@@ -119,12 +121,16 @@ struct __TruffleEnvInternal {
     const struct __TruffleNativeAPI *functions;
     struct __TruffleContextInternal *context;
     JNIEnv *jniEnv;
+    jobject nfiState;
 };
 
 extern const struct __TruffleNativeAPI truffleNativeAPI;
 extern const struct __TruffleThreadAPI truffleThreadAPI;
 
 extern __thread int errnoMirror;
+
+// contains the "current" env from the most recent downcall, for faster lookup
+extern __thread struct __TruffleEnvInternal *cachedTruffleEnv;
 
 // keep this in sync with the code in com.oracle.truffle.nfi.NativeArgumentBuffer$TypeTag
 enum TypeTag {

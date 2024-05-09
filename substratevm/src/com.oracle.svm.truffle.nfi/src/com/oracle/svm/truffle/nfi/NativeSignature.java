@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -142,12 +142,6 @@ final class NativeSignature {
                 }
 
                 ffiCall(cif, WordFactory.pointer(functionPointer), ret, argPtrs, ErrnoMirror.errnoMirror.getAddress());
-
-                Throwable pending = NativeClosure.pendingException.get();
-                if (pending != null) {
-                    NativeClosure.pendingException.set(null);
-                    throw rethrow(pending);
-                }
             } finally {
                 UnmanagedMemory.free(argPtrs);
             }
@@ -175,10 +169,5 @@ final class NativeSignature {
             LibFFI.NoTransitions.ffi_call(cif, fn, rvalue, avalue);
             errnoMirror.write(LibC.errno());
         }
-    }
-
-    @SuppressWarnings({"unchecked"})
-    private static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
-        throw (E) ex;
     }
 }
