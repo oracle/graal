@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,8 +56,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.truffle.nfi.LibFFI.ClosureData;
 import com.oracle.svm.truffle.nfi.LibFFI.NativeClosureHandle;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
@@ -222,8 +220,6 @@ final class NativeClosure {
     private static final CGlobalData<CCharPointer> errorMessageThread = CGlobalDataFactory.createCString("Failed to enter by thread for closure.");
     private static final CGlobalData<CCharPointer> errorMessageIsolate = CGlobalDataFactory.createCString("Failed to enter by isolate for closure.");
 
-    static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class, "NativeClosure.pendingException");
-
     @NeverInline("Prevent (bad) LibC object from being present in any reference map")
     @Uninterruptible(reason = "Called while in Native state.")
     private static int getErrno() {
@@ -273,11 +269,7 @@ final class NativeClosure {
     private static int invokeClosureBufferRet0(Pointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
-        try {
-            doInvokeClosureBufferRet(ret, args, user);
-        } catch (Throwable t) {
-            pendingException.set(t);
-        }
+        doInvokeClosureBufferRet(ret, args, user);
 
         return ErrnoMirror.errnoMirror.getAddress().read();
     }
@@ -342,11 +334,7 @@ final class NativeClosure {
     private static int invokeClosureVoidRet0(WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
-        try {
-            doInvokeClosureVoidRet(args, user);
-        } catch (Throwable t) {
-            pendingException.set(t);
-        }
+        doInvokeClosureVoidRet(args, user);
 
         return ErrnoMirror.errnoMirror.getAddress().read();
     }
@@ -392,11 +380,7 @@ final class NativeClosure {
     private static int invokeClosureStringRet0(WordPointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
-        try {
-            doInvokeClosureStringRet(ret, args, user);
-        } catch (Throwable t) {
-            pendingException.set(t);
-        }
+        doInvokeClosureStringRet(ret, args, user);
 
         return ErrnoMirror.errnoMirror.getAddress().read();
     }
@@ -443,11 +427,7 @@ final class NativeClosure {
     private static int invokeClosureObjectRet0(WordPointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
-        try {
-            doInvokeClosureObjectRet(ret, args, user);
-        } catch (Throwable t) {
-            pendingException.set(t);
-        }
+        doInvokeClosureObjectRet(ret, args, user);
 
         return ErrnoMirror.errnoMirror.getAddress().read();
     }

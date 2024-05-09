@@ -1,0 +1,2 @@
+# does an NFI upcall from a non-attached thread
+cpp/testStdOnce.cpp.dir

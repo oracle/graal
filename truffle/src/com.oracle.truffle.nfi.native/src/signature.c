@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,9 +62,12 @@ static int align_up(int index, int alignment) {
     return index;
 }
 
+__thread struct __TruffleEnvInternal *cachedTruffleEnv = NULL;
+
 static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *cif, jlong address, jbyteArray primArgs, jint patchCount,
-                          jintArray patch, jobjectArray objArgs) {
+                          jintArray patch, jobjectArray objArgs, jobject nfiState) {
     struct __TruffleEnvInternal truffleEnv;
+    struct __TruffleEnvInternal *prevCachedEnv;
     void **argPtrs;
     jbyte *primArgValues;
     int primIdx, i;
@@ -78,6 +81,10 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
     truffleEnv.functions = &truffleNativeAPI;
     truffleEnv.context = (struct __TruffleContextInternal *) ctx;
     truffleEnv.jniEnv = env;
+    truffleEnv.nfiState = nfiState;
+
+    prevCachedEnv = cachedTruffleEnv;
+    cachedTruffleEnv = &truffleEnv;
 
     argPtrs = alloca(sizeof(*argPtrs) * cif->nargs);
 
@@ -211,34 +218,39 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
                 break;
         }
     }
+
+    cachedTruffleEnv = prevCachedEnv;
 }
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeNative(JNIEnv *env, jclass self, jlong truffleContext,
-                                                                                              jlong cif, jlong address, jbyteArray primArgs,
-                                                                                              jint patchCount, jintArray patch, jobjectArray objArgs,
-                                                                                              jbyteArray retArray) {
+                                                                                              jobject nfiState, jlong cif, jlong address,
+                                                                                              jbyteArray primArgs, jint patchCount, jintArray patch,
+                                                                                              jobjectArray objArgs, jbyteArray retArray) {
     jbyte *ret = retArray ? (*env)->GetByteArrayElements(env, retArray, NULL) : NULL;
-    executeHelper(env, (TruffleContext *) (intptr_t) truffleContext, ret, (ffi_cif *) (intptr_t) cif, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext *) (intptr_t) truffleContext, ret, (ffi_cif *) (intptr_t) cif, address, primArgs, patchCount, patch, objArgs,
+                  nfiState);
     if (retArray) {
         (*env)->ReleaseByteArrayElements(env, retArray, ret, 0);
     }
 }
 
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executePrimitive(JNIEnv *env, jclass self, jlong truffleContext,
-                                                                                                  jlong cif, jlong address, jbyteArray primArgs,
-                                                                                                  jint patchCount, jintArray patch,
-                                                                                                  jobjectArray objArgs) {
+                                                                                                  jobject nfiState, jlong cif, jlong address,
+                                                                                                  jbyteArray primArgs, jint patchCount,
+                                                                                                  jintArray patch, jobjectArray objArgs) {
     ffi_arg ret;
-    executeHelper(env, (TruffleContext *) (intptr_t) truffleContext, &ret, (ffi_cif *) (intptr_t) cif, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext *) (intptr_t) truffleContext, &ret, (ffi_cif *) (intptr_t) cif, address, primArgs, patchCount, patch, objArgs,
+                  nfiState);
     return (jlong) ret;
 }
 
 JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeObject(JNIEnv *env, jclass self, jlong truffleContext,
-                                                                                                 jlong cif, jlong address, jbyteArray primArgs,
-                                                                                                 jint patchCount, jintArray patch,
-                                                                                                 jobjectArray objArgs) {
+                                                                                                 jobject nfiState, jlong cif, jlong address,
+                                                                                                 jbyteArray primArgs, jint patchCount,
+                                                                                                 jintArray patch, jobjectArray objArgs) {
     jobject ret;
-    executeHelper(env, (TruffleContext *) (intptr_t) truffleContext, &ret, (ffi_cif *) (intptr_t) cif, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext *) (intptr_t) truffleContext, &ret, (ffi_cif *) (intptr_t) cif, address, primArgs, patchCount, patch, objArgs,
+                  nfiState);
     return ret;
 }
 

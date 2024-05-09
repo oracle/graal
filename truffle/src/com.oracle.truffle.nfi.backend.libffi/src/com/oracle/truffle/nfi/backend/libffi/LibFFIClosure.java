@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -202,11 +202,39 @@ final class LibFFIClosure implements TruffleObject {
                 args[i] = argNodes[i].execute(frame);
             }
 
+            Object ret;
             try {
-                return interop.execute(receiver, args);
+                ret = interop.execute(receiver, args);
             } catch (InteropException ex) {
                 throw CompilerDirectives.shouldNotReachHere(ex);
             }
+            if (NativeLibVersion.get() < 2) {
+                legacyRethrowExceptions(this);
+            }
+            return ret;
+        }
+
+        /**
+         * Rethrow pending exceptions here. Normally the NFI frontend handles this for us. The
+         * problem is the implementation of the env->exceptionCheck API. Older versions of the
+         * libffi backend on SVM don't look at the common exception state but rely on exceptions not
+         * being caught on upcalls.
+         *
+         * Note that this means env->exceptionCheck will only work on older SVM versions if the
+         * exception is thrown from a libffi upcall, exceptions from other backends are not detected
+         * (but are still rethrown on returning from upcalls).
+         */
+        private static void legacyRethrowExceptions(Node node) {
+            assert NativeLibVersion.get() < 2;
+            Throwable pending = LibFFILanguage.get(node).getNFIState().getPendingException();
+            if (pending != null) {
+                throw silenceException(RuntimeException.class, pending);
+            }
+        }
+
+        @SuppressWarnings({"unchecked", "unused"})
+        static <E extends Throwable> RuntimeException silenceException(Class<E> type, Throwable ex) throws E {
+            throw (E) ex;
         }
     }
 
