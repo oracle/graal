@@ -87,7 +87,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         context.initialize(ProxyLanguage.ID);
         sampler.setCollecting(false);
 
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        List<CPUSamplerData> data = sampler.getDataList();
         assertEquals(1, data.size());
 
         assertEquals(0, searchInitializeContext(data).size());
@@ -113,15 +113,15 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         context.initialize(ProxyLanguage.ID);
         sampler.setCollecting(false);
 
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        List<CPUSamplerData> data = sampler.getDataList();
         assertEquals(1, data.size());
 
         assertEquals(0, searchInitializeContext(data).size());
     }
 
-    private static List<ProfilerNode<Payload>> searchInitializeContext(Map<TruffleContext, CPUSamplerData> data) {
+    private static List<ProfilerNode<Payload>> searchInitializeContext(List<CPUSamplerData> data) {
         List<ProfilerNode<Payload>> found = new ArrayList<>();
-        for (CPUSamplerData d : data.values()) {
+        for (CPUSamplerData d : data) {
             Map<Thread, Collection<ProfilerNode<Payload>>> threadData = d.getThreadData();
             assertEquals(threadData.toString(), 1, threadData.size());
 
@@ -146,8 +146,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testCollectingAndHasData() {
 
         sampler.setCollecting(true);
-        Map<TruffleContext, CPUSamplerData> before = sampler.getData();
-        Assert.assertEquals(0, before.values().iterator().next().getSamples());
+        List<CPUSamplerData> before = sampler.getDataList();
+        Assert.assertEquals(0, before.iterator().next().getSamples());
         Assert.assertTrue(sampler.isCollecting());
         Assert.assertFalse(sampler.hasData());
 
@@ -155,8 +155,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             eval(defaultSourceForSampling);
         }
 
-        Map<TruffleContext, CPUSamplerData> after = sampler.getData();
-        Assert.assertNotEquals(0, after.values().iterator().next().getSamples());
+        List<CPUSamplerData> after = sampler.getDataList();
+        Assert.assertNotEquals(0, after.iterator().next().getSamples());
         Assert.assertTrue(sampler.isCollecting());
         Assert.assertTrue(sampler.hasData());
 
@@ -166,9 +166,9 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertTrue(sampler.hasData());
 
         sampler.clearData();
-        Map<TruffleContext, CPUSamplerData> cleared = sampler.getData();
+        List<CPUSamplerData> cleared = sampler.getDataList();
         Assert.assertFalse(sampler.isCollecting());
-        Assert.assertEquals(0, cleared.values().iterator().next().getSamples());
+        Assert.assertEquals(0, cleared.iterator().next().getSamples());
 
         Assert.assertFalse(sampler.hasData());
     }
@@ -221,9 +221,9 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     private Collection<ProfilerNode<Payload>> getProfilerNodes() {
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        List<CPUSamplerData> data = sampler.getDataList();
         Assert.assertEquals(1, data.size());
-        Map<Thread, Collection<ProfilerNode<Payload>>> threadData = data.values().iterator().next().getThreadData();
+        Map<Thread, Collection<ProfilerNode<Payload>>> threadData = data.iterator().next().getThreadData();
         Assert.assertEquals(1, threadData.size());
         Collection<ProfilerNode<Payload>> children = threadData.values().iterator().next();
         return children;
@@ -334,6 +334,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testTiers() {
         Assume.assumeFalse(Truffle.getRuntime().getClass().toString().contains("Default"));
         Context.Builder builder = Context.newBuilder().option("engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD)).option("engine.LastTierCompilationThreshold",
@@ -345,6 +346,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             for (int i = 0; i < 3 * FIRST_TIER_THRESHOLD; i++) {
                 c.eval(defaultSourceForSampling);
             }
+            // Intentionally kept one usage of the deprecated API
             data = cpuSampler.getData();
         }
         CPUSamplerData samplerData = data.values().iterator().next();

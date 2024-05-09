@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LongSummaryStatistics;
@@ -35,12 +36,13 @@ import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
 /**
  * Execution profile of a particular context.
  *
- * @see CPUSampler#getData()
+ * @see CPUSampler#getDataList()
  * @since 21.3.0
  */
 public final class CPUSamplerData {
 
-    final TruffleContext context;
+    final int contextIndex;
+    final WeakReference<TruffleContext> contextRef;
     final Map<Thread, Collection<ProfilerNode<Payload>>> threadData;
     final LongSummaryStatistics biasStatistics;  // nanoseconds
     final LongSummaryStatistics durationStatistics;  // nanoseconds
@@ -48,10 +50,11 @@ public final class CPUSamplerData {
     final long intervalMs;
     final long missedSamples;
 
-    CPUSamplerData(TruffleContext context, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
+    CPUSamplerData(int contextIndex, TruffleContext context, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
                     long samplesTaken,
                     long intervalMs, long missedSamples) {
-        this.context = context;
+        this.contextIndex = contextIndex;
+        this.contextRef = new WeakReference<>(context);
         this.threadData = threadData;
         this.biasStatistics = biasStatistics;
         this.durationStatistics = durationStatistics;
@@ -61,11 +64,25 @@ public final class CPUSamplerData {
     }
 
     /**
-     * @return The context this data applies to.
-     * @since 21.3.0
+     * @return The index of the context this data applies to. It is the index of this data in the
+     *         {@link CPUSampler#getDataList() data list}. The index is zero based and corresponds
+     *         to the order of context creations on the engine.
+     * @since 23.1.4
      */
+    public int getContextIndex() {
+        return contextIndex;
+    }
+
+    /**
+     * @return The context this data applies to or null if the context was already collected.
+     * @since 21.3.0
+     * @deprecated in 23.1.4. Contexts are no longer stored permanently. This method will return
+     *             null if the context was already collected. Use {@link #getContextIndex()} to
+     *             differentiate sampler data for different contexts.
+     */
+    @Deprecated
     public TruffleContext getContext() {
-        return context;
+        return contextRef.get();
     }
 
     /**
