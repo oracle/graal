@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,9 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.EnvType;
+import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.Destructor;
 import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
+import com.oracle.truffle.nfi.backend.spi.NFIState;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 class LibFFIContext {
@@ -95,12 +97,37 @@ class LibFFIContext {
         }
     }
 
+    private static class NativeEnvDestructor extends Destructor {
+
+        private final long pointer;
+
+        NativeEnvDestructor(long pointer) {
+            this.pointer = pointer;
+        }
+
+        @Override
+        public void destroy() {
+            LibFFIContext.disposeNativeEnvV2(pointer);
+        }
+    }
+
     private class NativeEnvSupplier implements Supplier<NativeEnv> {
 
         @Override
         public NativeEnv get() {
-            NativeEnv ret = new NativeEnv(initializeNativeEnv(nativeContext));
-            NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new FreeDestructor(ret.pointer));
+            long envPtr;
+            Destructor destructor;
+
+            if (NativeLibVersion.get() < 2) {
+                envPtr = initializeNativeEnv(nativeContext);
+                destructor = new FreeDestructor(envPtr);
+            } else {
+                envPtr = initializeNativeEnvV2(nativeContext, language.getNFIState());
+                destructor = new NativeEnvDestructor(envPtr);
+            }
+
+            NativeEnv ret = new NativeEnv(envPtr);
+            NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, destructor);
             return ret;
         }
     }
@@ -267,6 +294,19 @@ class LibFFIContext {
 
     private static native void disposeNativeContext(long context);
 
+    /**
+     * Native lib versions >= 2. Result must be freed with disposeNativeEnv.
+     */
+    private static native long initializeNativeEnvV2(long context, NFIState state);
+
+    /**
+     * Native lib versions >= 2.
+     */
+    private static native void disposeNativeEnvV2(long env);
+
+    /**
+     * Native lib versions <= 1. Result is freed with free().
+     */
     private static native long initializeNativeEnv(long context);
 
     private void loadNFILib() {
@@ -325,26 +365,29 @@ class LibFFIContext {
 
     private static native long prepareSignatureVarargs(long nativeContext, LibFFIType retType, int argCount, int nFixedArgs, LibFFIType... args);
 
+    // substituted by SVM
     void executeNative(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs, byte[] ret) {
-        executeNative(nativeContext, cif, functionPointer, primArgs, patchCount, patchOffsets, objArgs, ret);
+        executeNative(nativeContext, language.getNFIState(), cif, functionPointer, primArgs, patchCount, patchOffsets, objArgs, ret);
     }
 
+    // substituted by SVM
     long executePrimitive(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs) {
-        return executePrimitive(nativeContext, cif, functionPointer, primArgs, patchCount, patchOffsets, objArgs);
+        return executePrimitive(nativeContext, language.getNFIState(), cif, functionPointer, primArgs, patchCount, patchOffsets, objArgs);
     }
 
+    // substituted by SVM
     Object executeObject(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs) {
-        return executeObject(nativeContext, cif, functionPointer, primArgs, patchCount, patchOffsets, objArgs);
+        return executeObject(nativeContext, language.getNFIState(), cif, functionPointer, primArgs, patchCount, patchOffsets, objArgs);
     }
 
     @TruffleBoundary
-    private static native void executeNative(long nativeContext, long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs, byte[] ret);
+    private static native void executeNative(long nativeContext, NFIState state, long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs, byte[] ret);
 
     @TruffleBoundary
-    private static native long executePrimitive(long nativeContext, long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs);
+    private static native long executePrimitive(long nativeContext, NFIState state, long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs);
 
     @TruffleBoundary
-    private static native Object executeObject(long nativeContext, long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs);
+    private static native Object executeObject(long nativeContext, NFIState state, long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs);
 
     private static native long loadLibrary(long nativeContext, String name, int flags);
 

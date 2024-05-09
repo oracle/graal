@@ -77,12 +77,22 @@ public final class PredefinedClassesSupport {
         return supportsBytecodes() && !singleton().predefinedClassesByHash.isEmpty();
     }
 
-    public static RuntimeException throwNoBytecodeClasses() {
-        if (!supportsBytecodes()) {
-            throw VMError.unsupportedFeature("Loading classes from bytecodes at runtime has been disabled. Enable with option: " + ENABLE_BYTECODES_OPTION);
-        }
+    private static final String DEFINITION_NOT_SUPPORTED_MESSAGE = """
+                    To make this work, you have the following options:
+                      1) Modify or reconfigure your application (or a third-party library) so that it does not generate classes at runtime or load them via non-built-in class loaders.
+                      2) If the classes must be generated, try to generate them at build time in a static initializer of a dedicated class.\
+                     The generated java.lang.Class objects should be stored in static fields and the dedicated class initialized by passing '--initialize-at-build-time=<class_name>' as the build argument.
+                      3) If none of the above is applicable, use the tracing agent to run this application and collect predefined classes with\
+                     'java -agentlib:native-image-agent=config-output-dir=<config-dir>,experimental-class-define-support <application-arguments>'.\
+                     Note that this is an experimental feature and that it does not guarantee success. Furthermore, the resulting classes can contain entries\
+                     from the classpath that should be manually filtered out to reduce image size. The agent should be used only in cases where modifying the source of the project is not possible.
+                    """
+                    .replace("\n", System.lineSeparator());
+
+    public static RuntimeException throwNoBytecodeClasses(String className) {
         assert !hasBytecodeClasses();
-        throw VMError.unsupportedFeature("No classes have been predefined during the image build to load from bytecodes at runtime.");
+        throw VMError.unsupportedFeature("Classes cannot be defined at runtime when using ahead-of-time Native Image compilation. Tried to define class '" + className + "'" + System.lineSeparator() +
+                        DEFINITION_NOT_SUPPORTED_MESSAGE);
     }
 
     @Fold
@@ -167,14 +177,14 @@ public final class PredefinedClassesSupport {
 
     public static Class<?> loadClass(ClassLoader classLoader, String expectedName, byte[] data, int offset, int length, ProtectionDomain protectionDomain) {
         if (!hasBytecodeClasses()) {
-            throw throwNoBytecodeClasses();
+            throw throwNoBytecodeClasses(expectedName);
         }
         String hash = Digest.digest(data, offset, length);
         Class<?> clazz = singleton().predefinedClassesByHash.get(hash);
         if (clazz == null) {
             String name = (expectedName != null) ? expectedName : "(name not specified)";
-            throw VMError.unsupportedFeature("Defining a class from new bytecodes at runtime is not supported. Class " + name +
-                            " with hash " + hash + " was not provided during the image build. Please see BuildConfiguration.md.");
+            throw VMError.unsupportedFeature(
+                            "Class " + name + " with hash " + hash + " was not provided during the image build via the 'predefined-classes-config.json' file. Please see 'BuildConfiguration.md'.");
         }
         if (expectedName != null && !expectedName.equals(clazz.getName())) {
             throw new NoClassDefFoundError(clazz.getName() + " (wrong name: " + expectedName + ')');

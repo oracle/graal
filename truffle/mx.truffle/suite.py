@@ -991,6 +991,7 @@ suite = {
         "TRUFFLE_NFI",
         "TRUFFLE_TCK",
         "TRUFFLE_TEST_NATIVE",
+        "sdk:POLYGLOT",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1837,6 +1838,9 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi_panama",
+        "requires": [
+          "org.graalvm.truffle",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "22+",

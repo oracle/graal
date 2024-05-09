@@ -25,7 +25,6 @@
 package jdk.graal.compiler.hotspot.test;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
@@ -111,7 +110,7 @@ public class ProfileReplayTest extends GraalCompilerTest {
             foo(i, i % 4, use);
         }
         final ResolvedJavaMethod method = getResolvedJavaMethod("foo");
-        try (TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "ProfileReplayTest")) {
+        try (TemporaryDirectory temp = new TemporaryDirectory(getClass(), "ProfileReplayTest")) {
             OptionValues overrides = new OptionValues(getInitialOptions(), DebugOptions.DumpPath, temp.toString());
             runInitialCompilation(method, overrides, jvmciRuntime, compiler);
             runSanityCompilation(temp.toString(), method, overrides, jvmciRuntime, compiler);

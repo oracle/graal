@@ -147,7 +147,7 @@ local common_json = import "../common.json";
         # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
         " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
         # Keep in sync with jdk.graal.compiler.test.SubprocessUtil#makeArgfile
-        " @(?P<filename>.*SubprocessUtil.*\\.argfile)",
+        "@(?P<filename>.*SubprocessUtil-argfiles.*\\.argfile)",
       ],
     },
 

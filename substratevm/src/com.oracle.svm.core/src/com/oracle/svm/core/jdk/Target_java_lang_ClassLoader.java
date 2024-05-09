@@ -286,7 +286,7 @@ public final class Target_java_lang_ClassLoader {
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
         if (!PredefinedClassesSupport.hasBytecodeClasses()) {
-            throw PredefinedClassesSupport.throwNoBytecodeClasses();
+            throw PredefinedClassesSupport.throwNoBytecodeClasses(name);
         }
         byte[] array;
         int off;
