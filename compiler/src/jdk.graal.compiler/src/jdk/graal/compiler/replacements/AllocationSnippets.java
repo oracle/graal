@@ -66,11 +66,7 @@ public abstract class AllocationSnippets implements Snippets {
             result = formatObject(hub, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            if (withException) {
-                result = callNewInstanceWithExceptionStub(hub);
-            } else {
-                result = callNewInstanceStub(hub);
-            }
+            result = callNewInstanceStub(hub, withException);
         }
         profileAllocation(profilingData, size);
         return verifyOop(result);
@@ -107,11 +103,7 @@ public abstract class AllocationSnippets implements Snippets {
                             profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            if (withException) {
-                result = callNewArrayWithExceptionStub(hub, length);
-            } else {
-                result = callNewArrayStub(hub, length);
-            }
+            result = callNewArrayStub(hub, length, withException);
         }
         profileAllocation(profilingData, allocationSize);
         return verifyOop(result);
@@ -123,11 +115,7 @@ public abstract class AllocationSnippets implements Snippets {
         for (int i = 0; i < rank; i++) {
             dims.writeInt(i * 4, dimensions[i], LocationIdentity.init());
         }
-        if (withException) {
-            return callNewMultiArrayStubWithException(hub, rank, dims);
-        } else {
-            return callNewMultiArrayStub(hub, rank, dims);
-        }
+        return callNewMultiArrayStub(hub, rank, dims, withException);
     }
 
     protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
@@ -372,17 +360,11 @@ public abstract class AllocationSnippets implements Snippets {
 
     public abstract void initializeObjectHeader(Word memory, Word hub, boolean isArray);
 
-    protected abstract Object callNewInstanceStub(Word hub);
+    protected abstract Object callNewInstanceStub(Word hub, boolean withException);
 
-    protected abstract Object callNewInstanceWithExceptionStub(Word hub);
+    protected abstract Object callNewArrayStub(Word hub, int length, boolean withException);
 
-    protected abstract Object callNewArrayStub(Word hub, int length);
-
-    protected abstract Object callNewArrayWithExceptionStub(Word hub, int length);
-
-    protected abstract Object callNewMultiArrayStub(Word hub, int rank, Word dims);
-
-    protected abstract Object callNewMultiArrayStubWithException(Word hub, int rank, Word dims);
+    protected abstract Object callNewMultiArrayStub(Word hub, int rank, Word dims, boolean withException);
 
     protected abstract int getMinimalBulkZeroingSize();
 
