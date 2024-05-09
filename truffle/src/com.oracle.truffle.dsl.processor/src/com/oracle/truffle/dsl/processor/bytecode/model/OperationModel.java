@@ -79,6 +79,9 @@ public class OperationModel implements PrettyPrintable {
         CUSTOM_INSTRUMENTATION,
     }
 
+    /**
+     * Models an argument to a begin/emit/end method.
+     */
     public record OperationArgument(TypeMirror type, String name, String doc) {
         public CodeVariableElement toVariableElement() {
             return new CodeVariableElement(type, name);
@@ -92,6 +95,10 @@ public class OperationModel implements PrettyPrintable {
 
     private static final OperationArgument[] EMPTY_ARGUMENTS = new OperationArgument[0];
 
+    /**
+     * Models the constant operand data statically declared on the operation using ConstantOperand
+     * annotations.
+     */
     public record ConstantOperands(List<ConstantOperandModel> before, List<ConstantOperandModel> after) {
         public static final ConstantOperands NONE = new ConstantOperands(List.of(), List.of());
 
@@ -104,6 +111,7 @@ public class OperationModel implements PrettyPrintable {
     public final int id;
     public final OperationKind kind;
     public final String name;
+    public final String javadoc;
 
     /**
      * Transparent operations do not have their own logic; any value produced by their children is
@@ -135,11 +143,12 @@ public class OperationModel implements PrettyPrintable {
 
     public int instrumentationIndex;
 
-    public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name) {
+    public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name, String javadoc) {
         this.parent = parent;
         this.id = id;
         this.kind = kind;
         this.name = name;
+        this.javadoc = javadoc;
     }
 
     public boolean hasChildren() {

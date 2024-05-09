@@ -78,6 +78,14 @@ public @interface OperationProxy {
     String name() default "";
 
     /**
+     * Optional documentation for the operation proxy. This documentation is included in the javadoc
+     * for the generated interpreter.
+     *
+     * @since 24.1
+     */
+    String javadoc() default "";
+
+    /**
      * Designates a {@link com.oracle.truffle.api.nodes.Node} class as eligible for proxying.
      *
      * @since 24.1

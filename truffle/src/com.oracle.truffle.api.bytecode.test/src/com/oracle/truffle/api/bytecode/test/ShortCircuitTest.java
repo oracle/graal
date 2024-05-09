@@ -341,7 +341,7 @@ public class ShortCircuitTest {
                 @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, boxingEliminationTypes = {boolean.class,
                                 int.class}))
 })
-@OperationProxy(value = BooleanConverterOperationProxy.class)
+@OperationProxy(value = BooleanConverterOperationProxy.class, javadoc = "Converts a value to its boolean truthy value.")
 /**
  * Note how different boolean converters are used. The converter need not be declared as
  * an @Operation or @OperationProxy, but if so, it should validate like an implicit @Operation.

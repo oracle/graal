@@ -218,7 +218,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     public CodeTypeElement create() {
         // Print a summary of the model in a docstring at the start.
-        addDoc(bytecodeNodeGen, false, model.pp());
+        bytecodeNodeGen.createDocBuilder().startDoc().lines(model.pp()).end();
 
         // Define constants for accessing the frame.
         bytecodeNodeGen.addAll(createFrameLayoutConstants());
@@ -476,8 +476,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 continue;
             }
             if (var.getSimpleName().toString().equals(frameSlotKind)) {
-                addDoc(tag, false, "FrameSlotKind." + frameSlotKind + ".tag");
-                tag.createInitBuilder().string(index);
+                tag.createInitBuilder().string(index + " /* FrameSlotKind." + frameSlotKind + ".tag */");
                 return tag;
             }
             index++;
@@ -961,7 +960,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         ex.addParameter(new CodeVariableElement(parserType, "parser"));
 
-        addDoc(ex, true, String.format("""
+        addJavadoc(ex, String.format("""
                         Creates one or more bytecode nodes. This is the entrypoint for creating new {@link %s} instances.
 
                         @param config indicates whether to parse metadata (e.g., source information).
@@ -1031,7 +1030,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         method.addParameter(new CodeVariableElement(parserType, "parser"));
         method.addThrownType(context.getType(IOException.class));
 
-        addDoc(method, true, """
+        addJavadoc(method, """
                         Serializes the bytecode nodes parsed by the {@code parser}.
                         All metadata (e.g., source info) is serialized (even if it has not yet been parsed).
                         <p>
@@ -1103,7 +1102,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
         method.addThrownType(context.getType(IOException.class));
 
-        addDoc(method, true,
+        addJavadoc(method,
                         """
                                         Deserializes a byte sequence to bytecode nodes. The bytes must have been produced by a previous call to {@link #serialize}.").newLine()
 
@@ -2520,7 +2519,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeVariableElement serialization;
 
         private CodeTypeElement create() {
-            addDoc(builder, true, """
+            addJavadoc(builder, """
                             Builder class to generate bytecode. An interpreter can invoke this class with its {@link com.oracle.truffle.api.bytecode.BytecodeParser} to generate bytecode.
                             """);
 
@@ -3165,7 +3164,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createCreateLocal() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal");
 
-            addDoc(ex, true, "Creates a new local. Uses default values for the local's slot metadata.");
+            addJavadoc(ex, "Creates a new local. Uses default values for the local's slot metadata.");
 
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -3182,10 +3181,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(type(Object.class), "name"));
             ex.addParameter(new CodeVariableElement(type(Object.class), "info"));
 
-            addDoc(ex, true, """
+            addJavadoc(ex, """
                             Creates a new local. Uses the given {@code slotKind}, {@code name}, and {@code info} for its frame slot metadata.
-                            @param scope 0 for scoping with current block, > 0 for scoping using a parent block and -1 for global scoping
-                            @param slotKind the slot kind of the local.
+
                             @param name the name assigned to the local's slot.
                             @param info the info assigned to the local's slot.
                             """);
@@ -3295,7 +3293,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createCreateLabel() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLabel, "createLabel");
 
-            addDoc(ex, true, "Creates a new label. The result should be {@link #emitLabel emitted} and can be {@link #emitBranch branched to}.");
+            addJavadoc(ex, "Creates a new label. The result should be {@link #emitLabel emitted} and can be {@link #emitBranch branched to}.");
 
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -3459,9 +3457,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private static void appendOperationDescriptionForDoc(StringBuilder sb, OperationModel operation) {
+        private static String getBuilderMethodJavadocHeader(String action, OperationModel operation) {
+            StringBuilder sb = new StringBuilder(action);
+
             if (operation.isCustom()) {
-                sb.append("custom ");
+                sb.append(" a custom ");
                 switch (operation.kind) {
                     case CUSTOM:
                     case CUSTOM_INSTRUMENTATION:
@@ -3480,49 +3480,88 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         throw new AssertionError("Unexpected operation kind for operation " + operation);
                 }
             } else {
-                sb.append("built-in ");
+                sb.append(" a built-in ");
                 sb.append(operation.name);
             }
             sb.append(" operation.");
+            return sb.toString();
         }
 
-        private static void addBeginOrEmitOperationDoc(OperationModel operation, CodeExecutableElement ex) {
-            StringBuilder sb = new StringBuilder();
+        private void addBeginOrEmitOperationDoc(OperationModel operation, CodeExecutableElement ex) {
+            List<String> lines = new ArrayList<>(1);
+
             if (operation.hasChildren()) {
-                sb.append("Begins a ");
+                lines.add(getBuilderMethodJavadocHeader("Begins", operation));
             } else {
-                sb.append("Emits a ");
+                lines.add(getBuilderMethodJavadocHeader("Emits", operation));
             }
 
-            appendOperationDescriptionForDoc(sb, operation);
-
-            if (operation.hasChildren()) {
-                sb.append(" A corresponding call to {@link #end");
-                sb.append(operation.name);
-                sb.append("} is required to end the operation.");
-            }
-
-            List<String> javadoc = new ArrayList<>(1);
-            javadoc.add(sb.toString());
-
-            if (operation.operationBeginArguments.length != 0) {
-                javadoc.add("");
-                for (OperationArgument argument : operation.operationBeginArguments) {
-                    javadoc.add(argument.toJavadocParam());
+            if (operation.javadoc != null && !operation.javadoc.isBlank()) {
+                lines.add("<p>");
+                for (String line : operation.javadoc.strip().split("\n")) {
+                    lines.add(line);
                 }
             }
 
-            addDoc(ex, true, javadoc);
+            if (operation.hasChildren()) {
+                lines.add("<p>");
+                lines.add("A corresponding call to {@link #end" + operation.name + "} is required to end the operation.");
+            }
+
+            if (operation.operationBeginArguments.length != 0) {
+                lines.add(" ");
+                for (OperationArgument argument : operation.operationBeginArguments) {
+                    lines.add(argument.toJavadocParam());
+                }
+            }
+
+            addJavadoc(ex, lines);
         }
 
         private void addEndOperationDoc(OperationModel operation, CodeExecutableElement ex) {
             assert operation.hasChildren();
 
-            StringBuilder sb = new StringBuilder("Ends a ");
+            List<String> lines = new ArrayList<>(1);
+            lines.add(getBuilderMethodJavadocHeader("Ends", operation));
 
-            appendOperationDescriptionForDoc(sb, operation);
+            if (model.epilogReturn != null && operation == model.epilogReturn.operation) {
+                lines.add("<p>");
+                lines.add(String.format(
+                                "NB: This method does not directly emit %s instructions. Instead, {@link #doEmitReturn} uses the operation stack entry to determine that each Return should be preceded by a %s instruction.",
+                                operation.name, operation.name));
+            }
 
-            addDoc(ex, true, sb.toString());
+            if (operation.operationEndArguments.length != 0) {
+                lines.add(" ");
+                for (OperationArgument argument : operation.operationEndArguments) {
+                    lines.add(argument.toJavadocParam());
+                }
+            }
+
+            addJavadoc(ex, lines);
+        }
+
+        private void addBeginRootOperationDoc(OperationModel rootOperation, CodeExecutableElement ex) {
+            assert rootOperation.kind == OperationKind.ROOT;
+
+            List<String> lines = new ArrayList<>(2);
+            lines.add("Begins a new root node.");
+            lines.add("<p>");
+            for (String line : rootOperation.javadoc.strip().split("\n")) {
+                lines.add(line);
+            }
+
+            lines.add(" ");
+            for (OperationArgument operationArgument : rootOperation.operationBeginArguments) {
+                lines.add(operationArgument.toJavadocParam());
+            }
+            if (model.prolog != null && model.prolog.operation.operationBeginArguments.length != 0) {
+                for (OperationArgument operationArgument : model.prolog.operation.operationBeginArguments) {
+                    lines.add(operationArgument.toJavadocParam());
+                }
+            }
+
+            addJavadoc(ex, lines);
         }
 
         private CodeExecutableElement createBegin(OperationModel operation) {
@@ -3722,24 +3761,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createBeginRoot(OperationModel rootOperation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "beginRoot");
             ex.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
-            String javadoc = """
-                            Begins a new root node.
-
-                            This method should always be invoked before subsequent builder methods, which generate and validate bytecode for the root node. The resultant root node is returned by {@link #endRoot}.
-
-                            This method can be called while generating another root node. Bytecode generation for the first root node suspends until generation for the second root node finishes (the second is not "nested" in the first).
-
-                            @param language the Truffle language to associate with the root node.
-                            """;
-
-            if (model.prolog != null) {
+            if (model.prolog != null && model.prolog.operation.operationBeginArguments.length != 0) {
                 for (OperationArgument operationArgument : model.prolog.operation.operationBeginArguments) {
                     ex.addParameter(operationArgument.toVariableElement());
-                    javadoc += operationArgument.toJavadocParam() + "\n";
                 }
             }
-
-            addDoc(ex, true, javadoc);
+            addBeginRootOperationDoc(rootOperation, ex);
 
             CodeTreeBuilder b = ex.getBuilder();
 
@@ -3810,7 +3837,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     buildEmitOperationInstruction(b, model.prolog.operation);
                 }
                 if (model.epilogReturn != null) {
-                    b.lineCommentf("For return epilog support, Return(op) is rewritten to Return(%s(op))", model.epilogReturn.operation.name);
                     buildBegin(b, model.epilogReturn.operation);
                 }
 
@@ -4436,7 +4462,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             javadoc += "@returns the root node with generated bytecode.\n";
-            addDoc(ex, true, javadoc);
+            addJavadoc(ex, javadoc);
 
             CodeTreeBuilder b = ex.getBuilder();
 
@@ -4480,7 +4506,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
 
                 if (model.epilogReturn != null) {
-                    b.lineCommentf("For return epilog support, Return(op) is rewritten to Return(%s(op))", model.epilogReturn.operation.name);
                     buildEnd(b, model.epilogReturn.operation);
                 }
 
@@ -6748,6 +6773,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder javadoc = ctor.createDocBuilder();
             javadoc.startJavadoc();
             javadoc.string("Constructor for reparsing.");
+            javadoc.newLine();
             javadoc.end();
 
             CodeTreeBuilder b = ctor.createBuilder();
@@ -6774,6 +6800,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder javadoc = ctor.createDocBuilder();
             javadoc.startJavadoc();
             javadoc.string("Constructor for initial parses.");
+            javadoc.newLine();
             javadoc.end();
 
             CodeTreeBuilder b = ctor.createBuilder();
@@ -7033,6 +7060,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNodes, "serialize");
             ex.renameArguments("buffer", "callback");
             addOverride(ex);
+
+            addJavadoc(ex, """
+                            Serializes the given bytecode nodes
+                            All metadata (e.g., source info) is serialized (even if it has not yet been parsed).
+                            <p>
+                            This method serializes the root nodes with their current field values.
+
+                            @param buffer the buffer to write the byte output to.
+                            @param callback the language-specific serializer for constants in the bytecode.
+                            """);
+
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(generic(ArrayList.class, model.getTemplateType().asType()), "existingNodes", "new ArrayList<>(nodes.length)");
@@ -13112,7 +13150,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createUpdateBytecodeLocationWithoutInvalidate() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "updateBytecodeLocationWithoutInvalidate");
             ex.addParameter(new CodeVariableElement(types.BytecodeLocation, "newLocation"));
-            addDoc(ex, true, String.format("""
+            addJavadoc(ex, String.format("""
                             Updates the location without reporting replacement (i.e., without invalidating compiled code).
                             <p>
                             We avoid reporting replacement when an update does not change the bytecode (e.g., a source reparse).
@@ -13319,27 +13357,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end(2);
     }
 
-    private static void addDoc(CodeElement<?> element, boolean javadoc, String contents) {
-        addDoc(element, javadoc, Arrays.asList(contents.split("\n")));
+    private static void addJavadoc(CodeElement<?> element, String contents) {
+        addJavadoc(element, Arrays.asList(contents.split("\n")));
     }
 
-    private static void addDoc(CodeElement<?> element, boolean javadoc, List<String> lines) {
+    private static void addJavadoc(CodeElement<?> element, List<String> lines) {
         CodeTreeBuilder b = element.createDocBuilder();
-        if (javadoc) {
-            b.startJavadoc();
-        } else {
-            b.startDoc();
-        }
-
+        b.startJavadoc();
         for (String line : lines) {
-            if (line.length() == 0) {
+            if (line.isBlank()) {
                 b.string(" "); // inject a space so that empty lines get *'s
             } else {
                 b.string(line);
             }
             b.newLine();
         }
-
         b.end();
     }
 

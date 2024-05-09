@@ -105,7 +105,7 @@ import com.oracle.truffle.api.nodes.RootNode;
                                                 long.class}, decisionsFile = "basic_interpreter_decisions.json"))
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
-@ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE)
+@ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")
 public abstract class BasicInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
 
     protected BasicInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -166,7 +166,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
     }
 
-    @Operation
+    @Operation(javadoc = "Adds the two operand values, which must either be longs or Strings.")
     static final class AddOperation {
         @Specialization
         public static long addLongs(long lhs, long rhs) {
@@ -352,7 +352,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
     }
 
-    @Operation
+    @Operation(javadoc = "Does nothing.")
     public static final class VoidOperation {
         @Specialization
         public static void doNothing() {
@@ -464,7 +464,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
     }
 
-    @Instrumentation
+    @Instrumentation(javadoc = "Increments the instrumented value by 1.")
     public static final class IncrementValue {
         @Specialization
         public static long doIncrement(long value) {

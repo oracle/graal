@@ -74,5 +74,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface Instrumentation {
-
+    /**
+     * Optional documentation for the instrumentation. This documentation is included in the javadoc
+     * for the generated interpreter.
+     *
+     * @since 24.1
+     */
+    String javadoc() default "";
 }
