@@ -67,9 +67,7 @@ import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.NullCheckTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafePartitionLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.StoreIndexedTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafePartitionStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.SourceTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
@@ -465,8 +463,6 @@ public class PointsToStats {
             return "IndexedStore @ " + formatSource(flow);
         } else if (flow instanceof UnsafeStoreTypeFlow) {
             return "UnsafeStore @ " + formatSource(flow);
-        } else if (flow instanceof UnsafePartitionStoreTypeFlow) {
-            return "UnsafePartitionStore @ " + formatSource(flow);
         } else if (flow instanceof UnsafeWriteSinkTypeFlow) {
             UnsafeWriteSinkTypeFlow sink = (UnsafeWriteSinkTypeFlow) flow;
             return "UnsafeWriteSink(" + formatField(sink.getSource()) + ")";
@@ -474,8 +470,6 @@ public class PointsToStats {
             return "IndexedLoad @ " + formatSource(flow);
         } else if (flow instanceof UnsafeLoadTypeFlow) {
             return "UnsafeLoad @ " + formatSource(flow);
-        } else if (flow instanceof UnsafePartitionLoadTypeFlow) {
-            return "UnsafePartitionLoad @ " + formatSource(flow);
         } else if (flow instanceof ArrayElementsTypeFlow) {
             ArrayElementsTypeFlow arrayFlow = (ArrayElementsTypeFlow) flow;
             return "ArrayElements(" + (arrayFlow.object() != null ? arrayFlow.object().type().toJavaName(false) : "?") + ")";
