@@ -3185,8 +3185,8 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private Vector128 readUnsignedInt128() {
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 16; i++) {
+        byte[] bytes = new byte[Vector128.BYTES];
+        for (int i = 0; i < Vector128.BYTES; i++) {
             bytes[i] = read1();
         }
         return new Vector128(bytes);

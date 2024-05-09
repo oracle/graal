@@ -244,9 +244,9 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     @Override
     public Vector128 load_i128(Node node, long address) {
-        validateAddress(node, address, 16);
-        byte[] bytes = new byte[16];
-        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, 16);
+        validateAddress(node, address, Vector128.BYTES);
+        byte[] bytes = new byte[Vector128.BYTES];
+        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, Vector128.BYTES);
         return new Vector128(bytes);
     }
 
