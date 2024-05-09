@@ -158,6 +158,14 @@ public @interface ShortCircuitOperation {
     Class<?> booleanConverter() default void.class;
 
     /**
+     * Optional documentation for the short circuit operation. This documentation is included in the
+     * javadoc for the generated interpreter.
+     *
+     * @since 24.1
+     */
+    String javadoc() default "";
+
+    /**
      * Repeat annotation for {@link ShortCircuitOperation}.
      *
      * @since 24.1

@@ -570,6 +570,10 @@ public class ErrorTests {
         public static void setterAfterSetterRange(LocalSetterRange a,
                         @ExpectError("LocalSetter parameters must precede LocalSetterRange parameters.") LocalSetter b) {
         }
+
+        @Specialization
+        public static void variadicWithWrongType(@ExpectError("Variadic operand must have type Object[].") @Variadic String[] a) {
+        }
     }
 
     @ExpectError("Operation class name cannot contain underscores.")

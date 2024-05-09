@@ -176,9 +176,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     public CustomOperationModel parseCustomRegularOperation(TypeElement typeElement, AnnotationMirror mirror) {
         String name = getCustomOperationName(typeElement, mirror);
+        String javadoc = ElementUtils.getAnnotationValue(String.class, mirror, "javadoc");
         boolean isInstrumentation = ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation);
         OperationKind kind = isInstrumentation ? OperationKind.CUSTOM_INSTRUMENTATION : OperationKind.CUSTOM;
-        CustomOperationModel customOperation = parent.customRegularOperation(kind, name, typeElement, mirror);
+        CustomOperationModel customOperation = parent.customRegularOperation(kind, name, javadoc, typeElement, mirror);
         if (customOperation == null) {
             return null;
         }
@@ -456,7 +457,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     public CustomOperationModel parseCustomShortCircuitOperation(TypeElement typeElement, AnnotationMirror mirror) {
         String name = getCustomOperationName(typeElement, mirror);
-        CustomOperationModel customOperation = parent.customShortCircuitOperation(OperationKind.CUSTOM_SHORT_CIRCUIT, name, mirror);
+        String javadoc = ElementUtils.getAnnotationValue(String.class, mirror, "javadoc");
+        CustomOperationModel customOperation = parent.customShortCircuitOperation(OperationKind.CUSTOM_SHORT_CIRCUIT, name, javadoc, mirror);
         if (customOperation == null) {
             return null;
         }

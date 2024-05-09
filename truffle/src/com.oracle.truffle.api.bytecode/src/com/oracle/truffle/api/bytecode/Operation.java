@@ -91,4 +91,12 @@ public @interface Operation {
     // TODO GR-51945 implement Tags support
     Class<? extends Tag>[] tags() default {};
 
+    /**
+     * Optional documentation for the operation. This documentation is included in the javadoc for
+     * the generated interpreter.
+     *
+     * @since 24.1
+     */
+    String javadoc() default "";
+
 }

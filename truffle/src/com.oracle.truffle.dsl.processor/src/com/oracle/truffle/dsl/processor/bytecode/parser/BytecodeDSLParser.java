@@ -78,6 +78,7 @@ import org.graalvm.shadowed.org.json.JSONTokener;
 
 import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLBuiltins;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModels;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
@@ -222,7 +223,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableRootBodyTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootBodyTagging");
         model.enableLocalScoping = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableLocalScoping");
 
-        model.addDefault();
+        BytecodeDSLBuiltins.addBuiltins(model, types, context);
 
         // Check basic declaration properties.
         Set<Modifier> modifiers = typeElement.getModifiers();

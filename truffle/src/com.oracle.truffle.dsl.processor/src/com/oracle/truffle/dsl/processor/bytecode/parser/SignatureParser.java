@@ -62,6 +62,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.ConstantOperands;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
 public class SignatureParser {
@@ -131,6 +132,11 @@ public class SignatureParser {
                     isValid = false;
                 } else if (isVariadic(dynamicOperand)) {
                     hasVariadic = true;
+
+                    if (!ElementUtils.typeEquals(dynamicOperand.asType(), new ArrayCodeTypeMirror(context.getDeclaredType(Object.class)))) {
+                        errorTarget.addError(dynamicOperand, "Variadic operand must have type Object[].");
+                        isValid = false;
+                    }
                 }
 
                 if (isFallback) {
