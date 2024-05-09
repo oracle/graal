@@ -50,7 +50,7 @@ public final class Digest {
     private record LongLong(long l1, long l2) {
     }
 
-    private static final char[] DIGITS = {
+    private static final byte[] DIGITS = {
                     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
                     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
                     'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
@@ -92,20 +92,29 @@ public final class Digest {
      * Hashes the passed range of the byte array parameter and returns the encoding of the hash.
      */
     public static String digest(byte[] bytes, int offset, int length) {
-        LongLong hash = MurmurHash3_x64_128(bytes, offset, length, HASH_SEED);
-
-        StringBuilder result = new StringBuilder(DIGEST_SIZE);
-        encodeBase62(hash.l1, result);
-        encodeBase62(hash.l2, result);
+        String result = new String(digestAsByteArray(bytes, offset, length), StandardCharsets.UTF_8);
         assert result.length() == DIGEST_SIZE : "--" + result + "--";
         return result.toString();
     }
 
-    private static void encodeBase62(long value, StringBuilder result) {
+    /**
+     * Hashes the passed range of the byte array parameter and returns the encoding of the hash as a
+     * new byte array.
+     */
+    public static byte[] digestAsByteArray(byte[] bytes, int offset, int length) {
+        LongLong hash = MurmurHash3_x64_128(bytes, offset, length, HASH_SEED);
+
+        byte[] array = new byte[DIGEST_SIZE];
+        encodeBase62(hash.l1, array, 0);
+        encodeBase62(hash.l2, array, BASE62_DIGITS_PER_LONG);
+        return array;
+    }
+
+    private static void encodeBase62(long value, byte[] result, int resultIndex) {
         long cur = value;
         int base = DIGITS.length;
         for (int i = 0; i < BASE62_DIGITS_PER_LONG; i++) {
-            result.append(DIGITS[NumUtil.safeToInt(Long.remainderUnsigned(cur, base))]);
+            result[resultIndex + i] = DIGITS[NumUtil.safeToInt(Long.remainderUnsigned(cur, base))];
             cur = Long.divideUnsigned(cur, base);
         }
         GraalError.guarantee(cur == 0, "Too few loop iterations processing digits");
