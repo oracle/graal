@@ -240,7 +240,7 @@ public final class Vector128 implements TruffleObject {
 
     @ExportMessage
     protected void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length) throws InvalidBufferOffsetException {
-        if (byteOffset < 0 || length < 0 || byteOffset + length > getBufferSize(this)) {
+        if (byteOffset < 0 || length < 0 || byteOffset > getBufferSize(this) - length) {
             throw InvalidBufferOffsetException.create(byteOffset, length);
         }
         System.arraycopy(bytes, (int) byteOffset, destination, destinationOffset, length);
