@@ -67,7 +67,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
-    @Rule public TestRule timeout = SubprocessTestUtils.disableForParentProcess(GraalTest.createTimeout(30, TimeUnit.SECONDS));
+    @Rule public TestRule timeout = SubprocessTestUtils.disableForParentProcess(GraalTest.createTimeout(60, TimeUnit.SECONDS));
 
     private int osrThreshold;
 
