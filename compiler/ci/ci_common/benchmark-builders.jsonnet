@@ -22,8 +22,6 @@
     c.daily                    + hw.e3 + jdk + cc.libgraal + bench.microservice_benchmarks,
     c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.micros_graal_whitebox,
     c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.micros_graal_dist,
-    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.micros_misc_graal_dist,
-    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.micros_shootout_graal_dist,
     ]
   for jdk in cc.product_jdks
   ]),
