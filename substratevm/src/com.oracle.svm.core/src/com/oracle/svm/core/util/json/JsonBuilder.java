@@ -65,7 +65,7 @@ import java.util.ConcurrentModificationException;
  * }
  * }</pre>
  */
-public class JsonBuilder {
+public final class JsonBuilder {
 
     private final JsonWriter writer;
 
@@ -164,7 +164,7 @@ public class JsonBuilder {
      * Entries can be appended using either {@link #append(String, Object)} or
      * {@link #append(String)}.
      */
-    public class ObjectBuilder extends ExclusiveBuilder implements AutoCloseable {
+    public final class ObjectBuilder extends ExclusiveBuilder implements AutoCloseable {
 
         private boolean isFirst = true;
 
@@ -215,7 +215,7 @@ public class JsonBuilder {
      * <p>
      * Entries can be appended using either {@link #append(Object)} or {@link #nextEntry()}.
      */
-    public class ArrayBuilder extends ExclusiveBuilder implements AutoCloseable {
+    public final class ArrayBuilder extends ExclusiveBuilder implements AutoCloseable {
         private boolean isFirst = true;
 
         ArrayBuilder(ExclusiveBuilder parent) throws IOException {
@@ -272,7 +272,7 @@ public class JsonBuilder {
      * Instances of this type or not {@link AutoCloseable} and cannot be manually closed. The
      * instance is automatically cleaned up once it or its child finished writing.
      */
-    public class ValueBuilder extends ExclusiveBuilder {
+    public final class ValueBuilder extends ExclusiveBuilder {
         boolean wroteSomething = false;
 
         private ValueBuilder(ExclusiveBuilder parent) {
