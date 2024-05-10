@@ -955,7 +955,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).")
     private void blackenImageHeapRoots(ImageHeapInfo imageHeapInfo) {
         walkImageHeapRoots(imageHeapInfo, greyToBlackObjectVisitor);
     }

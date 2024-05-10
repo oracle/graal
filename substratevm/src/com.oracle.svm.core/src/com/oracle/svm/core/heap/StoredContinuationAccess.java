@@ -170,7 +170,7 @@ public final class StoredContinuationAccess {
     }
 
     @AlwaysInline("De-virtualize calls to ObjectReferenceVisitor")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
     public static boolean walkReferences(StoredContinuation s, ObjectReferenceVisitor visitor) {
         assert !Heap.getHeap().isInImageHeap(s) : "StoredContinuations in the image heap are read-only and don't need to be visited";
 
@@ -197,7 +197,7 @@ public final class StoredContinuationAccess {
     }
 
     @AlwaysInline("De-virtualize calls to visitor.")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
     public static void walkFrames(StoredContinuation s, ContinuationStackFrameVisitor visitor, ContinuationStackFrameVisitorData data) {
         assert !Heap.getHeap().isInImageHeap(s) : "StoredContinuations in the image heap are read-only and don't need to be visited";
 
@@ -225,7 +225,7 @@ public final class StoredContinuationAccess {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
     public static void walkFrameReferences(JavaFrame frame, CodeInfo codeInfo, ObjectReferenceVisitor visitor, Object holderObject) {
         NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
         long referenceMapIndex = frame.getReferenceMapIndex();
@@ -235,6 +235,7 @@ public final class StoredContinuationAccess {
     }
 
     public abstract static class ContinuationStackFrameVisitor {
+        @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
         public abstract void visitFrame(ContinuationStackFrameVisitorData data, Pointer sp, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ContinuationStackFrameVisitor visitor);
     }
 

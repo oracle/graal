@@ -74,6 +74,7 @@ public final class PodReferenceMapDecoder {
         return true;
     }
 
+    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static boolean callVisitor(Pointer baseAddress, ObjectReferenceVisitor visitor, Object obj, boolean isCompressed, UnsignedWord refOffset) {
         return visitor.visitObjectReferenceInline(baseAddress.add(refOffset), 0, isCompressed, obj);
