@@ -41,13 +41,14 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import jdk.graal.compiler.util.json.JSONParser;
-import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.util.json.JSONParser;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 public abstract class ConfigurationParser {
     public static InputStream openStream(URI uri) throws IOException {
@@ -61,6 +62,7 @@ public abstract class ConfigurationParser {
 
     public static final String CONDITIONAL_KEY = "condition";
     public static final String TYPE_REACHABLE_KEY = "typeReachable";
+    public static final String MODULE_KEY = "module";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final boolean strictSchema;
 
