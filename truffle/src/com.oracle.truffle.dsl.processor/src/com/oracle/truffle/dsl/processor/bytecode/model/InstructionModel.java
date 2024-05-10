@@ -272,16 +272,26 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public boolean isInstrumentation() {
+    public boolean isTagInstrumentation() {
         switch (kind) {
             case TAG_ENTER:
             case TAG_LEAVE:
             case TAG_LEAVE_VOID:
+            case TAG_RESUME:
+            case TAG_YIELD:
                 return true;
-            case CUSTOM:
-                return operation.kind == OperationKind.CUSTOM_INSTRUMENTATION;
             default:
                 return false;
+        }
+    }
+
+    public boolean isInstrumentation() {
+        if (isTagInstrumentation()) {
+            return true;
+        } else if (kind == InstructionKind.CUSTOM) {
+            return operation.kind == OperationKind.CUSTOM_INSTRUMENTATION;
+        } else {
+            return false;
         }
     }
 

@@ -488,6 +488,9 @@ public abstract class BytecodeNode extends Node {
     }
 
     private String dumpImpl(BytecodeLocation highlighedLocation) {
+        record IndexedInstruction(Instruction instruction, int index) {
+        }
+
         if (highlighedLocation != null && highlighedLocation.getBytecodeNode() != this) {
             throw new IllegalArgumentException("Invalid highlighted location. Belongs to a different BytecodeNode.");
         }
@@ -501,9 +504,14 @@ public abstract class BytecodeNode extends Node {
         int maxLabelSize = Math.min(80, instructions.stream().mapToInt((i) -> Instruction.formatLabel(i).length()).max().orElse(0));
         int maxArgumentSize = Math.min(100, instructions.stream().mapToInt((i) -> Instruction.formatArguments(i).length()).max().orElse(0));
 
-        String instructionsDump = formatList(instructions,
-                        (i) -> i.getBytecodeIndex() == highlightedBci,
-                        (i) -> Instruction.formatInstruction(i, maxLabelSize, maxArgumentSize));
+        List<IndexedInstruction> indexedInstructions = new ArrayList<>(instructions.size());
+        for (Instruction i : instructions) {
+            indexedInstructions.add(new IndexedInstruction(i, indexedInstructions.size()));
+        }
+
+        String instructionsDump = formatList(indexedInstructions,
+                        (i) -> i.instruction().getBytecodeIndex() == highlightedBci,
+                        (i) -> Instruction.formatInstruction(i.index(), i.instruction(), maxLabelSize, maxArgumentSize));
 
         int exceptionCount = exceptions.size();
         String exceptionDump = formatList(exceptions,
