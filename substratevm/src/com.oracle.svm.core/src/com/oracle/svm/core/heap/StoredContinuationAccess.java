@@ -256,7 +256,7 @@ public final class StoredContinuationAccess {
         }
 
         @Override
-        protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+        protected boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
             if (sp.aboveOrEqual(endSP)) {
                 return false;
             }
@@ -284,6 +284,11 @@ public final class StoredContinuationAccess {
             VMError.guarantee(CodeInfoAccess.isAOTImageCode(codeInfo));
 
             return true;
+        }
+
+        @Override
+        protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+            throw VMError.shouldNotReachHere("Continuations can't contain JIT compiled code.");
         }
     }
 }

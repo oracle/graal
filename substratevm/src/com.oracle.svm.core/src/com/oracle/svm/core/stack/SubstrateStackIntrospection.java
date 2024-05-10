@@ -99,7 +99,17 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+    public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
+        return visitFrame(sp, ip, codeInfo, null);
+    }
+
+    @Override
+    protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+        CodeInfo imageCodeInfo = CodeInfoTable.lookupImageCodeInfo(deoptStubIP);
+        return visitFrame(originalSP, deoptStubIP, imageCodeInfo, deoptimizedFrame);
+    }
+
+    private boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
         VirtualFrame virtualFrame = null;
         CodeInfoQueryResult info = null;
         FrameInfoQueryResult deoptInfo = null;
@@ -160,7 +170,6 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
         } while (virtualFrame != null || deoptInfo != null);
 
         return true;
-
     }
 
     private static boolean matchesDeoptAddress(CodePointer ip, ResolvedJavaMethod[] methods) {
@@ -181,7 +190,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
     private final Pointer sp;
     private final CodePointer ip;
     protected VirtualFrame virtualFrame;
-    private CodeInfoQueryResult codeInfo;
+    private final CodeInfoQueryResult codeInfo;
     private FrameInfoQueryResult frameInfo;
     private final int virtualFrameIndex;
 

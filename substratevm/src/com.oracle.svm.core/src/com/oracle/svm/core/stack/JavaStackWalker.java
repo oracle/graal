@@ -45,7 +45,6 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -387,12 +386,9 @@ public final class JavaStackWalker {
     }
 
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fatally fail.", calleeMustBe = false)
-    public static RuntimeException reportUnknownFrameEncountered(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
+    public static RuntimeException fatalErrorUnknownFrameEncountered(Pointer sp, CodePointer ip) {
         Log log = Log.log().string("Stack walk must walk only frames of known code:");
         log.string("  sp=").zhex(sp).string("  ip=").zhex(ip);
-        if (DeoptimizationSupport.enabled()) {
-            log.string("  deoptFrame=").object(deoptFrame);
-        }
         log.newline();
         throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code");
     }

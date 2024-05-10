@@ -386,23 +386,29 @@ final class BacktraceVisitor extends StackFrameVisitor {
     }
 
     @Override
-    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        if (deoptimizedFrame != null) {
-            for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
-                FrameInfoQueryResult frameInfo = frame.getFrameInfo();
-                if (!visitFrameInfo(frameInfo)) {
-                    return false;
-                }
-            }
-        } else if (!CodeInfoTable.isInAOTImageCode(ip)) {
+    protected boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
+        if (CodeInfoTable.isInAOTImageCode(ip)) {
+            visitAOTFrame(ip);
+        } else {
             CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
+            assert queryResult != null;
+
             for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
                 if (!visitFrameInfo(frameInfo)) {
                     return false;
                 }
             }
-        } else {
-            visitAOTFrame(ip);
+        }
+        return numFrames != limit;
+    }
+
+    @Override
+    protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+        for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
+            FrameInfoQueryResult frameInfo = frame.getFrameInfo();
+            if (!visitFrameInfo(frameInfo)) {
+                return false;
+            }
         }
         return numFrames != limit;
     }

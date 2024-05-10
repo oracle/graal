@@ -308,8 +308,13 @@ public class RuntimeCodeCache {
         }
 
         @Override
-        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo currentCodeInfo, DeoptimizedFrame deoptimizedFrame) {
+        public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo currentCodeInfo) {
             assert currentCodeInfo != codeInfoToCheck : currentCodeInfo.rawValue();
+            return true;
+        }
+
+        @Override
+        protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
             return true;
         }
     }

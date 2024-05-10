@@ -38,7 +38,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -138,16 +137,8 @@ public class CodeInfoTable {
         return result;
     }
 
-    public static boolean visitObjectReferences(Pointer sp, CodePointer ip, CodeInfo info, DeoptimizedFrame deoptimizedFrame, ObjectReferenceVisitor visitor) {
+    public static boolean visitObjectReferences(Pointer sp, CodePointer ip, CodeInfo info, ObjectReferenceVisitor visitor) {
         counters().visitObjectReferencesCount.inc();
-
-        if (deoptimizedFrame != null) {
-            /*
-             * It is a deoptimized frame. The DeoptimizedFrame object is stored in the frame, but it
-             * is pinned so we do not have to do anything.
-             */
-            return true;
-        }
 
         /*
          * NOTE: if this code does not execute in a VM operation, it is possible for the visited

@@ -1193,30 +1193,32 @@ public class HeapDumpWriter {
 
         @Override
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
-        protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-            if (deoptimizedFrame != null) {
-                markAsGCRoot(deoptimizedFrame);
+        protected boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
+            /*
+             * All references that are on the stack need to be marked as GC roots. Our information
+             * is not necessarily precise enough to identify the exact Java-level stack frame to
+             * which a reference belongs. Therefore, we just dump the data in a way that it gets
+             * associated with the deepest inlined Java-level stack frame of each compilation unit.
+             */
+            markStackValuesAsGCRoots(sp, ip, codeInfo);
 
-                for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
-                    visitFrame(frame.getFrameInfo());
-                    nextFrameId++;
-                }
-            } else {
-                /*
-                 * All references that are on the stack need to be marked as GC roots. Our
-                 * information is not necessarily precise enough to identify the exact Java-level
-                 * stack frame to which a reference belongs. Therefore, we just dump the data in a
-                 * way that it gets associated with the deepest inlined Java-level stack frame of
-                 * each compilation unit.
-                 */
-                markStackValuesAsGCRoots(sp, ip, codeInfo);
+            frameInfoCursor.initialize(codeInfo, ip, true);
+            while (frameInfoCursor.advance()) {
+                FrameInfoQueryResult frame = frameInfoCursor.get();
+                visitFrame(frame);
+                nextFrameId++;
+            }
+            return true;
+        }
 
-                frameInfoCursor.initialize(codeInfo, ip, true);
-                while (frameInfoCursor.advance()) {
-                    FrameInfoQueryResult frame = frameInfoCursor.get();
-                    visitFrame(frame);
-                    nextFrameId++;
-                }
+        @Override
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
+        protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+            markAsGCRoot(deoptimizedFrame);
+
+            for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
+                visitFrame(frame.getFrameInfo());
+                nextFrameId++;
             }
             return true;
         }
