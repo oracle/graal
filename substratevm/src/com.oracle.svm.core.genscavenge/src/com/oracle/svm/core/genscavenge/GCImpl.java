@@ -843,7 +843,7 @@ public final class GCImpl implements GC {
             DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(frame);
             if (deoptFrame == null) {
                 Pointer sp = frame.getSP();
-                CodeInfo codeInfo = CodeInfoAccess.convert(frame.getIPCodeInfo());
+                CodeInfo codeInfo = CodeInfoAccess.unsafeConvert(frame.getIPCodeInfo());
                 NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
                 long referenceMapIndex = frame.getReferenceMapIndex();
                 if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {

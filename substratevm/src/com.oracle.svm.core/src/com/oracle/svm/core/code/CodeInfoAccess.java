@@ -117,7 +117,7 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Should be called from the same method as acquireTether.", callerMustBe = true)
     public static CodeInfo convert(UntetheredCodeInfo untetheredInfo, Object tether) {
         assert UntetheredCodeInfoAccess.getTetherUnsafe(untetheredInfo) == null || UntetheredCodeInfoAccess.getTetherUnsafe(untetheredInfo) == tether;
-        return convert(untetheredInfo);
+        return unsafeConvert(untetheredInfo);
     }
 
     /**
@@ -125,7 +125,7 @@ public final class CodeInfoAccess {
      * but with less verification.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static CodeInfo convert(UntetheredCodeInfo untetheredInfo) {
+    public static CodeInfo unsafeConvert(UntetheredCodeInfo untetheredInfo) {
         assert isValid(untetheredInfo);
         return (CodeInfo) untetheredInfo;
     }
