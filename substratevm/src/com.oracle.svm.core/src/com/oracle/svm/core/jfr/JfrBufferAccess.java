@@ -55,8 +55,8 @@ public final class JfrBufferAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JfrBuffer allocate(JfrBufferType bufferType) {
-        long dataSize = SubstrateJVM.getThreadLocal().getThreadLocalBufferSize();
-        return allocate(WordFactory.unsigned(dataSize), bufferType);
+        UnsignedWord dataSize = SubstrateJVM.getThreadLocal().getThreadLocalBufferSize();
+        return allocate(dataSize, bufferType);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

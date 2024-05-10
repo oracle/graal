@@ -158,10 +158,8 @@ public class SamplerBufferPool {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private SamplerBuffer tryAllocateBuffer0() {
-        UnsignedWord headerSize = SamplerBufferAccess.getHeaderSize();
-        UnsignedWord dataSize = WordFactory.unsigned(SubstrateJVM.getThreadLocal().getThreadLocalBufferSize());
-
-        SamplerBuffer result = NullableNativeMemory.malloc(headerSize.add(dataSize), NmtCategory.JFR);
+        UnsignedWord dataSize = SubstrateJVM.getThreadLocal().getThreadLocalBufferSize();
+        SamplerBuffer result = NullableNativeMemory.malloc(SamplerBufferAccess.getTotalBufferSize(dataSize), NmtCategory.JFR);
         if (result.isNonNull()) {
             bufferCount++;
             result.setSize(dataSize);
