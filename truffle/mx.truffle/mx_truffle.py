@@ -538,6 +538,7 @@ def native_truffle_unittest(args):
     try:
         jdk = mx.get_jdk(tag='graalvm')
         unittest_distributions = ['mx:JUNIT-PLATFORM-NATIVE']
+        truffle_runtime_distributions = resolve_truffle_dist_names(True, True)
         test_classes_file = os.path.join(tmp, 'test_classes.txt')
 
         def collect_unittest_distributions(test_deps, vm_launcher, vm_args):
@@ -556,7 +557,7 @@ def native_truffle_unittest(args):
             '-Djunit.platform.listeners.uid.tracking.enabled=true',
             f'-Djunit.platform.listeners.uid.tracking.output.dir={os.path.join(tmp, "test-ids")}'
         ]
-        vm_args = enable_asserts_args + uid_tracking_args + mx.get_runtime_jvm_args(names=unittest_distributions) + module_args
+        vm_args = enable_asserts_args + uid_tracking_args + mx.get_runtime_jvm_args(names=unittest_distributions + truffle_runtime_distributions) + module_args
 
         # 2. Collect test ids for a native image build
         junit_console_launcher_with_args = [

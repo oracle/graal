@@ -1498,7 +1498,6 @@ suite = {
       "distDependencies" : [
         "sdk:POLYGLOT",
         "TRUFFLE_API",
-        "TRUFFLE_RUNTIME",
         "TRUFFLE_SL",
         "TRUFFLE_MODULARIZED_TEST_SEPARATE_MODULE_TEST",
       ],
@@ -2174,7 +2173,6 @@ suite = {
        ],
        "distDependencies" : [
          "TRUFFLE_API",
-         "TRUFFLE_RUNTIME",
          "TRUFFLE_SL",
          "TRUFFLE_TCK_COMMON",
          "TRUFFLE_TCK_TESTS",
