@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.BiConsumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -56,14 +57,25 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     private void parseTopLevelObject(EconomicMap<String, Object> obj) {
         Object resourcesObject = null;
         Object bundlesObject = null;
+        Object globsObject = null;
         MapCursor<String, Object> cursor = obj.getEntries();
         while (cursor.advance()) {
             if ("resources".equals(cursor.getKey())) {
                 resourcesObject = cursor.getValue();
             } else if ("bundles".equals(cursor.getKey())) {
                 bundlesObject = cursor.getValue();
+            } else if ("globs".equals(cursor.getKey())) {
+                globsObject = cursor.getValue();
             }
         }
+
+        if (globsObject != null) {
+            List<Object> globs = asList(globsObject, "Attribute 'globs' must be a list of glob patterns");
+            for (Object object : globs) {
+                parseGlobEntry(object, registry::addResources);
+            }
+        }
+
         if (resourcesObject != null) {
             if (resourcesObject instanceof EconomicMap) { // New format
                 EconomicMap<String, Object> resourcesObjectMap = (EconomicMap<String, Object>) resourcesObject;
@@ -143,5 +155,65 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         Object valueObject = resource.get(valueKey);
         String value = asString(valueObject, valueKey);
         resourceRegistry.accept(condition, value);
+    }
+
+    private void parseGlobEntry(Object data, BiConsumer<ConfigurationCondition, String> resourceRegistry) {
+        EconomicMap<String, Object> glob = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
+        checkAttributes(glob, "resource and resource bundle descriptor object", Collections.singletonList("glob"), List.of(CONDITIONAL_KEY, MODULE_KEY));
+        ConfigurationCondition condition = parseCondition(glob);
+
+        Object moduleObject = glob.get(MODULE_KEY);
+        String module = moduleObject == null ? "" : asString(moduleObject);
+
+        Object valueObject = glob.get("glob");
+        String value = asString(valueObject, "glob");
+        resourceRegistry.accept(condition, globToRegex(module, value));
+    }
+
+    private static String globToRegex(String module, String value) {
+        StringBuilder sb = new StringBuilder();
+        int pathLength = value.length();
+        int previousIndex = 0;
+        for (int i = 0; i < pathLength; i++) {
+            if (value.charAt(i) == '*') {
+                String part = value.substring(previousIndex, i);
+                sb.append(quoteValue(part));
+                sb.append('*');
+
+                if (i + 1 < pathLength && value.charAt(i + 1) == '*') {
+                    /* next char is also * so skip it as well */
+                    sb.append('*');
+                    i++;
+
+                    if (i + 1 < pathLength && value.charAt(i + 1) == '/') {
+                        /*
+                         * ** wildcard followed by / => do not include that / in next quote because
+                         * it will be parsed later
+                         */
+                        sb.append('/');
+                        i++;
+                    }
+
+                }
+                previousIndex = i + 1;
+            }
+        }
+
+        if (previousIndex < pathLength) {
+            String part = value.substring(previousIndex);
+            sb.append(quoteValue(part));
+        }
+
+        String quotedValue = sb.toString();
+        quotedValue = quotedValue.replace("**/", "@");
+        quotedValue = quotedValue.replace("**", "@");
+        quotedValue = quotedValue.replace("*", "[^/]*");
+        quotedValue = quotedValue.replace("@", "([^/]*(/|$))*");
+
+        return (module.isEmpty() ? "" : module + ":") + quotedValue;
+    }
+
+    private static String quoteValue(String value) {
+        return "\\Q" + value + "\\E";
     }
 }

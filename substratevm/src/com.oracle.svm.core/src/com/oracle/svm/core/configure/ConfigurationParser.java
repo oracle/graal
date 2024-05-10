@@ -61,6 +61,7 @@ public abstract class ConfigurationParser {
 
     public static final String CONDITIONAL_KEY = "condition";
     public static final String TYPE_REACHABLE_KEY = "typeReachable";
+    public static final String MODULE_KEY = "module";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final boolean strictSchema;
 
