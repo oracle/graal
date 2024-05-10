@@ -863,7 +863,7 @@ public abstract class PlatformThreads {
         assert !isVirtual(thread);
         if (thread != null && thread == currentThread.get()) {
             Pointer startSP = getCarrierSPOrElse(thread, callerSP);
-            return StackTraceUtils.getStackTrace(filterExceptions, startSP, WordFactory.nullPointer());
+            return StackTraceUtils.getCurrentThreadStackTrace(filterExceptions, startSP, WordFactory.nullPointer());
         }
         assert !filterExceptions : "exception stack traces can be taken only for the current thread";
         return StackTraceUtils.asyncGetStackTrace(thread);
@@ -885,7 +885,7 @@ public abstract class PlatformThreads {
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
              */
-            return StackTraceUtils.getStackTrace(false, startSP, WordFactory.nullPointer());
+            return StackTraceUtils.getCurrentThreadStackTrace(false, startSP, WordFactory.nullPointer());
         }
         if (carrierSP.isNonNull()) {
             /*
@@ -895,7 +895,7 @@ public abstract class PlatformThreads {
              */
             return StackTraceUtils.getStackTraceAtSafepoint(isolateThread, carrierSP, WordFactory.nullPointer());
         }
-        return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread);
+        return StackTraceUtils.getStackTraceAtSafepoint(isolateThread);
     }
 
     static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
