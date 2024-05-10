@@ -118,6 +118,10 @@ For other installation options, visit the [Downloads section](https://www.graalv
     native-image --initialize-at-build-time=SaxXMLParser -o buildtime-parser SaxXMLParser
     ```
 
+    Note that in this example, the static analysis optimizes `org.w3c.dom.Document` away and only types from the `com.sun.org.apache.xerces` package, which are also marked for build-time initialization, become part of the image heap. 
+    If your application adds additional types to the image heap, each type (or the corresponding package) needs to be marked for build-time initialization explicitly to fullfil the requirements of `--strict-image-heap`. 
+    An appropriate actionable error message will guide you through the process.
+
 6. Run and `time` the second executable for comparison:
     ```bash
     time ./buildtime-parser
