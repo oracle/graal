@@ -53,6 +53,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -147,7 +148,9 @@ public class SandboxPolicyTest {
 
     private static boolean supportsSandboxInstrument() {
         try (Engine engine = Engine.create()) {
-            return engine.getInstruments().containsKey("sandbox");
+            // Polyglot sandbox limits can only be used with runtimes that support enterprise
+            // extensions.
+            return engine.getInstruments().containsKey("sandbox") && TruffleTestAssumptions.isEnterpriseRuntime();
         }
     }
 

@@ -43,6 +43,8 @@ package com.oracle.truffle.tck.tests;
 import org.graalvm.polyglot.Engine;
 import org.junit.Assume;
 
+import java.util.regex.Pattern;
+
 public class TruffleTestAssumptions {
     private static final boolean spawnIsolate = Boolean.getBoolean("polyglot.engine.SpawnIsolate");
     private static final boolean aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
@@ -99,6 +101,19 @@ public class TruffleTestAssumptions {
             }
         }
         return optimizing;
+    }
+
+    private static volatile Boolean enterpriseRuntimeUsed;
+
+    public static boolean isEnterpriseRuntime() {
+        Boolean enterprise = enterpriseRuntimeUsed;
+        if (enterprise == null) {
+            try (Engine e = Engine.create()) {
+                enterprise = Pattern.compile("Oracle GraalVM( Isolated)?").matcher(e.getImplementationName()).matches();
+                enterpriseRuntimeUsed = enterprise;
+            }
+        }
+        return enterprise;
     }
 
     public static boolean isWeakEncapsulation() {
