@@ -64,7 +64,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
     }
 
     final TrieNode<K, V, E> put(K key, int hash, E entry) {
-        assert key != null && hash(key) == hash && key(entry).equals(key);
+        assert key != null && hash(key) == hash && key(entry).equals(key) : Arrays.asList(entry, key);
         return put(key, hash, entry, 0);
     }
 
@@ -211,7 +211,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
     }
 
     final TrieNode<K, V, E> combine(K key1, int hash1, E entry1, K key2, int hash2, E entry2, int shift) {
-        assert !key1.equals(key2);
+        assert !key1.equals(key2) : Arrays.asList(key1, key2);
         if (hash1 != hash2) {
             int pos1 = pos(hash1, shift);
             int pos2 = pos(hash2, shift);
@@ -394,7 +394,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
                 return null;
             } else {
                 E entry = (E) entries[index];
-                assert entry != null && key(entry).equals(key);
+                assert entry != null && key(entry).equals(key) : Arrays.asList(entry, key);
                 return entry;
             }
         }
@@ -408,7 +408,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
                     return new HashCollisionNode<>(hash, copyAndAppend(entries, entry));
                 } else {
                     E e = (E) entries[index];
-                    assert e != null && key(e).equals(key);
+                    assert e != null && key(e).equals(key) : Arrays.asList(e, key);
                     if (e.equals(entry)) {
                         return this;
                     } else {
@@ -427,7 +427,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
             if (index < 0) {
                 return this;
             } else {
-                assert entries[index] != null && key((E) entries[index]).equals(key);
+                assert entries[index] != null && key((E) entries[index]).equals(key) : Arrays.asList(entries[index], key);
                 assert entries.length >= 2;
                 if (entries.length == 2) {
                     return new BitmapNode<>(bit(this.hashcode, shift), copyAndRemove(entries, index));
