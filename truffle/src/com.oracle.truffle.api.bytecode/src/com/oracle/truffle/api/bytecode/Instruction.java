@@ -98,11 +98,14 @@ public abstract class Instruction {
 
     @Override
     public String toString() {
-        return formatInstruction(this, 40, 60);
+        return formatInstruction(-1, this, 40, 60);
     }
 
-    static String formatInstruction(Instruction instruction, int maxLabelWidth, int maxArgumentWidth) {
+    static String formatInstruction(int index, Instruction instruction, int maxLabelWidth, int maxArgumentWidth) {
         StringBuilder sb = new StringBuilder();
+        if (index != -1) {
+            sb.append(String.format("%3d ", index));
+        }
         String label = formatLabel(instruction);
         sb.append(label);
         appendSpaces(sb, maxLabelWidth - label.length());

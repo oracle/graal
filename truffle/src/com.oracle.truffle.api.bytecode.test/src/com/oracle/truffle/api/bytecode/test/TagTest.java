@@ -49,6 +49,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
 import org.junit.After;
@@ -82,6 +83,8 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -92,6 +95,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -148,10 +152,21 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @SuppressWarnings("unchecked")
-    record Event(int id, EventKind kind, int startBci, int endBci, Object value, Class<?>... tags) {
+    record Event(int id, EventKind kind, int startBci, int endBci, Object value, List<Class<?>> tags) {
         Event(EventKind kind, int startBci, int endBci, Object value, Class<?>... tags) {
-            this(-1, kind, startBci, endBci, value, tags);
+            this(-1, kind, startBci, endBci, value, List.of(tags));
         }
+
+        Event(int id, EventKind kind, int startBci, int endBci, Object value, Class<?>... tags) {
+            this(id, kind, startBci, endBci, value, List.of(tags));
+        }
+
+        @Override
+        public String toString() {
+            return "Event [id=" + id + ", kind=" + kind + ", startBci=" + "0x" + Integer.toHexString(startBci) + ", endBci=" + "0x" + Integer.toHexString(endBci) + ", value=" + value + ", tags=" +
+                            tags + "]";
+        }
+
     }
 
     private List<Event> attachEventListener(SourceSectionFilter filter) {
@@ -420,7 +435,7 @@ public class TagTest extends AbstractInstructionTest {
                 }
                 assertEquals("start bci at at index " + i, "0x" + Integer.toHexString(expectedEvent.startBci), "0x" + Integer.toHexString(actualEvent.startBci));
                 assertEquals("end bci at at index " + i, "0x" + Integer.toHexString(expectedEvent.endBci), "0x" + Integer.toHexString(actualEvent.endBci));
-                assertEquals("end bci at at index " + i, Set.of(expectedEvent.tags), Set.of(actualEvent.tags));
+                assertEquals("end bci at at index " + i, Set.copyOf(expectedEvent.tags), Set.copyOf(actualEvent.tags));
 
                 if (expectedEvent.id != -1) {
                     assertEquals("event id at at index " + i, expectedEvent.id, actualEvent.id);
@@ -1620,6 +1635,181 @@ public class TagTest extends AbstractInstructionTest {
     record ExpectedLocal(String name, Object value) {
     }
 
+    @Test
+    public void testOnStackTestInTagInstrumentationEnter1() {
+        AtomicReference<List<Event>> events0 = new AtomicReference<>();
+        triggerOnTag(StatementTag.class, () -> {
+            events0.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class, StatementTag.class, ExpressionTag.class).build()));
+        });
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            b.beginTag(StatementTag.class);
+            b.beginTag(ExpressionTag.class); // event collection is expected to begin here
+            b.emitLoadConstant(42);
+            b.endTag(ExpressionTag.class);
+            b.endTag(StatementTag.class);
+
+            b.endRoot();
+        });
+
+        node.getCallTarget().call();
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int expressionBegin = instructions.get(2).getBytecodeIndex();
+        int expressionEnd = instructions.get(4).getBytecodeIndex();
+        int statementBegin = instructions.get(1).getBytecodeIndex();
+        int statementEnd = instructions.get(5).getBytecodeIndex();
+        int rootBegin = instructions.get(0).getBytecodeIndex();
+        int rootEnd = instructions.get(6).getBytecodeIndex();
+
+        // make sure the first StatementTag is skipped
+        assertEvents(node, events0.get(),
+                        new Event(EventKind.ENTER, expressionBegin, expressionEnd, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, expressionBegin, expressionEnd, 42, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, statementBegin, statementEnd, 42, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, rootBegin, rootEnd, 42, RootTag.class));
+
+    }
+
+    @Test
+    public void testOnStackTestInTagInstrumentationEnter2() {
+        AtomicReference<List<Event>> events0 = new AtomicReference<>();
+        triggerOnTag(StatementTag.class, () -> {
+            events0.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class, StatementTag.class, ExpressionTag.class).build()));
+        });
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            b.beginTag(StatementTag.class);
+            b.beginTag(StatementTag.class); // event collection is expected to begin here
+            b.beginTag(ExpressionTag.class);
+            b.beginTag(StatementTag.class);
+            b.emitLoadConstant(42);
+            b.endTag(StatementTag.class);
+            b.endTag(ExpressionTag.class);
+            b.endTag(StatementTag.class);
+            b.endTag(StatementTag.class);
+
+            b.endRoot();
+        });
+
+        assertEquals(42, node.getCallTarget().call());
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int expressionBegin = instructions.get(3).getBytecodeIndex();
+        int expressionEnd = instructions.get(7).getBytecodeIndex();
+        int statement0Begin = instructions.get(1).getBytecodeIndex();
+        int statement0End = instructions.get(9).getBytecodeIndex();
+        int statement1Begin = instructions.get(2).getBytecodeIndex();
+        int statement1End = instructions.get(8).getBytecodeIndex();
+        int statement2Begin = instructions.get(4).getBytecodeIndex();
+        int statement2End = instructions.get(6).getBytecodeIndex();
+        int rootBegin = instructions.get(0).getBytecodeIndex();
+        int rootEnd = instructions.get(10).getBytecodeIndex();
+
+        // make sure the first StatementTag is skipped
+        assertEvents(node, events0.get(),
+                        new Event(EventKind.ENTER, statement1Begin, statement1End, null, StatementTag.class),
+                        new Event(EventKind.ENTER, expressionBegin, expressionEnd, null, ExpressionTag.class),
+                        new Event(EventKind.ENTER, statement2Begin, statement2End, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, statement2Begin, statement2End, 42, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, expressionBegin, expressionEnd, 42, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, statement1Begin, statement1End, 42, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, statement0Begin, statement0End, 42, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, rootBegin, rootEnd, 42, RootTag.class));
+
+    }
+
+    private void triggerOnTag(Class<? extends Tag> tag, Runnable r) {
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(tag).build(),
+                        new ExecutionEventListener() {
+                            private Runnable run = r;
+
+                            public void onEnter(EventContext c, VirtualFrame frame) {
+                                boundary();
+                            }
+
+                            @TruffleBoundary
+                            private void boundary() {
+                                if (run != null) {
+                                    run.run();
+                                }
+                                run = null;
+                            }
+
+                            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+                            }
+
+                            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+                            }
+                        });
+    }
+
+    @Test
+    public void testOnStackTestInOperation() {
+        AtomicReference<List<Event>> events0 = new AtomicReference<>();
+        AtomicReference<List<Event>> events1 = new AtomicReference<>();
+        AtomicReference<List<Event>> events2 = new AtomicReference<>();
+
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            b.beginTag(StatementTag.class);
+            b.beginTag(ExpressionTag.class);
+            b.beginInvokeRunnable();
+            b.emitLoadConstant((Runnable) () -> {
+                events0.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class).build()));
+            });
+            b.endInvokeRunnable();
+            b.endTag(ExpressionTag.class);
+            b.endTag(StatementTag.class);
+
+            b.beginTag(StatementTag.class);
+            b.beginTag(ExpressionTag.class);
+            b.beginInvokeRunnable();
+            b.emitLoadConstant((Runnable) () -> {
+                events1.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class, ExpressionTag.class).build()));
+            });
+            b.endInvokeRunnable();
+            b.endTag(ExpressionTag.class);
+            b.endTag(StatementTag.class);
+
+            b.beginTag(StatementTag.class);
+            b.beginTag(ExpressionTag.class);
+            b.beginInvokeRunnable();
+            b.emitLoadConstant((Runnable) () -> {
+                events2.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class,
+                                StatementTag.class, ExpressionTag.class).build()));
+            });
+            b.endInvokeRunnable();
+            b.endTag(ExpressionTag.class);
+            b.endTag(StatementTag.class);
+
+            b.endRoot();
+        });
+
+        assertNull(node.getCallTarget().call());
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int enterRoot1 = instructions.get(0).getBytecodeIndex();
+        int leaveRoot1 = instructions.get(20).getBytecodeIndex();
+
+        assertEvents(node, events0.get(),
+                        new Event(EventKind.RETURN_VALUE, enterRoot1, leaveRoot1, null, RootTag.class));
+
+        assertEvents(node, events1.get(),
+                        new Event(EventKind.RETURN_VALUE, 0xa, 0x10, null, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x12, 0x18, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x1c, 0x22, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, enterRoot1, leaveRoot1, null, RootTag.class));
+
+        assertEvents(node, events2.get(),
+                        new Event(EventKind.RETURN_VALUE, 0x1c, 0x22, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x1a, 0x24, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, enterRoot1, leaveRoot1, null, RootTag.class));
+    }
+
     @SuppressWarnings("serial")
     static class TestException extends AbstractBytecodeTruffleException {
 
@@ -1689,6 +1879,14 @@ public class TagTest extends AbstractInstructionTest {
         }
 
         @Operation
+        static final class InvokeRunnable {
+            @Specialization
+            public static void doRunnable(Runnable r) {
+                r.run();
+            }
+        }
+
+        @Operation
         static final class Throw {
             @Specialization
             public static void doInt(@Bind("$node") Node node, @Bind("$bci") int bci) {
@@ -1731,6 +1929,14 @@ public class TagTest extends AbstractInstructionTest {
             public static int doDefault(int a, @Bind("$node") Node node) {
                 TagTestLanguage.getThreadData(node).notifyEpilogValue(a);
                 return a;
+            }
+        }
+
+        @Operation
+        static final class InvokeRunnable {
+            @Specialization
+            public static void doRunnable(Runnable r) {
+                r.run();
             }
         }
 
