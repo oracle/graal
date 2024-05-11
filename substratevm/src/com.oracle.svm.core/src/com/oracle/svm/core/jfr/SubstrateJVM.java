@@ -42,6 +42,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
+import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -736,6 +737,9 @@ public class SubstrateJVM {
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                 JfrThreadLocal.stopRecording(isolateThread, false);
             }
+
+            /* Process any remaining full buffers (if there are any). */
+            SamplerBuffersAccess.processFullBuffers(false);
 
             /*
              * If JFR recording is restarted later on, then it needs to start with a clean state.
