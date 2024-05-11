@@ -76,6 +76,8 @@ class LibFFIContext {
 
     private final HashMap<Long, ClosureNativePointer> nativePointerMap = new HashMap<>();
 
+    final LoadFlags platformLoadFlags = LoadFlags.initLoadFlags(this);
+
     // initialized by native code
     // Checkstyle: stop field name check
     @CompilationFinal int RTLD_GLOBAL;
