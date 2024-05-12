@@ -49,6 +49,8 @@ public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProc
 
     static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton";
     static final String LAYERED_SINGLETON_INFO = "com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo";
+    static final String FEATURE_SINGLETON_NAME = "com.oracle.svm.core.layeredimagesingleton.FeatureSingleton";
+    static final String UNSAVED_SINGLETON_NAME = "com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton";
 
     private final Set<Element> processed = new HashSet<>();
 
@@ -71,7 +73,6 @@ public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProc
             out.println("");
             out.println("import org.graalvm.nativeimage.ImageSingletons;");
             out.println("import " + AutomaticallyRegisteredFeatureProcessor.ANNOTATION_CLASS_NAME + ";");
-            out.println("import " + AutomaticallyRegisteredFeatureProcessor.FEATURE_INTERFACE_CLASS_NAME + ";");
             if (platformsAnnotation != null) {
                 out.println("import org.graalvm.nativeimage.Platforms;");
             }
@@ -82,7 +83,8 @@ public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProc
                 out.println("@Platforms({" + platforms + "})");
             }
             out.println("@" + getSimpleName(AutomaticallyRegisteredFeatureProcessor.ANNOTATION_CLASS_NAME));
-            out.println("public final class " + featureClassName + " implements " + getSimpleName(AutomaticallyRegisteredFeatureProcessor.FEATURE_INTERFACE_CLASS_NAME) + " {");
+            out.println("public final class " + featureClassName + " implements " +
+                            String.join(", ", new String[]{AutomaticallyRegisteredFeatureProcessor.FEATURE_INTERFACE_CLASS_NAME, FEATURE_SINGLETON_NAME, UNSAVED_SINGLETON_NAME}) + " {");
             out.println("    @Override");
             out.println("    public void afterRegistration(AfterRegistrationAccess access) {");
 
