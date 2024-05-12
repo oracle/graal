@@ -32,7 +32,6 @@ from glob import glob
 
 import mx
 import mx_benchmark
-import mx_java_benchmarks
 import mx_sdk_benchmark
 from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS
 
@@ -142,7 +141,7 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                           ]
 }
 
-class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+class RenaissanceNativeImageBenchmarkSuite(mx_sdk_benchmark.RenaissanceBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     """
     Building an image for a renaissance benchmark requires all libraries for the group this benchmark belongs to
     and a harness project compiled with the same scala version as the benchmark.
@@ -404,7 +403,7 @@ _daCapo_exclude_lib = {
     'fop'         : ['saxon-9.1.0.8.jar', 'saxon-9.1.0.8-dom.jar'],  # Native-image picks the wrong service provider from these jars
 }
 
-class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     '''
     Some methods in DaCapo source are modified because they relied on the jar's nested structure,
     e.g. loading all configuration files for benchmarks from a nested directory.
@@ -535,7 +534,7 @@ _scala_daCapo_additional_lib = {
 }
 
 
-class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+class ScalaDaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     def name(self):
         return 'scala-dacapo-native-image'
 
@@ -617,33 +616,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
 mx_benchmark.add_bm_suite(ScalaDaCapoNativeImageBenchmarkSuite())
 
 
-class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
-    """
-    Console applications suite for Native Image
-    """
-
-    def name(self):
-        return 'console-native-image'
-
-    def benchSuiteName(self, bmSuiteArgs=None):
-        return 'console'
-
-    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
-        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        args = super(ConsoleNativeImageBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
-        self.benchmark_name = benchmarks[0]
-        return args
-
-    def checkSamplesInPgo(self):
-        return False
-
-
-mx_benchmark.add_bm_suite(ConsoleNativeImageBenchmarkSuite())
-
-
-class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008BenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+class SpecJVM2008NativeImageBenchmarkSuite(mx_sdk_benchmark.SpecJvm2008BenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     """
     SpecJVM2008 for Native Image
     """

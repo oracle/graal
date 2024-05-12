@@ -75,7 +75,7 @@ suite = {
                 "subdir": True,
             },
             {
-                "name" : "java-benchmarks",
+                "name" : "sdk",
                 "subdir": True,
             },
         ],
@@ -319,7 +319,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "java-benchmarks:DACAPO_SCALA",
+                "sdk:DACAPO_SCALA",
             ],
             "javaCompliance": "8+",
             "checkstyle": "com.oracle.truffle.espresso",
@@ -656,7 +656,7 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso.dacapo",
-                "java-benchmarks:DACAPO_SCALA",
+                "sdk:DACAPO_SCALA",
             ],
             "testDistribution": True,
             "manifestEntries" : {
