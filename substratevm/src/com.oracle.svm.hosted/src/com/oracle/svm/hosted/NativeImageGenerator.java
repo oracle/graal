@@ -173,6 +173,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -528,8 +529,9 @@ public class NativeImageGenerator {
 
         var hostedOptionValues = new HostedOptionValues(optionProvider.getHostedValues());
         SVMImageLayerSupport imageLayerSupport = SVMImageLayerSupport.initialize(hostedOptionValues);
-        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(), imageLayerSupport);
+        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport.enabled()), imageLayerSupport);
 
+        ImageSingletons.add(LayeredImageSingletonSupport.class, (LayeredImageSingletonSupport) ImageSingletonsSupportImpl.get());
         ImageSingletons.add(SVMImageLayerSupport.class, imageLayerSupport);
         ImageSingletons.add(ProgressReporter.class, reporter);
         ImageSingletons.add(DeadlockWatchdog.class, loader.watchdog);

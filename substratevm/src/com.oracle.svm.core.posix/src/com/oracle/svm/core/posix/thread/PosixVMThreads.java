@@ -51,11 +51,10 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)
 public final class PosixVMThreads extends VMThreads {
-    @Fold
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static PosixVMThreads singleton() {
         return (PosixVMThreads) ImageSingletons.lookup(VMThreads.class);
     }

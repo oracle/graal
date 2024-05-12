@@ -65,6 +65,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
@@ -85,6 +86,8 @@ import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
@@ -1115,7 +1118,17 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
-                Object result = ImageSingletons.lookup(key);
+                Object result = LayeredImageSingletonSupport.singleton().runtimeLookup(key);
+                if (result instanceof LayeredImageSingleton layeredSingleton && !layeredSingleton.getImageBuilderFlags().contains(LayeredImageSingleton.ImageBuilderFlags.RUNTIME_ACCESS)) {
+                    /*
+                     * Runtime compilation installs many singletons into the image which are
+                     * otherwise hosted only. Note the platform checks still apply and can be used
+                     * to ensure certain singleton are not installed into the image.
+                     */
+                    if (!RuntimeCompilation.isEnabled()) {
+                        throw b.bailout("Layered image singleton without runtime access is in runtime graph: " + result);
+                    }
+                }
                 b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(result), b.getMetaAccess()));
                 return true;
             }

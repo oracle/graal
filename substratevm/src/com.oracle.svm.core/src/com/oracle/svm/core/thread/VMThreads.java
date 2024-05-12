@@ -48,6 +48,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
+import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyImageSingleton;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
@@ -65,7 +66,6 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
@@ -73,9 +73,9 @@ import jdk.graal.compiler.replacements.nodes.AssertionNode;
 /**
  * Utility methods for the manipulation and iteration of {@link IsolateThread}s.
  */
-public abstract class VMThreads {
+public abstract class VMThreads implements RuntimeOnlyImageSingleton {
 
-    @Fold
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static VMThreads singleton() {
         return ImageSingletons.lookup(VMThreads.class);
     }
