@@ -29,12 +29,12 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Warmup;
 
-@Warmup(iterations = 1)
-@Measurement(iterations = 1)
-@Fork(1)
 /**
  * This dummy class is used to verify that the JMH microbenchmarking environment is set up properly.
  */
+@Warmup(iterations = 1)
+@Measurement(iterations = 1)
+@Fork(1)
 public class TestJMHBlackbox {
 
     @Benchmark
