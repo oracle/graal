@@ -3192,9 +3192,19 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
         expectedJdkVersion = mx.VersionSpec("11.0.13")
         if mx.get_jdk().version < expectedJdkVersion:
             mx.abort(benchmark + " needs at least JDK version " + str(expectedJdkVersion))
+        tika_build_time_init = [
+            "org.apache.pdfbox.rendering.ImageType",
+            "org.apache.pdfbox.rendering.ImageType$1",
+            "org.apache.pdfbox.rendering.ImageType$2",
+            "org.apache.pdfbox.rendering.ImageType$3",
+            "org.apache.pdfbox.rendering.ImageType$4",
+            "org.apache.xmlbeans.XmlObject",
+            "org.apache.xmlbeans.metadata.system.sXMLCONFIG.TypeSystemHolder",
+            "org.apache.xmlbeans.metadata.system.sXMLLANG.TypeSystemHolder",
+            "org.apache.xmlbeans.metadata.system.sXMLSCHEMA.TypeSystemHolder"
+        ]
         return [
-            # Workaround for wrong class initialization configuration in Quarkus Tika
-            '--initialize-at-build-time=org.apache.pdfbox.rendering.ImageType,org.apache.pdfbox.rendering.ImageType$1,org.apache.pdfbox.rendering.ImageType$2,org.apache.pdfbox.rendering.ImageType$3,org.apache.pdfbox.rendering.ImageType$4,org.apache.xmlbeans.XmlObject,org.apache.xmlbeans.metadata.system.sXMLCONFIG.TypeSystemHolder,org.apache.xmlbeans.metadata.system.sXMLLANG.TypeSystemHolder,org.apache.xmlbeans.metadata.system.sXMLSCHEMA.TypeSystemHolder',
+            f"--initialize-at-build-time={','.join(tika_build_time_init)}",
         ] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
@@ -3312,6 +3322,15 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, BaseMicroserviceBe
         return mx.library("QUARKUS_REGISTRY_" + self.version(), True).get_path(True)
 
     def extra_image_build_argument(self, benchmark, args):
+        quarkus_registry_features = [
+            "io.quarkus.jdbc.postgresql.runtime.graal.SQLXMLFeature",
+            "org.hibernate.graalvm.internal.GraalVMStaticFeature",
+            "io.quarkus.hibernate.validator.runtime.DisableLoggingFeature",
+            "io.quarkus.hibernate.orm.runtime.graal.DisableLoggingFeature",
+            "io.quarkus.runner.Feature",
+            "io.quarkus.runtime.graal.DisableLoggingFeature",
+            "io.quarkus.caffeine.runtime.graal.CacheConstructorsFeature"
+        ]
         return ['-J-Dlogging.initial-configurator.min-level=500',
                 '-J-Dio.quarkus.caffeine.graalvm.recordStats=true',
                 '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
@@ -3324,7 +3343,7 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, BaseMicroserviceBe
                 '-J-Duser.language=en',
                 '-J-Duser.country=GB',
                 '-J-Dfile.encoding=UTF-8',
-                '--features=io.quarkus.jdbc.postgresql.runtime.graal.SQLXMLFeature,org.hibernate.graalvm.internal.GraalVMStaticFeature,io.quarkus.hibernate.validator.runtime.DisableLoggingFeature,io.quarkus.hibernate.orm.runtime.graal.DisableLoggingFeature,io.quarkus.runner.Feature,io.quarkus.runtime.graal.DisableLoggingFeature,io.quarkus.caffeine.runtime.graal.CacheConstructorsFeature',
+                f"--features={','.join(quarkus_registry_features)}",
                 '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
                 '-J--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.text=ALL-UNNAMED',
@@ -3340,12 +3359,12 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, BaseMicroserviceBe
                 '--enable-url-protocols=http,https',
                 '-H:-UseServiceLoaderFeature',
                 '--exclude-config',
-                'io\.netty\.netty-codec',
-                '/META-INF/native-image/io\.netty/netty-codec/generated/handlers/reflect-config\.json',
+                r'io\.netty\.netty-codec',
+                r'/META-INF/native-image/io\.netty/netty-codec/generated/handlers/reflect-config\.json',
                 '--exclude-config',
-                'io\.netty\.netty-handler',
-                '/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json',
-                ] + super(BaseQuarkusBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
+                r'io\.netty\.netty-handler',
+                r'/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json',
+                ] + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)  # pylint: disable=bad-super-call
 
 mx_benchmark.add_bm_suite(BaseQuarkusRegistryBenchmark())
 
@@ -3393,7 +3412,7 @@ class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, BaseMicroservice
                     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
                     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
                     '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED']
-                + _mushopConfig[benchmark] + super(BaseMicronautBenchmarkSuite,self).extra_image_build_argument(benchmark, args))
+                + _mushopConfig[benchmark] + super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(benchmark, args))  # pylint: disable=bad-super-call
 
 mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
