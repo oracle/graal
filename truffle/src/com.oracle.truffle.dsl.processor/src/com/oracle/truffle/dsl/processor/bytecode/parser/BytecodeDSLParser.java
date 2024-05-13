@@ -691,7 +691,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 List<ExecutableElement> includedSpecializationElements = includedSpecializations.stream().map(s -> s.getMethod()).toList();
                 List<Signature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(includedSpecializationElements, customOperation, operation.constantOperands);
                 assert !customOperation.hasErrors();
-                Signature signature = SignatureParser.createPolymorphicSignature(includedSpecializationSignatures, includedSpecializationElements, customOperation, operation.constantOperands);
+                Signature signature = SignatureParser.createPolymorphicSignature(includedSpecializationSignatures, includedSpecializationElements, customOperation);
                 InstructionModel baseInstruction = operation.instruction;
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
                 quickenedInstruction.filteredSpecializations = includedSpecializations;

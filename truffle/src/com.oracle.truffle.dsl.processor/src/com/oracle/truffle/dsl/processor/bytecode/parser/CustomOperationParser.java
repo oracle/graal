@@ -204,7 +204,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return customOperation;
         }
 
-        Signature signature = SignatureParser.createPolymorphicSignature(signatures, specializations, customOperation, constantOperands);
+        Signature signature = SignatureParser.createPolymorphicSignature(signatures, specializations, customOperation);
         if (customOperation.hasErrors()) {
             return customOperation;
         }
@@ -630,10 +630,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         for (AnnotationMirror constantOperandMirror : constantOperands) {
             TypeMirror type = (TypeMirror) ElementUtils.getAnnotationValue(constantOperandMirror, "type").getValue();
-            String operandName = ElementUtils.getAnnotationValue(String.class, constantOperandMirror, "operandName");
+            String operandName = ElementUtils.getAnnotationValue(String.class, constantOperandMirror, "name");
             String javadoc = ElementUtils.getAnnotationValue(String.class, constantOperandMirror, "javadoc");
             Boolean specifyAtEnd = ElementUtils.getAnnotationValue(Boolean.class, constantOperandMirror, "specifyAtEnd", false);
-            ConstantOperandModel constantOperand = new ConstantOperandModel(type, operandName, javadoc, specifyAtEnd, constantOperandMirror);
+            int dimensions = ElementUtils.getAnnotationValue(Integer.class, constantOperandMirror, "dimensions");
+            ConstantOperandModel constantOperand = new ConstantOperandModel(type, operandName, javadoc, specifyAtEnd, dimensions, constantOperandMirror);
+
+            if (dimensions != 0) {
+                customOperation.addError(constantOperandMirror, ElementUtils.getAnnotationValue(constantOperandMirror, "dimensions"), "Constant operands with non-zero dimensions are not supported.");
+            }
 
             if (specifyAtEnd == null || !specifyAtEnd) {
                 before.add(constantOperand);

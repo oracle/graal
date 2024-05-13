@@ -57,9 +57,9 @@ import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
  * <li>In contrast to dynamic operands, which are computed by executing the "children" of an
  * operation at run time, constant operands are specified at parse time and require no run-time
  * computation.
- * <li>Constant operands are {@link CompilerDirectives#partialEvaluationConstant partial evaluation
- * constants}. Though an interpreter can use {@code LoadConstant} operations to supply dynamic
- * operands, those constants are *not guaranteed to be partial evaluation constants*.
+ * <li>Constant operands have {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal}
+ * semantics. Though an interpreter can use {@code LoadConstant} operations to supply dynamic
+ * operands, those constants are *not guaranteed to be compilation-final*.
  * <li>{@link Instrumentation} and {@link Prolog} operations are restricted and cannot encode
  * arbitrary dynamic operands. Constant operands can be used to encode other information needed by
  * these operations.
@@ -89,13 +89,17 @@ public @interface ConstantOperand {
 
     /**
      * Optional name for the constant operand. When this field is not provided, the Bytecode DSL
-     * will infer a name from the specializations' parameter.
+     * will infer a name from the specializations' parameters.
+     *
+     * @since 24.1
      */
-    String operandName() default "";
+    String name() default "";
 
     /**
      * Optional documentation for the constant operand. This documentation is included in the
      * javadoc for the generated interpreter.
+     *
+     * @since 24.1
      */
     String javadoc() default "";
 
@@ -110,8 +114,21 @@ public @interface ConstantOperand {
      * <p>
      * This flag is meaningless if the operation is not the {@link Prolog} and does not take dynamic
      * operands, since all constant operands will be supplied to a single {@code emit} method.
+     *
+     * @since 24.1
      */
     boolean specifyAtEnd() default false;
+
+    /**
+     * Specifies the number of array dimensions to be marked as compilation final. See
+     * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal#dimensions}.
+     * <p>
+     * The Bytecode DSL currently only supports a value of 0; that is, array elements are *not*
+     * compilation-final.
+     *
+     * @since 24.1
+     */
+    int dimensions() default 0;
 
     /**
      * Repeat annotation for {@link ConstantOperand}.

@@ -238,7 +238,7 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
     }
 
     @Operation
-    @ConstantOperand(type = int.class, javadoc = "The value to be divided")
+    @ConstantOperand(name = "dividend", type = int.class, javadoc = "The value to be divided")
     public static final class DivConstantDividend {
         @Specialization
         public static int doInts(int constantOperand, int dynamicOperand) {
@@ -247,7 +247,7 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
     }
 
     @Operation
-    @ConstantOperand(type = int.class, javadoc = "The value to divide by", specifyAtEnd = true)
+    @ConstantOperand(name = "divisor", type = int.class, javadoc = "The value to divide by", specifyAtEnd = true)
     public static final class DivConstantDivisor {
         @Specialization
         public static int doInts(int dynamicOperand, int constantOperand) {
@@ -437,6 +437,15 @@ abstract class ConstantOperandErrorRootNode extends RootNode implements Bytecode
     public static final class ConstantOperandInEpilogExceptional {
         @Specialization
         public static void doEpilog(VirtualFrame frame, int const1, AbstractTruffleException ate) {
+        }
+    }
+
+    @Operation
+    @ExpectError("Constant operands with non-zero dimensions are not supported.")
+    @ConstantOperand(type = int[].class, dimensions = 1)
+    public static final class UnsupportedDimensions {
+        @Specialization
+        public static void doOperation(VirtualFrame frame, int[] consts) {
         }
     }
 
