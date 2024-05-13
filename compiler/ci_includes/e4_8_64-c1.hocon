@@ -1,0 +1,9 @@
+builds += [
+  // JDK 8
+  ${e4_8_64.c1-tmpfs10g} ${bench-dacapo-hwloc}        ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-e4_8_64-c1" }
+  ${e4_8_64.c1-tmpfs10g} ${bench-scala-dacapo-hwloc}  ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-e4_8_64-c1", timelimit: "1:00:00" }
+  ${e4_8_64.c1} ${bench-specjvm2008-Single}           ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-e4_8_64-c1" }
+  ${e4_8_64.c1} ${bench-specjvm2008-OneVM}            ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-OneVM-linux-e4_8_64-c1" }
+  ${e4_8_64.c1} ${bench-specjbb2015}                  ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-e4_8_64-c1" }
+#  ${e4_8_64.c1} ${bench-micros-graal-dist}           ${oraclejdk8} { targets: [bench, weekly], name: "bench-jmh-micros-graal-dist-linux-e4_8_64-c1" }
+]
