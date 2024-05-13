@@ -936,7 +936,8 @@ public class InternalResourceTest {
         @TruffleBoundary
         @SuppressWarnings("try")
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
+            Path resourcePath = contextArguments.length == 1 ? Path.of((String) contextArguments[0]) : null;
+            try (TemporaryResourceCacheRoot cache = resourcePath != null ? new TemporaryResourceCacheRoot(resourcePath, true) : new TemporaryResourceCacheRoot()) {
                 env.getInternalResource(SourcesResource.ID);
                 env.getInternalResource(LibraryResource.ID);
             }
@@ -977,7 +978,7 @@ public class InternalResourceTest {
         System.setProperty("polyglotimpl.TraceInternalResources", "true");
         System.setProperty("polyglot.engine.resourcePath", tmpDir.toString());
         try (Context context = Context.create()) {
-            AbstractExecutableTestLanguage.execute(context, TestLogging.class);
+            AbstractExecutableTestLanguage.execute(context, TestLogging.class, tmpDir.toString());
             String[] lines = testErr.toString().split("\n");
             String line = findLine("^\\[engine\\]\\[resource\\].*" + languageId + "::" + SourcesResource.ID, lines);
             assertNotNull(line);
@@ -989,7 +990,6 @@ public class InternalResourceTest {
             System.getProperties().remove("polyglot.engine.resourcePath");
             System.getProperties().remove("polyglotimpl.TraceInternalResources");
             System.setErr(originalErr);
-            delete(tmpDir);
         }
     }
 
