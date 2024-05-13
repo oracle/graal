@@ -113,8 +113,9 @@ public class SignatureParser {
             // Process constant operands (before).
             for (int i = 0; i < constantOperands.before().size(); i++) {
                 VariableElement operand = operands.get(i);
-                isValid = checkConstantOperandParam(operand, constantOperands.before().get(i), errorTarget) && isValid;
-                constantOperandsBefore.add(operand.getSimpleName().toString());
+                ConstantOperandModel constantOperand = constantOperands.before().get(i);
+                isValid = checkConstantOperandParam(operand, constantOperand, errorTarget) && isValid;
+                constantOperandsBefore.add(constantOperand.getNameOrDefault(operand.getSimpleName().toString()));
             }
 
             // Process dynamic operands.
@@ -161,8 +162,9 @@ public class SignatureParser {
             int constantAfterOffset = dynamicOffset + numDynamicOperands;
             for (int i = 0; i < constantOperands.after().size(); i++) {
                 VariableElement operand = operands.get(constantAfterOffset + i);
-                isValid = checkConstantOperandParam(operand, constantOperands.after().get(i), errorTarget) && isValid;
-                constantOperandsAfter.add(operand.getSimpleName().toString());
+                ConstantOperandModel constantOperand = constantOperands.after().get(i);
+                isValid = checkConstantOperandParam(operand, constantOperand, errorTarget) && isValid;
+                constantOperandsAfter.add(constantOperand.getNameOrDefault(operand.getSimpleName().toString()));
             }
         }
 
@@ -307,12 +309,12 @@ public class SignatureParser {
      * Also accumulates individual signatures into the {@code signatures} parameter, so they can be
      * inspected individually.
      */
-    public static Signature createPolymorphicSignature(List<Signature> signatures, List<ExecutableElement> specializations, MessageContainer customOperation, ConstantOperands constantOperands) {
+    public static Signature createPolymorphicSignature(List<Signature> signatures, List<ExecutableElement> specializations, MessageContainer customOperation) {
         assert !signatures.isEmpty();
         assert signatures.size() == specializations.size();
         Signature polymorphicSignature = signatures.get(0);
         for (int i = 1; i < signatures.size(); i++) {
-            polymorphicSignature = mergeSignatures(signatures.get(i), polymorphicSignature, specializations.get(i), customOperation, constantOperands);
+            polymorphicSignature = mergeSignatures(signatures.get(i), polymorphicSignature, specializations.get(i), customOperation);
             if (polymorphicSignature == null) {
                 break;
             }
@@ -320,7 +322,7 @@ public class SignatureParser {
         return polymorphicSignature;
     }
 
-    private static Signature mergeSignatures(Signature a, Signature b, Element el, MessageContainer errorTarget, ConstantOperands constantOperands) {
+    private static Signature mergeSignatures(Signature a, Signature b, Element el, MessageContainer errorTarget) {
         if (a.isVariadic != b.isVariadic) {
             if (errorTarget != null) {
                 errorTarget.addError(el, "Error calculating operation signature: either all or none of the specializations must be variadic (i.e., have a @%s annotated parameter)",
@@ -363,8 +365,7 @@ public class SignatureParser {
             mergedTypes.add(mergeIfPrimitiveType(a.context, a.operandTypes.get(i), b.operandTypes.get(i)));
         }
         return new Signature(newReturnType, mergedTypes, a.isVariadic, a.localSetterCount, a.localSetterRangeCount,
-                        mergeConstantOperands(a.constantOperandsBefore, constantOperands.before()),
-                        mergeConstantOperands(a.constantOperandsAfter, constantOperands.after()));
+                        a.constantOperandsBefore, a.constantOperandsAfter);
     }
 
     private static TypeMirror mergeIfPrimitiveType(ProcessorContext context, TypeMirror a, TypeMirror b) {
@@ -374,21 +375,4 @@ public class SignatureParser {
             return context.getType(Object.class);
         }
     }
-
-    private static List<String> mergeConstantOperands(List<String> a, List<ConstantOperandModel> constantOperandModels) {
-        int count = constantOperandModels.size();
-        List<String> merged = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            ConstantOperandModel constantOperand = constantOperandModels.get(i);
-            if (!constantOperand.name().isEmpty()) {
-                // explicit name overrides declared parameter names
-                merged.add(constantOperand.name());
-            } else {
-                // use the first signature's name. we emitted a warning earlier if they differed
-                merged.add(a.get(i));
-            }
-        }
-        return merged;
-    }
-
 }
