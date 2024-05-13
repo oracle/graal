@@ -65,10 +65,11 @@ public abstract class AssemblerTest extends GraalTest {
 
     @Before
     public void disable() {
-        // These tests all simply inject a chunk of assembly as the body of a compiled method. Some
-        // configurations have requirements on the assembly generated in the prolog which are
-        // violated by doing this.
-        Assume.assumeFalse("can't work on HotSpot with nmethod entry barriers", providers.getPlatformConfigurationProvider().getBarrierSet() instanceof ZBarrierSet);
+        // These tests all simply inject a chunk of assembly as the body of an nmethod.
+        // As of JDK-8329982, HotSpot requires all JVMCI installed code to include
+        // nmethod entry barriers. For simplicity, these tests are simply disabled
+        // when running on HotSpot.
+        Assume.assumeFalse("HotSpot requires nmethod entry barriers", backend.getClass().getName().toLowerCase().contains("hotspot"));
     }
 
     public interface CodeGenTest {
