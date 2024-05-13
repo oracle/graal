@@ -336,8 +336,7 @@ public class SubstrateJVM {
             return;
         }
 
-        JfrEndRecordingOperation vmOp = new JfrEndRecordingOperation();
-        vmOp.enqueue();
+        recorderThread.endRecording();
     }
 
     /**
@@ -718,7 +717,7 @@ public class SubstrateJVM {
         }
     }
 
-    private static class JfrEndRecordingOperation extends JavaVMOperation {
+    static class JfrEndRecordingOperation extends JavaVMOperation {
         JfrEndRecordingOperation() {
             super(VMOperationInfos.get(JfrEndRecordingOperation.class, "JFR end recording", SystemEffect.SAFEPOINT));
         }
@@ -730,6 +729,10 @@ public class SubstrateJVM {
          */
         @Override
         protected void operate() {
+            if (!SubstrateJVM.get().recording) {
+                return;
+            }
+
             SubstrateJVM.get().recording = false;
             JfrExecutionSampler.singleton().update();
 
