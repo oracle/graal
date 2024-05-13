@@ -55,6 +55,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
+import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -155,6 +156,30 @@ public class ConstantOperandTest {
     }
 
     @Test
+    public void testInstrumentationWithConstantAndYield() {
+        /**
+         * Regression test: instrumentation constants should be emitted even when instrumentation is
+         * disabled, otherwise the layout of the constant pool changes. We expect the layout to be
+         * the same in order to update continuation locations after reparsing.
+         */
+        ConstantOperandTestRootNode root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginYield();
+            b.beginReplaceValue();
+            b.emitLoadConstant(42);
+            b.endReplaceValue(123);
+            b.endYield();
+            b.endRoot();
+        });
+        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call();
+        assertEquals(42, cont.getResult());
+
+        root.getRootNodes().update(ConstantOperandTestRootNodeGen.newConfigBuilder().addInstrumentation(ReplaceValue.class).build());
+        cont = (ContinuationResult) root.getCallTarget().call();
+        assertEquals(123, cont.getResult());
+    }
+
+    @Test
     public void testConstantOperandsInProlog() {
         ConstantOperandsInPrologTestRootNode root = ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
             b.beginRoot(LANGUAGE, "foo");
@@ -177,9 +202,35 @@ public class ConstantOperandTest {
         assertEquals(List.of("bar", 5), root2.prologEvents);
     }
 
+    @Test
+    public void testConstantOperandsInPrologNestedRoot() {
+        List<ConstantOperandsInPrologTestRootNode> roots = ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot(LANGUAGE, "foo");
+
+            b.beginRoot(LANGUAGE, "bar");
+            b.beginReturn();
+            b.emitLoadConstant(234L);
+            b.endReturn();
+            b.endRoot(123);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot(1);
+        }).getNodes();
+
+        ConstantOperandsInPrologTestRootNode foo = roots.get(0);
+        assertEquals(42L, foo.getCallTarget().call());
+        assertEquals(List.of("foo", 1), foo.prologEvents);
+
+        ConstantOperandsInPrologTestRootNode bar = roots.get(1);
+        assertEquals(234L, bar.getCallTarget().call());
+        assertEquals(List.of("bar", 123), bar.prologEvents);
+    }
+
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
 abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeRootNode {
 
     protected ConstantOperandTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
