@@ -3593,11 +3593,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
                 b.returnStatement();
                 b.end();
-            } else if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
-                int mask = 1 << operation.instrumentationIndex;
-                b.startIf().string("(instrumentations & ").string("0x", Integer.toHexString(mask)).string(") == 0").end().startBlock();
-                b.returnStatement();
-                b.end();
             } else if (operation.isSourceOnly()) {
                 b.startIf().string("!parseSources").end().startBlock();
                 b.returnStatement();
@@ -3608,6 +3603,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("serialization != null").end().startBlock();
                 createSerializeBegin(operation, b);
                 b.statement("return");
+                b.end();
+            }
+
+            List<String> constantOperandIndices = emitConstantBeginOperands(b, operation);
+
+            if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
+                int mask = 1 << operation.instrumentationIndex;
+                b.startIf().string("(instrumentations & ").string("0x", Integer.toHexString(mask)).string(") == 0").end().startBlock();
+                b.returnStatement();
                 b.end();
             }
 
@@ -3655,7 +3659,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * referenced by the returned CodeTree. We have to call it before we start the
              * beginOperation call.
              */
-            CodeTree operationData = createOperationBeginData(b, operation);
+            CodeTree operationData = createOperationBeginData(b, operation, constantOperandIndices);
             if (operationData != null) {
                 String dataClassName = getDataClassName(operation);
                 b.declaration(dataClassName, "operationData", operationData);
@@ -3839,7 +3843,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("operationData.prologBci = bci");
                     }
 
-                    buildEmitOperationInstruction(b, model.prolog.operation);
+                    List<String> constantOperandIndices = emitConstantOperands(b, model.prolog.operation);
+                    buildEmitOperationInstruction(b, model.prolog.operation, constantOperandIndices);
                 }
                 if (model.epilogReturn != null) {
                     buildBegin(b, model.epilogReturn.operation);
@@ -3957,7 +3962,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             });
         }
 
-        private CodeTree createOperationBeginData(CodeTreeBuilder b, OperationModel operation) {
+        private CodeTree createOperationBeginData(CodeTreeBuilder b, OperationModel operation, List<String> constantOperandIndices) {
             String className = getDataClassName(operation);
             return switch (operation.kind) {
                 case STORE_LOCAL, STORE_LOCAL_MATERIALIZED -> {
@@ -4024,15 +4029,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
 
                         CodeTreeBuilder constantsArrayBuilder = CodeTreeBuilder.createBuilder();
-                        if (constantArguments == 0) {
+                        if (constantOperandIndices == null || constantOperandIndices.size() == 0) {
                             args[1] = EMPTY_INT_ARRAY;
                         } else {
                             constantsArrayBuilder.startNewArray(arrayOf(context.getType(int.class)), null);
-                            for (int i = 0; i < constantArguments; i++) {
-                                String argumentName = operation.getOperationBeginArgumentName(i);
-                                String constantPoolIndex = operation.instruction.signature.constantOperandsBefore.get(i) + "Index";
-                                b.declaration(type(int.class), constantPoolIndex, "constantPool.addConstant(" + argumentName + ")");
-                                constantsArrayBuilder.string(constantPoolIndex);
+                            for (String constantIndex : constantOperandIndices) {
+                                constantsArrayBuilder.string(constantIndex);
                             }
                             constantsArrayBuilder.end();
                             args[1] = constantsArrayBuilder.toString();
@@ -4154,11 +4156,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
                 b.returnStatement();
                 b.end();
-            } else if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
-                int mask = 1 << operation.instrumentationIndex;
-                b.startIf().string("(instrumentations & ").string("0x", Integer.toHexString(mask)).string(") == 0").end().startBlock();
-                b.returnStatement();
-                b.end();
             } else if (operation.isSourceOnly()) {
                 b.startIf().string("!parseSources").end().startBlock();
                 b.returnStatement();
@@ -4169,6 +4166,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("serialization != null").end().startBlock();
                 createSerializeEnd(operation, b);
                 b.statement("return");
+                b.end();
+            }
+
+            List<String> constantOperandIndices = emitConstantOperands(b, operation);
+
+            if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
+                int mask = 1 << operation.instrumentationIndex;
+                b.startIf().string("(instrumentations & ").string("0x", Integer.toHexString(mask)).string(") == 0").end().startBlock();
+                b.returnStatement();
                 b.end();
             }
 
@@ -4273,7 +4279,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (model.enableTagInstrumentation) {
                         b.statement("doEmitTagYield()");
                     }
-                    buildEmitOperationInstruction(b, operation);
+                    buildEmitOperationInstruction(b, operation, null);
 
                     if (model.enableTagInstrumentation) {
                         b.statement("doEmitTagResume()");
@@ -4282,7 +4288,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case RETURN:
                     emitCastCurrentOperationData(b, operation);
                     b.statement("doEmitReturn(operationData.childBci)");
-                    buildEmitOperationInstruction(b, operation);
+                    buildEmitOperationInstruction(b, operation, null);
                     b.statement("markReachable(false)");
                     break;
                 case TAG:
@@ -4387,7 +4393,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             // it should only be emitted in doEmitReturn
                             break;
                         }
-                        buildEmitOperationInstruction(b, operation);
+                        buildEmitOperationInstruction(b, operation, constantOperandIndices);
                     }
                     break;
             }
@@ -4539,7 +4545,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
             }
 
-            buildEmitOperationInstruction(b, model.returnOperation);
+            buildEmitOperationInstruction(b, model.returnOperation, null);
 
             b.startStatement().startCall("endOperation");
             b.tree(createOperationConstant(rootOperation));
@@ -4847,11 +4853,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
         }
 
-        private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation) {
-            buildEmitOperationInstruction(b, operation, null, "operationSp");
+        private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, List<String> constantOperandIndices) {
+            buildEmitOperationInstruction(b, operation, null, "operationSp", constantOperandIndices);
         }
 
-        private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, String customChildBci, String sp) {
+        private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, String customChildBci, String sp, List<String> constantOperandIndices) {
             String[] args = switch (operation.kind) {
                 case LOAD_LOCAL -> {
                     if (model.enableLocalScoping && model.usesBoxingElimination()) {
@@ -4974,7 +4980,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
                     yield new String[]{"constantPoolIndex"};
                 }
-                case CUSTOM, CUSTOM_INSTRUMENTATION -> buildCustomInitializer(b, operation, operation.instruction, customChildBci, sp);
+                case CUSTOM, CUSTOM_INSTRUMENTATION -> buildCustomInitializer(b, operation, operation.instruction, customChildBci, sp, constantOperandIndices);
                 case CUSTOM_SHORT_CIRCUIT -> throw new AssertionError("Tried to emit a short circuit instruction directly. These operations should only be emitted implicitly.");
                 default -> throw new AssertionError("Reached an operation " + operation.name + " that cannot be initialized. This is a bug in the Bytecode DSL processor.");
             };
@@ -5009,6 +5015,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = ex.createBuilder();
 
+            if (model.enableSerialization && !operation.isInternal) {
+                b.startIf().string("serialization != null").end().startBlock();
+                createSerializeBegin(operation, b);
+                b.statement("return");
+                b.end();
+            }
+
+            List<String> constantOperandIndices = emitConstantOperands(b, operation);
+
             if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
                 int mask = 1 << operation.instrumentationIndex;
                 b.startIf().string("(instrumentations & ").string("0x", Integer.toHexString(mask)).string(") == 0").end().startBlock();
@@ -5016,12 +5031,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            if (model.enableSerialization && !operation.isInternal) {
-                b.startIf().string("serialization != null").end().startBlock();
-                createSerializeBegin(operation, b);
-                b.statement("return");
-                b.end();
-            }
             if (operation.isCustom() && !operation.customModel.implicitTags.isEmpty()) {
                 VariableElement tagConstants = lookupTagConstant(operation.customModel.implicitTags);
                 if (tagConstants != null) {
@@ -5061,7 +5070,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(2);
             } else {
                 assert operation.instruction != null;
-                buildEmitOperationInstruction(b, operation);
+                buildEmitOperationInstruction(b, operation, constantOperandIndices);
             }
             switch (operation.kind) {
                 case BRANCH:
@@ -5088,7 +5097,95 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private String[] buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction, String customChildBci, String sp) {
+        /**
+         * Helper to emit declarations for each constant operand inside a begin method.
+         *
+         * This method should be called before any early exit checks (e.g., checking whether an
+         * instrumentation is enabled) so that the constant pool is stable. However, it should be
+         * called *after* the serialization check (there is no constant pool for serialization).
+         *
+         * Returns the names of the declared variables for later use in code gen.
+         */
+        private List<String> emitConstantBeginOperands(CodeTreeBuilder b, OperationModel operation) {
+            InstructionModel instruction = operation.instruction;
+            if (instruction == null) {
+                return List.of();
+            }
+            List<String> constantOperandsBefore = instruction.signature.constantOperandsBefore;
+            int numConstantOperands = constantOperandsBefore.size();
+            if (numConstantOperands == 0) {
+                return List.of();
+            }
+
+            List<String> result = new ArrayList<>(numConstantOperands);
+            for (int i = 0; i < numConstantOperands; i++) {
+                /**
+                 * Eagerly allocate space for the constants. Even if the node is not emitted (e.g.,
+                 * it's a disabled instrumentation), we need the constant pool to be stable.
+                 */
+                String argumentName = operation.getOperationBeginArgumentName(i);
+                String constantPoolIndex = operation.instruction.signature.constantOperandsBefore.get(i) + "Index";
+                b.declaration(type(int.class), constantPoolIndex, "constantPool.addConstant(" + argumentName + ")");
+                result.add(constantPoolIndex);
+            }
+            return result;
+        }
+
+        /**
+         * Helper to emit declarations for each constant operand inside an emit/end method.
+         *
+         * This method should be called before any early exit checks (e.g., checking whether an
+         * instrumentation is enabled) so that the constant pool is stable. However, it should be
+         * called *after* the serialization check (there is no constant pool for serialization).
+         *
+         * Returns the names of the declared variables for later use in code gen.
+         */
+        private List<String> emitConstantOperands(CodeTreeBuilder b, OperationModel operation) {
+            InstructionModel instruction = operation.instruction;
+            if (instruction == null) {
+                return List.of();
+            }
+            List<String> constantOperandsBefore = instruction.signature.constantOperandsBefore;
+            List<String> constantOperandAfter = instruction.signature.constantOperandsAfter;
+            int numConstantOperands = constantOperandsBefore.size() + constantOperandAfter.size();
+            if (numConstantOperands == 0) {
+                return List.of();
+            }
+
+            boolean inEmit = operation.numChildren == 0;
+            List<String> result = new ArrayList<>(numConstantOperands);
+            for (int i = 0; i < numConstantOperands; i++) {
+                if (i < constantOperandsBefore.size()) {
+                    if (inEmit) {
+                        String variable = constantOperandsBefore.get(i) + "Index";
+                        b.startDeclaration(type(int.class), variable);
+                        b.string("constantPool.addConstant(" + operation.getOperationBeginArgumentName(i) + ")");
+                        b.end();
+                        result.add(variable);
+                    } else {
+                        result.add("operationData.constants[" + i + "]");
+                    }
+                } else {
+                    if (model.prolog != null && operation == model.prolog.operation) {
+                        /**
+                         * Special case: when emitting the prolog in beginRoot, end constants are
+                         * not yet known. They will be patched in endRoot.
+                         */
+                        result.add(UNINIT);
+                    } else {
+                        int afterI = i - instruction.signature.getConstantOperandsBeforeCount();
+                        String variable = instruction.signature.constantOperandsAfter.get(afterI) + "Index";
+                        b.startDeclaration(type(int.class), variable);
+                        b.string("constantPool.addConstant(" + operation.getOperationEndArgumentName(afterI) + ")");
+                        b.end();
+                        result.add(variable);
+                    }
+                }
+            }
+            return result;
+        }
+
+        private String[] buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction, String customChildBci, String sp, List<String> constantOperandIndices) {
             assert operation.kind != OperationKind.CUSTOM_SHORT_CIRCUIT;
 
             if (instruction.signature.isVariadic) {
@@ -5140,39 +5237,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             }
                         }
                     }
-                    case CONSTANT -> {
-                        String constantPoolIndex;
-                        if (constantIndex < instruction.signature.getConstantOperandsBeforeCount()) {
-                            String constantName = instruction.signature.constantOperandsBefore.get(constantIndex);
-                            constantPoolIndex = constantName + "Index";
-                            b.startDeclaration(type(int.class), constantPoolIndex);
-                            if (inEmit) {
-                                String argumentName = operation.getOperationBeginArgumentName(constantIndex);
-                                b.string("constantPool.addConstant(" + argumentName + ")");
-                            } else {
-                                b.string("operationData.constants[" + constantIndex + "]");
-                            }
-                            b.end();
-                        } else {
-                            int constantOperandsAfterIndex = constantIndex - instruction.signature.getConstantOperandsBeforeCount();
-                            String constantName = instruction.signature.constantOperandsAfter.get(constantOperandsAfterIndex);
-                            constantPoolIndex = constantName + "Index";
-                            b.startDeclaration(type(int.class), constantPoolIndex);
-                            if (model.prolog != null && operation == model.prolog.operation) {
-                                /**
-                                 * Special case: when emitting the prolog in beginRoot, end
-                                 * constants are not yet known. They will be patched in endRoot.
-                                 */
-                                b.string(UNINIT);
-                            } else {
-                                String argumentName = operation.getOperationEndArgumentName(constantOperandsAfterIndex);
-                                b.string("constantPool.addConstant(" + argumentName + ")");
-                            }
-                            b.end();
-                        }
-                        constantIndex++;
-                        yield constantPoolIndex;
-                    }
+                    case CONSTANT -> constantOperandIndices.get(constantIndex++);
                     case LOCAL_SETTER -> {
                         String arg = "localSetter" + localSetterIndex;
                         b.startAssign("int " + arg);
@@ -6551,7 +6616,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.epilogReturn != null) {
                 b.startCase().tree(createOperationConstant(model.epilogReturn.operation)).end();
                 b.startBlock();
-                buildEmitOperationInstruction(b, model.epilogReturn.operation, "childBci", "i");
+                buildEmitOperationInstruction(b, model.epilogReturn.operation, "childBci", "i", null);
                 b.statement("childBci = bci - " + model.epilogReturn.operation.instruction.getInstructionLength());
                 b.statement("break");
                 b.end(); // case epilog
