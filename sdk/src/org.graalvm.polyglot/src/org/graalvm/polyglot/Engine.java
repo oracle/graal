@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2107,18 +2107,8 @@ public final class Engine implements AutoCloseable {
         }
 
         private static RuntimeException noPolyglotImplementationFound() {
-            if (PolyglotInvalid.class.getModule().isNamed()) {
-                return new IllegalStateException(
-                                "No language and polyglot implementation was found on the module-path. " +
-                                                "Make sure at last one language is added to the module-path. ");
-            } else {
-                return new IllegalStateException(
-                                "No language and polyglot implementation was found on the class-path. " +
-                                                "Make sure at last one language is added on the class-path. " +
-                                                "If you put a language on the class-path and you encounter this error then there could be a problem with isolated class loading. " +
-                                                "Use -Dpolyglotimpl.TraceClassPathIsolation=true to debug class loader islation problems. " +
-                                                "For best performance it is recommended to use polyglot from the module-path instead of the class-path.");
-            }
+            return new IllegalStateException("No language and polyglot implementation was found on the module-path. " +
+                            "Make sure at last one language is added to the module-path. ");
         }
 
         @Override
@@ -2227,6 +2217,10 @@ public final class Engine implements AutoCloseable {
             return null;
         }
 
+        @Override
+        public String getTruffleVersion() {
+            return getPolyglotVersion().toString();
+        }
     }
 
     private static final class EngineShutDownHook implements Runnable {
