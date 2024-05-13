@@ -41,7 +41,6 @@ import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
-import com.oracle.svm.core.sampler.SamplerStatistics;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -322,8 +321,7 @@ public class SubstrateJVM {
             return;
         }
 
-        JfrEndRecordingOperation vmOp = new JfrEndRecordingOperation();
-        vmOp.enqueue();
+        recorderThread.endRecording();
     }
 
     /**
@@ -704,7 +702,7 @@ public class SubstrateJVM {
         }
     }
 
-    private static class JfrEndRecordingOperation extends JavaVMOperation {
+    static class JfrEndRecordingOperation extends JavaVMOperation {
         JfrEndRecordingOperation() {
             super(VMOperationInfos.get(JfrEndRecordingOperation.class, "JFR end recording", SystemEffect.SAFEPOINT));
         }
@@ -716,6 +714,10 @@ public class SubstrateJVM {
          */
         @Override
         protected void operate() {
+            if (!SubstrateJVM.get().recording) {
+                return;
+            }
+
             SubstrateJVM.get().recording = false;
             JfrExecutionSampler.singleton().update();
 
