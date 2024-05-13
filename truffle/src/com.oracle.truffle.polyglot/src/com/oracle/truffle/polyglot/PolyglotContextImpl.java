@@ -51,6 +51,7 @@ import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -3605,8 +3606,19 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             context.singleThreadValue.reset();
             context.sourcesToInvalidate = null;
             context.threadLocalActions.prepareContextStore();
-            ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onPreInitializeContextEnd();
-            ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onPreInitializeContextEnd();
+            Map<String, Path> languageHomes = new HashMap<>();
+            for (PolyglotLanguage language : engine.languages) {
+                if (language != null) {
+                    LanguageCache cache = language.cache;
+                    String languageHome = cache.getLanguageHome();
+                    if (languageHome != null) {
+                        languageHomes.put(cache.getId(), Path.of(languageHome));
+                    }
+                }
+            }
+
+            ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onPreInitializeContextEnd(engine.internalResourceRoots, languageHomes);
+            ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onPreInitializeContextEnd(engine.internalResourceRoots, languageHomes);
             if (!config.logLevels.isEmpty()) {
                 EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());
             }
