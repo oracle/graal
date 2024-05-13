@@ -1850,7 +1850,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(V128_TYPE);
                         load(state, V128_TYPE, 8, longMultiResult);
                         final byte laneIndex = read1();
-                        if (Byte.toUnsignedInt(laneIndex) >= 16) {
+                        if (Byte.toUnsignedInt(laneIndex) >= Vector128.BYTE_LENGTH) {
                             fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.load8_lane", Byte.toUnsignedInt(laneIndex));
                         }
                         state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_LOAD8_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
@@ -1861,7 +1861,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(V128_TYPE);
                         load(state, V128_TYPE, 16, longMultiResult);
                         final byte laneIndex = read1();
-                        if (Byte.toUnsignedInt(laneIndex) >= 8) {
+                        if (Byte.toUnsignedInt(laneIndex) >= Vector128.SHORT_LENGTH) {
                             fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.load16_lane", Byte.toUnsignedInt(laneIndex));
                         }
                         state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_LOAD16_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
@@ -1872,7 +1872,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(V128_TYPE);
                         load(state, V128_TYPE, 32, longMultiResult);
                         final byte laneIndex = read1();
-                        if (Byte.toUnsignedInt(laneIndex) >= 4) {
+                        if (Byte.toUnsignedInt(laneIndex) >= Vector128.INT_LENGTH) {
                             fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.load32_lane", Byte.toUnsignedInt(laneIndex));
                         }
                         state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_LOAD32_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
@@ -1883,7 +1883,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(V128_TYPE);
                         load(state, V128_TYPE, 64, longMultiResult);
                         final byte laneIndex = read1();
-                        if (Byte.toUnsignedInt(laneIndex) >= 2) {
+                        if (Byte.toUnsignedInt(laneIndex) >= Vector128.DOUBLE_LENGTH) {
                             fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.load64_lane", Byte.toUnsignedInt(laneIndex));
                         }
                         state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_LOAD64_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
@@ -1893,7 +1893,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_V128_STORE8_LANE: {
                         store(state, V128_TYPE, 8, longMultiResult);
                         final byte laneIndex = read1();
-                        if (Byte.toUnsignedInt(laneIndex) >= 16) {
+                        if (Byte.toUnsignedInt(laneIndex) >= Vector128.BYTE_LENGTH) {
                             fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.store8_lane", Byte.toUnsignedInt(laneIndex));
                         }
                         state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_STORE8_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
@@ -1903,7 +1903,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_V128_STORE16_LANE: {
                         store(state, V128_TYPE, 16, longMultiResult);
                         final byte laneIndex = read1();
-                        if (Byte.toUnsignedInt(laneIndex) >= 8) {
+                        if (Byte.toUnsignedInt(laneIndex) >= Vector128.SHORT_LENGTH) {
                             fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.store16_lane", Byte.toUnsignedInt(laneIndex));
                         }
                         state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_STORE16_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
@@ -1913,7 +1913,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_V128_STORE32_LANE: {
                         store(state, V128_TYPE, 32, longMultiResult);
                         final byte laneIndex = read1();
-                        if (Byte.toUnsignedInt(laneIndex) >= 4) {
+                        if (Byte.toUnsignedInt(laneIndex) >= Vector128.INT_LENGTH) {
                             fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.store32_lane", Byte.toUnsignedInt(laneIndex));
                         }
                         state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_STORE32_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
@@ -1923,7 +1923,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_V128_STORE64_LANE: {
                         store(state, V128_TYPE, 64, longMultiResult);
                         final byte laneIndex = read1();
-                        if (Byte.toUnsignedInt(laneIndex) >= 2) {
+                        if (Byte.toUnsignedInt(laneIndex) >= Vector128.LONG_LENGTH) {
                             fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for v128.store64_lane", Byte.toUnsignedInt(laneIndex));
                         }
                         state.addVectorMemoryLaneInstruction(Bytecode.VECTOR_V128_STORE64_LANE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]),
@@ -1939,7 +1939,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_I8X16_SHUFFLE: {
                         final Vector128 indices = readUnsignedInt128();
                         for (byte index : indices.getBytes()) {
-                            if (Byte.toUnsignedInt(index) >= 32) {
+                            if (Byte.toUnsignedInt(index) >= 2 * Vector128.BYTE_LENGTH) {
                                 fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for i8x16.shuffle", Byte.toUnsignedInt(index));
                             }
                         }
