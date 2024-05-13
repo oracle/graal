@@ -104,12 +104,6 @@ import java.util.Map;
  * </p>
  */
 public final class Continuation implements Externalizable {
-    // Next steps:
-    // - Refactor to pull frame serialization into Truffle itself, stop exposing frame guts to
-    // language impls.
-    // - Feature: Add more data to FrameRecord so we can do consistency checks in case the code has
-    // changed.
-
     // We want a compact serialized representation, so use fields judiciously here.
 
     private static final VarHandle STATE_HANDLE;
@@ -280,10 +274,10 @@ public final class Continuation implements Externalizable {
      *
      * <p>
      * Pass an implementation of {@link EntryPoint}. The new continuation starts in the
-     * {@link State#SUSPENDED} state. To begin execution call the {@link Continuation#resume()}
-     * method. The entry point will be passed a capability object allowing it to suspend itself. If
-     * you don't want to deal with passing capabilities around, just stick it in a global variable
-     * that you clear when done, or use a thread local.
+     * {@link State#NEW} state. To begin execution call the {@link Continuation#resume()} method.
+     * The entry point will be passed a capability object allowing it to suspend itself. If you
+     * don't want to deal with passing capabilities around, just stick it in a global variable that
+     * you clear when done, or use a thread local.
      * </p>
      *
      * <p>
@@ -298,6 +292,8 @@ public final class Continuation implements Externalizable {
 
     /**
      * This constructor is intended only to allow deserialization. You shouldn't use it directly.
+     *
+     * @hidden
      */
     public Continuation() {
         // Note: can't mark this as @hidden in javadoc because the doclet fork used by GraalVM
@@ -606,8 +602,8 @@ public final class Continuation implements Externalizable {
                     // holds the user's app. If we use Class.forName() in this code we get the
                     // platform classloader because this class is provided by the VM, and thus can't
                     // look up methods of user classes. If we use the classloader of the entrypoint
-                    // it breaks for ContinuationEnumeration and any other classes we might want to
-                    // ship with the VM that use this API. So we need the user's app class loader.
+                    // it breaks for Generator and any other classes we might want to ship with the
+                    // VM that use this API. So we need the user's app class loader.
                     // We could walk the stack to find it just like ObjectInputStream does, but we
                     // go with the context classloader here to make it easier for the user to
                     // control.
