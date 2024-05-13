@@ -1025,6 +1025,8 @@ public final class Symbol<T> extends ByteSequence {
                         "Lcom/oracle/truffle/espresso/continuations/Continuation;");
         public static final Symbol<Type> com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException = StaticSymbols.putType(
                         "Lcom/oracle/truffle/espresso/continuations/IllegalMaterializedRecordException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_IllegalContinuationStateException = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/continuations/IllegalContinuationStateException;");
 
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");

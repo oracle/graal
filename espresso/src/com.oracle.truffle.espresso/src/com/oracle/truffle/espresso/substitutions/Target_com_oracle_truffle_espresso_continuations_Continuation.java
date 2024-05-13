@@ -46,7 +46,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     static void suspend0(StaticObject self, @Inject EspressoLanguage language, @Inject Meta meta) {
         EspressoThreadLocalState tls = language.getThreadLocalState();
         if (tls.isContinuationSuspensionBlocked()) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException,
+            throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException,
                             "Suspension is currently blocked by the presence of unsupported frames on the stack. " +
                                             "Check for synchronized blocks, native calls and VM intrinsics in the stack trace of this exception.");
         }
@@ -74,11 +74,12 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // to call suspend, so we have to undo that first.
             EspressoThreadLocalState tls = lang.getThreadLocalState();
             if (tls.isInContinuation()) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Cannot resume a continuation while already running in a continuation.");
+                throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException,
+                                "Cannot resume a continuation while already running in a continuation.");
             }
             HostFrameRecord stack = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
             if (stack == null) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Continuation was not properly dematerialized.");
+                throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException, "Continuation was not properly dematerialized.");
             }
             assert stack.verify(meta, false);
             // Consume the stack.
@@ -112,7 +113,8 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // to call suspend, so we have to undo that first.
             EspressoThreadLocalState tls = lang.getThreadLocalState();
             if (tls.isInContinuation()) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Cannot resume a continuation while already running in a continuation.");
+                throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException,
+                                "Cannot resume a continuation while already running in a continuation.");
             }
 
             try (var scope = tls.continuationScope()) {

@@ -41,16 +41,17 @@
 
 package com.oracle.truffle.espresso.continuations;
 
+import java.io.IOException;
 import java.io.Serial;
 
 /**
- * Thrown by {@link Continuation} methods to indicate the materialized frame record is faulty with
- * respect to the JVM specifications and thus cannot use it to resume a continuation.
+ * Thrown if the format of the serialized continuation is unrecognized i.e. from a newer version of
+ * the runtime, or from a version too old to still be supported.
  */
-public final class IllegalMaterializedRecordException extends IllegalStateException {
-    @Serial private static final long serialVersionUID = 2905198219671900800L;
+public final class FormatVersionException extends IOException {
+    @Serial private static final long serialVersionUID = 6913545866116536598L;
 
-    IllegalMaterializedRecordException(String s) {
-        super(s);
+    public FormatVersionException(int version) {
+        super("Unsupported serialized continuation version: " + version);
     }
 }

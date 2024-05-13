@@ -42,7 +42,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
@@ -90,7 +89,10 @@ public final class HostFrameRecord {
     public boolean verify(Meta meta, boolean single) {
         HostFrameRecord current = this;
         while (current != null) {
-            // Ensures verification has run.
+            // Ensures initialization has run.
+            // This ensures a well-defined point for running static initializers in case the records
+            // are not obtained from a call to suspend (eg: deserialization, or manual record
+            // creation)
             methodVersion.getDeclaringKlass().safeInitialize();
             // Ensures recorded frame is compatible with what the method expects.
             // TODO: Ensure verifier types.
@@ -167,7 +169,7 @@ public final class HostFrameRecord {
     public static HostFrameRecord copyFromGuest(
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
                     Meta meta,
-                    @Inject EspressoContext context) {
+                    EspressoContext context) {
         HostFrameRecord hostCursor = null;
         HostFrameRecord hostHead = null;
         StaticObject /* FrameRecord */ cursor = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(self);
@@ -183,11 +185,14 @@ public final class HostFrameRecord {
 
             EspressoLanguage language = context.getLanguage();
 
+            guarantee(!StaticObject.isNull(pointersGuest), "null array in the frame records.", meta);
+            guarantee(!StaticObject.isNull(primitivesGuest), "null array in the frame records.", meta);
+            guarantee(!StaticObject.isNull(methodGuest), "null method in the frame records.", meta);
+
             StaticObject[] pointers = pointersGuest.unwrap(language);
             long[] primitives = primitivesGuest.unwrap(language);
             Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
             EspressoFrameDescriptor fd = FrameAnalysis.apply(method.getMethodVersion(), bci);
-            assert primitives.length > 0;
 
             HostFrameRecord next = new HostFrameRecord(fd, pointers, primitives, bci, top, method.getMethodVersion(), null);
             if (hostCursor != null) {

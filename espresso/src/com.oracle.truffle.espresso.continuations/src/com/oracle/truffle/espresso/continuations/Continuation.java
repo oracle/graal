@@ -76,8 +76,8 @@ import java.util.Map;
  * <p>
  * Exceptions thrown from the entry point propagate out of {@link #resume()} and then mark the
  * continuation as failed. Resuming the exception after that point will fail with
- * {@link IllegalStateException}. If you want to retry a failed continuation you must have a clone
- * from before the failure (see below).
+ * {@link IllegalContinuationStateException}. If you want to retry a failed continuation you must
+ * have a clone from before the failure (see below).
  * </p>
  *
  * <h1>Serialization</h1>
@@ -164,6 +164,11 @@ public final class Continuation implements Externalizable {
         private final long[] primitives;
 
         /**
+         * The top of the stack.
+         */
+        private final int top;
+
+        /**
          * The method of this stack frame.
          */
         private final Method method;
@@ -172,11 +177,6 @@ public final class Continuation implements Externalizable {
          * The bci at which to resume the frame.
          */
         private final int bci;
-
-        /**
-         * The top of the stack.
-         */
-        private final int top;
 
         private FrameRecord(Object[] pointers, long[] primitives, Method method, int bci, int top) {
             this.pointers = pointers;
@@ -342,20 +342,20 @@ public final class Continuation implements Externalizable {
          * Suspends the continuation, unwinding the stack to the point at which it was previously
          * resumed.
          *
-         * @throws IllegalStateException if you try to call this outside a continuation, or if there
-         *             are native frames on the stack, or if the thread is inside a synchronized
-         *             block.
+         * @throws IllegalContinuationStateException if you try to call this outside a continuation,
+         *             or if there are native frames on the stack, or if the thread is inside a
+         *             synchronized block.
          */
         public void suspend() {
             if (exclusiveOwner != Thread.currentThread()) {
-                throw new IllegalStateException("Suspend capabilities can only be used inside a continuation.");
+                throw new IllegalContinuationStateException("Suspend capabilities can only be used inside a continuation.");
             }
             if (!updateState(State.RUNNING, State.SUSPENDED)) {
-                throw new IllegalStateException("Suspend capabilities can only be used inside a running continuation.");
+                throw new IllegalContinuationStateException("Suspend capabilities can only be used inside a running continuation.");
             }
             try {
                 Continuation.this.suspend();
-            } catch (IllegalStateException e) {
+            } catch (IllegalContinuationStateException e) {
                 if (!updateState(State.SUSPENDED, State.RUNNING)) {
                     // force failed state and maybe assert
                     State badState = forceState(State.RUNNING);
@@ -384,8 +384,14 @@ public final class Continuation implements Externalizable {
      * rethrown here. The continuation is then no longer usable and must be discarded.
      * </p>
      *
-     * @throws IllegalStateException if the {@link #getState()} is not {@link State#SUSPENDED}, or
-     *             if the {@link #stackFrameHead} contains erroneous data.
+     * <p>
+     * Additionally, all declaring classes of methods in the recorded frames are initialized if they
+     * were not already initialized, and this before the rewinding happens.
+     * </p>
+     *
+     * @throws IllegalContinuationStateException if the {@link #getState()} is not
+     *             {@link State#SUSPENDED}, or if the {@link #stackFrameHead} contains erroneous
+     *             data.
      * @throws IllegalMaterializedRecordException if the VM rejects the frames recorded in
      *             {@link #stackFrameHead}.
      */
@@ -416,15 +422,15 @@ public final class Continuation implements Externalizable {
         } else {
             // illegal state for resume: neither suspended nor new
             switch (state) {
-                case RUNNING -> throw new IllegalStateException("You can't resume an already executing continuation.");
+                case RUNNING -> throw new IllegalContinuationStateException("You can't resume an already executing continuation.");
                 case COMPLETED ->
-                    throw new IllegalStateException("This continuation has already completed successfully.");
-                case FAILED -> throw new IllegalStateException("This continuation has failed and must be discarded.");
+                    throw new IllegalContinuationStateException("This continuation has already completed successfully.");
+                case FAILED -> throw new IllegalContinuationStateException("This continuation has failed and must be discarded.");
                 case INCOMPLETE ->
-                    throw new IllegalStateException("Do not construct this class using the no-arg constructor, which is there only for deserialization purposes.");
-                case LOCKED -> throw new IllegalStateException("You can't resume a continuation while it is being serialized or deserialized.");
+                    throw new IllegalContinuationStateException("Do not construct this class using the no-arg constructor, which is there only for deserialization purposes.");
+                case LOCKED -> throw new IllegalContinuationStateException("You can't resume a continuation while it is being serialized or deserialized.");
                 // this is racy so ensure we have a general error message in those case
-                default -> throw new IllegalStateException("Only new or suspended continuation can be resumed");
+                default -> throw new IllegalContinuationStateException("Only new or suspended continuation can be resumed");
             }
         }
     }
@@ -448,7 +454,7 @@ public final class Continuation implements Externalizable {
     public void writeExternal(ObjectOutput out) throws IOException {
         State currentState = lock();
         if (currentState == State.RUNNING) {
-            throw new IllegalStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
+            throw new IllegalContinuationStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
         }
         try {
             ensureMaterialized();
@@ -572,6 +578,8 @@ public final class Continuation implements Externalizable {
     /**
      * Initializes the continuation from the given {@link ObjectInput}.
      *
+     * @throws IllegalContinuationStateException if the continuation is in any {@link State} other
+     *             than {@link State#INCOMPLETE}.
      * @throws FormatVersionException if the header read from the stream doesn't match the expected
      *             version number.
      * @throws IOException if there is a problem reading the stream, or if the stream appears to be
@@ -580,9 +588,13 @@ public final class Continuation implements Externalizable {
     @Override
     public synchronized void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         State previousState = lock();
+        if (previousState == State.RUNNING) {
+            // For a RUNNING continuation locking doesn't happen.
+            throw new IllegalContinuationStateException("Do not use readExternal on a Continuation object that was not just freshly created through the no-arg constructor");
+        }
         if (previousState != State.INCOMPLETE) {
             unlock(previousState);
-            throw new IllegalStateException("Do not use readExternal on a Continuation object that was not just freshly created through the no-arg constructor");
+            throw new IllegalContinuationStateException("Do not use readExternal on a Continuation object that was not just freshly created through the no-arg constructor");
         }
         int header = in.readByte();
         int version = (header >> FORMAT_SHIFT) & FORMAT_MASK;
@@ -701,18 +713,6 @@ public final class Continuation implements Externalizable {
         }
     }
 
-    /**
-     * Thrown if the format of the serialized continuation is unrecognized i.e. from a newer version
-     * of the runtime, or from a version too old to still be supported.
-     */
-    public static final class FormatVersionException extends IOException {
-        @Serial private static final long serialVersionUID = 6913545866116536598L;
-
-        public FormatVersionException(int version) {
-            super("Unsupported serialized continuation version: " + version);
-        }
-    }
-
     // endregion
 
     // region Implementation
@@ -720,8 +720,7 @@ public final class Continuation implements Externalizable {
     private static final boolean ASSERTIONS_ENABLED = areAssertionsEnabled();
 
     /**
-     * Invoked by the VM. This is the first frame in the continuation. We get here from inside the
-     * substituted start0 method.
+     * Invoked by the VM. This is the first frame in the continuation.
      */
     @SuppressWarnings("unused")
     private void run() {
@@ -767,16 +766,17 @@ public final class Continuation implements Externalizable {
             // frame already materialized.
             return;
         }
-        synchronized (this) {
+        State current = lock();
+        if (current == State.RUNNING) {
+            return;
+        }
+        try {
             if (stackFrameHead != null) {
                 return;
             }
-            State current = lock();
-            try {
-                materialize0();
-            } finally {
-                unlock(current);
-            }
+            materialize0();
+        } finally {
+            unlock(current);
         }
     }
 
@@ -793,23 +793,19 @@ public final class Continuation implements Externalizable {
             // No frame to dematerialize
             return;
         }
-        synchronized (this) {
-            if (stackFrameHead == null) {
-                return;
-            }
-            if (getState() == State.RUNNING) {
+
+        State state = lock();
+        if (state == State.RUNNING) {
+            dematerialize0();
+        } else {
+            try {
                 dematerialize0();
-            } else {
-                State state = lock();
-                try {
-                    dematerialize0();
-                } finally {
-                    unlock(state);
-                }
+            } finally {
+                unlock(state);
             }
-            if (stackFrameHead != null) {
-                throw new IllegalMaterializedRecordException("Failed to dematerialize continuation frames.");
-            }
+        }
+        if (stackFrameHead != null) {
+            throw new IllegalMaterializedRecordException("Failed to dematerialize continuation frames.");
         }
     }
 

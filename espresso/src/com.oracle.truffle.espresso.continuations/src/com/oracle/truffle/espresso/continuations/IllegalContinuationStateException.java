@@ -44,13 +44,12 @@ package com.oracle.truffle.espresso.continuations;
 import java.io.Serial;
 
 /**
- * Thrown by {@link Continuation} methods to indicate the materialized frame record is faulty with
- * respect to the JVM specifications and thus cannot use it to resume a continuation.
+ * Thrown by {@link Continuation} methods to indicate the continuation is in an unexpected state.
  */
-public final class IllegalMaterializedRecordException extends IllegalStateException {
-    @Serial private static final long serialVersionUID = 2905198219671900800L;
+public final class IllegalContinuationStateException extends IllegalStateException {
+    @Serial private static final long serialVersionUID = 916027401671700751L;
 
-    IllegalMaterializedRecordException(String s) {
+    IllegalContinuationStateException(String s) {
         super(s);
     }
 }
