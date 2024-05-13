@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-    package com.oracle.truffle.api.debug;
+package com.oracle.truffle.api.debug;
 
 /**
  * Callback invoked whenever the {@link Debugger debugger} suspends for a particular
