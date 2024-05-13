@@ -282,23 +282,24 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         lib_suffix = mx.add_lib_suffix('')
         jdk_lib_dir = 'bin' if mx.is_windows() else 'lib'
 
-        libjava = join(espresso_llvm_java_home, jdk_lib_dir, f'{lib_prefix}java{lib_suffix}')
-        if mx.is_linux():
-            objdump = shutil.which('objdump')
-            if objdump:
-                objdump_out = subprocess.check_output(['objdump', '-h', libjava]).decode('utf-8')
-                if 'llvmbc' not in objdump_out:
-                    raise mx.abort(f"Cannot find LLVM bitcode in provided Espresso LLVM JAVA_HOME ({libjava})")
-            elif mx.is_continuous_integration():
-                raise mx.abort("objdump not found on the PATH. It is required to verify the Espresso LLVM JAVA_HOME")
-        elif mx.is_darwin():
-            otool = shutil.which('otool')
-            if otool:
-                otool_out = subprocess.check_output(['otool', '-l', libjava]).decode('utf-8')
-                if '__LLVM' not in otool_out:
-                    raise mx.abort(f"Cannot find LLVM bitcode in provided Espresso LLVM JAVA_HOME ({libjava})")
-            elif mx.is_continuous_integration():
-                raise mx.abort("otool not found on the PATH. It is required to verify the Espresso LLVM JAVA_HOME")
+        if mx.get_env("SKIP_ESPRESSO_LLVM_CHECK", 'false').lower() in ('false', '0', 'no'):
+            libjava = join(espresso_llvm_java_home, jdk_lib_dir, f'{lib_prefix}java{lib_suffix}')
+            if mx.is_linux():
+                objdump = shutil.which('objdump')
+                if objdump:
+                    objdump_out = subprocess.check_output(['objdump', '-h', libjava]).decode('utf-8')
+                    if 'llvmbc' not in objdump_out:
+                        raise mx.abort(f"Cannot find LLVM bitcode in provided Espresso LLVM JAVA_HOME ({libjava})")
+                elif mx.is_continuous_integration():
+                    raise mx.abort("objdump not found on the PATH. It is required to verify the Espresso LLVM JAVA_HOME")
+            elif mx.is_darwin():
+                otool = shutil.which('otool')
+                if otool:
+                    otool_out = subprocess.check_output(['otool', '-l', libjava]).decode('utf-8')
+                    if '__LLVM' not in otool_out:
+                        raise mx.abort(f"Cannot find LLVM bitcode in provided Espresso LLVM JAVA_HOME ({libjava})")
+                elif mx.is_continuous_integration():
+                    raise mx.abort("otool not found on the PATH. It is required to verify the Espresso LLVM JAVA_HOME")
 
         register_distribution(mx.LayoutTARDistribution(_suite, 'ESPRESSO_LLVM_SUPPORT', [], {
             "lib/llvm/default/": [
