@@ -111,6 +111,7 @@ public final class GuestAllocator implements LanguageAccess {
      */
     public StaticObject createNew(ObjectKlass klass) {
         assert AllocationChecks.canAllocateNewReference(klass);
+        assert klass != klass.getMeta().java_lang_Class;
         klass.safeInitialize();
         StaticObject newObj = klass.getLinkedKlass().getShape(false).getFactory().create(klass);
         initInstanceFields(newObj, klass);
@@ -399,6 +400,7 @@ public final class GuestAllocator implements LanguageAccess {
     private static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject) {
         assert foreignObject != null;
         assert klass == null || !klass.isAbstract() || klass.isArray();
+        assert klass == null || klass != klass.getMeta().java_lang_Class;
         StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
         lang.getForeignProperty().setObject(newObj, foreignObject);
         if (klass != null) {
@@ -427,7 +429,9 @@ public final class GuestAllocator implements LanguageAccess {
                 }
             }
             if (javaBaseDefined) {
-                klass.getContext().getMeta().java_lang_Class_module.setObject(obj, klass.getRegistries().getJavaBaseModule().module());
+                StaticObject javaBase = klass.getRegistries().getJavaBaseModule().module();
+                assert StaticObject.notNull(javaBase);
+                klass.getContext().getMeta().java_lang_Class_module.setObject(obj, javaBase);
             }
 
         } else {
