@@ -55,7 +55,6 @@ public class BytecodeDSLBuiltins {
     public static void addBuiltins(BytecodeDSLModel m, TruffleTypes types, ProcessorContext context) {
         m.popInstruction = m.instruction(InstructionKind.POP, "pop", m.signature(void.class, Object.class));
         m.dupInstruction = m.instruction(InstructionKind.DUP, "dup", m.signature(void.class));
-        m.trapInstruction = m.instruction(InstructionKind.TRAP, "trap", m.signature(void.class));
         m.returnInstruction = m.instruction(InstructionKind.RETURN, "return", m.signature(void.class, Object.class));
         m.branchInstruction = m.instruction(InstructionKind.BRANCH, "branch", m.signature(void.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");

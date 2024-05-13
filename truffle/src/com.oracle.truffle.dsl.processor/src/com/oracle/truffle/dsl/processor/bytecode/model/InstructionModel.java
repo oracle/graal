@@ -304,7 +304,6 @@ public final class InstructionModel implements PrettyPrintable {
             case YIELD:
             case THROW:
             case CUSTOM_SHORT_CIRCUIT:
-            case TRAP:
                 return true;
             default:
                 return false;

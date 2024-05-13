@@ -151,7 +151,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel nullInstruction;
     public InstructionModel popInstruction;
     public InstructionModel dupInstruction;
-    public InstructionModel trapInstruction;
     public InstructionModel returnInstruction;
     public InstructionModel branchInstruction;
     public InstructionModel branchBackwardInstruction;

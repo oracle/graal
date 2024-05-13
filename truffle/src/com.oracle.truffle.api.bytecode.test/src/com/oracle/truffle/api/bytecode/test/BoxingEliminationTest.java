@@ -53,6 +53,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -60,6 +61,7 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.test.BoxingEliminationTest.BoxingEliminationTestRootNode.ToBoolean;
 import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -1258,6 +1260,35 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         assertStable(quickenings, node, Boolean.FALSE, 1L);
     }
 
+    @Test
+    public void testConstantOperandsAreNotQuickened() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginOperationWithConstants(0);
+            b.emitLoadArgument(0);
+            b.endOperationWithConstants(1);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.OperationWithConstants",
+                        "return");
+        assertEquals(42, node.getCallTarget().call(42));
+        assertInstructions(node,
+                        "load.argument",
+                        "c.OperationWithConstants",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 0, 1);
+        assertStable(quickenings, node, 42);
+    }
+
     private static BoxingEliminationTestRootNode parse(BytecodeParser<BoxingEliminationTestRootNodeGen.Builder> builder) {
         BytecodeRootNodes<BoxingEliminationTestRootNode> nodes = BoxingEliminationTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
@@ -1494,6 +1525,23 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                 return bytecode.getLocalValue(bci, frame, i);
             }
         }
+
+        @Operation
+        @ConstantOperand(type = int.class)
+        @ConstantOperand(type = int.class, specifyAtEnd = true)
+        static final class OperationWithConstants {
+            /**
+             * Regression test: constant operands of BE-able type should not be considered when
+             * computing quickening groups. (The cached parameter is included trigger generation of
+             * executeAndSpecialize and quicken methods.)
+             */
+            @Specialization
+            @SuppressWarnings("unused")
+            public static Object doInt(int constant1, Object dynamic, int constant2, @Cached(value = "constant1", neverDefault = false) int cachedConstant1) {
+                return dynamic;
+            }
+        }
+
     }
 
 }
