@@ -6252,7 +6252,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case THROW:
                 case YIELD:
                 case RETURN:
-                case TRAP:
                 case CLEAR_LOCAL:
                     break;
                 case BRANCH_FALSE:
@@ -11021,9 +11020,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case DUP:
                         b.statement(copyFrameSlot("sp - 1", "sp"));
                         b.statement("sp += 1");
-                        break;
-                    case TRAP:
-                        emitThrowAssertionError(b, "\"Control reached past the end of the bytecode.\"");
                         break;
                     case RETURN:
                         storeBciInFrameIfNecessary(b);

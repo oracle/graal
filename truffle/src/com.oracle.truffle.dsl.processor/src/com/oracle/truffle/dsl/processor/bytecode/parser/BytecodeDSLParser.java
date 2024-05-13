@@ -604,7 +604,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         continue;
                     }
 
-                    Iterable<TypeMirror> signatureTypes;
+                    List<TypeMirror> signatureTypes;
                     if (genericReturnBoxingEliminated) {
                         /*
                          * If the generic instruction already supports boxing elimination with its
@@ -613,11 +613,23 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                          */
                         signatureTypes = specialization.getSignatureParameters().stream().map((p) -> p.getType()).toList();
                     } else {
-                        signatureTypes = specialization.getTypeSignature();
+                        signatureTypes = new ArrayList<>();
+                        for (TypeMirror type : specialization.getTypeSignature()) {
+                            signatureTypes.add(type);
+                        }
                     }
 
                     List<TypeMirror> signature = new ArrayList<>();
-                    for (TypeMirror actualType : signatureTypes) {
+
+                    // Omit end constants
+                    int endIndex = signatureTypes.size() - operation.constantOperands.after().size();
+                    for (int i = 0; i < endIndex; i++) {
+                        if (i > 0 && i <= operation.constantOperands.before().size()) {
+                            // Omit begin constants
+                            continue;
+                        }
+
+                        TypeMirror actualType = signatureTypes.get(i);
                         TypeMirror boxingType;
                         if (model.isBoxingEliminated(actualType)) {
                             boxingType = actualType;
