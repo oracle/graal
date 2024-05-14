@@ -15,7 +15,23 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     extra_mx_args+:: [ "--dynamicimport", "/compiler" ],
     setup+: [
       ["cd", "./sulong"],
+      ['apply-predicates', '--delete-excluded', '--pattern-root', '..'] # we are the sulong directory
+        + (if std.objectHasAll(self.guard, 'excludes') then ['--exclude=' + e for e in  self.guard.excludes] else [])
+        + ['--include=' + e for e in  self.guard.includes]
     ],
+    guard+: {
+      includes: [
+        # sulong and its dependencies
+        "<graal>/sdk/**",
+        "<graal>/truffle/**",
+        "<graal>/sulong/**",
+        # the compiler and its dependencies
+        "<graal>/compiler/**",
+        "<graal>/regex/**",
+        "<graal>/java-benchmarks/**",
+        "<graal>/common.json",
+      ],
+    },
   },
 
   sulong_test_toolchain:: {
