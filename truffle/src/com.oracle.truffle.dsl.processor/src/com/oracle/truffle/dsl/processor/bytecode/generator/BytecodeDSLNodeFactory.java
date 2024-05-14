@@ -9302,6 +9302,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
                 b.end(); // switch
             } else {
+                mergeSuppressWarnings(method, "static-method");
                 b.lineComment("The bytecode is not updatable so the bytecode is always valid.");
                 b.startReturn().string(readBc("bci")).end();
             }
@@ -10290,7 +10291,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createUnquickenBytecode() {
-            CodeExecutableElement ex = new CodeExecutableElement(arrayOf(type(short.class)), "unquickenBytecode");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(type(short.class)), "unquickenBytecode");
             ex.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "original"));
 
             CodeTreeBuilder b = ex.createBuilder();
@@ -10835,11 +10836,30 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(1).string(" && ") //
                                             .startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").end(2).startBlock();
 
+                            if (model.enableYield) {
+                                /**
+                                 * If this invocation was resumed, the locals are no longer in the
+                                 * stack frame and we need to pass the local frame to executeOSR.
+                                 *
+                                 * If this invocation was not resumed, the locals are still in the
+                                 * stack frame. We pass null to signal that executeOSR should use
+                                 * the stack frame (which may be virtualized by Bytecode OSR code).
+                                 */
+                                b.startDeclaration(type(Object.class), "interpreterState");
+                                b.string("frame == ", localFrame(), " ? null : ", localFrame());
+                                b.end();
+                            }
+
                             b.startAssign("Object osrResult");
                             b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
                             b.string("this");
                             b.string("(sp << 16) | " + readBc("bci + 1")); // target
-                            b.string("null"); // interpreterState
+
+                            if (model.enableYield) {
+                                b.string("interpreterState");
+                            } else {
+                                b.string("null"); // interpreterState
+                            }
                             b.string("null"); // beforeTransfer
                             b.string("frame"); // parentFrame
                             b.end(2);
@@ -13274,12 +13294,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createExecuteOSR() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "executeOSR");
+            ex.renameArguments("frame", "target", model.enableYield ? "localFrame" : "unused");
             CodeTreeBuilder b = ex.getBuilder();
             b.startReturn().startCall("continueAt");
             b.string("getRoot()");
-            b.string("osrFrame");
+            b.string("frame");
             if (model.enableYield) {
-                b.string("osrFrame");
+                b.string("localFrame == null ? frame : (MaterializedFrame) localFrame");
             }
             b.string("target");
             b.end(2);
