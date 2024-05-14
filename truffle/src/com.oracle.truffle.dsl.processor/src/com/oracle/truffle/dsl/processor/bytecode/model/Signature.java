@@ -60,15 +60,12 @@ public final class Signature {
     public final List<String> constantOperandsBefore;
     public final List<String> constantOperandsAfter;
     public final int dynamicOperandCount;
-    public final int localSetterCount;
-    public final int localSetterRangeCount;
 
     public Signature(TypeMirror returnType, List<TypeMirror> types) {
-        this(returnType, types, false, 0, 0, List.of(), List.of());
+        this(returnType, types, false, List.of(), List.of());
     }
 
-    public Signature(TypeMirror returnType, List<TypeMirror> types, boolean isVariadic,
-                    int localSetterCount, int localSetterRangeCount, List<String> constantOperandsBefore, List<String> constantOperandsAfter) {
+    public Signature(TypeMirror returnType, List<TypeMirror> types, boolean isVariadic, List<String> constantOperandsBefore, List<String> constantOperandsAfter) {
         this.returnType = returnType;
         this.operandTypes = Collections.unmodifiableList(types);
         this.isVariadic = isVariadic;
@@ -77,8 +74,6 @@ public final class Signature {
         this.constantOperandsBefore = Collections.unmodifiableList(constantOperandsBefore);
         this.constantOperandsAfter = Collections.unmodifiableList(constantOperandsAfter);
         this.dynamicOperandCount = types.size() - constantOperandsBefore.size() - constantOperandsAfter.size();
-        this.localSetterCount = localSetterCount;
-        this.localSetterRangeCount = localSetterRangeCount;
     }
 
     public TypeMirror getGenericType(int i) {
@@ -134,14 +129,6 @@ public final class Signature {
         for (int i = 0; i < getConstantOperandsAfterCount(); i++) {
             sb.append(ElementUtils.getSimpleName(operandTypes.get(offset + i)));
             sb.append(", ");
-        }
-
-        for (int i = 0; i < localSetterCount; i++) {
-            sb.append("local, ");
-        }
-
-        for (int i = 0; i < localSetterRangeCount; i++) {
-            sb.append("localRange, ");
         }
 
         if (sb.charAt(sb.length() - 1) == ' ') {

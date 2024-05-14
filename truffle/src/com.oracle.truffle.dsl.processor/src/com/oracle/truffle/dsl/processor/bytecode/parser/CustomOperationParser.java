@@ -83,17 +83,17 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.ConstantOperands;
-import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -255,8 +255,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.numChildren = signature.dynamicOperandCount;
         operation.isVariadic = signature.isVariadic || isShortCircuit();
         operation.isVoid = signature.isVoid;
-        operation.operationBeginArguments = computeOperationBeginArguments(signature, constantOperands);
-        operation.operationEndArguments = computeOperationEndArguments(signature, constantOperands);
+        operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), signature.constantOperandsBefore);
+        operation.operationEndArguments = createOperationConstantArguments(constantOperands.after(), signature.constantOperandsAfter);
         operation.childrenMustBeValues = new boolean[signature.dynamicOperandCount];
         Arrays.fill(operation.childrenMustBeValues, true);
 
@@ -379,16 +379,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                             "Update all specializations to take one operand to resolve this.",
                             getSimpleName(types.EpilogExceptional)));
             return;
-        } else if (signature.localSetterCount > 0) {
-            customOperation.addError(String.format("An @%s operation cannot use %s as this is currently unsupported. " +
-                            "Remove the usage to resolve this.",
-                            getSimpleName(types.EpilogReturn),
-                            getSimpleName(types.LocalSetter)));
-        } else if (signature.localSetterRangeCount > 0) {
-            customOperation.addError(String.format("An @%s operation cannot use %s as this is currently unsupported. " +
-                            "Remove the usage to resolve this.",
-                            getSimpleName(types.EpilogReturn),
-                            getSimpleName(types.LocalSetterRange)));
         }
 
         for (int i = 0; i < allSignatures.size(); i++) {
@@ -411,41 +401,30 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
     }
 
-    private OperationArgument[] computeOperationBeginArguments(Signature signature, ConstantOperands constantOperands) {
-        assert signature.getConstantOperandsBeforeCount() == constantOperands.before().size();
-        OperationArgument[] arguments = new OperationArgument[signature.getConstantOperandsBeforeCount() + signature.localSetterCount + signature.localSetterRangeCount];
-        for (int i = 0; i < signature.getConstantOperandsBeforeCount(); i++) {
-            ConstantOperandModel constantOperand = constantOperands.before().get(i);
-            arguments[i] = new OperationArgument(
-                            constantOperand.type(),
-                            sanitizeConstantArgumentName(signature.constantOperandsBefore.get(i)),
-                            constantOperand.doc());
-        }
-
-        int offset = signature.getConstantOperandsBeforeCount();
-        for (int i = 0; i < signature.localSetterCount; i++) {
-            arguments[i + offset] = new OperationArgument(types.BytecodeLocal, "local" + i, "the local that will be set by the LocalSetter at index " + i);
-        }
-
-        offset += signature.localSetterCount;
-        for (int i = 0; i < signature.localSetterRangeCount; i++) {
-            // todo: we might want to migrate this to a special type that validates order
-            // e.g. BytecodeLocalRange
-            arguments[offset + i] = new OperationArgument(new CodeTypeMirror.ArrayCodeTypeMirror(types.BytecodeLocal), "localRange" + i,
-                            "the local range that will be set by the LocalSetterRange at index " + i);
-        }
-
-        return arguments;
-    }
-
-    private static OperationArgument[] computeOperationEndArguments(Signature signature, ConstantOperands constantOperands) {
-        assert signature.getConstantOperandsAfterCount() == constantOperands.after().size();
-        OperationArgument[] arguments = new OperationArgument[signature.getConstantOperandsAfterCount()];
-        for (int i = 0; i < signature.getConstantOperandsAfterCount(); i++) {
-            ConstantOperandModel constantOperand = constantOperands.after().get(i);
-            arguments[i] = new OperationArgument(
-                            constantOperand.type(),
-                            sanitizeConstantArgumentName(signature.constantOperandsAfter.get(i)),
+    private OperationArgument[] createOperationConstantArguments(List<ConstantOperandModel> operands, List<String> signatureNames) {
+        assert operands.size() == signatureNames.size();
+        OperationArgument[] arguments = new OperationArgument[signatureNames.size()];
+        for (int i = 0; i < signatureNames.size(); i++) {
+            ConstantOperandModel constantOperand = operands.get(i);
+            String argumentName = signatureNames.get(i);
+            TypeMirror builderType;
+            TypeMirror constantType;
+            OperationArgument.Encoding encoding;
+            if (ElementUtils.typeEquals(constantOperand.type(), types.LocalSetter)) {
+                builderType = types.BytecodeLocal;
+                constantType = constantOperand.type();
+                encoding = OperationArgument.Encoding.LOCAL;
+            } else if (ElementUtils.typeEquals(constantOperand.type(), types.LocalSetterRange)) {
+                builderType = new ArrayCodeTypeMirror(types.BytecodeLocal);
+                constantType = constantOperand.type();
+                encoding = OperationArgument.Encoding.LOCAL_ARRAY;
+            } else {
+                builderType = constantOperand.type();
+                constantType = constantOperand.type();
+                encoding = OperationArgument.Encoding.OBJECT;
+            }
+            arguments[i] = new OperationArgument(builderType, constantType, encoding,
+                            sanitizeConstantArgumentName(argumentName),
                             constantOperand.doc());
         }
         return arguments;
@@ -508,7 +487,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         Signature sig = result.operation.instruction.signature;
-        if (!returnsBoolean || sig.dynamicOperandCount != 1 || sig.isVariadic || sig.localSetterCount > 0 || sig.localSetterRangeCount > 0) {
+        if (!returnsBoolean || sig.dynamicOperandCount != 1 || sig.isVariadic) {
             parent.addError(mirror, ElementUtils.getAnnotationValue(mirror, "booleanConverter"),
                             "Specializations for boolean converter %s must only take one dynamic operand and return boolean.", getSimpleName(typeElement));
             return null;
@@ -720,12 +699,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         for (int i = 0; i < signature.getConstantOperandsAfterCount(); i++) {
             result.add(createNodeChildAnnotation(signature.constantOperandsAfter.get(i), constantOperands.after().get(i).type()));
         }
-        for (int i = 0; i < signature.localSetterCount; i++) {
-            result.add(createNodeChildAnnotation("localSetter" + i, types.LocalSetter));
-        }
-        for (int i = 0; i < signature.localSetterRangeCount; i++) {
-            result.add(createNodeChildAnnotation("localSetterRange" + i, types.LocalSetterRange));
-        }
 
         return result;
     }
@@ -790,12 +763,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             for (int i = 0; i < constantOperands.after().size(); i++) {
                 ex.addParameter(new CodeVariableElement(constantOperands.after().get(i).type(), signature.constantOperandsAfter.get(i)));
             }
-            for (int i = 0; i < signature.localSetterCount; i++) {
-                ex.addParameter(new CodeVariableElement(types.LocalSetter, "localSetter" + i + "Value"));
-            }
-            for (int i = 0; i < signature.localSetterRangeCount; i++) {
-                ex.addParameter(new CodeVariableElement(types.LocalSetterRange, "localSetterRange" + i + "Value"));
-            }
+
         }
 
         return ex;
@@ -820,15 +788,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         for (int i = 0; i < signature.getConstantOperandsAfterCount(); i++) {
             instr.addImmediate(ImmediateKind.CONSTANT, signature.constantOperandsAfter.get(i));
-        }
-
-        for (int i = 0; i < signature.localSetterCount; i++) {
-            instr.addImmediate(ImmediateKind.LOCAL_SETTER, "local_setter" + i);
-        }
-
-        for (int i = 0; i < signature.localSetterRangeCount; i++) {
-            instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_START, "local_setter_range_start" + i);
-            instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_LENGTH, "local_setter_range_length" + i);
         }
 
         instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");

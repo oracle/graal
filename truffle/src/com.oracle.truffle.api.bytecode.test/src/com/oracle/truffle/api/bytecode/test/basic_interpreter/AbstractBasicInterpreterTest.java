@@ -331,11 +331,18 @@ public abstract class AbstractBasicInterpreterTest {
             BytecodeNode expectedBytecode = expectedNodes.get(i).getBytecodeNode();
             BytecodeNode actualBytecode = actualNodes.get(i).getBytecodeNode();
 
-            assertEquals(expectedNode.name, actualNode.name);
-            assertArrayEquals((short[]) readField(expectedBytecode, "bytecodes"), (short[]) readField(actualBytecode, "bytecodes"));
-            assertConstantsEqual((Object[]) readField(expectedBytecode, "constants"), (Object[]) readField(actualBytecode, "constants"));
-            assertArrayEquals((int[]) readField(expectedBytecode, "handlers"), (int[]) readField(actualBytecode, "handlers"));
-            assertArrayEquals((int[]) readField(expectedBytecode, "locals"), (int[]) readField(actualBytecode, "locals"));
+            try {
+                assertEquals(expectedNode.name, actualNode.name);
+                assertArrayEquals((short[]) readField(expectedBytecode, "bytecodes"), (short[]) readField(actualBytecode, "bytecodes"));
+                assertConstantsEqual((Object[]) readField(expectedBytecode, "constants"), (Object[]) readField(actualBytecode, "constants"));
+                assertArrayEquals((int[]) readField(expectedBytecode, "handlers"), (int[]) readField(actualBytecode, "handlers"));
+                assertArrayEquals((int[]) readField(expectedBytecode, "locals"), (int[]) readField(actualBytecode, "locals"));
+            } catch (AssertionError e) {
+                System.err.println("Expected node: " + expectedBytecode.dump());
+                System.err.println("Actual node: " + actualBytecode.dump());
+                throw e;
+            }
+
         }
     }
 

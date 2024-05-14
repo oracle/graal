@@ -40,113 +40,21 @@
  */
 package com.oracle.truffle.api.bytecode;
 
-import java.util.Arrays;
-
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-//TODO (chumer) investigate whether this works with boxing elimination
 /**
- * Operation parameter that allows an operation to update the value of a local.
+ * Operation parameter that allows an operation to update the value of a local. This class is
+ * intended to be used in combination with the {@link ConstantOperand} annotation.
  *
  * @since 24.1
  */
 public final class LocalSetter {
 
-    /**
-     * LocalSetters are not specific to any {@link BytecodeRootNode}, since they just encapsulate a
-     * local index. We use a static cache to share and reuse the objects for each node.
-     */
-    @CompilationFinal(dimensions = 1) private static LocalSetter[] localSetters = new LocalSetter[512];
+    private final int localOffset;
 
-    private static synchronized void resizeLocals(int index) {
-        if (localSetters.length <= index) {
-            int size = localSetters.length;
-            while (size <= index) {
-                size = size << 1;
-            }
-            localSetters = Arrays.copyOf(localSetters, size);
-        }
-    }
-
-    /**
-     * Creates a new {@link LocalSetter}.
-     *
-     * This method is invoked by the generated code and should not be called directly.
-     *
-     * @since 24.1
-     */
-    public static LocalSetter create(int index) {
-        CompilerAsserts.neverPartOfCompilation("use #get in compiled code");
-        if (index < 0 || index >= Short.MAX_VALUE) {
-            throw new ArrayIndexOutOfBoundsException(index);
-        }
-
-        if (localSetters.length <= index) {
-            resizeLocals(index);
-        }
-
-        LocalSetter result = localSetters[index];
-        if (result == null) {
-            result = new LocalSetter(index);
-            localSetters[index] = result;
-        }
-        return result;
-    }
-
-    /**
-     * Obtains an existing {@link LocalSetter}.
-     *
-     * This method is invoked by the generated code and should not be called directly.
-     *
-     * @since 24.1
-     */
-    public static LocalSetter get(int index) {
-        return localSetters[index];
-    }
-
-    static void setObject(VirtualFrame frame, int index, Object value) {
-        FrameDescriptor descriptor = frame.getFrameDescriptor();
-        descriptor.setSlotKind(index, FrameSlotKind.Object);
-        frame.setObject(index, value);
-    }
-
-    @SuppressWarnings("unused")
-    private static boolean checkFrameSlot(VirtualFrame frame, int index, FrameSlotKind target) {
-        return false;
-    }
-
-    static void setLong(VirtualFrame frame, int index, long value) {
-        if (checkFrameSlot(frame, index, FrameSlotKind.Long)) {
-            frame.setLong(index, value);
-        } else {
-            frame.setObject(index, value);
-        }
-    }
-
-    static void setInt(VirtualFrame frame, int index, int value) {
-        if (checkFrameSlot(frame, index, FrameSlotKind.Int)) {
-            frame.setInt(index, value);
-        } else {
-            frame.setObject(index, value);
-        }
-    }
-
-    static void setDouble(VirtualFrame frame, int index, double value) {
-        if (checkFrameSlot(frame, index, FrameSlotKind.Double)) {
-            frame.setDouble(index, value);
-        } else {
-            frame.setObject(index, value);
-        }
-    }
-
-    private final int index;
-
-    private LocalSetter(int index) {
-        this.index = index;
+    private LocalSetter(int localOffset) {
+        this.localOffset = localOffset;
     }
 
     /**
@@ -156,7 +64,7 @@ public final class LocalSetter {
      */
     @Override
     public String toString() {
-        return String.format("LocalSetter[%d]", index);
+        return String.format("LocalSetter[%d]", localOffset);
     }
 
     /**
@@ -164,8 +72,8 @@ public final class LocalSetter {
      *
      * @since 24.1
      */
-    public void setObject(VirtualFrame frame, Object value) {
-        setObject(frame, index, value);
+    public void setObject(BytecodeNode node, int bci, VirtualFrame frame, Object value) {
+        node.setLocalValue(bci, frame, localOffset, value);
     }
 
     /**
@@ -173,8 +81,8 @@ public final class LocalSetter {
      *
      * @since 24.1
      */
-    public void setInt(VirtualFrame frame, int value) {
-        setInt(frame, index, value);
+    public void setInt(BytecodeNode node, int bci, VirtualFrame frame, int value) {
+        node.setLocalValueInt(bci, frame, localOffset, value);
     }
 
     /**
@@ -182,8 +90,41 @@ public final class LocalSetter {
      *
      * @since 24.1
      */
-    public void setLong(VirtualFrame frame, long value) {
-        setLong(frame, index, value);
+    public void setLong(BytecodeNode node, int bci, VirtualFrame frame, long value) {
+        node.setLocalValueLong(bci, frame, localOffset, value);
+    }
+
+    /**
+     * Stores a short into the local.
+     *
+     * @see #setObject(BytecodeNode, int, VirtualFrame, Object) the set method for an example on how
+     *      to use it.
+     * @since 24.1
+     */
+    public void setShort(BytecodeNode node, int bci, VirtualFrame frame, short value) {
+        node.setLocalValueLong(bci, frame, localOffset, value);
+    }
+
+    /**
+     * Stores a short into the local.
+     *
+     * @see #setObject(BytecodeNode, int, VirtualFrame, Object) the set method for an example on how
+     *      to use it.
+     * @since 24.1
+     */
+    public void setBoolean(BytecodeNode node, int bci, VirtualFrame frame, boolean value) {
+        node.setLocalValueBoolean(bci, frame, localOffset, value);
+    }
+
+    /**
+     * Stores a short into the local.
+     *
+     * @see #setObject(BytecodeNode, int, VirtualFrame, Object) the set method for an example on how
+     *      to use it.
+     * @since 24.1
+     */
+    public void setByte(BytecodeNode node, int bci, VirtualFrame frame, byte value) {
+        node.setLocalValueByte(bci, frame, localOffset, value);
     }
 
     /**
@@ -191,7 +132,35 @@ public final class LocalSetter {
      *
      * @since 24.1
      */
-    public void setDouble(VirtualFrame frame, double value) {
-        setDouble(frame, index, value);
+    public void setDouble(BytecodeNode node, int bci, VirtualFrame frame, double value) {
+        node.setLocalValueDouble(bci, frame, localOffset, value);
     }
+
+    private static final int CACHE_SIZE = 64;
+
+    @CompilationFinal(dimensions = 1) private static final LocalSetter[] CACHE = createCache();
+
+    private static LocalSetter[] createCache() {
+        LocalSetter[] setters = new LocalSetter[64];
+        for (int i = 0; i < setters.length; i++) {
+            setters[i] = new LocalSetter(i);
+        }
+        return setters;
+    }
+
+    /**
+     * Obtains an existing {@link LocalSetter}.
+     *
+     * This method is invoked by the generated code and should not be called directly.
+     *
+     * @since 24.1
+     */
+    public static LocalSetter constantOf(BytecodeLocal local) {
+        int offset = local.getLocalOffset();
+        if (offset < CACHE_SIZE) {
+            return CACHE[offset];
+        }
+        return new LocalSetter(offset);
+    }
+
 }

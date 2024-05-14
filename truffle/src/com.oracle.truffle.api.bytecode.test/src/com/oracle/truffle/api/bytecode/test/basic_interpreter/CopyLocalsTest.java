@@ -70,7 +70,6 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
 
             b.beginBlock();
-
             b.beginStoreLocal(b.createLocal());
             b.emitLoadConstant(42L);
             b.endStoreLocal();

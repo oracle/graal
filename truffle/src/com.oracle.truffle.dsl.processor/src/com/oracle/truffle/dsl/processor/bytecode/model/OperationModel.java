@@ -82,15 +82,34 @@ public class OperationModel implements PrettyPrintable {
     /**
      * Models an argument to a begin/emit/end method.
      */
-    public record OperationArgument(TypeMirror type, String name, String doc) {
+    public record OperationArgument(TypeMirror builderType, TypeMirror constantType, Encoding kind, String name, String doc) {
+
+        OperationArgument(TypeMirror builderType, Encoding kind, String name, String doc) {
+            this(builderType, builderType, kind, name, doc);
+        }
+
         public CodeVariableElement toVariableElement() {
-            return new CodeVariableElement(type, name);
+            return new CodeVariableElement(builderType, name);
         }
 
         public String toJavadocParam() {
             String docPart = doc.isEmpty() ? "" : String.format(" %s.", doc);
             return String.format("@param %s%s", name, docPart);
         }
+
+        /*
+         * Encoding used for serialization.
+         */
+        public enum Encoding {
+            LANGUAGE,
+            INTEGER,
+            OBJECT,
+            LOCAL,
+            LOCAL_ARRAY,
+            TAGS,
+            LABEL,
+        }
+
     }
 
     private static final OperationArgument[] EMPTY_ARGUMENTS = new OperationArgument[0];
@@ -219,6 +238,14 @@ public class OperationModel implements PrettyPrintable {
             assert this.operationBeginArguments.length == operationBeginArguments.length;
         }
         this.operationBeginArguments = operationBeginArguments;
+        return this;
+    }
+
+    public OperationModel setOperationEndArguments(OperationArgument... operationEndArguments) {
+        if (this.operationEndArguments != null) {
+            assert this.operationEndArguments.length == operationEndArguments.length;
+        }
+        this.operationEndArguments = operationEndArguments;
         return this;
     }
 

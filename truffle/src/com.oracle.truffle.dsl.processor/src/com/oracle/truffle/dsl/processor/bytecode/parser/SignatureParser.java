@@ -66,6 +66,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeM
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
 public class SignatureParser {
+
     final ProcessorContext context;
     final TruffleTypes types;
 
@@ -93,7 +94,7 @@ public class SignatureParser {
         // Second: operands.
         List<VariableElement> operands = new ArrayList<>();
         boolean hasVariadic = false;
-        while (!params.isEmpty() && isValueParam(peekType(params))) {
+        while (!params.isEmpty()) {
             operands.add(params.poll());
             skipDSLParameters(params);
         }
@@ -168,22 +169,6 @@ public class SignatureParser {
             }
         }
 
-        // Third: local setters.
-        int localSetterCount = 0;
-        while (!params.isEmpty() && isAssignable(peekType(params), types.LocalSetter)) {
-            localSetterCount++;
-            isValid = checkNotDSLParameter(params.poll(), types.LocalSetter, errorTarget) && isValid;
-            skipDSLParameters(params);
-        }
-
-        // Fourth: local setter ranges.
-        int localSetterRangeCount = 0;
-        while (!params.isEmpty() && isAssignable(peekType(params), types.LocalSetterRange)) {
-            localSetterRangeCount++;
-            isValid = checkNotDSLParameter(params.poll(), types.LocalSetterRange, errorTarget) && isValid;
-            skipDSLParameters(params);
-        }
-
         // If any parameters remain, the signature is invalid.
         while (!params.isEmpty()) {
             isValid = false;
@@ -193,12 +178,6 @@ public class SignatureParser {
                 checkNotDSLParameter(param, types.LocalSetterRange, errorTarget);
             } else if (isAssignable(param.asType(), types.LocalSetter)) {
                 checkNotDSLParameter(param, types.LocalSetter, errorTarget);
-                if (localSetterRangeCount > 0) {
-                    if (errorTarget != null) {
-                        errorTarget.addError(param, "%s parameters must precede %s parameters.",
-                                        getSimpleName(types.LocalSetter), getSimpleName(types.LocalSetterRange));
-                    }
-                }
             } else if (ElementUtils.findAnnotationMirror(param, types.Variadic) != null) {
                 checkNotDSLParameter(param, types.Variadic, errorTarget);
                 if (hasVariadic) {
@@ -206,25 +185,11 @@ public class SignatureParser {
                         errorTarget.addError(param, "Multiple variadic operands not allowed to an operation. Split up the operation if such behaviour is required.");
                     }
                 }
-                if (localSetterRangeCount > 0 || localSetterCount > 0) {
-                    if (errorTarget != null) {
-                        errorTarget.addError(param, "Operands must precede %s and %s parameters.",
-                                        getSimpleName(types.LocalSetter),
-                                        getSimpleName(types.LocalSetterRange));
-                    }
-                }
                 hasVariadic = true;
             } else {
                 if (hasVariadic) {
                     if (errorTarget != null) {
                         errorTarget.addError(param, "Non-variadic operands must precede variadic operands.");
-                    }
-                }
-                if (localSetterRangeCount > 0 || localSetterCount > 0) {
-                    if (errorTarget != null) {
-                        errorTarget.addError(param, "Operands must precede %s and %s parameters.",
-                                        getSimpleName(types.LocalSetter),
-                                        getSimpleName(types.LocalSetterRange));
                     }
                 }
             }
@@ -240,11 +205,7 @@ public class SignatureParser {
         if (ElementUtils.canThrowTypeExact(specialization.getThrownTypes(), CustomOperationParser.types().UnexpectedResultException)) {
             returnType = context.getDeclaredType(Object.class);
         }
-        return new Signature(returnType, operandTypes, hasVariadic, localSetterCount, localSetterRangeCount, constantOperandsBefore, constantOperandsAfter);
-    }
-
-    private boolean isValueParam(TypeMirror tpe) {
-        return !isAssignable(tpe, types.LocalSetter) && !isAssignable(tpe, types.LocalSetterRange);
+        return new Signature(returnType, operandTypes, hasVariadic, constantOperandsBefore, constantOperandsAfter);
     }
 
     private boolean isVariadic(VariableElement param) {
@@ -344,27 +305,13 @@ public class SignatureParser {
             }
             return null;
         }
-        if (a.localSetterCount != b.localSetterCount) {
-            if (errorTarget != null) {
-                errorTarget.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.",
-                                getSimpleName(CustomOperationParser.types().LocalSetter));
-            }
-            return null;
-        }
-        if (a.localSetterRangeCount != b.localSetterRangeCount) {
-            if (errorTarget != null) {
-                errorTarget.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.",
-                                getSimpleName(CustomOperationParser.types().LocalSetterRange));
-            }
-            return null;
-        }
 
         TypeMirror newReturnType = mergeIfPrimitiveType(a.context, a.returnType, b.returnType);
         List<TypeMirror> mergedTypes = new ArrayList<>(a.operandTypes.size());
         for (int i = 0; i < a.operandTypes.size(); i++) {
             mergedTypes.add(mergeIfPrimitiveType(a.context, a.operandTypes.get(i), b.operandTypes.get(i)));
         }
-        return new Signature(newReturnType, mergedTypes, a.isVariadic, a.localSetterCount, a.localSetterRangeCount,
+        return new Signature(newReturnType, mergedTypes, a.isVariadic,
                         a.constantOperandsBefore, a.constantOperandsAfter);
     }
 

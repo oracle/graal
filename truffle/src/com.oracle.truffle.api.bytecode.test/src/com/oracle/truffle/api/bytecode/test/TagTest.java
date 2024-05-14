@@ -68,6 +68,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
@@ -1757,32 +1758,26 @@ public class TagTest extends AbstractInstructionTest {
 
             b.beginTag(StatementTag.class);
             b.beginTag(ExpressionTag.class);
-            b.beginInvokeRunnable();
-            b.emitLoadConstant((Runnable) () -> {
+            b.emitInvokeRunnable(() -> {
                 events0.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class).build()));
             });
-            b.endInvokeRunnable();
             b.endTag(ExpressionTag.class);
             b.endTag(StatementTag.class);
 
             b.beginTag(StatementTag.class);
             b.beginTag(ExpressionTag.class);
-            b.beginInvokeRunnable();
-            b.emitLoadConstant((Runnable) () -> {
+            b.emitInvokeRunnable(() -> {
                 events1.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class, ExpressionTag.class).build()));
             });
-            b.endInvokeRunnable();
             b.endTag(ExpressionTag.class);
             b.endTag(StatementTag.class);
 
             b.beginTag(StatementTag.class);
             b.beginTag(ExpressionTag.class);
-            b.beginInvokeRunnable();
-            b.emitLoadConstant((Runnable) () -> {
+            b.emitInvokeRunnable(() -> {
                 events2.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class,
                                 StatementTag.class, ExpressionTag.class).build()));
             });
-            b.endInvokeRunnable();
             b.endTag(ExpressionTag.class);
             b.endTag(StatementTag.class);
 
@@ -1793,20 +1788,20 @@ public class TagTest extends AbstractInstructionTest {
 
         List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
         int enterRoot1 = instructions.get(0).getBytecodeIndex();
-        int leaveRoot1 = instructions.get(20).getBytecodeIndex();
+        int leaveRoot1 = instructions.get(17).getBytecodeIndex();
 
         assertEvents(node, events0.get(),
                         new Event(EventKind.RETURN_VALUE, enterRoot1, leaveRoot1, null, RootTag.class));
 
         assertEvents(node, events1.get(),
-                        new Event(EventKind.RETURN_VALUE, 0xa, 0x10, null, ExpressionTag.class),
-                        new Event(EventKind.ENTER, 0x12, 0x18, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x1c, 0x22, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x9, 0xe, null, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x10, 0x15, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x1a, 0x1f, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, enterRoot1, leaveRoot1, null, RootTag.class));
 
         assertEvents(node, events2.get(),
-                        new Event(EventKind.RETURN_VALUE, 0x1c, 0x22, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x1a, 0x24, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x1a, 0x1f, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x18, 0x21, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, enterRoot1, leaveRoot1, null, RootTag.class));
     }
 
@@ -1879,6 +1874,7 @@ public class TagTest extends AbstractInstructionTest {
         }
 
         @Operation
+        @ConstantOperand(name = "runnable", type = Runnable.class)
         static final class InvokeRunnable {
             @Specialization
             public static void doRunnable(Runnable r) {

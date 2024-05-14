@@ -105,9 +105,6 @@ public final class InstructionModel implements PrettyPrintable {
         INTEGER("int"),
         BYTECODE_INDEX("bci"),
         CONSTANT("const"),
-        LOCAL_SETTER("setter"),
-        LOCAL_SETTER_RANGE_START("setter_range_start"),
-        LOCAL_SETTER_RANGE_LENGTH("setter_range_length"),
         NODE_PROFILE("node"),
         TAG_NODE("tag"),
         BRANCH_PROFILE("profile");

@@ -193,26 +193,6 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         }
 
         index -= instruction.signature.getConstantOperandsAfterCount();
-        if (index < instruction.signature.localSetterCount) {
-            List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.LOCAL_SETTER);
-            InstructionImmediate imm = imms.get(index);
-            b.startStaticCall(context.getTypes().LocalSetter, "get");
-            b.string("ACCESS.shortArrayRead($bc, $bci + " + imm.offset() + ")");
-            b.end();
-            return false;
-        }
-
-        index -= instruction.signature.localSetterCount;
-        if (index < instruction.signature.localSetterRangeCount) {
-            List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.LOCAL_SETTER_RANGE_START);
-            InstructionImmediate imm = imms.get(index);
-            b.startStaticCall(context.getTypes().LocalSetterRange, "get");
-            b.string("ACCESS.shortArrayRead($bc, $bci + " + imm.offset() + ")"); // start
-            b.string("ACCESS.shortArrayRead($bc, $bci + " + (imm.offset() + 1) + ")"); // length
-            b.end();
-            return false;
-        }
-
         throw new AssertionError("index=" + index + ", signature=" + instruction.signature);
     }
 

@@ -261,36 +261,54 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
+    @ConstantOperand(type = LocalSetter.class)
     static final class TeeLocal {
         @Specialization
-        public static long doInt(VirtualFrame frame, long value, LocalSetter setter) {
-            setter.setLong(frame, value);
+        public static long doInt(VirtualFrame frame,
+                        LocalSetter setter,
+                        long value,
+                        @Bind("$bytecode") BytecodeNode bytecode,
+                        @Bind("$bci") int bci) {
+            setter.setLong(bytecode, bci, frame, value);
             return value;
         }
 
         @Specialization
-        public static Object doGeneric(VirtualFrame frame, Object value, LocalSetter setter) {
-            setter.setObject(frame, value);
+        public static Object doGeneric(VirtualFrame frame,
+                        LocalSetter setter,
+                        Object value,
+                        @Bind("$bytecode") BytecodeNode bytecode,
+                        @Bind("$bci") int bci) {
+            setter.setObject(bytecode, bci, frame, value);
             return value;
         }
     }
 
     @Operation
+    @ConstantOperand(type = LocalSetterRange.class)
     static final class TeeLocalRange {
         @Specialization
         @ExplodeLoop
-        public static Object doLong(VirtualFrame frame, long[] value, LocalSetterRange setter) {
+        public static Object doLong(VirtualFrame frame,
+                        LocalSetterRange setter,
+                        long[] value,
+                        @Bind("$bytecode") BytecodeNode bytecode,
+                        @Bind("$bci") int bci) {
             for (int i = 0; i < value.length; i++) {
-                setter.setLong(frame, i, value[i]);
+                setter.setLong(bytecode, bci, frame, i, value[i]);
             }
             return value;
         }
 
         @Specialization
         @ExplodeLoop
-        public static Object doGeneric(VirtualFrame frame, Object[] value, LocalSetterRange setter) {
+        public static Object doGeneric(VirtualFrame frame,
+                        LocalSetterRange setter,
+                        Object[] value,
+                        @Bind("$bytecode") BytecodeNode bytecode,
+                        @Bind("$bci") int bci) {
             for (int i = 0; i < value.length; i++) {
-                setter.setObject(frame, i, value[i]);
+                setter.setObject(bytecode, bci, frame, i, value[i]);
             }
             return value;
         }

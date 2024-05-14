@@ -40,160 +40,25 @@
  */
 package com.oracle.truffle.api.bytecode;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-//TODO (chumer)investigate whether this works with boxing elimination
 /**
  * Operation parameter that allows an operation to update a contiguous range of locals.
  *
  * @since 24.1
  */
 public final class LocalSetterRange {
-    /**
-     * LocalSetterRanges are not specific to any {@link BytecodeRootNode}, since they just
-     * encapsulate a range of indices. We use a static cache to share and reuse the objects for each
-     * node. This cache is two-dimensional, indexed first on the range length and then on the start
-     * index.
-     */
-    @CompilationFinal(dimensions = 2) private static LocalSetterRange[][] localSetterRuns = new LocalSetterRange[8][];
 
-    private static synchronized void resizeArray(int length) {
-        if (localSetterRuns.length <= length) {
-            int size = localSetterRuns.length;
-            while (size <= length) {
-                size = size << 1;
-            }
-            localSetterRuns = Arrays.copyOf(localSetterRuns, size);
-        }
+    private final int start;
+    private final int length;
+
+    private LocalSetterRange(int start, int length) {
+        this.start = start;
+        this.length = length;
     }
-
-    private static synchronized LocalSetterRange[] createSubArray(int length, int index) {
-        LocalSetterRange[] target = localSetterRuns[length];
-        if (target == null) {
-            int size = 8;
-            while (size <= index) {
-                size = size << 1;
-            }
-            target = new LocalSetterRange[size];
-            localSetterRuns[length] = target;
-        }
-        return target;
-    }
-
-    private static synchronized LocalSetterRange[] resizeSubArray(int length, int index) {
-        LocalSetterRange[] target = localSetterRuns[length];
-        if (target.length <= index) {
-            int size = target.length;
-            while (size <= index) {
-                size = size << 1;
-            }
-            target = Arrays.copyOf(target, size);
-            localSetterRuns[length] = target;
-        }
-        return target;
-    }
-
-    private static final LocalSetterRange EMPTY = new LocalSetterRange(0, 0);
-
-    /**
-     * Creates a new {@link LocalSetterRange}.
-     *
-     * This method is invoked by the generated code and should not be called directly.
-     *
-     * @since 24.1
-     */
-    public static LocalSetterRange create(int[] indices) {
-        CompilerAsserts.neverPartOfCompilation("use #get from compiled code");
-        if (indices.length == 0) {
-            return EMPTY;
-        } else {
-            assert checkContiguous(indices);
-            return create(indices[0], indices.length);
-        }
-    }
-
-    /**
-     * Creates a new {@link LocalSetterRange}.
-     *
-     * This method is invoked by the generated code and should not be called directly.
-     *
-     * @since 24.1
-     */
-    public static LocalSetterRange create(int start, int length) {
-        CompilerAsserts.neverPartOfCompilation("use #get from compiled code");
-        if (start < 0 || start > Short.MAX_VALUE) {
-            throw new ArrayIndexOutOfBoundsException(start);
-        }
-
-        if (length <= 0 || length + start > Short.MAX_VALUE) {
-            throw new ArrayIndexOutOfBoundsException(start + length);
-        }
-
-        if (localSetterRuns.length <= length) {
-            resizeArray(length);
-        }
-
-        LocalSetterRange[] target = localSetterRuns[length];
-        if (target == null) {
-            target = createSubArray(length, start);
-        }
-
-        if (target.length <= start) {
-            target = resizeSubArray(length, start);
-        }
-
-        LocalSetterRange result = target[start];
-        if (result == null) {
-            result = new LocalSetterRange(start, length);
-            target[start] = result;
-        }
-
-        return result;
-    }
-
-    private static boolean checkContiguous(int[] indices) {
-        int start = indices[0];
-        for (int i = 1; i < indices.length; i++) {
-            if (start + i != indices[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Obtains an existing {@link LocalSetterRange}.
-     *
-     * This method is invoked by the generated code and should not be called directly.
-     *
-     * @since 24.1
-     */
-    public static LocalSetterRange get(int start, int length) {
-        return localSetterRuns[length][start];
-    }
-
-    /**
-     * Defines the start index of the range.
-     *
-     * This field is used by generated code and should not be used directly.
-     *
-     * @since 24.1
-     */
-    public final int start;
-
-    /**
-     * Defines the length of the range.
-     *
-     * This field is used by generated code and should not be used directly.
-     *
-     * @since 24.1
-     */
-    public final int length;
 
     /**
      * Returns the length of the range.
@@ -202,11 +67,6 @@ public final class LocalSetterRange {
      */
     public int getLength() {
         return length;
-    }
-
-    private LocalSetterRange(int start, int length) {
-        this.start = start;
-        this.length = length;
     }
 
     /**
@@ -234,9 +94,10 @@ public final class LocalSetterRange {
      *
      * @since 24.1
      */
-    public void setObject(VirtualFrame frame, int offset, Object value) {
+    public void setObject(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, Object value) {
+        CompilerAsserts.partialEvaluationConstant(this);
         checkBounds(offset);
-        LocalSetter.setObject(frame, start + offset, value);
+        bytecode.setLocalValue(bci, frame, start + offset, value);
     }
 
     /**
@@ -244,9 +105,10 @@ public final class LocalSetterRange {
      *
      * @since 24.1
      */
-    public void setInt(VirtualFrame frame, int offset, int value) {
+    public void setInt(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, int value) {
+        CompilerAsserts.partialEvaluationConstant(this);
         checkBounds(offset);
-        LocalSetter.setInt(frame, start + offset, value);
+        bytecode.setLocalValueInt(bci, frame, start + offset, value);
     }
 
     /**
@@ -254,9 +116,10 @@ public final class LocalSetterRange {
      *
      * @since 24.1
      */
-    public void setLong(VirtualFrame frame, int offset, long value) {
+    public void setLong(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, long value) {
+        CompilerAsserts.partialEvaluationConstant(this);
         checkBounds(offset);
-        LocalSetter.setLong(frame, start + offset, value);
+        bytecode.setLocalValueLong(bci, frame, start + offset, value);
     }
 
     /**
@@ -264,8 +127,40 @@ public final class LocalSetterRange {
      *
      * @since 24.1
      */
-    public void setDouble(VirtualFrame frame, int offset, double value) {
+    public void setDouble(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, double value) {
+        CompilerAsserts.partialEvaluationConstant(this);
         checkBounds(offset);
-        LocalSetter.setDouble(frame, start + offset, value);
+        bytecode.setLocalValueDouble(bci, frame, start + offset, value);
     }
+
+    private static final int CACHE_MAX_START = 32;
+    private static final int CACHE_MAX_LENGTH = 16;
+
+    @CompilationFinal(dimensions = 2) private static final LocalSetterRange[][] CACHE = createArray();
+
+    private static LocalSetterRange[][] createArray() {
+        LocalSetterRange[][] array = new LocalSetterRange[CACHE_MAX_LENGTH][CACHE_MAX_START];
+        for (int length = 0; length < CACHE_MAX_LENGTH; length++) {
+            for (int start = 0; start < CACHE_MAX_START; start++) {
+                array[length][start] = new LocalSetterRange(start, length);
+            }
+        }
+        return array;
+    }
+
+    public static LocalSetterRange constantOf(BytecodeLocal[] locals) {
+        int start = locals[0].getLocalOffset();
+        for (int i = 1; i < locals.length; i++) {
+            if (start + i != locals[i].getLocalOffset()) {
+                throw new IllegalArgumentException("Invalid locals provided. Only contigous locals must be provided for LocalSetterRange.");
+            }
+        }
+        int length = locals.length;
+        if (start < CACHE_MAX_START && length < CACHE_MAX_LENGTH) {
+            return CACHE[length][start];
+        } else {
+            return new LocalSetterRange(start, length);
+        }
+    }
+
 }
