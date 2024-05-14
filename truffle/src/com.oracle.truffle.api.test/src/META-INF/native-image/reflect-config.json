@@ -153,6 +153,12 @@
     ]
   },
   {
+    "name": "com.oracle.truffle.polyglot.InternalResourceRoots",
+    "methods": [
+      { "name": "getInstance", "parameterTypes": [] }
+    ]
+  },
+  {
     "name": "com.oracle.truffle.polyglot.FileSystems$PreInitializeContextFileSystem",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
