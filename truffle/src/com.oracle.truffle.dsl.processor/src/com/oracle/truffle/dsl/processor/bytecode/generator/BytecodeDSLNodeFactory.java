@@ -8480,6 +8480,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             type.add(createValidateBytecodes());
+            type.add(createDumpInvalid());
 
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "cloneUninitialized"));
 
@@ -8979,7 +8980,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private Element createValidateBytecodes() {
+        private CodeExecutableElement createValidateBytecodes() {
             CodeExecutableElement validate = new CodeExecutableElement(Set.of(FINAL), type(boolean.class), "validateBytecodes");
             CodeTreeBuilder b = validate.createBuilder();
 
@@ -9178,6 +9179,28 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return validate;
         }
 
+        // calls dump, but catches any exceptions and falls back on an error string
+        private CodeExecutableElement createDumpInvalid() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(String.class), "dumpInvalid");
+            ex.addParameter(new CodeVariableElement(types.BytecodeLocation, "highlightedLocation"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startTryBlock();
+
+            b.startReturn();
+            b.string("dump(highlightedLocation)");
+            b.end();
+
+            b.end().startCatchBlock(context.getDeclaredType(Throwable.class), "t");
+            b.startReturn();
+            b.doubleQuote("<dump error>");
+            b.end();
+
+            b.end();
+
+            return ex;
+        }
+
         private CodeTree createValidationError(String message) {
             return createValidationError(message, null);
         }
@@ -9193,7 +9216,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.doubleQuote("Bytecode validation error at index: %s. " + message + "%n%s");
             }
             b.string("bci");
-            b.string("dump(findLocation(bci))");
+            b.string("dumpInvalid(findLocation(bci))");
             b.end(); // String.format
             b.end(); // group
             if (cause != null) {
@@ -14029,6 +14052,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             bytecodeNodeGen.add(new BuilderFactory().create());
+            bytecodeNodeGen.add(createNewConfigBuilder());
             return bytecodeNodeGen;
         }
 
@@ -14085,6 +14109,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
             method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
             method.addThrownType(context.getType(IOException.class));
+            CodeTreeBuilder b = method.createBuilder();
+            emitThrowNotImplemented(b);
+            return method;
+        }
+
+        private CodeExecutableElement createNewConfigBuilder() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), types.BytecodeConfig_Builder, "newConfigBuilder");
             CodeTreeBuilder b = method.createBuilder();
             emitThrowNotImplemented(b);
             return method;
