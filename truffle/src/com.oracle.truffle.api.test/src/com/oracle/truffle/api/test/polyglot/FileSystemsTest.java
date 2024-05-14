@@ -94,6 +94,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
@@ -212,7 +213,7 @@ public class FileSystemsTest {
             Engine engine = Engine.create();
             privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(),
                             fullIO);
-            markAsLanguageHome(engine, privateDir);
+            markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
             ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.NONE).build();
             setCwd(ctx, privateDir);
             cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE,
@@ -222,7 +223,7 @@ public class FileSystemsTest {
             engine = Engine.create();
             privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(),
                             fullIO);
-            markAsLanguageHome(engine, privateDir);
+            markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
             ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.NONE).build();
             setCwd(ctx, privateDir);
             cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,
@@ -297,7 +298,7 @@ public class FileSystemsTest {
             fileSystem.setCurrentWorkingDirectory(memDir);
             privateDir = createContent(memDir, fileSystem);
             Engine engine = Engine.create();
-            markAsLanguageHome(engine, privateDir);
+            markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
             ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
             ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build();
             setCwd(ctx, privateDir);
@@ -3006,9 +3007,9 @@ public class FileSystemsTest {
         }
     }
 
-    private static void markAsLanguageHome(Engine engine, Path languageHome) {
+    static void markAsLanguageHome(Engine engine, Class<? extends TruffleLanguage<?>> language, Path languageHome) {
         try (Context ctx = Context.newBuilder().engine(engine).build()) {
-            AbstractExecutableTestLanguage.evalTestLanguage(ctx, MarkAsLanguageHomeLanguage.class, "", languageHome.toString());
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, MarkAsLanguageHomeLanguage.class, "", TestUtils.getDefaultLanguageId(language), languageHome.toString());
         }
     }
 
@@ -3017,8 +3018,8 @@ public class FileSystemsTest {
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
-            String langHome = (String) contextArguments[0];
-            String languageId = TestUtils.getDefaultLanguageId(getClass());
+            String languageId = (String) contextArguments[0];
+            String langHome = (String) contextArguments[1];
             System.setProperty("org.graalvm.language." + languageId + ".home", langHome);
             resetLanguageHomes();
             return null;
