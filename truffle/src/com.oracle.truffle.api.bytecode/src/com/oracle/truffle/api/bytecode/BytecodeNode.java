@@ -579,14 +579,6 @@ public abstract class BytecodeNode extends Node {
      */
     @TruffleBoundary
     public final String dump(BytecodeLocation highlighedLocation) {
-        try {
-            return dumpImpl(highlighedLocation);
-        } catch (Throwable t) {
-            return "<dump error>";
-        }
-    }
-
-    private String dumpImpl(BytecodeLocation highlighedLocation) {
         record IndexedInstruction(Instruction instruction, int index) {
         }
 
