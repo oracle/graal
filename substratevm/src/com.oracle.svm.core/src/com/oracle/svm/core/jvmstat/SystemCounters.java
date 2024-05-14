@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.sun.management.OperatingSystemMXBean;
 
 /**
@@ -44,6 +45,8 @@ import com.sun.management.OperatingSystemMXBean;
  * are specified at image build time).
  */
 class SystemCounters implements PerfDataHolder, VMOperationListener {
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/master/src/hotspot/share/services/runtimeService.cpp#L72") //
+    private static final String ATTACH_SUPPORTED = "1";
     // Constants.
     private final PerfLongConstant initDoneTime;
     private final PerfStringConstant javaCommand;
@@ -52,6 +55,7 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
     private final PerfLongConstant frequency;
     private final PerfLongConstant loadedClasses;
     private final PerfLongConstant processors;
+    private final PerfStringConstant jvmCapabilities;
 
     // Exported system properties.
     private final PerfStringConstant tempDir;
@@ -98,6 +102,7 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         osName = perfManager.createStringConstant("java.property.os.name");
         userDir = perfManager.createStringConstant("java.property.user.dir");
         userName = perfManager.createStringConstant("java.property.user.name");
+        jvmCapabilities = perfManager.createStringConstant("sun.rt.jvmCapabilities");
 
         gcInProgress = perfManager.createLongVariable("com.oracle.svm.gcInProgress", PerfUnit.NONE);
 
@@ -132,6 +137,7 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         osName.allocate(getSystemProperty("os.name"));
         userDir.allocate(getSystemProperty("user.dir"));
         userName.allocate(getSystemProperty("user.name"));
+        jvmCapabilities.allocate(ATTACH_SUPPORTED);
 
         gcInProgress.allocate();
 
