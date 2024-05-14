@@ -69,6 +69,7 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
+import jdk.graal.compiler.lir.amd64.AMD64ControlFlow;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64UnaryConsumer;
@@ -371,6 +372,21 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         } else {
             return null;
         }
+    }
+
+    @MatchRule("(If (IntegerTest value Constant=a))")
+    public ComplexMatchResult testBitAndBranch(IfNode root, ValueNode value, ConstantNode a) {
+        long constant = a.asJavaConstant().asLong();
+        if (Long.bitCount(constant) == 1) {
+            return builder -> {
+                LabelRef trueDestination = getLIRBlock(root.trueSuccessor());
+                LabelRef falseDestination = getLIRBlock(root.falseSuccessor());
+                gen.append(new AMD64ControlFlow.BitTestAndBranchOp(trueDestination, falseDestination, gen.asAllocatable(operand(value)),
+                                root.getTrueSuccessorProbability(), Long.numberOfTrailingZeros(constant)));
+                return null;
+            };
+        }
+        return null;
     }
 
     @MatchRule("(If (IntegerTest Read=access value))")

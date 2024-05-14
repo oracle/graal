@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_4;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -45,7 +45,7 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_4, size = SIZE_4)
 public class BitCountNode extends UnaryNode implements ArithmeticLIRLowerable {
 
     public static final NodeClass<BitCountNode> TYPE = NodeClass.create(BitCountNode.class);
