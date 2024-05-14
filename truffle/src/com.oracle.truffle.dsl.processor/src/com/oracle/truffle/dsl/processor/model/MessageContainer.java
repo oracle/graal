@@ -55,7 +55,9 @@ import java.util.function.Predicate;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.ExpectError;
@@ -221,10 +223,15 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
 
         for (Element enclosed : element.getEnclosedElements()) {
             if (enclosed instanceof TypeElement) {
-                // we just validate types.
+                // we don't validate nested types.
                 continue;
             }
             verifyExpectedErrors(enclosed, emitted);
+        }
+        if (element instanceof ExecutableElement ex) {
+            for (VariableElement param : ex.getParameters()) {
+                verifyExpectedErrors(param, emitted);
+            }
         }
 
     }
