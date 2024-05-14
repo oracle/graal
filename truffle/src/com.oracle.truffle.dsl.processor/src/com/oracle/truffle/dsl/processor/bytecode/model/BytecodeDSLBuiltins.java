@@ -45,6 +45,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument.Encoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 
@@ -94,7 +95,8 @@ public class BytecodeDSLBuiltins {
                         .setVariadic(0) //
                         .setTransparent(true) //
                         .setChildrenMustBeValues(false) //
-                        .setOperationBeginArguments(new OperationArgument(types.TruffleLanguage, "language", "the language to associate with the root node"));
+                        .setOperationBeginArguments(
+                                        new OperationArgument(types.TruffleLanguage, OperationArgument.Encoding.LANGUAGE, "language", "the language to associate with the root node"));
         m.ifThenOperation = m.operation(OperationKind.IF_THEN, "IfThen", """
                         IfThen implements an if-then statement. It has two children. It evaluates its first child, and if it produces {@code true}, it executes its second child.
                         This operation does not produce a result.
@@ -135,7 +137,7 @@ public class BytecodeDSLBuiltins {
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind the caught exception to"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind the caught exception to"));
         m.finallyTryOperation = m.operation(OperationKind.FINALLY_TRY, "FinallyTry",
                         """
                                         FinallyTry implements a finally handler. It takes two children: the handler and the body. It executes the body, and after execution finishes it always executes the handler.
@@ -148,7 +150,7 @@ public class BytecodeDSLBuiltins {
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind a thrown exception to (if available)"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to (if available)"));
         m.operation(OperationKind.FINALLY_TRY_CATCH, "FinallyTryCatch",
                         """
                                         FinallyTryCatch implements a finally handler that behaves differently when an exception is thrown. It takes three children: the regular handler, the body, and the exceptional handler. It executes the body and then executes one of the handlers.
@@ -159,7 +161,7 @@ public class BytecodeDSLBuiltins {
                         .setVoid(true) //
                         .setNumChildren(3) //
                         .setChildrenMustBeValues(false, false, false) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind a thrown exception to"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to"));
         m.operation(OperationKind.LABEL, "Label", """
                         Label defines a location in the bytecode that can be used as a forward Branch target.
                         <p>
@@ -167,26 +169,26 @@ public class BytecodeDSLBuiltins {
                         """) //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLabel, "label", "the label to define"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLabel, Encoding.LABEL, "label", "the label to define"));
         m.operation(OperationKind.BRANCH, "Branch", """
                         Branch performs a branch to the given label.
                         This operation only supports unconditional forward branches; use IfThen and While to perform other kinds of branches.
                         """) //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLabel, "label", "the label to branch to")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLabel, Encoding.LABEL, "label", "the label to branch to")) //
                         .setInstruction(m.branchInstruction);
         m.loadConstantOperation = m.operation(OperationKind.LOAD_CONSTANT, "LoadConstant", """
                         LoadConstant produces the given constant value. The constant should be immutable, since it may be shared across multiple LoadConstant operations.
                         """) //
                         .setNumChildren(0) //
-                        .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), "constant", "the constant value to load")) //
+                        .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), Encoding.OBJECT, "constant", "the constant value to load")) //
                         .setInstruction(m.loadConstantInstruction);
         m.operation(OperationKind.LOAD_ARGUMENT, "LoadArgument", """
                         LoadArgument reads an argument from the frame using the given index and produces its value.
                         """) //
                         .setNumChildren(0) //
-                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), "index", "the index of the argument to load")) //
+                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the index of the argument to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
         m.loadLocalOperation = m.operation(OperationKind.LOAD_LOCAL, "LoadLocal",
@@ -195,7 +197,7 @@ public class BytecodeDSLBuiltins {
                                         If a value has not been written to the local, LoadLocal produces the default value as defined in the {@link FrameDescriptor} ({@code null} by default).
                                         """) //
                         .setNumChildren(0) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL, "load.local", m.signature(Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         m.loadLocalMaterializedOperation = m.operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized", """
@@ -204,7 +206,7 @@ public class BytecodeDSLBuiltins {
                         """) //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat", m.signature(Object.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         m.storeLocalOperation = m.operation(OperationKind.STORE_LOCAL, "StoreLocal", """
@@ -213,7 +215,7 @@ public class BytecodeDSLBuiltins {
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                         .setInstruction(m.instruction(InstructionKind.STORE_LOCAL, "store.local", m.signature(void.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         m.storeLocalMaterializedOperation = m.operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized", """
@@ -223,7 +225,7 @@ public class BytecodeDSLBuiltins {
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, true) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                         .setInstruction(m.instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         m.signature(void.class, Object.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
@@ -248,7 +250,7 @@ public class BytecodeDSLBuiltins {
                         .setChildrenMustBeValues(false) //
                         .setTransparent(true) //
                         .setRequiresParentRoot(false) //
-                        .setOperationBeginArguments(new OperationArgument(types.Source, "source", "the source object to associate with the enclosed operations"));
+                        .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.OBJECT, "source", "the source object to associate with the enclosed operations"));
         m.sourceSectionOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSection", """
                         SourceSection associates the enclosed children with the given source character index and length. It must be (directly or indirectly) enclosed within a Source operation.
                         """) //
@@ -256,8 +258,8 @@ public class BytecodeDSLBuiltins {
                         .setChildrenMustBeValues(false)//
                         .setTransparent(true) //
                         .setRequiresParentRoot(false) //
-                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), "index", "the starting character index of the source section"),
-                                        new OperationArgument(context.getType(int.class), "length", "the length (in characters) of the source section"));
+                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the starting character index of the source section"),
+                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length", "the length (in characters) of the source section"));
 
         if (m.enableTagInstrumentation) {
             m.tagEnterInstruction = m.instruction(InstructionKind.TAG_ENTER, "tag.enter", m.signature(void.class));
@@ -274,7 +276,11 @@ public class BytecodeDSLBuiltins {
                             .setNumChildren(1) //
                             .setOperationBeginArgumentVarArgs(true) //
                             .setOperationBeginArguments(
-                                            new OperationArgument(new ArrayCodeTypeMirror(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"))//
+                                            new OperationArgument(new ArrayCodeTypeMirror(context.getDeclaredType(Class.class)), Encoding.TAGS, "newTags",
+                                                            "the tags to associate with the enclosed operations"))//
+                            .setOperationEndArguments(
+                                            new OperationArgument(new ArrayCodeTypeMirror(context.getDeclaredType(Class.class)), Encoding.TAGS, "newTags",
+                                                            "the tags to associate with the enclosed operations"))//
                             .setInstruction(m.tagLeaveValueInstruction);
 
             if (m.enableYield) {
@@ -284,7 +290,6 @@ public class BytecodeDSLBuiltins {
                 m.tagResumeInstruction = m.instruction(InstructionKind.TAG_RESUME, "tag.resume", m.signature(void.class));
                 m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             }
-
         }
 
         m.popVariadicInstruction = new InstructionModel[9];

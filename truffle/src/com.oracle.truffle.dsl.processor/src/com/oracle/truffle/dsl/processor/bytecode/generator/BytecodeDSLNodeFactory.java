@@ -3053,32 +3053,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("builtNodes.add(null)");
                 }
 
-                for (int i = 0; i < operation.operationBeginArguments.length; i++) {
-                    TypeMirror argType = operation.operationBeginArguments[i].type();
-                    String argumentName = operation.getOperationBeginArgumentName(i);
-                    if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
-                        continue; // language is already available as a parameter
-                    } else if (ElementUtils.typeEquals(argType, types.BytecodeLocal)) {
-                        b.statement("BytecodeLocal ", argumentName, " = locals.get(buffer.readShort())");
-                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.BytecodeLocal))) {
-                        b.statement("BytecodeLocal[] ", argumentName, " = new BytecodeLocal[buffer.readShort()]");
-                        b.startFor().string("int i = 0; i < ", argumentName, ".length; i++").end().startBlock();
-                        // this can be optimized since they are consecutive
-                        b.statement(argumentName, "[i] = locals.get(buffer.readShort())");
-                        b.end();
-                    } else if (ElementUtils.typeEquals(argType, types.BytecodeLabel)) {
-                        b.statement("BytecodeLabel ", argumentName, " = labels.get(buffer.readShort())");
-                    } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
-                        b.statement("int ", argumentName, " = buffer.readInt()");
-                    } else if (operation.kind == OperationKind.TAG && i == 0) {
-                        b.startStatement().type(argType).string(" ", argumentName, " = TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))").end();
-                    } else {
-                        b.startStatement().type(argType).string(" ", argumentName, " = ");
-                        if (!ElementUtils.isObject(argType)) {
-                            b.cast(argType);
-                        }
-                        b.string("consts.get(buffer.readShort())").end();
-                    }
+                for (OperationArgument beginArgument : operation.operationBeginArguments) {
+                    buildDeserializeOperationArgument(b, beginArgument);
                 }
 
                 b.startStatement();
@@ -3100,34 +3076,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 if (operation.hasChildren()) {
                     b.startCase().staticReference(serializationElements.codeEnd[operation.id]).end().startBlock();
+
+                    for (OperationArgument endArgument : operation.operationEndArguments) {
+                        buildDeserializeOperationArgument(b, endArgument);
+                    }
+
                     if (operation.kind == OperationKind.ROOT) {
                         b.startStatement();
                         b.type(bytecodeNodeGen.asType()).string(" node = ").cast(bytecodeNodeGen.asType()).string("end" + operation.name + "()");
                         b.end();
                         b.startStatement().startCall("builtNodes.set").string("node.buildIndex").startGroup().string("node").end().end().end();
-                    } else if (operation.kind == OperationKind.TAG) {
-                        b.statement("Class<?>[] newTags = TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))");
-                        b.statement("end", operation.name, "(newTags)");
                     } else {
-                        for (int i = 0; i < operation.operationEndArguments.length; i++) {
-                            TypeMirror argType = operation.operationEndArguments[i].type();
-                            String argumentName = operation.getOperationEndArgumentName(i);
-
-                            b.startStatement().type(argType).string(" ", argumentName, " = ");
-                            if (!ElementUtils.isObject(argType)) {
-                                b.cast(argType);
-                            }
-                            b.string("consts.get(buffer.readShort())").end();
-
-                        }
-
                         b.startStatement().startCall("end" + operation.name);
                         for (int i = 0; i < operation.operationEndArguments.length; i++) {
                             b.string(operation.getOperationEndArgumentName(i));
                         }
                         b.end(2);
                     }
-
                     b.statement("break");
 
                     b.end();
@@ -3153,6 +3118,78 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             return method;
 
+        }
+
+        private void buildSerializeOperationArgument(CodeTreeBuilder before, CodeTreeBuilder after, OperationArgument argument) {
+            String argumentName = argument.name();
+            switch (argument.kind()) {
+                case LANGUAGE:
+                    before.statement("serialization.language = language");
+                    break;
+                case LOCAL:
+                    serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + ").localIndex");
+                    break;
+                case LOCAL_ARRAY:
+                    serializationElements.writeShort(after, "(short) " + argumentName + ".length");
+                    after.startFor().string("int i = 0; i < " + argumentName + ".length; i++").end().startBlock();
+                    serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + "[i]).localIndex");
+                    after.end();
+                    break;
+                case LABEL:
+                    serializationElements.writeShort(after, "(short) ((BytecodeLabelImpl) " + argumentName + ").declaringOp");
+                    break;
+                case TAGS:
+                    serializationElements.writeInt(after, "encodedTags");
+                    break;
+                case INTEGER:
+                    serializationElements.writeInt(after, argumentName);
+                    break;
+                case OBJECT:
+                    String index = argumentName + "_index";
+                    before.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
+                    serializationElements.writeShort(after, index);
+                    break;
+                default:
+                    throw new AssertionError("unexpected argument kind " + argument.kind());
+            }
+        }
+
+        private void buildDeserializeOperationArgument(CodeTreeBuilder b, OperationArgument argument) {
+            TypeMirror argType = argument.builderType();
+            String argumentName = argument.name();
+            switch (argument.kind()) {
+                case LANGUAGE:
+                    break;
+                case LOCAL:
+                    b.declaration(argType, argumentName, "locals.get(buffer.readShort())");
+                    break;
+                case LABEL:
+                    b.declaration(argType, argumentName, "labels.get(buffer.readShort())");
+                    break;
+                case TAGS:
+                    b.declaration(argType, argumentName, "TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))");
+                    break;
+                case INTEGER:
+                    b.declaration(argType, argumentName, "buffer.readInt()");
+                    break;
+                case LOCAL_ARRAY:
+                    b.startDeclaration(argType, argumentName).startNewArray(arrayOf(types.BytecodeLocal), CodeTreeBuilder.singleString("buffer.readShort()")).end().end();
+                    b.startFor().string("int i = 0; i < ", argumentName, ".length; i++").end().startBlock();
+                    // this can be optimized since they are consecutive
+                    b.statement(argumentName, "[i] = locals.get(buffer.readShort())");
+                    b.end();
+                    break;
+                case OBJECT:
+                    b.startDeclaration(argType, argumentName);
+                    if (!ElementUtils.isObject(argType)) {
+                        b.cast(argType);
+                    }
+                    b.string("consts.get(buffer.readShort())");
+                    b.end(); // declaration
+                    break;
+                default:
+                    throw new AssertionError("unexpected argument kind " + argument.kind());
+            }
         }
 
         private CodeExecutableElement createFinish() {
@@ -3921,7 +3958,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.string("null"); // BytecodeRootNodesImpl
                     b.string("0"); // numLocals
                     b.string("serialization.rootCount++");
-
                     for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
                         b.defaultValue(var.asType());
                     }
@@ -3931,34 +3967,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("serialization.builtNodes.add(node)");
                 }
 
-                CodeTreeBuilder after = CodeTreeBuilder.createBuilder();
-                for (int i = 0; i < operation.operationBeginArguments.length; i++) {
-                    TypeMirror argType = operation.operationBeginArguments[i].type();
-                    String argumentName = operation.getOperationBeginArgumentName(i);
-                    if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
-                        b.statement("serialization.language = language");
-                    } else if (ElementUtils.typeEquals(argType, types.BytecodeLocal)) {
-                        serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + ").localIndex");
-                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.BytecodeLocal))) {
-                        serializationElements.writeShort(after, "(short) " + argumentName + ".length");
-                        after.startFor().string("int i = 0; i < " + argumentName + ".length; i++").end().startBlock();
-                        serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + "[i]).localIndex");
-                        after.end();
-                    } else if (ElementUtils.typeEquals(argType, types.BytecodeLabel)) {
-                        serializationElements.writeShort(after, "(short) ((BytecodeLabelImpl) " + argumentName + ").declaringOp");
-                    } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
-                        serializationElements.writeInt(after, argumentName);
-                    } else if (operation.kind == OperationKind.TAG && i == 0) {
-                        serializationElements.writeInt(after, "encodedTags");
-                    } else {
-                        String index = argumentName + "_index";
-                        b.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
-                        serializationElements.writeShort(after, index);
-                    }
+                CodeTreeBuilder afterOperation = CodeTreeBuilder.createBuilder();
+                for (OperationArgument argument : operation.operationBeginArguments) {
+                    buildSerializeOperationArgument(b, afterOperation, argument);
                 }
                 serializationElements.writeShort(b, serializationElements.codeBegin[operation.id]);
-
-                b.tree(after.build());
+                b.tree(afterOperation.build());
             });
         }
 
@@ -4008,12 +4022,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (operation.isTransparent) {
                         yield createOperationData(className, "false", UNINIT);
                     } else {
-                        int constantArguments = operation.instruction.signature.getConstantOperandsBeforeCount();
-                        int localSetterArguments = operation.instruction.signature.localSetterCount + operation.instruction.signature.localSetterRangeCount;
-                        assert localSetterArguments == operation.operationBeginArguments.length - constantArguments;
-
                         // [childBcis, constants, locals...]
-                        String[] args = new String[2 + localSetterArguments];
+                        String[] args = new String[2];
 
                         CodeTreeBuilder childBciArrayBuilder = CodeTreeBuilder.createBuilder();
                         int numChildBcis = operation.instruction.getImmediates(ImmediateKind.BYTECODE_INDEX).size();
@@ -4038,17 +4048,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             }
                             constantsArrayBuilder.end();
                             args[1] = constantsArrayBuilder.toString();
-                        }
-
-                        for (int i = 0; i < localSetterArguments; i++) {
-                            OperationArgument arg = operation.operationBeginArguments[constantArguments + i];
-                            if (arg.type().getKind() == TypeKind.ARRAY) {
-                                // cast to Object to avoid Java interpreting the array as desugared
-                                // varargs
-                                args[i + 2] = "(Object) " + arg.name();
-                            } else {
-                                args[i + 2] = arg.name();
-                            }
                         }
 
                         yield createOperationData(className, args);
@@ -4440,19 +4439,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private void createSerializeEnd(OperationModel operation, CodeTreeBuilder b) {
             serializationWrapException(b, () -> {
-                CodeTreeBuilder after = CodeTreeBuilder.createBuilder();
-                for (int i = 0; i < operation.operationEndArguments.length; i++) {
-                    String argumentName = operation.getOperationEndArgumentName(i);
-                    String index = argumentName + "_index";
-                    b.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
-                    serializationElements.writeShort(after, index);
+                CodeTreeBuilder afterCode = CodeTreeBuilder.createBuilder();
+                for (OperationArgument argument : operation.operationEndArguments) {
+                    buildSerializeOperationArgument(b, afterCode, argument);
                 }
                 serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
-                if (operation.kind == OperationKind.TAG) {
-                    serializationElements.writeInt(b, "encodedTags");
-                }
-
-                b.tree(after.build());
+                b.tree(afterCode.build());
             });
         }
 
@@ -5123,9 +5115,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                  * Eagerly allocate space for the constants. Even if the node is not emitted (e.g.,
                  * it's a disabled instrumentation), we need the constant pool to be stable.
                  */
-                String argumentName = operation.getOperationBeginArgumentName(i);
                 String constantPoolIndex = operation.instruction.signature.constantOperandsBefore.get(i) + "Index";
-                b.declaration(type(int.class), constantPoolIndex, "constantPool.addConstant(" + argumentName + ")");
+                b.startDeclaration(type(int.class), constantPoolIndex);
+                buildAddArgumentConstant(b, operation.operationBeginArguments[i], operation.getOperationBeginArgumentName(i));
+                b.end();
                 result.add(constantPoolIndex);
             }
             return result;
@@ -5159,7 +5152,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (inEmit) {
                         String variable = constantOperandsBefore.get(i) + "Index";
                         b.startDeclaration(type(int.class), variable);
-                        b.string("constantPool.addConstant(" + operation.getOperationBeginArgumentName(i) + ")");
+                        buildAddArgumentConstant(b, operation.operationBeginArguments[i], operation.getOperationBeginArgumentName(i));
                         b.end();
                         result.add(variable);
                     } else {
@@ -5176,7 +5169,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         int afterI = i - instruction.signature.getConstantOperandsBeforeCount();
                         String variable = instruction.signature.constantOperandsAfter.get(afterI) + "Index";
                         b.startDeclaration(type(int.class), variable);
-                        b.string("constantPool.addConstant(" + operation.getOperationEndArgumentName(afterI) + ")");
+                        buildAddArgumentConstant(b, operation.operationEndArguments[afterI], operation.getOperationEndArgumentName(afterI));
                         b.end();
                         result.add(variable);
                     }
@@ -5214,8 +5207,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             int childBciIndex = 0;
             int constantIndex = 0;
-            int localSetterIndex = 0;
-            int localSetterRangeIndex = 0;
             for (int i = 0; i < immediates.size(); i++) {
                 InstructionImmediate immediate = immediates.get(i);
                 args[i] = switch (immediate.kind()) {
@@ -5238,64 +5229,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                     }
                     case CONSTANT -> constantOperandIndices.get(constantIndex++);
-                    case LOCAL_SETTER -> {
-                        String arg = "localSetter" + localSetterIndex;
-                        b.startAssign("int " + arg);
-                        if (inEmit) {
-                            b.string("((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(localSetterIndex) + ").frameIndex");
-                        } else {
-                            b.string("((BytecodeLocalImpl) operationData.locals[" + localSetterIndex + "]).frameIndex");
-                        }
-                        b.end();
-                        b.startStatement();
-                        b.startStaticCall(types.LocalSetter, "create");
-                        b.string(arg);
-                        b.end(2);
-                        localSetterIndex++;
-
-                        yield arg;
-                    }
-                    case LOCAL_SETTER_RANGE_START -> {
-                        String locals = "range" + localSetterRangeIndex + "Locals";
-                        String indices = "range" + localSetterRangeIndex + "Indices";
-                        String range = "range" + localSetterRangeIndex;
-
-                        // Get array of locals (from named argument/operation Stack).
-                        b.startAssign("BytecodeLocal[] " + locals);
-                        if (inEmit) {
-                            b.string(operation.getOperationBeginArgumentName(localSetterIndex + localSetterRangeIndex));
-                        } else {
-                            b.string("(BytecodeLocal[]) operationData.locals[" + (localSetterIndex + localSetterRangeIndex) + "]");
-                        }
-                        b.end();
-
-                        // Convert to an array of local indices.
-                        b.startAssign("int[] " + indices);
-                        b.string("new int[" + locals + ".length]");
-                        b.end();
-                        b.startFor().string("int i = 0; i < " + indices + ".length; i++").end().startBlock();
-                        b.startAssign(indices + "[i]").string("((BytecodeLocalImpl) " + locals + "[i]).frameIndex").end();
-                        b.end();
-
-                        // Create range from indices (create method validates that locals are
-                        // contiguous).
-                        b.startAssign("LocalSetterRange " + range);
-                        b.startStaticCall(types.LocalSetterRange, "create");
-                        b.string(indices);
-                        b.end(2);
-
-                        String start = "localSetterRangeStart" + localSetterRangeIndex;
-                        String length = "localSetterRangeLength" + localSetterRangeIndex;
-                        b.declaration(context.getType(int.class), start, range + ".start");
-                        b.declaration(context.getType(int.class), length, range + ".length");
-
-                        yield start;
-                    }
-                    case LOCAL_SETTER_RANGE_LENGTH -> {
-                        // NB: this is a bit of a hack. We rely on the previous block to create the
-                        // LocalSetterRange and set the length variable, and just yield it here.
-                        yield "localSetterRangeLength" + (localSetterRangeIndex++);
-                    }
                     case NODE_PROFILE -> "allocateNode()";
                     case TAG_NODE -> "node";
                     case LOCAL_OFFSET, LOCAL_INDEX, LOCAL_ROOT, INTEGER, BRANCH_PROFILE -> throw new AssertionError(
@@ -5305,6 +5238,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             return args;
+        }
+
+        private void buildAddArgumentConstant(CodeTreeBuilder b, OperationArgument argument, String localName) {
+            b.startCall("constantPool.addConstant");
+            if (ElementUtils.typeEquals(argument.builderType(), argument.constantType())) {
+                b.string(localName);
+            } else {
+                b.startStaticCall(argument.constantType(), "constantOf");
+                b.string(localName);
+                b.end();
+            }
+            b.end();
         }
 
         private enum BeforeChildKind {
@@ -6010,7 +5955,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private static boolean needsRelocation(InstructionImmediate i) {
             return switch (i.kind()) {
-                case LOCAL_INDEX, LOCAL_OFFSET, LOCAL_ROOT, CONSTANT, INTEGER, LOCAL_SETTER, LOCAL_SETTER_RANGE_START, LOCAL_SETTER_RANGE_LENGTH, TAG_NODE -> false;
+                case LOCAL_INDEX, LOCAL_OFFSET, LOCAL_ROOT, CONSTANT, INTEGER, TAG_NODE -> false;
                 case BYTECODE_INDEX, NODE_PROFILE, BRANCH_PROFILE -> true;
                 default -> throw new AssertionError("Unexpected kind");
             };
@@ -7905,9 +7850,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     return "LocalOffsetArgument";
                 case LOCAL_INDEX:
                 case LOCAL_ROOT:
-                case LOCAL_SETTER:
-                case LOCAL_SETTER_RANGE_LENGTH:
-                case LOCAL_SETTER_RANGE_START:
                 case INTEGER:
                     return "IntegerArgument";
                 case NODE_PROFILE:
@@ -7974,9 +7916,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         type.add(createAsBytecodeIndex());
                         break;
                     case INTEGER:
-                    case LOCAL_SETTER:
-                    case LOCAL_SETTER_RANGE_LENGTH:
-                    case LOCAL_SETTER_RANGE_START:
                     case LOCAL_INDEX:
                     case LOCAL_ROOT:
                         type.add(createAsInteger());
@@ -8116,7 +8055,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case BYTECODE_INDEX -> "BYTECODE_INDEX";
                     case CONSTANT -> "CONSTANT";
                     case LOCAL_OFFSET -> "LOCAL_OFFSET";
-                    case LOCAL_INDEX, LOCAL_ROOT, INTEGER, LOCAL_SETTER, LOCAL_SETTER_RANGE_LENGTH, LOCAL_SETTER_RANGE_START -> "INTEGER";
+                    case LOCAL_INDEX, LOCAL_ROOT, INTEGER -> "INTEGER";
                     case NODE_PROFILE -> "NODE_PROFILE";
                     case TAG_NODE -> "TAG_NODE";
                 };
@@ -8563,11 +8502,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createGetTagTree());
 
             type.add(createGetLocalCount());
-            type.add(createGetLocalValue());
-            type.add(createSetLocalValue());
+            type.add(createGetLocalValue(type(Object.class)));
+            type.add(createSetLocalValue(type(Object.class)));
 
             if (model.usesBoxingElimination()) {
-                type.add(createSetLocalValueImpl());
+                type.add(createSetLocalValueImpl(type(Object.class)));
+
+                for (TypeMirror boxingType : model.boxingEliminatedTypes) {
+                    type.add(createGetLocalValue(boxingType));
+                    type.add(createSetLocalValue(boxingType));
+                    type.add(createSetLocalValueImpl(boxingType));
+                }
+
                 type.add(createSpecializeSlotKind());
                 type.add(createGetCachedLocalKind());
                 type.add(createGetCachedLocalKindInternal());
@@ -8625,67 +8571,81 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createGetLocalValue() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getLocalValue");
+        private CodeExecutableElement createGetLocalValue(TypeMirror specializedType) {
+            boolean generic = ElementUtils.isObject(specializedType);
+            String suffix;
+            if (generic) {
+                suffix = "";
+            } else {
+                suffix = ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(specializedType));
+            }
+
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getLocalValue" + suffix);
             ex.renameArguments("bci", "frame", "localOffset");
             ex.getModifiers().add(FINAL);
+
             CodeTreeBuilder b = ex.createBuilder();
             buildVerifyLocalsIndex(b);
             buildVerifyFrameDescriptor(b);
 
             b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_IDX + localOffset");
             if (model.usesBoxingElimination()) {
-                b.startTryBlock();
+                if (generic) {
+                    b.startTryBlock();
+                    b.declaration(types.FrameSlotKind, "kind");
+                    b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
+                    b.lineComment("Resolving the local index is expensive. Don't do it in the interpreter.");
+                    b.startAssign("kind").startStaticCall(types.FrameSlotKind, "fromTag");
+                    b.string("frame.getTag(frameIndex)");
+                    b.end().end();
 
-                b.declaration(types.FrameSlotKind, "kind");
-                b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
-                b.lineComment("Resolving the local index is expensive. Don't do it in the interpreter.");
-                b.startAssign("kind").startStaticCall(types.FrameSlotKind, "fromTag");
-                b.string("frame.getTag(frameIndex)");
-                b.end().end();
+                    b.end().startElseBlock();
 
-                b.end().startElseBlock();
+                    if (model.enableLocalScoping) {
+                        b.startAssign("kind").string("getCachedLocalKind(frame, frameIndex, bci, localOffset)").end();
+                    } else {
+                        b.startAssign("kind").string("getCachedLocalKind(frame, frameIndex)").end();
+                    }
+                    b.end();
 
-                if (model.enableLocalScoping) {
-                    b.startAssign("kind").string("getCachedLocalKind(frame, frameIndex, bci, localOffset)").end();
-                } else {
-                    b.startAssign("kind").string("getCachedLocalKind(frame, frameIndex)").end();
-                }
-                b.end();
+                    b.startSwitch().string("kind").end().startBlock();
+                    for (TypeMirror boxingType : model.boxingEliminatedTypes) {
+                        b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
+                        b.startCaseBlock();
 
-                b.startSwitch().string("kind").end().startBlock();
-                for (TypeMirror boxingType : model.boxingEliminatedTypes) {
-                    b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
+                        b.startReturn();
+                        startExpectFrame(b, "frame", boxingType, false).string("frameIndex").end();
+                        b.end();
+                        b.end(); // case block
+                    }
+
+                    b.startCase().string("Object").end();
                     b.startCaseBlock();
-
                     b.startReturn();
-                    startExpectFrame(b, "frame", boxingType, false).string("frameIndex").end();
+                    startExpectFrame(b, "frame", type(Object.class), false).string("frameIndex").end();
                     b.end();
                     b.end(); // case block
+
+                    b.startCase().string("Illegal").end();
+                    b.startCaseBlock();
+                    b.startReturn();
+                    b.string("frame.getFrameDescriptor().getDefaultValue()");
+                    b.end();
+                    b.end(); // case block
+
+                    b.caseDefault().startCaseBlock();
+                    b.tree(GeneratorUtils.createShouldNotReachHere("unexpected slot"));
+                    b.end();
+
+                    b.end(); // switch block
+                    b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                    b.startReturn().string("ex.getResult()").end();
+                    b.end(); // catch
+                } else {
+                    b.startReturn();
+                    startExpectFrame(b, "frame", specializedType, false).string("frameIndex").end();
+                    b.end();
                 }
-
-                b.startCase().string("Object").end();
-                b.startCaseBlock();
-                b.startReturn();
-                startExpectFrame(b, "frame", type(Object.class), false).string("frameIndex").end();
-                b.end();
-                b.end(); // case block
-
-                b.startCase().string("Illegal").end();
-                b.startCaseBlock();
-                b.startReturn();
-                b.string("frame.getFrameDescriptor().getDefaultValue()");
-                b.end();
-                b.end(); // case block
-
-                b.caseDefault().startCaseBlock();
-                b.tree(GeneratorUtils.createShouldNotReachHere("unexpected slot"));
-                b.end();
-
-                b.end(); // switch block
-                b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-                b.startReturn().string("ex.getResult()").end();
-                b.end(); // catch
             } else {
                 b.startReturn().string("frame.getObject(frameIndex)").end();
             }
@@ -8693,24 +8653,119 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createSetLocalValue() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "setLocalValue");
+        private CodeExecutableElement createSetLocalValue(TypeMirror specializedType) {
+            String suffix;
+            if (ElementUtils.isObject(specializedType)) {
+                suffix = "";
+            } else {
+                suffix = ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(specializedType));
+            }
+
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "setLocalValue" + suffix);
             ex.renameArguments("bci", "frame", "localOffset", "value");
             CodeTreeBuilder b = ex.createBuilder();
             buildVerifyLocalsIndex(b);
             buildVerifyFrameDescriptor(b);
             b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_IDX + localOffset");
             if (model.usesBoxingElimination()) {
+                b.startStatement().startCall("setLocalValue" + suffix + "Impl");
+                b.string("frame").string("frameIndex").string("value");
                 if (model.enableLocalScoping) {
-                    b.statement("setLocalValueImpl(frame, frameIndex, value, bci, localOffset)");
-                } else {
-                    b.statement("setLocalValueImpl(frame, frameIndex, value)");
+                    b.string("bci").string("localOffset");
                 }
+                b.end().end(); // call, statement
             } else {
                 b.startStatement();
-                b.startCall("frame", getSetMethod(type(Object.class))).string("frameIndex").string("value").end();
+                b.startCall("frame", getSetMethod(specializedType)).string("frameIndex").string("value").end();
                 b.end();
             }
+            return ex;
+        }
+
+        private CodeExecutableElement createSetLocalValueImpl(TypeMirror specializedType) {
+            if (!model.usesBoxingElimination()) {
+                throw new AssertionError("Not supported.");
+            }
+
+            boolean generic = ElementUtils.isObject(specializedType);
+
+            String suffix;
+            if (generic) {
+                suffix = "";
+            } else {
+                suffix = ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(specializedType));
+            }
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "setLocalValue" + suffix + "Impl");
+            ex.addParameter(new CodeVariableElement(types.Frame, "frame"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
+            ex.addParameter(new CodeVariableElement(specializedType, "value"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            buildVerifyFrameDescriptor(b);
+
+            if (model.enableLocalScoping) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+                ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
+                b.declaration(types.FrameSlotKind, "oldKind", "getCachedLocalKind(frame, frameIndex, bci, localOffset)");
+            } else {
+                b.declaration(types.FrameSlotKind, "oldKind", "getCachedLocalKind(frame, frameIndex)");
+            }
+            b.declaration(types.FrameSlotKind, "newKind");
+
+            b.startSwitch().string("oldKind").end().startBlock();
+
+            for (TypeMirror boxingType : model.boxingEliminatedTypes) {
+                if (!generic && !ElementUtils.typeEquals(boxingType, specializedType)) {
+                    continue;
+                }
+
+                b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
+                b.startCaseBlock();
+
+                if (generic) {
+                    String primitiveValue = boxingType.toString().toLowerCase() + "Value";
+                    b.startIf().instanceOf("value", ElementUtils.boxType(boxingType), primitiveValue).end().startBlock();
+                    b.startStatement();
+                    b.startCall("frame", getSetMethod(boxingType)).string("frameIndex").string(primitiveValue).end();
+                    b.end(); // statement
+                    b.statement("return");
+                    b.end(); // if block
+                    b.startElseBlock();
+                    b.startAssign("newKind").staticReference(types.FrameSlotKind, "Object").end();
+                    b.end();
+                    b.statement("break");
+                } else {
+                    b.startStatement();
+                    b.startCall("frame", getSetMethod(boxingType)).string("frameIndex").string("value").end();
+                    b.end(); // statement
+                    b.statement("return");
+                }
+                b.end(); // case block
+            }
+
+            b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(type(Object.class)))).end();
+            b.startCaseBlock();
+            b.startStatement();
+            b.startCall("frame", getSetMethod(type(Object.class))).string("frameIndex").string("value").end();
+            b.end();
+            b.statement("return");
+            b.end(); // case block
+            b.caseDefault().startCaseBlock();
+            b.startAssign("newKind").string("specializeSlotKind(value)").end();
+            b.statement("break");
+            b.end();
+            b.end(); // switch block
+
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            if (model.enableLocalScoping) {
+                b.statement("setCachedLocalKind(frameIndex, newKind, bci, localOffset)");
+                b.statement("setLocalValueImpl(frame, frameIndex, value, bci, localOffset)");
+            } else {
+                b.statement("setCachedLocalKind(frameIndex, newKind)");
+                b.statement("setLocalValueImpl(frame, frameIndex, value)");
+            }
+
             return ex;
         }
 
@@ -8809,73 +8864,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             } else {
                 b.statement("getRoot().getFrameDescriptor().setSlotKind(frameIndex, kind)");
-            }
-
-            return ex;
-        }
-
-        private CodeExecutableElement createSetLocalValueImpl() {
-            if (!model.usesBoxingElimination()) {
-                throw new AssertionError("Not supported.");
-            }
-
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "setLocalValueImpl");
-            ex.addParameter(new CodeVariableElement(types.Frame, "frame"));
-            ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
-            ex.addParameter(new CodeVariableElement(type(Object.class), "value"));
-
-            CodeTreeBuilder b = ex.createBuilder();
-            buildVerifyFrameDescriptor(b);
-
-            if (model.enableLocalScoping) {
-                ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
-                ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
-                b.declaration(types.FrameSlotKind, "oldKind", "getCachedLocalKind(frame, frameIndex, bci, localOffset)");
-            } else {
-                b.declaration(types.FrameSlotKind, "oldKind", "getCachedLocalKind(frame, frameIndex)");
-            }
-            b.declaration(types.FrameSlotKind, "newKind");
-
-            b.startSwitch().string("oldKind").end().startBlock();
-
-            for (TypeMirror boxingType : model.boxingEliminatedTypes) {
-                b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
-                b.startCaseBlock();
-                String primitiveValue = boxingType.toString().toLowerCase() + "Value";
-
-                b.startIf().instanceOf("value", ElementUtils.boxType(boxingType), primitiveValue).end().startBlock();
-                b.startStatement();
-                b.startCall("frame", getSetMethod(boxingType)).string("frameIndex").string(primitiveValue).end();
-                b.end(); // statement
-                b.statement("return");
-                b.end(); // if block
-                b.startElseBlock();
-                b.startAssign("newKind").staticReference(types.FrameSlotKind, "Object").end();
-                b.end();
-                b.statement("break");
-                b.end(); // case block
-            }
-
-            b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(type(Object.class)))).end();
-            b.startCaseBlock();
-            b.startStatement();
-            b.startCall("frame", getSetMethod(type(Object.class))).string("frameIndex").string("value").end();
-            b.end();
-            b.statement("return");
-            b.end(); // case block
-            b.caseDefault().startCaseBlock();
-            b.startAssign("newKind").string("specializeSlotKind(value)").end();
-            b.statement("break");
-            b.end();
-            b.end(); // switch block
-
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            if (model.enableLocalScoping) {
-                b.statement("setCachedLocalKind(frameIndex, newKind, bci, localOffset)");
-                b.statement("setLocalValueImpl(frame, frameIndex, value, bci, localOffset)");
-            } else {
-                b.statement("setCachedLocalKind(frameIndex, newKind)");
-                b.statement("setLocalValueImpl(frame, frameIndex, value)");
             }
 
             return ex;
@@ -9039,13 +9027,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             }
                             b.string(" || ").string(localName).string(" >= bc.length").end().startBlock();
                             b.tree(createValidationError("bytecode index is out of bounds"));
-                            b.end();
-                            break;
-                        case LOCAL_SETTER:
-                        case LOCAL_SETTER_RANGE_LENGTH:
-                        case LOCAL_SETTER_RANGE_START:
-                            b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= getRoot().numLocals").end().startBlock();
-                            b.tree(createValidationError("local is out of bounds"));
                             b.end();
                             break;
                         case INTEGER:
@@ -13203,19 +13184,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.CONSTANT);
                     InstructionImmediate imm = imms.get(i);
                     b.string(readConst(readBc("bci + " + imm.offset())));
-                    b.end();
-                }
-
-                for (InstructionImmediate immediate : instr.getImmediates(ImmediateKind.LOCAL_SETTER)) {
-                    b.startStaticCall(types.LocalSetter, "get");
-                    b.tree(readImmediate("bc", "bci", immediate));
-                    b.end();
-                }
-
-                for (InstructionImmediate immediate : instr.getImmediates(ImmediateKind.LOCAL_SETTER_RANGE_START)) {
-                    b.startStaticCall(types.LocalSetterRange, "get");
-                    b.tree(readImmediate("bc", "bci", immediate)); // start
-                    b.tree(readImmediate("bc", "bci", immediate)); // length
                     b.end();
                 }
             }
