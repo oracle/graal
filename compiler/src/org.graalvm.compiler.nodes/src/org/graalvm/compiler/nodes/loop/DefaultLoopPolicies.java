@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -577,7 +578,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             }
 
             // We cap the factor and we invert it to make guards' range narrow.
-            double cappedFactor = 1 - Math.clamp(factor, LoopUnswitchFrequencyMinFactor.getValue(options), LoopUnswitchFrequencyMaxFactor.getValue(options));
+            double cappedFactor = 1 - Math.min(Math.max(factor, LoopUnswitchFrequencyMinFactor.getValue(options)), LoopUnswitchFrequencyMaxFactor.getValue(options));
 
             if (splitFrequency < cappedFactor * localLoopFrequency) {
                 /*

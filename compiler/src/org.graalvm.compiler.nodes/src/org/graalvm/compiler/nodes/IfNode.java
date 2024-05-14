@@ -175,7 +175,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     public void setTrueSuccessorProbability(BranchProbabilityData profileData) {
         double prob = profileData.getDesignatedSuccessorProbability();
         assert ProfileData.isApproximatelyInRange(prob, 0.0, 1.0) : "Probability out of bounds: " + prob;
-        double trueSuccessorProbability = Math.clamp(prob, 0.0, 1.0);
+        double trueSuccessorProbability = Math.min(1.0, Math.max(0.0, prob));
         this.profileData = profileData.copy(trueSuccessorProbability);
     }
 
