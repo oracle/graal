@@ -50,6 +50,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.AnnotationProcessor;
@@ -166,6 +167,14 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
         for (Element enclosed : element.getEnclosedElements()) {
             if (hasExpectErrors(enclosed)) {
                 return true;
+            }
+        }
+
+        if (element instanceof ExecutableElement ex) {
+            for (VariableElement param : ex.getParameters()) {
+                if (hasExpectErrors(param)) {
+                    return true;
+                }
             }
         }
 
