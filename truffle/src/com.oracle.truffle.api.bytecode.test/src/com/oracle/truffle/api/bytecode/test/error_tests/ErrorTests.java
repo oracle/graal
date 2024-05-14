@@ -274,7 +274,7 @@ public class ErrorTests {
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.PrivateOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.CloneableOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.BadSignatureOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.BadVariadicOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Could not use com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.UnproxyableOperationProxy as an operation proxy: the class must be annotated with @OperationProxy.Proxyable.",
     })
@@ -283,7 +283,7 @@ public class ErrorTests {
     @OperationProxy(PrivateOperationProxy.class)
     @OperationProxy(CloneableOperationProxy.class)
     @OperationProxy(NonStaticMemberOperationProxy.class)
-    @OperationProxy(BadSignatureOperationProxy.class)
+    @OperationProxy(BadVariadicOperationProxy.class)
     @OperationProxy(Underscored_Operation_Proxy.class)
     @OperationProxy(UnproxyableOperationProxy.class)
     public abstract static class OperationErrorTests extends RootNode implements BytecodeRootNode {
@@ -334,27 +334,9 @@ public class ErrorTests {
         }
 
         @Operation
-        public static final class BadSignatureOperation {
+        public static final class BadVariadicOperation {
             @Specialization
             public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic operands must precede variadic operands.") Object b) {
-            }
-
-            @Specialization
-            public static void valueAfterSetter(LocalSetter a, @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") Object b) {
-            }
-
-            @Specialization
-            public static void valueAfterSetterRange(LocalSetterRange a, @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") Object b) {
-            }
-
-            @Specialization
-            public static void variadicAfterSetter(LocalSetter a,
-                            @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
-            }
-
-            @Specialization
-            public static void variadicAfterSetterRange(LocalSetterRange a,
-                            @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
             }
 
             @Specialization
@@ -363,8 +345,7 @@ public class ErrorTests {
             }
 
             @Specialization
-            public static void setterAfterSetterRange(LocalSetterRange a,
-                            @ExpectError("LocalSetter parameters must precede LocalSetterRange parameters.") LocalSetter b) {
+            public static void variadicWithWrongType(@ExpectError("Variadic operand must have type Object[].") @Variadic String[] a) {
             }
         }
 
@@ -538,37 +519,14 @@ public class ErrorTests {
     }
 
     @OperationProxy.Proxyable
-    public static final class BadSignatureOperationProxy {
+    public static final class BadVariadicOperationProxy {
         @Specialization
         public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic operands must precede variadic operands.") Object b) {
         }
 
         @Specialization
-        public static void valueAfterSetter(LocalSetter a, @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") Object b) {
-        }
-
-        @Specialization
-        public static void valueAfterSetterRange(LocalSetterRange a, @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") Object b) {
-        }
-
-        @Specialization
-        public static void variadicAfterSetter(LocalSetter a,
-                        @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
-        }
-
-        @Specialization
-        public static void variadicAfterSetterRange(LocalSetterRange a,
-                        @ExpectError("Operands must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
-        }
-
-        @Specialization
         public static void multipleVariadic(@Variadic Object[] a,
                         @ExpectError("Multiple variadic operands not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
-        }
-
-        @Specialization
-        public static void setterAfterSetterRange(LocalSetterRange a,
-                        @ExpectError("LocalSetter parameters must precede LocalSetterRange parameters.") LocalSetter b) {
         }
 
         @Specialization
