@@ -35,12 +35,14 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
@@ -60,12 +62,12 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
 
     private static BytecodeDSLOSRTestRootNode parseNode(BytecodeParser<BytecodeDSLOSRTestRootNodeGen.Builder> builder) {
         BytecodeRootNodes<BytecodeDSLOSRTestRootNode> nodes = BytecodeDSLOSRTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
-        return nodes.getNode(nodes.count() - 1);
+        return nodes.getNode(0);
     }
 
     private static BytecodeDSLOSRTestRootNode parseNodeWithSources(BytecodeParser<BytecodeDSLOSRTestRootNodeGen.Builder> builder) {
         BytecodeRootNodes<BytecodeDSLOSRTestRootNode> nodes = BytecodeDSLOSRTestRootNodeGen.create(BytecodeConfig.WITH_SOURCE, builder);
-        return nodes.getNode(nodes.count() - 1);
+        return nodes.getNode(0);
     }
 
     @Rule public TestRule timeout = GraalTest.createTimeout(30, TimeUnit.SECONDS);
@@ -219,6 +221,75 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         assertEquals(OSR_THRESHOLD * 3, root.getCallTarget().call());
     }
 
+    private static BytecodeParser<BytecodeDSLOSRTestRootNodeWithYieldGen.Builder> getParserForYieldTest(boolean emitYield) {
+        return b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+
+            if (emitYield) {
+                b.beginYield();
+                b.emitLoadConstant(0);
+                b.endYield();
+            }
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            BytecodeLocal i = b.createLocal();
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            b.beginLt();
+            b.emitLoadLocal(i);
+            b.emitLoadConstant(OSR_THRESHOLD * 2);
+            b.endLt();
+
+            b.beginBlock();
+            b.beginIncrement(result);
+            b.emitLoadLocal(result);
+            b.endIncrement();
+
+            b.beginIncrementIfCompiled(result);
+            b.emitLoadLocal(result);
+            b.endIncrementIfCompiled();
+
+            b.beginIncrement(i);
+            b.emitLoadLocal(i);
+            b.endIncrement();
+            b.endBlock();
+            b.endWhile();
+
+            b.emitLoadLocal(result);
+            b.endBlock();
+            b.endRoot();
+        };
+    }
+
+    /**
+     * The following tests are identical to #testReturnValueFromLoop but on an interpreter with
+     * continuations. We test with and without a yield at the beginning to test that locals are
+     * correctly forwarded in either case.
+     */
+
+    @Test
+    public void testReturnValueFromLoopYieldingWithYield() {
+        BytecodeDSLOSRTestRootNodeWithYield rootWithYield = BytecodeDSLOSRTestRootNodeWithYieldGen.create(BytecodeConfig.DEFAULT, getParserForYieldTest(true)).getNode(0);
+        ContinuationResult cont = (ContinuationResult) rootWithYield.getCallTarget().call();
+        // 1*(# interpreter iterations) + 2*(# compiled iterations)
+        assertEquals(OSR_THRESHOLD * 3, cont.continueWith(null));
+    }
+
+    @Test
+    public void testReturnValueFromLoopYieldingNoYield() {
+        BytecodeDSLOSRTestRootNodeWithYield rootNoYield = BytecodeDSLOSRTestRootNodeWithYieldGen.create(BytecodeConfig.DEFAULT, getParserForYieldTest(false)).getNode(0);
+        // 1*(# interpreter iterations) + 2*(# compiled iterations)
+        assertEquals(OSR_THRESHOLD * 3, rootNoYield.getCallTarget().call());
+    }
+
     @TruffleLanguage.Registration(id = "BytecodeDSLOSRTestLanguage")
     static class BytecodeDSLOSRTestLanguage extends TruffleLanguage<Object> {
         @Override
@@ -303,6 +374,45 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
             }
         }
 
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class, enableYield = true)
+    public abstract static class BytecodeDSLOSRTestRootNodeWithYield extends DebugBytecodeRootNode {
+
+        protected BytecodeDSLOSRTestRootNodeWithYield(TruffleLanguage<?> language, FrameDescriptor fd) {
+            super(language, fd);
+        }
+
+        @Operation
+        static final class Lt {
+            @Specialization
+            public static boolean perform(int left, int right) {
+                return left < right;
+            }
+        }
+
+        @Operation
+        static final class Increment {
+            @Specialization
+            public static void perform(VirtualFrame frame, int currentValue, LocalSetter variable) {
+                variable.setInt(frame, currentValue + 1);
+            }
+        }
+
+        @Operation
+        static final class IncrementIfCompiled {
+            @Specialization
+            public static void perform(VirtualFrame frame, int currentValue, LocalSetter variable) {
+                /**
+                 * NB: this is implemented as one operation rather than a built-in IfThen operation
+                 * because the IfThen branch profile would mark the "in compiled code" branch as
+                 * dead and we'd deopt on OSR entry.
+                 */
+                if (CompilerDirectives.inCompiledCode()) {
+                    variable.setInt(frame, currentValue + 1);
+                }
+            }
+        }
     }
 
 }
