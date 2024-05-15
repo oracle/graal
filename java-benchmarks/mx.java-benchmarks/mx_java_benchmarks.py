@@ -1579,6 +1579,12 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["page-rank"]
             del benchmarks["neo4j-analytics"]
 
+        if self.version() in ["0.15.0"]:
+            del benchmarks["chi-square"]
+            del benchmarks["gauss-mix"]
+            del benchmarks["page-rank"]
+            del benchmarks["movie-lens"]
+
         return benchmarks
 
     def completeBenchmarkList(self, bmSuiteArgs):
