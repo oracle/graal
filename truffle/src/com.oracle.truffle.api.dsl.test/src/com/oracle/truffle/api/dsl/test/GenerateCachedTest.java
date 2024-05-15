@@ -65,7 +65,6 @@ import com.oracle.truffle.api.dsl.test.GenerateCachedTestFactory.OnlyInliningNod
 import com.oracle.truffle.api.dsl.test.GenerateCachedTestFactory.OnlyUncachedNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("truffle")
 public class GenerateCachedTest {
 
     @Test
@@ -83,6 +82,7 @@ public class GenerateCachedTest {
         assertFails(() -> loadGeneratedClass("DisabledInheritSubNodeGen"), ClassNotFoundException.class);
     }
 
+    @ExpectError("This node is a candidate for node object inlining. %")
     abstract static class DefaultEnabledNode extends Node {
 
         abstract void execute();
@@ -111,6 +111,7 @@ public class GenerateCachedTest {
 
     }
 
+    @ExpectError("This node is a candidate for node object inlining. %")
     abstract static class EnabledSubNode extends DisabledNode {
 
         @Override
@@ -131,6 +132,7 @@ public class GenerateCachedTest {
 
     }
 
+    @ExpectError("This node is a candidate for node object inlining. %")
     abstract static class DisabledInheritSubNode extends DisabledNode {
 
         @Override
@@ -141,6 +143,7 @@ public class GenerateCachedTest {
     }
 
     @GenerateCached(value = true, inherit = true)
+    @ExpectError("This node is a candidate for node object inlining. %")
     abstract static class EnabledInheritNode extends DisabledInheritNode {
         @Override
         @Specialization
@@ -148,6 +151,7 @@ public class GenerateCachedTest {
         }
     }
 
+    @ExpectError("This node is a candidate for node object inlining. %")
     abstract static class EnabledInheritInheritNode extends EnabledInheritNode {
 
         @Override
@@ -230,6 +234,7 @@ public class GenerateCachedTest {
 
     @GenerateCached(alwaysInlineCached = true)
     @SuppressWarnings("unused")
+    @ExpectError("This node is a candidate for node object inlining. %")
     abstract static class AlwaysInline extends Node {
 
         abstract void execute(Node node);

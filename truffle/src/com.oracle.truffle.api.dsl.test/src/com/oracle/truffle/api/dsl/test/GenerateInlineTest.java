@@ -2816,7 +2816,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     }
 
-    // caller Inlined + Callee Not Inlinable -> Warnings
+    // caller Inlined + Callee opts out of inlining -> No warnings
     @GenerateInline(true)
     public abstract static class InlinedWarningTest1 extends Node {
 
@@ -2825,7 +2825,6 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         @Specialization
         @SuppressWarnings("unused")
         static String s0(int value,
-                        @ExpectError("The cached node type does not support object inlining.%") //
                         @Cached CachedWarningTest1 inlinedNnode) {
             return "s0";
         }

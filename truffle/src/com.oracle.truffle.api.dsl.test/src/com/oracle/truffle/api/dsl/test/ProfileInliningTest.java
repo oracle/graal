@@ -77,7 +77,7 @@ import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
+@SuppressWarnings({"truffle-neverdefault", "truffle-sharing", "unused"})
 public class ProfileInliningTest extends AbstractPolyglotTest {
 
     @Test
@@ -115,6 +115,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
     @GenerateCached(alwaysInlineCached = true)
     @GenerateUncached
     @SuppressWarnings({"unused"})
+    @ExpectError("This node is a candidate for node object inlining.%")
     public abstract static class UsageNode extends Node {
 
         abstract Object execute(Object arg);
@@ -191,6 +192,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
     @GenerateCached(alwaysInlineCached = true)
     @GenerateUncached
     @SuppressWarnings({"unused"})
+    @ExpectError("This node is a candidate for node object inlining.%")
     public abstract static class LoopConditionUsageNode extends Node {
 
         abstract Object execute(Object arg);
@@ -254,7 +256,8 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
 
     }
 
-    @SuppressWarnings({"unused", "truffle"})
+    @SuppressWarnings({"unused"})
+    @ExpectError("This node is a candidate for node object inlining.%")
     public abstract static class TestInlineMessage1 extends BaseNode {
 
         // even though BranchProfile needs a different type we report as inlinable
@@ -309,7 +312,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
         }
     }
 
-    @SuppressWarnings({"unused", "truffle"})
+    @ExpectError("This node is a candidate for node object inlining.%")
     public abstract static class TestInlineMessage6 extends BaseNode {
 
         // test no warning for inlinable
