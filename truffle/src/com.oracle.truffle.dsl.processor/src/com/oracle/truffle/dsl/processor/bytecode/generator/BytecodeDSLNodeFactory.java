@@ -9170,7 +9170,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("exceptionLocal").string(" < 0 || ").string("exceptionLocal").string(" >= getRoot().numLocals").end().startBlock();
             b.tree(createValidationError("exceptionLocal index is out of bounds"));
             b.end();
+            b.statement("break");
             b.end(); // case default
+
             b.end(); // switch
             b.end(); // for handler
 
