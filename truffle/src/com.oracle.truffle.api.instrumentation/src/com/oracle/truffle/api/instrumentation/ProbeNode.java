@@ -238,7 +238,7 @@ public final class ProbeNode extends Node {
      * @since 0.12
      */
     public void onEnter(VirtualFrame frame) {
-        if (ASSERT_ENTER_RETURN_PARITY) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe) {
             InstrumentAccessor.ENGINE.assertReturnParityEnter(this, handler.getSourceVM());
         }
         EventChainNode localChain = lazyUpdate(frame);
@@ -256,7 +256,7 @@ public final class ProbeNode extends Node {
      * @since 0.12
      */
     public void onReturnValue(VirtualFrame frame, Object result) {
-        if (ASSERT_ENTER_RETURN_PARITY) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe) {
             InstrumentAccessor.ENGINE.assertReturnParityLeave(this, handler.getSourceVM());
         }
         EventChainNode localChain = lazyUpdate(frame);
@@ -316,7 +316,7 @@ public final class ProbeNode extends Node {
      * @since 0.31
      */
     public Object onReturnExceptionalOrUnwind(VirtualFrame frame, Throwable exception, boolean isReturnCalled) {
-        if (ASSERT_ENTER_RETURN_PARITY && !isReturnCalled) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe && !isReturnCalled) {
             InstrumentAccessor.ENGINE.assertReturnParityLeave(this, handler.getSourceVM());
         }
         UnwindException unwind = null;
@@ -383,7 +383,7 @@ public final class ProbeNode extends Node {
      * @since 24.0
      */
     public void onYield(VirtualFrame frame, Object result) {
-        if (ASSERT_ENTER_RETURN_PARITY) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe) {
             InstrumentAccessor.ENGINE.assertReturnParityLeave(this, handler.getSourceVM());
         }
         EventChainNode localChain = lazyUpdate(frame);
@@ -404,7 +404,7 @@ public final class ProbeNode extends Node {
      * @since 24.0
      */
     public void onResume(VirtualFrame frame) {
-        if (ASSERT_ENTER_RETURN_PARITY) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe) {
             InstrumentAccessor.ENGINE.assertReturnParityEnter(this, handler.getSourceVM());
         }
         EventChainNode localChain = lazyUpdate(frame);
