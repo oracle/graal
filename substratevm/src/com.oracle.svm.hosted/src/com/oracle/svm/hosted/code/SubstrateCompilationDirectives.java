@@ -237,18 +237,9 @@ public class SubstrateCompilationDirectives {
         return deoptEntries.containsKey(toAnalysisMethod(method));
     }
 
-<<<<<<< HEAD
-    public void registerDeoptTarget(ResolvedJavaMethod method) {
-        assert deoptInfoModifiable();
-        deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new ConcurrentHashMap<>());
-    }
-
     public boolean isDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
         assert deoptInfoQueryable();
 
-=======
-    public boolean isDeoptEntry(MultiMethod method, int bci, FrameState.StackState stackState) {
->>>>>>> 01ad47ec98e (allow deoptEntryMaps to be more lazily installed.)
         if (method instanceof HostedMethod && ((HostedMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting()) {
             return true;
         }
