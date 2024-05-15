@@ -238,10 +238,9 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -269,7 +268,8 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
 
     private final LivenessAnalysis la;
     private final BytecodeStream bs;
-    private final ConstantPool pool;
+    private final RuntimeConstantPool pool;
+
     private final int targetBci;
 
     private final Builder[] states;
@@ -304,7 +304,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         this.bs = new BytecodeStream(m.getOriginalCode());
         this.targetBci = targetBci;
         this.states = new Builder[bs.endBCI()];
-        this.pool = m.getDeclaringKlass().getLinkedKlass().getParserKlass().getConstantPool();
+        this.pool = m.getPool();
         this.m = m;
         this.branchTargets = new BitSet(bs.endBCI());
         this.processStatus = new BitSet(bs.endBCI());
@@ -340,7 +340,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         // For continuations purposes, we need to mutate the state to having popped arguments, but
         // not having yet pushed a result.
         assert Bytecodes.isInvoke(opcode);
-        handleInvoke(state, targetBci, opcode, false);
+        handleInvoke(state, targetBci, opcode, false, opcode == INVOKEDYNAMIC ? ConstantPool.Tag.INVOKEDYNAMIC : ConstantPool.Tag.METHOD_REF);
         return state.build();
     }
 
@@ -460,7 +460,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                     break;
                 }
                 case NEW: {
-                    Symbol<Type> type = lang.getTypes().fromName(pool.classAt(bs.readCPI(bci)).getName(pool));
+                    Symbol<Type> type = queryPoolType(bs.readCPI(bci), ConstantPool.Tag.CLASS);
                     frame.push(FrameType.forType(type));
                     break;
                 }
@@ -715,7 +715,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                 case RETURN:
                     return;
                 case GETSTATIC, GETFIELD: {
-                    Symbol<Type> type = pool.fieldAt(bs.readCPI(bci)).getType(pool);
+                    Symbol<Type> type = queryPoolType(bs.readCPI(bci), ConstantPool.Tag.FIELD_REF);
                     if (opcode == GETFIELD) {
                         frame.pop();
                     }
@@ -723,7 +723,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                     break;
                 }
                 case PUTSTATIC, PUTFIELD: {
-                    Symbol<Type> type = pool.fieldAt(bs.readCPI(bci)).getType(pool);
+                    Symbol<Type> type = queryPoolType(bs.readCPI(bci), ConstantPool.Tag.FIELD_REF);
                     if (Types.getJavaKind(type).needsTwoSlots()) {
                         frame.pop2();
                     } else {
@@ -735,7 +735,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                     break;
                 }
                 case INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC, INVOKEINTERFACE: {
-                    handleInvoke(frame, bci, opcode, true);
+                    handleInvoke(frame, bci, opcode, true, ConstantPool.Tag.METHOD_REF);
                     break;
                 }
                 case NEWARRAY:
@@ -744,8 +744,8 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                     break;
                 case ANEWARRAY: {
                     frame.pop(); // dim
-                    Symbol<Type> t = lang.getTypes().fromName(pool.classAt(bs.readCPI(bci)).getName(pool));
-                    frame.push(FrameType.forType(lang.getTypes().arrayOf(t)));
+                    Symbol<Type> type = queryPoolType(bs.readCPI(bci), ConstantPool.Tag.CLASS);
+                    frame.push(FrameType.forType(lang.getTypes().arrayOf(type)));
                     break;
                 }
                 case MULTIANEWARRAY: {
@@ -753,17 +753,12 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                     for (int i = 0; i < dim; i++) {
                         frame.pop();
                     }
-                    Symbol<Type> t = lang.getTypes().fromName(pool.classAt(bs.readCPI(bci)).getName(pool));
-                    frame.push(FrameType.forType(t));
+                    Symbol<Type> type = queryPoolType(bs.readCPI(bci), ConstantPool.Tag.CLASS);
+                    frame.push(FrameType.forType(type));
                     break;
                 }
                 case INVOKEDYNAMIC: {
-                    InvokeDynamicConstant indy = pool.indyAt(bs.readCPI(bci));
-                    Symbol<Type>[] sig = lang.getSignatures().parsed(indy.getSignature(pool));
-                    popSignature(sig, true, frame);
-                    if (Signatures.returnKind(sig) != JavaKind.Void) {
-                        frame.push(FrameType.forType(Signatures.returnType(sig)));
-                    }
+                    handleInvoke(frame, bci, opcode, true, ConstantPool.Tag.INVOKEDYNAMIC);
                     break;
                 }
                 default:
@@ -812,10 +807,9 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         }
     }
 
-    private void handleInvoke(Builder frame, int bci, int opcode, boolean pushResult) {
-        MethodRefConstant ref = pool.methodAt(bs.readCPI(bci));
-        Symbol<Type>[] sig = lang.getSignatures().parsed(ref.getSignature(pool));
-        popSignature(sig, opcode == INVOKESTATIC, frame);
+    private void handleInvoke(Builder frame, int bci, int opcode, boolean pushResult, ConstantPool.Tag tag) {
+        Symbol<Type>[] sig = queryPoolSignature(bs.readCPI(bci), tag);
+        popSignature(sig, opcode == INVOKESTATIC || opcode == INVOKEDYNAMIC, frame);
         if (pushResult && Signatures.returnKind(sig) != JavaKind.Void) {
             frame.push(FrameType.forType(Signatures.returnType(sig)));
         }
@@ -950,5 +944,41 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
     @Override
     public String toExternalString() {
         return m.getDeclaringKlass().getExternalName() + '.' + m.getMethod().getNameAsString();
+    }
+
+    // Since we are in runtime, we can shortcut parsing if some constants are already resolved.
+
+    private Symbol<Type> queryPoolType(int cpi, ConstantPool.Tag tag) {
+        switch (tag) {
+            case CLASS:
+                if (pool.isResolutionSuccessAt(cpi)) {
+                    return pool.resolvedKlassAt(m.getDeclaringKlass(), cpi).getType();
+                }
+                return lang.getTypes().fromName(pool.classAt(cpi).getName(pool));
+            case FIELD_REF:
+                if (pool.isResolutionSuccessAt(cpi)) {
+                    return pool.resolvedFieldAt(m.getDeclaringKlass(), cpi).getType();
+                }
+                return pool.fieldAt(cpi).getType(pool);
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private Symbol<Type>[] queryPoolSignature(int cpi, ConstantPool.Tag tag) {
+        switch (tag) {
+            case METHOD_REF:
+                if (pool.isResolutionSuccessAt(cpi)) {
+                    return pool.resolvedMethodAt(m.getDeclaringKlass(), cpi).getParsedSignature();
+                }
+                return lang.getSignatures().parsed(pool.methodAt(cpi).getSignature(pool));
+            case INVOKEDYNAMIC:
+                if (pool.isResolutionSuccessAt(cpi)) {
+                    return pool.peekResolvedInvokeDynamic(cpi).getParsedSignature();
+                }
+                return lang.getSignatures().parsed(pool.indyAt(cpi).getSignature(pool));
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
     }
 }
