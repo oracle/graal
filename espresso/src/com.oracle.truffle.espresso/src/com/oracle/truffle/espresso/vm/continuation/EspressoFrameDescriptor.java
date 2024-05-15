@@ -26,13 +26,24 @@ package com.oracle.truffle.espresso.vm.continuation;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
 import java.util.Arrays;
+import java.util.function.Function;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
+import com.oracle.truffle.espresso.analysis.frame.FrameType;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
+import com.oracle.truffle.espresso.verifier.StackMapFrameParser.FrameAndLocalEffect;
+import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
 
 /**
  * Provides a description of an Espresso frame, used in bytecode execution.
@@ -43,23 +54,30 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  * This information can then be used to access the {@link com.oracle.truffle.api.frame.VirtualFrame
  * frame} with the correct static accessors.
  * <p>
- * Note that this is a raw description of the frame, there is no notion of stack or locals.
  */
 public class EspressoFrameDescriptor {
     private static final long INT_MASK = 0xFFFF_FFFFL;
-    private static final boolean CHECK_ILLEGAL = false;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final JavaKind[] kinds;
+    @CompilationFinal(dimensions = 1) //
+    private final FrameType[] kinds;
+    private final int top;
 
-    public EspressoFrameDescriptor(JavaKind[] stackKinds, JavaKind[] localsKind) {
+    public EspressoFrameDescriptor(FrameType[] stackKinds, FrameType[] localsKind, int top) {
         int stack = stackKinds.length;
         int locals = localsKind.length;
-        this.kinds = new JavaKind[1 + locals + stack];
-        kinds[0] = JavaKind.Int;
+        this.kinds = new FrameType[1 + locals + stack];
+        kinds[0] = FrameType.INT;
         System.arraycopy(localsKind, 0, kinds, 1, locals);
         System.arraycopy(stackKinds, 0, kinds, 1 + locals, stack);
+        this.top = top;
     }
 
+    private EspressoFrameDescriptor(FrameType[] kinds, int top) {
+        this.kinds = kinds.clone();
+        this.top = top;
+    }
+
+    @ExplodeLoop
     public void importFromFrame(Frame frame, Object[] objects, long[] primitives) {
         assert kinds.length == frame.getFrameDescriptor().getNumberOfSlots();
         assert verifyConsistent(frame);
@@ -71,6 +89,7 @@ public class EspressoFrameDescriptor {
         }
     }
 
+    @ExplodeLoop
     public void exportToFrame(Frame frame, Object[] objects, long[] primitives) {
         assert kinds.length == frame.getFrameDescriptor().getNumberOfSlots();
         assert objects != null && objects.length == kinds.length;
@@ -84,24 +103,12 @@ public class EspressoFrameDescriptor {
         return kinds.length;
     }
 
-    public byte[] rawTags() {
-        byte[] tags = new byte[kinds.length];
-        for (int i = 0; i < kinds.length; i++) {
-            tags[i] = kinds[i].toOrdinal();
-        }
-        return tags;
-    }
-
-    private static JavaKind[] fromTags(byte[] tags) {
-        JavaKind[] kinds = new JavaKind[tags.length];
-        for (int i = 0; i < tags.length; i++) {
-            kinds[i] = JavaKind.fromOrdinalByte(tags[i]);
-        }
-        return kinds;
+    public int top() {
+        return top;
     }
 
     private void importSlot(Frame frame, int slot, Object[] objects, long[] primitives) {
-        switch (kinds[slot]) {
+        switch (kinds[slot].kind()) {
             case Int:
                 primitives[slot] = zeroExtend(frame.getIntStatic(slot));
                 break;
@@ -118,6 +125,7 @@ public class EspressoFrameDescriptor {
                 objects[slot] = (StaticObject) frame.getObjectStatic(slot);
                 break;
             case Illegal:
+                // Skip slots marked as illegal.
                 break;
             default:
                 // No sub-word kind in frames.
@@ -126,7 +134,7 @@ public class EspressoFrameDescriptor {
     }
 
     private void exportSlot(Frame frame, int slot, Object[] objects, long[] primitives) {
-        switch (kinds[slot]) {
+        switch (kinds[slot].kind()) {
             case Int:
                 frame.setIntStatic(slot, narrow(primitives[slot]));
                 break;
@@ -159,10 +167,6 @@ public class EspressoFrameDescriptor {
         return (int) value;
     }
 
-    private EspressoFrameDescriptor(JavaKind[] kinds) {
-        this.kinds = kinds.clone();
-    }
-
     private boolean verifyConsistent(Frame frame) {
         for (int slot = 0; slot < kinds.length; slot++) {
             assert verifyConsistentSlot(frame, slot);
@@ -171,7 +175,7 @@ public class EspressoFrameDescriptor {
     }
 
     private boolean verifyConsistentSlot(Frame frame, int slot) {
-        switch (kinds[slot]) {
+        switch (kinds[slot].kind()) {
             case Int:
                 frame.getIntStatic(slot);
                 break;
@@ -188,10 +192,6 @@ public class EspressoFrameDescriptor {
                 frame.getObjectStatic(slot);
                 break;
             case Illegal: {
-                if (!CHECK_ILLEGAL) {
-                    break;
-                }
-                illegalCheck(frame, slot);
                 break;
             }
             default:
@@ -201,60 +201,42 @@ public class EspressoFrameDescriptor {
         return true;
     }
 
-    private static void illegalCheck(Frame frame, int slot) {
-        if (frame.getTag(slot) == 0) {
-            // uninitialized slot, it's fine.
-            return;
-        }
-        // Try all possible slot kinds to check for a failure in each.
-        boolean fail = false;
-        try {
-            frame.getIntStatic(slot);
-            fail = true;
-        } catch (AssertionError e) {
-            /* nop */
-        }
-        try {
-            frame.getFloatStatic(slot);
-            fail = true;
-        } catch (AssertionError e) {
-            /* nop */
-        }
-        try {
-            frame.getLongStatic(slot);
-            fail = true;
-        } catch (AssertionError e) {
-            /* nop */
-        }
-        try {
-            frame.getDoubleStatic(slot);
-            fail = true;
-        } catch (AssertionError e) {
-            /* nop */
-        }
-        try {
-            frame.getObjectStatic(slot);
-            fail = true;
-        } catch (AssertionError e) {
-            /* nop */
-        }
-        if (fail) {
-            throw new AssertionError();
-        }
-    }
-
-    public void validateImport(StaticObject[] pointers, long[] primitives, Meta meta) {
+    public void validateImport(StaticObject[] pointers, long[] primitives, ObjectKlass accessingKlass, Meta meta) {
         guarantee(pointers.length == kinds.length, cat("Invalid pointers array length: ", pointers.length), meta);
         guarantee(primitives.length == kinds.length, cat("Invalid primitives array length: ", pointers.length), meta);
         for (int i = 0; i < kinds.length; i++) {
-            JavaKind k = kinds[i];
-            boolean checkNullObject = k.isPrimitive();
-            boolean checkZeroPrim = !k.isPrimitive();
+            FrameType ft = kinds[i];
+            boolean checkNullObject = ft.isPrimitive();
+            boolean checkZeroPrim = ft.isReference();
             if (checkNullObject) {
-                guarantee(StaticObject.isNull(pointers[i]), cat("Non-null object in pointers array at slot: ", i, ", but expected a ", k.toString()), meta);
+                guarantee(StaticObject.isNull(pointers[i]), cat("Non-null object in pointers array at slot: ", i, ", but expected a ", ft.toString()), meta);
             }
             if (checkZeroPrim) {
-                guarantee(primitives[i] == 0, cat("Non-zero primitive in primitives array at slot: ", i, ", but expected a ", k.toString()), meta);
+                guarantee(primitives[i] == 0, cat("Non-zero primitive in primitives array at slot: ", i, ", but expected a ", ft.toString()), meta);
+            }
+            // Ensures imported objects have the correct typing w.r.t. verification.
+            if (ft.isReference()) {
+                if (!StaticObject.isNull(pointers[i])) {
+                    Klass targetKlass;
+                    Klass objKlass = pointers[i].getKlass();
+                    if (ft.type() == accessingKlass.getType()) {
+                        // Handles hidden class cases.
+                        targetKlass = accessingKlass;
+                    } else {
+                        if (ft.type() == objKlass.getType() && accessingKlass.getDefiningClassLoader() == objKlass.getDefiningClassLoader()) {
+                            // same type and classloader, will resolve to same Klass.
+                            continue;
+                        }
+                        targetKlass = meta.resolveSymbolOrFail(ft.type(), accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
+                    }
+                    if (!targetKlass.isInterface()) { // Interfaces are erased.
+                        guarantee(targetKlass.isAssignableFrom(objKlass),
+                                        cat("Failed guarantee: Attempting to resume a continuation with invalid object class.\n",
+                                                        "Expected: ", targetKlass.getExternalName(), "\n",
+                                                        "But got: ", objKlass.getExternalName()),
+                                        meta);
+                    }
+                }
             }
         }
     }
@@ -265,58 +247,64 @@ public class EspressoFrameDescriptor {
         }
     }
 
-    public static class Builder {
+    public static class Builder implements StackMapFrameParser.FrameState {
         int bci = -1;
 
-        final JavaKind[] kinds;
+        final FrameType[] kinds;
         final int maxLocals;
         int top = 0;
 
         public Builder(int maxLocals, int maxStack) {
-            kinds = new JavaKind[1 + maxLocals + maxStack];
-            Arrays.fill(kinds, JavaKind.Illegal);
-            kinds[0] = JavaKind.Int;
+            kinds = new FrameType[1 + maxLocals + maxStack];
+            Arrays.fill(kinds, FrameType.ILLEGAL);
+            kinds[0] = FrameType.INT;
             this.maxLocals = maxLocals;
         }
 
-        private Builder(JavaKind[] kinds, int maxLocals, int top) {
+        private Builder(FrameType[] kinds, int maxLocals, int top) {
             this.kinds = kinds;
             this.maxLocals = maxLocals;
             this.top = top;
         }
 
-        public void push(JavaKind k) {
-            push(k, true);
+        public void push(FrameType ft) {
+            push(ft, true);
         }
 
-        public void push(JavaKind k, boolean handle2Slots) {
+        public void push(FrameType ft, boolean handle2Slots) {
+            JavaKind k = ft.kind();
+            assert k != JavaKind.Illegal;
             if (k == JavaKind.Void) {
                 return;
             }
             JavaKind stackKind = k.getStackKind();
             // Quirk of the espresso frame: Long and Doubles are set closest to the top.
             if (handle2Slots && stackKind.needsTwoSlots()) {
-                kinds[stackIdx(top)] = JavaKind.Illegal;
+                kinds[stackIdx(top)] = FrameType.ILLEGAL;
                 top++;
             }
-            kinds[stackIdx(top)] = stackKind;
+            kinds[stackIdx(top)] = ft;
             top++;
         }
 
-        public JavaKind pop(JavaKind k) {
-            JavaKind top = pop();
-            assert top == k;
+        public FrameType pop(FrameType k) {
+            return pop(k.kind());
+        }
+
+        public FrameType pop(JavaKind k) {
+            FrameType top = pop();
+            assert top.kind() == k;
             if (k.needsTwoSlots()) {
-                JavaKind dummy = pop();
-                assert dummy == JavaKind.Illegal;
+                FrameType dummy = pop();
+                assert dummy == FrameType.ILLEGAL;
             }
             return top;
         }
 
-        public JavaKind pop() {
+        public FrameType pop() {
             int head = stackIdx(top - 1);
-            JavaKind k = kinds[head];
-            kinds[head] = JavaKind.Illegal;
+            FrameType k = kinds[head];
+            kinds[head] = FrameType.ILLEGAL;
             top--;
             return k;
         }
@@ -330,16 +318,20 @@ public class EspressoFrameDescriptor {
             this.bci = bci;
         }
 
-        public void putLocal(int slot, JavaKind k) {
+        public void putLocal(int slot, FrameType k) {
             int idx = localIdx(slot);
             kinds[idx] = k;
-            if (k.needsTwoSlots()) {
-                kinds[idx + 1] = JavaKind.Illegal;
+            if (k.kind().needsTwoSlots()) {
+                kinds[idx + 1] = FrameType.ILLEGAL;
             }
         }
 
         public void clear(int slot) {
-            putLocal(slot, JavaKind.Illegal);
+            putLocal(slot, FrameType.ILLEGAL);
+        }
+
+        public FrameType getLocal(int slot) {
+            return kinds[localIdx(slot)];
         }
 
         public boolean isWorking() {
@@ -355,33 +347,64 @@ public class EspressoFrameDescriptor {
         }
 
         public EspressoFrameDescriptor build() {
-            return new EspressoFrameDescriptor(kinds);
+            return new EspressoFrameDescriptor(kinds, top);
         }
 
-        public void clearStack() {
-            Arrays.fill(kinds, stackIdx(0), stackIdx(top), JavaKind.Illegal);
+        public Builder clearStack() {
+            Arrays.fill(kinds, stackIdx(0), stackIdx(top), FrameType.ILLEGAL);
             top = 0;
+            return this;
         }
 
         public boolean sameTop(Builder that) {
             return (this.kinds.length == that.kinds.length) && (this.top == that.top);
         }
 
-        public Builder mergeInto(Builder that, int mergeBci) {
+        public Builder mergeInto(Builder that, int mergeBci, boolean trustThat, Function<Symbol<Type>, Klass> klassResolver) {
             assert mergeBci == that.bci;
             assert this.sameTop(that);
             Builder merged = null;
             for (int i = 0; i < kinds.length; i++) {
-                if (that.kinds[i] == JavaKind.Illegal) {
-                    /* nop */
-                } else if (this.kinds[i] != that.kinds[i]) {
-                    if (merged == null) {
-                        merged = that.copy();
+                FrameType thisFT = this.kinds[i];
+                FrameType thatFT = that.kinds[i];
+                // Illegal in 'that' is a trivial merge success.
+                if (thatFT != FrameType.ILLEGAL) {
+                    if (thisFT == FrameType.ILLEGAL) {
+                        // Happens with stack maps and liveness analysis:
+                        // update registered state to reflect cleared local.
+                        that.kinds[i] = FrameType.ILLEGAL;
+                    } else {
+                        if (thisFT.isPrimitive() || thatFT.isPrimitive()) {
+                            if (thisFT != thatFT) {
+                                merged = updateMerged(merged, i, FrameType.ILLEGAL, that);
+                            }
+                        } else if (!trustThat && // With stack maps, precision is guaranteed.
+                                        !thisFT.isNull() && // null merges trivially
+                                        (thisFT.type() != thatFT.type())) {
+                            Klass thisKlass = klassResolver.apply(thisFT.type());
+                            Klass thatKlass = klassResolver.apply(thatFT.type());
+                            Klass lca = thisKlass.findLeastCommonAncestor(thatKlass);
+                            assert lca != null;
+                            if (lca.getType() != thatFT.type()) {
+                                // The least common ancestor is a new type, record it.
+                                FrameType ft = FrameType.forType(lca.getType());
+                                merged = updateMerged(merged, i, ft, that);
+                            }
+                        }
                     }
-                    merged.kinds[i] = JavaKind.Illegal;
                 }
+                // slot merge success
             }
             return merged == null ? that : merged;
+        }
+
+        private static Builder updateMerged(Builder merged, int idx, FrameType ft, Builder that) {
+            Builder result = merged;
+            if (result == null) {
+                result = that.copy();
+            }
+            result.kinds[idx] = ft;
+            return result;
         }
 
         private int stackIdx(int slot) {
@@ -391,5 +414,66 @@ public class EspressoFrameDescriptor {
         private static int localIdx(int slot) {
             return 1 + slot;
         }
+
+        @Override
+        public Builder sameNoStack() {
+            return copy().clearStack();
+        }
+
+        @Override
+        public Builder sameLocalsWith1Stack(VerificationTypeInfo vfi, StackMapFrameParser.FrameBuilder<?> builder) {
+            if (builder instanceof FrameAnalysis analysis) {
+                Builder newFrame = copy().clearStack();
+                newFrame.clearStack();
+                FrameType k = fromTypeInfo(vfi, analysis);
+                newFrame.push(k);
+                return newFrame;
+            }
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        @Override
+        public FrameAndLocalEffect chop(int chop, int lastLocal) {
+            Builder newFrame = copy().clearStack();
+            int pos = lastLocal;
+            for (int i = 0; i < chop; i++) {
+                newFrame.clear(pos);
+                pos--;
+                if ((pos >= 0) && newFrame.getLocal(pos).kind().needsTwoSlots()) {
+                    newFrame.clear(pos);
+                    pos--;
+                }
+            }
+            return new FrameAndLocalEffect(newFrame, pos - lastLocal);
+        }
+
+        @Override
+        public FrameAndLocalEffect append(VerificationTypeInfo[] vtis, StackMapFrameParser.FrameBuilder<?> builder, int lastLocal) {
+            if (builder instanceof FrameAnalysis analysis) {
+                Builder newFrame = copy().clearStack();
+                int pos = lastLocal;
+                for (VerificationTypeInfo vti : vtis) {
+                    FrameType k = fromTypeInfo(vti, analysis);
+                    newFrame.putLocal(++pos, k);
+                    if (k.kind().needsTwoSlots()) {
+                        pos++;
+                    }
+                }
+                return new FrameAndLocalEffect(newFrame, pos - lastLocal);
+            }
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    public static FrameType fromTypeInfo(VerificationTypeInfo vfi, FrameAnalysis analysis) {
+        FrameType k;
+        if (vfi.isIllegal()) {
+            k = FrameType.ILLEGAL;
+        } else if (vfi.isNull()) {
+            k = FrameType.NULL;
+        } else {
+            k = FrameType.forType(vfi.getType(analysis.pool(), analysis.targetKlass(), analysis.stream()));
+        }
+        return k;
     }
 }

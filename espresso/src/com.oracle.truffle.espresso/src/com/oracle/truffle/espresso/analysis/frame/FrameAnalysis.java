@@ -227,6 +227,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -234,7 +235,10 @@ import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
@@ -242,11 +246,15 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
+import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
 import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor.Builder;
 
@@ -254,9 +262,10 @@ import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor.Build
  * Statically analyses bytecodes to produce a {@link EspressoFrameDescriptor frame description} for
  * the given BCI.
  */
-public final class FrameAnalysis {
+public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Builder> {
     private final EspressoLanguage lang;
     private final Method.MethodVersion m;
+    private final Function<Symbol<Type>, Klass> klassResolver;
 
     private final LivenessAnalysis la;
     private final BytecodeStream bs;
@@ -269,9 +278,24 @@ public final class FrameAnalysis {
 
     private final ArrayDeque<Integer> queue = new ArrayDeque<>(2);
 
+    // Having stack maps means we can trust operands in the record to be as precise as needed.
+    boolean withStackMaps;
+
     @TruffleBoundary
     public static EspressoFrameDescriptor apply(Method.MethodVersion m, int bci) {
         return new FrameAnalysis(bci, m).apply();
+    }
+
+    public ConstantPool pool() {
+        return pool;
+    }
+
+    public ObjectKlass targetKlass() {
+        return m.getDeclaringKlass();
+    }
+
+    public BytecodeStream stream() {
+        return bs;
     }
 
     private FrameAnalysis(int targetBci, Method.MethodVersion m) {
@@ -284,6 +308,8 @@ public final class FrameAnalysis {
         this.m = m;
         this.branchTargets = new BitSet(bs.endBCI());
         this.processStatus = new BitSet(bs.endBCI());
+        ObjectKlass declaringKlass = m.getDeclaringKlass();
+        this.klassResolver = (type) -> declaringKlass.getMeta().resolveSymbolOrFail(type, declaringKlass.getDefiningClassLoader(), declaringKlass.protectionDomain());
     }
 
     private static void popSignature(Symbol<Type>[] sig, boolean isStatic, Builder frame) {
@@ -299,7 +325,8 @@ public final class FrameAnalysis {
     private EspressoFrameDescriptor apply() {
         markBranchTargets();
 
-        buildInitialFrame();
+        buildInitialFrames();
+
         int startBci = 0;
         push(startBci);
 
@@ -315,33 +342,6 @@ public final class FrameAnalysis {
         assert Bytecodes.isInvoke(opcode);
         handleInvoke(state, targetBci, opcode, false);
         return state.build();
-    }
-
-    private void buildInitialFrame() {
-        Builder frame = new Builder(m.getMaxLocals(), m.getMaxStackSize());
-        Symbol<Type>[] sig = m.getMethod().getParsedSignature();
-        int receiverShift = 0;
-        if (!m.isStatic()) {
-            frame.putLocal(0, JavaKind.Object);
-            receiverShift = 1;
-        }
-        int localPos = 0;
-        for (int sigPos = 0; sigPos < Signatures.parameterCount(sig); sigPos++) {
-            JavaKind k = Signatures.parameterKind(sig, sigPos);
-            if (k.isStackInt()) {
-                k = JavaKind.Int;
-            }
-            frame.putLocal(receiverShift + localPos, k);
-            if (k.needsTwoSlots()) {
-                localPos++;
-                frame.putLocal(receiverShift + localPos, JavaKind.Illegal);
-            }
-            localPos++;
-        }
-        la.onStart(frame);
-        frame.setBci(0);
-        assert frame.isRecord();
-        states[0] = frame;
     }
 
     private void markBranchTargets() {
@@ -373,6 +373,44 @@ public final class FrameAnalysis {
         for (ExceptionHandler handler : handlers) {
             branchTargets.set(handler.getHandlerBCI());
         }
+    }
+
+    private void buildInitialFrames() {
+        Builder frame = new Builder(m.getMaxLocals(), m.getMaxStackSize());
+        Symbol<Type>[] sig = m.getMethod().getParsedSignature();
+        int receiverShift = 0;
+        if (!m.isStatic()) {
+            frame.putLocal(0, FrameType.forType(m.getDeclaringKlass().getType()));
+            receiverShift = 1;
+        }
+        int localPos = 0;
+        for (int sigPos = 0; sigPos < Signatures.parameterCount(sig); sigPos++) {
+            Symbol<Type> type = Signatures.parameterType(sig, sigPos);
+            FrameType ft;
+            ft = FrameType.forType(type);
+            frame.putLocal(receiverShift + localPos, ft);
+            if (ft.kind().needsTwoSlots()) {
+                localPos++;
+                frame.putLocal(receiverShift + localPos, FrameType.ILLEGAL);
+            }
+            localPos++;
+        }
+        la.onStart(frame);
+        frame.setBci(0);
+        assert frame.isRecord();
+        states[0] = frame;
+        StackMapTableAttribute stackMapFrame = m.getCodeAttribute().getStackMapFrame();
+        if (m.getCodeAttribute().getMajorVersion() == ClassfileParser.JAVA_6_VERSION ||
+                        stackMapFrame == null || stackMapFrame == StackMapTableAttribute.EMPTY) {
+            // No stack maps: older class files, or classes that skips verification
+            // Note, we do not trust classfile ver == 50, as they can have wrong maps, but pass
+            // verification due to the fallback mechanism.
+            return;
+        }
+        withStackMaps = true;
+        // localPos overshoots by 1
+        int lastLocal = receiverShift + localPos - 1;
+        StackMapFrameParser.parse(this, stackMapFrame, frame, lastLocal);
     }
 
     private void buildStates(int startBci) {
@@ -408,22 +446,37 @@ public final class FrameAnalysis {
                 case IINC: // fallthrough
                 case CHECKCAST:
                     break;
-                case ACONST_NULL, ALOAD, ALOAD_0, ALOAD_1, ALOAD_2, ALOAD_3, NEW:
-                    frame.push(JavaKind.Object);
+                case ACONST_NULL:
+                    frame.push(FrameType.NULL);
                     break;
+                case ALOAD: {
+                    FrameType ft = frame.getLocal(bs.readLocalIndex(bci));
+                    frame.push(ft);
+                    break;
+                }
+                case ALOAD_0, ALOAD_1, ALOAD_2, ALOAD_3: {
+                    FrameType ft = frame.getLocal(opcode - ALOAD_0);
+                    frame.push(ft);
+                    break;
+                }
+                case NEW: {
+                    Symbol<Type> type = lang.getTypes().fromName(pool.classAt(bs.readCPI(bci)).getName(pool));
+                    frame.push(FrameType.forType(type));
+                    break;
+                }
                 case ICONST_M1, ICONST_0, ICONST_1, ICONST_2, ICONST_3, ICONST_4, ICONST_5: // fallthrough
                 case BIPUSH, SIPUSH: // fallthrough
                 case ILOAD, ILOAD_0, ILOAD_1, ILOAD_2, ILOAD_3:
-                    frame.push(JavaKind.Int);
+                    frame.push(FrameType.INT);
                     break;
                 case LCONST_0, LCONST_1, LLOAD, LLOAD_0, LLOAD_1, LLOAD_2, LLOAD_3:
-                    frame.push(JavaKind.Long);
+                    frame.push(FrameType.LONG);
                     break;
                 case FCONST_0, FCONST_1, FCONST_2, FLOAD, FLOAD_0, FLOAD_1, FLOAD_2, FLOAD_3:
-                    frame.push(JavaKind.Float);
+                    frame.push(FrameType.FLOAT);
                     break;
                 case DCONST_0, DCONST_1, DLOAD, DLOAD_0, DLOAD_1, DLOAD_2, DLOAD_3:
-                    frame.push(JavaKind.Double);
+                    frame.push(FrameType.DOUBLE);
                     break;
                 case LDC, LDC_W, LDC2_W: {
                     ldc(bci, frame);
@@ -434,68 +487,72 @@ public final class FrameAnalysis {
                 case FCMPL, FCMPG:
                     frame.pop();
                     frame.pop();
-                    frame.push(JavaKind.Int);
+                    frame.push(FrameType.INT);
                     break;
                 case LALOAD:
                     frame.pop();
                     frame.pop();
-                    frame.push(JavaKind.Long);
+                    frame.push(FrameType.LONG);
                     break;
                 case FALOAD, FADD, FSUB, FMUL, FDIV, FREM:
                     frame.pop();
                     frame.pop();
-                    frame.push(JavaKind.Float);
+                    frame.push(FrameType.FLOAT);
                     break;
                 case DALOAD:
                     frame.pop();
                     frame.pop();
-                    frame.push(JavaKind.Double);
+                    frame.push(FrameType.DOUBLE);
                     break;
-                case AALOAD:
+                case AALOAD: {
                     frame.pop();
-                    frame.pop();
-                    frame.push(JavaKind.Object);
+                    FrameType array = frame.pop();
+                    FrameType ft = FrameType.forType(lang.getTypes().getComponentType(array.type()));
+                    frame.push(ft);
                     break;
+                }
                 case ISTORE:
                     frame.pop();
-                    frame.putLocal(bs.readLocalIndex(bci), JavaKind.Int);
+                    frame.putLocal(bs.readLocalIndex(bci), FrameType.INT);
                     break;
                 case LSTORE:
                     frame.pop2();
-                    frame.putLocal(bs.readLocalIndex(bci), JavaKind.Long);
+                    frame.putLocal(bs.readLocalIndex(bci), FrameType.LONG);
                     break;
                 case FSTORE:
                     frame.pop();
-                    frame.putLocal(bs.readLocalIndex(bci), JavaKind.Float);
+                    frame.putLocal(bs.readLocalIndex(bci), FrameType.FLOAT);
                     break;
                 case DSTORE:
                     frame.pop2();
-                    frame.putLocal(bs.readLocalIndex(bci), JavaKind.Double);
+                    frame.putLocal(bs.readLocalIndex(bci), FrameType.DOUBLE);
                     break;
-                case ASTORE:
-                    frame.pop();
-                    frame.putLocal(bs.readLocalIndex(bci), JavaKind.Object);
+                case ASTORE: {
+                    FrameType ft = frame.pop();
+                    frame.putLocal(bs.readLocalIndex(bci), ft);
                     break;
+                }
                 case ISTORE_0, ISTORE_1, ISTORE_2, ISTORE_3:
                     frame.pop();
-                    frame.putLocal(opcode - ISTORE_0, JavaKind.Int);
+                    frame.putLocal(opcode - ISTORE_0, FrameType.INT);
                     break;
                 case LSTORE_0, LSTORE_1, LSTORE_2, LSTORE_3:
                     frame.pop2();
-                    frame.putLocal(opcode - LSTORE_0, JavaKind.Long);
+                    frame.putLocal(opcode - LSTORE_0, FrameType.LONG);
                     break;
                 case FSTORE_0, FSTORE_1, FSTORE_2, FSTORE_3:
                     frame.pop();
-                    frame.putLocal(opcode - FSTORE_0, JavaKind.Float);
+                    frame.putLocal(opcode - FSTORE_0, FrameType.FLOAT);
                     break;
                 case DSTORE_0, DSTORE_1, DSTORE_2, DSTORE_3:
                     frame.pop2();
-                    frame.putLocal(opcode - DSTORE_0, JavaKind.Double);
+                    frame.putLocal(opcode - DSTORE_0, FrameType.DOUBLE);
                     break;
-                case ASTORE_0, ASTORE_1, ASTORE_2, ASTORE_3:
-                    frame.pop();
-                    frame.putLocal(opcode - ASTORE_0, JavaKind.Object);
+                case ASTORE_0, ASTORE_1, ASTORE_2, ASTORE_3: {
+                    FrameType ft = frame.pop();
+                    frame.putLocal(opcode - ASTORE_0, ft);
                     break;
+                }
                 case IASTORE, FASTORE, AASTORE, BASTORE, CASTORE, SASTORE:
                     frame.pop();
                     frame.pop();
@@ -514,23 +571,23 @@ public final class FrameAnalysis {
                     frame.pop();
                     break;
                 case DUP: {
-                    JavaKind k = frame.pop();
+                    FrameType k = frame.pop();
                     frame.push(k, false);
                     frame.push(k, false);
                     break;
                 }
                 case DUP_X1: {
-                    JavaKind v1 = frame.pop();
-                    JavaKind v2 = frame.pop();
+                    FrameType v1 = frame.pop();
+                    FrameType v2 = frame.pop();
                     frame.push(v1, false);
                     frame.push(v2, false);
                     frame.push(v1, false);
                     break;
                 }
                 case DUP_X2: {
-                    JavaKind v1 = frame.pop();
-                    JavaKind v2 = frame.pop();
-                    JavaKind v3 = frame.pop();
+                    FrameType v1 = frame.pop();
+                    FrameType v2 = frame.pop();
+                    FrameType v3 = frame.pop();
                     frame.push(v1, false);
                     frame.push(v3, false);
                     frame.push(v2, false);
@@ -538,8 +595,8 @@ public final class FrameAnalysis {
                     break;
                 }
                 case DUP2: {
-                    JavaKind v1 = frame.pop();
-                    JavaKind v2 = frame.pop();
+                    FrameType v1 = frame.pop();
+                    FrameType v2 = frame.pop();
                     frame.push(v2, false);
                     frame.push(v1, false);
                     frame.push(v2, false);
@@ -547,9 +604,9 @@ public final class FrameAnalysis {
                     break;
                 }
                 case DUP2_X1: {
-                    JavaKind v1 = frame.pop();
-                    JavaKind v2 = frame.pop();
-                    JavaKind v3 = frame.pop();
+                    FrameType v1 = frame.pop();
+                    FrameType v2 = frame.pop();
+                    FrameType v3 = frame.pop();
                     frame.push(v2, false);
                     frame.push(v1, false);
                     frame.push(v3, false);
@@ -558,10 +615,10 @@ public final class FrameAnalysis {
                     break;
                 }
                 case DUP2_X2: {
-                    JavaKind v1 = frame.pop();
-                    JavaKind v2 = frame.pop();
-                    JavaKind v3 = frame.pop();
-                    JavaKind v4 = frame.pop();
+                    FrameType v1 = frame.pop();
+                    FrameType v2 = frame.pop();
+                    FrameType v3 = frame.pop();
+                    FrameType v4 = frame.pop();
                     frame.push(v2, false);
                     frame.push(v1, false);
                     frame.push(v4, false);
@@ -571,8 +628,8 @@ public final class FrameAnalysis {
                     break;
                 }
                 case SWAP: {
-                    JavaKind k1 = frame.pop();
-                    JavaKind k2 = frame.pop();
+                    FrameType k1 = frame.pop();
+                    FrameType k2 = frame.pop();
                     frame.push(k1, false);
                     frame.push(k2, false);
                     break;
@@ -580,51 +637,51 @@ public final class FrameAnalysis {
                 case LADD, LSUB, LMUL, LDIV, LREM, LSHL, LSHR, LUSHR, LAND, LOR, LXOR:
                     frame.pop2();
                     frame.pop2();
-                    frame.push(JavaKind.Long);
+                    frame.push(FrameType.LONG);
                     break;
                 case DADD, DSUB, DMUL, DDIV, DREM:
                     frame.pop2();
                     frame.pop2();
-                    frame.push(JavaKind.Double);
+                    frame.push(FrameType.DOUBLE);
                     break;
                 case INEG, F2I, I2B, I2C, I2S: // fallthrough
                 case ARRAYLENGTH: // fallthrough
                 case INSTANCEOF:
                     frame.pop();
-                    frame.push(JavaKind.Int);
+                    frame.push(FrameType.INT);
                     break;
                 case LNEG, D2L:
                     frame.pop2();
-                    frame.push(JavaKind.Long);
+                    frame.push(FrameType.LONG);
                     break;
                 case FNEG, I2F:
                     frame.pop();
-                    frame.push(JavaKind.Float);
+                    frame.push(FrameType.FLOAT);
                     break;
                 case DNEG, L2D:
                     frame.pop2();
-                    frame.push(JavaKind.Double);
+                    frame.push(FrameType.DOUBLE);
                     break;
                 case I2L, F2L:
                     frame.pop();
-                    frame.push(JavaKind.Long);
+                    frame.push(FrameType.LONG);
                     break;
                 case I2D, F2D:
                     frame.pop();
-                    frame.push(JavaKind.Double);
+                    frame.push(FrameType.DOUBLE);
                     break;
                 case L2I, D2I:
                     frame.pop2();
-                    frame.push(JavaKind.Int);
+                    frame.push(FrameType.INT);
                     break;
                 case L2F, D2F:
                     frame.pop2();
-                    frame.push(JavaKind.Float);
+                    frame.push(FrameType.FLOAT);
                     break;
                 case LCMP, DCMPL, DCMPG:
                     frame.pop2();
                     frame.pop2();
-                    frame.push(JavaKind.Int);
+                    frame.push(FrameType.INT);
                     break;
                 case IFEQ, IFNE, IFLT, IFGE, IFGT, IFLE, IFNULL, IFNONNULL:
                     frame.pop();
@@ -662,7 +719,7 @@ public final class FrameAnalysis {
                     if (opcode == GETFIELD) {
                         frame.pop();
                     }
-                    frame.push(Types.getJavaKind(type));
+                    frame.push(FrameType.forType(type));
                     break;
                 }
                 case PUTSTATIC, PUTFIELD: {
@@ -681,23 +738,32 @@ public final class FrameAnalysis {
                     handleInvoke(frame, bci, opcode, true);
                     break;
                 }
-                case NEWARRAY, ANEWARRAY:
-                    frame.pop();
-                    frame.push(JavaKind.Object);
+                case NEWARRAY:
+                    frame.pop(); // dim
+                    frame.push(newPrimitiveArray(bs.readByte(bci)));
                     break;
+                case ANEWARRAY: {
+                    frame.pop(); // dim
+                    Symbol<Type> t = lang.getTypes().fromName(pool.classAt(bs.readCPI(bci)).getName(pool));
+                    frame.push(FrameType.forType(lang.getTypes().arrayOf(t)));
+                    break;
+                }
                 case MULTIANEWARRAY: {
                     int dim = bs.readUByte(bci + 3);
                     for (int i = 0; i < dim; i++) {
                         frame.pop();
                     }
-                    frame.push(JavaKind.Object);
+                    Symbol<Type> t = lang.getTypes().fromName(pool.classAt(bs.readCPI(bci)).getName(pool));
+                    frame.push(FrameType.forType(t));
                     break;
                 }
                 case INVOKEDYNAMIC: {
                     InvokeDynamicConstant indy = pool.indyAt(bs.readCPI(bci));
                     Symbol<Type>[] sig = lang.getSignatures().parsed(indy.getSignature(pool));
                     popSignature(sig, true, frame);
-                    frame.push(Signatures.returnKind(sig));
+                    if (Signatures.returnKind(sig) != JavaKind.Void) {
+                        frame.push(FrameType.forType(Signatures.returnType(sig)));
+                    }
                     break;
                 }
                 default:
@@ -711,7 +777,8 @@ public final class FrameAnalysis {
                     if (handler.covers(bci)) {
                         Builder copy = frame.copy();
                         copy.clearStack();
-                        copy.push(JavaKind.Object);
+                        Symbol<Type> catchType = handler.getCatchType();
+                        copy.push(catchType == null ? FrameType.THROWABLE : FrameType.forType(handler.getCatchType()));
                         branch(bci, handler.getHandlerBCI(), copy);
                     }
                 }
@@ -722,12 +789,35 @@ public final class FrameAnalysis {
         }
     }
 
+    private FrameType newPrimitiveArray(byte b) {
+        switch (b) {
+            case Constants.JVM_ArrayType_Boolean:
+                return FrameType.forType(Type._boolean_array);
+            case Constants.JVM_ArrayType_Char:
+                return FrameType.forType(Type._char_array);
+            case Constants.JVM_ArrayType_Float:
+                return FrameType.forType(Type._float_array);
+            case Constants.JVM_ArrayType_Double:
+                return FrameType.forType(Type._double_array);
+            case Constants.JVM_ArrayType_Byte:
+                return FrameType.forType(Type._byte_array);
+            case Constants.JVM_ArrayType_Short:
+                return FrameType.forType(Type._short_array);
+            case Constants.JVM_ArrayType_Int:
+                return FrameType.forType(Type._int_array);
+            case Constants.JVM_ArrayType_Long:
+                return FrameType.forType(Type._long_array);
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
     private void handleInvoke(Builder frame, int bci, int opcode, boolean pushResult) {
         MethodRefConstant ref = pool.methodAt(bs.readCPI(bci));
         Symbol<Type>[] sig = lang.getSignatures().parsed(ref.getSignature(pool));
         popSignature(sig, opcode == INVOKESTATIC, frame);
-        if (pushResult) {
-            frame.push(Signatures.returnKind(sig));
+        if (pushResult && Signatures.returnKind(sig) != JavaKind.Void) {
+            frame.push(FrameType.forType(Signatures.returnType(sig)));
         }
     }
 
@@ -737,7 +827,7 @@ public final class FrameAnalysis {
             registerState(bci, frame.copy());
             return false;
         }
-        Builder merged = frame.mergeInto(targetState, bci);
+        Builder merged = frame.mergeInto(targetState, bci, withStackMaps, klassResolver);
         if (merged == targetState) {
             return true;
         }
@@ -750,13 +840,37 @@ public final class FrameAnalysis {
         char cpi = bs.readCPI(bci);
         ConstantPool.Tag tag = pool.tagAt(cpi);
         switch (tag) {
-            case INTEGER -> frame.push(JavaKind.Int);
-            case FLOAT -> frame.push(JavaKind.Float);
-            case LONG -> frame.push(JavaKind.Long);
-            case DOUBLE -> frame.push(JavaKind.Double);
-            case CLASS, STRING, METHODHANDLE, METHODTYPE -> frame.push(JavaKind.Object);
-            case DYNAMIC -> frame.push(Types.getJavaKind(((DynamicConstant) pool.at(cpi)).getTypeSymbol(pool)));
-            default -> throw EspressoError.shouldNotReachHere(tag.toString());
+            case INTEGER:
+                frame.push(FrameType.INT);
+                break;
+            case FLOAT:
+                frame.push(FrameType.FLOAT);
+                break;
+            case LONG:
+                frame.push(FrameType.LONG);
+                break;
+            case DOUBLE:
+                frame.push(FrameType.DOUBLE);
+                break;
+            case CLASS:
+                frame.push(FrameType.forType(Type.java_lang_Class));
+                break;
+            case STRING:
+                frame.push(FrameType.forType(Type.java_lang_String));
+                break;
+            case METHODHANDLE:
+                frame.push(FrameType.forType(Type.java_lang_invoke_MethodHandle));
+                break;
+            case METHODTYPE:
+                frame.push(FrameType.forType(Type.java_lang_invoke_MethodType));
+                break;
+            case DYNAMIC: {
+                Symbol<Type> t = ((DynamicConstant) pool.at(cpi)).getTypeSymbol(pool);
+                frame.push(FrameType.forType(t));
+                break;
+            }
+            default:
+                throw EspressoError.shouldNotReachHere(tag.toString());
         }
     }
 
@@ -772,8 +886,11 @@ public final class FrameAnalysis {
         }
         // The state stored in the states has already been applied liveness analysis.
         assert targetState.isRecord();
-        Builder merged = f.mergeInto(targetState, target);
+        Builder merged = f.mergeInto(targetState, target, withStackMaps, klassResolver);
         if (merged == targetState) {
+            if (!processStatus.get(target)) {
+                push(target);
+            }
             return;
         }
         assert la.isEmpty();
@@ -801,5 +918,37 @@ public final class FrameAnalysis {
         int next = queue.pop();
         assert states[next] != null && states[next].isRecord();
         return next;
+    }
+
+    @Override
+    public void registerStackMapFrame(int bci, Builder frame) {
+        registerState(bci, frame);
+    }
+
+    @Override
+    public StackMapFrameParser.FrameAndLocalEffect newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal) {
+        Builder fullFrame = new Builder(m.getMaxLocals(), m.getMaxStackSize());
+        for (VerificationTypeInfo vti : stack) {
+            FrameType k = EspressoFrameDescriptor.fromTypeInfo(vti, this);
+            fullFrame.push(k);
+        }
+        int pos = 0;
+        for (VerificationTypeInfo vti : locals) {
+            FrameType k = EspressoFrameDescriptor.fromTypeInfo(vti, this);
+            fullFrame.putLocal(pos, k);
+            if (k.kind().needsTwoSlots()) {
+                pos++;
+                fullFrame.clear(pos);
+            }
+            pos++;
+        }
+        return new StackMapFrameParser.FrameAndLocalEffect(fullFrame,
+                        // pos overshoots the actual last local position by one.
+                        (pos - 1) - lastLocal);
+    }
+
+    @Override
+    public String toExternalString() {
+        return m.getDeclaringKlass().getExternalName() + '.' + m.getMethod().getNameAsString();
     }
 }

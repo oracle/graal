@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.vm.continuation;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 import static com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor.guarantee;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
@@ -86,6 +87,7 @@ public final class HostFrameRecord {
         this.next = next;
     }
 
+    @TruffleBoundary
     public boolean verify(Meta meta, boolean single) {
         HostFrameRecord current = this;
         while (current != null) {
@@ -95,8 +97,7 @@ public final class HostFrameRecord {
             // creation)
             methodVersion.getDeclaringKlass().safeInitialize();
             // Ensures recorded frame is compatible with what the method expects.
-            // TODO: Ensure verifier types.
-            frameDescriptor.validateImport(objects, primitives, meta);
+            frameDescriptor.validateImport(objects, primitives, methodVersion.getDeclaringKlass(), meta);
             // Ensures we restore the stack at invokes
             BytecodeStream bs = new BytecodeStream(methodVersion.getOriginalCode());
             guarantee(Bytecodes.isInvoke(bs.opcode(bci)) && bs.opcode(bci) != Bytecodes.INVOKEDYNAMIC, cat("Frame record would re-wind at a non-invoke bytecode."), meta);
@@ -194,7 +195,7 @@ public final class HostFrameRecord {
             Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
             EspressoFrameDescriptor fd = FrameAnalysis.apply(method.getMethodVersion(), bci);
 
-            HostFrameRecord next = new HostFrameRecord(fd, pointers, primitives, bci, top, method.getMethodVersion(), null);
+            HostFrameRecord next = new HostFrameRecord(fd, pointers.clone(), primitives.clone(), bci, top, method.getMethodVersion(), null);
             if (hostCursor != null) {
                 hostCursor.next = next;
             }
