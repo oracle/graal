@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -170,14 +170,25 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         resourceRegistry.accept(condition, globToRegex(module, value));
     }
 
-    private static String globToRegex(String module, String value) {
+    public static String globToRegex(String module, String value) {
+        String quotedValue = quoteLiteralParts(value);
+        String transformedValue = replaceWildcards(quotedValue);
+        return (module == null || module.isEmpty() ? "" : module + ":") + transformedValue;
+    }
+
+    private static String quoteLiteralParts(String value) {
         StringBuilder sb = new StringBuilder();
+
         int pathLength = value.length();
         int previousIndex = 0;
         for (int i = 0; i < pathLength; i++) {
             if (value.charAt(i) == '*') {
-                String part = value.substring(previousIndex, i);
-                sb.append(quoteValue(part));
+                if (previousIndex != i) {
+                    /* be resistant to empty string (e.g. when glob starts with *) */
+                    String part = value.substring(previousIndex, i);
+                    sb.append(quoteValue(part));
+                }
+
                 sb.append('*');
 
                 if (i + 1 < pathLength && value.charAt(i + 1) == '*') {
@@ -204,13 +215,52 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             sb.append(quoteValue(part));
         }
 
-        String quotedValue = sb.toString();
-        quotedValue = quotedValue.replace("**/", "@");
-        quotedValue = quotedValue.replace("**", "@");
-        quotedValue = quotedValue.replace("*", "[^/]*");
-        quotedValue = quotedValue.replace("@", "([^/]*(/|$))*");
+        return sb.toString();
+    }
 
-        return (module.isEmpty() ? "" : module + ":") + quotedValue;
+    private static String replaceWildcards(String value) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            /* check if we found a star */
+            if (c == '*') {
+                /* check if next char is also star */
+                if (i + 1 < value.length()) {
+                    char next = value.charAt(i + 1);
+                    if (next == '*') {
+                        /* two consecutive **, check if it is followed by / */
+                        if (i + 2 < value.length()) {
+                            char possibleSlash = value.charAt(i + 2);
+                            if (possibleSlash == '/') {
+                                // we have **/
+                                sb.append("[^/]*(/|$))*");
+                                i += 2;
+                            } else {
+                                /* we have ** (this can only happen at the end of the glob) */
+                                sb.append(".*");
+                                i += 1;
+                            }
+                            continue;
+                        }
+
+                        /*
+                         * two consecutive ** without / after them (this can only happen at the end
+                         * of the glob)
+                         */
+                        sb.append(".*");
+                        i += 1;
+                        continue;
+                    }
+                }
+
+                sb.append("[^/]*");
+                continue;
+            }
+
+            sb.append(c);
+        }
+
+        return sb.toString();
     }
 
     private static String quoteValue(String value) {
