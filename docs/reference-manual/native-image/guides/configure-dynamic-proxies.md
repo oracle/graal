@@ -5,9 +5,10 @@ link_title: Configure Dynamic Proxies Manually
 permalink: /reference-manual/native-image/guides/configure-dynamic-proxies/
 redirect_to: /reference-manual/native-image/metadata/#dynamic-proxy
 ---
+
 # Configure Dynamic Proxies Manually
 
-You can generate dynamic proxy classes at native executable build time by specifying the list of interfaces that they implement.
+You can generate dynamic proxy classes at build time by specifying the list of interfaces that they implement.
 Native Image provides two options: 
 - `-H:DynamicProxyConfigurationFiles=<comma-separated-config-files>`
 - `-H:DynamicProxyConfigurationResources=<comma-separated-config-resources>`

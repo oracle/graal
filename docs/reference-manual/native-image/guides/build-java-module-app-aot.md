@@ -13,16 +13,16 @@ The `native-image` tool accepts the module-related arguments such as `--module` 
 When such a module-related argument is used, the `native-image` tool itself is used as a module too.
  
 In addition to supporting `--add-reads` and `--add-modules`, all module related options are considered prior to scanning the module path. 
-This helps prevent class loading errors and allow for better module introspection at run time.
+This helps prevent class loading errors and allow for better module introspection at runtime.
 
 The command to build a native executable from a Java module is:
 ```shell
 native-image [options] --module <module>[/<mainclass>] [options]
 ```
 
-### Run a Demo
+## Run a Demo
 
-Follow the steps below to practice building a modular Java application into a native executable.
+Follow the steps below to build a modular Java application into a native executable.
 For the demo, you will use a simple HelloWorld Java module gathered with Maven:
 
 ```
@@ -41,38 +41,41 @@ For the demo, you will use a simple HelloWorld Java module gathered with Maven:
     > module HelloModule {
     >     exports hello;
     > }
-```    
+```
 
-1. Make sure you have installed a GraalVM JDK.
+### Prerequisite 
+Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Download or clone the demos repository and navigate to the directory `native-hello-module`:
+1. Download or clone the demos repository and navigate to the directory _native-hello-module/_:
     ```bash
     git clone https://github.com/graalvm/graalvm-demos
+    ```
+    ```bash
     cd graalvm-demos/native-hello-module
     ```
 
-3. Compile and package the project with Maven:
+2. Compile and package the project with Maven:
     ```bash
     mvn package
     ```
 
-4. Test running it on GraalVM's JDK:
+3. Test running it on the GraalVM JDK:
     ```bash
-    $JAVA_HOME/bin/java --module-path target/HelloModule-1.0-SNAPSHOT.jar --module HelloModule
+    java --module-path target/HelloModule-1.0-SNAPSHOT.jar --module HelloModule
     ```
 
-5. Now build this module into a native executable:
+4. Now build this module into a native executable:
     ```bash
-    $JAVA_HOME/bin/native-image --module-path target/HelloModule-1.0-SNAPSHOT.jar --module HelloModule
+    native-image --module-path target/HelloModule-1.0-SNAPSHOT.jar --module HelloModule
     ```
 
-    It builds the modular Java application into a native executable called `hellomodule` in the project root directory that you can execute:
+    It builds the modular Java application into a native executable called _hellomodule_ in the project root directory that you can run:
     ```bash
     ./hellomodule
     ```
 
 ### Related Documentation
 
-- Learn more how you can [access resources for a Java module at run time](../Resources.md#resources-in-java-modules).
+- Learn more how you can [access resources for a Java module at runtime](../Resources.md#resources-in-java-modules).
