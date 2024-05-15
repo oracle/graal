@@ -36,7 +36,7 @@ public interface APIOptionGroup {
         return '=';
     }
 
-    default HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> multiValueOption() {
+    default HostedOptionKey<ReplacingLocatableMultiOptionValue.DelimitedString> multiValueOption() {
         return null;
     }
 }

@@ -52,19 +52,20 @@ public enum GCOptionValue {
     }
 
     @Fold
-    public static Set<String> possibleValues() {
+    public static synchronized Set<String> possibleValues() {
         if (supportedValues == null) {
-            supportedValues = new HashSet<>();
+            Set<String> values = new HashSet<>();
             ServiceLoader<OptionDescriptors> optionDescriptors = ServiceLoader.load(OptionDescriptors.class);
             SubstrateOptionsParser.collectOptions(optionDescriptors, optionDescriptor -> {
                 for (APIOption annotation : OptionUtils.getAnnotationsByType(optionDescriptor, APIOption.class)) {
                     if (annotation.group().equals(SubstrateOptions.GCGroup.class)) {
-                        supportedValues.add(annotation.name()[0]);
+                        values.add(annotation.name()[0]);
                     }
                 }
             });
+            supportedValues = Collections.unmodifiableSet(values);
         }
-        return Collections.unmodifiableSet(supportedValues);
+        return supportedValues;
     }
 
 }

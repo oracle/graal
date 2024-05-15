@@ -25,7 +25,6 @@
 package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
-import static com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
@@ -52,12 +51,13 @@ import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
+import com.oracle.svm.core.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -458,20 +458,17 @@ public class SubstrateOptions {
         }
 
         @Override
-        public HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> multiValueOption() {
+        public HostedOptionKey<ReplacingLocatableMultiOptionValue.DelimitedString> multiValueOption() {
             return SupportedGCs;
         }
     }
 
     @Option(help = "Please use '--gc=*' instead. Possible values are listed with '--help'.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> SupportedGCs = new HostedOptionKey<>(buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue())) {
+    public static final HostedOptionKey<ReplacingLocatableMultiOptionValue.DelimitedString> SupportedGCs = new HostedOptionKey<>(
+                    ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue())) {
         @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, AccumulatingLocatableMultiOptionValue.Strings oldValue, AccumulatingLocatableMultiOptionValue.Strings newValue) {
-
-            if (oldValue == null && newValue.values().size() > 1) {
-                // Default value is still in the newValue, so remove it.
-                newValue.removeFirst();
-            }
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, ReplacingLocatableMultiOptionValue.DelimitedString oldValue,
+                        ReplacingLocatableMultiOptionValue.DelimitedString newValue) {
 
             if (newValue.contains(GCOptionValue.G1.getValue())) {
                 SubstrateOptions.SpawnIsolates.update(values, true);
@@ -508,10 +505,10 @@ public class SubstrateOptions {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
-                    SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue()));
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue()));
                 } else if (!values.containsKey(SubstrateOptions.SupportedGCs) ||
-                                ((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.SERIAL.getValue())) {
-                    SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter());
+                                ((ReplacingLocatableMultiOptionValue.DelimitedString) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.SERIAL.getValue())) {
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
                 }
             }
         };
@@ -522,9 +519,9 @@ public class SubstrateOptions {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
-                    SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter(GCOptionValue.EPSILON.getValue()));
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.EPSILON.getValue()));
                 } else if (((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.EPSILON.getValue())) {
-                    SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter());
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
                 }
             }
         };
@@ -580,7 +577,8 @@ public class SubstrateOptions {
     private static final String DEPRECATION_MESSAGE_TCI = "This option is not required anymore with the strict image heap enabled by default.";
     @APIOption(name = "trace-class-initialization", deprecated = DEPRECATION_MESSAGE_TCI)//
     @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.", deprecated = true, deprecationMessage = DEPRECATION_MESSAGE_TCI)//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "trace-object-instantiation")//
     @Option(help = "Comma-separated list of fully-qualified class names that object instantiation is traced for.")//
@@ -1197,7 +1195,8 @@ public class SubstrateOptions {
 
     @APIOption(name = "exact-reachability-metadata-path")//
     @Option(help = "file:doc-files/ExactReachabilityMetadataPathHelp.txt")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.build());
 
     public enum ReportingMode {
         Warn,

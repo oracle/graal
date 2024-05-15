@@ -74,21 +74,21 @@ public class StringUtil {
         /* Add remaining segment. */
         list.add(value.substring(offset));
 
-        return list.toArray(new String[list.size()]);
+        return list.toArray(new String[0]);
     }
 
     /**
      * Joins an array of strings using single quotes, and `, ` as a delimiter. Useful to print
      * possible values for options.
      */
-    public static final String joinSingleQuoted(String... values) {
+    public static String joinSingleQuoted(String... values) {
         return "'" + String.join("', '", values) + "'";
     }
 
     /**
      * See {@link #joinSingleQuoted(String...)}.
      */
-    public static final String joinSingleQuoted(Object[] values) {
+    public static String joinSingleQuoted(Object[] values) {
         String[] strings = new String[values.length];
         for (int i = 0; i < strings.length; i++) {
             strings[i] = Objects.toString(values[i]);
@@ -99,8 +99,8 @@ public class StringUtil {
     /**
      * See {@link #joinSingleQuoted(String...)}.
      */
-    public static final String joinSingleQuoted(List<String> strings) {
-        return joinSingleQuoted(strings.toArray(new String[strings.size()]));
+    public static String joinSingleQuoted(List<String> strings) {
+        return joinSingleQuoted(strings.toArray(new String[0]));
     }
 
     /**
