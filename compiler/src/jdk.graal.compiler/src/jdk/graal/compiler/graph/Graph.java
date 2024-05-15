@@ -135,7 +135,7 @@ public class Graph implements EventCounter {
      */
     int compressions;
 
-    NodeEventListener nodeEventListener;
+    private NodeEventListener nodeEventListener;
 
     /**
      * Used to global value number {@link ValueNumberable} {@linkplain NodeClass#isLeafNode() leaf}
@@ -646,9 +646,7 @@ public class Graph implements EventCounter {
      * as part of decoding a graph but its fields have yet to be initialized.
      */
     public void beforeDecodingFields(Node node) {
-        if (nodeEventListener != null) {
-            nodeEventListener.event(NodeEvent.BEFORE_DECODING_FIELDS, node);
-        }
+        fireNodeEvent(Graph.NodeEvent.BEFORE_DECODING_FIELDS, node);
     }
 
     /**
@@ -656,9 +654,7 @@ public class Graph implements EventCounter {
      * as part of decoding a graph and its fields have now been initialized.
      */
     public void afterDecodingFields(Node node) {
-        if (nodeEventListener != null) {
-            nodeEventListener.event(NodeEvent.AFTER_DECODING_FIELDS, node);
-        }
+        fireNodeEvent(Graph.NodeEvent.AFTER_DECODING_FIELDS, node);
     }
 
     /**
@@ -701,10 +697,31 @@ public class Graph implements EventCounter {
         AFTER_DECODING_FIELDS,
     }
 
+    public final void fireNodeEvent(NodeEvent e, Node node) {
+        if (nodeEventListener != null) {
+            NodeEventListener l = nodeEventListener;
+            do {
+                l.event(e, node);
+                l = l.next;
+            } while (l != null);
+        }
+    }
+
     /**
      * Client interested in one or more node related events.
      */
     public abstract static class NodeEventListener {
+
+        /**
+         * Indicates whether this listener is registered at a graph.
+         */
+        private boolean registered;
+
+        /**
+         * Points to the next listener which is registered to the same graph as this listener.
+         * Undefined, if this listener is not registered at any graph.
+         */
+        private NodeEventListener next;
 
         /**
          * A method called when a change event occurs.
@@ -715,7 +732,7 @@ public class Graph implements EventCounter {
          * @param e an event
          * @param node the node related to {@code e}
          */
-        final void event(NodeEvent e, Node node) {
+        private final void event(NodeEvent e, Node node) {
             switch (e) {
                 case INPUT_CHANGED:
                     inputChanged(node);
@@ -810,65 +827,37 @@ public class Graph implements EventCounter {
         private final NodeEventListener listener;
 
         NodeEventScope(NodeEventListener listener) {
+            GraalError.guarantee(!listener.registered, "Listener already registered");
             this.listener = listener;
-            if (nodeEventListener == null) {
-                nodeEventListener = listener;
-            } else {
-                nodeEventListener = new ChainedNodeEventListener(listener, nodeEventListener);
-            }
+
+            listener.next = nodeEventListener;
+            nodeEventListener = listener;
+            listener.registered = true;
         }
 
         @Override
         public void close() {
-            assert nodeEventListener != null;
-            NodeEventListener cur = nodeEventListener;
-            ChainedNodeEventListener last = null;
-            ChainedNodeEventListener beforeLast = null;
+            GraalError.guarantee(listener.registered, "NodeEventScope has already been closed!");
 
-            while (cur instanceof ChainedNodeEventListener chainedListener && chainedListener.head != this.listener) {
-                beforeLast = last;
-                last = chainedListener;
-                cur = chainedListener.next;
-            }
-            if (cur instanceof ChainedNodeEventListener chainedListener) {
-                if (last == null) {
-                    // remove first chained listener
-                    nodeEventListener = chainedListener.next;
-                } else {
-                    // remove any other chained listener
-                    last.next = chainedListener.next;
-                }
+            if (listener == nodeEventListener) {
+                nodeEventListener = listener.next;
+            } else if (listener == nodeEventListener.next) {
+                nodeEventListener.next = listener.next;
             } else {
-                assert cur == this.listener : "Unexpected NodeEventListener: " + listener;
-                // remove last listener in chain
-                if (last == null) {
-                    // chain contains only the listener to remove
-                    nodeEventListener = null;
-                } else if (beforeLast == null) {
-                    // only one listener left after removal; unbox it
-                    nodeEventListener = last.head;
-                } else {
-                    // unbox the now last listener in the chain
-                    beforeLast.next = last.head;
+                // slow path
+                NodeEventListener last = nodeEventListener.next;
+                NodeEventListener cur = nodeEventListener.next.next;
+
+                while (cur != listener) {
+                    last = cur;
+                    cur = cur.next;
                 }
+
+                assert cur == listener : "Listener not found";
+                last.next = listener.next;
             }
-        }
-    }
 
-    private static class ChainedNodeEventListener extends NodeEventListener {
-
-        NodeEventListener head;
-        NodeEventListener next;
-
-        ChainedNodeEventListener(NodeEventListener head, NodeEventListener next) {
-            this.head = head;
-            this.next = next;
-        }
-
-        @Override
-        public void changed(NodeEvent e, Node node) {
-            head.event(e, node);
-            next.event(e, node);
+            listener.registered = false;
         }
     }
 
@@ -1327,9 +1316,7 @@ public class Graph implements EventCounter {
 
         updateNodeCaches(node);
 
-        if (nodeEventListener != null) {
-            nodeEventListener.event(NodeEvent.NODE_ADDED, node);
-        }
+        fireNodeEvent(Graph.NodeEvent.NODE_ADDED, node);
         afterRegister(node);
     }
 
@@ -1385,9 +1372,7 @@ public class Graph implements EventCounter {
         nodes[node.id] = null;
         nodesDeletedSinceLastCompression++;
 
-        if (nodeEventListener != null) {
-            nodeEventListener.event(NodeEvent.NODE_REMOVED, node);
-        }
+        fireNodeEvent(Graph.NodeEvent.NODE_REMOVED, node);
         // nodes aren't removed from the type cache here - they will be removed during iteration
     }
 

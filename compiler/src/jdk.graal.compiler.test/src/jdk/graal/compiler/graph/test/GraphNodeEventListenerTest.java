@@ -38,7 +38,7 @@ import jdk.graal.compiler.options.OptionValues;
 /**
  * Tests adding and removing {@link NodeEventListener}s to/from a graph's chain of listeners.
  */
-public class ChainedNodeEventListenerTest extends GraphTest {
+public class GraphNodeEventListenerTest extends GraphTest {
 
     private static boolean listener0Called = false;
     private static boolean listener1Called = false;
