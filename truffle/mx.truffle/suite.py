@@ -1173,6 +1173,7 @@ suite = {
         "java.desktop",
       ],
       "dependencies" : [
+        "sdk:NATIVEIMAGE",
       ],
       "shadedDependencies" : [
         "truffle:ICU4J",
@@ -1210,10 +1211,25 @@ suite = {
           },
           "com/ibm/icu/impl/ICUData.java" : {
             # [GR-47166] we load an absolute path from ICUData.class, to
-            # workaround an issue we don't understand when this is on the
-            # module path
+            # workaround an issue we don't understand when on the module path
             "ICU_DATA_PATH = \"(?!/)" : "\\g<0>/",
-            "loader.getResourceAsStream\\(resourceName\\)": "(loader == ICUData.class.getClassLoader() ? ICUData.class.getResourceAsStream(resourceName) : \\g<0>)",
+            "root.getResourceAsStream\\(resourceName\\)": "getResourceStream(null, root, resourceName)",
+            "loader.getResourceAsStream\\(resourceName\\)": "getResourceStream(loader, null, resourceName)",
+            "private static InputStream getStream": """
+    private static InputStream getResourceStream(ClassLoader loader, Class<?> root, String resourceName) {
+        Class<?> refClass = root;
+        if (refClass == null && loader == ICUData.class.getClassLoader()) {
+            refClass = ICUData.class;
+        }
+        InputStream inputStream;
+        if (refClass != null) {
+            inputStream = refClass.getResourceAsStream(resourceName);
+        } else {
+            inputStream = loader.getResourceAsStream(resourceName);
+        }
+        return inputStream;
+    }
+    \\g<0>""",
           },
           "com/ibm/icu/impl/URLHandler.java" : {
             # we want to make this code unreachable in native image builds
@@ -2328,8 +2344,7 @@ suite = {
         "org.graalvm.shadowed.com.ibm.icu",
       ],
       "distDependencies" : [
-      ],
-      "exclude" : [
+        "sdk:NATIVEIMAGE",
       ],
       "description" : "ICU4J shaded module.",
       "allowsJavadocWarnings" : True,
