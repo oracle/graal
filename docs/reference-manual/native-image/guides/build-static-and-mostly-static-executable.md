@@ -8,9 +8,9 @@ redirect_from: /reference-manual/native-image/StaticImages/
 
 # Build a Statically Linked or Mostly-Statically Linked Native Executable
 
-GraalVM Native Image by default builds dynamically linked binaries: at build time it loads your application classes and interfaces and hooks them together in a process of dynamic linking.
+GraalVM Native Image by default builds dynamically linked binaries: at build time it first loads your application classes and interfaces, and then hooks them together in a process of dynamic linking.
 
-However, you can create a statically linked or mostly-static linked native executable, depending on your needs. 
+However, you can create a statically linked or mostly-statically linked native executable, depending on your needs.
 
 **A static native executable** is a statically linked binary that can be used without any additional library dependencies.
 A static native executable is easy to distribute and deploy on a slim or distroless container (a scratch container).
@@ -23,12 +23,6 @@ This approach is ideal for deployment on a distroless container image.
 
 This guide shows how you can take advantage of Native Image linking options including fully dynamic, fully static, and mostly static (except `libc`) to generate an executable ideal for your deployment scenario.
 
-### Table of Contents
-
-- [Prerequisites](#prerequisites-and-preparation)
-- [Build a Static Binary](#build-a-static-native-executable)
-- [Build a Mostly Static Binary](#build-a-mostly-static-native-executable)
-
 ## Prerequisites and Preparation
 
 The following prerequisites should be met:
@@ -38,7 +32,7 @@ The following prerequisites should be met:
 - A 64-bit `musl` toolchain, `make`, and `configure`
 - The latest `zlib` library
 
-1. Make sure you have installed a GraalVM JDK.
+1. Install a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
@@ -63,29 +57,27 @@ Extract the toolchain to a directory of your choice. This directory will be refe
 
 ## Build a Static Native Executable
 
-Assume you have the following source code saved in the `EnvMap.java` file:
+1. Save the following source code in a file named _EnvMap.java_:
+    ```java
+    import java.util.Map;
 
-```java
-import java.util.Map;
-
-public class EnvMap {
-    public static void main (String[] args) {
-        var filter = args.length > 0 ? args[0] : "";
-        Map<String, String> env = System.getenv();
-        for (String envName : env.keySet()) {
-            if(envName.contains(filter)) {
-                System.out.format("%s=%s%n",
-                                envName,
-                                env.get(envName));
+    public class EnvMap {
+        public static void main (String[] args) {
+            var filter = args.length > 0 ? args[0] : "";
+            Map<String, String> env = System.getenv();
+            for (String envName : env.keySet()) {
+                if(envName.contains(filter)) {
+                    System.out.format("%s=%s%n",
+                                    envName,
+                                    env.get(envName));
+                }
             }
         }
     }
-}
-```
+    ```
+    This application iterates over your environment variables and prints out the ones that contain the `String` of characters passed as a command line argument.
 
-This application iterates over your environment variables and prints out the ones that contain the `String` of characters passed as a command line argument.
-
-1. First, ensure the directory named `$TOOLCHAIN_DIR/bin` is present on your `PATH`.
+2.  Ensure the directory named `$TOOLCHAIN_DIR/bin` is present on your `PATH`.
     To verify this, run the following command:
     ```bash
     x86_64-linux-musl-gcc
@@ -95,12 +87,12 @@ This application iterates over your environment variables and prints out the one
     x86_64-linux-musl-gcc: fatal error: no input files
     compilation terminated.
     ```
-2. Compile the file:
+3. Compile the file:
     ```shell
     javac EnvMap.java
     ```
 
-3. Build a static native executable by running this command:
+4. Build a static native executable by running this command:
     ```shell
     native-image --static --libc=musl EnvMap
     ```
@@ -109,28 +101,28 @@ This application iterates over your environment variables and prints out the one
 
 ## Build a Mostly-Static Native Executable
 
-With GraalVM Native Image you can build a mostly-static native executable that statically links everything except `libc`. Statically linking all your libraries except `libc` ensures your application has all the libraries it needs to run on any Linux `libc`-based distribution.
+With GraalVM Native Image you can build a mostly-static native executable that statically links everything except `libc`. 
+Statically linking all your libraries except `libc` ensures your application has all the libraries it needs to run on any Linux `libc`-based distribution.
 
 To build a mostly-static native executable, use this command:
-
 ```shell
 native-image --static-nolibc [other arguments] <Class>
 ```
 
 To build a mostly-static native executable for the above `EnvMap` demo, run:
-
 ```shell
 native-image --static-nolibc EnvMap
 ```
 
-This produces a native executable that statically links all involved libraries (including JDK shared libraries) except for `libc`. This includes `zlib`. Also, depending on the user's code, it may link `libstdc+` and `libgcc`.
+This produces a native executable that statically links all involved libraries (including JDK shared libraries) except for `libc`. 
+This includes `zlib`. Also, depending on the user's code, it may link `libstdc+` and `libgcc`. 
 One way to check what dynamic libraries your application depends on is to run `ldd` with the native executable, for example, `ldd helloworld`.
 
 ### Frequently Asked Questions
 
-#### What is the recommended base Docker image for deploying a static or mostly-static native executable?
+#### What is the recommended base container image for deploying a static or mostly-static native executable?
 
-A fully static native executable gives you the most flexibility to choose a base container image - it can run on anything including a `FROM scratch` image.
+A fully static native executable gives you the most flexibility to choose a base container image&mdash;it can run on anything including a `FROM scratch` image.
 A mostly-static native executable requires a container image that provides `libc`, but has no additional requirements.
 In both cases, choosing the base container image generally depends on your native executable's specific requirements.
 

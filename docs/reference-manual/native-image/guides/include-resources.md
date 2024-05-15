@@ -7,14 +7,15 @@ permalink: /reference-manual/native-image/guides/include-resources/
 
 # Include Resources in a Native Executable
 
-The following steps illustrate how to include a resource in a native executable. The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix))).
+The following steps illustrate how to include a resource in a native executable. 
+The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix))).
 
-1. Make sure you have installed a GraalVM JDK.
+### Prerequisite 
+Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Save the following Java source code as a file named _Fortune.java_:
-
+1. Save the following Java source code as a file named _Fortune.java_:
     ```java
     import java.io.BufferedReader;
     import java.io.InputStreamReader;
@@ -53,19 +54,19 @@ For other installation options, visit the [Downloads section](https://www.graalv
     }
     ```
 
-3. Download the [_fortunes.u8_](https://github.com/oracle/graal/blob/3ed4a7ebc5004c51ae310e48be3828cd7c7802c2/docs/reference-manual/native-image/assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
+2. Download the [_fortunes.u8_](https://github.com/oracle/graal/blob/3ed4a7ebc5004c51ae310e48be3828cd7c7802c2/docs/reference-manual/native-image/assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
 
-4. Compile the Java source code:
+3. Compile the Java source code:
     ```shell
     $JAVA_HOME/bin/javac Fortune.java
     ```
 
-5. Build a native executable by specifying the resource path:
+4. Build a native executable by specifying the resource path:
     ```shell
     $JAVA_HOME/bin/native-image Fortune -H:IncludeResources=".*u8$"
     ```
 
-6. Run the executable image: 
+5. Run the executable: 
     ```shell
     ./fortune
     ```
