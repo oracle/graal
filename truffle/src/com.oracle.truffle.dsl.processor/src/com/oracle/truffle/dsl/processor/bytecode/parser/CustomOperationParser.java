@@ -233,9 +233,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                                                     "Enable tag instrumentation using @%s(... enableTagInstrumentation = true) to resolve this or remove the tags attribute.",
                                     getSimpleName(types.GenerateBytecode));
                 } else {
-                    List<TypeMirror> provided = customOperation.bytecode.getProvidedTags();
                     for (TypeMirror tag : tags) {
-                        if (!provided.contains(tag)) {
+                        if (!customOperation.bytecode.isTagProvided(tag)) {
                             customOperation.addError(tagsValue,
                                             "Invalid tag '%s' specified. The tag is not provided by language '%s'.",
                                             getSimpleName(tag),

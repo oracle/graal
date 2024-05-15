@@ -71,6 +71,7 @@ import org.graalvm.shadowed.org.json.JSONTokener;
  * tracing will be combined with existing data.
  */
 public class BytecodeStatistics {
+
     static final ThreadLocal<BytecodeStatistics> STATISTICS = new ThreadLocal<>();
     private final Map<Class<?>, BytecodeRootNodeStatistics> rootNodeStatistics = new HashMap<>();
     private Path statePath;

@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -175,12 +176,28 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return templateType.getSimpleName() + suffix;
     }
 
+    private List<TypeMirror> providedTags;
+    private Set<String> providedTagsSet;
+
     public List<TypeMirror> getProvidedTags() {
-        AnnotationMirror providedTags = ElementUtils.findAnnotationMirror(ElementUtils.castTypeElement(languageClass), types.ProvidedTags);
         if (providedTags == null) {
-            return Collections.emptyList();
+            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(ElementUtils.castTypeElement(languageClass), types.ProvidedTags);
+            if (mirror == null) {
+                providedTags = Collections.emptyList();
+            } else {
+                providedTags = ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "value");
+            }
         }
-        return ElementUtils.getAnnotationValueList(TypeMirror.class, providedTags, "value");
+        return providedTags;
+    }
+
+    public boolean isTagProvided(TypeMirror tagClass) {
+        if (providedTagsSet == null) {
+            providedTagsSet = getProvidedTags().stream()//
+                            .map(ElementUtils::getUniqueIdentifier)//
+                            .distinct().collect(Collectors.toSet());
+        }
+        return providedTagsSet.contains(ElementUtils.getUniqueIdentifier(tagClass));
     }
 
     public Signature signature(Class<?> returnType, Class<?>... argumentTypes) {
