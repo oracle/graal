@@ -65,6 +65,7 @@ public abstract class BytecodeLocal {
         BytecodeRootNodes.checkToken(token);
     }
 
+    // TODO try to remove
     public abstract int getLocalOffset();
 
 }
