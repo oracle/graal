@@ -227,7 +227,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             getUniverse().registerEmbeddedRoot(constant, position);
 
             AnalysisType type = ((TypedConstant) constant).getType();
-            registerTypeAsInstantiated(type, reason);
+            type.registerAsInstantiated(reason);
         }
     }
 

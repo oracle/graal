@@ -999,7 +999,7 @@ public class NativeImageGenerator {
                 if (!UseExperimentalReachabilityAnalysis.getValue(options)) {
                     aScanningObserver = new AnalysisObjectScanningObserver(bb);
                 } else {
-                    aScanningObserver = new ReachabilityObjectScanner(bb, aMetaAccess);
+                    aScanningObserver = new ReachabilityObjectScanner(aMetaAccess);
                 }
                 ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aProviders.getSnippetReflection(),
                                 aProviders.getConstantReflection(), aScanningObserver, hostedValuesProvider);
@@ -1151,17 +1151,17 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
-            bb.registerTypeAsInstantiated(bb.addRootClass(Object.class, false, false), "root class");
+            bb.addRootClass(Object.class, false, false).registerAsInstantiated("root class");
             bb.addRootField(DynamicHub.class, "vtable");
-            bb.registerTypeAsInstantiated(bb.addRootClass(String.class, false, false), "root class");
-            bb.registerTypeAsInstantiated(bb.addRootClass(String[].class, false, false), "root class");
-            bb.registerTypeAsInstantiated(bb.addRootField(String.class, "value"), "root class");
-            bb.registerTypeAsInstantiated(bb.addRootClass(long[].class, false, false), "root class");
-            bb.registerTypeAsInstantiated(bb.addRootClass(byte[].class, false, false), "root class");
-            bb.registerTypeAsInstantiated(bb.addRootClass(byte[][].class, false, false), "root class");
-            bb.registerTypeAsInstantiated(bb.addRootClass(Object[].class, false, false), "root class");
-            bb.registerTypeAsInstantiated(bb.addRootClass(CFunctionPointer[].class, false, false), "root class");
-            bb.registerTypeAsInstantiated(bb.addRootClass(PointerBase[].class, false, false), "root class");
+            bb.addRootClass(String.class, false, false).registerAsInstantiated("root class");
+            bb.addRootClass(String[].class, false, false).registerAsInstantiated("root class");
+            bb.addRootField(String.class, "value").registerAsInstantiated("root class");
+            bb.addRootClass(long[].class, false, false).registerAsInstantiated("root class");
+            bb.addRootClass(byte[].class, false, false).registerAsInstantiated("root class");
+            bb.addRootClass(byte[][].class, false, false).registerAsInstantiated("root class");
+            bb.addRootClass(Object[].class, false, false).registerAsInstantiated("root class");
+            bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInstantiated("root class");
+            bb.addRootClass(PointerBase[].class, false, false).registerAsInstantiated("root class");
 
             bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true,
                             "Runtime support, registered in " + NativeImageGenerator.class);

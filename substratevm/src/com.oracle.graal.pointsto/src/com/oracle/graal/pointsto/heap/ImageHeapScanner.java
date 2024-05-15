@@ -206,7 +206,7 @@ public abstract class ImageHeapScanner {
             AnalysisError.guarantee(type.isReachable(), "The type %s should have been reachable during analysis.", type);
             AnalysisError.guarantee(type.isInstantiated(), "The type %s should have been instantiated during analysis.", type);
         } else {
-            universe.getBigbang().registerTypeAsInstantiated(type, reason);
+            type.registerAsInstantiated(reason);
         }
     }
 

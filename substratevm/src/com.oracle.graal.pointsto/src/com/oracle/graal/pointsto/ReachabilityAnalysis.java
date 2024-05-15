@@ -99,26 +99,6 @@ public interface ReachabilityAnalysis {
      */
     AnalysisMethod forcedAddRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
 
-    default boolean registerTypeAsReachable(AnalysisType type, Object reason) {
-        return type.registerAsReachable(reason);
-    }
-
-    default boolean registerTypeAsInstantiated(AnalysisType type, Object reason) {
-        return type.registerAsInstantiated(reason);
-    }
-
-    default void markFieldAccessed(AnalysisField field, Object reason) {
-        field.registerAsAccessed(reason);
-    }
-
-    default void markFieldRead(AnalysisField field, Object reason) {
-        field.registerAsRead(reason);
-    }
-
-    default void markFieldWritten(AnalysisField field, Object reason) {
-        field.registerAsWritten(reason);
-    }
-
     /**
      * Waits until the analysis is done.
      */

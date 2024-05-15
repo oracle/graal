@@ -85,17 +85,17 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
             bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
         }
         for (AnalysisType type : summary.accessedTypes) {
-            bb.registerTypeAsReachable(type, method);
+            type.registerAsReachable(method);
         }
         for (AnalysisType type : summary.instantiatedTypes) {
-            bb.registerTypeAsInstantiated(type, method);
+            type.registerAsInstantiated(method);
         }
         for (AnalysisField field : summary.readFields) {
-            bb.markFieldRead(field, method);
-            bb.registerTypeAsReachable(field.getType(), method);
+            field.registerAsRead(method);
+            field.getType().registerAsReachable(method);
         }
         for (AnalysisField field : summary.writtenFields) {
-            bb.markFieldWritten(field, method);
+            field.registerAsWritten(method);
         }
         for (JavaConstant constant : summary.embeddedConstants) {
             bb.handleEmbeddedConstant(method, constant, method);
