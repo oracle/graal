@@ -875,7 +875,7 @@ public class SubstrateGraphBuilderPlugins {
                     AnalysisType type = (AnalysisType) b.getMetaAccess().lookupJavaType(clazz);
                     for (int i = 0; i < dimensionCount && type.getArrayDimension() < 255; i++) {
                         type = type.getArrayClass();
-                        type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(clazzNode));
+                        type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(clazzNode));
                     }
                 }
                 return false;

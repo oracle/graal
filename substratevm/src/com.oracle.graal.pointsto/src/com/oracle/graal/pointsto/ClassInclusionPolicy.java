@@ -91,7 +91,7 @@ public abstract class ClassInclusionPolicy {
         if (Modifier.isAbstract(cls.getModifiers()) || cls.isInterface() || cls.isPrimitive()) {
             bb.getMetaAccess().lookupJavaType(cls).registerAsReachable(reason);
         } else {
-            bb.getMetaAccess().lookupJavaType(cls).registerAsAllocated(reason);
+            bb.getMetaAccess().lookupJavaType(cls).registerAsInstantiated(reason);
         }
     }
 

@@ -371,7 +371,7 @@ public class FeatureImpl {
         }
 
         public void registerAsInHeap(AnalysisType aType, Object reason) {
-            bb.registerTypeAsInHeap(aType, reason);
+            bb.registerTypeAsInstantiated(aType, reason);
         }
 
         @Override

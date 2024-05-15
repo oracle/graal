@@ -62,17 +62,16 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
         if (receiver != null) {
             modified = bb.registerTypeAsReachable(constantType(receiver), reason);
         }
-        return modified || bb.registerTypeAsReachable(field.getType(), reason);
+        return modified | bb.registerTypeAsReachable(field.getType(), reason);
     }
 
     @Override
     public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ObjectScanner.ScanReason reason) {
         boolean modified = false;
         if (receiver != null) {
-            bb.registerTypeAsInHeap(constantType(receiver), reason);
-            modified = bb.registerTypeAsReachable(constantType(receiver), reason);
+            modified = bb.registerTypeAsInstantiated(constantType(receiver), reason);
         }
-        return modified || bb.registerTypeAsReachable(field.getType(), reason);
+        return modified | bb.registerTypeAsReachable(field.getType(), reason);
     }
 
     @Override
@@ -82,19 +81,19 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
 
     @Override
     public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ObjectScanner.ScanReason reason) {
-        return bb.registerTypeAsReachable(arrayType, reason) || bb.registerTypeAsInHeap(elementType, reason);
+        return bb.registerTypeAsReachable(arrayType, reason) | bb.registerTypeAsInstantiated(elementType, reason);
     }
 
     @Override
     public void forEmbeddedRoot(JavaConstant root, ObjectScanner.ScanReason reason) {
         bb.registerTypeAsReachable(constantType(root), reason);
-        bb.registerTypeAsInHeap(constantType(root), reason);
+        bb.registerTypeAsInstantiated(constantType(root), reason);
     }
 
     @Override
     public void forScannedConstant(JavaConstant scannedValue, ObjectScanner.ScanReason reason) {
         AnalysisType type = constantType(scannedValue);
-        bb.registerTypeAsInHeap(type, reason);
+        bb.registerTypeAsInstantiated(type, reason);
     }
 
     private AnalysisType constantType(JavaConstant constant) {

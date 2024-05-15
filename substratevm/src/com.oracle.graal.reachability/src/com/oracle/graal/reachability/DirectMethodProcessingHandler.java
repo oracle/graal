@@ -95,36 +95,36 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
         for (Node n : graph.getNodes()) {
             if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
-                bb.registerTypeAsAllocated((ReachabilityAnalysisType) node.instanceClass(), AbstractAnalysisEngine.sourcePosition(node));
+                bb.registerTypeAsInstantiated((ReachabilityAnalysisType) node.instanceClass(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof NewInstanceWithExceptionNode) {
                 NewInstanceWithExceptionNode node = (NewInstanceWithExceptionNode) n;
-                bb.registerTypeAsAllocated((ReachabilityAnalysisType) node.instanceClass(), AbstractAnalysisEngine.sourcePosition(node));
+                bb.registerTypeAsInstantiated((ReachabilityAnalysisType) node.instanceClass(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof NewArrayNode) {
                 NewArrayNode node = (NewArrayNode) n;
-                bb.registerTypeAsAllocated(((ReachabilityAnalysisType) node.elementType()).getArrayClass(), AbstractAnalysisEngine.sourcePosition(node));
+                bb.registerTypeAsInstantiated(((ReachabilityAnalysisType) node.elementType()).getArrayClass(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof NewArrayWithExceptionNode) {
                 NewArrayWithExceptionNode node = (NewArrayWithExceptionNode) n;
-                bb.registerTypeAsAllocated(((ReachabilityAnalysisType) node.elementType()).getArrayClass(), AbstractAnalysisEngine.sourcePosition(node));
+                bb.registerTypeAsInstantiated(((ReachabilityAnalysisType) node.elementType()).getArrayClass(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
                 ResolvedJavaType type = node.type();
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    bb.registerTypeAsAllocated((ReachabilityAnalysisType) type, AbstractAnalysisEngine.sourcePosition(node));
+                    bb.registerTypeAsInstantiated((ReachabilityAnalysisType) type, AbstractAnalysisEngine.sourcePosition(node));
                     type = type.getComponentType();
                 }
             } else if (n instanceof NewMultiArrayWithExceptionNode) {
                 NewMultiArrayWithExceptionNode node = (NewMultiArrayWithExceptionNode) n;
                 ResolvedJavaType type = node.type();
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    bb.registerTypeAsAllocated((ReachabilityAnalysisType) type, AbstractAnalysisEngine.sourcePosition(node));
+                    bb.registerTypeAsInstantiated((ReachabilityAnalysisType) type, AbstractAnalysisEngine.sourcePosition(node));
                     type = type.getComponentType();
                 }
             } else if (n instanceof VirtualInstanceNode) {
                 VirtualInstanceNode node = (VirtualInstanceNode) n;
-                bb.registerTypeAsAllocated((ReachabilityAnalysisType) node.type(), AbstractAnalysisEngine.sourcePosition(node));
+                bb.registerTypeAsInstantiated((ReachabilityAnalysisType) node.type(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof VirtualArrayNode) {
                 VirtualArrayNode node = (VirtualArrayNode) n;
-                bb.registerTypeAsAllocated(((ReachabilityAnalysisType) node.componentType()).getArrayClass(), AbstractAnalysisEngine.sourcePosition(node));
+                bb.registerTypeAsInstantiated(((ReachabilityAnalysisType) node.componentType()).getArrayClass(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof ConstantNode) {
                 ConstantNode node = (ConstantNode) n;
                 if (!(node.getValue() instanceof JavaConstant)) {

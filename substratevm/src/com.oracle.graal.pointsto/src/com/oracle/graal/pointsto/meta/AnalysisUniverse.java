@@ -56,7 +56,6 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
-import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -671,8 +670,9 @@ public class AnalysisUniverse implements Universe {
         bb.onFieldAccessed(field);
     }
 
-    public void onTypeInstantiated(AnalysisType type, UsageKind usage) {
-        bb.onTypeInstantiated(type, usage);
+    public void onTypeInstantiated(AnalysisType type) {
+        hostVM.onTypeInstantiated(bb, type);
+        bb.onTypeInstantiated(type);
     }
 
     public void onTypeReachable(AnalysisType type) {

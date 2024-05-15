@@ -97,11 +97,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> objectReachableCallbacksUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "objectReachableCallbacks");
 
-    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isAllocatedUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisType.class, Object.class, "isAllocated");
-
-    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isInHeapUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisType.class, Object.class, "isInHeap");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isInstantiatedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isInstantiated");
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isReachableUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isReachable");
@@ -114,8 +111,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final String qualifiedName;
     private final String unqualifiedName;
 
-    @SuppressWarnings("unused") private volatile Object isInHeap;
-    @SuppressWarnings("unused") private volatile Object isAllocated;
+    @SuppressWarnings("unused") private volatile Object isInstantiated;
     @SuppressWarnings("unused") private volatile Object isReachable;
     @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
@@ -171,12 +167,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final int dimension;
 
     @SuppressWarnings("unused") private volatile Object interceptors;
-
-    public enum UsageKind {
-        InHeap,
-        Allocated,
-        Reachable;
-    }
 
     private final AnalysisFuture<Void> onTypeReachableTask;
     private final AnalysisFuture<Void> initializeMetaDataTask;
@@ -513,37 +503,22 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     /**
-     * @param reason the {@link BytecodePosition} where this type is marked as in-heap, or a
+     * @param reason the {@link BytecodePosition} where this type is marked as instantiated, or a
      *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
      *            describing why this type was manually marked as in-heap
      */
-    public boolean registerAsInHeap(Object reason) {
-        assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
+    public boolean registerAsInstantiated(Object reason) {
+        assert isValidReason(reason) : "Registering a type as instantiated needs to provide a valid reason.";
         registerAsReachable(reason);
-        if (AtomicUtils.atomicSet(this, reason, isInHeapUpdater)) {
-            onInstantiated(UsageKind.InHeap);
+        if (AtomicUtils.atomicSet(this, reason, isInstantiatedUpdater)) {
+            onInstantiated();
             return true;
         }
         return false;
     }
 
-    /**
-     * @param reason the {@link BytecodePosition} where this type is marked as allocated, or a
-     *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
-     *            describing why this type was manually marked as allocated
-     */
-    public boolean registerAsAllocated(Object reason) {
-        assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
-        registerAsReachable(reason);
-        if (AtomicUtils.atomicSet(this, reason, isAllocatedUpdater)) {
-            onInstantiated(UsageKind.Allocated);
-            return true;
-        }
-        return false;
-    }
-
-    protected void onInstantiated(UsageKind usage) {
-        universe.onTypeInstantiated(this, usage);
+    protected void onInstantiated() {
+        universe.onTypeInstantiated(this);
         notifyInstantiatedCallbacks();
         processMethodOverrides();
     }
@@ -629,7 +604,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         universe.notifyReachableType();
-        universe.hostVM.checkForbidden(this, UsageKind.Reachable);
         if (isArray()) {
             /*
              * For array types, distinguishing between "used" and "instantiated" does not provide
@@ -637,7 +611,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              * types as instantiated too allows more usages of Arrays.newInstance without the need
              * of explicit registration of types for reflection.
              */
-            registerAsAllocated("All array types are marked as instantiated eagerly.");
+            registerAsInstantiated("All array types are marked as instantiated eagerly.");
         }
         ensureOnTypeReachableTaskDone();
     }
@@ -829,9 +803,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public boolean isInstantiated() {
-        boolean instantiated = isInHeap() || isAllocated();
+        boolean instantiated = AtomicUtils.isSet(this, isInstantiatedUpdater);
         assert !instantiated || isReachable() : this;
         return instantiated;
+    }
+
+    public Object getInstantiatedReason() {
+        return isInstantiated;
     }
 
     /** Returns true if this type or any of its subtypes was marked as instantiated. */
@@ -1224,8 +1202,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public String toString() {
-        return "AnalysisType<" + unqualifiedName + " -> " + wrapped.toString() + ", allocated: " + (isAllocated != null) +
-                        ", inHeap: " + (isInHeap != null) + ", reachable: " + (isReachable != null) + ">";
+        return "AnalysisType<" + unqualifiedName + " -> " + wrapped.toString() + ", instantiated: " + (isInstantiated != null) + ", reachable: " + (isReachable != null) + ">";
     }
 
     @Override
@@ -1298,22 +1275,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * will not be linked.
          */
         return wrapped.isLinked();
-    }
-
-    public boolean isInHeap() {
-        return AtomicUtils.isSet(this, isInHeapUpdater);
-    }
-
-    public Object getInHeapReason() {
-        return isInHeap;
-    }
-
-    public boolean isAllocated() {
-        return AtomicUtils.isSet(this, isAllocatedUpdater);
-    }
-
-    public Object getAllocatedReason() {
-        return isAllocated;
     }
 
     @Override

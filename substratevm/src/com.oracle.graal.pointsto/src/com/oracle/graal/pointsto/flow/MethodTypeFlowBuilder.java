@@ -251,33 +251,33 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
                 AnalysisType type = (AnalysisType) node.instanceClass();
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof NewInstanceWithExceptionNode) {
                 NewInstanceWithExceptionNode node = (NewInstanceWithExceptionNode) n;
                 AnalysisType type = (AnalysisType) node.instanceClass();
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof VirtualObjectNode) {
                 VirtualObjectNode node = (VirtualObjectNode) n;
                 AnalysisType type = (AnalysisType) node.type();
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof NewArrayNode) {
                 NewArrayNode node = (NewArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof NewArrayWithExceptionNode) {
                 NewArrayWithExceptionNode node = (NewArrayWithExceptionNode) n;
                 AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.type());
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
                     type = type.getComponentType();
                 }
 
@@ -285,14 +285,14 @@ public class MethodTypeFlowBuilder {
                 NewMultiArrayWithExceptionNode node = (NewMultiArrayWithExceptionNode) n;
                 AnalysisType type = ((AnalysisType) node.type());
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
                     type = type.getComponentType();
                 }
 
             } else if (n instanceof BoxNode) {
                 BoxNode node = (BoxNode) n;
                 AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof LoadFieldNode) {
                 LoadFieldNode node = (LoadFieldNode) n;
@@ -311,7 +311,7 @@ public class MethodTypeFlowBuilder {
                     assert StampTool.isExactType(cn) : cn;
                     if (!ignoreConstant(cn)) {
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
-                        type.registerAsInHeap(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
+                        type.registerAsInstantiated(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
                         registerEmbeddedRoot(bb, cn);
                     }
                 }

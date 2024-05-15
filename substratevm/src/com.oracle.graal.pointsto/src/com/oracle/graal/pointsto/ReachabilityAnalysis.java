@@ -103,12 +103,8 @@ public interface ReachabilityAnalysis {
         return type.registerAsReachable(reason);
     }
 
-    default boolean registerTypeAsAllocated(AnalysisType type, Object reason) {
-        return type.registerAsAllocated(reason);
-    }
-
-    default boolean registerTypeAsInHeap(AnalysisType type, Object reason) {
-        return type.registerAsInHeap(reason);
+    default boolean registerTypeAsInstantiated(AnalysisType type, Object reason) {
+        return type.registerAsInstantiated(reason);
     }
 
     default void markFieldAccessed(AnalysisField field, Object reason) {
