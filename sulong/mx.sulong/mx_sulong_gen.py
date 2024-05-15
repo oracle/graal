@@ -209,4 +209,4 @@ def create_generated_sources(args=None, out=None):
     generate_llvm_config(args, out=out)
 
     if parsed_args.check:
-        mx.run(['git', 'diff', '--exit-code'])
+        mx.run(['git', 'diff', '--exit-code', '--', _suite.dir])
