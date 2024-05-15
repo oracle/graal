@@ -40,82 +40,49 @@
  */
 package com.oracle.truffle.api.bytecode;
 
-import com.oracle.truffle.api.source.SourceSection;
+import java.util.List;
 
 /**
- * Represents a source information object which contains source section information for a range of
- * bytecodes.
+ * Represents a tree of {@link SourceInformation} instances. Like {@link SourceInformation}, this
+ * class models the source section for a bytecode range. Its children model the source sections of
+ * subranges directly contained by this node's bytecode range.
  *
- * @see BytecodeNode#getSourceInformation()
- * @see BytecodeLocation#getSourceInformation()
+ * @see BytecodeNode#getSourceInformationTree()
  */
-public abstract class SourceInformation {
+public abstract class SourceInformationTree extends SourceInformation {
 
     /**
      * Internal constructor for generated code. Do not use.
      *
      * @since 24.1
      */
-    protected SourceInformation(Object token) {
-        BytecodeRootNodes.checkToken(token);
+    protected SourceInformationTree(Object token) {
+        super(token);
     }
 
     /**
-     * Returns the start bytecode index for this source information object (inclusive).
+     * Returns a list of child trees, ordered by bytecode range.
      *
      * @since 24.1
      */
-    public abstract int getStartIndex();
-
-    /**
-     * Returns the end bytecode index for this source information object (exclusive).
-     *
-     * @since 24.1
-     */
-    public abstract int getEndIndex();
-
-    /**
-     * Returns the source section associated with this source information object. Never
-     * <code>null</code>.
-     *
-     * @since 24.1
-     */
-    public abstract SourceSection getSourceSection();
+    public abstract List<SourceInformationTree> getChildren();
 
     @Override
     public String toString() {
-        SourceSection sourceSection = getSourceSection();
-        String sourceText;
-        if (sourceSection == null) {
-            sourceText = "<none>";
-        } else {
-            sourceText = formatSourceSection(sourceSection, 60);
-        }
-        return String.format("[%04x .. %04x] %s", getStartIndex(), getEndIndex(), sourceText);
+        return toString(0);
     }
 
-    static final String formatSourceSection(SourceSection section, int maxCharacters) {
-        String characters;
-        if (section.getSource().hasCharacters()) {
-            characters = limitCharacters(section.getCharacters(), maxCharacters).toString();
-            characters = characters.replace("\n", "\\n");
-        } else {
-            characters = "";
+    private String toString(int depth) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < depth; i++) {
+            result.append("  ");
         }
-        return String.format("%s %3s:%-3s-%3s:%-3s   %s",
-                        limitCharacters(section.getSource().getName(), 40),
-                        section.getStartLine(),
-                        section.getStartColumn(),
-                        section.getEndLine(),
-                        section.getEndColumn(),
-                        characters);
-    }
-
-    private static CharSequence limitCharacters(CharSequence characters, int maxCharacters) {
-        if (characters.length() > maxCharacters) {
-            return characters.subSequence(0, maxCharacters - 3).toString() + "...";
+        result.append(super.toString());
+        result.append("\n");
+        for (SourceInformationTree child : getChildren()) {
+            result.append(child.toString(depth + 1));
         }
-        return characters;
+        return result.toString();
     }
 
 }

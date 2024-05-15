@@ -248,11 +248,39 @@ public abstract class BytecodeNode extends Node {
     /**
      * Produces a list of {@link SourceInformation} for a bytecode node. If no source information is
      * available, returns {@code null}.
+     * <p>
+     * Footprint note: the backing list implementation consumes a fixed amount of memory. It
+     * allocates the underlying {@link SourceInformation} element when it is {@link List#get
+     * accessed}.
+     *
+     * @since 24.1
      */
     public abstract List<SourceInformation> getSourceInformation();
 
+    /**
+     * Produces a {@link SourceInformationTree} for a bytecode node. If no source information is
+     * available, returns {@code null}.
+     * <p>
+     * Footprint note: this method eagerly materializes an entire tree, unlike
+     * {@link #getSourceInformation()}, which allocates its elements on demand. Prefer to use
+     * {@link #getSourceInformation()} unless you need to traverse the source tree.
+     *
+     * @since 24.1
+     */
+    public abstract SourceInformationTree getSourceInformationTree();
+
+    /**
+     * TODO
+     *
+     * @since 24.1
+     */
     public abstract List<ExceptionHandler> getExceptionHandlers();
 
+    /**
+     * TODO
+     *
+     * @since 24.1
+     */
     public abstract TagTree getTagTree();
 
     /**

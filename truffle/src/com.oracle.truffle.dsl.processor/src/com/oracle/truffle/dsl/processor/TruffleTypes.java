@@ -388,6 +388,7 @@ public class TruffleTypes {
     public static final String BytecodeIntrospection_Name = "com.oracle.truffle.api.bytecode.BytecodeIntrospection";
     public static final String Instruction_Name = "com.oracle.truffle.api.bytecode.Instruction";
     public static final String SourceInformation_Name = "com.oracle.truffle.api.bytecode.SourceInformation";
+    public static final String SourceInformationTree_Name = "com.oracle.truffle.api.bytecode.SourceInformationTree";
     public static final String LocalVariable_Name = "com.oracle.truffle.api.bytecode.LocalVariable";
     public static final String ExceptionHandler_Name = "com.oracle.truffle.api.bytecode.ExceptionHandler";
     public static final String ExceptionHandler_HandlerKind_Name = "com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind";
@@ -444,6 +445,7 @@ public class TruffleTypes {
     public final DeclaredType BytecodeIntrospection = c.getDeclaredTypeOptional(BytecodeIntrospection_Name);
     public final DeclaredType Instruction = c.getDeclaredTypeOptional(Instruction_Name);
     public final DeclaredType SourceInformation = c.getDeclaredTypeOptional(SourceInformation_Name);
+    public final DeclaredType SourceInformationTree = c.getDeclaredTypeOptional(SourceInformationTree_Name);
     public final DeclaredType LocalVariable = c.getDeclaredTypeOptional(LocalVariable_Name);
     public final DeclaredType ExceptionHandler = c.getDeclaredTypeOptional(ExceptionHandler_Name);
     public final DeclaredType ExceptionHandler_HandlerKind = c.getDeclaredTypeOptional(ExceptionHandler_HandlerKind_Name);

@@ -65,6 +65,7 @@ import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
 import com.oracle.truffle.api.bytecode.SourceInformation;
+import com.oracle.truffle.api.bytecode.SourceInformationTree;
 import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
@@ -1411,6 +1412,78 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         assertEquals(0, s4.getStartIndex());
         assertEquals(instructions.get(3).getBytecodeIndex() + 1, s4.getEndIndex());
+    }
+
+    @Test
+    public void testIntrospectionDataSourceInformationTree() {
+        Source source = Source.newBuilder("test", "return (a + b) + 2", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("introspectionDataSourceInformationTree", b -> {
+            b.beginSource(source);
+            b.beginSourceSection(0, 18);
+
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+
+            b.beginSourceSection(7, 11);
+            b.beginAddOperation();
+
+            // intentional duplicate source section
+            b.beginSourceSection(7, 7);
+            b.beginSourceSection(7, 7);
+            b.beginAddOperation();
+
+            b.beginSourceSection(8, 1);
+            b.emitLoadArgument(0);
+            b.endSourceSection();
+
+            b.beginSourceSection(12, 1);
+            b.emitLoadArgument(1);
+            b.endSourceSection();
+
+            b.endAddOperation();
+            b.endSourceSection();
+            b.endSourceSection();
+
+            b.beginSourceSection(17, 1);
+            b.emitLoadConstant(2L);
+            b.endSourceSection();
+
+            b.endAddOperation();
+            b.endSourceSection();
+
+            b.endReturn();
+            b.endRoot();
+
+            b.endSourceSection();
+            b.endSource();
+        });
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+        SourceInformationTree root = bytecode.getSourceInformationTree();
+
+        record ExpectedSourceTree(String contents, ExpectedSourceTree... children) {
+            public void assertTreeEquals(SourceInformationTree actual) {
+                assertEquals(contents, actual.getSourceSection().getCharacters().toString());
+                assertEquals(children.length, actual.getChildren().size());
+                for (int i = 0; i < children.length; i++) {
+                    children[i].assertTreeEquals(actual.getChildren().get(i));
+                }
+            }
+        }
+
+        // @formatter:off
+        ExpectedSourceTree expected = new ExpectedSourceTree("return (a + b) + 2",
+            new ExpectedSourceTree("(a + b) + 2",
+                new ExpectedSourceTree("(a + b)",
+                    new ExpectedSourceTree("a"),
+                    new ExpectedSourceTree("b")
+                ),
+                new ExpectedSourceTree("2")
+            )
+        );
+        // @formatter:on
+
+        expected.assertTreeEquals(root);
     }
 
     @Test
