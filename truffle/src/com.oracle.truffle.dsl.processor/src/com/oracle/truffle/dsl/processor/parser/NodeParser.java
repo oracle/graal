@@ -4436,7 +4436,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         NodeParser parser = NodeParser.createDefaultParser();
         parser.nodeOnly = true; // make sure we cannot have cycles
         TypeElement element = ElementUtils.castTypeElement(nodeType);
-        NodeData parsedNode = parser.parse(element);
+        NodeData parsedNode = parser.parse(element, false);
         List<CodeExecutableElement> executables = null;
         if (parsedNode != null) {
             executables = NodeFactoryFactory.createFactoryMethods(parsedNode, ElementFilter.constructorsIn(element.getEnclosedElements()));
