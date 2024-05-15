@@ -84,7 +84,7 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
@@ -243,7 +243,7 @@ public class NativeImageClassLoaderSupport {
     }
 
     private static void missingFromSetOfEntriesError(Object entry, Collection<?> allEntries, String typeOfEntry,
-                    HostedOptionKey<LocatableMultiOptionValue.Strings> option) {
+                    HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option) {
         String sortedEntries = allEntries.stream()
                         .map(Object::toString)
                         .collect(Collectors.joining(System.lineSeparator() + "   ", "   ", ""));
@@ -494,7 +494,7 @@ public class NativeImageClassLoaderSupport {
         return allLayers;
     }
 
-    private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionKey<LocatableMultiOptionValue.Strings> specificOption) {
+    private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionKey<AccumulatingLocatableMultiOptionValue.Strings> specificOption) {
         Stream<Pair<String, OptionOrigin>> valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
         Stream<AddExportsAndOpensAndReadsFormatValue> parsedOptions = valuesWithOrigins.flatMap(valWithOrig -> {
             try {

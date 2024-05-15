@@ -25,7 +25,7 @@
 package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
-import static com.oracle.svm.core.option.LocatableMultiOptionValue.Strings.buildWithCommaDelimiter;
+import static com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
@@ -56,7 +56,7 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -85,7 +85,8 @@ public class SubstrateOptions {
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SourceLevelDebugFilter = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> SourceLevelDebugFilter = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "Image Build ID is a 128-bit UUID string generated randomly, once per bundle or digest of input args when bundles are not used.")//
     public static final HostedOptionKey<String> ImageBuildID = new HostedOptionKey<>("");
@@ -436,10 +437,10 @@ public class SubstrateOptions {
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @OptionMigrationMessage("Use the '-o' option instead.")//
     @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
@@ -457,15 +458,15 @@ public class SubstrateOptions {
         }
 
         @Override
-        public HostedOptionKey<LocatableMultiOptionValue.Strings> multiValueOption() {
+        public HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> multiValueOption() {
             return SupportedGCs;
         }
     }
 
     @Option(help = "Please use '--gc=*' instead. Possible values are listed with '--help'.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SupportedGCs = new HostedOptionKey<>(buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue())) {
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> SupportedGCs = new HostedOptionKey<>(buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue())) {
         @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, LocatableMultiOptionValue.Strings oldValue, LocatableMultiOptionValue.Strings newValue) {
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, AccumulatingLocatableMultiOptionValue.Strings oldValue, AccumulatingLocatableMultiOptionValue.Strings newValue) {
 
             if (oldValue == null && newValue.values().size() > 1) {
                 // Default value is still in the newValue, so remove it.
@@ -509,7 +510,7 @@ public class SubstrateOptions {
                 if (newValue) {
                     SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue()));
                 } else if (!values.containsKey(SubstrateOptions.SupportedGCs) ||
-                                ((LocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.SERIAL.getValue())) {
+                                ((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.SERIAL.getValue())) {
                     SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter());
                 }
             }
@@ -522,7 +523,7 @@ public class SubstrateOptions {
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
                     SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter(GCOptionValue.EPSILON.getValue()));
-                } else if (((LocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.EPSILON.getValue())) {
+                } else if (((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.EPSILON.getValue())) {
                     SubstrateOptions.SupportedGCs.update(values, buildWithCommaDelimiter());
                 }
             }
@@ -579,11 +580,12 @@ public class SubstrateOptions {
     private static final String DEPRECATION_MESSAGE_TCI = "This option is not required anymore with the strict image heap enabled by default.";
     @APIOption(name = "trace-class-initialization", deprecated = DEPRECATION_MESSAGE_TCI)//
     @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.", deprecated = true, deprecationMessage = DEPRECATION_MESSAGE_TCI)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "trace-object-instantiation")//
     @Option(help = "Comma-separated list of fully-qualified class names that object instantiation is traced for.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceObjectInstantiation = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TraceObjectInstantiation = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "Trace all native tool invocations as part of image building", type = User)//
     public static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
@@ -598,10 +600,12 @@ public class SubstrateOptions {
     @APIOption(name = "enable-https", fixedValue = "https", customHelp = "enable https support in the generated image")//
     @APIOption(name = "enable-url-protocols")//
     @Option(help = "List of comma separated URL protocols to enable.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "List of comma separated URL protocols that must never be included.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DisableURLProtocols = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> DisableURLProtocols = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @SuppressWarnings("unused") //
     @APIOption(name = "enable-all-security-services")//
@@ -682,7 +686,7 @@ public class SubstrateOptions {
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output conforms to the JSON schema located at: " +
                     "docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json", type = OptionType.User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
 
     public static final String NATIVE_IMAGE_OPTIONS_ENV_VAR = "NATIVE_IMAGE_OPTIONS";
 
@@ -762,7 +766,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
@@ -789,7 +793,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: Reachable, Instantiated).", type = OptionType.Debug)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Backend used by the compiler", type = OptionType.User)//
     public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<>("lir") {
@@ -863,7 +867,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String> CCompilerPath = new HostedOptionKey<>(null);
     @APIOption(name = "native-compiler-options")//
     @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CCompilerOption = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> CCompilerOption = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Use strict checks when performing query code compilation.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> StrictQueryCodeCompilation = new HostedOptionKey<>(true);
@@ -1189,11 +1193,11 @@ public class SubstrateOptions {
 
     @APIOption(name = "exact-reachability-metadata", defaultValue = "")//
     @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "exact-reachability-metadata-path")//
     @Option(help = "file:doc-files/ExactReachabilityMetadataPathHelp.txt")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     public enum ReportingMode {
         Warn,
@@ -1223,10 +1227,10 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 
     @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromModule = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromModule = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     public static boolean includeAll() {
         return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
@@ -1254,7 +1258,7 @@ public class SubstrateOptions {
 
     @Option(help = "Names of layer snapshots produced by PersistImageLayer", type = OptionType.Debug) //
     @BundleMember(role = BundleMember.Role.Input)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build()) {
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build()) {
         @Override
         public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
             super.update(values, boxedValue);

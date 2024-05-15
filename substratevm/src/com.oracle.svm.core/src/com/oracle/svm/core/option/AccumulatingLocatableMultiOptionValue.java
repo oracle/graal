@@ -40,7 +40,7 @@ import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 
-public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T> {
+public abstract class AccumulatingLocatableMultiOptionValue<T> implements MultiOptionValue<T> {
 
     protected static final String NO_DELIMITER = "";
 
@@ -48,14 +48,14 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
     private final Class<T> valueType;
     protected final List<Pair<T, String>> values;
 
-    private LocatableMultiOptionValue(Class<T> valueType, String delimiter, List<T> defaults) {
+    private AccumulatingLocatableMultiOptionValue(Class<T> valueType, String delimiter, List<T> defaults) {
         this.valueType = valueType;
         this.delimiter = delimiter;
         values = new ArrayList<>();
         values.addAll(defaults.stream().map(val -> Pair.<T, String> createLeft(val)).collect(Collectors.toList()));
     }
 
-    private LocatableMultiOptionValue(LocatableMultiOptionValue<T> other) {
+    private AccumulatingLocatableMultiOptionValue(AccumulatingLocatableMultiOptionValue<T> other) {
         this.valueType = other.valueType;
         this.delimiter = other.delimiter;
         this.values = new ArrayList<>(other.values);
@@ -124,7 +124,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         return "<" + ClassUtil.getUnqualifiedName(valueType).toLowerCase(Locale.ROOT) + ">*";
     }
 
-    public static final class Strings extends LocatableMultiOptionValue<String> {
+    public static final class Strings extends AccumulatingLocatableMultiOptionValue<String> {
 
         private Strings(Strings other) {
             super(other);
@@ -174,7 +174,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         }
     }
 
-    public static final class Paths extends LocatableMultiOptionValue<Path> {
+    public static final class Paths extends AccumulatingLocatableMultiOptionValue<Path> {
 
         private Paths(Paths other) {
             super(other);
