@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
 import com.oracle.truffle.espresso.verifier.StackMapFrameParser.FrameAndLocalEffect;
@@ -90,11 +91,13 @@ public class EspressoFrameDescriptor {
     }
 
     @ExplodeLoop
-    public void exportToFrame(Frame frame, Object[] objects, long[] primitives) {
+    public void exportToFrame(Frame frame, Object[] objects, long[] primitives, int bci) {
         assert kinds.length == frame.getFrameDescriptor().getNumberOfSlots();
         assert objects != null && objects.length == kinds.length;
         assert primitives != null && primitives.length == kinds.length;
-        for (int slot = 0; slot < kinds.length; slot++) {
+        EspressoFrame.setBCI(frame, bci);
+        // Ignore first slot (bci).
+        for (int slot = 1; slot < kinds.length; slot++) {
             exportSlot(frame, slot, objects, primitives);
         }
     }
@@ -241,7 +244,7 @@ public class EspressoFrameDescriptor {
         }
     }
 
-    static void guarantee(boolean condition, String message, Meta meta) {
+    public static void guarantee(boolean condition, String message, Meta meta) {
         if (!condition) {
             throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException, message);
         }
@@ -348,6 +351,14 @@ public class EspressoFrameDescriptor {
 
         public EspressoFrameDescriptor build() {
             return new EspressoFrameDescriptor(kinds, top);
+        }
+
+        public int top() {
+            return top;
+        }
+
+        public EspressoFrameDescriptor build(int topOverride) {
+            return new EspressoFrameDescriptor(kinds, topOverride);
         }
 
         public Builder clearStack() {

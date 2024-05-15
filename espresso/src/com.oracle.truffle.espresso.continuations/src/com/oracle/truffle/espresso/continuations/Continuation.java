@@ -164,11 +164,6 @@ public final class Continuation implements Externalizable {
         private final long[] primitives;
 
         /**
-         * The top of the stack.
-         */
-        private final int top;
-
-        /**
          * The method of this stack frame.
          */
         private final Method method;
@@ -178,12 +173,11 @@ public final class Continuation implements Externalizable {
          */
         private final int bci;
 
-        private FrameRecord(Object[] pointers, long[] primitives, Method method, int bci, int top) {
+        private FrameRecord(Object[] pointers, long[] primitives, Method method, int bci) {
             this.pointers = pointers;
             this.primitives = primitives;
             this.method = method;
             this.bci = bci;
-            this.top = top;
         }
     }
 
@@ -494,7 +488,6 @@ public final class Continuation implements Externalizable {
         out.writeObject(cursor.primitives);
         writeMethodNameAndTypes(out, method, cursor.pointers.length > 1 ? cursor.pointers[1] : null, stringPool);
         out.writeInt(cursor.bci);
-        out.writeInt(cursor.top);
     }
 
     private static void writeMethodNameAndTypes(ObjectOutput out, Method method, Object receiver, Map<String, Integer> stringPool) throws IOException {
@@ -641,8 +634,7 @@ public final class Continuation implements Externalizable {
         // Slot zero is always primitive (bci), so this is in slot 1.
         Method method = readMethodNameAndTypes(in, classLoader, pointers.length > 1 ? pointers[1] : null, stringPool);
         int bci = in.readInt();
-        int top = in.readInt();
-        return new FrameRecord(pointers, primitives, method, bci, top);
+        return new FrameRecord(pointers, primitives, method, bci);
     }
 
     private static Method readMethodNameAndTypes(ObjectInput in, ClassLoader classLoader, Object possibleThis, List<String> stringPool)
@@ -823,9 +815,6 @@ public final class Continuation implements Externalizable {
                 sb.append("\n");
                 sb.append("  Current bytecode index: ");
                 sb.append(cursor.bci);
-                sb.append("\n");
-                sb.append("  Stack pointer: ");
-                sb.append(cursor.top);
                 sb.append("\n");
                 sb.append("  Pointers: [");
                 // We start at 1 because the first slot is always a primitive (the bytecode index).

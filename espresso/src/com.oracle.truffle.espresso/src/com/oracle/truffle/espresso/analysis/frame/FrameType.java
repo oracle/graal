@@ -137,6 +137,11 @@ final class IllegalFrameType extends FrameType {
     public boolean isReference() {
         return false;
     }
+
+    @Override
+    public String toString() {
+        return kind().toString();
+    }
 }
 
 abstract class ReferenceFrameType extends FrameType {

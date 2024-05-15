@@ -69,12 +69,13 @@ public final class HostFrameRecord {
         fd.importFromFrame(frame, objects, primitives);
         HostFrameRecord hfr = new HostFrameRecord(fd, objects, primitives, bci, top, m, next);
         // Result is trusted, but it never hurts to assert that.
+        assert top == fd.top() : "Mismatched tops: " + top + ", " + fd.top();
         assert hfr.verify(m.getMethod().getMeta(), true);
         return hfr;
     }
 
     public void exportToFrame(Frame frame) {
-        frameDescriptor.exportToFrame(frame, objects, primitives);
+        frameDescriptor.exportToFrame(frame, objects, primitives, bci);
     }
 
     private HostFrameRecord(EspressoFrameDescriptor frameDescriptor, StaticObject[] objects, long[] primitives, int bci, int top, Method.MethodVersion methodVersion, HostFrameRecord next) {
@@ -159,7 +160,6 @@ public final class HostFrameRecord {
         meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives.setObject(guestRecord, StaticObject.wrap(primitives, meta));
         meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method.setObject(guestRecord, methodVersion.getMethod().makeMirror(meta));
         meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci.setInt(guestRecord, bci);
-        meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_top.setInt(guestRecord, top);
         return guestRecord;
     }
 
@@ -182,7 +182,6 @@ public final class HostFrameRecord {
             /* java.lang.reflect.Method */
             StaticObject methodGuest = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method.getObject(cursor);
             int bci = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci.getInt(cursor);
-            int top = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_top.getInt(cursor);
 
             EspressoLanguage language = context.getLanguage();
 
@@ -195,7 +194,9 @@ public final class HostFrameRecord {
             Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
             EspressoFrameDescriptor fd = FrameAnalysis.apply(method.getMethodVersion(), bci);
 
-            HostFrameRecord next = new HostFrameRecord(fd, pointers.clone(), primitives.clone(), bci, top, method.getMethodVersion(), null);
+            HostFrameRecord next = new HostFrameRecord(fd,
+                            pointers.clone(), primitives.clone(), // Defensive copies.
+                            bci, fd.top(), method.getMethodVersion(), null);
             if (hostCursor != null) {
                 hostCursor.next = next;
             }

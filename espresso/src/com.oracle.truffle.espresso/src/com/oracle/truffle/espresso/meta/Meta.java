@@ -1938,7 +1938,6 @@ public final class Meta extends ContextAccessImpl {
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next;
         public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_top;
         public final ObjectKlass com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException;
         public final ObjectKlass com_oracle_truffle_espresso_continuations_IllegalContinuationStateException;
 
@@ -1960,8 +1959,6 @@ public final class Meta extends ContextAccessImpl {
                             Name.next, Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
             com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
                             Name.bci, Type._int);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_top = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                            Name.top, Type._int);
             com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException = loadKlassWithBootClassLoader(
                             Type.com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException);
             com_oracle_truffle_espresso_continuations_IllegalContinuationStateException = loadKlassWithBootClassLoader(

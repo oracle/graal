@@ -251,7 +251,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
 import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
 import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor;
@@ -339,9 +339,12 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         int opcode = bs.opcode(targetBci);
         // For continuations purposes, we need to mutate the state to having popped arguments, but
         // not having yet pushed a result.
+        // Since the state is before the return, execution in BytecodeNode wouldn't have been able
+        // to update its 'top', so we use the top from before having popped arguments.
         assert Bytecodes.isInvoke(opcode);
+        int top = state.top();
         handleInvoke(state, targetBci, opcode, false, opcode == INVOKEDYNAMIC ? ConstantPool.Tag.INVOKEDYNAMIC : ConstantPool.Tag.METHOD_REF);
-        return state.build();
+        return state.build(EspressoFrame.startingStackOffset(m.getMaxLocals()) + top);
     }
 
     private void markBranchTargets() {
@@ -358,16 +361,13 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                 }
                 branchTargets.set(helper.defaultTarget(bs, bci));
             }
-            if (bci == targetBci) {
+            if (bci == targetBci && Bytecodes.isInvoke(opcode)) {
                 validTarget = true;
             }
             bci = bs.nextBCI(bci);
         }
 
-        if (!validTarget) {
-            Meta meta = m.getDeclaringKlass().getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Target bci is not a valid bytecode.");
-        }
+        EspressoFrameDescriptor.guarantee(validTarget, "Target bci is not a valid bytecode.", m.getDeclaringKlass().getMeta());
 
         ExceptionHandler[] handlers = m.getExceptionHandlers();
         for (ExceptionHandler handler : handlers) {
