@@ -34,6 +34,17 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     },
   },
 
+  sulong_standalone:: $.sulong + {
+    guard+: {
+      includes: [
+        # substratevm and its dependencies
+        "<graal>/substratevm/**",
+        # vm and its dependencies
+        "<graal>/vm/**",
+      ],
+    },
+  },
+
   sulong_test_toolchain:: {
     run+: [
       ["mx", "build", "--dependencies", "SULONG_TEST"],
@@ -69,11 +80,11 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   standalone_builds::
     sc.mapPrototypePlatformName(
     [
-        sc.gate + $.sulong + sc.gateTags("standalone") {
+        sc.gate + $.sulong_standalone + sc.gateTags("standalone") {
           job:: "test-ce-standalones-jvm",
           extra_mx_args+:: ["--env", "ce-llvm-standalones", "--use-llvm-standalone=jvm"],
         },
-        sc.gate + $.sulong + sc.gateTags("standalone") {
+        sc.gate + $.sulong_standalone + sc.gateTags("standalone") {
           job:: "test-ce-standalones-native",
           extra_mx_args+:: ["--env", "ce-llvm-standalones", "--use-llvm-standalone=native"],
         },
