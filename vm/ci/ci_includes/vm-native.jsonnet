@@ -1,6 +1,7 @@
 local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 local vm = import 'vm.jsonnet';
 local vm_common = import '../ci_common/common.jsonnet';
+local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 {
   local truffle_jvm = vm_common.svm_common + {
@@ -21,10 +22,7 @@ local vm_common = import '../ci_common/common.jsonnet';
     name: self.targets[0] + '-vm-ce-truffle-native' + self.gate_tag_suffix + '-labs' + self.jdk_name + '-linux-amd64',
   },
 
-  local truffle_lts_compatibility(mode) = vm_common.svm_common {
-    downloads+: {
-      JAVA_HOME: { name: 'graalvm-java21', version: '23.1.2', platformspecific: true },
-    },
+  local truffle_lts_compatibility(mode) = vm_common.svm_common + graal_common['graalvm-ee-21'] {
     environment+: {
       JVMCI_VERSION_CHECK: 'warn',
     },
