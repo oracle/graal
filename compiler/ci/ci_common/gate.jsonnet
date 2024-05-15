@@ -212,14 +212,14 @@
 
   # Candidates for gate jobs. In CE, these will be dailies instead of gates.
   local gate_jobs = {
-    "gate-compiler-test-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-latest-linux-amd64": t("1:00:00"),
     "gate-compiler-test-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
+    "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + s.ram16gb,
     "gate-compiler-test-labsjdk-latest-darwin-aarch64": t("1:00:00"),
     "gate-compiler-test-labsjdk-latest-windows-amd64": t("1:30:00"),
-    "gate-compiler-test_zgc-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test_zgc-labsjdk-latest-linux-amd64": t("1:00:00"),
     "gate-compiler-test_zgc-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
+    "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + s.ram16gb,
     "gate-compiler-test_zgc-labsjdk-latest-darwin-aarch64": t("1:00:00"),
 
     # Style jobs need to stay on a JDK compatible with all the style
@@ -227,9 +227,9 @@
     "gate-compiler-style-labsjdk-21-linux-amd64": t("45:00"),
     "gate-compiler-build-labsjdk-latest-linux-amd64": t("25:00"),
 
-    "gate-compiler-ctw-labsjdk-latest-linux-amd64": c.mach5_target,
+    "gate-compiler-ctw-labsjdk-latest-linux-amd64": {},
     "gate-compiler-ctw-labsjdk-latest-windows-amd64": t("1:50:00"),
-    "gate-compiler-ctw_zgc-labsjdk-latest-linux-amd64": c.mach5_target,
+    "gate-compiler-ctw_zgc-labsjdk-latest-linux-amd64": {},
 
     "gate-compiler-ctw_economy-labsjdk-latest-linux-amd64": {},
     "gate-compiler-ctw_economy-labsjdk-latest-windows-amd64": t("1:50:00"),
@@ -240,10 +240,10 @@
     "gate-compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("1:30:00"),
     "gate-compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("1:30:00"),
 
-    "gate-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00"),
 
-    "gate-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores + c.mach5_target,
-    "gate-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores + c.mach5_target
+    "gate-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores,
+    "gate-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores
   },
 
   # This map defines the builders that run as gates. Each key in this map
@@ -291,9 +291,9 @@
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test_serialgc-labsjdk-latest-linux-amd64": t("1:30:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-latest-linux-amd64": t("1:30:00"),
     "weekly-compiler-test_serialgc-labsjdk-latest-linux-aarch64": t("1:50:00"),
-    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-amd64": t("1:30:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-amd64": t("1:30:00"),
     "weekly-compiler-test_serialgc-labsjdk-latest-darwin-aarch64": t("1:30:00"),
 
     "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": t("1:30:00"),

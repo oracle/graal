@@ -83,7 +83,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
 
-    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {} + graal_common.mach5_target,
+    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
   },
   local gates = g.as_gates(gate_jobs),
