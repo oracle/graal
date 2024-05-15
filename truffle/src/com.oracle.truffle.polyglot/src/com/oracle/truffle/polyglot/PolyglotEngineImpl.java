@@ -2313,4 +2313,18 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
+    Map<String, Path> languageHomes() {
+        Map<String, Path> languageHomes = new HashMap<>();
+        for (PolyglotLanguage language : languages) {
+            if (language != null) {
+                LanguageCache cache = language.cache;
+                String languageHome = cache.getLanguageHome();
+                if (languageHome != null) {
+                    languageHomes.put(cache.getId(), Path.of(languageHome));
+                }
+            }
+        }
+        return languageHomes;
+    }
+
 }

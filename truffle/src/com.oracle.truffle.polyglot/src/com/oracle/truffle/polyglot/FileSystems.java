@@ -1226,19 +1226,10 @@ final class FileSystems {
         private final FileSystem resourcesFileSystem;
         private final FileSystem delegateFileSystem;
         private final InternalResourceRoots resourceRoots;
-        private final Set<Path> languageHomes;
+        private final Collection<Path> languageHomes;
 
         static ResourcesFileSystem createForEngine(PolyglotEngineImpl engine, FileSystem resourcesFileSystem, FileSystem delegateFileSystem) {
-            Set<Path> languageHomes = new HashSet<>();
-            for (PolyglotLanguage language : engine.languages) {
-                if (language != null) {
-                    final String languageHome = language.cache.getLanguageHome();
-                    if (languageHome != null) {
-                        languageHomes.add(Paths.get(languageHome));
-                    }
-                }
-            }
-            return new ResourcesFileSystem(resourcesFileSystem, delegateFileSystem, engine.internalResourceRoots, languageHomes);
+            return new ResourcesFileSystem(resourcesFileSystem, delegateFileSystem, engine.internalResourceRoots, List.copyOf(engine.languageHomes().values()));
         }
 
         static ResourcesFileSystem createForEmbedder(FileSystem resourcesFileSystem, FileSystem delegateFileSystem) {
@@ -1253,7 +1244,7 @@ final class FileSystems {
         }
 
         private ResourcesFileSystem(FileSystem resourcesFileSystem, FileSystem delegateFileSystem,
-                        InternalResourceRoots resourceRoots, Set<Path> languageHomes) {
+                        InternalResourceRoots resourceRoots, Collection<Path> languageHomes) {
             this.resourcesFileSystem = Objects.requireNonNull(resourcesFileSystem, "ResourcesFileSystem must be non-null");
             this.delegateFileSystem = Objects.requireNonNull(delegateFileSystem, "DelegateFileSystem must be non-null");
             this.resourceRoots = Objects.requireNonNull(resourceRoots, "ResourceRoots must be non-null");
