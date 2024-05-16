@@ -1,7 +1,7 @@
-From fd62b39067475f734e00eddda5096ade9095aaa4 Mon Sep 17 00:00:00 2001
+From 73ff46f9f97161d099d22ed46d89148a868a5960 Mon Sep 17 00:00:00 2001
 From: Loic Ottet <loic.ottet@oracle.com>
 Date: Tue, 8 Sep 2020 13:03:06 +0200
-Subject: [PATCH 2/4] [GR-23578][AArch64] Introduce option to force placement
+Subject: [PATCH 1/4] [GR-23578][AArch64] Introduce option to force placement
  of the frame record on top of the stack frame
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 2/4] [GR-23578][AArch64] Introduce option to force placement
  1 file changed, 7 insertions(+)
 
 diff --git a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
-index 299892ad4ede..b323ad5cc9f1 100644
+index 48e1c1bc7302..9742e5a93b30 100644
 --- a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
 @@ -39,6 +39,11 @@ using namespace llvm;
@@ -24,7 +24,7 @@ index 299892ad4ede..b323ad5cc9f1 100644
  AArch64RegisterInfo::AArch64RegisterInfo(const Triple &TT)
      : AArch64GenRegisterInfo(AArch64::LR), TT(TT) {
    AArch64_MC::initLLVMToCVRegMapping(this);
-@@ -118,6 +123,8 @@ AArch64RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+@@ -131,6 +136,8 @@ AArch64RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
      return CSR_AArch64_AAPCS_X18_SaveList;
    if (MF->getInfo<AArch64FunctionInfo>()->isSVECC())
      return CSR_AArch64_SVE_AAPCS_SaveList;
@@ -34,5 +34,5 @@ index 299892ad4ede..b323ad5cc9f1 100644
  }
  
 -- 
-2.38.4
+2.42.0
 
