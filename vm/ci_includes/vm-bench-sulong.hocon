@@ -20,8 +20,8 @@ sulong_logs: [
     "*/svmbuild/images/*.log"
 ]
 
-bench-llvm-linux: ${sulong_linux}  ${x52.default} ${oraclejdk8} {
-  capabilities: ${x52.default.capabilities} [tmpfs25g]
+bench-llvm-linux: ${sulong_linux} ${linux-amd64} ${oraclejdk8} {
+  capabilities: [e3, tmpfs25g]
   environment: {
     RESULTS_FILE_PREFIX: results-
     RESULTS_FILE_SUFFIX: .json
@@ -67,7 +67,7 @@ bench_vm_ce_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_li
     [bench-uploader.py, ${bench_vm_ce_linux_base.resultFile}]
   ]
   logs: ${sulong_logs}
-  capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
+  capabilities: [no_frequency_scaling, tmpfs25g, e3, linux, amd64]
 }
 
 bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-common} ${sulong-weekly-notifications} {
