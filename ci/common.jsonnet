@@ -329,7 +329,7 @@ local common_json = import "../common.json";
     },
     opt_post_merge: {
       targets+: ["opt-post-merge"],
-      tags+: []
+      tags+: {opt_post_merge +: []},
     },
     daily: {
       targets+: ["daily"],
