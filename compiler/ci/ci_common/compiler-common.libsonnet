@@ -55,7 +55,7 @@
     local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
 
     job_prefix:: "bench-compiler",
-    tags+: ["bench-compiler"],
+    tags+: {opt_post_merge+: ["bench-compiler"]},
     python_version : "3",
     packages+: common.deps.svm.packages,
     environment+: {
