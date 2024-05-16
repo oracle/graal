@@ -882,6 +882,7 @@ public abstract class NFATraversalRegexASTVisitor {
     private void popGroupEscape(Group group) {
         long pathEntry = curPath.pop();
         assert pathIsGroupEscape(pathEntry);
+        assert group == pathGetNode(pathEntry);
         recalcTransitionGuards = true;
     }
 

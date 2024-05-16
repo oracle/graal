@@ -140,8 +140,16 @@ public final class ClassSetContents implements JsonConvertible {
         return kind == Kind.Character;
     }
 
+    public boolean isCharacterClass() {
+        return kind == Kind.Class;
+    }
+
     public boolean isRange() {
         return kind == Kind.Range;
+    }
+
+    public boolean isPosixCollationElement() {
+        return kind == Kind.POSIXCollationElement;
     }
 
     public boolean isPosixCollationEquivalenceClass() {

@@ -46,13 +46,12 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.regex.AbstractConstantKeysObject;
-import com.oracle.truffle.regex.AbstractRegexObject;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;

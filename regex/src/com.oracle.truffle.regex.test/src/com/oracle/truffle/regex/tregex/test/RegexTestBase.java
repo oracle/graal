@@ -44,7 +44,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -53,12 +52,15 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public abstract class RegexTestBase {
 
     private static final boolean ASSERTS = true;
+    private static final boolean TEST_REGION_FROM_TO = true;
+    private static final boolean TABLE_OMIT_FROM_INDEX = false;
 
     private static Context context;
 
@@ -142,8 +144,16 @@ public abstract class RegexTestBase {
     }
 
     void test(String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
-        Value compiledRegex = compileRegex(pattern, flags, options, encoding);
-        test(compiledRegex, pattern, flags, options, encoding, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+        try {
+            Value compiledRegex = compileRegex(pattern, flags, options, encoding);
+            test(compiledRegex, pattern, flags, options, encoding, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+        } catch (PolyglotException e) {
+            if (!ASSERTS && e.isSyntaxError()) {
+                printTable(pattern, flags, input, fromIndex, expectedResultToString(captureGroupBoundsAndLastGroup), syntaxErrorToString(e.getMessage()));
+            } else {
+                throw e;
+            }
+        }
     }
 
     void test(Value compiledRegex, String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
@@ -151,22 +161,24 @@ public abstract class RegexTestBase {
         int groupCount = compiledRegex.getMember("groupCount").asInt();
         validateResult(pattern, flags, options, input, fromIndex, result, groupCount, isMatch, captureGroupBoundsAndLastGroup);
 
-        TruffleStringBuilder sb = TruffleStringBuilder.create(encoding.getTStringEncoding());
-        sb.appendCodePointUncached('_');
-        sb.appendStringUncached(TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding()));
-        sb.appendCodePointUncached('_');
-        TruffleString padded = sb.toStringUncached();
-        int length = padded.byteLength(encoding.getTStringEncoding()) >> encoding.getStride();
-        int[] boundsAdjusted = new int[captureGroupBoundsAndLastGroup.length];
-        for (int i = 0; i < (boundsAdjusted.length & ~1); i++) {
-            int v = captureGroupBoundsAndLastGroup[i];
-            boundsAdjusted[i] = v < 0 ? v : v + 1;
+        if (TEST_REGION_FROM_TO) {
+            TruffleStringBuilder sb = TruffleStringBuilder.create(encoding.getTStringEncoding());
+            sb.appendCodePointUncached('_');
+            sb.appendStringUncached(TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding()));
+            sb.appendCodePointUncached('_');
+            TruffleString padded = sb.toStringUncached();
+            int length = padded.byteLength(encoding.getTStringEncoding()) >> encoding.getStride();
+            int[] boundsAdjusted = new int[captureGroupBoundsAndLastGroup.length];
+            for (int i = 0; i < (boundsAdjusted.length & ~1); i++) {
+                int v = captureGroupBoundsAndLastGroup[i];
+                boundsAdjusted[i] = v < 0 ? v : v + 1;
+            }
+            if ((boundsAdjusted.length & 1) == 1) {
+                boundsAdjusted[boundsAdjusted.length - 1] = captureGroupBoundsAndLastGroup[boundsAdjusted.length - 1];
+            }
+            Value resultSubstring = execRegex(compiledRegex, encoding, padded, fromIndex + 1, length - 1, 1, length - 1);
+            validateResult(pattern, flags, options, input, fromIndex + 1, resultSubstring, groupCount, isMatch, boundsAdjusted);
         }
-        if ((boundsAdjusted.length & 1) == 1) {
-            boundsAdjusted[boundsAdjusted.length - 1] = captureGroupBoundsAndLastGroup[boundsAdjusted.length - 1];
-        }
-        Value resultSubstring = execRegex(compiledRegex, encoding, padded, fromIndex + 1, length - 1, 1, length - 1);
-        validateResult(pattern, flags, options, input, fromIndex + 1, resultSubstring, groupCount, isMatch, boundsAdjusted);
     }
 
     private static void validateResult(String pattern, String flags, String options, String input, int fromIndex, Value result, int groupCount, boolean isMatch,
@@ -238,7 +250,7 @@ public abstract class RegexTestBase {
             String msg = e.getMessage();
             int pos = e.getSourceLocation().getCharIndex();
             if (!msg.contains(expectedMessage)) {
-                printTable(pattern, input, fromIndex, syntaxErrorToString(expectedMessage), syntaxErrorToString(msg));
+                printTable(pattern, flags, input, fromIndex, syntaxErrorToString(expectedMessage), syntaxErrorToString(msg));
                 if (ASSERTS) {
                     Assert.fail(String.format("/%s/%s : expected syntax error message containing \"%s\", but was \"%s\"", pattern, flags, expectedMessage, msg));
                 }
@@ -250,7 +262,7 @@ public abstract class RegexTestBase {
             return;
         }
         Value result = execRegex(compiledRegex, encoding, input, fromIndex);
-        printTable(pattern, input, fromIndex, syntaxErrorToString(expectedMessage), actualResultToString(result, compiledRegex.getMember("groupCount").asInt(), false));
+        printTable(pattern, flags, input, fromIndex, syntaxErrorToString(expectedMessage), actualResultToString(result, compiledRegex.getMember("groupCount").asInt(), false));
         if (ASSERTS) {
             Assert.fail(String.format("/%s/%s : expected \"%s\", but no exception was thrown", pattern, flags, expectedMessage));
         }
@@ -274,19 +286,27 @@ public abstract class RegexTestBase {
     private static void fail(String pattern, String flags, String options, String input, int fromIndex, Value result, int groupCount, int... captureGroupBoundsAndLastGroup) {
         String expectedResult = expectedResultToString(captureGroupBoundsAndLastGroup);
         String actualResult = actualResultToString(result, groupCount, captureGroupBoundsAndLastGroup.length % 2 == 1);
-        printTable(pattern, input, fromIndex, expectedResult, actualResult);
+        printTable(pattern, flags, input, fromIndex, expectedResult, actualResult);
         if (ASSERTS) {
-            Assert.fail(options + '/' + escape(pattern) + '/' + flags + ' ' + quote(input) + " expected: " + expectedResult + ", actual: " + actualResult);
+            Assert.fail(options + regexSlashes(pattern, flags) + ' ' + quote(input) + " expected: " + expectedResult + ", actual: " + actualResult);
         }
     }
 
-    private static void print(String pattern, String input, int fromIndex, Value result, int groupCount, int... captureGroupBoundsAndLastGroup) {
+    private static void print(String pattern, String flags, String input, int fromIndex, Value result, int groupCount, int... captureGroupBoundsAndLastGroup) {
         String actualResult = actualResultToString(result, groupCount, captureGroupBoundsAndLastGroup.length % 2 == 1);
-        printTable(pattern, input, fromIndex, actualResult, "");
+        printTable(pattern, flags, input, fromIndex, actualResult, "");
     }
 
-    private static void printTable(String pattern, String input, int fromIndex, String expectedResult, String actualResult) {
-        System.out.printf("%-16s%-20s%-4d%-30s%s%n", quote(pattern), quote(input), fromIndex, expectedResult, actualResult);
+    private static void printTable(String pattern, String flags, String input, int fromIndex, String expectedResult, String actualResult) {
+        if (TABLE_OMIT_FROM_INDEX) {
+            System.out.printf("%-20s%-20s%-30s%s%n", regexSlashes(pattern, flags), quote(input), expectedResult, actualResult);
+        } else {
+            System.out.printf("%-20s%-20s%-4d%-30s%s%n", regexSlashes(pattern, flags), quote(input), fromIndex, expectedResult, actualResult);
+        }
+    }
+
+    private static String regexSlashes(String pattern, String flags) {
+        return '/' + escape(pattern) + '/' + flags;
     }
 
     private static String quote(String s) {

@@ -506,7 +506,7 @@ public class PythonTests extends RegexTestBase {
     public void generatedTests() {
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 
-        // Generated using sre from CPython 3.11.8
+        // Generated using sre from CPython 3.12.3
         // re._casefix._EXTRA_CASES
         test("i", "i", "\u0131", 0, true, 0, 1);
         test("s", "i", "\u017f", 0, true, 0, 1);

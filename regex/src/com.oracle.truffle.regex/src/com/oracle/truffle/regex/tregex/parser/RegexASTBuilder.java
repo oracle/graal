@@ -117,6 +117,10 @@ public final class RegexASTBuilder {
         this.groupStartPositions = source.getOptions().getFlavor().needsGroupStartPositions() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
 
+    public CompilationBuffer getCompilationBuffer() {
+        return compilationBuffer;
+    }
+
     /**
      * Returns the current {@link Group}. Any new {@link Term}s will be added to its last
      * {@link Sequence} (the one returned by {@link #curSequence}).

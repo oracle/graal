@@ -200,8 +200,8 @@ public class Token implements JsonConvertible {
         return CHAR_CLASS_BEGIN;
     }
 
-    public static Token createCharacterClassAtom(CodePointSet contents, boolean isPosixCollationEquivalenceClass) {
-        return new CharacterClassAtom(contents, isPosixCollationEquivalenceClass);
+    public static Token createCharacterClassAtom(ClassSetContents contents) {
+        return new CharacterClassAtom(contents);
     }
 
     public static Token createCharacterClassEnd() {
@@ -470,13 +470,11 @@ public class Token implements JsonConvertible {
 
     public static final class CharacterClassAtom extends Token {
 
-        private final CodePointSet contents;
-        private final boolean isPosixCollationEquivalenceClass;
+        private final ClassSetContents contents;
 
-        public CharacterClassAtom(CodePointSet contents, boolean isPosixCollationEquivalenceClass) {
+        public CharacterClassAtom(ClassSetContents contents) {
             super(Kind.charClassAtom);
             this.contents = contents;
-            this.isPosixCollationEquivalenceClass = isPosixCollationEquivalenceClass;
         }
 
         @TruffleBoundary
@@ -485,12 +483,8 @@ public class Token implements JsonConvertible {
             return super.toJson().append(Json.prop("contents", contents));
         }
 
-        public CodePointSet getContents() {
+        public ClassSetContents getContents() {
             return contents;
-        }
-
-        public boolean isPosixCollationEquivalenceClass() {
-            return isPosixCollationEquivalenceClass;
         }
     }
 
