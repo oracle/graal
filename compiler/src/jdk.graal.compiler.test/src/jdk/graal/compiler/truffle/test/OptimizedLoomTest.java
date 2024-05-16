@@ -41,7 +41,7 @@ public class OptimizedLoomTest {
 
     @Test
     public void test() throws InterruptedException, IOException {
-        SubprocessTestUtils.executeInSubprocess(OptimizedLoomTest.class, () -> {
+        SubprocessTestUtils.newBuilder(OptimizedLoomTest.class, () -> {
             try {
                 Assume.assumeTrue(LoomUtils.isLoomAvailable());
                 Thread t = LoomUtils.startVirtualThread(() -> {
@@ -59,7 +59,7 @@ public class OptimizedLoomTest {
             } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
             }
-        }, "--enable-preview");
+        }).prefixVmOption("--enable-preview").run();
     }
 
 }

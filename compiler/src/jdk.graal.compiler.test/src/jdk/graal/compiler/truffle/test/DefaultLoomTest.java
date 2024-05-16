@@ -46,7 +46,7 @@ public class DefaultLoomTest {
     public void test() throws InterruptedException, IOException {
         // Run in subprocess with default truffle runtime. Drop DynamicCompilationThresholds since
         // it does not exist in the default truffle runtime.
-        SubprocessTestUtils.executeInSubprocess(DefaultLoomTest.class, () -> {
+        SubprocessTestUtils.newBuilder(DefaultLoomTest.class, () -> {
             try {
                 Assume.assumeTrue(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
                 Assume.assumeTrue(LoomUtils.isLoomAvailable());
@@ -60,6 +60,6 @@ public class DefaultLoomTest {
             } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
             }
-        }, "--enable-preview", "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", markForRemoval("-Dpolyglot.engine.DynamicCompilationThresholds"));
+        }).prefixVmOption("--enable-preview", "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", markForRemoval("-Dpolyglot.engine.DynamicCompilationThresholds")).run();
     }
 }

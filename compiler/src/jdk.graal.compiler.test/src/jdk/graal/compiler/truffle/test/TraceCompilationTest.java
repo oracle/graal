@@ -125,7 +125,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
 
     @Test
     public void testNoEngineTracingOn() throws Exception {
-        SubprocessTestUtils.executeInSubprocess(TraceCompilationTest.class, () -> {
+        SubprocessTestUtils.newBuilder(TraceCompilationTest.class, () -> {
             try {
                 PrintStream origSystemErr = System.err;
                 ByteArrayOutputStream rawStdErr = new ByteArrayOutputStream();
@@ -138,7 +138,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
             } catch (IOException ioe) {
                 throw new RuntimeException(ioe.getMessage(), ioe);
             }
-        }, "-Dpolyglot.engine.BackgroundCompilation=false", "-Dpolyglot.engine.CompileImmediately=true", "-Dpolyglot.engine.TraceCompilation=true");
+        }).prefixVmOption("-Dpolyglot.engine.BackgroundCompilation=false", "-Dpolyglot.engine.CompileImmediately=true", "-Dpolyglot.engine.TraceCompilation=true").run();
     }
 
     @Test
@@ -178,7 +178,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
 
     private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, Pattern[] expected, Pattern[] unexpected, Consumer<LogRecord> onPublishAction)
                     throws Exception {
-        SubprocessTestUtils.executeInSubprocess(TraceCompilationTest.class, () -> {
+        SubprocessTestUtils.newBuilder(TraceCompilationTest.class, () -> {
             TestHandler.Builder builder = TestHandler.newBuilder().onPublish(onPublishAction);
             for (Pattern s : expected) {
                 builder.expect(s);
@@ -194,7 +194,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
             OptimizedCallTarget target = (OptimizedCallTarget) rootProvider.get().getCallTarget();
             target.call();
             handler.assertLogs();
-        });
+        }).run();
     }
 
     private static Context.Builder newContextBuilder(Map<String, String> additionalOptions, Handler handler) {

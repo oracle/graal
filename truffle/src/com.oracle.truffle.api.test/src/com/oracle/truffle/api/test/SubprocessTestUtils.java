@@ -76,7 +76,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
@@ -160,73 +159,6 @@ public final class SubprocessTestUtils {
      */
     public static String markForRemoval(String option) {
         return TO_REMOVE_PREFIX + option;
-    }
-
-    /**
-     * Executes action in a sub-process with filtered compilation failure options.
-     *
-     * @param testClass the test enclosing class.
-     * @param action the test to execute.
-     * @param prependedVmOptions VM options to prepend to {@link #getVMCommandLine}. Any element in
-     *            this list that is {@link #markForRemoval(String) marked for removal} will be
-     *            omitted from the command line instead. For example,
-     *            {@code markForRemoval("-Dfoo=bar")} will ensure {@code "-Dfoo=bar"} is not present
-     *            on the command line (unless {@code "-Dfoo=bar"} {@code prependedVmOptions}).
-     * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
-     *         Returns {@code null} for a caller run in a sub-process.
-     * @see SubprocessTestUtils
-     * @see #markForRemoval(String)
-     */
-    public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, String... prependedVmOptions) throws IOException, InterruptedException {
-        return executeInSubprocess(testClass, action, true, prependedVmOptions);
-    }
-
-    /**
-     * Executes action in a sub-process with filtered compilation failure options.
-     *
-     * @param testClass the test enclosing class.
-     * @param action the test to execute.
-     * @param failOnNonZeroExitCode if {@code true}, the test fails if the sub-process ends with a
-     *            non-zero return value.
-     * @param prependedVmOptions VM options to prepend to {@link #getVMCommandLine}. Any element in
-     *            this list that is {@link #markForRemoval(String) marked for removal} will be
-     *            omitted from the command line instead. For example,
-     *            {@code markForRemoval("-Dfoo=bar")} will ensure {@code "-Dfoo=bar"} is not present
-     *            on the command line (unless {@code "-Dfoo=bar"} {@code prependedVmOptions}).
-     * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
-     *         Returns {@code null} for a caller run in a sub-process.
-     * @see SubprocessTestUtils
-     * @see #markForRemoval(String)
-     */
-    public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, String... prependedVmOptions) throws IOException, InterruptedException {
-        AtomicReference<Subprocess> process = new AtomicReference<>();
-        newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(prependedVmOptions).onExit((p) -> process.set(p)).run();
-        return process.get();
-    }
-
-    /**
-     * Executes action in a sub-process with filtered compilation failure options. Also disables
-     * assertions for the classes in {@code daClasses}
-     *
-     * @param testClass the test enclosing class.
-     * @param action the test to execute.
-     * @param daClasses the classes whose assertions should be disabled.
-     * @param additionalVmOptions additional vm option added to java arguments. Prepend
-     *            {@link #TO_REMOVE_PREFIX} to remove item from existing vm options.
-     * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
-     *         Returns {@code null} for a caller run in a sub-process.
-     * @see SubprocessTestUtils
-     */
-    public static Subprocess executeInSubprocessWithAssertionsDisabled(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, List<Class<?>> daClasses, String... additionalVmOptions)
-                    throws IOException, InterruptedException {
-        String[] vmOptionsWithAssertionsDisabled = getAssertionsDisabledOptions(daClasses);
-        AtomicReference<Subprocess> process = new AtomicReference<>();
-        newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(additionalVmOptions).postfixVmOption(vmOptionsWithAssertionsDisabled).onExit((p) -> process.set(p)).run();
-        return process.get();
-    }
-
-    private static String[] getAssertionsDisabledOptions(List<Class<?>> daClasses) {
-        return daClasses.stream().map((c) -> "-da:" + c.getName()).toArray(String[]::new);
     }
 
     /**
@@ -562,6 +494,14 @@ public final class SubprocessTestUtils {
         public Builder postfixVmOption(String... options) {
             postfixVmArgs.addAll(List.of(options));
             return this;
+        }
+
+        /**
+         * Disables assertions in {@code forClass}.
+         */
+        public Builder disableAssertions(Class<?> forClass) {
+            String disabledAssertionsOptions = "-da:" + forClass.getName();
+            return postfixVmOption(disabledAssertionsOptions);
         }
 
         public Builder failOnNonZeroExit(boolean b) {
@@ -1005,8 +945,12 @@ public final class SubprocessTestUtils {
                 }
             } catch (Exception e) {
                 // thread dump is an optional operation, just log the error
-                System.err.println("Failed to generate timed out subprocess thread dump due to");
-                e.printStackTrace(System.err);
+                StringWriter message = new StringWriter();
+                try (PrintWriter out = new PrintWriter(message)) {
+                    out.println("Failed to generate timed out subprocess thread dump due to");
+                    e.printStackTrace(out);
+                }
+                printError(message.toString());
             }
         }
     }
@@ -1134,16 +1078,16 @@ public final class SubprocessTestUtils {
      *
      * @see "https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html#java-command-line-argument-files"
      */
-    public static class Tokenizer {
+    private static class Tokenizer {
         private final Reader in;
         private int ch;
 
-        public Tokenizer(Reader in) throws IOException {
+        Tokenizer(Reader in) throws IOException {
             this.in = in;
             ch = in.read();
         }
 
-        public String nextToken() throws IOException {
+        String nextToken() throws IOException {
             skipWhite();
             if (ch == -1) {
                 return null;
@@ -1216,7 +1160,7 @@ public final class SubprocessTestUtils {
             return sb.toString();
         }
 
-        void skipWhite() throws IOException {
+        private void skipWhite() throws IOException {
             while (ch != -1) {
                 switch (ch) {
                     case ' ':
