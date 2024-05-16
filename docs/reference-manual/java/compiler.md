@@ -21,7 +21,7 @@ It includes multiple optimization algorithms (called “Phases”), such as aggr
 <!--
     Add an anchor so that the JPG docs can link to a section on partial escape analysis.
 -->
-<a name="partial-escape-analysis"></a>
+<a id="partial-escape-analysis"></a>
 The Graal compiler can bring performance advantages for highly-abstracted programs. 
 For example, it includes a [partial-escape-analysis optimization](https://github.com/oracle/graal/blob/master/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/core/phases/CEOptimization.java#L176){:target="_blank"} that can remove the costly allocations of certain objects. 
 The optimization determines when a new object is accessible outside a compilation unit and only allocates it on paths that "escape" the compilation unit (for example, if the object is passed as a parameter, stored in a field, or returned from a method). 
