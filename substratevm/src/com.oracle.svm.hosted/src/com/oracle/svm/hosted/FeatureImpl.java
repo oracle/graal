@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -55,6 +56,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -63,13 +65,12 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -334,14 +335,11 @@ public class FeatureImpl {
     public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
         private final NativeLibraries nativeLibraries;
-        private final boolean concurrentReachabilityHandlers;
-        private final ReachabilityHandler reachabilityHandler;
+        private final Map<Consumer<DuringAnalysisAccess>, AnalysisElement.ElementNotification> reachabilityNotifications = new ConcurrentHashMap<>();
 
         public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
-            this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
-            this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
         }
 
         public NativeLibraries getNativeLibraries() {
@@ -440,26 +438,89 @@ public class FeatureImpl {
 
         @Override
         public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
-            reachabilityHandler.registerReachabilityHandler(this, callback, elements);
+            AnalysisMetaAccess metaAccess = getMetaAccess();
+
+            /*
+             * All callback->notification pairs are tracked by the reachabilityNotifications map to
+             * prevent registering the same callback multiple times. The notifications are also
+             * tracked by each AnalysisElement, i.e., each trigger, and are removed as soon as they
+             * are notified.
+             */
+            AnalysisElement.ElementNotification notification = reachabilityNotifications.computeIfAbsent(callback, AnalysisElement.ElementNotification::new);
+
+            if (notification.isNotified()) {
+                /* Already notified from an earlier registration, nothing to do. */
+                return;
+            }
+
+            for (Object trigger : elements) {
+                AnalysisElement analysisElement;
+                if (trigger instanceof Class) {
+                    analysisElement = metaAccess.lookupJavaType((Class<?>) trigger);
+                } else if (trigger instanceof Field) {
+                    analysisElement = metaAccess.lookupJavaField((Field) trigger);
+                } else if (trigger instanceof Executable) {
+                    analysisElement = metaAccess.lookupJavaMethod((Executable) trigger);
+                } else {
+                    throw UserError.abort("'registerReachabilityHandler' called with an element that is not a Class, Field, or Executable: %s", trigger.getClass().getTypeName());
+                }
+
+                analysisElement.registerReachabilityNotification(notification);
+                if (analysisElement.isTriggered()) {
+                    /*
+                     * Element already triggered, just notify the callback. At this point we could
+                     * just notify the callback and bail out, but, for debugging, it may be useful
+                     * to execute the notification for each trigger. Note that although the
+                     * notification can be shared between multiple triggers the notification
+                     * mechanism ensures that the callback itself is only executed once.
+                     */
+                    analysisElement.notifyReachabilityCallback(getUniverse(), notification);
+                }
+            }
         }
 
         @Override
         public void registerMethodOverrideReachabilityHandler(BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
-            reachabilityHandler.registerMethodOverrideReachabilityHandler(this, callback, baseMethod);
+            AnalysisMetaAccess metaAccess = getMetaAccess();
+            AnalysisMethod baseAnalysisMethod = metaAccess.lookupJavaMethod(baseMethod);
+
+            AnalysisElement.MethodOverrideReachableNotification notification = new AnalysisElement.MethodOverrideReachableNotification(callback);
+            baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
+
+            /*
+             * Notify for already reachable overrides. When a new override becomes reachable all
+             * installed reachability callbacks in the supertypes declaring the method are
+             * triggered.
+             */
+            for (AnalysisMethod override : reachableMethodOverrides(baseAnalysisMethod)) {
+                notification.notifyCallback(metaAccess.getUniverse(), override);
+            }
         }
 
         @Override
         public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
-            reachabilityHandler.registerSubtypeReachabilityHandler(this, callback, baseClass);
+            AnalysisMetaAccess metaAccess = getMetaAccess();
+            AnalysisType baseType = metaAccess.lookupJavaType(baseClass);
+
+            AnalysisElement.SubtypeReachableNotification notification = new AnalysisElement.SubtypeReachableNotification(callback);
+            baseType.registerSubtypeReachabilityNotification(notification);
+
+            /*
+             * Notify for already reachable subtypes. When a new type becomes reachable all
+             * installed reachability callbacks in the supertypes are triggered.
+             */
+            for (AnalysisType subtype : reachableSubtypes(baseType)) {
+                notification.notifyCallback(metaAccess.getUniverse(), subtype);
+            }
         }
 
         @Override
         public void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
-            reachabilityHandler.registerClassInitializerReachabilityHandler(this, callback, clazz);
-        }
-
-        public boolean concurrentReachabilityHandlers() {
-            return concurrentReachabilityHandlers;
+            /*
+             * In our current static analysis implementations, there is no difference between the
+             * reachability of a class and the reachability of its class initializer.
+             */
+            registerReachabilityHandler(callback, clazz);
         }
 
         @Override
@@ -506,8 +567,6 @@ public class FeatureImpl {
 
     public static class ConcurrentAnalysisAccessImpl extends DuringAnalysisAccessImpl {
 
-        private static final String concurrentReachabilityOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.RunReachabilityHandlersConcurrently, "-");
-
         public ConcurrentAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, nativeLibraries, debugContext);
         }
@@ -515,10 +574,7 @@ public class FeatureImpl {
         @Override
         public void requireAnalysisIteration() {
             if (bb.executorIsStarted()) {
-                String msg = "Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis. " +
-                                "To fallback to running the reachability handlers sequentially, i.e., from Feature.duringAnalysis(), you can add the " + concurrentReachabilityOption +
-                                " option to the native-image command. Note that the fallback option is deprecated and it will be removed in a future release.";
-                throw VMError.shouldNotReachHere(msg);
+                throw VMError.shouldNotReachHere("Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary because reachability handlers run concurrently during analysis.");
             }
             super.requireAnalysisIteration();
         }

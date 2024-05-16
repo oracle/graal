@@ -240,11 +240,6 @@ public abstract class HostVM {
         return new InlineBeforeAnalysisGraphDecoder(bb, InlineBeforeAnalysisPolicy.NO_INLINING, resultGraph, bb.getProviders(method), null);
     }
 
-    @SuppressWarnings("unused")
-    public boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
-        return false;
-    }
-
     /**
      * Check if the element is supported on current platform.
      * 
