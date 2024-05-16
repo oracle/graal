@@ -66,8 +66,6 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.BundleMember;
-import com.oracle.svm.core.util.json.JsonPrinter;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.driver.launcher.BundleLauncher;
 import com.oracle.svm.driver.launcher.ContainerSupport;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
@@ -76,6 +74,9 @@ import com.oracle.svm.driver.launcher.configuration.BundlePathMapParser;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
+
+import jdk.graal.compiler.util.json.JsonPrinter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 final class BundleSupport {
 

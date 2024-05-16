@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util.json;
+package jdk.graal.compiler.util.json;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -228,7 +228,7 @@ public class JsonWriter implements AutoCloseable {
     }
 
     public JsonWriter unindent() {
-        assert indentation > 0;
+        assert indentation > 0 : "Json indentation underflowed";
         indentation--;
         return this;
     }

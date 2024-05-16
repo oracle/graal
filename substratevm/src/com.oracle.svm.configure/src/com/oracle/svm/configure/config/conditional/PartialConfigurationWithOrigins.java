@@ -30,13 +30,14 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationParser;
+
+import jdk.graal.compiler.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class PartialConfigurationWithOrigins extends ConfigurationParser implements JsonPrintable {
     private static final ConfigurationSet emptyConfigurationSet = new ConfigurationSet();

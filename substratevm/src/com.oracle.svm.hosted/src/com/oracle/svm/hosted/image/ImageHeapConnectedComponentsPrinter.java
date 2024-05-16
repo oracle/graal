@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.ByteFormattingUtil;
 import com.oracle.svm.hosted.image.NativeImageHeap.HeapInclusionReason;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
@@ -50,6 +49,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectReachabilityGroup;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectReachabilityInfo;
 import com.oracle.svm.hosted.meta.HostedField;
 
+import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 

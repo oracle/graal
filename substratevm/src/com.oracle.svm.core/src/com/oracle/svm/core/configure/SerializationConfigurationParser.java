@@ -124,7 +124,7 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
             } else if (targetSerializationClass.get() instanceof ProxyConfigurationTypeDescriptor proxyClass) {
                 serializationSupport.registerProxyClass(condition.get(), Arrays.asList(proxyClass.interfaceNames()));
             } else {
-                throw new JSONParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
+                throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
             }
         }
     }

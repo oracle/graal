@@ -48,12 +48,12 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
 
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 /**
  * This feature prints all reflective elements that are in the native image heap. Its goal is to
