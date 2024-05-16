@@ -129,36 +129,40 @@ public class JsonWriter implements AutoCloseable {
         return this;
     }
 
-    @SuppressWarnings("unchecked")
-    private void printMap(Map<String, Object> map) throws IOException {
+    private <T> void printMap(Map<String, T> map) throws IOException {
         if (map.isEmpty()) {
             append("{}");
             return;
         }
-        append('{');
-        Iterator<String> keySetIter = map.keySet().iterator();
-        while (keySetIter.hasNext()) {
-            String key = keySetIter.next();
-            Object value = map.get(key);
-            quote(key).append(':');
-            print(value);
-            if (keySetIter.hasNext()) {
-                append(',');
+        appendObjectStart();
+        boolean separator = false;
+        for (Map.Entry<String, T> entry : map.entrySet()) {
+            if (separator) {
+                quote(entry.getKey()).appendFieldSeparator();
+                print(entry.getValue());
             }
+            appendKeyValue(entry.getKey(), entry.getValue());
+            separator = true;
         }
-        append('}');
+        appendObjectEnd();
     }
 
-    private void printIterator(Iterator<?> iter) throws IOException {
-        append('[');
-        if (iter.hasNext()) {
-            print(iter.next());
-            while (iter.hasNext()) {
-                append(',');
-                print(iter.next());
-            }
+    private <T> void printIterator(Iterator<T> iter) throws IOException {
+        if (!iter.hasNext()) {
+            append("[]");
+            return;
         }
-        append(']');
+        appendArrayStart();
+        boolean separator = false;
+        while (iter.hasNext()) {
+            T item = iter.next();
+            if (separator) {
+                appendSeparator();
+            }
+            print(item);
+            separator = true;
+        }
+        appendArrayEnd();
     }
 
     public JsonWriter printValue(Object o) throws IOException {
@@ -191,7 +195,7 @@ public class JsonWriter implements AutoCloseable {
         return this;
     }
 
-    public static String quoteString(String s) {
+    private static String quoteString(String s) {
         if (s == null) {
             return "null";
         }
