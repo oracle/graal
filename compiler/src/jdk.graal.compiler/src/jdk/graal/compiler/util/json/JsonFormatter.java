@@ -26,8 +26,7 @@ package jdk.graal.compiler.util.json;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.io.Writer;
-import java.util.Collection;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -40,48 +39,25 @@ public class JsonFormatter {
 
     public static <T> String formatJSON(EconomicMap<String, T> map, boolean prettyPrint) {
         StringWriter sw = new StringWriter();
-        printJSON(map, sw, prettyPrint);
+        try (JsonWriter jw = prettyPrint ? new JsonPrettyWriter(sw) : new JsonWriter(sw)) {
+            jw.print(map);
+        } catch (IOException e) {
+            throw GraalError.shouldNotReachHere(e, "StringWriter threw IOException");
+        }
         return sw.toString();
     }
 
-    public static <T> void printJSON(EconomicMap<String, T> map, Writer writer) {
-        printJSON(map, writer, false);
+    public static <T> String formatJSON(List<T> list) {
+        return formatJSON(list, false);
     }
 
-    public static <T> void printJSON(EconomicMap<String, T> map, Writer writer, boolean prettyPrint) {
-        JsonWriter jw = prettyPrint ? new JsonPrettyWriter(writer) : new JsonWriter(writer);
-        try (JsonBuilder.ObjectBuilder builder = JsonBuilder.object(jw)) {
-            var cursor = map.getEntries();
-            while (cursor.advance()) {
-                builder.append(cursor.getKey(), cursor.getValue());
-            }
-        } catch (IOException e) {
-            GraalError.shouldNotReachHere(e, "StringWriter threw IOException");
-        }
-    }
-
-    public static <T> String formatJSON(Collection<T> collection) {
-        return formatJSON(collection, false);
-    }
-
-    public static <T> String formatJSON(Collection<T> collection, boolean prettyPrint) {
+    public static <T> String formatJSON(List<T> list, boolean prettyPrint) {
         StringWriter sw = new StringWriter();
-        printJSON(collection, sw, prettyPrint);
-        return sw.toString();
-    }
-
-    public static <T> void printJSON(Collection<T> collection, Writer writer) {
-        printJSON(collection, writer, false);
-    }
-
-    public static <T> void printJSON(Collection<T> collection, Writer writer, boolean prettyPrint) {
-        JsonWriter jw = prettyPrint ? new JsonPrettyWriter(writer) : new JsonWriter(writer);
-        try (JsonBuilder.ArrayBuilder builder = JsonBuilder.array(jw)) {
-            for (T item : collection) {
-                builder.append(item);
-            }
+        try (JsonWriter jw = prettyPrint ? new JsonPrettyWriter(sw) : new JsonWriter(sw)) {
+            jw.print(list);
         } catch (IOException e) {
-            GraalError.shouldNotReachHere(e, "StringWriter threw IOException");
+            throw GraalError.shouldNotReachHere(e, "StringWriter threw IOException");
         }
+        return sw.toString();
     }
 }

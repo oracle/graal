@@ -60,7 +60,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import jdk.graal.compiler.util.json.JsonFormatter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class MainTest {
 
@@ -553,8 +553,8 @@ public class MainTest {
          */
         Path writeToTempFile() throws IOException {
             Path path = Files.createTempFile(Paths.get("."), fileNamePrefix, ".json");
-            try (FileWriter writer = new FileWriter(path.toFile())) {
-                writer.write(JsonFormatter.formatJSON(asJSONMap()));
+            try (JsonWriter writer = new JsonWriter(path)) {
+                writer.print(asJSONMap());
             }
             return path;
         }

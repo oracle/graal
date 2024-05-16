@@ -34,6 +34,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+
 public class JsonWriter implements AutoCloseable {
     private final Writer writer;
 
@@ -119,6 +121,8 @@ public class JsonWriter implements AutoCloseable {
     public JsonWriter print(Object value) throws IOException {
         if (value instanceof Map map) {
             printMap(map); // Must always be <String, Object>
+        } else if (value instanceof EconomicMap economicMap) {
+            printMap(economicMap); // Must always be <String, Object>
         } else if (value instanceof Iterator it) {
             printIterator(it);
         } else if (value instanceof List list) {
@@ -138,10 +142,29 @@ public class JsonWriter implements AutoCloseable {
         boolean separator = false;
         for (Map.Entry<String, T> entry : map.entrySet()) {
             if (separator) {
-                quote(entry.getKey()).appendFieldSeparator();
-                print(entry.getValue());
+                appendSeparator();
             }
-            appendKeyValue(entry.getKey(), entry.getValue());
+            quote(entry.getKey()).appendFieldSeparator();
+            print(entry.getValue());
+            separator = true;
+        }
+        appendObjectEnd();
+    }
+
+    private <T> void printMap(EconomicMap<String, T> map) throws IOException {
+        if (map.isEmpty()) {
+            append("{}");
+            return;
+        }
+        appendObjectStart();
+        boolean separator = false;
+        var cursor = map.getEntries();
+        while (cursor.advance()) {
+            if (separator) {
+                appendSeparator();
+            }
+            quote(cursor.getKey()).appendFieldSeparator();
+            print(cursor.getValue());
             separator = true;
         }
         appendObjectEnd();

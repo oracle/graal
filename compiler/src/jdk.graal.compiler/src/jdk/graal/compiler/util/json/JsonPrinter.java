@@ -34,18 +34,21 @@ public interface JsonPrinter<T> {
     void print(T t, JsonWriter writer) throws IOException;
 
     static <T> void printCollection(JsonWriter writer, Collection<T> collection, Comparator<T> comparator, JsonPrinter<T> elementPrinter) throws IOException {
-        writer.append('[');
-        String prefix = "";
         Collection<T> ordered = collection;
         if (comparator != null) {
             ordered = new ArrayList<>(collection);
             ((List<T>) ordered).sort(comparator);
         }
+
+        writer.appendArrayStart();
+        boolean separator = false;
         for (T t : ordered) {
-            writer.append(prefix);
+            if (separator) {
+                writer.appendSeparator();
+            }
             elementPrinter.print(t, writer);
-            prefix = ", ";
+            separator = true;
         }
-        writer.append("]");
+        writer.appendArrayEnd();
     }
 }

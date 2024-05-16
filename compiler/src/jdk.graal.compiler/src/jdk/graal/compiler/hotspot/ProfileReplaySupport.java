@@ -29,11 +29,10 @@ import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.ProfileMet
 import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.SaveProfiles;
 import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.StrictProfiles;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,8 +68,8 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.util.json.JsonFormatter;
 import jdk.graal.compiler.util.json.JsonParser;
+import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -261,8 +260,8 @@ public final class ProfileReplaySupport {
                     } else {
                         path = debug.getDumpPath(".glog", false, false);
                     }
-                    try (PrintStream out = new PrintStream(new BufferedOutputStream(PathUtilities.openOutputStream(path)))) {
-                        out.println(JsonFormatter.formatJSON(map, true));
+                    try (JsonPrettyWriter writer = new JsonPrettyWriter(new PrintWriter(PathUtilities.openOutputStream(path)))) {
+                        writer.print(map);
                     }
                 } catch (Throwable t) {
                     throw debug.handle(t);
