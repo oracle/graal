@@ -1192,6 +1192,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             asm.movq(ValueUtil.asRegister(callingConvention.getArgument(1)), gpReturnReg);
             asm.movdq(ValueUtil.asRegister(callingConvention.getArgument(2)), fpReturnReg);
 
+            /* Add a dummy return address to the stack so that RSP is properly aligned. */
+            asm.subq(registerConfig.getFrameRegister(), FrameAccess.returnAddressSize());
             super.enter(tasm);
         }
     }
