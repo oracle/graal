@@ -44,7 +44,7 @@ public class TruffleShutdownHookTest {
         SubprocessTestUtils.newBuilder(getClass(), TruffleShutdownHookTest::inProcess).failOnNonZeroExit(true).//
                         postfixVmOption("-XX:+UseJVMCICompiler").// force Graal host compilation
                         onExit((p) -> {
-                            String out = p.toString(System.lineSeparator());
+                            String out = String.join(System.lineSeparator(), p.output);
                             if (out.contains("java.lang.IllegalStateException: Shutdown in progress")) {
                                 throw new AssertionError(out);
                             }
@@ -74,7 +74,7 @@ public class TruffleShutdownHookTest {
         SubprocessTestUtils.newBuilder(getClass(), TruffleShutdownHookTest::inProcessEngineInit).failOnNonZeroExit(true).//
                         postfixVmOption("-XX:+UseJVMCICompiler").// force Graal host compilation
                         onExit((p) -> {
-                            String out = p.toString(System.lineSeparator());
+                            String out = String.join(System.lineSeparator(), p.output);
                             if (out.contains("java.lang.IllegalStateException: Shutdown in progress")) {
                                 throw new AssertionError(out);
                             }
