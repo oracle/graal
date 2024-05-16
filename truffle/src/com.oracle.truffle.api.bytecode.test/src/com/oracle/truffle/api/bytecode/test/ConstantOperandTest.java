@@ -52,6 +52,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
@@ -60,12 +62,14 @@ import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
+import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.test.ConstantOperandTestRootNode.ReplaceValue;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
 import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -180,6 +184,41 @@ public class ConstantOperandTest {
     }
 
     @Test
+    public void testConstantWithFallback() {
+        ConstantOperandTestRootNode root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginCheckValue(42);
+            b.emitLoadArgument(0);
+            b.endCheckValue();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(true, root.getCallTarget().call(42));
+        assertEquals(false, root.getCallTarget().call(43));
+        assertEquals(false, root.getCallTarget().call("foo"));
+    }
+
+    @Test
+    public void testLocalSetter() {
+        ConstantOperandTestRootNode root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLocal local = b.createLocal();
+            b.beginSetCheckValue(42, local);
+            b.emitLoadArgument(0);
+            b.endSetCheckValue();
+
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(true, root.getCallTarget().call(42));
+        assertEquals(false, root.getCallTarget().call(43));
+        assertEquals(false, root.getCallTarget().call("foo"));
+    }
+
+    @Test
     public void testConstantOperandsInProlog() {
         ConstantOperandsInPrologTestRootNode root = ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
             b.beginRoot(LANGUAGE, "foo");
@@ -273,6 +312,41 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
         @Specialization
         public static int doInt(int constantOperand) {
             return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = int.class)
+    @SuppressWarnings("unused")
+    public static final class CheckValue {
+        @Specialization(guards = "arg == constantOperand")
+        public static boolean doMatch(int constantOperand, int arg) {
+            return true;
+        }
+
+        @Fallback
+        public static boolean doNoMatch(int constantOperand, Object arg) {
+            return false;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = int.class)
+    @ConstantOperand(type = LocalSetter.class)
+    @SuppressWarnings("unused")
+    public static final class SetCheckValue {
+        @Specialization(guards = "arg == constantOperand")
+        public static void doMatch(VirtualFrame frame, int constantOperand, LocalSetter setter, int arg,
+                        @Bind("$bytecode") BytecodeNode bytecode,
+                        @Bind("$bci") int bci) {
+            setter.setBoolean(bytecode, bci, frame, true);
+        }
+
+        @Fallback
+        public static void doNoMatch(VirtualFrame frame, int constantOperand, LocalSetter setter, Object arg,
+                        @Bind("$bytecode") BytecodeNode bytecode,
+                        @Bind("$bci") int bci) {
+            setter.setBoolean(bytecode, bci, frame, false);
         }
     }
 
