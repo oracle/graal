@@ -860,21 +860,33 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
     }
 
-    private static final class Target {
+    protected static final class Target {
         final FixedNode entry;
         final FixedNode originalEntry;
         final FrameStateBuilder state;
 
-        Target(FixedNode entry, FrameStateBuilder state) {
+        public Target(FixedNode entry, FrameStateBuilder state) {
             this.entry = entry;
             this.state = state;
             this.originalEntry = null;
         }
 
-        Target(FixedNode entry, FrameStateBuilder state, FixedNode originalEntry) {
+        public Target(FixedNode entry, FrameStateBuilder state, FixedNode originalEntry) {
             this.entry = entry;
             this.state = state;
             this.originalEntry = originalEntry;
+        }
+
+        public FixedNode getEntry() {
+            return entry;
+        }
+
+        public FixedNode getOriginalEntry() {
+            return originalEntry;
+        }
+
+        public FrameStateBuilder getState() {
+            return state;
         }
     }
 
@@ -918,7 +930,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     private LineNumberTable lnt;
     private BitSet emittedLineNumbers;
 
-    private ValueNode methodSynchronizedObject;
+    protected ValueNode methodSynchronizedObject;
 
     private List<ReturnToCallerData> returnDataList;
     private ValueNode unwindValue;
@@ -1934,7 +1946,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         genInvokeSpecial(target);
     }
 
-    void genInvokeSpecial(JavaMethod target) {
+    protected void genInvokeSpecial(JavaMethod target) {
         if (callTargetIsResolved(target)) {
             assert target != null;
             assert target.getSignature() != null;
@@ -2953,6 +2965,10 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
              */
             append(new FinalFieldBarrierNode(entryBCI == INVOCATION_ENTRY_BCI ? originalReceiver : null));
         }
+        int expectedDepth = frameState.getMethod().isSynchronized() ? 1 : 0;
+        if (frameState.lockDepth(false) > expectedDepth) {
+            handleUnstructuredLocking("too few monitorexits exiting frame", false);
+        }
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
     }
 
@@ -2968,27 +2984,59 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
     }
 
-    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean epilogue) {
-        // If a bytecode attempts to pop the last lock in a synchronized method then this method
-        // doesn't having properly matching locks so we should bailout. Normally this is detected by
-        // the final exit underflowing the lock stack but there is no guarantee that the exit is
-        // ever parsed so we should bailout here instead.
-        int expectedDepth = frameState.getMethod().isSynchronized() && !epilogue ? 1 : 0;
-        if (frameState.lockDepth(false) == expectedDepth) {
-            throw bailout("unbalanced monitors: too many exits");
+    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean needsNullCheck) {
+        /*
+         * This null check ensures Java spec compatibility, where a NullPointerException has
+         * precedence over an IllegalMonitorStateException. In the presence of structured locking,
+         * this check should fold away, as the non-nullness is already proven by the corresponding
+         * monitorenter.
+         */
+        ValueNode maybeNullCheckedX = needsNullCheck ? maybeEmitExplicitNullCheck(x) : x;
+        /*
+         * Graal enforces structured locking. In accordance to Rule 2, it has to throw an
+         * IllegalMonitorStateException (or deopt) if the number of monitorexits exceeds the number
+         * of monitorenters at any time during method execution.
+         */
+        if (frameState.lockDepth(false) == 0) {
+            handleUnstructuredLocking("too many monitorexits", false);
+            return;
         }
         MonitorIdNode monitorId = frameState.peekMonitorId();
         ValueNode lockedObject = frameState.popLock();
         // if we merged two monitor ids we trust the merging logic checked the correct enter bcis
         if (!monitorId.isMultipleEntry()) {
             ValueNode originalLockedObject = GraphUtil.originalValue(lockedObject, false);
-            ValueNode originalX = GraphUtil.originalValue(x, false);
+            ValueNode originalX = GraphUtil.originalValue(maybeNullCheckedX, false);
             if (originalLockedObject != originalX) {
-                throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", originalLockedObject, originalX));
+                // at this point, the lock objects could still be equal, but not visibly to the
+                // parser; add a run-time check
+                LogicNode eq = append(genObjectEquals(maybeNullCheckedX, lockedObject));
+                IfNode ifNode = append(new IfNode(eq, null, null, BranchProbabilityNode.EXTREMELY_FAST_PATH_PROFILE));
+
+                // lock objects not equal
+                ifNode.setFalseSuccessor(graph.add(new BeginNode()));
+                lastInstr = ifNode.falseSuccessor();
+                FrameStateBuilder oldState = frameState.copy();
+                frameState.pushLock(lockedObject, monitorId);
+                handleMismatchAtMonitorexit();
+                frameState = oldState;
+
+                // lock objects equal
+                ifNode.setTrueSuccessor(graph.add(new BeginNode()));
+                lastInstr = ifNode.trueSuccessor();
             }
         }
         MonitorExitNode monitorExit = append(new MonitorExitNode(lockedObject, monitorId, escapedValue));
         monitorExit.setStateAfter(createFrameState(bci, monitorExit));
+    }
+
+    @SuppressWarnings("unused")
+    protected void handleUnstructuredLocking(String msg, boolean isDeadEnd) {
+        throw bailout("Unstructured locking: " + msg);
+    }
+
+    protected void handleMismatchAtMonitorexit() {
+        append(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.TransferToInterpreter));
     }
 
     protected void genJsr(int dest) {
@@ -3191,10 +3239,16 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         if (targetBlock != blockMap.getUnwindBlock()) {
             return new Target(target, state);
         }
-        FrameStateBuilder newState = state;
-        newState = newState.copy();
+        FrameStateBuilder newState = state.copy();
         newState.setRethrowException(false);
-        if (!method.isSynchronized()) {
+        if (!method.isSynchronized() || methodSynchronizedObject == null) {
+            /*
+             * methodSynchronizedObject==null indicates that the methodSynchronizeObject has been
+             * released unexpectedly due to unstructured locking but we are already on the path to
+             * the unwind for throwing an IllegalMonitorStateException. Thus, we need to break up an
+             * exception loop in the unwind path, which would repeatedly try to release the
+             * methodSynchronizedObject via the synchronizedEpilogue.
+             */
             return new Target(target, newState);
         }
         FixedWithNextNode originalLast = lastInstr;
@@ -3224,11 +3278,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         this.entryStateArray[block.id] = entryState;
     }
 
-    private void setFirstInstruction(BciBlock block, FixedWithNextNode firstInstruction) {
+    protected void setFirstInstruction(BciBlock block, FixedWithNextNode firstInstruction) {
         this.firstInstructionArray[block.id] = firstInstruction;
     }
 
-    private FixedWithNextNode getFirstInstruction(BciBlock block) {
+    protected FixedWithNextNode getFirstInstruction(BciBlock block) {
         return firstInstructionArray[block.id];
     }
 
@@ -3272,6 +3326,19 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         assert !block.isExceptionEntry() || state.stackSize() == 1 : Assertions.errorMessage(block, state);
 
         try (DebugCloseable context = openNodeContext(state, block.startBci)) {
+            if (block == blockMap.getUnwindBlock()) {
+                int expectedDepth = state.getMethod().isSynchronized() && methodSynchronizedObject != null ? 1 : 0;
+                /*
+                 * methodSynchronizeObject==null indicates that the methodSynchronizeObject has been
+                 * released unexpectedly but we are already on the path to the unwind for throwing
+                 * an IllegalMonitorStateException. Thus, we need to break up an exception loop in
+                 * the unwind path.
+                 */
+                if (state.lockDepth(false) != expectedDepth) {
+                    return handleUnstructuredLockingForUnwindTarget("too few monitorexits exiting frame", state);
+                }
+            }
+
             if (getFirstInstruction(block) == null) {
                 /*
                  * This is the first time we see this block as a branch target. Create and return a
@@ -3294,8 +3361,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 } else {
                     setFirstInstruction(block, graph.add(new BeginNode()));
                 }
-                Target target = checkUnwind(getFirstInstruction(block), block, state);
-                target = checkLoopExit(target, block);
+                Target target = checkLoopExit(checkUnwind(getFirstInstruction(block), block, state), block);
                 FixedNode result = target.entry;
                 FrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
                 setEntryState(block, currentEntryState);
@@ -3313,7 +3379,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                  */
                 LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block);
                 LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-                Target target = checkLoopExit(new Target(loopEnd, state.copy()), block);
+                Target target = checkUnstructuredLocking(checkLoopExit(new Target(loopEnd, state.copy()), block), block, getEntryState(block));
                 FixedNode result = target.entry;
                 /*
                  * It is guaranteed that a loop header cannot be an ExceptionDispatchBlock. By the
@@ -3324,8 +3390,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 assert !getEntryState(block).rethrowException();
                 target.state.setRethrowException(false);
                 getEntryState(block).merge(loopBegin, target.state);
-
                 debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
+
                 return result;
             }
             assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
@@ -3361,14 +3427,27 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
             // The EndNode for the newly merged edge.
             EndNode newEnd = graph.add(new EndNode());
-            Target target = checkLoopExit(checkUnwind(newEnd, block, state), block);
+            Target target = checkUnstructuredLocking(checkLoopExit(checkUnwind(newEnd, block, state), block), block, getEntryState(block));
             FixedNode result = target.entry;
             getEntryState(block).merge(mergeNode, target.state);
             mergeNode.addForwardEnd(newEnd);
-
             debug.log("createTarget %s: merging state, result: %s", block, result);
+
             return result;
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected FixedNode handleUnstructuredLockingForUnwindTarget(String msg, FrameStateBuilder state) {
+        throw bailout("Unstructured locking: " + msg);
+    }
+
+    @SuppressWarnings("unused")
+    protected Target checkUnstructuredLocking(Target target, BciBlock targetBlock, FrameStateBuilder mergeState) {
+        if (mergeState.areLocksMergeableWith(target.state)) {
+            return target;
+        }
+        throw bailout("Locks cannot be merged. Possibly unstructured locking, which is not supported.");
     }
 
     /**
@@ -3429,9 +3508,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     private void handleUnwindBlock() {
-        if (frameState.lockDepth(false) != 0) {
-            throw bailout("unbalanced monitors: too few exits exiting frame");
-        }
+        GraalError.guarantee(frameState.lockDepth(false) == 0, "Unstructured locking: unreleased locks at unwind block!");
         assert !frameState.rethrowException();
         if (parent == null) {
             createUnwind();
@@ -3470,11 +3547,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     // push the return value on the stack
                     frameState.push(currentReturnValueKind, currentReturnValue);
                 }
-                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, true);
+                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, false);
                 assert !frameState.rethrowException();
-            }
-            if (frameState.lockDepth(false) != 0) {
-                throw bailout("unbalanced monitors: too few exits exiting frame");
             }
         }
     }
@@ -5673,7 +5747,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             case CHECKCAST      : genCheckCast(stream.readCPI()); break;
             case INSTANCEOF     : genInstanceOf(stream.readCPI()); break;
             case MONITORENTER   : genMonitorEnter(frameState.pop(JavaKind.Object), stream.nextBCI()); break;
-            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), false); break;
+            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), true); break;
             case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;
