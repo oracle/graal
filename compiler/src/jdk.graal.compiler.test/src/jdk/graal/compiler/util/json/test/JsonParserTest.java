@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.util.test;
+package jdk.graal.compiler.util.json.test;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -132,7 +132,7 @@ public class JsonParserTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testFormatterTrivial() throws IOException {
-        String json = "{\"a\": [\"\\u0019\", true, 42.5], \"b\": null}";
+        String json = "{\"a\":[\"\\u0019\",true,42.5],\"b\":null}";
         JsonParser parser = new JsonParser(json);
         String result = JsonFormatter.formatJSON((EconomicMap<String, Object>) parser.parse());
         Assert.assertEquals(json, result);

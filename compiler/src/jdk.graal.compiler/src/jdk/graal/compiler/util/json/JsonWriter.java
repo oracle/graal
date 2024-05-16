@@ -218,6 +218,11 @@ public class JsonWriter implements AutoCloseable {
         return this;
     }
 
+    private static void escapeSequence(StringBuilder sb, char c) {
+        sb.append('\\');
+        sb.append(c);
+    }
+
     private static String quoteString(String s) {
         if (s == null) {
             return "null";
@@ -226,9 +231,19 @@ public class JsonWriter implements AutoCloseable {
         sb.append('"');
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
-            if (c == '"' || c == '\\') {
-                sb.append('\\');
-                sb.append(c);
+            // Escaping rules according to https://www.ietf.org/rfc/rfc4627.txt section 2.5
+            if (c == '"' || c == '\\' || c == '/') {
+                escapeSequence(sb, c);
+            } else if (c == '\b') {
+                escapeSequence(sb, 'b');
+            } else if (c == '\f') {
+                escapeSequence(sb, 'f');
+            } else if (c == '\n') {
+                escapeSequence(sb, 'n');
+            } else if (c == '\r') {
+                escapeSequence(sb, 'r');
+            } else if (c == '\t') {
+                escapeSequence(sb, 't');
             } else if (c < 0x001F) {
                 sb.append(String.format("\\u%04x", (int) c));
             } else {
