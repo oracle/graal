@@ -433,6 +433,18 @@ suite = {
       "workingSets" : "Graal,Test",
       "graalCompilerSourceEdition": "ignore",
     },
+
+    "org.graalvm.igvutil" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "jdk.graal.compiler",
+        "sdk:COLLECTIONS",
+      ],
+      "checkstyle" : "jdk.graal.compiler",
+      "javaCompliance" : "21+",
+      "graalCompilerSourceEdition": "ignore",
+    },
   },
 
   "distributions" : {
@@ -642,6 +654,18 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:COLLECTIONS",
+        "GRAAL",
+      ],
+      "maven" : False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "GRAAL_IGVUTIL": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.igvutil",
+      ],
+      "distDependencies" : [
         "GRAAL",
       ],
       "maven" : False,

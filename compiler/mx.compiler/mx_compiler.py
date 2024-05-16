@@ -1528,6 +1528,12 @@ def profdiff(args):
     vm_args = ['-cp', cp, 'org.graalvm.profdiff.Profdiff'] + args
     return jdk.run_java(args=vm_args)
 
+def igvutil(args):
+    """TODO"""
+    cp = mx.classpath('GRAAL_IGVUTIL', jdk=jdk)
+    vm_args = ['-cp', cp, 'org.graalvm.igvutil.IgvUtility'] + args
+    return jdk.run_java(args=vm_args)
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
@@ -1540,6 +1546,7 @@ mx.update_commands(_suite, {
     'graaljdk-show': [print_graaljdk_config, '[options]'],
     'phaseplan-fuzz-jtt-tests': [phaseplan_fuzz_jtt_tests, "Runs JTT's unit tests with fuzzed phase plans."],
     'profdiff': [profdiff, '[options] proftool_output1 optimization_log1 proftool_output2 optimization_log2'],
+    'igvutil': [igvutil, ''],
 })
 
 mx.add_argument('--no-jacoco-exclude-truffle', action='store_false', dest='jacoco_exclude_truffle', help="Don't exclude Truffle classes from jacoco annotations.")
