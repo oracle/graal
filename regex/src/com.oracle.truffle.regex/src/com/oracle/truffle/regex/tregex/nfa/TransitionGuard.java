@@ -234,7 +234,7 @@ public final class TransitionGuard {
     @TruffleBoundary
     public static String dump(long[] guards) {
         StringBuilder sb = new StringBuilder();
-        for (long guard: guards) {
+        for (long guard : guards) {
             sb.append(toString(guard)).append('\n');
         }
         return sb.toString();

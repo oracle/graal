@@ -52,7 +52,6 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.errors.OracleDBErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -63,7 +62,6 @@ public final class OracleDBRegexLexer extends RegexLexer {
     private static final CodePointSet EMPTY_POSIX_CHAR_CLASS = CodePointSet.create(':', ':', '[', '[', ']', ']');
     private static final TBitSet WHITESPACE = TBitSet.valueOf('\n', ' ');
     private final OracleDBFlags flags;
-    private final CodePointSetAccumulator caseFoldTmp = new CodePointSetAccumulator();
 
     public OracleDBRegexLexer(RegexSource source, OracleDBFlags flags, CompilationBuffer compilationBuffer) {
         super(source, compilationBuffer);
@@ -201,7 +199,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
-        CaseFoldData.applyCaseFoldUnfold(charClass, caseFoldTmp, CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode);
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override

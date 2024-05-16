@@ -97,6 +97,10 @@ public abstract class RegexLexer {
         this.compilationBuffer = compilationBuffer;
     }
 
+    public CompilationBuffer getCompilationBuffer() {
+        return compilationBuffer;
+    }
+
     /**
      * Returns {@code true} if ignore-case mode is currently enabled.
      */
@@ -779,8 +783,7 @@ public abstract class RegexLexer {
                 curCharClassStartIndex = -1;
                 return ccEnd;
             }
-            ClassSetContents atom = parseCharClassAtom(c);
-            return Token.createCharacterClassAtom(atom.getCodePointSet(), atom.isPosixCollationEquivalenceClass());
+            return Token.createCharacterClassAtom(parseCharClassAtom(c));
         }
         switch (c) {
             case '.':

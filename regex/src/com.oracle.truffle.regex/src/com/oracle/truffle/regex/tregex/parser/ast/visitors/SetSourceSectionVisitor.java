@@ -69,8 +69,8 @@ public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVi
         this.ast = ast;
     }
 
-    public void run(Group root, SourceSection sourceSection) {
-        this.sourceSection = sourceSection;
+    public void run(Group root, SourceSection setSourceSection) {
+        this.sourceSection = setSourceSection;
         run(root);
     }
 
