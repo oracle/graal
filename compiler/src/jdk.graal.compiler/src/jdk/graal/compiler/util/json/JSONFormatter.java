@@ -40,7 +40,7 @@ public class JSONFormatter {
 
     public static <T> String formatJSON(EconomicMap<String, T> map, boolean prettyPrint) {
         StringWriter sw = new StringWriter();
-        printJSON(map, sw, true);
+        printJSON(map, sw, prettyPrint);
         return sw.toString();
     }
 
@@ -49,7 +49,7 @@ public class JSONFormatter {
     }
 
     public static <T> void printJSON(EconomicMap<String, T> map, Writer writer, boolean prettyPrint) {
-        JsonWriter jw = new JsonWriter(writer);
+        JsonWriter jw = prettyPrint ? new JsonPrettyWriter(writer) : new JsonWriter(writer);
         try (JsonBuilder.ObjectBuilder builder = JsonBuilder.object(jw)) {
             var cursor = map.getEntries();
             while (cursor.advance()) {
@@ -66,7 +66,7 @@ public class JSONFormatter {
 
     public static <T> String formatJSON(Collection<T> collection, boolean prettyPrint) {
         StringWriter sw = new StringWriter();
-        printJSON(collection, sw, true);
+        printJSON(collection, sw, prettyPrint);
         return sw.toString();
     }
 
@@ -75,7 +75,7 @@ public class JSONFormatter {
     }
 
     public static <T> void printJSON(Collection<T> collection, Writer writer, boolean prettyPrint) {
-        JsonWriter jw = new JsonWriter(writer);
+        JsonWriter jw = prettyPrint ? new JsonPrettyWriter(writer) : new JsonWriter(writer);
         try (JsonBuilder.ArrayBuilder builder = JsonBuilder.array(jw)) {
             for (T item : collection) {
                 builder.append(item);
