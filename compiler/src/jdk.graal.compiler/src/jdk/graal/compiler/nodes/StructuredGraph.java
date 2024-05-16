@@ -57,6 +57,7 @@ import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
@@ -304,12 +305,26 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     private final Assumptions assumptions;
 
+    /**
+     * The last schedule which was computed for this graph. Only re-use if
+     * {@link #isLastScheduleValid()} is {@code true}.
+     */
     private ScheduleResult lastSchedule;
+
+    /**
+     * The last control flow graph which was computed for this graph. Only re-use if
+     * {@link #isLastCFGValid()} is {@code true}.
+     */
     private ControlFlowGraph lastCFG;
 
     private final CacheInvalidationListener cacheInvalidationListener;
     private NodeEventScope cacheInvalidationNES;
 
+    /**
+     * Invalidates cached values (e.g., schedule or CFG) if the graph changes. Afterwards, removes
+     * itself from the graph's list of listeners. Needs to be added to the graph again after one of
+     * the caches is set to ensure proper invalidation.
+     */
     private final class CacheInvalidationListener extends NodeEventListener {
 
         private boolean lastCFGValid;
@@ -323,10 +338,18 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    /**
+     * Returns {@code true} if the graph has not changed since calculating the last schedule. Use
+     * {@link #getLastSchedule()} for obtaining the cached schedule.
+     */
     public boolean isLastScheduleValid() {
         return cacheInvalidationListener.lastScheduleValid;
     }
 
+    /**
+     * Returns {@code true} if the graph has not changed since calculating the last control flow
+     * graph. Use {@link #getLastCFG()} for obtaining the cached cfg.
+     */
     public boolean isLastCFGValid() {
         return cacheInvalidationListener.lastCFGValid;
     }
@@ -428,6 +451,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    /**
+     * Returns the last schedule which has been computed for this graph. Use
+     * {@link #isLastScheduleValid()} to verify that the graph has not changed since the last
+     * schedule has been computed.
+     */
     public ScheduleResult getLastSchedule() {
         return lastSchedule;
     }
@@ -437,6 +465,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         clearLastCFG();
     }
 
+    /**
+     * Returns the last control flow graph which has been computed for this graph. Use
+     * {@link #isLastCFGValid()} to verify that the graph has not changed since the last cfg has
+     * been computed. Creating a {@link ControlFlowGraph} via
+     * {@link ControlFlowGraphBuilder#build()} will implicitly return and/or update the cached cfg.
+     */
     public ControlFlowGraph getLastCFG() {
         return lastCFG;
     }

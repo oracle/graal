@@ -166,6 +166,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
     @Override
     public boolean shouldApply(StructuredGraph graph) {
+        /*
+         * Don't compute a new schedule if the schedule obtainable by
+         * StructuredGraph#getLastSchedule() is still valid and uses the same SchedulingStrategy.
+         */
         ScheduleResult prev = graph.getLastSchedule();
         return prev == null || !graph.isLastScheduleValid() || prev.strategy != this.selectedStrategy;
     }

@@ -732,7 +732,7 @@ public class Graph implements EventCounter {
          * @param e an event
          * @param node the node related to {@code e}
          */
-        private final void event(NodeEvent e, Node node) {
+        final void event(NodeEvent e, Node node) {
             switch (e) {
                 case INPUT_CHANGED:
                     inputChanged(node);
