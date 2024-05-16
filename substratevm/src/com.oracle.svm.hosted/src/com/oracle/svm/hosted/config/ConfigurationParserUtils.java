@@ -51,7 +51,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 
-import jdk.graal.compiler.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JsonParserException;
 
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllNameEntriesAsType;
 
@@ -135,7 +135,7 @@ public final class ConfigurationParserUtils {
                 uri = ((URL) location).toURI();
             }
             parser.parseAndRegister(uri);
-        } catch (IOException | URISyntaxException | JSONParserException e) {
+        } catch (IOException | URISyntaxException | JsonParserException e) {
             String errorMessage = e.getMessage();
             if (errorMessage == null || errorMessage.isEmpty()) {
                 errorMessage = e.toString();

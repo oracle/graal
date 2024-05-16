@@ -19,8 +19,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import jdk.graal.compiler.util.json.JSONParser;
 import jdk.graal.compiler.util.json.JsonBuilder;
+import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class JsonBuilderTest {
@@ -69,7 +69,7 @@ public class JsonBuilderTest {
      * Parses the currently written contents.
      */
     private Object parseJson() throws IOException {
-        return new JSONParser(stringWriter.toString()).parse();
+        return new JsonParser(stringWriter.toString()).parse();
     }
 
     @Test

@@ -31,10 +31,11 @@ import java.io.StringWriter;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.util.json.JSONParser;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.util.json.JsonParser;
 
 public class TraceProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
@@ -54,7 +55,7 @@ public class TraceProcessor extends AbstractProcessor {
     @SuppressWarnings("unchecked")
     public void process(Reader reader, ConfigurationSet configurationSet) throws IOException {
         setInLivePhase(false);
-        JSONParser parser = new JSONParser(reader);
+        JsonParser parser = new JsonParser(reader);
         List<EconomicMap<String, ?>> trace = (List<EconomicMap<String, ?>>) parser.parse();
         processTrace(trace, configurationSet);
     }

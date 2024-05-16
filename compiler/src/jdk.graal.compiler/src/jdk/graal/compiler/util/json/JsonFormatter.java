@@ -33,7 +33,7 @@ import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.debug.GraalError;
 
-public class JSONFormatter {
+public class JsonFormatter {
     public static <T> String formatJSON(EconomicMap<String, T> map) {
         return formatJSON(map, false);
     }

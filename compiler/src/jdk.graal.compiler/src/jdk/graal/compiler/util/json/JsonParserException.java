@@ -25,8 +25,8 @@
 package jdk.graal.compiler.util.json;
 
 @SuppressWarnings("serial")
-public final class JSONParserException extends RuntimeException {
-    public JSONParserException(final String msg) {
+public final class JsonParserException extends RuntimeException {
+    public JsonParserException(final String msg) {
         super(msg);
     }
 }

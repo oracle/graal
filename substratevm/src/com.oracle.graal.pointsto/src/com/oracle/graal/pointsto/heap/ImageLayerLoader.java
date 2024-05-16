@@ -97,7 +97,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.util.json.JSONParser;
+import jdk.graal.compiler.util.json.JsonParser;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -280,7 +280,7 @@ public class ImageLayerLoader {
         if (jsonMap == null) {
             for (Path layerPath : loadPaths) {
                 try (InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(layerPath.toFile()))) {
-                    Object json = new JSONParser(inputStreamReader).parse();
+                    Object json = new JsonParser(inputStreamReader).parse();
                     jsonMap = cast(json);
                 } catch (IOException e) {
                     throw AnalysisError.shouldNotReachHere("Error during image layer snapshot loading", e);

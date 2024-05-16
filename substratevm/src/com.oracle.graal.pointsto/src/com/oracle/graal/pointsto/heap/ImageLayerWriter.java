@@ -86,7 +86,7 @@ import com.oracle.svm.util.FileDumpingUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.util.json.JSONFormatter;
+import jdk.graal.compiler.util.json.JsonFormatter;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -143,7 +143,7 @@ public class ImageLayerWriter {
     }
 
     public void dumpFile() {
-        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> JSONFormatter.printJSON(jsonMap, writer));
+        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> JsonFormatter.printJSON(jsonMap, writer));
     }
 
     public void persistImageHeapSize(long imageHeapSize) {

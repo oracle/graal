@@ -69,8 +69,8 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.util.json.JSONFormatter;
-import jdk.graal.compiler.util.json.JSONParser;
+import jdk.graal.compiler.util.json.JsonFormatter;
+import jdk.graal.compiler.util.json.JsonParser;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -183,7 +183,7 @@ public final class ProfileReplaySupport {
                     String s = PathUtilities.sanitizeFileName(method.format("%h.%n(%p)%r"));
                     boolean foundOne = false;
                     for (Path path : files.filter(x -> x.toString().contains(s)).filter(x -> x.toString().endsWith(".glog")).collect(Collectors.toList())) {
-                        EconomicMap<String, Object> map = JSONParser.parseDict(new FileReader(path.toFile()));
+                        EconomicMap<String, Object> map = JsonParser.parseDict(new FileReader(path.toFile()));
                         if (entryBCI == (int) map.get("entryBCI")) {
                             foundOne = true;
                             expectedResult = (Boolean) map.get("result");
@@ -262,7 +262,7 @@ public final class ProfileReplaySupport {
                         path = debug.getDumpPath(".glog", false, false);
                     }
                     try (PrintStream out = new PrintStream(new BufferedOutputStream(PathUtilities.openOutputStream(path)))) {
-                        out.println(JSONFormatter.formatJSON(map, true));
+                        out.println(JsonFormatter.formatJSON(map, true));
                     }
                 } catch (Throwable t) {
                     throw debug.handle(t);

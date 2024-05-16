@@ -33,7 +33,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-public class JSONParser {
+public class JsonParser {
 
     private final Reader source;
     private int pos = 0;
@@ -51,11 +51,11 @@ public class JSONParser {
     private static final int STATE_ELEMENT_PARSED = 1;
     private static final int STATE_COMMA_PARSED = 2;
 
-    public JSONParser(String source) throws IOException {
+    public JsonParser(String source) throws IOException {
         this(new StringReader(source));
     }
 
-    public JSONParser(Reader source) throws IOException {
+    public JsonParser(Reader source) throws IOException {
         this.source = new BufferedReader(source);
         next = source.read();
     }
@@ -162,13 +162,13 @@ public class JSONParser {
 
     @SuppressWarnings("unchecked")
     public static EconomicMap<String, Object> parseDict(Reader input) throws IOException {
-        JSONParser parser = new JSONParser(input);
+        JsonParser parser = new JsonParser(input);
         return (EconomicMap<String, Object>) parser.parse();
     }
 
     @SuppressWarnings("unchecked")
     public static EconomicMap<String, Object> parseDict(String input) throws IOException {
-        JSONParser parser = new JSONParser(input);
+        JsonParser parser = new JsonParser(input);
         return (EconomicMap<String, Object>) parser.parse();
     }
 
@@ -481,10 +481,10 @@ public class JSONParser {
         return c == EOF ? "eof" : String.valueOf((char) c);
     }
 
-    private JSONParserException error(final String message, final int position) {
+    private JsonParserException error(final String message, final int position) {
         final int columnNum = position - beginningOfLine;
         final String formatted = format(message, line, columnNum);
-        return new JSONParserException(formatted);
+        return new JsonParserException(formatted);
     }
 
     /**
@@ -499,15 +499,15 @@ public class JSONParser {
         return "line " + line + " column " + column + " " + message;
     }
 
-    private JSONParserException numberError(final int start) {
+    private JsonParserException numberError(final int start) {
         return error("Invalid JSON number format", start);
     }
 
-    private JSONParserException expectedError(final int start, final String expected, final String found) {
+    private JsonParserException expectedError(final int start, final String expected, final String found) {
         return error("Expected " + expected + " but found " + found, start);
     }
 
-    private JSONParserException syntaxError(final int start, final String reason) {
+    private JsonParserException syntaxError(final int start, final String reason) {
         return error("Invalid JSON: " + reason, start);
     }
 }

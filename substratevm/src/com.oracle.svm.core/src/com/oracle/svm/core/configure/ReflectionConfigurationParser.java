@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.util.LogUtils;
 
-import jdk.graal.compiler.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JsonParserException;
 
 /**
  * Parses JSON describing classes, methods and fields and delegates their registration to a
@@ -276,7 +276,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
                     found = delegate.registerAllMethodsWithName(condition, queriedOnly, clazz, methodName);
                 }
                 if (!found) {
-                    throw new JSONParserException("Method " + formatMethod(clazz, methodName) + " not found");
+                    throw new JsonParserException("Method " + formatMethod(clazz, methodName) + " not found");
                 }
             } catch (LinkageError e) {
                 handleMissingElement("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", e);

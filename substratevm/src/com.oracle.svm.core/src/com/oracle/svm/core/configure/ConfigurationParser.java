@@ -52,8 +52,8 @@ import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
-import jdk.graal.compiler.util.json.JSONParser;
-import jdk.graal.compiler.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JsonParser;
+import jdk.graal.compiler.util.json.JsonParserException;
 
 public abstract class ConfigurationParser {
     public static InputStream openStream(URI uri) throws IOException {
@@ -78,7 +78,7 @@ public abstract class ConfigurationParser {
 
     public void parseAndRegister(URI uri) throws IOException {
         try (Reader reader = openReader(uri)) {
-            parseAndRegister(new JSONParser(reader).parse(), uri);
+            parseAndRegister(new JsonParser(reader).parse(), uri);
         }
     }
 
@@ -87,7 +87,7 @@ public abstract class ConfigurationParser {
     }
 
     public void parseAndRegister(Reader reader) throws IOException {
-        parseAndRegister(new JSONParser(reader).parse(), null);
+        parseAndRegister(new JsonParser(reader).parse(), null);
     }
 
     public abstract void parseAndRegister(Object json, URI origin) throws IOException;
@@ -97,7 +97,7 @@ public abstract class ConfigurationParser {
         if (data instanceof List) {
             return (List<Object>) data;
         }
-        throw new JSONParserException(errorMessage);
+        throw new JsonParserException(errorMessage);
     }
 
     @SuppressWarnings("unchecked")
@@ -105,7 +105,7 @@ public abstract class ConfigurationParser {
         if (data instanceof EconomicMap) {
             return (EconomicMap<String, Object>) data;
         }
-        throw new JSONParserException(errorMessage);
+        throw new JsonParserException(errorMessage);
     }
 
     protected void checkAttributes(EconomicMap<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
@@ -114,7 +114,7 @@ public abstract class ConfigurationParser {
             unseenRequired.remove(key);
         }
         if (!unseenRequired.isEmpty()) {
-            throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
+            throw new JsonParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
         }
         Set<String> unknownAttributes = new HashSet<>();
         for (String key : map.getKeys()) {
@@ -141,14 +141,14 @@ public abstract class ConfigurationParser {
             if (alternativeAttributes.contains(key)) {
                 if (attributeFound) {
                     String message = "Exactly one of [" + String.join(", ", alternativeAttributes) + "] must be set in " + type;
-                    throw new JSONParserException(message);
+                    throw new JsonParserException(message);
                 }
                 attributeFound = true;
             }
         }
         if (!attributeFound) {
             String message = "Exactly one of [" + String.join(", ", alternativeAttributes) + "] must be set in " + type;
-            throw new JSONParserException(message);
+            throw new JsonParserException(message);
         }
     }
 
@@ -174,14 +174,14 @@ public abstract class ConfigurationParser {
         if (value instanceof String) {
             return (String) value;
         }
-        throw new JSONParserException("Invalid string value \"" + value + "\".");
+        throw new JsonParserException("Invalid string value \"" + value + "\".");
     }
 
     protected static String asString(Object value, String propertyName) {
         if (value instanceof String) {
             return (String) value;
         }
-        throw new JSONParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
+        throw new JsonParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
     }
 
     protected static String asNullableString(Object value, String propertyName) {
@@ -192,7 +192,7 @@ public abstract class ConfigurationParser {
         if (value instanceof Boolean) {
             return (boolean) value;
         }
-        throw new JSONParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
+        throw new JsonParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
     }
 
     protected static long asLong(Object value, String propertyName) {
@@ -202,7 +202,7 @@ public abstract class ConfigurationParser {
         if (value instanceof Integer) {
             return (int) value;
         }
-        throw new JSONParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
+        throw new JsonParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
 
     protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> data, boolean runtimeCondition) {
@@ -238,8 +238,8 @@ public abstract class ConfigurationParser {
         return UnresolvedConfigurationCondition.alwaysTrue();
     }
 
-    private static JSONParserException failOnSchemaError(String message) {
-        throw new JSONParserException(message);
+    private static JsonParserException failOnSchemaError(String message) {
+        throw new JsonParserException(message);
     }
 
     protected static Optional<ConfigurationTypeDescriptor> parseTypeOrName(EconomicMap<String, Object> data, boolean treatAllNameEntriesAsType) {
