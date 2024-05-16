@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.util.VMError;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
     private final ResourcesRegistry registry;
@@ -157,109 +158,118 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     }
 
     private void parseGlobEntry(Object data, BiConsumer<ConfigurationCondition, String> resourceRegistry) {
-        EconomicMap<String, Object> glob = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
-        checkAttributes(glob, "resource and resource bundle descriptor object", Collections.singletonList("glob"), List.of(CONDITIONAL_KEY, MODULE_KEY));
-        ConfigurationCondition condition = parseCondition(glob);
+        EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
+        checkAttributes(globObject, "resource and resource bundle descriptor object", Collections.singletonList(GLOB_KEY), List.of(CONDITIONAL_KEY, MODULE_KEY));
+        ConfigurationCondition condition = parseCondition(globObject);
 
-        Object moduleObject = glob.get(MODULE_KEY);
+        Object moduleObject = globObject.get(MODULE_KEY);
         String module = moduleObject == null ? "" : asString(moduleObject);
 
-        Object valueObject = glob.get("glob");
-        String value = asString(valueObject, "glob");
+        Object valueObject = globObject.get(GLOB_KEY);
+        String value = asString(valueObject, GLOB_KEY);
         resourceRegistry.accept(condition, globToRegex(module, value));
     }
 
-    public static String globToRegex(String module, String value) {
-        String quotedValue = quoteLiteralParts(value);
-        String transformedValue = replaceWildcards(quotedValue);
-        return (module == null || module.isEmpty() ? "" : module + ":") + transformedValue;
+    public static String globToRegex(String module, String glob) {
+        return (module == null || module.isEmpty() ? "" : module + ":") + globToRegex(glob);
     }
 
-    private static String quoteLiteralParts(String value) {
+    private static String globToRegex(String glob) {
         StringBuilder sb = new StringBuilder();
 
-        int pathLength = value.length();
-        int previousIndex = 0;
-        for (int i = 0; i < pathLength; i++) {
-            if (value.charAt(i) == '*') {
-                if (previousIndex != i) {
-                    /* be resistant to empty string (e.g. when glob starts with *) */
-                    String part = value.substring(previousIndex, i);
-                    sb.append(quoteValue(part));
+        int quoteStartIndex = 0;
+        Wildcard current = Wildcard.START;
+        for (int i = 0; i < glob.length(); i++) {
+            char c = glob.charAt(i);
+            if (current.couldAdvance(c)) {
+                if (current.isCycleStart() && quoteStartIndex != i) {
+                    /* we start processing a new wildcard so quote previous content */
+                    sb.append(quoteValue(glob.substring(quoteStartIndex, i)));
                 }
 
-                sb.append('*');
-
-                if (i + 1 < pathLength && value.charAt(i + 1) == '*') {
-                    /* next char is also * so skip it as well */
-                    sb.append('*');
-                    i++;
-
-                    if (i + 1 < pathLength && value.charAt(i + 1) == '/') {
-                        /*
-                         * ** wildcard followed by / => do not include that / in next quote because
-                         * it will be parsed later
-                         */
-                        sb.append('/');
-                        i++;
-                    }
-
-                }
-                previousIndex = i + 1;
-            }
-        }
-
-        if (previousIndex < pathLength) {
-            String part = value.substring(previousIndex);
-            sb.append(quoteValue(part));
-        }
-
-        return sb.toString();
-    }
-
-    private static String replaceWildcards(String value) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            /* check if we found a star */
-            if (c == '*') {
-                /* check if next char is also star */
-                if (i + 1 < value.length()) {
-                    char next = value.charAt(i + 1);
-                    if (next == '*') {
-                        /* two consecutive **, check if it is followed by / */
-                        if (i + 2 < value.length()) {
-                            char possibleSlash = value.charAt(i + 2);
-                            if (possibleSlash == '/') {
-                                // we have **/
-                                sb.append("[^/]*(/|$))*");
-                                i += 2;
-                            } else {
-                                /* we have ** (this can only happen at the end of the glob) */
-                                sb.append(".*");
-                                i += 1;
-                            }
-                            continue;
-                        }
-
-                        /*
-                         * two consecutive ** without / after them (this can only happen at the end
-                         * of the glob)
-                         */
-                        sb.append(".*");
-                        i += 1;
-                        continue;
-                    }
+                if (current.isCycleEnd()) {
+                    /* dump content because cycle ends and prepare for the new wildcard */
+                    sb.append(current.convertToRegex());
+                    current = current.startNewCycle();
                 }
 
-                sb.append("[^/]*");
+                current = current.next();
+                quoteStartIndex = i + 1;
                 continue;
             }
 
-            sb.append(c);
+            /* we processed whole wildcard so append it and prepare for the new wildcard */
+            sb.append(current.convertToRegex());
+            current = current.startNewCycle();
+        }
+
+        if (quoteStartIndex < glob.length()) {
+            /* we have something after last wildcard that is not quoted */
+            sb.append(quoteValue(glob.substring(quoteStartIndex)));
+        } else if (!current.isCycleStart()) {
+            /* we have some wildcard at the end that is not appended */
+            sb.append(current.convertToRegex());
         }
 
         return sb.toString();
+    }
+
+    /**
+     * This enum represents state machine that helps to identify glob wildcards. Since one star can
+     * be followed by another, we are starting a new cycle to track which wildcard will be generated
+     * in the end.
+     *
+     * We can check if the next character can advance the current cycle by calling
+     * {@link #couldAdvance}. If we can advance in the cycle, we should call {@link #next} to get
+     * next state of the cycle. Once we can't proceed with the given character, cycle for this
+     * wildcard ends, so we should use {@link #convertToRegex} to transform current wildcard into
+     * regex. Whenever previous cycle is finished, we should prepare the state machine for the next
+     * possible wildcard by calling {@link #startNewCycle}.
+     */
+    private enum Wildcard {
+        START,
+        STAR,
+        DOUBLE_STAR,
+        DOUBLE_STAR_SLASH;
+
+        public boolean couldAdvance(char c) {
+            return c == '*' || (this.equals(Wildcard.DOUBLE_STAR) && c == '/');
+        }
+
+        public Wildcard next() {
+            return values()[(this.ordinal() + 1) % values().length];
+        }
+
+        public Wildcard startNewCycle() {
+            return Wildcard.START;
+        }
+
+        public boolean isCycleStart() {
+            return this.equals(Wildcard.START);
+        }
+
+        public boolean isCycleEnd() {
+            return this.equals(Wildcard.DOUBLE_STAR_SLASH);
+        }
+
+        public String convertToRegex() {
+            switch (this) {
+                case START -> {
+                    return "";
+                }
+                case STAR -> {
+                    return "[^/]*";
+                }
+                case DOUBLE_STAR -> {
+                    return ".*";
+                }
+                case DOUBLE_STAR_SLASH -> {
+                    return "[^/]*(/|$))*";
+                }
+
+                default -> throw VMError.shouldNotReachHere("Unsupported conversion of: " + this);
+            }
+        }
     }
 
     private static String quoteValue(String value) {
