@@ -332,7 +332,7 @@ public class LoopEx {
                     if (iv.direction() == Direction.Up) {
                         if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.upperBound()) {
                             // signed: i < MAX_INT
-                        } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedUpperBound()) {
+                        } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedUpperBound() && IntegerStamp.sameSign(initStamp, limitStamp)) {
                             unsigned = true;
                         } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.upperBound() > limitStamp.lowerBound()) {
                             return false;
@@ -340,7 +340,7 @@ public class LoopEx {
                     } else if (iv.direction() == Direction.Down) {
                         if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.lowerBound()) {
                             // signed: MIN_INT > i
-                        } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedLowerBound()) {
+                        } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedLowerBound() && IntegerStamp.sameSign(initStamp, limitStamp)) {
                             unsigned = true;
                         } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.lowerBound() < limitStamp.upperBound()) {
                             return false;
