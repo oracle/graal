@@ -150,6 +150,17 @@ public class SubstrateCompilationDirectives {
 
     private final Set<AnalysisMethod> forcedCompilations = ConcurrentHashMap.newKeySet();
     private final Set<AnalysisMethod> frameInformationRequired = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Contains a map for each {@link MultiMethod#DEOPT_TARGET_METHOD} of all encoded BCIs where a
+     * deoptimization entrypoint must be present. Whenever this map is present for a method, then
+     * the deopt target method must be emitted in the machine code. Note even if the map for a
+     * method has no entries, the method still must be emitted in machine code, as this indicates
+     * {@link #registerFrameInformationRequired} has been called for this method.
+     *
+     * Note also this map is recreated after analysis, via calling {@link #resetDeoptEntries}, to
+     * ensure the deoptimization entrypoints needed is minimal.
+     */
     private Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> deoptEntries = new ConcurrentHashMap<>();
     private final Set<AnalysisMethod> deoptForTestingMethods = ConcurrentHashMap.newKeySet();
     private final Set<AnalysisMethod> deoptInliningExcludes = ConcurrentHashMap.newKeySet();
@@ -226,11 +237,6 @@ public class SubstrateCompilationDirectives {
         return deoptEntries.containsKey(toAnalysisMethod(method));
     }
 
-    public void registerDeoptTarget(ResolvedJavaMethod method) {
-        assert deoptInfoModifiable();
-        deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new ConcurrentHashMap<>());
-    }
-
     public boolean isDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
         assert deoptInfoQueryable();
 
@@ -244,7 +250,12 @@ public class SubstrateCompilationDirectives {
     public boolean isRegisteredDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
         assert deoptInfoQueryable();
         Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod((ResolvedJavaMethod) method));
-        assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";
+        if (bciMap == null) {
+            /*
+             * If a map doesn't exist for this method then a registered deopt entry cannot exist.
+             */
+            return false;
+        }
 
         long encodedBci = FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException);
         return bciMap.containsKey(encodedBci);
