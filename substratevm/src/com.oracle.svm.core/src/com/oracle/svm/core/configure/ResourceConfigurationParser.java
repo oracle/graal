@@ -179,44 +179,44 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         StringBuilder sb = new StringBuilder();
 
         int quoteStartIndex = 0;
-        Wildcard current = Wildcard.START;
+        Wildcard currentWildcard = Wildcard.START;
         for (int i = 0; i < glob.length(); i++) {
             char c = glob.charAt(i);
-            if (current.couldAdvance(c)) {
-                if (current.isCycleStart() && quoteStartIndex != i) {
+            if (currentWildcard.couldAdvance(c)) {
+                if (currentWildcard.isCycleStart() && quoteStartIndex != i) {
                     /* we start processing a new wildcard so quote previous content */
                     sb.append(quoteValue(glob.substring(quoteStartIndex, i)));
                 }
 
-                if (current.isCycleEnd()) {
+                if (currentWildcard.isCycleEnd()) {
                     /* dump content because cycle ends and prepare for the new wildcard */
-                    sb.append(current.convertToRegex());
-                    current = current.startNewCycle();
+                    sb.append(currentWildcard.convertToRegex());
+                    currentWildcard = currentWildcard.startNewCycle();
                 }
 
-                current = current.next();
+                currentWildcard = currentWildcard.next();
                 quoteStartIndex = i + 1;
                 continue;
             }
 
             /* we processed whole wildcard so append it and prepare for the new wildcard */
-            sb.append(current.convertToRegex());
-            current = current.startNewCycle();
+            sb.append(currentWildcard.convertToRegex());
+            currentWildcard = currentWildcard.startNewCycle();
         }
 
         if (quoteStartIndex < glob.length()) {
             /* we have something after last wildcard that is not quoted */
             sb.append(quoteValue(glob.substring(quoteStartIndex)));
-        } else if (!current.isCycleStart()) {
+        } else if (!currentWildcard.isCycleStart()) {
             /* we have some wildcard at the end that is not appended */
-            sb.append(current.convertToRegex());
+            sb.append(currentWildcard.convertToRegex());
         }
 
         return sb.toString();
     }
 
     /**
-     * This enum represents state machine that helps to identify glob wildcards. Since one star can
+     * This enum acts like a state machine that helps to identify glob wildcards. Since one star can
      * be followed by another, we are starting a new cycle to track which wildcard will be generated
      * in the end.
      *
