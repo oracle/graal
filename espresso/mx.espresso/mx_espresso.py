@@ -29,6 +29,7 @@ import subprocess
 
 import mx
 import mx_jardistribution
+import mx_pomdistribution
 import mx_subst
 import mx_util
 import mx_espresso_benchmarks  # pylint: disable=unused-import
@@ -488,6 +489,24 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             "artifactId": "espresso-runtime-resources-" + espresso_runtime_resource_name,
             "tag": ["default", "public"],
         }))
+    register_distribution(mx_pomdistribution.POMDistribution(
+        _suite, "JAVA_COMMUNITY", [],
+        [
+            "ESPRESSO",
+            "ESPRESSO_LIBS_RESOURCES",
+            "ESPRESSO_RUNTIME_RESOURCES",
+            "truffle:TRUFFLE_NFI_LIBFFI",
+            "truffle:TRUFFLE_RUNTIME",
+            # sulong is not strictly required but it'll work out of the box in more cases if it's there
+            "sulong:LLVM_NATIVE_COMMUNITY",
+        ],
+        None,
+        description="Java on Truffle (aka Espresso): a Java bytecode interpreter",
+        maven={
+            "artifactId": "java-community",
+            "tag": ["default", "public"],
+        },
+    ))
 
 
 class JavaHomeDependency(mx.ArchivableProject):
