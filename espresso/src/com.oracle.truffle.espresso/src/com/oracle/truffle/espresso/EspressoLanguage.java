@@ -31,8 +31,8 @@ import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 
-import com.oracle.truffle.espresso.runtime.OS;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
@@ -80,6 +80,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
+import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.JImageExtensions;
@@ -596,6 +597,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     private static final String[] KNOWN_ESPRESSO_RUNTIMES = {"jdk21", "openjdk21"};
+    private static final Pattern VALID_RESOURCE_ID = Pattern.compile("[0-9a-z\\-]+");
 
     public static Path getEspressoRuntime(TruffleLanguage.Env env) {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
@@ -617,6 +619,27 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             }
         }
         try {
+            if (env.getOptions().hasBeenSet(EspressoOptions.JavaHome)) {
+                // This option's value will be used, no need to guess
+                if (env.getOptions().hasBeenSet(EspressoOptions.RuntimeResourceId)) {
+                    env.getLogger(EspressoContext.class).warning("Both java.JavaHome and java.RuntimeResourceId are set. RuntimeResourceId will be ignored.");
+                }
+                return null;
+            }
+            if (env.getOptions().hasBeenSet(EspressoOptions.RuntimeResourceId)) {
+                String runtimeName = env.getOptions().get(EspressoOptions.RuntimeResourceId);
+                if (!VALID_RESOURCE_ID.matcher(runtimeName).matches()) {
+                    throw EspressoError.fatal("Invalid RuntimeResourceId: " + runtimeName);
+                }
+                TruffleFile resource = env.getInternalResource("espresso-runtime-" + runtimeName);
+                if (resource == null) {
+                    throw EspressoError.fatal("Couldn't find: espresso-runtime-" + runtimeName + " internal resource.\n" +
+                                    "Did you add the appropriate jar to the classpath?");
+                }
+                Path resources = Path.of(resource.getAbsoluteFile().toString());
+                assert Files.isDirectory(resources);
+                return resources;
+            }
             for (String runtimeName : KNOWN_ESPRESSO_RUNTIMES) {
                 TruffleFile resource = env.getInternalResource("espresso-runtime-" + runtimeName);
                 if (resource != null) {
@@ -625,10 +648,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                     env.getLogger(EspressoContext.class).info(() -> "Selected " + runtimeName + " runtime");
                     return resources;
                 }
-            }
-            if (env.getOptions().hasBeenSet(EspressoOptions.JavaHome)) {
-                // This option's value will be used, no need to guess
-                return null;
             }
             if (OS.getCurrent() == OS.Linux && JavaVersion.HOST_VERSION.compareTo(JavaVersion.latestSupported()) <= 0) {
                 if (!EspressoOptions.RUNNING_ON_SVM || (boolean) env.getConfig().getOrDefault("preinit", false)) {
