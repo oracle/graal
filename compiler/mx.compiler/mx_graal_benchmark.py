@@ -128,10 +128,10 @@ _graal_variants = [
     ('serialgc', ['-XX:+UseSerialGC'], 12),
     ('pargc', ['-XX:+UseParallelGC'], 12),
     ('g1gc', ['-XX:+UseG1GC'], 12),
-    ('zgc', ['-XX:+UseZGC'], 12),
+    ('zgc', ['-XX:+UseZGC', '-XX:-ZGenerational'], 12),
     # ('gen-zgc', ['-XX:+UseZGC', '-XX:+ZGenerational'], 12), # GR-45919 not yet supported
-    ('zgc-avx2', ['-XX:+UseZGC', '-XX:UseAVX=2'], 12),
-    ('zgc-avx3', ['-XX:+UseZGC', '-XX:UseAVX=3'], 12),
+    ('zgc-avx2', ['-XX:+UseZGC', '-XX:-ZGenerational', '-XX:UseAVX=2'], 12),
+    ('zgc-avx3', ['-XX:+UseZGC', '-XX:-ZGenerational', '-XX:UseAVX=3'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-profile-info', ['-Djvmci.UseProfilingInformation=false'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
@@ -155,7 +155,7 @@ mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+Enable
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-serialgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseSerialGC']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-pargc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseParallelGC']), _suite, 2)
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-zgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseZGC']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-zgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseZGC', '-XX:-ZGenerational']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-gen-zgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseZGC', '-XX:+ZGenerational']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-no-tiered-comp', ['-server', '-XX:-EnableJVMCI', '-XX:-TieredCompilation']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
