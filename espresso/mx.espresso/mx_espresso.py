@@ -28,6 +28,7 @@ import subprocess
 
 import mx
 import mx_jardistribution
+import mx_pomdistribution
 import mx_subst
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
@@ -265,9 +266,9 @@ if espresso_llvm_java_home:
     ))
 
 
-def _jdk_license(home):
-    if mx_sdk_vm.ee_implementor(home):
-        return "Oracle Proprietary"
+def _resource_license(ee_implementor):
+    if ee_implementor:
+        return "GFTC"
     else:
         return "GPLv2-CPE"
 
@@ -314,7 +315,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 f"dependency:LLVM_JAVA_HOME/{jdk_lib_dir}/{lib_prefix}*{lib_suffix}",
                 "dependency:LLVM_JAVA_HOME/release"
             ],
-        }, None, True, _jdk_license(espresso_llvm_java_home)))
+        }, None, True, _resource_license(llvm_java_home_dep.is_ee_implementor)))
         llvm_runtime_dir = {
             "source_type": "dependency",
             "dependency": "LLVM_JAVA_HOME",
@@ -365,7 +366,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             "darwin-aarch64",
             "windows-amd64",
         ],
-        theLicense=None,  # TODO
+        theLicense=_resource_license(java_home_dep.is_ee_implementor),
         hashEntry="META-INF/resources/java/espresso-runtime/<os>/<arch>/sha256",
         fileListEntry="META-INF/resources/java/espresso-runtime/<os>/<arch>/files",
         maven=False))
@@ -374,7 +375,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         # com.oracle.truffle.espresso.resources.runtime
         register_project(EspressoRuntimeResourceProject(_suite, 'src', '?', _suite.defaultLicense))  # TODO theLicense
 
-    runtime_resources_jar = mx_jardistribution.JARDistribution(
+    register_distribution(mx_jardistribution.JARDistribution(
         _suite, "ESPRESSO_RUNTIME_RESOURCES", None, None, None,
         moduleInfo={
             "name": "org.graalvm.espresso.resources.runtime",
@@ -388,14 +389,33 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         distDependencies=["truffle:TRUFFLE_API"],
         javaCompliance=None,
         platformDependent=True,
-        theLicense=None,  # TODO
+        theLicense=_resource_license(java_home_dep.is_ee_implementor),
         compress=True,
         useModulePath=True,
         description="Runtime environment used by the Java on Truffle (aka Espresso) implementation",
         maven={
+            "groupId": "org.graalvm.espresso",
             "tag": ["default", "public"],
-        })
-    register_distribution(runtime_resources_jar)
+        }))
+    register_distribution(mx_pomdistribution.POMDistribution(
+        _suite, "JAVA_COMMUNITY", [],
+        [
+            "ESPRESSO",
+            "ESPRESSO_LIBS_RESOURCES",
+            "ESPRESSO_RUNTIME_RESOURCES",
+            "truffle:TRUFFLE_NFI_LIBFFI",
+            "truffle:TRUFFLE_RUNTIME",
+            # sulong is not strictly required but it'll work out of the box in more cases if it's there
+            "sulong:LLVM_NATIVE_COMMUNITY",
+        ],
+        None,
+        description="Java on Truffle (aka Espresso): a Java bytecode interpreter",
+        maven={
+            "groupId" : "org.graalvm.polyglot",
+            "artifactId": "java-community",
+            "tag": ["default", "public"],
+        },
+    ))
 
 
 class JavaHomeDependency(mx.ArchivableProject):
