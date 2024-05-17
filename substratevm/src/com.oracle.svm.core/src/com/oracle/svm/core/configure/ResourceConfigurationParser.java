@@ -158,7 +158,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     }
 
     private void parseGlobEntry(Object data, BiConsumer<ConfigurationCondition, String> resourceRegistry) {
-        EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
+        EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be glob descriptor objects");
         checkAttributes(globObject, "resource and resource bundle descriptor object", Collections.singletonList(GLOB_KEY), List.of(CONDITIONAL_KEY, MODULE_KEY));
         ConfigurationCondition condition = parseCondition(globObject);
 
