@@ -56,24 +56,22 @@ public final class Signature {
     public final List<TypeMirror> operandTypes;
     public final boolean isVariadic;
     public final boolean isVoid;
-
-    public final List<String> constantOperandsBefore;
-    public final List<String> constantOperandsAfter;
+    public final int constantOperandsBeforeCount;
     public final int dynamicOperandCount;
+    public final int constantOperandsAfterCount;
 
     public Signature(TypeMirror returnType, List<TypeMirror> types) {
-        this(returnType, types, false, List.of(), List.of());
+        this(returnType, types, false, 0, 0);
     }
 
-    public Signature(TypeMirror returnType, List<TypeMirror> types, boolean isVariadic, List<String> constantOperandsBefore, List<String> constantOperandsAfter) {
+    public Signature(TypeMirror returnType, List<TypeMirror> types, boolean isVariadic, int constantOperandsBeforeCount, int constantOperandsAfterCount) {
         this.returnType = returnType;
         this.operandTypes = Collections.unmodifiableList(types);
         this.isVariadic = isVariadic;
         this.isVoid = ElementUtils.isVoid(returnType);
-
-        this.constantOperandsBefore = Collections.unmodifiableList(constantOperandsBefore);
-        this.constantOperandsAfter = Collections.unmodifiableList(constantOperandsAfter);
-        this.dynamicOperandCount = types.size() - constantOperandsBefore.size() - constantOperandsAfter.size();
+        this.constantOperandsBeforeCount = constantOperandsBeforeCount;
+        this.dynamicOperandCount = operandTypes.size() - constantOperandsBeforeCount - constantOperandsAfterCount;
+        this.constantOperandsAfterCount = constantOperandsAfterCount;
     }
 
     public TypeMirror getGenericType(int i) {
@@ -97,7 +95,7 @@ public final class Signature {
         if (isVariadicParameter(i)) {
             return context.getType(Object[].class);
         }
-        return operandTypes.get(constantOperandsBefore.size() + i);
+        return operandTypes.get(constantOperandsBeforeCount + i);
     }
 
     public boolean isVariadicParameter(int i) {
@@ -111,12 +109,12 @@ public final class Signature {
         sb.append(ElementUtils.getSimpleName(returnType)).append(" ");
         sb.append("(");
 
-        for (int i = 0; i < getConstantOperandsBeforeCount(); i++) {
+        for (int i = 0; i < constantOperandsBeforeCount; i++) {
             sb.append(ElementUtils.getSimpleName(operandTypes.get(i)));
             sb.append(", ");
         }
 
-        int offset = getConstantOperandsBeforeCount();
+        int offset = constantOperandsBeforeCount;
         for (int i = 0; i < dynamicOperandCount; i++) {
             sb.append(ElementUtils.getSimpleName(operandTypes.get(offset + i)));
             if (isVariadic && i == dynamicOperandCount - 1) {
@@ -126,7 +124,7 @@ public final class Signature {
         }
 
         offset += dynamicOperandCount;
-        for (int i = 0; i < getConstantOperandsAfterCount(); i++) {
+        for (int i = 0; i < constantOperandsAfterCount; i++) {
             sb.append(ElementUtils.getSimpleName(operandTypes.get(offset + i)));
             sb.append(", ");
         }
@@ -138,13 +136,5 @@ public final class Signature {
         sb.append(')');
 
         return sb.toString();
-    }
-
-    public int getConstantOperandsBeforeCount() {
-        return constantOperandsBefore.size();
-    }
-
-    public int getConstantOperandsAfterCount() {
-        return constantOperandsAfter.size();
     }
 }

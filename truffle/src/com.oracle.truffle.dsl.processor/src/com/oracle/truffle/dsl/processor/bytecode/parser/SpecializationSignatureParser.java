@@ -59,23 +59,31 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.ConstantOperands;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.ConstantOperandsModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
-public class SignatureParser {
+public class SpecializationSignatureParser {
+
+    /**
+     * Represents a signature parsed from a given specialization of a custom operation. In addition
+     * to the regular signature information, this record includes the operand names declared by the
+     * specialization.
+     */
+    record SpecializationSignature(Signature signature, List<String> operandNames) {
+    }
 
     final ProcessorContext context;
     final TruffleTypes types;
 
-    public SignatureParser(ProcessorContext context) {
+    public SpecializationSignatureParser(ProcessorContext context) {
         this.context = context;
         this.types = context.getTypes();
     }
 
-    public Signature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperands constantOperands) {
+    public SpecializationSignature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperandsModel constantOperands) {
         boolean isValid = true;
         boolean isFallback = ElementUtils.findAnnotationMirror(specialization, types.Fallback) != null;
 
@@ -99,9 +107,8 @@ public class SignatureParser {
             skipDSLParameters(params);
         }
 
+        List<String> operandNames = new ArrayList<>(operands.size());
         int numConstantOperands = constantOperands.before().size() + constantOperands.after().size();
-        List<String> constantOperandsBefore = new ArrayList<>(constantOperands.before().size());
-        List<String> constantOperandsAfter = new ArrayList<>(constantOperands.after().size());
         if (operands.size() < numConstantOperands) {
             errorTarget.addError(specialization, "Specialization should declare at least %d operand%s (one for each %s).",
                             numConstantOperands,
@@ -110,17 +117,17 @@ public class SignatureParser {
             isValid = false;
         } else {
             // Argument layout: [consts_before..., dynamic_params..., consts_after...]
+            int numDynamicOperands = operands.size() - numConstantOperands;
 
             // Process constant operands (before).
             for (int i = 0; i < constantOperands.before().size(); i++) {
                 VariableElement operand = operands.get(i);
                 ConstantOperandModel constantOperand = constantOperands.before().get(i);
                 isValid = checkConstantOperandParam(operand, constantOperand, errorTarget) && isValid;
-                constantOperandsBefore.add(constantOperand.getNameOrDefault(operand.getSimpleName().toString()));
+                operandNames.add(constantOperand.getNameOrDefault(operand.getSimpleName().toString()));
             }
 
             // Process dynamic operands.
-            int numDynamicOperands = operands.size() - numConstantOperands;
             int dynamicOffset = constantOperands.before().size();
             for (int i = 0; i < numDynamicOperands; i++) {
                 VariableElement dynamicOperand = operands.get(dynamicOffset + i);
@@ -157,6 +164,8 @@ public class SignatureParser {
                         isValid = false;
                     }
                 }
+
+                operandNames.add(dynamicOperand.getSimpleName().toString());
             }
 
             // Process constant operands (after).
@@ -165,7 +174,7 @@ public class SignatureParser {
                 VariableElement operand = operands.get(constantAfterOffset + i);
                 ConstantOperandModel constantOperand = constantOperands.after().get(i);
                 isValid = checkConstantOperandParam(operand, constantOperand, errorTarget) && isValid;
-                constantOperandsAfter.add(constantOperand.getNameOrDefault(operand.getSimpleName().toString()));
+                operandNames.add(constantOperand.getNameOrDefault(operand.getSimpleName().toString()));
             }
         }
 
@@ -205,7 +214,9 @@ public class SignatureParser {
         if (ElementUtils.canThrowTypeExact(specialization.getThrownTypes(), CustomOperationParser.types().UnexpectedResultException)) {
             returnType = context.getDeclaredType(Object.class);
         }
-        return new Signature(returnType, operandTypes, hasVariadic, constantOperandsBefore, constantOperandsAfter);
+        Signature signature = new Signature(returnType, operandTypes, hasVariadic, constantOperands.before().size(), constantOperands.after().size());
+
+        return new SpecializationSignature(signature, operandNames);
     }
 
     private boolean isVariadic(VariableElement param) {
@@ -270,12 +281,12 @@ public class SignatureParser {
      * Also accumulates individual signatures into the {@code signatures} parameter, so they can be
      * inspected individually.
      */
-    public static Signature createPolymorphicSignature(List<Signature> signatures, List<ExecutableElement> specializations, MessageContainer customOperation) {
+    public static Signature createPolymorphicSignature(List<SpecializationSignature> signatures, List<ExecutableElement> specializations, MessageContainer customOperation) {
         assert !signatures.isEmpty();
         assert signatures.size() == specializations.size();
-        Signature polymorphicSignature = signatures.get(0);
+        Signature polymorphicSignature = signatures.get(0).signature();
         for (int i = 1; i < signatures.size(); i++) {
-            polymorphicSignature = mergeSignatures(signatures.get(i), polymorphicSignature, specializations.get(i), customOperation);
+            polymorphicSignature = mergeSignatures(signatures.get(i).signature(), polymorphicSignature, specializations.get(i), customOperation);
             if (polymorphicSignature == null) {
                 break;
             }
@@ -297,11 +308,11 @@ public class SignatureParser {
             }
             return null;
         }
-        assert a.getConstantOperandsBeforeCount() == b.getConstantOperandsBeforeCount();
-        assert a.getConstantOperandsAfterCount() == b.getConstantOperandsAfterCount();
+        assert a.constantOperandsBeforeCount == b.constantOperandsBeforeCount;
+        assert a.constantOperandsAfterCount == b.constantOperandsAfterCount;
         if (a.dynamicOperandCount != b.dynamicOperandCount) {
             if (errorTarget != null) {
-                errorTarget.addError(el, "Error calculating operation signature: all specializations must have the same number of value arguments.");
+                errorTarget.addError(el, "Error calculating operation signature: all specializations must have the same number of operands.");
             }
             return null;
         }
@@ -311,8 +322,7 @@ public class SignatureParser {
         for (int i = 0; i < a.operandTypes.size(); i++) {
             mergedTypes.add(mergeIfPrimitiveType(a.context, a.operandTypes.get(i), b.operandTypes.get(i)));
         }
-        return new Signature(newReturnType, mergedTypes, a.isVariadic,
-                        a.constantOperandsBefore, a.constantOperandsAfter);
+        return new Signature(newReturnType, mergedTypes, a.isVariadic, a.constantOperandsBeforeCount, a.constantOperandsAfterCount);
     }
 
     private static TypeMirror mergeIfPrimitiveType(ProcessorContext context, TypeMirror a, TypeMirror b) {

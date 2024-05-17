@@ -445,7 +445,7 @@ abstract class ConstantOperandErrorRootNode extends RootNode implements Bytecode
         public static void doOperation(VirtualFrame frame, int const1, Object dynamic1, int const2) {
         }
 
-        @ExpectError("Error calculating operation signature: all specializations must have the same number of value arguments.")
+        @ExpectError("Error calculating operation signature: all specializations must have the same number of operands.")
         @Specialization
         public static void doOperation2(VirtualFrame frame, int const1, Object dynamic1, Object dynamic2, int const2) {
         }
