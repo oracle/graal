@@ -27,10 +27,12 @@ import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.runtime.OS;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
@@ -622,6 +624,17 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                     assert Files.isDirectory(resources);
                     env.getLogger(EspressoContext.class).info(() -> "Selected " + runtimeName + " runtime");
                     return resources;
+                }
+            }
+            if (env.getOptions().hasBeenSet(EspressoOptions.JavaHome)) {
+                // This option's value will be used, no need to guess
+                return null;
+            }
+            if (OS.getCurrent() == OS.Linux && JavaVersion.HOST_VERSION.compareTo(JavaVersion.latestSupported()) <= 0) {
+                if (!EspressoOptions.RUNNING_ON_SVM || (boolean) env.getConfig().getOrDefault("preinit", false)) {
+                    // we might be able to use the host runtime libraries
+                    env.getLogger(EspressoContext.class).info("Trying to use the host's runtime libraries");
+                    return Paths.get(System.getProperty("java.home"));
                 }
             }
             // TODO add potential remedies
