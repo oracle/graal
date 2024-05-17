@@ -104,6 +104,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.DynamicOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
@@ -3214,7 +3215,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createCreateLocal() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal");
 
-            addJavadoc(ex, "Creates a new local. Uses default values for the local's slot metadata.");
+            addJavadoc(ex, "Creates a new local. Uses default values for the local's metadata.");
 
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -3232,10 +3233,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(type(Object.class), "info"));
 
             addJavadoc(ex, """
-                            Creates a new local. Uses the given {@code slotKind}, {@code name}, and {@code info} for its frame slot metadata.
+                            Creates a new local. Uses the given {@code name} and {@code info} in its local metadata.
 
                             @param name the name assigned to the local's slot.
                             @param info the info assigned to the local's slot.
+                            @see BytecodeNode#getLocalNames
+                            @see BytecodeNode#getLocalInfos
                             """);
 
             CodeTreeBuilder b = ex.createBuilder();
@@ -3537,6 +3540,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return sb.toString();
         }
 
+        private static String getOperationSignatureJavadoc(OperationModel operation) {
+            StringBuilder result = new StringBuilder();
+            result.append("Signature: ");
+            result.append(operation.name);
+            result.append("(");
+
+            boolean first = true;
+            for (DynamicOperandModel dynamicOperand : operation.dynamicOperands) {
+                if (!first) {
+                    result.append(", ");
+                }
+                first = false;
+
+                boolean firstOperandName = true;
+                for (String operandName : dynamicOperand.names()) {
+                    if (!firstOperandName) {
+                        result.append("|");
+                    }
+                    firstOperandName = false;
+                    result.append(operandName);
+                }
+
+                if (dynamicOperand.isVariadic()) {
+                    result.append("...");
+                }
+            }
+            result.append(")");
+
+            return result.toString();
+        }
+
         private void addBeginOrEmitOperationDoc(OperationModel operation, CodeExecutableElement ex) {
             List<String> lines = new ArrayList<>(1);
 
@@ -3545,6 +3579,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             } else {
                 lines.add(getBuilderMethodJavadocHeader("Emits", operation));
             }
+
+            lines.add("<p>");
+            lines.add(getOperationSignatureJavadoc(operation));
 
             if (operation.javadoc != null && !operation.javadoc.isBlank()) {
                 lines.add("<p>");
@@ -3573,20 +3610,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             List<String> lines = new ArrayList<>(1);
             lines.add(getBuilderMethodJavadocHeader("Ends", operation));
+            lines.add("<p>");
+            lines.add(getOperationSignatureJavadoc(operation));
 
             if (model.epilogReturn != null && operation == model.epilogReturn.operation) {
                 lines.add("<p>");
                 lines.add(String.format(
                                 "NB: This method does not directly emit %s instructions. Instead, {@link #doEmitReturn} uses the operation stack entry to determine that each Return should be preceded by a %s instruction.",
                                 operation.name, operation.name));
+            } else if (operation.kind == OperationKind.TAG) {
+                lines.add("<p>");
+                lines.add("The tags passed to this method should match the ones used in the corresponding {@link #beginTag} call.");
             }
 
+            lines.add(" ");
             if (operation.operationEndArguments.length != 0) {
-                lines.add(" ");
                 for (OperationArgument argument : operation.operationEndArguments) {
                     lines.add(argument.toJavadocParam());
                 }
             }
+            lines.add("@see #begin" + operation.name);
 
             addJavadoc(ex, lines);
         }
@@ -3596,6 +3639,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             List<String> lines = new ArrayList<>(2);
             lines.add("Begins a new root node.");
+            lines.add("<p>");
+            lines.add(getOperationSignatureJavadoc(rootOperation));
             lines.add("<p>");
             for (String line : rootOperation.javadoc.strip().split("\n")) {
                 lines.add(line);
@@ -4195,16 +4240,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(1) +
                                 ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
-            } else if (operation.isVariadic && operation.numChildren() > 1) {
+            } else if (operation.isVariadic && operation.numDynamicOperands() > 1) {
                 // The variadic child is included in numChildren, so the operation requires
                 // numChildren - 1 children at minimum.
-                b.startIf().string("operation.childCount < " + (operation.numChildren() - 1)).end().startBlock();
-                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(operation.numChildren() - 1) +
+                b.startIf().string("operation.childCount < " + (operation.numDynamicOperands() - 1)).end().startBlock();
+                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(operation.numDynamicOperands() - 1) +
                                 ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             } else if (!operation.isVariadic) {
-                b.startIf().string("operation.childCount != " + operation.numChildren()).end().startBlock();
-                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + childString(operation.numChildren()) +
+                b.startIf().string("operation.childCount != " + operation.numDynamicOperands()).end().startBlock();
+                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + childString(operation.numDynamicOperands()) +
                                 ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             }
@@ -4473,8 +4518,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), model.templateType.asType(), "endRoot");
             String javadoc = """
                             Finishes generating bytecode for the current root node.
-
+                            <p>
                             """;
+
+            javadoc += getOperationSignatureJavadoc(rootOperation) + "\n\n";
             if (model.prolog != null) {
                 for (OperationArgument operationArgument : model.prolog.operation.operationEndArguments) {
                     ex.addParameter(operationArgument.toVariableElement());
@@ -5111,8 +5158,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (instruction == null) {
                 return List.of();
             }
-            List<String> constantOperandsBefore = instruction.signature.constantOperandsBefore;
-            int numConstantOperands = constantOperandsBefore.size();
+
+            int numConstantOperands = operation.numConstantOperandsBefore();
             if (numConstantOperands == 0) {
                 return List.of();
             }
@@ -5123,9 +5170,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                  * Eagerly allocate space for the constants. Even if the node is not emitted (e.g.,
                  * it's a disabled instrumentation), we need the constant pool to be stable.
                  */
-                String constantPoolIndex = operation.instruction.signature.constantOperandsBefore.get(i) + "Index";
+                String constantPoolIndex = operation.getConstantOperandBeforeName(i) + "Index";
                 b.startDeclaration(type(int.class), constantPoolIndex);
-                buildAddArgumentConstant(b, operation.operationBeginArguments[i], operation.getOperationBeginArgumentName(i));
+                buildAddArgumentConstant(b, operation.operationBeginArguments[i]);
                 b.end();
                 result.add(constantPoolIndex);
             }
@@ -5146,42 +5193,41 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (instruction == null) {
                 return List.of();
             }
-            List<String> constantOperandsBefore = instruction.signature.constantOperandsBefore;
-            List<String> constantOperandAfter = instruction.signature.constantOperandsAfter;
-            int numConstantOperands = constantOperandsBefore.size() + constantOperandAfter.size();
+            int numConstantOperandsBefore = operation.numConstantOperandsBefore();
+            int numConstantOperandsAfter = operation.numConstantOperandsAfter();
+            int numConstantOperands = numConstantOperandsBefore + numConstantOperandsAfter;
             if (numConstantOperands == 0) {
                 return List.of();
             }
 
             boolean inEmit = !operation.hasChildren();
             List<String> result = new ArrayList<>(numConstantOperands);
-            for (int i = 0; i < numConstantOperands; i++) {
-                if (i < constantOperandsBefore.size()) {
-                    if (inEmit) {
-                        String variable = constantOperandsBefore.get(i) + "Index";
-                        b.startDeclaration(type(int.class), variable);
-                        buildAddArgumentConstant(b, operation.operationBeginArguments[i], operation.getOperationBeginArgumentName(i));
-                        b.end();
-                        result.add(variable);
-                    } else {
-                        result.add("operationData.constants[" + i + "]");
-                    }
+            for (int i = 0; i < numConstantOperandsBefore; i++) {
+                if (inEmit) {
+                    String variable = operation.getConstantOperandBeforeName(i) + "Index";
+                    b.startDeclaration(type(int.class), variable);
+                    buildAddArgumentConstant(b, operation.operationBeginArguments[i]);
+                    b.end();
+                    result.add(variable);
                 } else {
-                    if (model.prolog != null && operation == model.prolog.operation) {
-                        /**
-                         * Special case: when emitting the prolog in beginRoot, end constants are
-                         * not yet known. They will be patched in endRoot.
-                         */
-                        result.add(UNINIT);
-                    } else {
-                        int afterI = i - instruction.signature.getConstantOperandsBeforeCount();
-                        String variable = instruction.signature.constantOperandsAfter.get(afterI) + "Index";
-                        b.startDeclaration(type(int.class), variable);
-                        buildAddArgumentConstant(b, operation.operationEndArguments[afterI], operation.getOperationEndArgumentName(afterI));
-                        b.end();
-                        result.add(variable);
-                    }
+                    result.add("operationData.constants[" + i + "]");
                 }
+            }
+            for (int i = 0; i < numConstantOperandsAfter; i++) {
+                if (model.prolog != null && operation == model.prolog.operation) {
+                    /**
+                     * Special case: when emitting the prolog in beginRoot, end constants are not
+                     * yet known. They will be patched in endRoot.
+                     */
+                    result.add(UNINIT);
+                } else {
+                    String variable = operation.getConstantOperandAfterName(i) + "Index";
+                    b.startDeclaration(type(int.class), variable);
+                    buildAddArgumentConstant(b, operation.operationEndArguments[i]);
+                    b.end();
+                    result.add(variable);
+                }
+
             }
             return result;
         }
@@ -5195,7 +5241,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("doEmitVariadic(operation.childCount - " + (instruction.signature.dynamicOperandCount - 1) + ")");
             }
 
-            if (customChildBci != null && operation.numChildren() > 1) {
+            if (customChildBci != null && operation.numDynamicOperands() > 1) {
                 throw new AssertionError("customChildBci can only be used with a single child.");
             }
 
@@ -5248,13 +5294,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return args;
         }
 
-        private void buildAddArgumentConstant(CodeTreeBuilder b, OperationArgument argument, String localName) {
+        private void buildAddArgumentConstant(CodeTreeBuilder b, OperationArgument argument) {
             b.startCall("constantPool.addConstant");
             if (ElementUtils.typeEquals(argument.builderType(), argument.constantType())) {
-                b.string(localName);
+                b.string(argument.name());
             } else {
                 b.startStaticCall(argument.constantType(), "constantOf");
-                b.string(localName);
+                b.string(argument.name());
                 b.end();
             }
             b.end();
@@ -5279,7 +5325,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
 
             Map<BeforeChildKind, List<OperationModel>> groupedOperations = model.getOperations().stream().filter(OperationModel::hasChildren).collect(Collectors.groupingBy(op -> {
-                if (op.isTransparent && (op.isVariadic || op.numChildren() > 1)) {
+                if (op.isTransparent && (op.isVariadic || op.numDynamicOperands() > 1)) {
                     return BeforeChildKind.TRANSPARENT;
                 } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                     return BeforeChildKind.SHORT_CIRCUIT;
@@ -13315,7 +13361,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (evaluatedArg != null) {
                 b.string(evaluatedArg);
             } else if (tier.isUncached()) {
-                for (int i = 0; i < instr.signature.getConstantOperandsBeforeCount(); i++) {
+                for (int i = 0; i < instr.signature.constantOperandsBeforeCount; i++) {
                     TypeMirror constantOperandType = instr.operation.constantOperands.before().get(i).type();
                     b.startGroup();
                     if (!ElementUtils.isObject(constantOperandType)) {
@@ -13337,7 +13383,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
                 }
 
-                for (int i = 0; i < instr.signature.getConstantOperandsAfterCount(); i++) {
+                for (int i = 0; i < instr.signature.constantOperandsAfterCount; i++) {
                     TypeMirror constantOperandType = instr.operation.constantOperands.after().get(i).type();
                     b.startGroup();
                     if (!ElementUtils.isObject(constantOperandType)) {

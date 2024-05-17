@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
-public record DynamicOperandModel(String name, boolean voidAllowed, boolean isVariadic) {
+import java.util.List;
+
+public record DynamicOperandModel(List<String> names, boolean voidAllowed, boolean isVariadic) {
 
 }

@@ -130,7 +130,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private boolean buildChildExecution(CodeTreeBuilder b, FrameState frameState, String frame, int idx) {
         int index = idx;
 
-        if (index < instruction.signature.getConstantOperandsBeforeCount()) {
+        if (index < instruction.signature.constantOperandsBeforeCount) {
             TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(index).type();
             if (!ElementUtils.isObject(constantOperandType)) {
                 b.cast(constantOperandType);
@@ -141,7 +141,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             return false;
         }
 
-        index -= instruction.signature.getConstantOperandsBeforeCount();
+        index -= instruction.signature.constantOperandsBeforeCount;
         if (index < instruction.signature.dynamicOperandCount) {
             TypeMirror targetType = instruction.signature.getSpecializedType(index);
             TypeMirror genericType = instruction.signature.getGenericType(index);
@@ -181,18 +181,18 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         }
 
         index -= instruction.signature.dynamicOperandCount;
-        if (index < instruction.signature.getConstantOperandsAfterCount()) {
+        if (index < instruction.signature.constantOperandsAfterCount) {
             TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(index).type();
             if (!ElementUtils.isObject(constantOperandType)) {
                 b.cast(constantOperandType);
             }
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
-            InstructionImmediate imm = imms.get(instruction.signature.getConstantOperandsBeforeCount() + index);
+            InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + index);
             b.string(readConst(readBc("$bc", "$bci + " + imm.offset()), "$bytecode.constants"));
             return false;
         }
 
-        index -= instruction.signature.getConstantOperandsAfterCount();
+        index -= instruction.signature.constantOperandsAfterCount;
         throw new AssertionError("index=" + index + ", signature=" + instruction.signature);
     }
 

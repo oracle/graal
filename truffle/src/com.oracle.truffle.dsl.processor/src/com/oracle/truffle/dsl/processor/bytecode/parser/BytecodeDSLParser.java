@@ -92,6 +92,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsMode
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.QuickenDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.SuperInstructionDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
+import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
@@ -689,9 +690,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     name = String.join("#", includedSpecializations.stream().map((s) -> s.getId()).toList());
                 }
                 List<ExecutableElement> includedSpecializationElements = includedSpecializations.stream().map(s -> s.getMethod()).toList();
-                List<Signature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(includedSpecializationElements, customOperation, operation.constantOperands);
+                List<SpecializationSignature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(includedSpecializationElements, customOperation, operation.constantOperands);
                 assert !customOperation.hasErrors();
-                Signature signature = SignatureParser.createPolymorphicSignature(includedSpecializationSignatures, includedSpecializationElements, customOperation);
+                Signature signature = SpecializationSignatureParser.createPolymorphicSignature(includedSpecializationSignatures, includedSpecializationElements, customOperation);
                 InstructionModel baseInstruction = operation.instruction;
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
                 quickenedInstruction.filteredSpecializations = includedSpecializations;

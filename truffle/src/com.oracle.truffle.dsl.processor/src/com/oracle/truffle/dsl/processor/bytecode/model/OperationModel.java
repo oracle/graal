@@ -117,8 +117,8 @@ public class OperationModel implements PrettyPrintable {
      * Models the constant operand data statically declared on the operation using ConstantOperand
      * annotations.
      */
-    public record ConstantOperands(List<ConstantOperandModel> before, List<ConstantOperandModel> after) {
-        public static final ConstantOperands NONE = new ConstantOperands(List.of(), List.of());
+    public record ConstantOperandsModel(List<ConstantOperandModel> before, List<ConstantOperandModel> after) {
+        public static final ConstantOperandsModel NONE = new ConstantOperandsModel(List.of(), List.of());
 
         public boolean hasConstantOperands() {
             return this != NONE;
@@ -149,14 +149,23 @@ public class OperationModel implements PrettyPrintable {
     public boolean isInternal;
 
     public InstructionModel instruction;
-    public ConstantOperands constantOperands = null;
+    public CustomOperationModel customModel;
+
+    // The constant operands parsed from {@code @ConstantOperand} annotations.
+    public ConstantOperandsModel constantOperands = null;
+
+    // Dynamic operand data supplied by builtin specs / parsed from operation specializations.
     public DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[0];
+
+    // Operand names parsed from operation specializations.
+    public List<String> constantOperandBeforeNames;
+    public List<String> constantOperandAfterNames;
+
     public OperationArgument[] operationBeginArguments = EMPTY_ARGUMENTS;
     public OperationArgument[] operationEndArguments = EMPTY_ARGUMENTS;
     public boolean operationBeginArgumentVarArgs = false;
 
-    public CustomOperationModel customModel;
-
+    // A unique identifier for instrumentation instructions.
     public int instrumentationIndex;
 
     public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name, String javadoc) {
@@ -167,12 +176,26 @@ public class OperationModel implements PrettyPrintable {
         this.javadoc = javadoc;
     }
 
-    public int numChildren() {
+    public int numConstantOperandsBefore() {
+        if (constantOperands == null) {
+            return 0;
+        }
+        return constantOperands.before.size();
+    }
+
+    public int numDynamicOperands() {
         return dynamicOperands.length;
     }
 
+    public int numConstantOperandsAfter() {
+        if (constantOperands == null) {
+            return 0;
+        }
+        return constantOperands.after.size();
+    }
+
     public boolean hasChildren() {
-        return isVariadic || numChildren() > 0;
+        return isVariadic || numDynamicOperands() > 0;
     }
 
     public void setInstrumentationIndex(int instrumentationIndex) {
@@ -196,6 +219,14 @@ public class OperationModel implements PrettyPrintable {
     public OperationModel setVoid(boolean isVoid) {
         this.isVoid = isVoid;
         return this;
+    }
+
+    public String getConstantOperandBeforeName(int i) {
+        return constantOperandBeforeNames.get(i);
+    }
+
+    public String getConstantOperandAfterName(int i) {
+        return constantOperandAfterNames.get(i);
     }
 
     public OperationModel setDynamicOperands(DynamicOperandModel... dynamicOperands) {
