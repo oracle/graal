@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.loop;
 import static org.graalvm.compiler.nodes.loop.MathUtil.add;
 import static org.graalvm.compiler.nodes.loop.MathUtil.sub;
 
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.NodeView;
@@ -103,7 +104,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     private long constantStrideSafe() throws ArithmeticException {
         if (value instanceof SubNode && base.valueNode() == value.getY()) {
-            return Math.multiplyExact(base.constantStride(), -1);
+            return multiplyExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), base.constantStride(), -1);
         }
         return base.constantStride();
     }
@@ -154,15 +155,17 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     private long opSafe(long b, long o) throws ArithmeticException {
+        // we can use offset bits in this method because all operands (init, scale, stride and
+        // extremum) have by construction equal bit sizes
         if (value instanceof AddNode) {
-            return Math.addExact(b, o);
+            return addExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
         }
         if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return Math.subtractExact(b, o);
+                return subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             } else {
                 assert base.valueNode() == value.getY() : String.format("[base]=%s;[value]=%s", base.valueNode(), value.getY());
-                return Math.subtractExact(b, o);
+                return subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             }
         }
         throw GraalError.shouldNotReachHere();
@@ -252,5 +255,44 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     @Override
     public ValueNode entryTripValue() {
         return op(getBase().entryTripValue(), offset);
+    }
+
+    private static long addExact(int bits, long a, long b) {
+        if (bits == 32) {
+            int ia = (int) a;
+            int ib = (int) b;
+            assert ia == a && ib == b : String.format("Conversions must be lossless, [bits]=%d; [a]=%d; [b]=%d; [ia]=%d; [ib]=%d;", bits, a, b, ia, ib);
+            return Math.addExact(ia, ib);
+        } else if (bits == 64) {
+            return Math.addExact(a, b);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
+    }
+
+    private static long subtractExact(int bits, long a, long b) {
+        if (bits == 32) {
+            int ia = (int) a;
+            int ib = (int) b;
+            assert ia == a && ib == b : String.format("Conversions must be lossless, [bits]=%d; [a]=%d; [b]=%d; [ia]=%d; [ib]=%d;", bits, a, b, ia, ib);
+            return Math.subtractExact(ia, ib);
+        } else if (bits == 64) {
+            return Math.subtractExact(a, b);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
+    }
+
+    private static long multiplyExact(int bits, long a, long b) {
+        if (bits == 32) {
+            int ia = (int) a;
+            int ib = (int) b;
+            assert ia == a && ib == b : String.format("Conversions must be lossless, [bits]=%d; [a]=%d; [b]=%d; [ia]=%d; [ib]=%d;", bits, a, b, ia, ib);
+            return Math.multiplyExact(ia, ib);
+        } else if (bits == 64) {
+            return Math.multiplyExact(a, b);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
     }
 }
