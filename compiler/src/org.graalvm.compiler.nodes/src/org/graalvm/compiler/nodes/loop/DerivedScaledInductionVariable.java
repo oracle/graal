@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodes.loop.MathUtil.mul;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -121,7 +122,7 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantInitSafe() throws ArithmeticException {
-        return Math.multiplyExact(base.constantInit(), scale.asJavaConstant().asLong());
+        return opSafe(base.constantInit(), scale.asJavaConstant().asLong());
     }
 
     @Override
@@ -130,7 +131,13 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantStrideSafe() throws ArithmeticException {
-        return Math.multiplyExact(base.constantStride(), scale.asJavaConstant().asLong());
+        return opSafe(base.constantStride(), scale.asJavaConstant().asLong());
+    }
+
+    private long opSafe(long a, long b) {
+        // we can use scale bits here because all operands (init, scale, stride and extremum) have
+        // by construction equal bit sizes
+        return multiplyExact(IntegerStamp.getBits(scale.stamp(NodeView.DEFAULT)), a, b);
     }
 
     @Override
@@ -152,7 +159,7 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantExtremumSafe() throws ArithmeticException {
-        return Math.multiplyExact(base.constantExtremum(), scale.asJavaConstant().asLong());
+        return opSafe(base.constantExtremum(), scale.asJavaConstant().asLong());
     }
 
     @Override
@@ -230,5 +237,18 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     @Override
     public ValueNode entryTripValue() {
         return mul(graph(), base.entryTripValue(), scale);
+    }
+
+    private static long multiplyExact(int bits, long a, long b) {
+        if (bits == 32) {
+            int ia = (int) a;
+            int ib = (int) b;
+            assert ia == a && ib == b : String.format("Conversions must be lossless, [bits]=%d; [a]=%d; [b]=%d; [ia]=%d; [ib]=%d;", bits, a, b, ia, ib);
+            return Math.multiplyExact(ia, ib);
+        } else if (bits == 64) {
+            return Math.multiplyExact(a, b);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
     }
 }
