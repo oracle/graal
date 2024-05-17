@@ -277,12 +277,16 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_project: (mx.Project) -> None
     :type register_distribution: (mx.Distribution) -> None
     """
+    espresso_java_home = mx.get_env('ESPRESSO_JAVA_HOME') or mx_sdk_vm.base_jdk().home
+    java_home_dep = JavaHomeDependency(_suite, "JAVA_HOME", espresso_java_home)
+    register_project(java_home_dep)
 
     if espresso_llvm_java_home:
         # Conditionally creates the ESPRESSO_LLVM_SUPPORT distribution if a Java home with LLVM bitcode is provided.
         lib_prefix = mx.add_lib_prefix('')
         lib_suffix = mx.add_lib_suffix('')
         jdk_lib_dir = 'bin' if mx.is_windows() else 'lib'
+        llvm_java_home_dep = JavaHomeDependency(_suite, "LLVM_JAVA_HOME", espresso_llvm_java_home)
 
         if mx.get_env("SKIP_ESPRESSO_LLVM_CHECK", 'false').lower() in ('false', '0', 'no'):
             libjava = join(espresso_llvm_java_home, jdk_lib_dir, f'{lib_prefix}java{lib_suffix}')
@@ -302,6 +306,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         raise mx.abort(f"Cannot find LLVM bitcode in provided Espresso LLVM JAVA_HOME ({libjava})")
                 elif mx.is_continuous_integration():
                     raise mx.abort("otool not found on the PATH. It is required to verify the Espresso LLVM JAVA_HOME")
+            if java_home_dep.is_ee_implementor != llvm_java_home_dep.is_ee_implementor:
+                raise mx.abort("The implementors for ESPRESSO's JAVA_HOME and LLVM JAVA_HOME don't match")
 
         register_distribution(mx.LayoutTARDistribution(_suite, 'ESPRESSO_LLVM_SUPPORT', [], {
             "lib/llvm/default/": [
@@ -314,12 +320,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             "dependency": "LLVM_JAVA_HOME",
             "path": f"{jdk_lib_dir}/<lib:*>",
         }
-        register_project(JavaHomeDependency(_suite, "LLVM_JAVA_HOME", espresso_llvm_java_home))
+        register_project(llvm_java_home_dep)
     else:
         llvm_runtime_dir = []
 
-    espresso_java_home = mx.get_env('ESPRESSO_JAVA_HOME') or mx_sdk_vm.base_jdk().home
-    register_project(JavaHomeDependency(_suite, "JAVA_HOME", espresso_java_home))
     if mx.is_windows():
         platform_specific_excludes = [
             "bin/<exe:*>",
@@ -396,9 +400,14 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
 class JavaHomeDependency(mx.ArchivableProject):
     def __init__(self, suite, name, java_home):
-        super().__init__(suite, name, deps=[], workingSets=[], theLicense=_jdk_license(java_home))
         assert isabs(java_home)
         self.java_home = java_home
+        self.is_ee_implementor = mx_sdk_vm.ee_implementor(java_home)
+        if self.is_ee_implementor:
+            the_license = "Oracle Proprietary"
+        else:
+            the_license = "GPLv2-CPE"
+        super().__init__(suite, name, deps=[], workingSets=[], theLicense=the_license)
 
     def output_dir(self):
         return self.java_home
