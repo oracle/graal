@@ -51,7 +51,6 @@ import static javax.lang.model.element.Modifier.PUBLIC;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -78,6 +77,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.DynamicOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
@@ -251,13 +251,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return customOperation;
         }
 
-        operation.numChildren = signature.dynamicOperandCount;
         operation.isVariadic = signature.isVariadic || isShortCircuit();
         operation.isVoid = signature.isVoid;
         operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), signature.constantOperandsBefore);
         operation.operationEndArguments = createOperationConstantArguments(constantOperands.after(), signature.constantOperandsAfter);
-        operation.childrenMustBeValues = new boolean[signature.dynamicOperandCount];
-        Arrays.fill(operation.childrenMustBeValues, true);
+        DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[signature.dynamicOperandCount];
+        for (int i = 0; i < dynamicOperands.length; i++) {
+            // TODO: infer name from specializations
+            dynamicOperands[i] = new DynamicOperandModel("child" + i, false, signature.isVariadicParameter(i));
+        }
+        operation.setDynamicOperands(dynamicOperands);
 
         customOperation.operation.setInstruction(createCustomInstruction(customOperation, typeElement, generatedNode, signature, name));
 
@@ -443,10 +446,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         // All short-circuit operations have the same signature.
         OperationModel operation = customOperation.operation;
-        operation.numChildren = 1;
         operation.isVariadic = true;
         operation.isVoid = false;
-        operation.childrenMustBeValues = new boolean[]{true};
+        operation.setDynamicOperands(new DynamicOperandModel("value", false, false));
 
         /*
          * NB: This creates a new operation for the boolean converter (or reuses one if such an
