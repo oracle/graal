@@ -24,13 +24,12 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfFrameValue;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.dwarf.constants.DwarfFrameValue;
 import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.List;
@@ -44,9 +43,9 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     private static final int CFA_CIE_id_default = -1;
 
-    public DwarfFrameSectionImpl(DwarfDebugInfo dwarfSections) {
+    public DwarfFrameSectionImpl(DwarfDebugInfoBase dwarfSections) {
         // debug_frame section depends on debug_line section
-        super(dwarfSections, DwarfSectionName.DW_FRAME_SECTION, DwarfSectionName.DW_LINE_SECTION);
+        super(dwarfSections, dwarfSections.frameSectionName(), dwarfSections.lineSectionName());
     }
 
     @Override

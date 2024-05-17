@@ -24,19 +24,25 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
 /**
- * DW_FORM_flag only has two possible attribute values.
+ * DW_AT_encoding attribute values.
  */
-public enum DwarfFlag {
+public enum DwarfEncoding {
     @SuppressWarnings("unused")
-    DW_FLAG_false((byte) 0),
-    DW_FLAG_true((byte) 1);
+    DW_ATE_address((byte) 0x1),
+    DW_ATE_boolean((byte) 0x2),
+    DW_ATE_float((byte) 0x4),
+    DW_ATE_signed((byte) 0x5),
+    DW_ATE_signed_char((byte) 0x6),
+    DW_ATE_unsigned((byte) 0x7),
+    @SuppressWarnings("unused")
+    DW_ATE_unsigned_char((byte) 0x8);
 
     private final byte value;
 
-    DwarfFlag(byte b) {
+    DwarfEncoding(byte b) {
         value = b;
     }
 

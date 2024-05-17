@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,27 +25,26 @@
  * questions.
  */
 
-package com.oracle.objectfile.debugentry.range;
+package com.oracle.objectfile.macho.dsym;
 
-import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.dwarf.DwarfDebugInfoBase;
+import com.oracle.objectfile.dwarf.DwarfLocSectionImpl;
 
-class LeafRange extends SubRange {
-    protected LeafRange(MethodEntry methodEntry, long lo, long hi, int line, PrimaryRange primary, Range caller) {
-        super(methodEntry, lo, hi, line, primary, caller);
+/**
+ * Section generator for debug_loc section.
+ */
+public class DSYMLocSectionImpl extends DwarfLocSectionImpl {
+
+    public DSYMLocSectionImpl(DwarfDebugInfoBase dwarfSections) {
+        super(dwarfSections);
     }
 
+    /*
+     * on MacOS this is skipped
+     */
     @Override
-    protected void addCallee(SubRange callee) {
-        assert false : "should never be adding callees to a leaf range!";
+    protected int writeLocationsPrefix(long base, byte[] buffer, int pos) {
+        return pos;
     }
 
-    @Override
-    public SubRange getFirstCallee() {
-        return null;
-    }
-
-    @Override
-    public boolean isLeaf() {
-        return true;
-    }
 }

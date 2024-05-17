@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,45 +25,27 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.macho.dsym;
 
-/**
- * Constants that appear in CIE and FDE frame section entries.
- */
-public enum DwarfFrameValue {
-    DW_CFA_CIE_version((byte) 1),
-    /* Values encoded in high 2 bits. */
-    DW_CFA_advance_loc((byte) 0x1),
-    DW_CFA_offset((byte) 0x2),
-    DW_CFA_restore((byte) 0x3),
-    /* Values encoded in low 6 bits. */
-    DW_CFA_nop((byte) 0x0),
-    @SuppressWarnings("unused")
-    DW_CFA_set_loc1((byte) 0x1),
-    DW_CFA_advance_loc1((byte) 0x2),
-    DW_CFA_advance_loc2((byte) 0x3),
-    DW_CFA_advance_loc4((byte) 0x4),
-    @SuppressWarnings("unused")
-    DW_CFA_offset_extended((byte) 0x5),
-    @SuppressWarnings("unused")
-    DW_CFA_restore_extended((byte) 0x6),
-    @SuppressWarnings("unused")
-    DW_CFA_undefined((byte) 0x7),
-    @SuppressWarnings("unused")
-    DW_CFA_same_value((byte) 0x8),
-    DW_CFA_register((byte) 0x9),
-    DW_CFA_def_cfa((byte) 0xc),
-    @SuppressWarnings("unused")
-    DW_CFA_def_cfa_register((byte) 0xd),
-    DW_CFA_def_cfa_offset((byte) 0xe);
+import com.oracle.objectfile.dwarf.DwarfDebugInfoBase;
+import com.oracle.objectfile.dwarf.DwarfRangesSectionImpl;
 
-    private final byte value;
-
-    DwarfFrameValue(byte b) {
-        value = b;
+public class DSYMRangesSectionImpl extends DwarfRangesSectionImpl {
+    public DSYMRangesSectionImpl(DwarfDebugInfoBase dwarfSections) {
+        // debug_ranges section depends on debug_aranges section
+        super(dwarfSections);
     }
 
-    public byte value() {
-        return value;
+    /*
+     * MachO differs from ELF
+     */
+    @Override
+    protected int writeRangePrefix(int pos, byte[] buffer, long base) {
+        return pos;
+    }
+
+    @Override
+    protected int rangePrefixSize() {
+        return 0;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -72,29 +72,29 @@ import java.util.List;
 public abstract class Range {
     private static final String CLASS_DELIMITER = ".";
     protected final MethodEntry methodEntry;
-    protected final int lo;
-    protected int hi;
+    protected final long lo;
+    protected long hi;
     protected final int line;
     protected final int depth;
 
     /**
      * Create a primary range representing the root of the subrange tree for a top level compiled
      * method.
-     * 
+     *
      * @param methodEntry the top level compiled method for this primary range.
      * @param lo the lowest address included in the range.
      * @param hi the first address above the highest address in the range.
      * @param line the line number associated with the range
      * @return a new primary range to serve as the root of the subrange tree.
      */
-    public static PrimaryRange createPrimary(MethodEntry methodEntry, int lo, int hi, int line) {
+    public static PrimaryRange createPrimary(MethodEntry methodEntry, long lo, long hi, int line) {
         return new PrimaryRange(methodEntry, lo, hi, line);
     }
 
     /**
      * Create a subrange representing a segment of the address range for code of a top level or
      * inlined compiled method. The result will either be a call or a leaf range.
-     * 
+     *
      * @param methodEntry the method from which code in the subrange is derived.
      * @param lo the lowest address included in the range.
      * @param hi the first address above the highest address in the range.
@@ -105,7 +105,7 @@ public abstract class Range {
      * @param isLeaf true if this is a leaf range with no subranges
      * @return a new subrange to be linked into the range tree below the primary range.
      */
-    public static SubRange createSubrange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller, boolean isLeaf) {
+    public static SubRange createSubrange(MethodEntry methodEntry, long lo, long hi, int line, PrimaryRange primary, Range caller, boolean isLeaf) {
         assert primary != null;
         assert primary.isPrimary();
         if (isLeaf) {
@@ -115,7 +115,7 @@ public abstract class Range {
         }
     }
 
-    protected Range(MethodEntry methodEntry, int lo, int hi, int line, int depth) {
+    protected Range(MethodEntry methodEntry, long lo, long hi, int line, int depth) {
         assert methodEntry != null;
         this.methodEntry = methodEntry;
         this.lo = lo;
@@ -144,11 +144,11 @@ public abstract class Range {
         return methodEntry.getSymbolName();
     }
 
-    public int getHi() {
+    public long getHi() {
         return hi;
     }
 
-    public int getLo() {
+    public long getLo() {
         return lo;
     }
 

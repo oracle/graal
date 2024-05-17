@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -33,14 +33,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.oracle.objectfile.elf.dwarf.constants.DwarfAccess;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfEncoding;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfFlag;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfInline;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
+import com.oracle.objectfile.dwarf.constants.DwarfAccess;
+import com.oracle.objectfile.dwarf.constants.DwarfEncoding;
+import com.oracle.objectfile.dwarf.constants.DwarfExpressionOpcode;
+import com.oracle.objectfile.dwarf.constants.DwarfFlag;
+import com.oracle.objectfile.dwarf.constants.DwarfInline;
+import com.oracle.objectfile.dwarf.constants.DwarfLanguage;
+import com.oracle.objectfile.dwarf.constants.DwarfVersion;
+import com.oracle.objectfile.dwarf.DwarfDebugInfoBase.AbbrevCode;
 import org.graalvm.collections.EconomicSet;
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -61,7 +61,6 @@ import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -90,9 +89,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int voidOffset;
     private int cuStart;
 
-    public DwarfInfoSectionImpl(DwarfDebugInfo dwarfSections) {
+    public DwarfInfoSectionImpl(DwarfDebugInfoBase dwarfSections) {
         // debug_info section depends on loc section
-        super(dwarfSections, DwarfSectionName.DW_INFO_SECTION, DwarfSectionName.DW_LOC_SECTION);
+        super(dwarfSections, dwarfSections.infoSectionName(), dwarfSections.locSectionName());
         // initialize to an invalid value
         voidOffset = -1;
         // initialize CU start to an invalid value
@@ -184,7 +183,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
-        pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        pos = writeAttrLanguage(DwarfDebugInfoBase.LANG_ENCODING, buffer, pos);
         log(context, "  [0x%08x]     use_UTF8", pos);
         pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
         String name = uniqueDebugString("JAVA");
@@ -392,15 +391,15 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
-        pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        pos = writeAttrLanguage(DwarfDebugInfoBase.LANG_ENCODING, buffer, pos);
         log(context, "  [0x%08x]     use_UTF8", pos);
         pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
         String name = classEntry.getFullFileName();
         if (name == null) {
             name = classEntry.getTypeName().replace('.', '/') + ".java";
         }
-        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(uniqueDebugString(name), buffer, pos);
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         String compilationDirectory = dwarfSections.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
@@ -409,7 +408,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             log(context, "  [0x%08x]     ranges  0x%x", pos, codeRangesIndex);
             pos = writeRangesSectionOffset(codeRangesIndex, buffer, pos);
             // write low_pc as well as ranges so that lcoation lists can default the base address
-            int lo = classEntry.lowpc();
+            long lo = classEntry.lowpc();
             log(context, "  [0x%08x]     low_pc  0x%x", pos, codeRangesIndex);
             pos = writeAttrAddress(lo, buffer, pos);
             int lineIndex = getLineIndex(classEntry);
@@ -582,7 +581,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = AbbrevCode.INDIRECT_LAYOUT;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
-            String indirectName = uniqueDebugString(DwarfDebugInfo.INDIRECT_PREFIX + classEntry.getTypeName());
+            String indirectName = uniqueDebugString(DwarfDebugInfoBase.INDIRECT_PREFIX + classEntry.getTypeName());
             log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(indirectName), name);
             pos = writeStrSectionOffset(indirectName, buffer, pos);
             log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
@@ -900,7 +899,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             abbrevCode = AbbrevCode.INDIRECT_LAYOUT;
             log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
-            String indirectName = uniqueDebugString(DwarfDebugInfo.INDIRECT_PREFIX + interfaceClassEntry.getTypeName());
+            String indirectName = uniqueDebugString(DwarfDebugInfoBase.INDIRECT_PREFIX + interfaceClassEntry.getTypeName());
             log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(indirectName), name);
             pos = writeStrSectionOffset(indirectName, buffer, pos);
             int size = interfaceClassEntry.getSize();
@@ -1280,7 +1279,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
-        pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        pos = writeAttrLanguage(DwarfDebugInfoBase.LANG_ENCODING, buffer, pos);
         log(context, "  [0x%08x]     use_UTF8", pos);
         pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
         String name = uniqueDebugString("JAVA");
@@ -1374,7 +1373,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = arrayTypeEntry.getTypeName();
-        String indirectName = uniqueDebugString(DwarfDebugInfo.INDIRECT_PREFIX + name);
+        String indirectName = uniqueDebugString(DwarfDebugInfoBase.INDIRECT_PREFIX + name);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(indirectName), name);
         pos = writeStrSectionOffset(indirectName, buffer, pos);
         log(context, "  [0x%08x]     byte_size 0x%x", pos, size);

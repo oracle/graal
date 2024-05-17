@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -39,7 +39,7 @@ public class PrimaryRange extends Range {
      */
     protected SubRange lastCallee;
 
-    protected PrimaryRange(MethodEntry methodEntry, int lo, int hi, int line) {
+    protected PrimaryRange(MethodEntry methodEntry, long lo, long hi, int line) {
         super(methodEntry, lo, hi, line, -1);
         this.firstCallee = null;
         this.lastCallee = null;

@@ -24,19 +24,23 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
-/**
- * DW_AT_Accessibility attribute values.
+/*
+ * Values for DW_AT_inline attribute.
  */
-public enum DwarfAccess {
-    DW_ACCESS_public((byte) 1),
-    DW_ACCESS_protected((byte) 2),
-    DW_ACCESS_private((byte) 3);
+public enum DwarfInline {
+    @SuppressWarnings("unused")
+    DW_INL_not_inlined((byte) 0),
+    DW_INL_inlined((byte) 1),
+    @SuppressWarnings("unused")
+    DW_INL_declared_not_inlined((byte) 2),
+    @SuppressWarnings("unused")
+    DW_INL_declared_inlined((byte) 3);
 
     private final byte value;
 
-    DwarfAccess(byte b) {
+    DwarfInline(byte b) {
         value = b;
     }
 

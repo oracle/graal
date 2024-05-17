@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -340,7 +340,7 @@ abstract class CVSymbolSubrecord {
         private final int pparent;
         private final int pend;
         private final int pnext;
-        private final int proclen;
+        private final long proclen;
         private final int debugStart;
         private final int debugEnd;
         private final int typeIndex;
@@ -349,7 +349,7 @@ abstract class CVSymbolSubrecord {
         private final String symbolName;
         private final String displayName;
 
-        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
+        CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, long proclen, int debugStart, int debugEnd, int typeIndex,
                         short segment, byte flags) {
             super(cvDebugInfo, CVDebugConstants.S_GPROC32);
             this.symbolName = symbolName;
@@ -370,7 +370,7 @@ abstract class CVSymbolSubrecord {
             int pos = CVUtil.putInt(pparent, buffer, initialPos);
             pos = CVUtil.putInt(pend, buffer, pos);
             pos = CVUtil.putInt(pnext, buffer, pos);
-            pos = CVUtil.putInt(proclen, buffer, pos);
+            pos = CVUtil.putLongAsInt(proclen, buffer, pos);
             pos = CVUtil.putInt(debugStart, buffer, pos);
             pos = CVUtil.putInt(debugEnd, buffer, pos);
             pos = CVUtil.putInt(typeIndex, buffer, pos);

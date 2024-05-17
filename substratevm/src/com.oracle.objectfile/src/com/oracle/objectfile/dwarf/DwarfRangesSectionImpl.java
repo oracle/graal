@@ -24,21 +24,20 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.Map;
 
 public class DwarfRangesSectionImpl extends DwarfSectionImpl {
-    public DwarfRangesSectionImpl(DwarfDebugInfo dwarfSections) {
+    public DwarfRangesSectionImpl(DwarfDebugInfoBase dwarfSections) {
         // debug_ranges section depends on debug_aranges section
-        super(dwarfSections, DwarfSectionName.DW_RANGES_SECTION, DwarfSectionName.DW_ARANGES_SECTION);
+        super(dwarfSections, dwarfSections.rangesSectionName(), dwarfSections.arangesSectionName());
     }
 
     @Override
@@ -48,7 +47,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
         instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
             setCodeRangesIndex(classEntry, cursor.get());
             // base address
-            cursor.add(2 * 8);
+            cursor.add(rangePrefixSize());
             // per method lo and hi offsets
             cursor.add(2 * 8 * classEntry.compiledEntryCount());
             // end marker
@@ -60,7 +59,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
 
     @Override
     public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-        ObjectFile.Element textElement = getElement().getOwner().elementForName(".text");
+        var textElement = getElement().getOwner().elementForName(dwarfSections.textSectionName().value());
         LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
         if (decisionMap != null) {
             Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
@@ -90,14 +89,13 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
             int start = pos;
             setCodeRangesIndex(classEntry, pos);
             log(context, "  [0x%08x] ranges start for class %s", pos, classEntry.getTypeName());
-            int base = classEntry.compiledEntriesBase();
+            long base = classEntry.compiledEntriesBase();
             log(context, "  [0x%08x] base 0x%x", pos, base);
-            pos = writeLong(-1L, buffer, pos);
-            pos = writeRelocatableCodeOffset(base, buffer, pos);
+            pos = writeRangePrefix(pos, buffer, base);
             cursor.set(pos);
             classEntry.compiledEntries().forEach(compiledMethodEntry -> {
-                int lo = compiledMethodEntry.getPrimary().getLo();
-                int hi = compiledMethodEntry.getPrimary().getHi();
+                long lo = compiledMethodEntry.getPrimary().getLo();
+                long hi = compiledMethodEntry.getPrimary().getHi();
                 log(context, "  [0x%08x] lo 0x%x (%s)", cursor.get(), lo - base, compiledMethodEntry.getPrimary().getFullMethodNameWithParams());
                 cursor.set(writeLong(lo - base, buffer, cursor.get()));
                 log(context, "  [0x%08x] hi 0x%x", cursor.get(), hi - base);
@@ -112,5 +110,15 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
         });
 
         assert cursor.get() == size;
+    }
+
+    protected int writeRangePrefix(int pos, byte[] buffer, long base) {
+        pos = writeLong(-1L, buffer, pos);
+        pos = writeRelocatableCodeOffset(base, buffer, pos);
+        return pos;
+    }
+
+    protected int rangePrefixSize() {
+        return 2 * 8;
     }
 }

@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
 /*
  * Compile unit DIE header has_children attribute values.

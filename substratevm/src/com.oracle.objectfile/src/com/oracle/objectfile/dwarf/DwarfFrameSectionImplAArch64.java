@@ -24,32 +24,34 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 
 import java.util.List;
 
 /**
- * x86_64-specific section generator for debug_frame section that knows details of x86_64 registers
- * and frame layout.
+ * AArch64-specific section generator for debug_frame section that knows details of AArch64
+ * registers and frame layout.
  */
-public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
-    private static final int CFA_RSP_IDX = 7;
-    private static final int CFA_RIP_IDX = 16;
+public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
+    public static final int CFA_FP_IDX = 29;
+    private static final int CFA_LR_IDX = 30;
+    private static final int CFA_SP_IDX = 31;
+    @SuppressWarnings("unused") private static final int CFA_PC_IDX = 32;
 
-    public DwarfFrameSectionImplX86_64(DwarfDebugInfo dwarfSections) {
+    public DwarfFrameSectionImplAArch64(DwarfDebugInfoBase dwarfSections) {
         super(dwarfSections);
     }
 
     @Override
     public int getReturnPCIdx() {
-        return CFA_RIP_IDX;
+        return CFA_LR_IDX;
     }
 
     @Override
     public int getSPIdx() {
-        return CFA_RSP_IDX;
+        return CFA_SP_IDX;
     }
 
     @Override
@@ -58,28 +60,15 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
         /*
          * Invariant: CFA identifies last word of caller stack.
          *
-         * Register rsp points at the word containing the saved rip so the frame base (cfa) is at
-         * rsp + 8:
+         * So initial cfa is at rsp + 0:
          *
          * <ul>
          *
-         * <li><code>def_cfa r7 (sp) offset 8</code>
+         * <li><code>def_cfa r31 (sp) offset 0</code>
          *
          * </ul>
          */
-        pos = writeDefCFA(CFA_RSP_IDX, 8, buffer, pos);
-        /*
-         * Register rip is saved in slot 1.
-         *
-         * Scaling by -8 is automatic.
-         *
-         * <ul>
-         *
-         * <li><code>offset r16 (rip) cfa - 8</code>
-         *
-         * </ul>
-         */
-        pos = writeOffset(CFA_RIP_IDX, 1, buffer, pos);
+        pos = writeDefCFA(CFA_SP_IDX, 0, buffer, pos);
         return pos;
     }
 
@@ -98,13 +87,25 @@ public class DwarfFrameSectionImplX86_64 extends DwarfFrameSectionImpl {
                  * Invariant: CFA identifies last word of caller stack.
                  */
                 pos = writeDefCFAOffset(frameSize, buffer, pos);
+                /*
+                 * Notify push of lr and fp to stack slots 1 and 2.
+                 *
+                 * Scaling by -8 is automatic.
+                 */
+                pos = writeOffset(CFA_LR_IDX, 1, buffer, pos);
+                pos = writeOffset(CFA_FP_IDX, 2, buffer, pos);
             } else {
                 /*
-                 * SP has been contracted so rebase CFA using empty frame.
+                 * SP will have been contracted so rebase CFA using empty frame.
                  *
                  * Invariant: CFA identifies last word of caller stack.
                  */
-                pos = writeDefCFAOffset(8, buffer, pos);
+                pos = writeDefCFAOffset(0, buffer, pos);
+                /*
+                 * notify restore of fp and lr
+                 */
+                pos = writeRestore(CFA_FP_IDX, buffer, pos);
+                pos = writeRestore(CFA_LR_IDX, buffer, pos);
             }
         }
         return pos;

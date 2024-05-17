@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
 /**
  * Standard line section opcodes defined by Dwarf 4.

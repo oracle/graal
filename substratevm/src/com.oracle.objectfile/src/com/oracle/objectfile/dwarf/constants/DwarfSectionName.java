@@ -24,27 +24,30 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
-/*
- * Values for DW_AT_inline attribute.
+/**
+ * Various ELF sections created by GraalVM including all debug info sections. The enum sequence
+ * starts with the text section (not defined in the DWARF spec and not created by debug info code).
  */
-public enum DwarfInline {
-    @SuppressWarnings("unused")
-    DW_INL_not_inlined((byte) 0),
-    DW_INL_inlined((byte) 1),
-    @SuppressWarnings("unused")
-    DW_INL_declared_not_inlined((byte) 2),
-    @SuppressWarnings("unused")
-    DW_INL_declared_inlined((byte) 3);
+public enum DwarfSectionName {
+    TEXT_SECTION(".text"),
+    DW_STR_SECTION(".debug_str"),
+    DW_LINE_SECTION(".debug_line"),
+    DW_FRAME_SECTION(".debug_frame"),
+    DW_ABBREV_SECTION(".debug_abbrev"),
+    DW_INFO_SECTION(".debug_info"),
+    DW_LOC_SECTION(".debug_loc"),
+    DW_ARANGES_SECTION(".debug_aranges"),
+    DW_RANGES_SECTION(".debug_ranges");
 
-    private final byte value;
+    private final String value;
 
-    DwarfInline(byte b) {
-        value = b;
+    DwarfSectionName(String s) {
+        value = s;
     }
 
-    public byte value() {
+    public String value() {
         return value;
     }
 }
