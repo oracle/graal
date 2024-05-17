@@ -49,7 +49,7 @@ import org.graalvm.word.SignedWord;
  *
  * @since 19.0
  */
-@CPointerTo(nameOfCType = "signed char")
+@CPointerTo(nameOfCType = "char")
 public interface CCharPointer extends PointerBase {
 
     /**
