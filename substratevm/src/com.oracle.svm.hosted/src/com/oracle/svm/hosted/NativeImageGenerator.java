@@ -173,6 +173,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -224,7 +225,7 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
 import com.oracle.svm.hosted.code.CompileQueue;
-import com.oracle.svm.hosted.code.DynamicMethodAddressResolutionHostedSupport;
+import com.oracle.svm.hosted.code.ObjectFileTransformer;
 import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
@@ -237,6 +238,7 @@ import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -529,11 +531,12 @@ public class NativeImageGenerator {
         setSystemPropertiesForImageLate(k);
 
         var hostedOptionValues = new HostedOptionValues(optionProvider.getHostedValues());
-        SVMImageLayerSupport imageLayerSupport = SVMImageLayerSupport.initialize(hostedOptionValues);
-        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport.enabled()), imageLayerSupport);
+        HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues);
+        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport.getLoader() != null || imageLayerSupport.getWriter() != null),
+                        imageLayerSupport);
 
         ImageSingletons.add(LayeredImageSingletonSupport.class, (LayeredImageSingletonSupport) ImageSingletonsSupportImpl.get());
-        ImageSingletons.add(SVMImageLayerSupport.class, imageLayerSupport);
+        ImageSingletons.add(ImageLayerBuildingSupport.class, imageLayerSupport);
         ImageSingletons.add(ProgressReporter.class, reporter);
         ImageSingletons.add(DeadlockWatchdog.class, loader.watchdog);
         ImageSingletons.add(TimerCollection.class, timerCollection);
@@ -545,15 +548,13 @@ public class NativeImageGenerator {
 
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
-            if (imageLayerSupport.hasWriter()) {
+            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                 setupImageLayerArtifact(imageName);
             }
             doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions);
-            if (imageLayerSupport.persistImageSingletons()) {
+            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                 ImageSingletonsSupportImpl.HostedManagement.persist();
-            }
-            if (imageLayerSupport.hasWriter()) {
-                imageLayerSupport.getWriter().dumpFile();
+                HostedImageLayerBuildingSupport.singleton().getWriter().dumpFile();
             }
         } finally {
             reporter.ensureCreationStageEndCompleted();
@@ -655,8 +656,8 @@ public class NativeImageGenerator {
             var hConstantReflection = (HostedConstantReflectionProvider) runtimeConfiguration.getProviders().getConstantReflection();
             heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, hConstantReflection, ImageSingletons.lookup(ImageHeapLayouter.class));
 
-            if (SVMImageLayerSupport.singleton().persistAnalysis()) {
-                SVMImageLayerSupport.singleton().getWriter().setNativeImageHeap(heap);
+            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                HostedImageLayerBuildingSupport.singleton().getWriter().setNativeImageHeap(heap);
             }
 
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtimeConfiguration, nativeLibraries);
@@ -715,14 +716,14 @@ public class NativeImageGenerator {
 
                         createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
 
-                        if (ImageSingletons.contains(DynamicMethodAddressResolutionHostedSupport.class)) {
-                            ImageSingletons.lookup(DynamicMethodAddressResolutionHostedSupport.class).install(image.getObjectFile());
+                        if (ImageSingletons.contains(ObjectFileTransformer.class)) {
+                            ImageSingletons.lookup(ObjectFileTransformer.class).afterAbstractImageCreation(image.getObjectFile());
                         }
 
                         image.build(imageName, debug);
 
-                        if (SVMImageLayerSupport.singleton().persistAnalysis()) {
-                            SVMImageLayerSupport.singleton().getWriter().persistAnalysisInfo(hUniverse, bb.getUniverse());
+                        if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                            HostedImageLayerBuildingSupport.singleton().getWriter().persistAnalysisInfo(hUniverse, bb.getUniverse());
                         }
 
                         if (NativeImageOptions.PrintUniverse.getValue()) {
@@ -804,7 +805,7 @@ public class NativeImageGenerator {
         String fileName = ImageLayerSnapshotUtil.FILE_NAME_PREFIX + imageName.substring(imageNameStart);
         String filePath = imageName.substring(0, imageNameStart) + fileName;
         Path layerSnapshotPath = generatedFiles(HostedOptionValues.singleton()).resolve(filePath + ImageLayerSnapshotUtil.FILE_EXTENSION);
-        SVMImageLayerSupport.singleton().getWriter().setFileInfo(layerSnapshotPath, fileName, ImageLayerSnapshotUtil.FILE_EXTENSION);
+        HostedImageLayerBuildingSupport.singleton().getWriter().setFileInfo(layerSnapshotPath, fileName, ImageLayerSnapshotUtil.FILE_EXTENSION);
         BuildArtifacts.singleton().add(ArtifactType.LAYER_SNAPSHOT, layerSnapshotPath);
     }
 
@@ -823,8 +824,8 @@ public class NativeImageGenerator {
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
             }
 
-            if (SVMImageLayerSupport.singleton().loadAnalysis()) {
-                SVMImageLayerSupport.singleton().getLoader().loadLayerConstants();
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                HostedImageLayerBuildingSupport.singleton().getLoader().loadLayerConstants();
             }
 
             try (ReporterClosable c = ProgressReporter.singleton().printAnalysis(bb.getUniverse(), nativeLibraries.getLibraries())) {
@@ -970,8 +971,8 @@ public class NativeImageGenerator {
                                 classInitializationSupport, Collections.singletonList(harnessSubstitutions));
 
                 ImageLayerLoader imageLayerLoader = null;
-                if (SVMImageLayerSupport.singleton().loadAnalysis()) {
-                    imageLayerLoader = SVMImageLayerSupport.singleton().getLoader();
+                if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                    imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
                     imageLayerLoader.setUniverse(aUniverse);
                     aUniverse.setImageLayerLoader(imageLayerLoader);
                     imageLayerLoader.loadLayerAnalysis();
@@ -1005,8 +1006,8 @@ public class NativeImageGenerator {
                 ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aProviders.getSnippetReflection(),
                                 aProviders.getConstantReflection(), aScanningObserver, hostedValuesProvider);
                 aUniverse.setHeapScanner(heapScanner);
-                if (SVMImageLayerSupport.singleton().persistAnalysis()) {
-                    SVMImageLayerSupport.singleton().getWriter().setImageHeap(imageHeap);
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getWriter().setImageHeap(imageHeap);
                 }
                 ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
                 if (imageLayerLoader != null) {
@@ -1045,8 +1046,8 @@ public class NativeImageGenerator {
                     featureHandler.forEachFeature(feature -> feature.duringSetup(config));
                 }
 
-                if (SVMImageLayerSupport.singleton().loadAnalysis()) {
-                    Heap.getHeap().setStartOffset(SVMImageLayerSupport.singleton().getLoader().getImageHeapSize());
+                if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                    Heap.getHeap().setStartOffset(HostedImageLayerBuildingSupport.singleton().getLoader().getImageHeapSize());
                 }
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
@@ -1306,8 +1307,8 @@ public class NativeImageGenerator {
             if (CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
                 throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterCAPCache, "+"));
             }
-            if (SVMImageLayerSupport.singleton().hasLoader()) {
-                for (Path layerPath : SVMImageLayerSupport.singleton().getLoader().getLoadPaths()) {
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                for (Path layerPath : HostedImageLayerBuildingSupport.singleton().getLoader().getLoadPaths()) {
                     Path snapshotFileName = layerPath.getFileName();
                     if (snapshotFileName != null) {
                         String layerName = snapshotFileName.toString().split(ImageLayerSnapshotUtil.FILE_NAME_PREFIX)[1].split(ImageLayerSnapshotUtil.FILE_EXTENSION)[0].trim();

@@ -29,8 +29,8 @@ import java.util.EnumSet;
 public interface RuntimeOnlyImageSingleton extends LayeredImageSingleton {
 
     @Override
-    default EnumSet<ImageBuilderFlags> getImageBuilderFlags() {
-        return EnumSet.of(ImageBuilderFlags.RUNTIME_ACCESS, ImageBuilderFlags.ALLOW_CONSTANT_FOLDING);
+    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY_ALLOW_FOLDING;
     }
 
     @Override

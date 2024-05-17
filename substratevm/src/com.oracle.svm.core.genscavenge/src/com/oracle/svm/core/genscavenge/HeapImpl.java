@@ -66,6 +66,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SystemGCEvent;
@@ -444,11 +445,8 @@ public final class HeapImpl extends Heap {
              */
             imageHeapOffset = NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
         }
-        /*
-         * GR-53993: With ImageLayerSupport, it would be possible to fetch the startOffset from the
-         * loader instead of storing it in the Heap.
-         */
-        if (SubstrateOptions.LoadImageLayer.hasBeenSet()) {
+
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             /*
              * GR-53964: The page size used to round up the start offset should be the same as the
              * one used in run time.

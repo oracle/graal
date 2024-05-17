@@ -22,24 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.core.imagelayer;
 
-import java.util.EnumSet;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.VMError;
+import java.util.function.BooleanSupplier;
 
-/**
- * Marker for singletons which currently cannot be part of layered images.
- */
-public interface UnsupportedLayeredSingleton extends LayeredImageSingleton {
-
+@Platforms(Platform.HOSTED_ONLY.class)
+public class BuildingImageLayerPredicate implements BooleanSupplier {
     @Override
-    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return EnumSet.of(LayeredImageSingletonBuilderFlags.UNSUPPORTED);
-    }
-
-    @Override
-    default PersistFlags preparePersist(ImageSingletonWriter writer) {
-        throw VMError.shouldNotReachHere("Unsupported feature singleton cannot be added to image");
+    public boolean getAsBoolean() {
+        return ImageLayerBuildingSupport.buildingImageLayer();
     }
 }

@@ -46,52 +46,7 @@ public interface LayeredImageSingleton {
         CREATE
     }
 
-    enum ImageBuilderFlags {
-        /**
-         * This singleton can be accessed from the runtime.
-         */
-        RUNTIME_ACCESS,
-        /**
-         * This singleton can be accessed from the buildtime.
-         */
-        BUILDTIME_ACCESS,
-        /**
-         * This singleton should not have been created. Throw error if it is created.
-         */
-        UNSUPPORTED,
-        /**
-         * This singleton should only be created in the initial layer.
-         */
-        INITIAL_LAYER_ONLY,
-        /**
-         * Allow the singleton to be constant-folded within the generated code.
-         */
-        ALLOW_CONSTANT_FOLDING,
-        /**
-         * Prevent the singleton to be constant-folded within the generated code.
-         */
-        PREVENT_CONSTANT_FOLDING
-    }
-
-    default boolean verifyImageBuilderFlags() {
-        EnumSet<ImageBuilderFlags> flags = getImageBuilderFlags();
-
-        if (flags.contains(ImageBuilderFlags.UNSUPPORTED)) {
-            assert flags.equals(EnumSet.of(ImageBuilderFlags.UNSUPPORTED)) : "Unsupported should be the only flag set " + flags;
-        }
-
-        if (flags.contains(ImageBuilderFlags.RUNTIME_ACCESS)) {
-            assert !flags.containsAll(EnumSet.of(ImageBuilderFlags.PREVENT_CONSTANT_FOLDING, ImageBuilderFlags.ALLOW_CONSTANT_FOLDING)) : String.format("Must set one of %s or %s. flags: %s",
-                            ImageBuilderFlags.PREVENT_CONSTANT_FOLDING, ImageBuilderFlags.ALLOW_CONSTANT_FOLDING, flags);
-            assert flags.contains(ImageBuilderFlags.PREVENT_CONSTANT_FOLDING) || flags.contains(ImageBuilderFlags.ALLOW_CONSTANT_FOLDING) : String.format("Must set one of %s or %s. flags: %s",
-                            ImageBuilderFlags.PREVENT_CONSTANT_FOLDING, ImageBuilderFlags.ALLOW_CONSTANT_FOLDING, flags);
-
-        }
-
-        return true;
-    }
-
-    EnumSet<ImageBuilderFlags> getImageBuilderFlags();
+    EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags();
 
     PersistFlags preparePersist(ImageSingletonWriter writer);
 

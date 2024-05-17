@@ -35,11 +35,13 @@ import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 
 public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport implements LayeredImageSingletonSupport {
 
@@ -106,10 +108,14 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             install(vmConfig, null);
         }
 
-        public static void install(HostedManagement vmConfig, SVMImageLayerSupport support) {
+        public static void install(HostedManagement vmConfig, HostedImageLayerBuildingSupport support) {
             UserError.guarantee(singletonDuringImageBuild == null, "Only one native image build can run at a time");
             singletonDuringImageBuild = vmConfig;
-            if (support != null && support.loadImageSingletons()) {
+            if (support != null && support.getLoader() != null) {
+                /*
+                 * Note eventually this may need to be moved to a later point after the Options
+                 * Image Singleton is installed.
+                 */
                 singletonDuringImageBuild.installPriorSingletonInfo(support.getLoader());
             } else {
                 singletonDuringImageBuild.doAddInternal(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(Set.of()));
@@ -138,7 +144,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         public static void persist() {
             var list = singletonDuringImageBuild.configObjects.entrySet().stream().filter(e -> e.getValue() instanceof LayeredImageSingleton).sorted(Comparator.comparing(e -> e.getKey().getName()))
                             .toList();
-            SVMImageLayerSupport.singleton().getWriter().writeImageSingletonInfo(list);
+            HostedImageLayerBuildingSupport.singleton().getWriter().writeImageSingletonInfo(list);
         }
 
         private final Map<Class<?>, Object> configObjects;
@@ -165,13 +171,13 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
             Object storedValue = value;
             if (value instanceof LayeredImageSingleton singleton) {
-                assert singleton.verifyImageBuilderFlags();
+                assert LayeredImageSingletonBuilderFlags.verifyImageBuilderFlags(singleton);
 
-                if (checkUnsupported && singleton.getImageBuilderFlags().contains(LayeredImageSingleton.ImageBuilderFlags.UNSUPPORTED)) {
+                if (checkUnsupported && singleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.UNSUPPORTED)) {
                     throw UserError.abort("Unsupported image singleton is being installed %s %s", key.getTypeName(), singleton);
                 }
 
-                if (!singleton.getImageBuilderFlags().contains(LayeredImageSingleton.ImageBuilderFlags.BUILDTIME_ACCESS)) {
+                if (!singleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS)) {
                     storedValue = new RuntimeOnlyWrapper(singleton);
                 }
             }
@@ -193,7 +199,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             } else if (result instanceof RuntimeOnlyWrapper wrapper) {
                 if (!stripRuntimeOnly) {
                     throw UserError.abort("A LayeredImageSingleton was accessed during image building which does not have %s access. Key: %s, object %s",
-                                    LayeredImageSingleton.ImageBuilderFlags.BUILDTIME_ACCESS, key, wrapper.wrappedObject());
+                                    LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS, key, wrapper.wrappedObject());
                 }
                 result = wrapper.wrappedObject();
 
