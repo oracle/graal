@@ -3676,7 +3676,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("tagNodes.add(node)");
             }
 
-            if (operation.requiresRootOperation) {
+            if (operation.requiresRootOperation()) {
                 b.startStatement().startCall("validateRootOperationBegin").end(2);
             }
 
@@ -4195,16 +4195,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(1) +
                                 ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
-            } else if (operation.isVariadic && operation.numChildren > 1) {
+            } else if (operation.isVariadic && operation.numChildren() > 1) {
                 // The variadic child is included in numChildren, so the operation requires
                 // numChildren - 1 children at minimum.
-                b.startIf().string("operation.childCount < " + (operation.numChildren - 1)).end().startBlock();
-                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(operation.numChildren - 1) +
+                b.startIf().string("operation.childCount < " + (operation.numChildren() - 1)).end().startBlock();
+                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(operation.numChildren() - 1) +
                                 ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             } else if (!operation.isVariadic) {
-                b.startIf().string("operation.childCount != " + operation.numChildren).end().startBlock();
-                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + childString(operation.numChildren) +
+                b.startIf().string("operation.childCount != " + operation.numChildren()).end().startBlock();
+                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + childString(operation.numChildren()) +
                                 ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             }
@@ -5038,7 +5038,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
             }
 
-            if (operation.requiresRootOperation) {
+            if (operation.requiresRootOperation()) {
                 b.startStatement().startCall("validateRootOperationBegin").end(2);
             }
 
@@ -5153,7 +5153,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 return List.of();
             }
 
-            boolean inEmit = operation.numChildren == 0;
+            boolean inEmit = !operation.hasChildren();
             List<String> result = new ArrayList<>(numConstantOperands);
             for (int i = 0; i < numConstantOperands; i++) {
                 if (i < constantOperandsBefore.size()) {
@@ -5195,11 +5195,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("doEmitVariadic(operation.childCount - " + (instruction.signature.dynamicOperandCount - 1) + ")");
             }
 
-            if (customChildBci != null && operation.numChildren > 1) {
+            if (customChildBci != null && operation.numChildren() > 1) {
                 throw new AssertionError("customChildBci can only be used with a single child.");
             }
 
-            boolean inEmit = operation.numChildren == 0;
+            boolean inEmit = !operation.hasChildren();
 
             if (!inEmit) {
                 // make "operationData" available for endX methods.
@@ -5279,7 +5279,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
 
             Map<BeforeChildKind, List<OperationModel>> groupedOperations = model.getOperations().stream().filter(OperationModel::hasChildren).collect(Collectors.groupingBy(op -> {
-                if (op.isTransparent && (op.isVariadic || op.numChildren > 1)) {
+                if (op.isTransparent && (op.isVariadic || op.numChildren() > 1)) {
                     return BeforeChildKind.TRANSPARENT;
                 } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                     return BeforeChildKind.SHORT_CIRCUIT;
@@ -5442,12 +5442,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                  * Ensure the stack balances. If a value was expected, assert that the child
                  * produced a value. If a value was not expected but the child produced one, pop it.
                  */
-                if (op.childrenMustBeValues != null) {
+                if (op.requiresStackBalancing()) {
                     List<Integer> valueChildren = new ArrayList<>();
                     List<Integer> nonValueChildren = new ArrayList<>();
 
-                    for (int i = 0; i < op.childrenMustBeValues.length; i++) {
-                        if (op.childrenMustBeValues[i]) {
+                    for (int i = 0; i < op.dynamicOperands.length; i++) {
+                        if (!op.dynamicOperands[i].voidAllowed()) {
                             valueChildren.add(i);
                         } else {
                             nonValueChildren.add(i);
@@ -5475,7 +5475,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             if (i != 0) {
                                 b.string(" || ");
                             }
-                            String operator = (op.isVariadic && valueChildren.get(i) == op.childrenMustBeValues.length - 1) ? ">=" : "==";
+                            String operator = (op.isVariadic && valueChildren.get(i) == op.dynamicOperands.length - 1) ? ">=" : "==";
                             b.string("childIndex " + operator + " " + valueChildren.get(i));
                         }
                         b.string(") && !producedValue");
@@ -5492,7 +5492,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             if (i != 0) {
                                 b.string(" || ");
                             }
-                            String operator = (op.isVariadic && nonValueChildren.get(i) == op.childrenMustBeValues.length - 1) ? ">=" : "==";
+                            String operator = (op.isVariadic && nonValueChildren.get(i) == op.dynamicOperands.length - 1) ? ">=" : "==";
                             b.string("childIndex " + operator + " " + nonValueChildren.get(i));
                         }
                         b.string(") && producedValue");

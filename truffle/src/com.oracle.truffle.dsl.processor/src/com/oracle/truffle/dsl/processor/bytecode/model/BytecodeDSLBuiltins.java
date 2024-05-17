@@ -76,8 +76,8 @@ public class BytecodeDSLBuiltins {
                                         It has a similar role to a block in Java, but it can also produce a value (i.e., blocks can be expressions).
                                           """) //
                         .setTransparent(true) //
-                        .setVariadic(0) //
-                        .setChildrenMustBeValues(false);
+                        .setVariadic(true) //
+                        .setDynamicOperands(transparentOperationChild());
         m.rootOperation = m.operation(OperationKind.ROOT, "Root",
                         String.format("""
                                         Each Root operation defines one function (i.e., a {@link %s}). It takes one or more children, which define the body of the function.
@@ -92,19 +92,18 @@ public class BytecodeDSLBuiltins {
                                         Multiple root nodes can be obtained from the {@link BytecodeNodes} object in the order of their {@link #beginRoot} calls.
                                         """,
                                         m.templateType.getSimpleName(), m.templateType.getSimpleName())) //
-                        .setVariadic(0) //
                         .setTransparent(true) //
-                        .setChildrenMustBeValues(false) //
+                        .setVariadic(true) //
                         .setOperationBeginArguments(
-                                        new OperationArgument(types.TruffleLanguage, OperationArgument.Encoding.LANGUAGE, "language", "the language to associate with the root node"));
+                                        new OperationArgument(types.TruffleLanguage, OperationArgument.Encoding.LANGUAGE, "language", "the language to associate with the root node")) //
+                        .setDynamicOperands(transparentOperationChild());
         m.ifThenOperation = m.operation(OperationKind.IF_THEN, "IfThen", """
                         IfThen implements an if-then statement. It has two children. It evaluates its first child, and if it produces {@code true}, it executes its second child.
                         This operation does not produce a result.
                         Note that only Java booleans are accepted as results of the first operation, and all other values produce undefined behaviour.
                         """) //
                         .setVoid(true) //
-                        .setNumChildren(2) //
-                        .setChildrenMustBeValues(true, false);
+                        .setDynamicOperands(child("condition"), voidableChild("thens"));
         m.ifThenElseOperation = m.operation(OperationKind.IF_THEN_ELSE, "IfThenElse",
                         """
                                         IfThenElse implements an if-then-else statement. It has three children. It evaluates its first child, and if it produces {@code true}, it executes its second child; otherwise, it executes its third child.
@@ -112,32 +111,27 @@ public class BytecodeDSLBuiltins {
                                         Note that only Java booleans are accepted as results of the first operation, and all other values produce undefined behaviour.
                                         """) //
                         .setVoid(true) //
-                        .setNumChildren(3) //
-                        .setChildrenMustBeValues(true, false, false);
+                        .setDynamicOperands(child("condition"), voidableChild("thens"), voidableChild("elses"));
         m.conditionalOperation = m.operation(OperationKind.CONDITIONAL, "Conditional",
                         """
-                                        Conditional implements a conditional expression (e.g., {@code cond ? a : b} in Java). It has the same semantics as IfThenElse, except it produces the value of the child that is conditionally executed.
+                                        Conditional implements a conditional expression (e.g., {@code cond ? thens : elses} in Java). It has the same semantics as IfThenElse, except it produces the value of the child that is conditionally executed.
                                         """) //
-                        .setNumChildren(3) //
-                        .setChildrenMustBeValues(true, true, true);
-
+                        .setDynamicOperands(child("condition"), child("thens"), child("elses"));
         m.whileOperation = m.operation(OperationKind.WHILE, "While",
                         """
                                         While implements a while loop. It has two children. It evaluates its first child, and if it produces {@code true}, it executes its second child and then repeats.
                                         Note that only Java booleans are accepted as results of the first operation, and all other values produce undefined behaviour.
                                         """) //
                         .setVoid(true) //
-                        .setNumChildren(2) //
-                        .setChildrenMustBeValues(true, false);
+                        .setDynamicOperands(child("condition"), voidableChild("body"));
         m.tryCatchOperation = m.operation(OperationKind.TRY_CATCH, "TryCatch",
                         """
                                         TryCatch implements an exception handler. It has two children: the body and the handler. It executes the body, and if any {@link com.oracle.truffle.api.exception.AbstractTruffleException} occurs during execution, it stores the exception in the given local and executes the handler.
                                         Unlike a Java try-catch, this operation does not filter the exception based on type.
                                         """) //
                         .setVoid(true) //
-                        .setNumChildren(2) //
-                        .setChildrenMustBeValues(false, false) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind the caught exception to"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind the caught exception to")) //
+                        .setDynamicOperands(voidableChild("try"), voidableChild("catch"));
         m.finallyTryOperation = m.operation(OperationKind.FINALLY_TRY, "FinallyTry",
                         """
                                         FinallyTry implements a finally handler. It takes two children: the handler and the body. It executes the body, and after execution finishes it always executes the handler.
@@ -148,9 +142,8 @@ public class BytecodeDSLBuiltins {
                                         Note that the first child is the handler and the second child is the body. Specifying the handler first greatly simplifies and speeds up bytecode generation.
                                         """) //
                         .setVoid(true) //
-                        .setNumChildren(2) //
-                        .setChildrenMustBeValues(false, false) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to (if available)"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to (if available)")) //
+                        .setDynamicOperands(voidableChild("finally"), voidableChild("try"));
         m.operation(OperationKind.FINALLY_TRY_CATCH, "FinallyTryCatch",
                         """
                                         FinallyTryCatch implements a finally handler that behaves differently when an exception is thrown. It takes three children: the regular handler, the body, and the exceptional handler. It executes the body and then executes one of the handlers.
@@ -159,35 +152,30 @@ public class BytecodeDSLBuiltins {
                                         If the body finishes with a control flow operation, the regular handler executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
                                         """) //
                         .setVoid(true) //
-                        .setNumChildren(3) //
-                        .setChildrenMustBeValues(false, false, false) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to"));
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to")) //
+                        .setDynamicOperands(voidableChild("finally"), voidableChild("try"), voidableChild("catch"));
         m.operation(OperationKind.LABEL, "Label", """
                         Label defines a location in the bytecode that can be used as a forward Branch target.
                         <p>
                         Each {@link BytecodeLabel} must be defined exactly once. It should be defined directly inside the same operation in which it is created (using {@link #createLabel}).
                         """) //
                         .setVoid(true) //
-                        .setNumChildren(0) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLabel, Encoding.LABEL, "label", "the label to define"));
         m.operation(OperationKind.BRANCH, "Branch", """
                         Branch performs a branch to the given label.
                         This operation only supports unconditional forward branches; use IfThen and While to perform other kinds of branches.
                         """) //
                         .setVoid(true) //
-                        .setNumChildren(0) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLabel, Encoding.LABEL, "label", "the label to branch to")) //
                         .setInstruction(m.branchInstruction);
         m.loadConstantOperation = m.operation(OperationKind.LOAD_CONSTANT, "LoadConstant", """
                         LoadConstant produces the given constant value. The constant should be immutable, since it may be shared across multiple LoadConstant operations.
                         """) //
-                        .setNumChildren(0) //
                         .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), Encoding.OBJECT, "constant", "the constant value to load")) //
                         .setInstruction(m.loadConstantInstruction);
         m.operation(OperationKind.LOAD_ARGUMENT, "LoadArgument", """
                         LoadArgument reads an argument from the frame using the given index and produces its value.
                         """) //
-                        .setNumChildren(0) //
                         .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the index of the argument to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
@@ -196,7 +184,6 @@ public class BytecodeDSLBuiltins {
                                         LoadLocal reads the given local from the frame and produces the current value.
                                         If a value has not been written to the local, LoadLocal produces the default value as defined in the {@link FrameDescriptor} ({@code null} by default).
                                         """) //
-                        .setNumChildren(0) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL, "load.local", m.signature(Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
@@ -204,62 +191,53 @@ public class BytecodeDSLBuiltins {
                         LoadLocalMaterialized reads the given local from the frame produced by its child.
                         This operation can be used to read locals from materialized frames, including frames of enclosing root nodes.
                         """) //
-                        .setNumChildren(1) //
-                        .setChildrenMustBeValues(true) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
+                        .setDynamicOperands(child("frame")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat", m.signature(Object.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         m.storeLocalOperation = m.operation(OperationKind.STORE_LOCAL, "StoreLocal", """
                         StoreLocal executes its child and overwrites the given local with the result.
                         """) //
-                        .setNumChildren(1) //
-                        .setChildrenMustBeValues(true) //
                         .setVoid(true) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
+                        .setDynamicOperands(child("value")) //
                         .setInstruction(m.instruction(InstructionKind.STORE_LOCAL, "store.local", m.signature(void.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         m.storeLocalMaterializedOperation = m.operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized", """
                         StoreLocalMaterialized evaluates its first child to produce a frame, then evaluates its second child and stores the result in the given local.
                         This operation can be used to store locals into materialized frames, including frames of enclosing root nodes.
                         """) //
-                        .setNumChildren(2) //
-                        .setChildrenMustBeValues(true, true) //
                         .setVoid(true) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
+                        .setDynamicOperands(child("frame"), child("value")) //
                         .setInstruction(m.instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         m.signature(void.class, Object.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         m.returnOperation = m.operation(OperationKind.RETURN, "Return", "Return evaluates its child and returns the result.") //
-                        .setNumChildren(1) //
-                        .setChildrenMustBeValues(true) //
-                        .setInstruction(m.returnInstruction);
+                        .setDynamicOperands(child("result")).setInstruction(m.returnInstruction);
         if (m.enableYield) {
             m.yieldInstruction = m.instruction(InstructionKind.YIELD, "yield", m.signature(void.class, Object.class)).addImmediate(ImmediateKind.CONSTANT, "location");
             m.operation(OperationKind.YIELD, "Yield", """
                             Yield executes its child, suspends execution at the given location, and returns a {@link com.oracle.truffle.api.bytecode.ContinuationResult} containing the result.
                             The caller can resume the continuation, which continues execution after the Yield. When resuming, the caller passes a value that becomes the value produced by the Yield.
                             """) //
-                            .setNumChildren(1) //
-                            .setChildrenMustBeValues(true) //
-                            .setInstruction(m.yieldInstruction);
+                            .setDynamicOperands(child("value")).setInstruction(m.yieldInstruction);
         }
         m.sourceOperation = m.operation(OperationKind.SOURCE, "Source", """
                         Source associates the enclosed children with the given source object. Together with SourceSection, it encodes source locations for operations in the program.
                         """) //
-                        .setVariadic(0) //
-                        .setChildrenMustBeValues(false) //
                         .setTransparent(true) //
-                        .setRequiresParentRoot(false) //
-                        .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.OBJECT, "source", "the source object to associate with the enclosed operations"));
+                        .setVariadic(true) //
+                        .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.OBJECT, "source", "the source object to associate with the enclosed operations")) //
+                        .setDynamicOperands(transparentOperationChild());
         m.sourceSectionOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSection", """
                         SourceSection associates the enclosed children with the given source character index and length. It must be (directly or indirectly) enclosed within a Source operation.
                         """) //
-                        .setVariadic(0) //
-                        .setChildrenMustBeValues(false)//
                         .setTransparent(true) //
-                        .setRequiresParentRoot(false) //
+                        .setVariadic(true) //
                         .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the starting character index of the source section"),
-                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length", "the length (in characters) of the source section"));
+                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length", "the length (in characters) of the source section")) //
+                        .setDynamicOperands(transparentOperationChild());
 
         if (m.enableTagInstrumentation) {
             m.tagEnterInstruction = m.instruction(InstructionKind.TAG_ENTER, "tag.enter", m.signature(void.class));
@@ -273,11 +251,11 @@ public class BytecodeDSLBuiltins {
                                             Tag associates the enclosed children with the given tags.
                                             When the {@link BytecodeConfig} includes one or more of the given tags, the root node will automatically invoke instrumentation probes when entering/leaving the enclosed operations.
                                             """) //
-                            .setNumChildren(1) //
                             .setOperationBeginArgumentVarArgs(true) //
                             .setOperationBeginArguments(
                                             new OperationArgument(new ArrayCodeTypeMirror(context.getDeclaredType(Class.class)), Encoding.TAGS, "newTags",
                                                             "the tags to associate with the enclosed operations"))//
+                            .setDynamicOperands(voidableChild("tagged")) //
                             .setOperationEndArguments(
                                             new OperationArgument(new ArrayCodeTypeMirror(context.getDeclaredType(Class.class)), Encoding.TAGS, "newTags",
                                                             "the tags to associate with the enclosed operations"))//
@@ -302,5 +280,17 @@ public class BytecodeDSLBuiltins {
 
         m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class));
         m.clearLocalInstruction.addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset");
+    }
+
+    private static DynamicOperandModel child(String name) {
+        return new DynamicOperandModel(name, false, false);
+    }
+
+    private static DynamicOperandModel voidableChild(String name) {
+        return new DynamicOperandModel(name, true, false);
+    }
+
+    private static DynamicOperandModel transparentOperationChild() {
+        return new DynamicOperandModel("body", true, true);
     }
 }

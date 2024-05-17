@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
-import java.util.Arrays;
 import java.util.List;
 
 import javax.lang.model.type.TypeMirror;
@@ -140,20 +139,18 @@ public class OperationModel implements PrettyPrintable {
      * Source position-related operations are also transparent.
      */
     public boolean isTransparent;
-    public boolean requiresRootOperation = true;
     public boolean isVoid;
     public boolean isVariadic;
+
     /**
      * Internal operations are generated and used internally by the DSL. They should not be exposed
      * through the builder and should not be serialized.
      */
     public boolean isInternal;
 
-    public boolean[] childrenMustBeValues;
-    public int numChildren;
-
     public InstructionModel instruction;
     public ConstantOperands constantOperands = null;
+    public DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[0];
     public OperationArgument[] operationBeginArguments = EMPTY_ARGUMENTS;
     public OperationArgument[] operationEndArguments = EMPTY_ARGUMENTS;
     public boolean operationBeginArgumentVarArgs = false;
@@ -170,8 +167,12 @@ public class OperationModel implements PrettyPrintable {
         this.javadoc = javadoc;
     }
 
+    public int numChildren() {
+        return dynamicOperands.length;
+    }
+
     public boolean hasChildren() {
-        return isVariadic || numChildren > 0;
+        return isVariadic || numChildren() > 0;
     }
 
     public void setInstrumentationIndex(int instrumentationIndex) {
@@ -183,8 +184,8 @@ public class OperationModel implements PrettyPrintable {
         return this;
     }
 
-    public OperationModel setRequiresParentRoot(boolean requiresRoot) {
-        this.requiresRootOperation = requiresRoot;
+    public OperationModel setVariadic(boolean isVariadic) {
+        this.isVariadic = isVariadic;
         return this;
     }
 
@@ -197,25 +198,8 @@ public class OperationModel implements PrettyPrintable {
         return this;
     }
 
-    public OperationModel setChildrenMustBeValues(boolean... childrenMustBeValues) {
-        this.childrenMustBeValues = childrenMustBeValues;
-        return this;
-    }
-
-    public OperationModel setAllChildrenMustBeValues() {
-        childrenMustBeValues = new boolean[numChildren];
-        Arrays.fill(childrenMustBeValues, true);
-        return this;
-    }
-
-    public OperationModel setVariadic(int minChildren) {
-        this.isVariadic = true;
-        this.numChildren = minChildren;
-        return this;
-    }
-
-    public OperationModel setNumChildren(int numChildren) {
-        this.numChildren = numChildren;
+    public OperationModel setDynamicOperands(DynamicOperandModel... dynamicOperands) {
+        this.dynamicOperands = dynamicOperands;
         return this;
     }
 
@@ -276,8 +260,15 @@ public class OperationModel implements PrettyPrintable {
         return kind == OperationKind.CUSTOM || kind == OperationKind.CUSTOM_SHORT_CIRCUIT || kind == OperationKind.CUSTOM_INSTRUMENTATION;
     }
 
+    public boolean requiresRootOperation() {
+        return kind != OperationKind.SOURCE && kind != OperationKind.SOURCE_SECTION;
+    }
+
+    public boolean requiresStackBalancing() {
+        return kind != OperationKind.TAG;
+    }
+
     public String getConstantName() {
         return name.toUpperCase();
     }
-
 }
