@@ -88,7 +88,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         context.initialize(ProxyLanguage.ID);
         sampler.setCollecting(false);
 
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        List<CPUSamplerData> data = sampler.getDataList();
         assertEquals(1, data.size());
 
         assertEquals(1, searchInitializeContext(data).size());
@@ -114,15 +114,15 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         context.initialize(ProxyLanguage.ID);
         sampler.setCollecting(false);
 
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        List<CPUSamplerData> data = sampler.getDataList();
         assertEquals(1, data.size());
 
         assertEquals(0, searchInitializeContext(data).size());
     }
 
-    private static List<ProfilerNode<Payload>> searchInitializeContext(Map<TruffleContext, CPUSamplerData> data) {
+    private static List<ProfilerNode<Payload>> searchInitializeContext(List<CPUSamplerData> data) {
         List<ProfilerNode<Payload>> found = new ArrayList<>();
-        for (CPUSamplerData d : data.values()) {
+        for (CPUSamplerData d : data) {
             Map<Thread, Collection<ProfilerNode<Payload>>> threadData = d.getThreadData();
             assertEquals(threadData.toString(), 1, threadData.size());
 
@@ -487,6 +487,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testTiers() {
         Assume.assumeFalse(Truffle.getRuntime().getClass().toString().contains("Default"));
         Context.Builder builder = Context.newBuilder().option("engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD)).option("engine.LastTierCompilationThreshold",
@@ -498,6 +499,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             for (int i = 0; i < 3 * FIRST_TIER_THRESHOLD; i++) {
                 c.eval(defaultSourceForSampling);
             }
+            // Intentionally kept one usage of the deprecated API
             data = cpuSampler.getData();
         }
         CPUSamplerData samplerData = data.values().iterator().next();
