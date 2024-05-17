@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.loop;
 import static org.graalvm.compiler.nodes.loop.MathUtil.add;
 import static org.graalvm.compiler.nodes.loop.MathUtil.sub;
 
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.NodeView;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.phases.common.util.LoopUtility;
 
 public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
@@ -103,7 +105,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     private long constantStrideSafe() throws ArithmeticException {
         if (value instanceof SubNode && base.valueNode() == value.getY()) {
-            return Math.multiplyExact(base.constantStride(), -1);
+            return LoopUtility.multiplyExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), base.constantStride(), -1);
         }
         return base.constantStride();
     }
@@ -159,15 +161,17 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     private long opSafe(long b, long o) throws ArithmeticException {
+        // we can use offset bits in this method because all operands (init, scale, stride and
+        // extremum) have by construction equal bit sizes
         if (value instanceof AddNode) {
-            return Math.addExact(b, o);
+            return LoopUtility.addExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
         }
         if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return Math.subtractExact(b, o);
+                return LoopUtility.subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             } else {
                 assert base.valueNode() == value.getY() : String.format("[base]=%s;[value]=%s", base.valueNode(), value.getY());
-                return Math.subtractExact(b, o);
+                return LoopUtility.subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             }
         }
         throw GraalError.shouldNotReachHereUnexpectedValue(value); // ExcludeFromJacocoGeneratedReport

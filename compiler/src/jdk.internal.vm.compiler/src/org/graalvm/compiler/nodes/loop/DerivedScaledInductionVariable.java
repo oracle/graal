@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.phases.common.util.LoopUtility;
 
 public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
@@ -121,7 +122,7 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantInitSafe() throws ArithmeticException {
-        return Math.multiplyExact(base.constantInit(), scale.asJavaConstant().asLong());
+        return opSafe(base.constantInit(), scale.asJavaConstant().asLong());
     }
 
     @Override
@@ -130,7 +131,13 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantStrideSafe() throws ArithmeticException {
-        return Math.multiplyExact(base.constantStride(), scale.asJavaConstant().asLong());
+        return opSafe(base.constantStride(), scale.asJavaConstant().asLong());
+    }
+
+    private long opSafe(long a, long b) {
+        // we can use scale bits here because all operands (init, scale, stride and extremum) have
+        // by construction equal bit sizes
+        return LoopUtility.multiplyExact(IntegerStamp.getBits(scale.stamp(NodeView.DEFAULT)), a, b);
     }
 
     @Override
@@ -152,7 +159,7 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantExtremumSafe() throws ArithmeticException {
-        return Math.multiplyExact(base.constantExtremum(), scale.asJavaConstant().asLong());
+        return opSafe(base.constantExtremum(), scale.asJavaConstant().asLong());
     }
 
     @Override
