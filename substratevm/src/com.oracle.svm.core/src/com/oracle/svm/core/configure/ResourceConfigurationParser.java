@@ -265,7 +265,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
                     return ".*";
                 }
                 case DOUBLE_STAR_SLASH -> {
-                    return "[^/]*(/|$))*";
+                    return "([^/]*(/|$))*";
                 }
 
                 default -> throw VMError.shouldNotReachHere("Unsupported conversion of: " + this);
