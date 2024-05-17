@@ -41,6 +41,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_READ_T
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_WRITTEN_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_HEAP_SIZE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTERFACES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_ENUM_TAG;
@@ -143,6 +144,10 @@ public class ImageLayerWriter {
 
     public void dumpFile() {
         FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> JSONFormatter.printJSON(jsonMap, writer));
+    }
+
+    public void persistImageHeapSize(long imageHeapSize) {
+        jsonMap.put(IMAGE_HEAP_SIZE_TAG, String.valueOf(imageHeapSize));
     }
 
     public void persistAnalysisInfo(Universe hostedUniverse, AnalysisUniverse analysisUniverse) {

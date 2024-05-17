@@ -433,15 +433,28 @@ public final class HeapImpl extends Heap {
     @Fold
     @Override
     public int getImageHeapOffsetInAddressSpace() {
+        int imageHeapOffset = 0;
         if (SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseNullRegion.getValue()) {
             /*
              * The image heap will be mapped in a way that there is a memory protected gap between
              * the heap base and the start of the image heap. The gap won't need any memory in the
              * native image file.
              */
-            return NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
+            imageHeapOffset = NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
         }
-        return 0;
+        /*
+         * GR-53993: With ImageLayerSupport, it would be possible to fetch the startOffset from the
+         * loader instead of storing it in the Heap.
+         */
+        if (SubstrateOptions.LoadImageLayer.hasBeenSet()) {
+            /*
+             * GR-53964: The page size used to round up the start offset should be the same as the
+             * one used in run time.
+             */
+            int runtimePageSize = 4096;
+            imageHeapOffset = NumUtil.roundUp(imageHeapOffset + NumUtil.safeToInt(startOffset), runtimePageSize);
+        }
+        return imageHeapOffset;
     }
 
     @Fold

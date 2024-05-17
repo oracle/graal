@@ -91,12 +91,14 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.core.layeredimage.LayeredImageHeapSymbols;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.SVMImageLayerSupport;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
@@ -135,7 +137,7 @@ public abstract class NativeImage extends AbstractImage {
     private final Set<HostedMethod> uniqueEntryPoints = new HashSet<>();
     private final MethodPointerRelocationProvider relocationProvider;
 
-    private long imageHeapSize = -1;
+    private ImageHeapLayoutInfo heapLayout;
 
     // The sections of the native image.
     private Section textSection;
@@ -416,7 +418,7 @@ public abstract class NativeImage extends AbstractImage {
 
             long roSectionSize = codeCache.getAlignedConstantsSize();
             long rwSectionSize = ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
-            ImageHeapLayoutInfo heapLayout = heap.getLayouter().layout(heap, objectFile.getPageSize());
+            heapLayout = heap.getLayouter().layout(heap, objectFile.getPageSize());
             // after this point, the layout is final and must not be changed anymore
             assert !hasDuplicatedObjects(heap.getObjects()) : "heap.getObjects() must not contain any duplicates";
 
@@ -424,23 +426,29 @@ public abstract class NativeImage extends AbstractImage {
 
             heap.getLayouter().afterLayout(heap);
 
-            imageHeapSize = heapLayout.getImageHeapSize();
+            int pageSize = objectFile.getPageSize();
+
+            long imageHeapSize = getImageHeapSize();
+
+            if (SVMImageLayerSupport.singleton().persistAnalysis()) {
+                SVMImageLayerSupport.singleton().getWriter().persistImageHeapSize(imageHeapSize);
+            }
 
             // Text section (code)
             final int textSectionSize = codeCache.getCodeCacheSize();
             final RelocatableBuffer textBuffer = new RelocatableBuffer(textSectionSize, objectFile.getByteOrder());
             final NativeTextSectionImpl textImpl = NativeTextSectionImpl.factory(textBuffer, objectFile, codeCache);
-            textSection = objectFile.newProgbitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), false, true, textImpl);
+            textSection = objectFile.newProgbitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), pageSize, false, true, textImpl);
 
             // Read-only data section
             final RelocatableBuffer roDataBuffer = new RelocatableBuffer(roSectionSize, objectFile.getByteOrder());
             final ProgbitsSectionImpl roDataImpl = new BasicProgbitsSectionImpl(roDataBuffer.getBackingArray());
-            roDataSection = objectFile.newProgbitsSection(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), false, false, roDataImpl);
+            roDataSection = objectFile.newProgbitsSection(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()), pageSize, false, false, roDataImpl);
 
             // Read-write data section
             final RelocatableBuffer rwDataBuffer = new RelocatableBuffer(rwSectionSize, objectFile.getByteOrder());
             final ProgbitsSectionImpl rwDataImpl = new BasicProgbitsSectionImpl(rwDataBuffer.getBackingArray());
-            rwDataSection = objectFile.newProgbitsSection(SectionName.DATA.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), true, false, rwDataImpl);
+            rwDataSection = objectFile.newProgbitsSection(SectionName.DATA.getFormatDependentName(objectFile.getFormat()), pageSize, true, false, rwDataImpl);
 
             // Define symbols for the sections.
             objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false);
@@ -465,13 +473,12 @@ public abstract class NativeImage extends AbstractImage {
             // - Write the heap to its own section.
             // Dynamic linkers/loaders generally don't ensure any alignment to more than page
             // boundaries, so we take care of this ourselves in CommittedMemoryProvider, if we can.
-            int alignment = objectFile.getPageSize();
+            int alignment = pageSize;
 
             // Manually add padding to the SVM_HEAP section, because when SpawnIsolates are disabled
             // we operate with mprotect on it with page size granularity.
             long paddedImageHeapSize = SpawnIsolates.getValue() ? imageHeapSize : NumUtil.roundUp(imageHeapSize, alignment);
             RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(paddedImageHeapSize, objectFile.getByteOrder());
-
             ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBackingArray());
             // Note: On isolate startup the read only part of the heap will be set up as such.
             heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), alignment, true, false, heapSectionImpl);
@@ -480,14 +487,48 @@ public abstract class NativeImage extends AbstractImage {
             long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
             assert !SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) sectionOffsetOfARelocatablePointer) == 0L;
 
-            defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
-            defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, imageHeapSize);
-            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() - heapLayout.getStartOffset());
-            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection,
-                            heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize() - heapLayout.getStartOffset());
-            defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, sectionOffsetOfARelocatablePointer);
-            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() - heapLayout.getStartOffset());
-            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset());
+            if (!SVMImageLayerSupport.singleton().hasLoader()) {
+                defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
+                defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, imageHeapSize);
+                defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() - heapLayout.getStartOffset());
+                defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection,
+                                heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize() - heapLayout.getStartOffset());
+                defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, sectionOffsetOfARelocatablePointer);
+                defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() - heapLayout.getStartOffset());
+                defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset());
+
+                if (SVMImageLayerSupport.singleton().persistAnalysis()) {
+                    objectFile.createUndefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_BEGIN_SYMBOL_NAME, 0, false);
+                    objectFile.createUndefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_END_SYMBOL_NAME, 0, false);
+                    objectFile.createUndefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, 0, false);
+                    objectFile.createUndefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, 0, false);
+                    objectFile.createUndefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, 0, false);
+                    objectFile.createUndefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, 0, false);
+                    objectFile.createUndefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, 0, false);
+                }
+            } else {
+                objectFile.createUndefinedSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, 0, false);
+                objectFile.createUndefinedSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, 0, false);
+                objectFile.createUndefinedSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, 0, false);
+                objectFile.createUndefinedSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, 0, false);
+                objectFile.createUndefinedSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, 0, false);
+                objectFile.createUndefinedSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, 0, false);
+                objectFile.createUndefinedSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, 0, false);
+
+                boolean global = true; // keep heap section alive
+                objectFile.createDefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0, wordSize, false, global);
+                objectFile.createDefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_END_SYMBOL_NAME, heapSection, imageHeapSize, wordSize, false, global);
+                objectFile.createDefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection,
+                                heapLayout.getReadOnlyRelocatableOffset() - heapLayout.getStartOffset(), wordSize, false, global);
+                objectFile.createDefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection,
+                                heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize() - heapLayout.getStartOffset(), wordSize, false, global);
+                objectFile.createDefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection,
+                                sectionOffsetOfARelocatablePointer, wordSize, false, global);
+                objectFile.createDefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection,
+                                heapLayout.getWritableOffset() - heapLayout.getStartOffset(), wordSize, false, global);
+                objectFile.createDefinedSymbol(LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection,
+                                heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset(), wordSize, false, global);
+            }
 
             // Mark the sections with the relocations from the maps.
             markRelocationSitesFromBuffer(textBuffer, textImpl);
@@ -771,8 +812,7 @@ public abstract class NativeImage extends AbstractImage {
 
     @Override
     public long getImageHeapSize() {
-        assert imageHeapSize > -1 : "imageHeapSize accessed before set";
-        return imageHeapSize;
+        return heapLayout.getImageHeapSize();
     }
 
     @Override
@@ -931,7 +971,7 @@ public abstract class NativeImage extends AbstractImage {
                     HostedMethod current = pair.getLeft();
                     final String symName = localSymbolNameForMethod(current);
                     final String signatureString = current.getUniqueShortName();
-                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, SubstrateOptions.InternalSymbolsAreGlobal.getValue(), pair.getRight());
+                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, SVMImageLayerSupport.singleton().persistAnalysis(), pair.getRight());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {

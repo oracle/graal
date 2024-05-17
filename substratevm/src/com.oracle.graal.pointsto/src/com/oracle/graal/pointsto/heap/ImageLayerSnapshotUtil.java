@@ -74,6 +74,7 @@ public class ImageLayerSnapshotUtil {
     public static final String NEXT_TYPE_ID_TAG = "next type id";
     public static final String NEXT_METHOD_ID_TAG = "next method id";
     public static final String NEXT_FIELD_ID_TAG = "next field id";
+    public static final String IMAGE_HEAP_SIZE_TAG = "image heap size";
     public static final String VALUE_TAG = "value";
     public static final String ENUM_CLASS_TAG = "enum class";
     public static final String ENUM_NAME_TAG = "enum name";
