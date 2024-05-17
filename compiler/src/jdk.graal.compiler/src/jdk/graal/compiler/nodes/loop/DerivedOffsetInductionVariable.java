@@ -34,6 +34,7 @@ import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
+import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticNode;
 
 public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
@@ -164,7 +165,8 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             if (base.valueNode() == value.getX()) {
                 return Math.subtractExact(b, o);
             } else {
-                assert base.valueNode() == value.getY() : Assertions.errorMessage(base, base.valueNode(), value, value.getY());
+                assert base.valueNode() == value.getY() || base instanceof BasicInductionVariable basic && basic.getOp() instanceof IntegerExactArithmeticNode : Assertions.errorMessage(base,
+                                base.valueNode(), value, value.getY());
                 return Math.subtractExact(b, o);
             }
         }
@@ -183,7 +185,8 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             if (base.valueNode() == value.getX()) {
                 return MathUtil.sub(graph(), b, o, gvn);
             } else {
-                assert base.valueNode() == value.getY() : Assertions.errorMessage(base, base.valueNode(), value, value.getY());
+                assert base.valueNode() == value.getY() || base instanceof BasicInductionVariable basic && basic.getOp() instanceof IntegerExactArithmeticNode : Assertions.errorMessage(base,
+                                base.valueNode(), value, value.getY());
                 return MathUtil.sub(graph(), o, b, gvn);
             }
         }
