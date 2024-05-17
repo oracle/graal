@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
@@ -94,5 +95,39 @@ public class LoopFullUnrollTest extends GraalCompilerTest {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+    }
+
+    public static int snippetFlows() {
+        int init = Integer.MIN_VALUE;
+        int step = -1;
+        int limit = 1;
+        int phi = init;
+        while (Integer.MIN_VALUE - phi < limit) {
+            GraalDirectives.sideEffect();
+            phi = phi + step;
+        }
+        return phi;
+    }
+
+    @Test
+    public void testFlows() {
+        test("snippetFlows");
+    }
+
+    public static int snippetFlows2() {
+        int init = Integer.MAX_VALUE;
+        int step = -8;
+        int limit = 8184;
+        int phi = init;
+        while (Integer.MIN_VALUE - phi < limit) {
+            GraalDirectives.sideEffect();
+            phi = phi + step;
+        }
+        return phi;
+    }
+
+    @Test
+    public void testFlows2() {
+        test("snippetFlows2");
     }
 }
