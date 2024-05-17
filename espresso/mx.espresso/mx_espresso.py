@@ -340,9 +340,9 @@ if espresso_llvm_java_home:
     ))
 
 
-def _jdk_license(home):
-    if mx_sdk_vm.ee_implementor(home):
-        return "Oracle Proprietary"
+def _resource_license(ee_implementor):
+    if ee_implementor:
+        return "GFTC"
     else:
         return "GPLv2-CPE"
 
@@ -402,7 +402,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 f"dependency:LLVM_JAVA_HOME/{jdk_lib_dir}/{lib_prefix}*{lib_suffix}",
                 "dependency:LLVM_JAVA_HOME/release"
             ],
-        }, None, True, _jdk_license(espresso_llvm_java_home)))
+        }, None, True, _resource_license(llvm_java_home_dep.is_ee_implementor)))
         llvm_runtime_dir = {
             "source_type": "dependency",
             "dependency": "LLVM_JAVA_HOME",
@@ -424,11 +424,15 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             "lib/<exe:jexec>",
             "man",
         ]
+    if java_home_dep.is_ee_implementor:
+        espresso_runtime_resource_name = "jdk" + str(java_home_dep.major_version)
+    else:
+        espresso_runtime_resource_name = "openjdk" + str(java_home_dep.major_version)
     register_distribution(mx.LayoutDirDistribution(
         _suite, "ESPRESSO_RUNTIME_DIR",
         deps=[],
         layout={
-            "META-INF/resources/java/espresso-runtime/<os>/<arch>/": {
+            f"META-INF/resources/java/espresso-runtime-{espresso_runtime_resource_name}/<os>/<arch>/": {
                 "source_type": "dependency",
                 "dependency": "JAVA_HOME",
                 "path": "*",
@@ -442,7 +446,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     "lib/static",
                 ] + platform_specific_excludes,
             },
-            "META-INF/resources/java/espresso-runtime/<os>/<arch>/lib/llvm/": llvm_runtime_dir,
+            f"META-INF/resources/java/espresso-runtime-{espresso_runtime_resource_name}/<os>/<arch>/lib/llvm/": llvm_runtime_dir,
         },
         path=None,
         platformDependent=True,
@@ -453,16 +457,15 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             "darwin-aarch64",
             "windows-amd64",
         ],
-        theLicense=None,  # TODO
-        hashEntry="META-INF/resources/java/espresso-runtime/<os>/<arch>/sha256",
-        fileListEntry="META-INF/resources/java/espresso-runtime/<os>/<arch>/files",
+        theLicense=_resource_license(java_home_dep.is_ee_implementor),
+        hashEntry=f"META-INF/resources/java/espresso-runtime-{espresso_runtime_resource_name}/<os>/<arch>/sha256",
+        fileListEntry=f"META-INF/resources/java/espresso-runtime-{espresso_runtime_resource_name}/<os>/<arch>/files",
         maven=False))
-
     if register_project:
         # com.oracle.truffle.espresso.resources.runtime
-        register_project(EspressoRuntimeResourceProject(_suite, 'src', '?', _suite.defaultLicense))  # TODO theLicense
+        register_project(EspressoRuntimeResourceProject(_suite, 'src', espresso_runtime_resource_name, _suite.defaultLicense))  # TODO theLicense
 
-    runtime_resources_jar = mx_jardistribution.JARDistribution(
+    register_distribution(mx_jardistribution.JARDistribution(
         _suite, "ESPRESSO_RUNTIME_RESOURCES", None, None, None,
         moduleInfo={
             "name": "org.graalvm.espresso.resources.runtime",
@@ -476,22 +479,25 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         distDependencies=["truffle:TRUFFLE_API"],
         javaCompliance=None,
         platformDependent=True,
-        theLicense=None,  # TODO
+        theLicense=_resource_license(java_home_dep.is_ee_implementor),
         compress=True,
         useModulePath=True,
         description="Runtime environment used by the Java on Truffle (aka Espresso) implementation",
         maven={
-            "artifactId": "espresso-runtime-resources",
+            "groupId": "org.graalvm.espresso",
+            "artifactId": "espresso-runtime-resources-" + espresso_runtime_resource_name,
             "tag": ["default", "public"],
-        })
-    register_distribution(runtime_resources_jar)
+        }))
 
 
 class JavaHomeDependency(mx.ArchivableProject):
     def __init__(self, suite, name, java_home):
         assert isabs(java_home)
         self.java_home = java_home
-        self.is_ee_implementor = mx_sdk_vm.ee_implementor(java_home)
+        release_dict = mx_sdk_vm.parse_release_file(join(java_home, 'release'))
+        self.is_ee_implementor = release_dict.get('IMPLEMENTOR') == 'Oracle Corporation'
+        self.version = mx.VersionSpec(release_dict.get('JAVA_VERSION'))
+        self.major_version = self.version.parts[1] if self.version.parts[0] == 1 else self.version.parts[0]
         if self.is_ee_implementor:
             the_license = "Oracle Proprietary"
         else:
@@ -509,7 +515,7 @@ class JavaHomeDependency(mx.ArchivableProject):
 
 
 class EspressoRuntimeResourceProject(mx.JavaProject):
-    def __init__(self, suite, subDir, runtime_type, theLicense):
+    def __init__(self, suite, subDir, runtime_name, theLicense):
         name = f'com.oracle.truffle.espresso.resources.runtime'
         project_dir = join(suite.dir, subDir, name)
         deps = ['truffle:TRUFFLE_API']
@@ -517,7 +523,7 @@ class EspressoRuntimeResourceProject(mx.JavaProject):
                          javaCompliance='17+', workingSets='Truffle', d=project_dir,
                          theLicense=theLicense)
         self.declaredAnnotationProcessors = ['truffle:TRUFFLE_DSL_PROCESSOR']
-        self.resource_id = "espresso-runtime"
+        self.resource_id = "espresso-runtime-" + runtime_name
         self.checkstyleProj = name
         self.checkPackagePrefix = False
 

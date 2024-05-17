@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -592,6 +593,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
     }
 
+    private static final String[] KNOWN_ESPRESSO_RUNTIMES = {"jdk21", "openjdk21"};
+
     public static Path getEspressoRuntime(TruffleLanguage.Env env) {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
         // libraries bundled with GraalVM.
@@ -612,9 +615,17 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             }
         }
         try {
-            Path resources = Path.of(env.getInternalResource("espresso-runtime").getAbsoluteFile().toString());
-            assert Files.isDirectory(resources);
-            return resources;
+            for (String runtimeName : KNOWN_ESPRESSO_RUNTIMES) {
+                TruffleFile resource = env.getInternalResource("espresso-runtime-" + runtimeName);
+                if (resource != null) {
+                    Path resources = Path.of(resource.getAbsoluteFile().toString());
+                    assert Files.isDirectory(resources);
+                    env.getLogger(EspressoContext.class).info(() -> "Selected " + runtimeName + " runtime");
+                    return resources;
+                }
+            }
+            // TODO add potential remedies
+            throw EspressoError.fatal("Couldn't find suitable runtime libraries for espresso");
         } catch (IOException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
