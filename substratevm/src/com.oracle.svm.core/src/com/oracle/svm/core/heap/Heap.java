@@ -48,6 +48,8 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class Heap {
+    protected long startOffset;
+
     @Fold
     public static Heap getHeap() {
         return ImageSingletons.lookup(Heap.class);
@@ -250,4 +252,11 @@ public abstract class Heap {
      */
     @Uninterruptible(reason = "Ensure that no GC can occur between this call and usage of the salt.", callerMustBe = true)
     public abstract long getIdentityHashSalt(Object obj);
+
+    /**
+     * Sets the start offset of the heap.
+     */
+    public void setStartOffset(long startOffset) {
+        this.startOffset = startOffset;
+    }
 }

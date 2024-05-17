@@ -112,9 +112,7 @@ public class SubstrateOptions {
             ClosedTypeWorld.update(values, !newValue);
             PersistImageLayerAnalysis.update(values, newValue);
             PersistImageLayerSingletons.update(values, newValue);
-            DeleteLocalSymbols.update(values, !newValue);
             StripDebugInfo.update(values, !newValue);
-            InternalSymbolsAreGlobal.update(values, newValue);
             AOTTrivialInline.update(values, !newValue);
             if (imageLayerEnabledHandler != null) {
                 imageLayerEnabledHandler.onOptionEnabled(values);
@@ -722,8 +720,6 @@ public class SubstrateOptions {
      */
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN);
-    @Option(help = "Keep all undefined symbols.")//
-    public static final HostedOptionKey<Boolean> PreserveUndefinedSymbols = new HostedOptionKey<>(false);
     @Option(help = "Ignore undefined symbols referenced from the built image.")//
     public static final HostedOptionKey<Boolean> IgnoreUndefinedReferences = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
@@ -1152,7 +1148,6 @@ public class SubstrateOptions {
         public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
             super.update(values, boxedValue);
             ClosedTypeWorld.update(values, false);
-            PreserveUndefinedSymbols.update(values, true);
             /* Ignore any potential undefined references caused by inlining in base layer. */
             IgnoreUndefinedReferences.update(values, true);
             AOTTrivialInline.update(values, false);
