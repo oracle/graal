@@ -31,7 +31,7 @@ public class ScheduleWithReconstructionResult extends StructuredGraph.ScheduleRe
     private final ReconstructionData reconstructionData;
 
     public ScheduleWithReconstructionResult(StructuredGraph.ScheduleResult result, ReconstructionData reconstructionData) {
-        super(result.getCFG(), result.getNodeToBlockMap(), result.getBlockToNodesMap());
+        super(result.getCFG(), result.getNodeToBlockMap(), result.getBlockToNodesMap(), result.strategy);
         this.reconstructionData = reconstructionData;
     }
 

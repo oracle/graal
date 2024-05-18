@@ -1197,10 +1197,7 @@ public abstract class Node implements Cloneable, Formattable {
     private void maybeNotifyInputChanged(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
-            NodeEventListener listener = graph.nodeEventListener;
-            if (listener != null) {
-                listener.event(Graph.NodeEvent.INPUT_CHANGED, node);
-            }
+            graph.fireNodeEvent(Graph.NodeEvent.INPUT_CHANGED, node);
             graph.edgeModificationCount++;
         }
     }
@@ -1213,10 +1210,7 @@ public abstract class Node implements Cloneable, Formattable {
     public void maybeNotifyZeroUsages(Node node) {
         if (graph != null && node.isAlive()) {
             assert !graph.isFrozen();
-            NodeEventListener listener = graph.nodeEventListener;
-            if (listener != null) {
-                listener.event(Graph.NodeEvent.ZERO_USAGES, node);
-            }
+            graph.fireNodeEvent(Graph.NodeEvent.ZERO_USAGES, node);
         }
     }
 
