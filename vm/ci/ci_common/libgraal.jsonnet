@@ -77,15 +77,16 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
-  local gates = {
+  local gate_jobs = {
     "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
 
-    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {} + graal_common.mach5_target,
+    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
   },
+  local gates = g.as_gates(gate_jobs),
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
@@ -95,7 +96,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "daily-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
-  },
+  } + g.as_dailies(gate_jobs),
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
   local weeklies = {
