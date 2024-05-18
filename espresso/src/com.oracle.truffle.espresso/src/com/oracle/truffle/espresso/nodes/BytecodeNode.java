@@ -374,6 +374,7 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
@@ -549,79 +550,147 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
     }
 
-    // region Continuations
-    // Possibly initializes the frame from the frame record passed through the
-    // continuations-specific calling convention.
-    private boolean maybePrepareForContinuation(VirtualFrame frame) {
-        Object[] arguments = frame.getArguments();
-        HostFrameRecord record;
+    @TruffleBoundary
+    public Object resumeContinuationBoundary(MaterializedFrame frame, HostFrameRecord hfr, int bci, EspressoFrameDescriptor frameDescriptor,
+                    ContinuableMethodWithBytecode.ResumeNextContinuationNode resumeNext) {
+        return resumeContinuation(frame, hfr, bci, frameDescriptor, resumeNext);
+    }
 
-        if (arguments.length == 1 && arguments[0] instanceof HostFrameRecord hfr) {
-            record = hfr;
-        } else {
-            return false;
-        }
-
-        CompilerDirectives.transferToInterpreter();
-
-        getRoot().setContinuationHostFrameRecord(frame, record);
-
+    /**
+     * Entry point for rewinding continuations.
+     * <p>
+     * To prevent continuations from interfering with regular execution, the rewinding does not
+     * happen in the main bytecode loop, it is instead unrolled, then execution resumes normally if
+     * the next frame successfully completes, or throws a caught exception.
+     * <p>
+     * One advantage of this way: should a continuation suspend happen before execution of the next
+     * frame completes, we can re-use the same frame records.
+     */
+    public Object resumeContinuation(VirtualFrame frame, HostFrameRecord hfr,
+                    // These are constant whenever possible
+                    int bci, EspressoFrameDescriptor frameDescriptor,
+                    ContinuableMethodWithBytecode.ResumeNextContinuationNode resumeNext) {
         // Host records are trusted, but it never hurts to assert that.
-        assert record.verify(getMeta(), true);
-        record.exportToFrame(frame);
+        assert hfr.verify(getMeta(), true);
 
-        return true;
-    }
+        // set up local state.
+        int opcode = bs.opcode(bci);
+        int top = frameDescriptor.top();
+        InstrumentationSupport instrument = instrumentation;
+        int statementIndex = instrument == null ? 0 : instrument.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI());
+        assert Bytecodes.isInvoke(opcode) || opcode == QUICK;
 
-    private boolean isPossiblyQuickenedInvoke(int bci) {
-        int opcode = bs.currentVolatileBC(bci);
-        return Bytecodes.isInvoke(opcode) || (opcode == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeQuickNode);
-    }
-
-    // Passes control through to the next method in the call stack by re-running the invoke
-    // bytecode.
-    private int resumeContinuation(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex) {
-        CompilerDirectives.transferToInterpreter();
-        assert isPossiblyQuickenedInvoke(curBCI);
-
+        // Obtain the node responsible for invoking
         InvokeQuickNode invoke;
-        if (opcode == QUICK && nodes[bs.readCPI2(curBCI)] instanceof InvokeQuickNode iqn) {
+        if (opcode == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeQuickNode iqn) {
             // This AST has been executed before we resumed, probably the previous time when we
             // suspended.
             invoke = iqn;
         } else {
-            // This AST has never been executed before, probably resuming a continuation into a
-            // fresh JVM. Quicken the bytecode here.
-            invoke = (InvokeQuickNode) tryPatchQuick(curBCI, () -> {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // This AST has never been executed before, Quicken the bytecode here.
+            invoke = (InvokeQuickNode) tryPatchQuick(bci, () -> {
                 // During resolution of the symbolic reference to the method, any of the exceptions
                 // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
-                char cpi = readCPI(curBCI);
+                char cpi = readCPI(bci);
                 Method resolutionSeed = resolveMethod(opcode, cpi);
-                return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
+                return dispatchQuickened(frameDescriptor.top(), bci, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
             });
         }
 
-        // Now proceed through to the next frame, which will be resumed in turn unless it's null
-        // (end of stack).
-        var hostFrameRecord = getRoot().getContinuationHostFrameRecord(frame);
-        assert hostFrameRecord != null;  // If this fires this class has been edited
-        var nextFrameRecord = hostFrameRecord.next;
-        // Clear cookie so the records can be reclaimed.
-        getRoot().clearCookie(frame);
+        // Restore frame
+        frameDescriptor.exportToFrame(frame, hfr.objects, hfr.primitives, bci);
 
-        int slotsNeededForReturnType;
-        if (nextFrameRecord != null) {
-            slotsNeededForReturnType = invoke.resumeContinuation(frame, nextFrameRecord);
-        } else {
-            // Reached the end of the stack - this is where we suspended, so we want to continue
-            // here as if nothing had happened.
-            assert invoke.method.getNameAsString().equals("suspend0");
-            slotsNeededForReturnType = 0;   // suspend0 returns void
+        try {
+            // Unlink records
+            HostFrameRecord next = hfr.next;
+            hfr.next = null;
+            // Keep rewinding.
+            Object nextResumeResult = resumeNext.execute(next);
+            // Use node to know where to put the result.
+            top = top + invoke.pushResult(frame, nextResumeResult);
+        } catch (UnwindContinuationException unwind) {
+            // Special case: we can completely reuse previously computed record.
+            hfr.next = unwind.head;
+            unwind.head = hfr;
+            throw unwind;
+        } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
+            // Copy of the main interpreter loop exception handler.
+            // Needs to be manually inlined for compatibility with PE.
+            EspressoException wrappedException;
+            if (e instanceof EspressoException) {
+                wrappedException = (EspressoException) e;
+            } else if (e instanceof AbstractTruffleException) {
+                if (e instanceof EspressoExitException) {
+                    CompilerDirectives.transferToInterpreter();
+                    getRoot().abortMonitor(frame);
+                    // Tearing down the VM, no need to report loop count.
+                    throw e;
+                }
+                assert getContext().getEspressoEnv().Polyglot;
+                getMeta().polyglot.ForeignException.safeInitialize(); // should fold
+                wrappedException = EspressoException.wrap(
+                                getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), getMeta());
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                if (e instanceof OutOfMemoryError) {
+                    wrappedException = getContext().getOutOfMemory();
+                } else {
+                    wrappedException = getContext().getStackOverflow();
+                }
+            }
+            CompilerAsserts.partialEvaluationConstant(bci);
+            ExceptionHandler[] handlers = getMethodVersion().getExceptionHandlers();
+            ExceptionHandler resolved = null;
+            for (ExceptionHandler toCheck : handlers) {
+                if (toCheck.covers(bci)) {
+                    Klass catchType = null;
+                    if (!toCheck.isCatchAll()) {
+                        // exception handlers are similar to instanceof bytecodes, so we pass
+                        // instanceof
+                        catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
+                    }
+                    if (catchType == null || InterpreterToVM.instanceOf(wrappedException.getGuestException(), catchType)) {
+                        // the first found exception handler is our exception handler
+                        resolved = toCheck;
+                        break;
+                    }
+                }
+            }
+            ExceptionHandler handler = resolved;
+            if (handler != null) {
+                // handler found, set up jump.
+                clearOperandStack(frame, top);
+                top = startingStackOffset(getMethodVersion().getMaxLocals());
+                checkNoForeignObjectAssumption(wrappedException.getGuestException());
+                putObject(frame, top, wrappedException.getGuestException());
+                top++;
+                int targetBCI = handler.getHandlerBCI();
+                int nextStatementIndex = beforeJumpChecks(frame, bci, targetBCI, top, statementIndex, instrument, new Counter(), false);
+                // Resume normal execution.
+                return executeBodyFromBCI(frame, targetBCI, top, nextStatementIndex,
+                                // For all purposes, continuation resuming is like OSR.
+                                true);
+            } else {
+                if (instrument != null) {
+                    instrument.notifyExceptionAt(frame, wrappedException, statementIndex);
+                }
+                // rethrow out.
+                throw e;
+            }
         }
 
-        return slotsNeededForReturnType;
+        // Go to next bci.
+        int nextBci = bci + Bytecodes.lengthOf(opcode);
+        livenessAnalysis.performOnEdge(frame, bci, nextBci, false);
+        int nextStatementIndex = instrument == null ? 0 : instrument.getNextStatementIndex(statementIndex, nextBci);
+        // Skip stack effect of QUICK opcode (it is 0)
+
+        // Resume normal execution
+        return executeBodyFromBCI(frame, nextBci, top, nextStatementIndex,
+                        // For all purposes, continuation resuming is like OSR.
+                        true);
     }
-    // endregion
 
     public void checkNoForeignObjectAssumption(StaticObject object) {
         if (noForeignObjects.isValid() && object.isForeignObject()) {
@@ -635,13 +704,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         // Before arguments are set up, the frame is in a weird spot in which inspecting the frame
         // is pretty meaningless. Return the 'Unknown bci' value to signify that.
         setBCI(frame, -1);
-        // When we're resuming a continuation we'll already have all the arguments on the resumed
-        // stack frame, so shouldn't do it again.
-        if (!maybePrepareForContinuation(frame)) {
-            initArguments(frame);
-            // Initialize the BCI slot.
-            setBCI(frame, 0);
-        }
+        // Push frame arguments into locals.
+        initArguments(frame);
+        // Initialize the BCI slot.
+        setBCI(frame, 0);
     }
 
     // region OSR support
@@ -690,7 +756,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     @Override
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         EspressoOSRInterpreterState state = (EspressoOSRInterpreterState) interpreterState;
-        return executeBodyFromBCI(osrFrame, target, state.top, state.nextStatementIndex, true, false);
+        return executeBodyFromBCI(osrFrame, target, state.top, state.nextStatementIndex, true);
     }
 
     @Override
@@ -731,52 +797,29 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     @Override
     public Object execute(VirtualFrame frame) {
-        // Are we resuming a continuation?
-        var hostFrameRecord = getRoot().getContinuationHostFrameRecord(frame);
-        if (hostFrameRecord != null) {
-            // If yes then the frame was already set up and we need to resume in the middle of
-            // the bytecodes so pass in the necessary indexes. It has to be done in the interpreter
-            // as otherwise startbci etc wouldn't be PE constant on the normal path and we'd break
-            // compilation for everything.
-            return transferToInterpreterAndResumeContinuation(frame.materialize(), hostFrameRecord);
-        } else {
-            int startTop = startingStackOffset(getMethodVersion().getMaxLocals());
+        int startTop = startingStackOffset(getMethodVersion().getMaxLocals());
+        if (methodVersion.hasJsr()) {
+            getLanguage().getThreadLocalState().blockContinuationSuspension();
+        }
+        try {
+            return executeBodyFromBCI(frame, 0, startTop, 0, false);
+        } finally {
             if (methodVersion.hasJsr()) {
-                getLanguage().getThreadLocalState().blockContinuationSuspension();
-            }
-            try {
-                return executeBodyFromBCI(frame, 0, startTop, 0, false, false);
-            } finally {
-                if (methodVersion.hasJsr()) {
-                    getLanguage().getThreadLocalState().unblockContinuationSuspension();
-                }
+                getLanguage().getThreadLocalState().unblockContinuationSuspension();
             }
         }
-    }
-
-    @TruffleBoundary
-    private Object transferToInterpreterAndResumeContinuation(MaterializedFrame frame, HostFrameRecord hostFrameRecord) {
-        assert !methodVersion.hasJsr();
-        return executeBodyFromBCI(frame,
-                        hostFrameRecord.bci,
-                        hostFrameRecord.top,
-                        instrumentation == null ? 0 : instrumentation.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI()),
-                        false, // isOSR
-                        true   // isContinuationResume
-        );
     }
 
     @SuppressWarnings("DataFlowIssue")   // Too complex for IntelliJ to analyze.
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @BytecodeInterpreterSwitch
-    private Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex, boolean isOSR, boolean isContinuationResume) {
+    private Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex, boolean isOSR) {
         CompilerAsserts.partialEvaluationConstant(startBCI);
         final InstrumentationSupport instrument = this.instrumentation;
         int statementIndex = InstrumentationSupport.NO_STATEMENT;
         int nextStatementIndex = startStatementIndex;
-        boolean skipEntryInstrumentation = isOSR || isContinuationResume;
+        boolean skipEntryInstrumentation = isOSR;
         boolean skipLivenessActions = false;
-        boolean shouldResumeContinuation = isContinuationResume;
 
         final Counter loopCount = new Counter();
 
@@ -793,7 +836,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         // During OSR or continuation resume, the method is not executed from the beginning hence
         // onStart is not applicable.
-        if (!isOSR && !shouldResumeContinuation) {
+        if (!isOSR) {
             livenessAnalysis.onStart(frame, skipLivenessActions);
         }
 
@@ -808,19 +851,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
                 CompilerAsserts.partialEvaluationConstant(statementIndex);
                 CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
-
-                if (shouldResumeContinuation) {
-                    // We're in the middle of resuming a continuation so re-perform the invoke we're
-                    // pointing at, but using the special calling sequence that avoids (re)reading
-                    // the arguments from the interpreter stack. The stack frame we're resuming is
-                    // already in place. The continuation might suspend again, in which case the
-                    // unwind will be processed as normal.
-
-                    shouldResumeContinuation = false;
-                    top += resumeContinuation(frame, top, curBCI, curOpcode, statementIndex);
-                    curBCI = curBCI + Bytecodes.lengthOf(curOpcode);
-                    continue;
-                }
 
                 if (instrument != null || Bytecodes.canTrap(curOpcode)) {
                     /*

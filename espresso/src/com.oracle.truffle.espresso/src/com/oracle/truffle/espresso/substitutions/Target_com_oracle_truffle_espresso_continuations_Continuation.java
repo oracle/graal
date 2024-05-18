@@ -68,8 +68,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         @Specialization
         static void resume0(StaticObject self,
                         @Bind("getLanguage()") EspressoLanguage lang, @Bind("getMeta()") Meta meta,
-                        // TODO: separate entry point. Have a separate call target for rewinds
-                        @Cached("create(meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getCallTarget())") DirectCallNode rewind) {
+                        @Cached("create(meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getContinuableCallTarget())") DirectCallNode rewind) {
             // This method is an intrinsic and the act of invoking one of those blocks the ability
             // to call suspend, so we have to undo that first.
             EspressoThreadLocalState tls = lang.getThreadLocalState();

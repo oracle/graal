@@ -337,6 +337,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getMethodVersion().getCallTargetNoSubstitution();
     }
 
+    /**
+     * Obtains a {@link com.oracle.truffle.espresso.meta.Meta.ContinuumSupport continuation} call
+     * target that can be used for rewinding a continuation.
+     */
+    public CallTarget getContinuableCallTarget() {
+        return getMethodVersion().getContinuableCallTarget();
+    }
+
     public boolean usesMonitors() {
         return getMethodVersion().usesMonitors();
     }
@@ -1311,6 +1319,21 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 resolveCallTarget();
             }
             return callTarget;
+        }
+
+        @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
+                        justification = "Publication uses a release fence, assuming data dependency ordering on the reader side.")
+        public CallTarget getContinuableCallTarget() {
+            if (continuableCallTarget == null) {
+                synchronized (this) {
+                    if (continuableCallTarget == null) {
+                        CallTarget target = EspressoRootNode.createContinuable(this).getCallTarget();
+                        VarHandle.releaseFence();
+                        continuableCallTarget = target;
+                    }
+                }
+            }
+            return continuableCallTarget;
         }
 
         @TruffleBoundary

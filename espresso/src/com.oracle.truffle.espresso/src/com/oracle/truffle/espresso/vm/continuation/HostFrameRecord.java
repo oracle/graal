@@ -74,10 +74,6 @@ public final class HostFrameRecord {
         return hfr;
     }
 
-    public void exportToFrame(Frame frame) {
-        frameDescriptor.exportToFrame(frame, objects, primitives, bci);
-    }
-
     private HostFrameRecord(EspressoFrameDescriptor frameDescriptor, StaticObject[] objects, long[] primitives, int bci, int top, Method.MethodVersion methodVersion, HostFrameRecord next) {
         this.frameDescriptor = frameDescriptor;
         this.objects = objects;

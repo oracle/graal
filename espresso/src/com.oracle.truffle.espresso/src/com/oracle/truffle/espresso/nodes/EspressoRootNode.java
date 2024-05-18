@@ -213,6 +213,17 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return create(null, new IntrinsicSubstitutorNode(methodVersion, factory));
     }
 
+    /**
+     * Creates a root note that can re-enter a Java method. Takes a single argument, a
+     * {@link HostFrameRecord}.
+     * <p>
+     * Used to implement continuations.
+     */
+    public static EspressoRootNode createContinuable(Method.MethodVersion methodVersion) {
+        BytecodeNode bytecodeNode = new BytecodeNode(methodVersion);
+        return create(bytecodeNode.getFrameDescriptor(), new ContinuableMethodWithBytecode(bytecodeNode));
+    }
+
     public final int readBCI(Frame frame) {
         return methodNode.getBci(frame);
     }

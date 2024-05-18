@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.vm.continuation;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -242,6 +243,26 @@ public class EspressoFrameDescriptor {
                 }
             }
         }
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof EspressoFrameDescriptor that) {
+            if (this.top() == that.top() && this.size() == that.size()) {
+                for (int i = 0; i < this.size(); i++) {
+                    if (!(this.kinds[i].equals(that.kinds[i]))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(top(), Arrays.hashCode(kinds));
     }
 
     public static void guarantee(boolean condition, String message, Meta meta) {

@@ -88,6 +88,16 @@ public abstract class FrameType {
     }
 
     @Override
+    public int hashCode() {
+        return kind().toOrdinal();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this == obj;
+    }
+
+    @Override
     public String toString() {
         if (isPrimitive()) {
             return kind().toString();
@@ -182,5 +192,18 @@ final class TypedFrameType extends ReferenceFrameType {
     @Override
     public Symbol<Type> type() {
         return type;
+    }
+
+    @Override
+    public int hashCode() {
+        return type().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof TypedFrameType typed) {
+            return this.type() == typed.type();
+        }
+        return false;
     }
 }
