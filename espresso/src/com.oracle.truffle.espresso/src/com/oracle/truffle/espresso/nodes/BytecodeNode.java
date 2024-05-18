@@ -456,17 +456,20 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private final MethodVersion methodVersion;
 
+    @CompilationFinal(dimensions = 1) private final byte[] code;
+
     public BytecodeNode(MethodVersion methodVersion) {
         CompilerAsserts.neverPartOfCompilation();
         Method method = methodVersion.getMethod();
         assert method.hasBytecodes();
         this.methodVersion = methodVersion;
-        this.bs = new BytecodeStream(methodVersion.getCode());
+        this.code = method.getOriginalCode().clone();
+        this.bs = new BytecodeStream(code);
         this.stackOverflowErrorInfo = method.getSOEHandlerInfo();
         this.frameDescriptor = createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
-        this.livenessAnalysis = LivenessAnalysis.analyze(methodVersion);
+        this.livenessAnalysis = methodVersion.getLivenessAnalysis();
         /*
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
@@ -2114,7 +2117,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(node);
         if (sparseNodes == QuickNode.EMPTY_ARRAY) {
-            sparseNodes = new QuickNode[getMethodVersion().getCode().length];
+            sparseNodes = new QuickNode[code.length];
         }
         sparseNodes[curBCI] = insert(node);
     }
@@ -2122,7 +2125,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private void patchBci(int bci, byte opcode, char nodeIndex) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isQuickened(opcode);
-        byte[] code = getMethodVersion().getCode();
 
         int oldBC = code[bci];
         if (opcode == (byte) QUICK) {

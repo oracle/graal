@@ -1149,12 +1149,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @CompilationFinal private CallTarget callTarget;
         @CompilationFinal private CallTarget callTargetNoSubstitutions;
+        @CompilationFinal private CallTarget continuableCallTarget;
 
         @CompilationFinal private int vtableIndex = -1;
         @CompilationFinal private int itableIndex = -1;
-
-        @CompilationFinal(dimensions = 1) //
-        private volatile byte[] code = null;
 
         @CompilationFinal private int refKind;
 
@@ -1230,19 +1228,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public LinkedMethod getLinkedMethod() {
             return linkedMethod;
-        }
-
-        public byte[] getCode() {
-            if (code == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                synchronized (this) {
-                    if (code == null) {
-                        byte[] originalCode = getCodeAttribute().getOriginalCode();
-                        code = Arrays.copyOf(originalCode, originalCode.length);
-                    }
-                }
-            }
-            return code;
         }
 
         @Idempotent
@@ -1419,7 +1404,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public int getCodeSize() {
-            return getCode() != null ? getCode().length : 0;
+            return getOriginalCode() != null ? getOriginalCode().length : 0;
         }
 
         public LineNumberTableAttribute getLineNumberTableAttribute() {
@@ -1583,7 +1568,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public long getLastBCI() {
             int bci = 0;
-            BytecodeStream bs = new BytecodeStream(getCode());
+            BytecodeStream bs = new BytecodeStream(getOriginalCode());
             int end = bs.endBCI();
 
             while (bci < end) {
