@@ -40,6 +40,8 @@ local visualizer = import 'visualizer/ci/ci.jsonnet';
 
 local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
 
+# Filter builds to include/exclude jobs whose name contains "libgraal"
+local libgraal(builds, include=true) = [b for b in builds if (std.findSubstr("libgraal", b.name) != []) == include];
 {
   # Ensure that non-hidden entries in ci/common.jsonnet and ci/ci_common/common.jsonnet can be resolved.
   assert std.length(std.toString(import 'ci/ci_common/common.jsonnet')) > 0,
@@ -47,7 +49,7 @@ local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
   overlay: graal_common.ci.overlay,
   specVersion: "4",
   builds: [common.add_excludes_guard(b) for b in (
-    common.with_components(compiler.builds, ["compiler"]) +
+    common.with_components(compiler.builds + libgraal(vm.builds), ["compiler"]) +
     common.with_components(wasm.builds, ["wasm"]) +
     common.with_components(espresso.builds, ["espresso"]) +
     common.with_components(regex.builds, ["regex"]) +
@@ -57,7 +59,7 @@ local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
     common.with_components(tools.builds, ["tools"]) +
     common.with_components(truffle.builds, ["truffle"]) +
     common.with_components(javadoc.builds, ["javadoc"]) +
-    common.with_components(vm.builds, ["vm"]) +
+    common.with_components(libgraal(vm.builds, false), ["vm"]) +
     common.with_components(visualizer.builds, ["visualizer"])
   )],
   assert verify_ci(self.builds),

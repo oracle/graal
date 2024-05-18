@@ -133,8 +133,4 @@ common + common.frequencies + {
   darwin_aarch64: common.darwin_aarch64 + graal_common_extras,
   windows_amd64: common.windows_amd64 + graal_common_extras,
   windows_server_2016_amd64: common.windows_server_2016_amd64 + graal_common_extras,
-
-
-  // See GR-31169 for description of the mach5 target
-  mach5_target:: {targets+: ["mach5"]},
 }
