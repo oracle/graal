@@ -24,14 +24,13 @@
  */
 package com.oracle.graal.reachability;
 
-import jdk.graal.compiler.nodes.StructuredGraph;
-
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -86,17 +85,17 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
             bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
         }
         for (AnalysisType type : summary.accessedTypes) {
-            bb.registerTypeAsReachable(type, method);
+            type.registerAsReachable(method);
         }
         for (AnalysisType type : summary.instantiatedTypes) {
-            bb.registerTypeAsAllocated(type, method);
+            type.registerAsInstantiated(method);
         }
         for (AnalysisField field : summary.readFields) {
-            bb.markFieldRead(field, method);
-            bb.registerTypeAsReachable(field.getType(), method);
+            field.registerAsRead(method);
+            field.getType().registerAsReachable(method);
         }
         for (AnalysisField field : summary.writtenFields) {
-            bb.markFieldWritten(field, method);
+            field.registerAsWritten(method);
         }
         for (JavaConstant constant : summary.embeddedConstants) {
             bb.handleEmbeddedConstant(method, constant, method);

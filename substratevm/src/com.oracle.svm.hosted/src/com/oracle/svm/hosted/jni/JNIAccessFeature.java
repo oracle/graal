@@ -355,7 +355,7 @@ public class JNIAccessFeature implements Feature {
             if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
                 analysisClass.registerAsReachable("is accessed via JNI");
             } else {
-                access.getBigBang().registerTypeAsAllocated(analysisClass, "is accessed via JNI");
+                analysisClass.registerAsInstantiated("is accessed via JNI");
             }
             return new JNIAccessibleClass(classObj);
         });
@@ -435,7 +435,7 @@ public class JNIAccessFeature implements Feature {
             if (fieldType.isArray() && !access.isReachable(fieldType)) {
                 // For convenience, make the array type reachable if its elemental type becomes
                 // such, allowing the array creation via JNI without an explicit reflection config.
-                access.registerReachabilityHandler(a -> access.getBigBang().registerTypeAsAllocated(fieldType, "Is accessed via JNI."),
+                access.registerReachabilityHandler(a -> fieldType.registerAsInstantiated("Is accessed via JNI."),
                                 (fieldType.getElementalType()).getJavaClass());
             }
         } else if (field.isStatic() && field.isFinal()) {

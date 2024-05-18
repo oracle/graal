@@ -141,7 +141,7 @@ public abstract class ImageHeapScanner {
                 if (field.getJavaKind().isObject()) {
                     AnalysisType fieldType = field.getType();
                     if (fieldType.isArray() || (fieldType.isInstanceClass() && !fieldType.isAbstract())) {
-                        fieldType.registerAsInHeap(field);
+                        fieldType.registerAsInstantiated(field);
                     }
                     bb.injectFieldTypes(field, fieldType);
                 }
@@ -206,12 +206,7 @@ public abstract class ImageHeapScanner {
             AnalysisError.guarantee(type.isReachable(), "The type %s should have been reachable during analysis.", type);
             AnalysisError.guarantee(type.isInstantiated(), "The type %s should have been instantiated during analysis.", type);
         } else {
-            /*
-             * If the type was registered as allocated, but not registered as in heap,
-             * registerTypeAsInHeap must not be executed after the universe is sealed as the
-             * contextInsensitiveAnalysisObject was cleaned up.
-             */
-            universe.getBigbang().registerTypeAsInHeap(type, reason);
+            type.registerAsInstantiated(reason);
         }
     }
 

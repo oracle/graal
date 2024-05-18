@@ -620,12 +620,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public void onTypeInstantiated(AnalysisType type, AnalysisType.UsageKind usageKind) {
+    public void onTypeInstantiated(AnalysisType type) {
         /* Register the type as instantiated with all its super types. */
 
-        assert type.isAllocated() || type.isInHeap() : type;
+        assert type.isInstantiated() : type;
         AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()));
-        universe.hostVM().checkForbidden(type, usageKind);
 
         TypeState typeState = TypeState.forExactType(this, type, true);
         TypeState typeStateNonNull = TypeState.forExactType(this, type, false);

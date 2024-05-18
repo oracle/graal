@@ -231,7 +231,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         AnalysisType type = metaAccess.lookupJavaType(clazz);
         type.registerAsReachable("Is registered for reflection.");
         if (unsafeInstantiated) {
-            type.registerAsAllocated("Is registered for reflection.");
+            type.registerAsInstantiated("Is registered for reflection.");
         }
 
         if (allowForName) {
@@ -314,7 +314,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             Object[] signers = clazz.getSigners();
             if (signers != null) {
                 for (Object signer : signers) {
-                    metaAccess.lookupJavaType(signer.getClass()).registerAsInHeap("signer");
+                    metaAccess.lookupJavaType(signer.getClass()).registerAsInstantiated("signer");
                 }
             }
         });
@@ -910,7 +910,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              * Exception proxies are stored as-is in the image heap
              */
             if (ExceptionProxy.class.isAssignableFrom(type)) {
-                analysisType.registerAsInHeap("Is used by annotation of element registered for reflection.");
+                analysisType.registerAsInstantiated("Is used by annotation of element registered for reflection.");
             }
         }
     }

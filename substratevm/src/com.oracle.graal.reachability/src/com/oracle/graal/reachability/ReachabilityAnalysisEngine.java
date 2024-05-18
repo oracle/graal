@@ -64,7 +64,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Core class of the Reachability Analysis. Contains the crucial part: resolving virtual methods.
  * The resolving is done in two directions. Whenever a new method is marked as virtually invoked,
  * see {@link #onMethodInvoked(ReachabilityAnalysisMethod, Object)}, and whenever a new type is
- * marked as instantiated, see {@link #onTypeInstantiated(ReachabilityAnalysisType,Object)}.
+ * marked as instantiated, see {@link #onTypeInstantiated(AnalysisType)}.
  *
  * @see MethodSummary
  * @see MethodSummaryProvider
@@ -227,7 +227,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             getUniverse().registerEmbeddedRoot(constant, position);
 
             AnalysisType type = ((TypedConstant) constant).getType();
-            registerTypeAsInHeap(type, reason);
+            type.registerAsInstantiated(reason);
         }
     }
 
@@ -263,19 +263,23 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      * NUMBER_OF_INVOKED_METHODS_ON_TYPE). and is one of the places that we should try to optimize
      * in near future.
      */
-    protected void onTypeInstantiated(ReachabilityAnalysisType type, Object reason) {
-        type.forAllSuperTypes(current -> {
-            Set<ReachabilityAnalysisMethod> invokedMethods = ((ReachabilityAnalysisType) current).getInvokedVirtualMethods();
-            for (ReachabilityAnalysisMethod curr : invokedMethods) {
-                ReachabilityAnalysisMethod method = type.resolveConcreteMethod(curr, current);
-                if (method != null) {
-                    markMethodImplementationInvoked(method, reason);
+    @Override
+    public void onTypeInstantiated(AnalysisType type) {
+        ReachabilityAnalysisEngine bb = (ReachabilityAnalysisEngine) universe.getBigbang();
+        bb.schedule(() -> {
+            type.forAllSuperTypes(current -> {
+                Set<ReachabilityAnalysisMethod> invokedMethods = ((ReachabilityAnalysisType) current).getInvokedVirtualMethods();
+                for (ReachabilityAnalysisMethod curr : invokedMethods) {
+                    ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) type.resolveConcreteMethod(curr, current);
+                    if (method != null) {
+                        markMethodImplementationInvoked(method, type.getInstantiatedReason());
+                    }
                 }
-            }
 
-            for (ReachabilityAnalysisMethod method : ((ReachabilityAnalysisType) current).getInvokedSpecialMethods()) {
-                markMethodImplementationInvoked(method, reason);
-            }
+                for (ReachabilityAnalysisMethod method : ((ReachabilityAnalysisType) current).getInvokedSpecialMethods()) {
+                    markMethodImplementationInvoked(method, type.getInstantiatedReason());
+                }
+            });
         });
     }
 

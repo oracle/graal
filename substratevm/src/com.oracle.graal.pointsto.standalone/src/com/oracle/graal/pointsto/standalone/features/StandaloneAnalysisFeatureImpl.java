@@ -183,7 +183,7 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         public void registerAsInHeap(AnalysisType aType, Object reason) {
-            aType.registerAsInHeap(reason);
+            aType.registerAsInstantiated(reason);
         }
 
         @Override
