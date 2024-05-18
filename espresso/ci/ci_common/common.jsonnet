@@ -88,7 +88,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   dailyBench:      {targets+: ['bench', 'daily'],      notify_groups:: ['espresso']},
   daily:           {targets+: ['daily'],               notify_groups:: ['espresso']},
   weekly:          {targets+: ['weekly'],              notify_groups:: ['espresso']},
-  monthly:         {targets+: ['monthly'],              notify_groups:: ['espresso']},
+  monthly:         {targets+: ['monthly'],             notify_groups:: ['espresso']},
   weeklyBench:     {targets+: ['bench', 'weekly'],     notify_groups:: ['espresso']},
   onDemand:        {targets+: ['on-demand']},
   onDemandBench:   {targets+: ['bench', 'on-demand']},
