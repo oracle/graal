@@ -358,7 +358,7 @@ public class FeatureImpl {
         }
 
         public void registerAsUsed(AnalysisType aType, Object reason) {
-            bb.registerTypeAsReachable(aType, reason);
+            aType.registerAsReachable(reason);
         }
 
         @Override
@@ -371,7 +371,7 @@ public class FeatureImpl {
         }
 
         public void registerAsInHeap(AnalysisType aType, Object reason) {
-            bb.registerTypeAsInHeap(aType, reason);
+            aType.registerAsInstantiated(reason);
         }
 
         @Override
@@ -380,7 +380,7 @@ public class FeatureImpl {
         }
 
         public void registerAsAccessed(AnalysisField aField, Object reason) {
-            bb.markFieldAccessed(aField, reason);
+            aField.registerAsAccessed(reason);
         }
 
         public void registerAsRead(Field field, Object reason) {
@@ -388,7 +388,7 @@ public class FeatureImpl {
         }
 
         public void registerAsRead(AnalysisField aField, Object reason) {
-            bb.markFieldRead(aField, reason);
+            aField.registerAsRead(reason);
         }
 
         @Override

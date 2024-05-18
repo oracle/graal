@@ -127,15 +127,6 @@ public abstract class HostVM {
     }
 
     /**
-     * Check if the type is allowed.
-     * 
-     * @param type the type to check
-     * @param kind usage kind
-     */
-    public void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind) {
-    }
-
-    /**
      * Register newly created type.
      * 
      * @param newValue the type to register
@@ -158,6 +149,15 @@ public abstract class HostVM {
      * @param newValue the type to initialize
      */
     public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
+
+    /**
+     * Run initialization tasks for a type when it is marked as instantiated.
+     *
+     * @param bb the static analysis
+     * @param type the type that is marked as instantiated
+     */
+    public void onTypeInstantiated(BigBang bb, AnalysisType type) {
+    }
 
     public boolean useBaseLayer() {
         return false;
