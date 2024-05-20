@@ -39,14 +39,7 @@ The `native-image` tool, available in the `bin` directory of your GraalVM instal
 These dependencies can be installed (if not yet installed) using a package manager on your machine.
 Choose your operating system to find instructions to meet the prerequisites.
 
-{%
-include snippet-tabs
-tab1type="markdown" tab1id="Linux" tab1name="Linux" tab1path="native_image/linux.md"
-tab2type="markdown" tab2id="macOS" tab2name="macOS" tab2path="native_image/macos.md"
-tab3type="markdown" tab3id="Windows" tab3name="Windows" tab3path="native_image/windows.md"
-%}
-
-<!-- #### Linux
+#### Linux
 
 On Oracle Linux use the `yum` package manager:
 ```shell
@@ -79,7 +72,7 @@ To use Native Image on Windows, install [Visual Studio 2022](https://visualstudi
 
 Native Image runs in both a PowerShell or Command Prompt and will automatically set up build environments on Windows, given that it can find a suitable Visual Studio installation.
 
-For more information, see [Using GraalVM and Native Image on Windows](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
+For more information, see [Using GraalVM and Native Image on Windows](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311).
 
 ## Build a Native Executable
 
