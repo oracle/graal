@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,19 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.util.ReflectionUtil;
+import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -49,6 +59,8 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
@@ -97,6 +109,21 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
             bfdNameProvider.setNativeLibs(accessImpl.getNativeLibraries());
         }
+
+        /*
+         * Ensure ClassLoader.nameAndId is available at runtime for type lookup from gdb
+         */
+        access.registerAsAccessed(ReflectionUtil.lookupField(ClassLoader.class, "nameAndId"));
+
+        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+        CGlobalData<PointerBase> compressedShift = CGlobalDataFactory.createWord(WordFactory.signed(compressEncoding.getShift()), "__svm_compressed_shift");
+        CGlobalData<PointerBase> useHeapBase = CGlobalDataFactory.createWord(WordFactory.unsigned(compressEncoding.hasBase() ? 1 : 0), "__svm_use_heap_base");
+        CGlobalData<PointerBase> oopTagsMask = CGlobalDataFactory.createWord(WordFactory.unsigned(Heap.getHeap().getObjectHeader().getReservedBitsMask()), "__svm_oop_tags_mask");
+        CGlobalData<PointerBase> objectAlignment = CGlobalDataFactory.createWord(WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment()), "__svm_object_alignment");
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(compressedShift);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(useHeapBase);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(oopTagsMask);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(objectAlignment);
     }
 
     @Override
@@ -134,11 +161,29 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                     };
                 };
 
+                Supplier<BasicProgbitsSectionImpl> makeGDBSectionImpl = () -> {
+                    var content = AssemblyBuffer.createOutputAssembler(objectFile.getByteOrder());
+                    // 1 -> python file
+                    content.writeByte((byte) 1);
+                    content.writeString("./svmhelpers.py");
+                    return new BasicProgbitsSectionImpl(content.getBlob()) {
+                        @Override
+                        public boolean isLoadable() {
+                            return false;
+                        }
+                    };
+                };
+
                 var imageClassLoader = accessImpl.getImageClassLoader();
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.classpath", makeSectionImpl.apply(DiagnosticUtils.getClassPath(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.modulepath", makeSectionImpl.apply(DiagnosticUtils.getModulePath(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(DiagnosticUtils.getBuilderArguments(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(DiagnosticUtils.getBuilderProperties()));
+
+                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib/svm/debug/svmhelpers.py");
+                if (Files.exists(svmDebugHelper)) {
+                    objectFile.newUserDefinedSection(".debug_gdb_scripts", makeGDBSectionImpl.get());
+                }
             }
         }
         ProgressReporter.singleton().setDebugInfoTimer(timer);
