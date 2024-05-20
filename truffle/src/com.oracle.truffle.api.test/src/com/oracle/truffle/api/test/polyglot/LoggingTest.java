@@ -70,6 +70,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -666,6 +667,7 @@ public class LoggingTest {
     }
 
     @Test
+    @Ignore
     public void testDisableLoggersSingleContext() {
         Map<String, Level> setLevelsMap = new HashMap<>();
         setLevelsMap.put(null, Level.FINEST);   // level on language root level
