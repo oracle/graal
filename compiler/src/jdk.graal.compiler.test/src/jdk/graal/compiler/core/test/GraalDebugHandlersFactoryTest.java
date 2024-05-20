@@ -45,7 +45,7 @@ public class GraalDebugHandlersFactoryTest extends GraalCompilerTest {
             Assume.assumeFalse("If InaccessibleObjectException is thrown, skip the test, we are on JDK9", ex.getClass().getSimpleName().equals("InaccessibleObjectException"));
         }
         int maxFileNameLength = maxFileNameLengthField.getInt(null);
-        try (TemporaryDirectory temp = new TemporaryDirectory(this, "createUniqueTest")) {
+        try (TemporaryDirectory temp = new TemporaryDirectory("createUniqueTest")) {
             Path tmpDir = temp.path;
             for (boolean createDirectory : new boolean[]{true, false}) {
                 for (String ext : new String[]{"", ".bgv", ".graph-strings"}) {

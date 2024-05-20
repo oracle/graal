@@ -56,13 +56,10 @@ import java.lang.management.LockInfo;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Method;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.CodeSource;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -819,37 +816,11 @@ public final class SubprocessTestUtils {
     }
 
     private static Path initArgFilesDirectory() {
-        Path outputDir = Optional.ofNullable(SubprocessTestUtils.class.getProtectionDomain().getCodeSource()).//
-                        map(CodeSource::getLocation).//
-                        map(SubprocessTestUtils::urlToPathOrNull).//
-                        map(SubprocessTestUtils::findMxBuildInPath).//
-                        orElseGet(SubprocessTestUtils::defaultOutputDir);
+        Path outputDir = Path.of("mxbuild");
+        if (!Files.isDirectory(outputDir)) {
+            outputDir = Path.of(".");
+        }
         return outputDir.resolve(String.format("%s-argfiles", SubprocessTestUtils.class.getSimpleName()));
-    }
-
-    private static Path urlToPathOrNull(URL url) {
-        try {
-            return Path.of(url.toURI());
-        } catch (URISyntaxException e) {
-            return null;
-        }
-    }
-
-    private static Path findMxBuildInPath(Path path) {
-        for (Path c = path; c != null; c = c.getParent()) {
-            if ("mxbuild".equals(c.getFileName().toString()) && Files.isDirectory(c)) {
-                return c;
-            }
-        }
-        return null;
-    }
-
-    private static Path defaultOutputDir() {
-        Path res = Path.of("mxbuild");
-        if (!Files.isDirectory(res)) {
-            res = Path.of(".");
-        }
-        return res;
     }
 
     /**
