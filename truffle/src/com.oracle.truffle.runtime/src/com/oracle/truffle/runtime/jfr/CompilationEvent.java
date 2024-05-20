@@ -47,9 +47,9 @@ public interface CompilationEvent extends RootFunctionEvent {
 
     void compilationStarted();
 
-    void failed(boolean permanent, CharSequence reason);
+    void failed(int tier, boolean permanent, CharSequence reason);
 
-    void succeeded();
+    void succeeded(int tier);
 
     void setCompiledCodeSize(int size);
 
