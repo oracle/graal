@@ -27,6 +27,8 @@ package com.oracle.svm.driver.launcher.configuration;
 import java.net.URI;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+
 public class BundleContainerSettingsParser extends BundleConfigurationParser {
     private final Map<String, String> containerSettings;
 
@@ -36,7 +38,10 @@ public class BundleContainerSettingsParser extends BundleConfigurationParser {
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
-        Map<String, Object> jsonMap = asMap(json, "Expected a map of container settings and values");
-        jsonMap.forEach((k, v) -> containerSettings.put(k, v.toString()));
+        EconomicMap<String, Object> jsonMap = asMap(json, "Expected a map of container settings and values");
+        var cursor = jsonMap.getEntries();
+        while (cursor.advance()) {
+            containerSettings.put(cursor.getKey(), cursor.getValue().toString());
+        }
     }
 }

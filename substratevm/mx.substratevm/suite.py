@@ -888,6 +888,9 @@ suite = {
                 "src",
                 "resources"
             ],
+            "dependencies": [
+                "compiler:GRAAL",
+            ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [

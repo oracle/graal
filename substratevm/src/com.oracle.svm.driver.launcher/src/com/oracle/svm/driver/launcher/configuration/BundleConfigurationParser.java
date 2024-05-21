@@ -28,15 +28,16 @@ import java.io.IOException;
 import java.io.Reader;
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
-import com.oracle.svm.driver.launcher.json.BundleJSONParser;
-import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
+import org.graalvm.collections.EconomicMap;
+
+import jdk.graal.compiler.util.json.JsonParser;
+import jdk.graal.compiler.util.json.JsonParserException;
 
 public abstract class BundleConfigurationParser {
 
     public void parseAndRegister(Reader reader) throws IOException {
-        parseAndRegister(new BundleJSONParser(reader).parse(), null);
+        parseAndRegister(new JsonParser(reader).parse(), null);
     }
 
     public abstract void parseAndRegister(Object json, URI origin) throws IOException;
@@ -46,14 +47,14 @@ public abstract class BundleConfigurationParser {
         if (data instanceof List) {
             return (List<Object>) data;
         }
-        throw new BundleJSONParserException(errorMessage);
+        throw new JsonParserException(errorMessage);
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> asMap(Object data, String errorMessage) {
-        if (data instanceof Map) {
-            return (Map<String, Object>) data;
+    public static EconomicMap<String, Object> asMap(Object data, String errorMessage) {
+        if (data instanceof EconomicMap) {
+            return (EconomicMap<String, Object>) data;
         }
-        throw new BundleJSONParserException(errorMessage);
+        throw new JsonParserException(errorMessage);
     }
 }
