@@ -188,7 +188,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             boolean wildcardStart = previousWildcard == Wildcard.START && currentWildcard != Wildcard.START;
             if (wildcardStart && quoteStartIndex != i) {
                 /* start of the new wildcard => quote previous content */
-                sb.append(quoteValue(glob.substring(quoteStartIndex, i)));
+                sb.append(Pattern.quote(glob.substring(quoteStartIndex, i)));
             }
 
             boolean consecutiveWildcards = previousWildcard == Wildcard.DOUBLE_STAR_SLASH && currentWildcard != Wildcard.START;
@@ -205,7 +205,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         /* remove the last char we added artificially */
         glob = glob.substring(0, glob.length() - 1);
         if (quoteStartIndex < glob.length()) {
-            sb.append(quoteValue(glob.substring(quoteStartIndex)));
+            sb.append(Pattern.quote(glob.substring(quoteStartIndex)));
         }
 
         return sb.toString();
@@ -243,9 +243,5 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         }
 
         public abstract Wildcard next(char c);
-    }
-
-    private static String quoteValue(String value) {
-        return "\\Q" + value + "\\E";
     }
 }
