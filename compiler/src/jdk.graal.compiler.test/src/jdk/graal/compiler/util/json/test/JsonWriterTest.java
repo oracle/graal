@@ -57,7 +57,6 @@ public class JsonWriterTest {
         Assert.assertEquals("\"'\"", toJson("'"));
     }
 
-
     @Test
     public void testNumber() throws IOException {
         Assert.assertEquals("0", toJson(0));
@@ -100,8 +99,8 @@ public class JsonWriterTest {
     @Test
     public void testMap1() throws IOException {
         var input = Map.of(
-                "k1", 1,
-                "k2", 2);
+                        "k1", 1,
+                        "k2", 2);
         var output = toJson(input);
         // Could be in either order
         Assert.assertTrue("{\"k1\":1,\"k2\":2}".equals(output) || "{\"k2\":2,\"k1\":1}".equals(output));
@@ -110,8 +109,8 @@ public class JsonWriterTest {
     @Test
     public void testMap2() throws IOException {
         var input = Map.of(
-                "k1", List.of(1, 2, 3),
-                "k2", List.of());
+                        "k1", List.of(1, 2, 3),
+                        "k2", List.of());
         var output = toJson(input);
         // Could be in either order
         Assert.assertTrue("{\"k1\":[1,2,3],\"k2\":[]}".equals(output) || "{\"k2\":[],\"k1\":[1,2,3]}".equals(output));
@@ -120,8 +119,8 @@ public class JsonWriterTest {
     @Test
     public void testMap3() throws IOException {
         var input = Map.of(
-                "k1", Map.of("k1", List.of(1, 2, 3)),
-                "k2", "");
+                        "k1", Map.of("k1", List.of(1, 2, 3)),
+                        "k2", "");
         var output = toJson(input);
         // Could be in either order
         Assert.assertTrue("{\"k1\":{\"k1\":[1,2,3]},\"k2\":\"\"}".equals(output) || "{\"k2\":\"\",\"k1\":{\"k1\":[1,2,3]}}".equals(output));

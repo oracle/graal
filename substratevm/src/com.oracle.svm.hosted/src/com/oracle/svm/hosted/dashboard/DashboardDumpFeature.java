@@ -159,7 +159,6 @@ public class DashboardDumpFeature implements InternalFeature {
         }
     }
 
-
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
         if (isCodeBreakdownDumped() || isPointsToDumped()) {

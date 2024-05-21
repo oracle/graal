@@ -184,7 +184,7 @@ class PointsToBreakdown {
         this.access = access;
     }
 
-    private Map<?, ?> getProperties() {
+    private static Map<?, ?> getProperties() {
         return Collections.emptyMap();
     }
 
@@ -202,18 +202,18 @@ class PointsToBreakdown {
                 }
                 try (JsonBuilder.ObjectBuilder flowBuilder = array.nextEntry().object()) {
                     flowBuilder
-                            .append("id", flow.id)
-                            .append("flowType", flow.flowType);
+                                    .append("id", flow.id)
+                                    .append("flowType", flow.flowType);
                     try (JsonBuilder.ObjectBuilder infoBuilder = flowBuilder.append("info").object()) {
                         infoBuilder
-                                .append("qualifiedName", flow.qualifiedName)
-                                .append("qualifiedNameSimpleParams", flow.qualifiedNameSimpleParams)
-                                .append("inputs", flow.inputs.values())
-                                .append("uses", flow.uses.values())
-                                .append("codeLocation", flow.codeLocation)
-                                .append("calleeNames", flow.calleeNames)
-                                .append("types", flow.types)
-                                .append("enclosingMethod", flow.enclosingMethod);
+                                        .append("qualifiedName", flow.qualifiedName)
+                                        .append("qualifiedNameSimpleParams", flow.qualifiedNameSimpleParams)
+                                        .append("inputs", flow.inputs.values())
+                                        .append("uses", flow.uses.values())
+                                        .append("codeLocation", flow.codeLocation)
+                                        .append("calleeNames", flow.calleeNames)
+                                        .append("types", flow.types)
+                                        .append("enclosingMethod", flow.enclosingMethod);
                     }
                 }
             }

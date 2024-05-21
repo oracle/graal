@@ -439,7 +439,7 @@ public class OptimizationLogImpl implements OptimizationLog {
             if (debug.isLogEnabled(logLevel)) {
                 debug.log(logLevel, "Performed %s %s for node %s at bci %s %s", optimizationName, eventName, node,
                                 position == null ? "unknown" : position.getBCI(),
-                        properties == null ? "" : JsonFormatter.formatJSON(properties));
+                                properties == null ? "" : JsonFormatter.formatJSON(properties));
             }
             if (debug.isDumpEnabled(logLevel)) {
                 debug.dump(logLevel, optimizationLog.graph, "%s %s for %s", optimizationName, eventName, node);

@@ -66,8 +66,8 @@ class CodeBreakdown {
             for (Map.Entry<String, Integer> entry : data.entrySet()) {
                 try (JsonBuilder.ObjectBuilder object = array.nextEntry().object()) {
                     object
-                            .append("name", entry.getKey())
-                            .append("size", entry.getValue());
+                                    .append("name", entry.getKey())
+                                    .append("size", entry.getValue());
                 }
             }
         }

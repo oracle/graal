@@ -84,8 +84,8 @@ class HeapBreakdown {
                 Statistics stats = entry.getValue();
                 try (JsonBuilder.ObjectBuilder classBuilder = array.nextEntry().object()) {
                     classBuilder.append("name", name)
-                            .append("size", stats.size)
-                            .append("count", stats.count);
+                                    .append("size", stats.size)
+                                    .append("count", stats.count);
                 }
             }
         }
