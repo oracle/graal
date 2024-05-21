@@ -407,7 +407,7 @@ final class CompactingOldGeneration extends OldGeneration {
                  * chunk during compaction. The remembered set bits are already set after planning.
                  */
                 if (!AlignedHeapChunk.isEmpty(chunk)) {
-                    RememberedSet.get().enableRememberedSetForChunk(chunk);
+                    RememberedSet.get().clearRememberedSet(chunk);
                 } // empty chunks will be freed or reset before reuse, no need to reinitialize here
 
                 chunk = HeapChunk.getNext(chunk);

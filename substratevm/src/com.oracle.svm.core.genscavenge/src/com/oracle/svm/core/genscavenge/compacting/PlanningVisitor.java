@@ -34,7 +34,9 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.Space;
+import com.oracle.svm.core.genscavenge.remset.AlignedChunkRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
+import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.hub.LayoutEncoding;
 
 import jdk.graal.compiler.word.Word;
@@ -56,6 +58,9 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
     public void init(Space space) {
         allocChunk = space.getFirstAlignedHeapChunk();
         allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
+        if (!allocChunk.getShouldSweepInsteadOfCompact()) {
+            FirstObjectTable.initializeTable(AlignedChunkRememberedSet.getFirstObjectTableStart(allocChunk), AlignedChunkRememberedSet.getFirstObjectTableSize());
+        }
     }
 
     @Override
@@ -69,7 +74,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         UnsignedWord brickIndex = Word.zero();
 
         /* Initialize the move info structure at the chunk's object start location. */
-        ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
+        ObjectMoveInfo.setNewAddress(objSeq, objSeq);
         ObjectMoveInfo.setObjectSeqSize(objSeq, Word.zero());
         ObjectMoveInfo.setNextObjectSeqOffset(objSeq, Word.zero());
 
@@ -115,12 +120,43 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                 }
 
                 objSeqSize = objSeqSize.add(objSize);
+                if (!sweeping) {
+                    if (allocPointer.add(objSeqSize).aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
+                        /* Out of space, move to the start of the next chunk. */
+                        allocChunk = HeapChunk.getNext(allocChunk);
+                        assert allocChunk.isNonNull();
+                        assert !allocChunk.getShouldSweepInsteadOfCompact();
+                        allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
+
+                        /*
+                         * TODO: we should reset the FOT entries we already wrote in the last chunk
+                         * (but they should not be accessed, not even by heap verification)
+                         */
+
+                        /* Visit previous objects in sequence again to write new FOT entries. */
+                        FirstObjectTable.initializeTable(AlignedChunkRememberedSet.getFirstObjectTableStart(allocChunk), AlignedChunkRememberedSet.getFirstObjectTableSize());
+                        Pointer q = objSeq;
+                        while (q.notEqual(p)) {
+                            UnsignedWord offset = q.subtract(objSeq);
+                            UnsignedWord size = LayoutEncoding.getSizeFromObjectInlineInGC(q.toObject());
+                            FirstObjectTable.setTableForObject(AlignedChunkRememberedSet.getFirstObjectTableStart(allocChunk), offset, offset.add(size));
+                            q = q.add(size);
+                        }
+                    }
+
+                    Pointer allocEndOffset = allocPointer.add(objSeqSize).subtract(AlignedHeapChunk.getObjectsStart(allocChunk));
+                    FirstObjectTable.setTableForObject(AlignedChunkRememberedSet.getFirstObjectTableStart(allocChunk), allocEndOffset.subtract(objSize), allocEndOffset);
+                }
 
             } else { // not marked, i.e. not alive and start of a gap of yet unknown size
                 if (objSeqSize.notEqual(0)) { // end of an object sequence
-                    Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
-                    ObjectMoveInfo.setNewAddress(objSeq, newAddress);
                     ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
+                    if (sweeping) {
+                        ObjectMoveInfo.setNewAddress(objSeq, objSeq);
+                    } else {
+                        ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
+                        allocPointer = allocPointer.add(objSeqSize); // ensured enough memory above
+                    }
 
                     objSeqSize = Word.zero();
 
@@ -139,10 +175,15 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
         if (gapSize.notEqual(0)) { // truncate gap at chunk end
             chunk.setTopOffset(chunk.getTopOffset().subtract(gapSize));
+
         } else if (objSeqSize.notEqual(0)) {
-            Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
-            ObjectMoveInfo.setNewAddress(objSeq, newAddress);
             ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
+            if (sweeping) {
+                ObjectMoveInfo.setNewAddress(objSeq, objSeq);
+            } else {
+                ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
+                allocPointer = allocPointer.add(objSeqSize); // ensured enough memory above
+            }
         }
 
         if (sweeping) {
@@ -167,19 +208,5 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         }
 
         return true;
-    }
-
-    private Pointer allocate(UnsignedWord size) {
-        Pointer p = allocPointer;
-        allocPointer = allocPointer.add(size);
-        if (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
-            allocChunk = HeapChunk.getNext(allocChunk);
-            assert allocChunk.isNonNull();
-            assert !allocChunk.getShouldSweepInsteadOfCompact();
-
-            p = AlignedHeapChunk.getObjectsStart(allocChunk);
-            allocPointer = p.add(size);
-        }
-        return p;
     }
 }
