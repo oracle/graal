@@ -20,7 +20,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
   gate(standalone=false):: sc.gate + {
     setup+: [
-      ['apply-predicates', '--delete-excluded', '--pattern-root', '..'] # we are the sulong directory
+      ['apply-predicates', '--delete-excluded', '--pattern-root', '..'] # we are in the sulong directory
         + (if std.objectHasAll(self.guard, 'excludes') then ['--exclude=' + e for e in  self.guard.excludes] else [])
         + ['--include=' + e for e in  self.guard.includes]
     ],
