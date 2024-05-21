@@ -49,8 +49,14 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
     private static final UnsignedWord ID_STATIC_FLAG = WordFactory.unsigned(-1L).unsignedShiftRight(1).add(1);
     /* 01000000...0 */
     private static final UnsignedWord ID_OBJECT_FLAG = ID_STATIC_FLAG.unsignedShiftRight(1);
+    /* 00100000...0 */
+    private static final UnsignedWord ID_NEGATIVE_FLAG = ID_OBJECT_FLAG.unsignedShiftRight(1);
     /* 00111111...1 */
-    private static final UnsignedWord ID_OFFSET_MASK = ID_OBJECT_FLAG.subtract(1);
+    private static final UnsignedWord ID_OFFSET_MASK = ID_NEGATIVE_FLAG.subtract(1);
+
+    public static JNIAccessibleField negativeFieldQuery(JNIAccessibleClass jniClass) {
+        return new JNIAccessibleField(jniClass, null, 0);
+    }
 
     /**
      * For instance fields, the offset of the field in an object of the
@@ -75,7 +81,8 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
      * <ul>
      * <li>1 bit for a flag indicating whether the field is static</li>
      * <li>1 bit for a flag indicating whether the field is an object reference</li>
-     * <li>Remaining 62 bits for (unsigned) offset in the object</li>
+     * <li>1 bit for a flag indicating whether the field is a negative query</li>
+     * <li>Remaining 61 bits for (unsigned) offset in the object</li>
      * </ul>
      */
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
@@ -86,7 +93,9 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
         super(declaringClass);
 
         UnsignedWord bits = Modifier.isStatic(modifiers) ? ID_STATIC_FLAG : WordFactory.zero();
-        if (kind.isObject()) {
+        if (kind == null) {
+            bits = bits.or(ID_NEGATIVE_FLAG);
+        } else if (kind.isObject()) {
             bits = bits.or(ID_OBJECT_FLAG);
         }
         this.flags = bits;
@@ -102,11 +111,21 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
     }
 
     @Platforms(HOSTED_ONLY.class)
+    public boolean isNegativeHosted() {
+        return flags.and(ID_NEGATIVE_FLAG).notEqual(0);
+    }
+
+    public boolean isNegative() {
+        assert !id.equal(0);
+        return id.and(ID_NEGATIVE_FLAG).notEqual(0);
+    }
+
+    @Platforms(HOSTED_ONLY.class)
     public void finishBeforeCompilation(int offset, EconomicSet<Class<?>> hidingSubclasses) {
         assert id.equal(0);
-        assert ID_OFFSET_MASK.and(offset).equal(offset) : "Offset is too large to be encoded in the JNIAccessibleField ID";
+        assert isNegativeHosted() || ID_OFFSET_MASK.and(offset).equal(offset) : "Offset is too large to be encoded in the JNIAccessibleField ID";
 
-        id = flags.or(offset);
+        id = isNegativeHosted() ? flags : flags.or(offset);
         setHidingSubclasses(hidingSubclasses);
     }
 }

@@ -27,6 +27,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-18214) In-place compacting garbage collection for the Serial GC old generation with `-H:+CompactingOldGen`.
 * (GR-52844) Add `Os` a new optimization mode to configure the optimizer in a way to get the smallest code size.
 * (GR-49770) Add support for glob patterns in resource-config files in addition to regexp. The Tracing agent now prints entries in the glob format.
+* (GR-46386) Throw missing registration errors for JNI queries when the query was not included in the reachability metadata.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
