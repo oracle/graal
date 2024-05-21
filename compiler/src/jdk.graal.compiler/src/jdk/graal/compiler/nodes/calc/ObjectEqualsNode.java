@@ -124,11 +124,11 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
         }
 
         @Override
-        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
+        protected LogicNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
             if (newX.stamp(view) instanceof ObjectStamp && newY.stamp(view) instanceof ObjectStamp) {
-                return new ObjectEqualsNode(newX, newY);
+                return ObjectEqualsNode.create(newX, newY, view);
             } else if (newX.stamp(view) instanceof AbstractPointerStamp && newY.stamp(view) instanceof AbstractPointerStamp) {
-                return new PointerEqualsNode(newX, newY);
+                return PointerEqualsNode.create(newX, newY, view);
             }
             throw GraalError.shouldNotReachHereUnexpectedValue(newX.stamp(view) + " " + newY.stamp(view)); // ExcludeFromJacocoGeneratedReport
         }
