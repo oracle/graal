@@ -449,7 +449,7 @@ public final class Space {
             if (SerialGCOptions.useCompactingOldGen() && GCImpl.getGCImpl().isCompleteCollection()) {
                 /*
                  * In a compacting complete collection, the remembered set bit is set already during
-                 * marking and the first object table is built during planning.
+                 * marking and the first object table is built later during fix-up.
                  */
             } else {
                 /*
