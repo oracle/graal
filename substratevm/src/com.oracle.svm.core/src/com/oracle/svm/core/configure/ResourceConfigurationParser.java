@@ -37,7 +37,6 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.json.JSONParserException;
 
@@ -176,101 +175,74 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     }
 
     private static String globToRegex(String glob) {
+        /* this char will trigger last wildcard dump if the glob ends with the wildcard */
+        glob += '#';
         StringBuilder sb = new StringBuilder();
 
         int quoteStartIndex = 0;
-        Wildcard currentWildcard = Wildcard.START;
+        Wildcard previousWildcard = Wildcard.START;
         for (int i = 0; i < glob.length(); i++) {
             char c = glob.charAt(i);
-            if (currentWildcard.couldAdvance(c)) {
-                if (currentWildcard.isCycleStart() && quoteStartIndex != i) {
-                    /* we start processing a new wildcard so quote previous content */
-                    sb.append(quoteValue(glob.substring(quoteStartIndex, i)));
-                }
+            Wildcard currentWildcard = previousWildcard.next(c);
 
-                if (currentWildcard.isCycleEnd()) {
-                    /* dump content because cycle ends and prepare for the new wildcard */
-                    sb.append(currentWildcard.convertToRegex());
-                    currentWildcard = currentWildcard.startNewCycle();
-                }
-
-                currentWildcard = currentWildcard.next();
-                quoteStartIndex = i + 1;
-                continue;
+            boolean wildcardStart = previousWildcard == Wildcard.START && currentWildcard != Wildcard.START;
+            if (wildcardStart && quoteStartIndex != i) {
+                /* start of the new wildcard => quote previous content */
+                sb.append(quoteValue(glob.substring(quoteStartIndex, i)));
             }
 
-            /* we processed whole wildcard so append it and prepare for the new wildcard */
-            sb.append(currentWildcard.convertToRegex());
-            currentWildcard = currentWildcard.startNewCycle();
+            boolean consecutiveWildcards = previousWildcard == Wildcard.DOUBLE_STAR_SLASH && currentWildcard != Wildcard.START;
+            boolean wildcardEnd = previousWildcard != Wildcard.START && currentWildcard == Wildcard.START;
+            if (wildcardEnd || consecutiveWildcards) {
+                /* end of the wildcard => append regex and move start of next quote after it */
+                sb.append(previousWildcard.regex);
+                quoteStartIndex = i;
+            }
+
+            previousWildcard = currentWildcard;
         }
 
+        /* remove the last char we added artificially */
+        glob = glob.substring(0, glob.length() - 1);
         if (quoteStartIndex < glob.length()) {
-            /* we have something after last wildcard that is not quoted */
             sb.append(quoteValue(glob.substring(quoteStartIndex)));
-        } else if (!currentWildcard.isCycleStart()) {
-            /* we have some wildcard at the end that is not appended */
-            sb.append(currentWildcard.convertToRegex());
         }
 
         return sb.toString();
     }
 
     /**
-     * This enum acts like a state machine that helps to identify glob wildcards. Since one star can
-     * be followed by another, we are starting a new cycle to track which wildcard will be generated
-     * in the end.
-     *
-     * We can check if the next character can advance the current cycle by calling
-     * {@link #couldAdvance}. If we can advance in the cycle, we should call {@link #next} to get
-     * next state of the cycle. Once we can't proceed with the given character, cycle for this
-     * wildcard ends, so we should use {@link #convertToRegex} to transform current wildcard into
-     * regex. Whenever previous cycle is finished, we should prepare the state machine for the next
-     * possible wildcard by calling {@link #startNewCycle}.
+     * This enum acts like a state machine that helps to identify glob wildcards.
      */
     private enum Wildcard {
-        START,
-        STAR,
-        DOUBLE_STAR,
-        DOUBLE_STAR_SLASH;
-
-        public boolean couldAdvance(char c) {
-            return c == '*' || (this.equals(Wildcard.DOUBLE_STAR) && c == '/');
-        }
-
-        public Wildcard next() {
-            return values()[(this.ordinal() + 1) % values().length];
-        }
-
-        public Wildcard startNewCycle() {
-            return Wildcard.START;
-        }
-
-        public boolean isCycleStart() {
-            return this.equals(Wildcard.START);
-        }
-
-        public boolean isCycleEnd() {
-            return this.equals(Wildcard.DOUBLE_STAR_SLASH);
-        }
-
-        public String convertToRegex() {
-            switch (this) {
-                case START -> {
-                    return "";
-                }
-                case STAR -> {
-                    return "[^/]*";
-                }
-                case DOUBLE_STAR -> {
-                    return ".*";
-                }
-                case DOUBLE_STAR_SLASH -> {
-                    return "([^/]*(/|$))*";
-                }
-
-                default -> throw VMError.shouldNotReachHere("Unsupported conversion of: " + this);
+        START("") {
+            public Wildcard next(char c) {
+                return c == '*' ? STAR : START;
             }
+        },
+        STAR("[^/]*") {
+            public Wildcard next(char c) {
+                return c == '*' ? DOUBLE_STAR : START;
+            }
+        },
+        DOUBLE_STAR(".*") {
+            public Wildcard next(char c) {
+                return c == '/' ? DOUBLE_STAR_SLASH : START;
+            }
+        },
+        DOUBLE_STAR_SLASH("([^/]*(/|$))*") {
+            public Wildcard next(char c) {
+                return c == '*' ? STAR : START;
+            }
+        };
+
+        final String regex;
+
+        Wildcard(String val) {
+            regex = val;
         }
+
+        public abstract Wildcard next(char c);
     }
 
     private static String quoteValue(String value) {
