@@ -1,0 +1,23 @@
+e4_8_64.c2-jfr : {
+  capabilities: [linux, e4_8_64, no_frequency_scaling]
+  environment : {
+    JVM_CONFIG :  "default"
+    JVM        :  "server"
+    MACHINE_NAME: "e4_8_64"
+    BENCH_SERVER_EXTRAS : "target:weekly-jfr"
+  }
+  targets: [bench, weekly]
+}
+
+e4_8_64.tmpfs10g-c2-jfr : ${e4_8_64.c2-jfr} {
+  capabilities: [linux, e4_8_64, no_frequency_scaling, tmpfs10g]
+}
+
+builds += [
+  ${e4_8_64.tmpfs10g-c2-jfr} ${bench-dacapo-jfr}         ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-e4_8_64-c2-jfr" }
+  ${e4_8_64.tmpfs10g-c2-jfr} ${bench-scala-dacapo-jfr}   ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-e4_8_64-c2-jfr" }
+  ${e4_8_64.c2-jfr} ${bench-specjvm2008-Single-jfr}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-e4_8_64-c2-jfr" }
+  ${e4_8_64.c2-jfr} ${bench-specjbb2015-jfr}             ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-e4_8_64-c2-jfr" }
+  ${e4_8_64.c2-jfr} ${bench-renaissance-jfr}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-renaissance-linux-e4_8_64-c2-jfr" }
+  ${e4_8_64.c2-jfr} ${bench-renaissance-legacy-jfr}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-renaissance-legacy-linux-e4_8_64-c2-jfr" }
+]
