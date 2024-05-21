@@ -41,10 +41,12 @@
 package com.oracle.truffle.runtime;
 
 import java.util.Map;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
 import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
@@ -221,11 +223,12 @@ public interface OptimizedTruffleRuntimeListener {
 
     /**
      * @deprecated Use
-     *             {@link #onCompilationFailed(OptimizedCallTarget, String, boolean, boolean, int)}
+     *             {@link #onCompilationFailed(OptimizedCallTarget, String, boolean, boolean, int, Supplier)}
+     *             )}
      */
     @Deprecated(since = "21.0")
     default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        onCompilationFailed(target, reason, bailout, permanentBailout, 0);
+        onCompilationFailed(target, reason, bailout, permanentBailout, 0, null);
     }
 
     /**
@@ -241,8 +244,36 @@ public interface OptimizedTruffleRuntimeListener {
      *            change if the {@code target} is compiled again. This value is meaningless if
      *            {@code bailout == false}.
      * @param tier Which compilation tier is in question.
+     *
+     * @deprecated Use
+     *             {@link #onCompilationFailed(OptimizedCallTarget, String, boolean, boolean, int, Supplier)}
+     *             )}
      */
+    @Deprecated
     default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    }
+
+    /**
+     * Notifies this object when compilation of {@code target} fails.
+     *
+     * @param target the call target whose compilation failed
+     * @param reason a description of the failure
+     * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
+     *            bailout means the compiler aborted the compilation based on some of property of
+     *            {@code target} (e.g., too big). A non-bailout means an unexpected error in the
+     *            compiler itself.
+     * @param permanentBailout specifies if a bailout is due to a condition that probably won't
+     *            change if the {@code target} is compiled again. This value is meaningless if
+     *            {@code bailout == false}.
+     * @param tier Which compilation tier is in question.
+     * @param serializedException a serialized representation of the exception indicating the reason
+     *            and stack trace for a compilation failure, or {@code null} in the case of a
+     *            bailout or when the compiler does not provide a stack trace. See
+     *            {@link TruffleCompilable#serializeException(Throwable)}.
+     *
+     */
+    default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
+        onCompilationFailed(target, reason, bailout, permanentBailout, tier);
     }
 
     /**

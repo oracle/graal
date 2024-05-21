@@ -345,8 +345,10 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(OnFailure)
-    static void onFailure(Object listener, Object compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
-        ((TruffleCompilerListener) listener).onFailure((TruffleCompilable) compilable, reason, bailout, permanentBailout, tier);
+    static void onFailure(Object listener, Object compilable, String reason, boolean bailout, boolean permanentBailout, int tier, long serializedExceptionHandle) {
+        try (LibGraalScopedStringSupplier serializedException = serializedExceptionHandle != 0L ? new LibGraalScopedStringSupplier(serializedExceptionHandle) : null) {
+            ((TruffleCompilerListener) listener).onFailure((TruffleCompilable) compilable, reason, bailout, permanentBailout, tier, serializedException);
+        }
     }
 
     @TruffleFromLibGraal(OnCompilationRetry)
