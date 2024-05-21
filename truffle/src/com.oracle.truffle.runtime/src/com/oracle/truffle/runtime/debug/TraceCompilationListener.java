@@ -55,6 +55,8 @@ import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
+import java.util.function.Supplier;
+
 /**
  * Traces AST-level compilation events with a detailed log message sent to the Truffle log stream
  * for each event.
@@ -129,7 +131,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             if (!isPermanentFailure(bailout, permanentBailout)) {
                 onCompilationDequeued(target, null, "Non permanent bailout: " + reason, tier);
@@ -307,7 +309,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
      * Determines if a failure is permanent.
      *
      * @see OptimizedTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String,
-     *      boolean, boolean, int)
+     *      boolean, boolean, int, Supplier)
      */
     private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
         return !bailout || permanentBailout;

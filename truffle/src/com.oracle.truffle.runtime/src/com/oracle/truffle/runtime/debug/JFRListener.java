@@ -47,6 +47,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -138,11 +139,11 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
         CompilationData data = getCurrentData();
         statistics.finishCompilation(data.finish(), bailout, 0);
         if (data.event != null) {
-            data.event.failed(tier, isPermanentFailure(bailout, permanentBailout), reason);
+            data.event.failed(tier, isPermanentFailure(bailout, permanentBailout), reason, serializedException);
             data.event.publish();
         }
         currentCompilation.remove();

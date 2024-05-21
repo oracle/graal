@@ -52,6 +52,8 @@ import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 import jdk.jfr.Unsigned;
 
+import java.util.function.Supplier;
+
 @Name("org.graalvm.compiler.truffle.Compilation")
 @Category("Truffle Compiler")
 @Label("Compilation")
@@ -101,11 +103,11 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
     }
 
     @Override
-    public void failed(int tier, boolean permanent, CharSequence reason) {
+    public void failed(int tier, boolean permanent, String reason, Supplier<String> serializedException) {
         end();
         if (failure != null) {
             failure.end();
-            failure.setFailureData(tier, permanent, reason);
+            failure.setFailureData(tier, permanent, reason, serializedException == null ? null : serializedException.get());
         }
         truffleTier = tier;
         success = false;

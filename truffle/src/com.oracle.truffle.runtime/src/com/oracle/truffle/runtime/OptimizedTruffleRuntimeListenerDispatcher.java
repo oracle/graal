@@ -42,6 +42,7 @@ package com.oracle.truffle.runtime;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -84,8 +85,8 @@ final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayLi
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent, int tier) {
-        invokeListeners((l) -> l.onCompilationFailed(target, reason, bailout, permanent, tier));
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent, int tier, Supplier<String> serializedException) {
+        invokeListeners((l) -> l.onCompilationFailed(target, reason, bailout, permanent, tier, serializedException));
     }
 
     @Override
@@ -171,8 +172,8 @@ final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayLi
     }
 
     @Override
-    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
-        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier);
+    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
+        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier, serializedException);
     }
 
     @Override

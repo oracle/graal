@@ -45,6 +45,8 @@ import com.oracle.truffle.compiler.TruffleCompilerListener;
 import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
 import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 
+import java.util.function.Supplier;
+
 final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerListener {
     private final ClientHandle<IsolatedEventContext> contextHandle;
 
@@ -76,9 +78,9 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     }
 
     @Override
-    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
         try (CCharPointerHolder reasonCstr = CTypeConversion.toCString(reason)) {
-            onFailure0(IsolatedCompileContext.get().getClient(), contextHandle, reasonCstr.get(), bailout, permanentBailout, tier);
+            onFailure0(IsolatedCompileContext.get().getClient(), contextHandle, reasonCstr.get(), bailout, permanentBailout, tier, IsolatedCompileContext.get().hand(serializedException));
         }
     }
 
@@ -111,9 +113,9 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void onFailure0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle,
-                    CCharPointer reason, boolean bailout, boolean permanentBailout, int tier) {
+                    CCharPointer reason, boolean bailout, boolean permanentBailout, int tier, CompilerHandle<Supplier<String>> serializedExceptionHandle) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
-        context.listener.onFailure(context.compilable, CTypeConversion.toJavaString(reason), bailout, permanentBailout, tier);
+        context.listener.onFailure(context.compilable, CTypeConversion.toJavaString(reason), bailout, permanentBailout, tier, new IsolatedStringSupplier(serializedExceptionHandle));
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)

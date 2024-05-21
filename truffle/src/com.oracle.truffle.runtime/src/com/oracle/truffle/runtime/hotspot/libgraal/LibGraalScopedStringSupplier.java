@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.runtime.jfr.impl;
+package com.oracle.truffle.runtime.hotspot.libgraal;
 
-import jdk.jfr.BooleanFlag;
-import jdk.jfr.Category;
-import jdk.jfr.Description;
-import jdk.jfr.Label;
-import jdk.jfr.Name;
-import jdk.jfr.StackTrace;
+import java.util.function.Supplier;
 
-@Name("org.graalvm.compiler.truffle.CompilationFailure")
-@Category("Truffle Compiler")
-@Label("Compilation Failure")
-@Description("Truffe Compilation Failures")
-@StackTrace(false)
-class CompilationFailureEventImpl extends RootFunctionEventImpl {
+import static com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope.getIsolateThread;
 
-    @Label("Permanent Failure") @Description("Permanent Failure") @BooleanFlag public boolean permanentFailure;
+final class LibGraalScopedStringSupplier extends LibGraalScopedHandle implements Supplier<String> {
 
-    @Label("Failure Reason") @Description("Failure Reason") public String failureReason;
-
-    @Label("Tier") @Description("The Tier of the Truffle Compiler") public int truffleTier;
-
-    @Label("Exception Stack Trace") @Description("Exception Stack Trace") public String stackTrace;
-
-    CompilationFailureEventImpl(long id, String source, String language, String rootFunction) {
-        super(id, source, language, rootFunction);
+    LibGraalScopedStringSupplier(long handle) {
+        super(handle, LibGraalStringSupplier.class);
     }
 
-    void setFailureData(int tier, boolean permanent, String reason, String stackTrace) {
-        truffleTier = tier;
-        permanentFailure = permanent;
-        failureReason = reason;
-        this.stackTrace = stackTrace;
+    @Override
+    public String get() {
+        return TruffleToLibGraalCalls.getSuppliedString(getIsolateThread(), getHandle());
     }
 }
