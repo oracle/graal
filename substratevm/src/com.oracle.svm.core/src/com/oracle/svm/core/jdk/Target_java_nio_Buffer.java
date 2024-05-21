@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.reflect.Method;
 import java.nio.Buffer;
 
+import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -35,7 +37,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -55,6 +56,9 @@ public final class Target_java_nio_Buffer {
  * scale to use for the recomputation.
  */
 class BufferAddressTransformer implements FieldValueTransformer {
+
+    private static final Method BUFFER_BASE_METHOD = ReflectionUtil.lookupMethod(Buffer.class, "base");
+
     @Override
     public Object transform(Object receiver, Object originalValue) {
         Buffer buffer = (Buffer) receiver;
@@ -70,7 +74,13 @@ class BufferAddressTransformer implements FieldValueTransformer {
             return Long.valueOf(0xDEADBEEF00052885L);
         }
 
-        Object bufferBase = SharedSecrets.getJavaNioAccess().getBufferBase(buffer);
+        Object bufferBase;
+        try {
+            bufferBase = BUFFER_BASE_METHOD.invoke(buffer);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+
         if (bufferBase == null) {
             /*
              * For example, StringCharBuffer does not have a backing array because all get()
