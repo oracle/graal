@@ -45,10 +45,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -147,46 +145,6 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(mapAddress.rawValue(), size), ByteBuffer.class);
     }
 
-<<<<<<< HEAD
-    private static String getUserName(int uid) {
-        /* Determine max. pwBuf size. */
-        long bufSize = Unistd.sysconf(_SC_GETPW_R_SIZE_MAX());
-        if (bufSize == -1) {
-            bufSize = 1024;
-        }
-
-        /* Retrieve the username and copy it to a String object. */
-        CCharPointer pwBuf = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(bufSize));
-        if (pwBuf.isNull()) {
-            return null;
-        }
-
-        try {
-            passwd pwent = StackValue.get(passwd.class);
-            passwdPointer p = StackValue.get(passwdPointer.class);
-            int code = Pwd.getpwuid_r(uid, pwent, pwBuf, WordFactory.unsigned(bufSize), p);
-            if (code != 0) {
-                return null;
-            }
-
-            passwd result = p.read();
-            if (result.isNull()) {
-                return null;
-            }
-
-            CCharPointer pwName = result.pw_name();
-            if (pwName.isNull() || pwName.read() == '\0') {
-                return null;
-            }
-
-            return CTypeConversion.toJavaString(pwName);
-        } finally {
-            UnmanagedMemory.free(pwBuf);
-        }
-    }
-
-=======
->>>>>>> a5af7062936 (remove getpwuid in favor of getpwuid_r)
     private static String getUserTmpDir(String user, int vmId, int nsPid) {
         String tmpDir = Target_jdk_internal_vm_VMSupport.getVMTemporaryDirectory();
         if (Platform.includedIn(Platform.LINUX.class)) {
