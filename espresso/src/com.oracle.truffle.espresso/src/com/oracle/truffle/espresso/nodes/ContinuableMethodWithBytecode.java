@@ -33,9 +33,9 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNodeImpl {

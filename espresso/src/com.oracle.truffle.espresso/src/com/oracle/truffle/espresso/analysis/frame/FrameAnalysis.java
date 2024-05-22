@@ -231,6 +231,7 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor.Builder;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeSwitch;
@@ -254,8 +255,6 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
 import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
-import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor;
-import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor.Builder;
 
 /**
  * Statically analyses bytecodes to produce a {@link EspressoFrameDescriptor frame description} for

@@ -242,6 +242,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.analysis.frame.FrameType;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -279,7 +280,6 @@ import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor;
 
 /**
  * Should be a complete bytecode verifier. Given the version of the classfile from which the method

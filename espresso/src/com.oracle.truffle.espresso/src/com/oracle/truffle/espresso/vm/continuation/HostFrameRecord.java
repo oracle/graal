@@ -23,12 +23,13 @@
 
 package com.oracle.truffle.espresso.vm.continuation;
 
+import static com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor.guarantee;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
-import static com.oracle.truffle.espresso.vm.continuation.EspressoFrameDescriptor.guarantee;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
