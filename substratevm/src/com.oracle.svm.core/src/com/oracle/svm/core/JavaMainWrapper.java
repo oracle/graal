@@ -166,6 +166,8 @@ public class JavaMainWrapper {
     }
 
     public static void invokeMain(String[] args) throws Throwable {
+        PreMainSupport preMainSupport = ImageSingletons.lookup(PreMainSupport.class);
+        preMainSupport.invokePremain();
         JavaMainSupport javaMainSupport = ImageSingletons.lookup(JavaMainSupport.class);
         if (javaMainSupport.mainNonstatic) {
             Object instance = javaMainSupport.javaMainClassCtorHandle.invoke();

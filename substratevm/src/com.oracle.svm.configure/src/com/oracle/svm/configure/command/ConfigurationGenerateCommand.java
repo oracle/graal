@@ -264,15 +264,22 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
         ConfigurationSet omittedConfigurationSet;
 
         try {
-            omittedConfigurationSet = omittedCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, null, null);
+            omittedConfigurationSet = omittedCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, null, null, null);
             List<Path> predefinedClassDestDirs = new ArrayList<>();
             for (URI pathUri : outputCollection.getPredefinedClassesConfigPaths()) {
                 Path subdir = Files.createDirectories(Paths.get(pathUri).getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
                 subdir = Files.createDirectories(subdir);
                 predefinedClassDestDirs.add(subdir);
             }
+            List<Path> instrumentClassDestDirs = new ArrayList<>();
+            for (URI pathUri : outputCollection.getInstrumentConfigPaths()) {
+                Path subdir = Files.createDirectories(Paths.get(pathUri).getParent().resolve(ConfigurationFile.INSTRUMENT_CLASSES_SUBDIR));
+                subdir = Files.createDirectories(subdir);
+                instrumentClassDestDirs.add(subdir);
+            }
             Predicate<String> shouldExcludeClassesWithHash = omittedConfigurationSet.getPredefinedClassesConfiguration()::containsClassWithHash;
-            configurationSet = inputCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash);
+            configurationSet = inputCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash,
+                            instrumentClassDestDirs.toArray(new Path[0]));
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
@@ -331,6 +338,11 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
         for (URI uri : outputCollection.getPredefinedClassesConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 configurationSet.getPredefinedClassesConfiguration().printJson(writer);
+            }
+        }
+        for (URI uri : outputCollection.getInstrumentConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
+                configurationSet.getInstrumentConfiguration().printJson(writer);
             }
         }
     }

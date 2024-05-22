@@ -48,6 +48,7 @@ public class ConfigurationFileCollection {
     private final Set<URI> resourceConfigPaths = new LinkedHashSet<>();
     private final Set<URI> serializationConfigPaths = new LinkedHashSet<>();
     private final Set<URI> predefinedClassesConfigPaths = new LinkedHashSet<>();
+    private final Set<URI> instrumentConfigPaths = new LinkedHashSet<>();
     private Set<URI> lockFilePaths;
 
     public void addDirectory(Path path) {
@@ -57,6 +58,7 @@ public class ConfigurationFileCollection {
         resourceConfigPaths.add(path.resolve(ConfigurationFile.RESOURCES.getFileName()).toUri());
         serializationConfigPaths.add(path.resolve(ConfigurationFile.SERIALIZATION.getFileName()).toUri());
         predefinedClassesConfigPaths.add(path.resolve(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()).toUri());
+        instrumentConfigPaths.add(path.resolve(ConfigurationFile.INSTRUMENT.getFileName()).toUri());
         detectAgentLock(path.resolve(ConfigurationFile.LOCK_FILE_NAME), Files::exists, Path::toUri);
     }
 
@@ -76,6 +78,7 @@ public class ConfigurationFileCollection {
         resourceConfigPaths.add(fileResolver.apply(ConfigurationFile.RESOURCES.getFileName()));
         serializationConfigPaths.add(fileResolver.apply(ConfigurationFile.SERIALIZATION.getFileName()));
         predefinedClassesConfigPaths.add(fileResolver.apply(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()));
+        instrumentConfigPaths.add(fileResolver.apply(ConfigurationFile.INSTRUMENT.getFileName()));
         detectAgentLock(fileResolver.apply(ConfigurationFile.LOCK_FILE_NAME), Objects::nonNull, Function.identity());
     }
 
@@ -85,7 +88,8 @@ public class ConfigurationFileCollection {
 
     public boolean isEmpty() {
         return jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() &&
-                        resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty() && predefinedClassesConfigPaths.isEmpty();
+                        resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty() &&
+                        predefinedClassesConfigPaths.isEmpty() && instrumentConfigPaths.isEmpty();
     }
 
     public Set<URI> getJniConfigPaths() {
@@ -112,6 +116,10 @@ public class ConfigurationFileCollection {
         return predefinedClassesConfigPaths;
     }
 
+    public Set<URI> getInstrumentConfigPaths() {
+        return instrumentConfigPaths;
+    }
+
     public TypeConfiguration loadJniConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         return loadTypeConfig(jniConfigPaths, exceptionHandler);
     }
@@ -133,6 +141,12 @@ public class ConfigurationFileCollection {
         return predefinedClassesConfiguration;
     }
 
+    public InstrumentConfiguration loadInstrumentConfig(Path[] classDestinationDirs, Function<IOException, Exception> exceptionHandler) throws Exception {
+        InstrumentConfiguration instrumentConfiguration = new InstrumentConfiguration(classDestinationDirs);
+        loadConfig(instrumentConfigPaths, instrumentConfiguration.createParser(), exceptionHandler);
+        return instrumentConfiguration;
+    }
+
     public ResourceConfiguration loadResourceConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
         loadConfig(resourceConfigPaths, resourceConfiguration.createParser(), exceptionHandler);
@@ -146,10 +160,11 @@ public class ConfigurationFileCollection {
     }
 
     public ConfigurationSet loadConfigurationSet(Function<IOException, Exception> exceptionHandler, Path[] predefinedConfigClassDestinationDirs,
-                    Predicate<String> predefinedConfigClassWithHashExclusionPredicate) throws Exception {
+                    Predicate<String> predefinedConfigClassWithHashExclusionPredicate, Path[] instrumentClassDestinationDirs) throws Exception {
         return new ConfigurationSet(loadReflectConfig(exceptionHandler), loadJniConfig(exceptionHandler), loadResourceConfig(exceptionHandler), loadProxyConfig(exceptionHandler),
                         loadSerializationConfig(exceptionHandler),
-                        loadPredefinedClassesConfig(predefinedConfigClassDestinationDirs, predefinedConfigClassWithHashExclusionPredicate, exceptionHandler));
+                        loadPredefinedClassesConfig(predefinedConfigClassDestinationDirs, predefinedConfigClassWithHashExclusionPredicate, exceptionHandler),
+                        loadInstrumentConfig(instrumentClassDestinationDirs, exceptionHandler));
     }
 
     private static TypeConfiguration loadTypeConfig(Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {

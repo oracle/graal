@@ -34,7 +34,8 @@ public enum ConfigurationFile {
     REFLECTION("reflect", true),
     SERIALIZATION("serialization", true),
     SERIALIZATION_DENY("serialization-deny", false),
-    PREDEFINED_CLASSES_NAME("predefined-classes", true);
+    PREDEFINED_CLASSES_NAME("predefined-classes", true),
+    INSTRUMENT("instrument", true);
 
     public static final String DEFAULT_FILE_NAME_SUFFIX = "-config.json";
     private final String name;
@@ -42,8 +43,13 @@ public enum ConfigurationFile {
 
     public static final String LOCK_FILE_NAME = ".lock";
     public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR = "agent-extracted-predefined-classes";
+    public static final String INSTRUMENT_CLASSES_SUBDIR = "instrument-classes";
     public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX = ".classdata";
     public static final String PARTIAL_CONFIGURATION_WITH_ORIGINS = "partial-config-with-origins.json";
+
+    public static final String CLASS_POSTFIX = ".class";
+    public static final String GENERATED_CLASSES_DIR = "generated-classes";
+    public static final String UNNAMED_MODULE = "unnamed";
 
     private static final ConfigurationFile[] agentGeneratedFiles = computeAgentGeneratedFiles();
 

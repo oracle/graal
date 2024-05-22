@@ -135,10 +135,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         boolean builtinHeuristicFilter = true;
         List<String> callerFilterFiles = new ArrayList<>();
         List<String> accessFilterFiles = new ArrayList<>();
+        List<String> predefineClassRules = new ArrayList<>();
         boolean experimentalClassLoaderSupport = true;
         boolean experimentalClassDefineSupport = false;
         boolean experimentalUnsafeAllocationSupport = false;
         boolean experimentalOmitClasspathConfig = false;
+        boolean experimentalInstrumentSupport = false;
         boolean configurationWithOrigins = false;
         List<String> conditionalConfigUserPackageFilterFiles = new ArrayList<>();
         List<String> conditionalConfigClassNameFilterFiles = new ArrayList<>();
@@ -189,6 +191,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 experimentalClassLoaderSupport = getBooleanTokenValue(token);
             } else if (isBooleanOption(token, "experimental-class-define-support")) {
                 experimentalClassDefineSupport = getBooleanTokenValue(token);
+            } else if (token.startsWith("predefine-class-rules=")) {
+                predefineClassRules.add(getTokenValue(token));
             } else if (isBooleanOption(token, "experimental-unsafe-allocation-support")) {
                 experimentalUnsafeAllocationSupport = getBooleanTokenValue(token);
             } else if (token.startsWith("config-write-period-secs=")) {
@@ -211,6 +215,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 conditionalConfigPartialRun = getBooleanTokenValue(token);
             } else if (isBooleanOption(token, "track-reflection-metadata")) {
                 trackReflectionMetadata = getBooleanTokenValue(token);
+            } else if (isBooleanOption(token, "experimental-instrument")) {
+                experimentalInstrumentSupport = getBooleanTokenValue(token);
             } else {
                 return usage(1, "unknown option: '" + token + "'.");
             }
@@ -305,7 +311,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         warn("Failed to load omitted config: " + e);
                         return null;
                     };
-                    omittedConfiguration = omittedConfigs.loadConfigurationSet(ignore, null, null);
+                    omittedConfiguration = omittedConfigs.loadConfigurationSet(ignore, null, null, null);
                     shouldExcludeClassesWithHash = omittedConfiguration.getPredefinedClassesConfiguration()::containsClassWithHash;
                 }
 
@@ -339,6 +345,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     }
                 } else {
                     Path[] predefinedClassDestDirs = {Files.createDirectories(configOutputDirPath.resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR))};
+                    Path[] instrumentClassDestDirs = {Files.createDirectories(configOutputDirPath.resolve(ConfigurationFile.INSTRUMENT_CLASSES_SUBDIR))};
                     Function<IOException, Exception> handler = e -> {
                         if (e instanceof NoSuchFileException) {
                             warn("file " + ((NoSuchFileException) e).getFile() + " for merging could not be found, skipping");
@@ -350,7 +357,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         return e; // rethrow
                     };
 
-                    ConfigurationSet configuration = mergeConfigs.loadConfigurationSet(handler, predefinedClassDestDirs, shouldExcludeClassesWithHash);
+                    ConfigurationSet configuration = mergeConfigs.loadConfigurationSet(handler, predefinedClassDestDirs, shouldExcludeClassesWithHash, instrumentClassDestDirs);
                     ConfigurationResultWriter writer = new ConfigurationResultWriter(processor, configuration, omittedConfiguration);
                     tracer = writer;
                     tracingResultWriter = writer;
@@ -372,7 +379,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
         try {
             BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier,
-                            experimentalClassLoaderSupport, experimentalClassDefineSupport, experimentalUnsafeAllocationSupport, trackReflectionMetadata);
+                            experimentalClassLoaderSupport, experimentalClassDefineSupport, experimentalUnsafeAllocationSupport,
+                            trackReflectionMetadata, experimentalInstrumentSupport, predefineClassRules);
         } catch (Throwable t) {
             return error(3, t.toString());
         }
