@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -133,6 +134,7 @@ public class EspressoFrameDescriptor {
                 break;
             default:
                 // No sub-word kind in frames.
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
     }
@@ -159,6 +161,7 @@ public class EspressoFrameDescriptor {
                 break;
             default:
                 // No sub-word kind in frames.
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
     }
@@ -200,6 +203,7 @@ public class EspressoFrameDescriptor {
             }
             default:
                 // No sub-word kind in frames.
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
         return true;

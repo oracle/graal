@@ -126,6 +126,7 @@ public final class HostFrameRecord {
     /**
      * Converts the entire linked list of host records to guest records.
      */
+    @TruffleBoundary
     public StaticObject copyToGuest(Meta meta) {
         // Convert the linked list from host to guest.
         HostFrameRecord cursor = this;
@@ -163,6 +164,7 @@ public final class HostFrameRecord {
      * Copies the <i>entire</i> linked list of frame records from a guest {@code Continuation}
      * object (which contains the head frame record pointer) to a linked list of host frame records.
      */
+    @TruffleBoundary
     public static HostFrameRecord copyFromGuest(
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
                     Meta meta,

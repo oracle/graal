@@ -1326,6 +1326,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         public CallTarget getContinuableCallTarget() {
             if (continuableCallTarget == null) {
                 synchronized (this) {
+                    if (CompilerDirectives.isCompilationConstant(this)) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                    }
                     if (continuableCallTarget == null) {
                         CallTarget target = EspressoRootNode.createContinuable(this).getCallTarget();
                         VarHandle.releaseFence();
