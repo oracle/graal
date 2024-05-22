@@ -29,9 +29,9 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ConfigurationConditionResolver;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.config.RegistryAdapter;
 
 public class NativeImageConditionResolver implements ConfigurationConditionResolver<ConfigurationCondition> {
     private final ImageClassLoader classLoader;
@@ -44,7 +44,7 @@ public class NativeImageConditionResolver implements ConfigurationConditionResol
 
     @Override
     public TypeResult<ConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
-        String canonicalizedName = RegistryAdapter.canonicalizeTypeName(unresolvedCondition.getTypeName());
+        String canonicalizedName = ConfigurationTypeDescriptor.canonicalizeTypeName(unresolvedCondition.getTypeName());
         TypeResult<Class<?>> clazz = classLoader.findClass(canonicalizedName);
         return clazz.map(type -> {
             /*

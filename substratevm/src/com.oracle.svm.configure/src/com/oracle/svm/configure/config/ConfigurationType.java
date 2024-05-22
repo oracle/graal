@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.core.util.json.JsonPrintable;
 import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
@@ -102,10 +103,6 @@ public class ConfigurationType implements JsonPrintable {
     private ConfigurationMemberAccessibility allPublicMethodsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allDeclaredConstructorsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allPublicConstructorsAccess = ConfigurationMemberAccessibility.NONE;
-
-    public ConfigurationType(UnresolvedConfigurationCondition condition, String qualifiedJavaName, boolean includeAllElements) {
-        this(condition, new NamedConfigurationTypeDescriptor(qualifiedJavaName), includeAllElements);
-    }
 
     public ConfigurationType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean includeAllElements) {
         this.condition = condition;
@@ -445,8 +442,8 @@ public class ConfigurationType implements JsonPrintable {
     public synchronized void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
         ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
-        /* GR-50385: Replace with "type" (and flip boolean entries below) */
-        writer.quote("name").append(":");
+        /* GR-50385: Flip boolean entries below when "type" includes them by default. */
+        writer.quote("type").append(":");
         typeDescriptor.printJson(writer);
 
         optionallyPrintJsonBoolean(writer, allDeclaredFields, "allDeclaredFields");

@@ -26,31 +26,46 @@ package com.oracle.svm.hosted.config;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 
 public class ReflectionRegistryAdapter extends RegistryAdapter {
     private final RuntimeReflectionSupport reflectionSupport;
+    private final ProxyRegistry proxyRegistry;
 
-    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, ImageClassLoader classLoader) {
+    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, ProxyRegistry proxyRegistry, ImageClassLoader classLoader) {
         super(reflectionSupport, classLoader);
         this.reflectionSupport = reflectionSupport;
+        this.proxyRegistry = proxyRegistry;
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives, boolean includeAllElements) {
-        TypeResult<Class<?>> result = super.resolveType(condition, typeName, allowPrimitives, includeAllElements);
-        if (!result.isPresent()) {
+    public void registerType(ConfigurationCondition condition, Class<?> type) {
+        super.registerType(condition, type);
+        if (Proxy.isProxyClass(type)) {
+            proxyRegistry.accept(condition, Arrays.stream(type.getInterfaces()).map(Class::getTypeName).toList());
+        }
+    }
+
+    @Override
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean includeAllElements) {
+        TypeResult<Class<?>> result = super.resolveType(condition, typeDescriptor, allowPrimitives, includeAllElements);
+        if (!result.isPresent() && typeDescriptor instanceof NamedConfigurationTypeDescriptor namedDescriptor) {
             Throwable classLookupException = result.getException();
             if (classLookupException instanceof LinkageError) {
-                reflectionSupport.registerClassLookupException(condition, typeName, classLookupException);
+                reflectionSupport.registerClassLookupException(condition, namedDescriptor.name(), classLookupException);
             } else if (throwMissingRegistrationErrors() && classLookupException instanceof ClassNotFoundException) {
-                reflectionSupport.registerClassLookup(condition, typeName);
+                reflectionSupport.registerClassLookup(condition, namedDescriptor.name());
             }
         }
         return result;

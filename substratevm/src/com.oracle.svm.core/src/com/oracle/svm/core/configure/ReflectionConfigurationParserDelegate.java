@@ -30,7 +30,7 @@ import com.oracle.svm.core.TypeResult;
 
 public interface ReflectionConfigurationParserDelegate<C, T> {
 
-    TypeResult<T> resolveType(C condition, String typeName, boolean allowPrimitives, boolean includeAllElements);
+    TypeResult<T> resolveType(C condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean includeAllElements);
 
     void registerType(C condition, T type);
 
