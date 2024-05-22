@@ -152,6 +152,9 @@ public interface TruffleCompilerListener {
 
     /**
      * Notifies this object when compilation of {@code compilable} fails.
+     * <p>
+     * GR-54187: Remove in graalvm-25.1
+     * </p>
      *
      * @param compilable the Truffle AST whose compilation failed
      * @param reason the reason compilation failed
