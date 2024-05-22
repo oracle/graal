@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import java.util.HashMap;
-import java.util.concurrent.Callable;
-
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -40,7 +37,6 @@ public class SuspendedInfo {
     private final Object thread;
     private final RootNode callerRootNode;
     private boolean forceEarlyInProgress;
-    private final HashMap<Object, Integer> monitorEntryCounts;
 
     SuspendedInfo(DebuggerController controller, SuspendedEvent event, CallFrame[] stackFrames, Object thread, RootNode callerRootNode) {
         this.controller = controller;
@@ -49,19 +45,17 @@ public class SuspendedInfo {
         this.stackFrames = stackFrames;
         this.thread = thread;
         this.callerRootNode = callerRootNode;
-        this.monitorEntryCounts = null;
     }
 
     // used for pre-collected thread suspension data, before the thread
     // disappears to native code
-    SuspendedInfo(JDWPContext context, CallFrame[] stackFrames, Object thread, HashMap<Object, Integer> monitorEntryCounts) {
-        this.controller = null;
-        this.context = context;
+    SuspendedInfo(DebuggerController controller, CallFrame[] stackFrames, Object thread) {
+        this.controller = controller;
+        this.context = controller.getContext();
         this.event = null;
         this.stackFrames = stackFrames;
         this.thread = thread;
         this.callerRootNode = null;
-        this.monitorEntryCounts = monitorEntryCounts;
     }
 
     public SuspendedEvent getEvent() {
@@ -90,20 +84,5 @@ public class SuspendedInfo {
 
     public boolean isForceEarlyReturnInProgress() {
         return forceEarlyInProgress;
-    }
-
-    public int getMonitorEntryCount(Object monitor) {
-        if (monitorEntryCounts != null) {
-            return monitorEntryCounts.get(monitor);
-        } else {
-            ThreadJob<Integer> job = new ThreadJob<>(thread, new Callable<Integer>() {
-                @Override
-                public Integer call() {
-                    return context.getMonitorEntryCount(monitor);
-                }
-            });
-            controller.postJobForThread(job);
-            return job.getResult().getResult();
-        }
     }
 }
