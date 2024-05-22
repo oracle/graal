@@ -192,6 +192,23 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
             } else {
                 String msg = "Class initialization of " + clazz.getTypeName() + " failed. " +
                                 instructionsToInitializeAtRuntime(clazz);
+
+                if (t instanceof ExceptionInInitializerError) {
+                    Throwable cause = t;
+                    while (cause.getCause() != null) {
+                        cause = cause.getCause();
+                    }
+                    msg = msg + " Exception thrown by the class initializer:" + System.lineSeparator() + System.lineSeparator() + cause + System.lineSeparator();
+                    for (var element : cause.getStackTrace()) {
+                        if (getClass().getName().equals(element.getClassName())) {
+                            msg = msg + "\t(internal stack frames of the image generator are omitted)" + System.lineSeparator();
+                            break;
+                        }
+                        msg = msg + "\tat " + element + System.lineSeparator();
+                    }
+                    msg = msg + System.lineSeparator();
+                }
+
                 throw UserError.abort(t, "%s", msg);
             }
         }
