@@ -458,24 +458,24 @@ public final class CodeInfoDecoder {
         VMError.guarantee(methodIndex >= 0 && methodIndex < NonmovableArrays.lengthOf(methodEncodings) / entryBytes);
 
         Pointer p = NonmovableArrays.addressOf(methodEncodings, methodIndex * entryBytes);
-        int classIndex = readSourceFieldOffset(p, shortClass, classOffset);
+        int classIndex = readIndex(p, shortClass, classOffset);
         Class<?> sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getClasses(info), classIndex);
-        int methodNameIndex = readSourceFieldOffset(p, shortName, nameOffset);
+        int methodNameIndex = readIndex(p, shortName, nameOffset);
         String sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getMemberNames(info), methodNameIndex);
 
         String sourceMethodSignature = CodeInfoEncoder.Encoders.INVALID_METHOD_SIGNATURE;
         int sourceSignatureModifiers = CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS;
         if (CodeInfoEncoder.shouldEncodeAllMethodMetadata()) {
-            int sourceSignatureIndex = readSourceFieldOffset(p, shortSignature, signatureOffset);
+            int sourceSignatureIndex = readIndex(p, shortSignature, signatureOffset);
             sourceMethodSignature = NonmovableArrays.getObject(CodeInfoAccess.getOtherStrings(info), sourceSignatureIndex);
 
-            sourceSignatureModifiers = readSourceFieldOffset(p, true, modifierOffset);
+            sourceSignatureModifiers = readIndex(p, true, modifierOffset);
         }
         result.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceSignatureModifiers);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static int readSourceFieldOffset(Pointer p, boolean isShort, int offset) {
+    private static int readIndex(Pointer p, boolean isShort, int offset) {
         return isShort ? (p.readShort(offset) & 0xffff) : p.readInt(offset);
     }
 
