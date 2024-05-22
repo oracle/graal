@@ -245,6 +245,12 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor CHACHA20Block = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_chacha20Block", int.class,
                     WordBase.class, WordBase.class);
 
+    public static final HotSpotForeignCallDescriptor INTPOLY_MONTGOMERYMULT_P256 = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_intpoly_montgomeryMult_P256", int.class,
+                    WordBase.class, WordBase.class, WordBase.class);
+
+    public static final HotSpotForeignCallDescriptor INTPOLY_ASSIGN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_intpoly_assign", void.class,
+                    int.class, WordBase.class, WordBase.class, int.class);
+
     public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_start", void.class,
                     Object.class, boolean.class, Word.class);
