@@ -134,6 +134,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     private static final Method defineClass = ReflectionUtil.lookupMethod(ClassLoader.class, "defineClass",
                     String.class, byte[].class, int.class, int.class);
 
+<<<<<<< HEAD
     private static final Constructor<Enumeration<?>> compoundEnumerationConstructor;
     static {
         /* Reuse utility class defined as package-private class in java.lang.ClassLoader.java */
@@ -208,15 +209,25 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         return loadClass(getActiveClassLoaders(), name, resolve);
+=======
+    @Override
+    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        return ReflectionUtil.invokeMethod(loadClass, getActiveClassLoader(), name, resolve);
+>>>>>>> f97895f9a42 (Ensure LinkageError during loadClass.invoke is propagated to caller)
     }
 
     @Override
     protected URL findResource(String name) {
+<<<<<<< HEAD
         return findResource(getActiveClassLoaders(), name);
+=======
+        return ReflectionUtil.invokeMethod(findResource, getActiveClassLoader(), name);
+>>>>>>> f97895f9a42 (Ensure LinkageError during loadClass.invoke is propagated to caller)
     }
 
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
+<<<<<<< HEAD
         List<ClassLoader> activeClassLoaders = getActiveClassLoaders();
         assert !activeClassLoaders.isEmpty() && activeClassLoaders.size() <= 2;
         ClassLoader activeClassLoader = activeClassLoaders.get(0);
@@ -234,6 +245,9 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere("Cannot instantiate CompoundEnumeration", e);
         }
+=======
+        return ReflectionUtil.invokeMethod(findResources, getActiveClassLoader(), name);
+>>>>>>> f97895f9a42 (Ensure LinkageError during loadClass.invoke is propagated to caller)
     }
 
     public Class<?> forNameOrNull(String name, boolean initialize) {
@@ -249,7 +263,11 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         if (forNameOrNull(name, false) != null) {
             throw VMError.shouldNotReachHere("The class loader hierarchy already provides a class with the same name as the class submitted for predefinition: " + name);
         }
+<<<<<<< HEAD
         return defineClass(getActiveClassLoaders().get(0), name, array, offset, length);
+=======
+        return ReflectionUtil.invokeMethod(defineClass, getActiveClassLoader(), name, array, offset, length);
+>>>>>>> f97895f9a42 (Ensure LinkageError during loadClass.invoke is propagated to caller)
     }
 
     @Override
@@ -283,12 +301,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
      */
     @SuppressWarnings("unused") // no direct use from Java
     private void appendToClassPathForInstrumentation(String classPathEntry) {
-        try {
-            Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
-            method.invoke(getParent(), classPathEntry);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Can not add jar: %s to class path. Due to %s", classPathEntry, e);
-            VMError.shouldNotReachHere(message, e);
-        }
+        Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
+        ReflectionUtil.invokeMethod(method, getParent(), classPathEntry);
     }
 }
