@@ -89,9 +89,13 @@ import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -344,6 +348,21 @@ final class TruffleFromLibGraalEntryPoints {
         }
     }
 
+    /**
+     * Entry point for deprecated
+     * {@link TruffleCompilerListener#onFailure(TruffleCompilable, String, boolean, boolean, int)}
+     * used for compatibility with LTS graalvm-23.1.
+     * <p>
+     * GR-54187: Remove in graalvm-25.1
+     * </p>
+     */
+    @TruffleFromLibGraal(OnFailure)
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    static void onFailure(Object listener, Object compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+        ((TruffleCompilerListener) listener).onFailure((TruffleCompilable) compilable, reason, bailout, permanentBailout, tier);
+    }
+
     @TruffleFromLibGraal(OnFailure)
     static void onFailure(Object listener, Object compilable, String reason, boolean bailout, boolean permanentBailout, int tier, long serializedExceptionHandle) {
         try (LibGraalScopedStringSupplier serializedException = serializedExceptionHandle != 0L ? new LibGraalScopedStringSupplier(serializedExceptionHandle) : null) {
@@ -453,17 +472,33 @@ final class TruffleFromLibGraalEntryPoints {
      */
     private static boolean checkHotSpotCalls() {
         Set<Id> unimplemented = EnumSet.allOf(Id.class);
+        Map<Id, List<Method>> idToMethod = new HashMap<>();
         for (Method method : TruffleFromLibGraalEntryPoints.class.getDeclaredMethods()) {
             if (Modifier.isStatic(method.getModifiers())) {
                 TruffleFromLibGraal a = method.getAnnotation(TruffleFromLibGraal.class);
                 if (a != null) {
                     Id id = a.value();
+                    List<Method> methods = idToMethod.computeIfAbsent(id, (k) -> new ArrayList<>());
+                    methods.add(method);
+                }
+            }
+        }
+        for (Map.Entry<Id, List<Method>> e : idToMethod.entrySet()) {
+            Id id = e.getKey();
+            List<Method> methods = e.getValue();
+            int legacyMethodCount = 0;
+            for (Method method : methods) {
+                check(id, id.getMethodName().equals(method.getName()), "Expected name \"%s\", got \"%s\"", id.getMethodName(), method.getName());
+                if (method.getAnnotation(Deprecated.class) != null) {
+                    legacyMethodCount++;
+                }
+                if (Arrays.equals(id.getParameterTypes(), method.getParameterTypes())) {
                     unimplemented.remove(id);
-                    check(id, id.getMethodName().equals(method.getName()), "Expected name \"%s\", got \"%s\"", id.getMethodName(), method.getName());
                     check(id, id.getReturnType().equals(method.getReturnType()), "Expected return type %s, got %s", id.getReturnType().getName(), method.getReturnType().getName());
                     checkParameters(id, method.getParameterTypes());
                 }
             }
+            check(id, legacyMethodCount == methods.size() - 1, "Entry points with multiple versions must mark all legacy versions with the @Deprecated annotation.");
         }
         check(null, unimplemented.isEmpty(), "Missing implementations:%n%s", unimplemented.stream().map(TruffleFromLibGraalEntryPoints::missingImpl).sorted().collect(joining(lineSeparator())));
         return true;
