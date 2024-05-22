@@ -581,12 +581,11 @@ public final class Continuation implements Externalizable {
     @Override
     public synchronized void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         State previousState = lock();
-        if (previousState == State.RUNNING) {
-            // For a RUNNING continuation locking doesn't happen.
-            throw new IllegalContinuationStateException("Do not use readExternal on a Continuation object that was not just freshly created through the no-arg constructor");
-        }
         if (previousState != State.INCOMPLETE) {
-            unlock(previousState);
+            if (previousState != State.RUNNING) {
+                // For a RUNNING continuation locking doesn't happen.
+                unlock(previousState);
+            }
             throw new IllegalContinuationStateException("Do not use readExternal on a Continuation object that was not just freshly created through the no-arg constructor");
         }
         int header = in.readByte();
