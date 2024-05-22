@@ -23,11 +23,12 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
+import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 public final class UnknownSuspendedInfo extends SuspendedInfo {
 
-    UnknownSuspendedInfo(DebuggerController controller, Object thread) {
-        super(controller, null, thread);
+    UnknownSuspendedInfo(JDWPContext context, Object thread) {
+        super(context, null, thread);
     }
 
     @Override

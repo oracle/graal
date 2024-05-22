@@ -403,7 +403,7 @@ public final class DebuggerController implements ContextsListener {
                 // even if the guestThread is executing. If the guestThread is blocked or waiting we
                 // still need to suspend it, thus we manage this with a hard suspend mechanism
                 threadSuspension.addHardSuspendedThread(guestThread);
-                suspendedInfos.put(guestThread, new UnknownSuspendedInfo(this, guestThread));
+                suspendedInfos.put(guestThread, new UnknownSuspendedInfo(context, guestThread));
             } catch (Exception e) {
                 fine(() -> "not able to suspend guestThread: " + getThreadName(guestThread));
             }
@@ -783,7 +783,7 @@ public final class DebuggerController implements ContextsListener {
             CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1, steppingInfo);
             RootNode callerRootNode = callFrames.length > 1 ? callFrames[1].getRootNode() : null;
 
-            SuspendedInfo suspendedInfo = new SuspendedInfo(DebuggerController.this, event, callFrames, currentThread, callerRootNode);
+            SuspendedInfo suspendedInfo = new SuspendedInfo(context, event, callFrames, currentThread, callerRootNode);
             suspendedInfos.put(currentThread, suspendedInfo);
 
             byte suspendPolicy = SuspendStrategy.EVENT_THREAD;

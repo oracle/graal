@@ -31,16 +31,14 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 public class SuspendedInfo {
 
     protected final JDWPContext context;
-    private final DebuggerController controller;
     private final SuspendedEvent event;
     private final CallFrame[] stackFrames;
     private final Object thread;
     private final RootNode callerRootNode;
     private boolean forceEarlyInProgress;
 
-    SuspendedInfo(DebuggerController controller, SuspendedEvent event, CallFrame[] stackFrames, Object thread, RootNode callerRootNode) {
-        this.controller = controller;
-        this.context = controller.getContext();
+    SuspendedInfo(JDWPContext context, SuspendedEvent event, CallFrame[] stackFrames, Object thread, RootNode callerRootNode) {
+        this.context = context;
         this.event = event;
         this.stackFrames = stackFrames;
         this.thread = thread;
@@ -49,9 +47,8 @@ public class SuspendedInfo {
 
     // used for pre-collected thread suspension data, before the thread
     // disappears to native code
-    SuspendedInfo(DebuggerController controller, CallFrame[] stackFrames, Object thread) {
-        this.controller = controller;
-        this.context = controller.getContext();
+    SuspendedInfo(JDWPContext context, CallFrame[] stackFrames, Object thread) {
+        this.context = context;
         this.event = null;
         this.stackFrames = stackFrames;
         this.thread = thread;
