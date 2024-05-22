@@ -39,16 +39,53 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormatNoFa
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 
 public final class StackMapFrameParser<T extends StackMapFrameParser.FrameState> {
 
     public interface FrameState {
+        /**
+         * @return A copy of this FrameState, from which all Stack elements have been stripped.
+         */
         FrameState sameNoStack();
 
+        /**
+         * @return A copy of this FrameState, with a single stack element: {@code vfi}
+         */
         FrameState sameLocalsWith1Stack(VerificationTypeInfo vfi, FrameBuilder<?> builder);
 
+        /**
+         * Computes a new {@link FrameState} starting from the receiver, from which all stack
+         * elements have been stripped, and {@code chop} locals have been cleared out, starting from
+         * {@code lastLocal}.
+         *
+         * @param chop The number of locals to remove
+         * @param lastLocal the position of the last local in the current FrameState.
+         * @return A {@link FrameAndLocalEffect}, which contains the
+         *         {@link FrameAndLocalEffect#state frame state} and the
+         *         {@link FrameAndLocalEffect#effect effect on the number of local variables} (which
+         *         can be different from {@code chop} if there are {@link JavaKind#needsTwoSlots()
+         *         type 2} locals to chop). This effect should be computed such that the last local
+         *         of the resulting state is given by {@code lastLocal + effect}.
+         */
         FrameAndLocalEffect chop(int chop, int lastLocal);
 
+        /**
+         * Computes a new {@link FrameState} starting from the receiver, from which all stack
+         * elements have been stripped, and {@code vfi} locals have been appended in, starting from
+         * {@code lastLocal}.
+         *
+         * @param vfis The locals to append.
+         * @param builder The corresponding {@link FrameBuilder}.
+         * @param lastLocal the position of the last local in the current FrameState.
+         * @return A {@link FrameAndLocalEffect}, which contains the
+         *         {@link FrameAndLocalEffect#state frame state} and the
+         *         {@link FrameAndLocalEffect#effect effect on the number of local variables} (which
+         *         can be different from {@code vfis.length} if there are
+         *         {@link JavaKind#needsTwoSlots() type 2} locals to append). This effect should be
+         *         computed such that the last local of the resulting state is given by
+         *         {@code lastLocal + effect}.
+         */
         FrameAndLocalEffect append(VerificationTypeInfo[] vfis, FrameBuilder<?> builder, int lastLocal);
     }
 
@@ -58,6 +95,19 @@ public final class StackMapFrameParser<T extends StackMapFrameParser.FrameState>
     public interface FrameBuilder<S extends FrameState> {
         void registerStackMapFrame(int bci, S frame);
 
+        /**
+         * Returns a completely new {@link FrameState}, built from the given {@code stack} and
+         * {@code locals}.
+         *
+         * @param stack The stack elements.
+         * @param locals The local elements.
+         * @param lastLocal the position of the last local in the current FrameState.
+         * @return A {@link FrameAndLocalEffect}, which contains the
+         *         {@link FrameAndLocalEffect#state frame state} and the
+         *         {@link FrameAndLocalEffect#effect effect on the number of local variables}. This
+         *         effect should be computed such that the last local of the resulting state is
+         *         given by * {@code lastLocal + effect}.
+         */
         FrameAndLocalEffect newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal);
 
         String toExternalString();
