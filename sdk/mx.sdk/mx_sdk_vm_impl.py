@@ -579,7 +579,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             _jvm_library_dest = _component_jvmlib_base
 
             if _component.dir_name:
-                _component_base = _component_type_base + _component.dir_name + '/'
+                _component_base = normpath(_component_type_base + _component.dir_name) + '/'
             else:
                 _component_base = _component_type_base
 
@@ -623,27 +623,28 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             else:
                 _jdk_jre_bin = '<jre_base>/bin/'
 
-            _licenses = _component.third_party_license_files
-            if not _no_licenses():
-                _licenses = _licenses + _component.license_files
-            for _license in _licenses:
-                if mx.is_windows() or isinstance(self, mx.AbstractJARDistribution):
-                    if _component_base == '<jdk_base>/':
-                        pass  # already in place from the support dist
-                    elif len(_component.support_distributions) == 1:
-                        _support = _component.support_distributions[0]
-                        _add(layout, '<jdk_base>/', 'extracted-dependency:{}/{}'.format(_support, _license), _component)
-                    elif any(_license.startswith(sd + '/') for sd in _component.support_distributions):
-                        _add(layout, '<jdk_base>/', 'extracted-dependency:{}'.format(_license), _component)
+            if _component_base == '<jdk_base>/':
+                pass  # already in place from the support dist
+            else:
+                _licenses = _component.third_party_license_files
+                if not _no_licenses():
+                    _licenses = _licenses + _component.license_files
+                for _license in _licenses:
+                    if mx.is_windows() or isinstance(self, mx.AbstractJARDistribution):
+                        if len(_component.support_distributions) == 1:
+                            _support = _component.support_distributions[0]
+                            _add(layout, '<jdk_base>/', 'extracted-dependency:{}/{}'.format(_support, _license), _component)
+                        elif any(_license.startswith(sd + '/') for sd in _component.support_distributions):
+                            _add(layout, '<jdk_base>/', 'extracted-dependency:{}'.format(_license), _component)
+                        else:
+                            mx.warn("Can not add license: " + _license)
                     else:
-                        mx.warn("Can not add license: " + _license)
-                else:
-                    for sd in _component.support_distributions:
-                        if _license.startswith(sd + '/'):
-                            _add_link('<jdk_base>/', _component_base + _license[len(sd) + 1:], _component)
-                            break
-                    else:
-                        _add_link('<jdk_base>/', _component_base + _license, _component)
+                        for sd in _component.support_distributions:
+                            if _license.startswith(sd + '/'):
+                                _add_link('<jdk_base>/', _component_base + _license[len(sd) + 1:], _component)
+                                break
+                        else:
+                            _add_link('<jdk_base>/', _component_base + _license, _component)
 
             _jre_bin_names = []
 
