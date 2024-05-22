@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
@@ -130,11 +129,11 @@ public final class FloatEqualsNode extends CompareNode implements Canonicalizabl
         }
 
         @Override
-        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
+        protected LogicNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
             if (newX.stamp(view) instanceof FloatStamp && newY.stamp(view) instanceof FloatStamp) {
-                return new FloatEqualsNode(newX, newY);
+                return FloatEqualsNode.create(newX, newY, view);
             } else if (newX.stamp(view) instanceof IntegerStamp && newY.stamp(view) instanceof IntegerStamp) {
-                return new IntegerEqualsNode(newX, newY);
+                return IntegerEqualsNode.create(newX, newY, view);
             }
             throw GraalError.shouldNotReachHereUnexpectedValue(newX.stamp(view)); // ExcludeFromJacocoGeneratedReport
         }

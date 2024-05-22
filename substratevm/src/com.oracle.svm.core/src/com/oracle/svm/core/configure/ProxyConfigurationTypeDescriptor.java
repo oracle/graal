@@ -22,71 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.config;
+package com.oracle.svm.core.configure;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
-import com.oracle.svm.core.util.json.JsonPrintable;
+import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
+import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
 
-/**
- * Provides a representation of a Java type based on String type names. This is used to parse types
- * in configuration files. The supported types are:
- *
- * <ul>
- * <li>Named types: regular Java types described by their fully qualified name.</li>
- * </ul>
- */
-public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTypeDescriptor>, JsonPrintable {
-    enum Kind {
-        NAMED;
-    }
+public record ProxyConfigurationTypeDescriptor(String[] interfaceNames) implements ConfigurationTypeDescriptor {
 
-    Kind getDescriptorType();
-
-    @Override
-    String toString();
-
-    /**
-     * Returns the qualified names of all named Java types (excluding proxy classes, lambda classes
-     * and similar anonymous classes) required for this type descriptor to properly describe its
-     * type. This is used to filter configurations based on a String-based class filter.
-     */
-    Collection<String> getAllQualifiedJavaNames();
-
-    static void checkQualifiedJavaName(String javaName) {
-        assert javaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
-        assert !javaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
-    }
-}
-
-record NamedConfigurationTypeDescriptor(String name) implements ConfigurationTypeDescriptor {
-
-    public NamedConfigurationTypeDescriptor {
-        ConfigurationTypeDescriptor.checkQualifiedJavaName(name);
+    public ProxyConfigurationTypeDescriptor(String[] interfaceNames) {
+        this.interfaceNames = Arrays.stream(interfaceNames).map(ConfigurationTypeDescriptor::checkQualifiedJavaName).toArray(String[]::new);
     }
 
     @Override
     public Kind getDescriptorType() {
-        return Kind.NAMED;
+        return Kind.PROXY;
     }
 
     @Override
     public String toString() {
-        return name;
+        return DynamicProxySupport.proxyTypeDescriptor(interfaceNames);
     }
 
     @Override
     public Collection<String> getAllQualifiedJavaNames() {
-        return Collections.singleton(name);
+        return Set.of(interfaceNames);
     }
 
     @Override
     public int compareTo(ConfigurationTypeDescriptor other) {
-        if (other instanceof NamedConfigurationTypeDescriptor namedOther) {
-            return name.compareTo(namedOther.name);
+        if (other instanceof ProxyConfigurationTypeDescriptor proxyOther) {
+            return Arrays.compare(interfaceNames, proxyOther.interfaceNames);
         } else {
             return getDescriptorType().compareTo(other.getDescriptorType());
         }
@@ -94,6 +66,9 @@ record NamedConfigurationTypeDescriptor(String name) implements ConfigurationTyp
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.quote(name);
+        writer.append("{").indent().newline();
+        writer.quote("proxy").append(":");
+        JsonPrinter.printCollection(writer, List.of(interfaceNames), null, (String p, JsonWriter w) -> w.quote(p));
+        writer.unindent().newline().append("}");
     }
 }
