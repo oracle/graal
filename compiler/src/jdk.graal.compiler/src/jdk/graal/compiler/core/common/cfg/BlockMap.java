@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.core.common.cfg;
 
+import java.util.Arrays;
+
 public class BlockMap<T> {
 
     private final T[] data;
@@ -34,10 +36,19 @@ public class BlockMap<T> {
     }
 
     public T get(BasicBlock<?> block) {
-        return data[block.getId()];
+        return get(block.getId());
+    }
+
+    public T get(int index) {
+        return data[index];
     }
 
     public void put(BasicBlock<?> block, T value) {
         data[block.getId()] = value;
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(data);
     }
 }

@@ -183,7 +183,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         assert method.isStatic() || receiver != null : "must have a constant type for the receiver";
         if (!IS_IN_NATIVE_IMAGE) {
-            assert !snippetRegistrationClosed : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
+            assert !snippetRegistrationClosed || System.getProperty("GraalUnitTest") != null : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
             if (registeredSnippets.add(method)) {
                 if (IS_BUILDING_NATIVE_IMAGE) {
                     snippetEncoder.registerSnippet(method, original, receiver, trackNodeSourcePosition);

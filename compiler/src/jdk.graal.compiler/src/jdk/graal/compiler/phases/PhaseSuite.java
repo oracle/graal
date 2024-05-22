@@ -311,6 +311,24 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
         return false;
     }
 
+    @SuppressWarnings("unchecked")
+    public boolean removeAllPlaceHolderOfType(Class<? extends BasePhase<? super C>> phaseClass) {
+        ListIterator<BasePhase<? super C>> it = phases.listIterator();
+        while (it.hasNext()) {
+            BasePhase<? super C> phase = it.next();
+            if (phase instanceof PlaceholderPhase && ((PlaceholderPhase<C>) phase).getPhaseClass().equals(phaseClass)) {
+                it.remove();
+                return true;
+            } else if (phase instanceof PhaseSuite) {
+                PhaseSuite<C> innerSuite = (PhaseSuite<C>) phase;
+                if (innerSuite.removeAllPlaceHolderOfType(phaseClass)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * This phase suite must apply if any of its phases must apply.
      */

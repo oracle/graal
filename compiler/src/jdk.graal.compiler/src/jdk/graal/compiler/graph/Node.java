@@ -1405,10 +1405,15 @@ public abstract class Node implements Cloneable, Formattable {
      *            list for an edge list)
      * @return the copy of {@code this}
      */
+
     final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy) {
+        return clone(into, edgesToCopy, true);
+    }
+
+    final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy, boolean gvn) {
         final NodeClass<? extends Node> nodeClassTmp = getNodeClass();
         boolean useIntoLeafNodeCache = false;
-        if (into != null) {
+        if (into != null && gvn) {
             if (nodeClassTmp.valueNumberable() && nodeClassTmp.isLeafNode()) {
                 useIntoLeafNodeCache = true;
                 Node otherNode = into.findNodeInCache(this);

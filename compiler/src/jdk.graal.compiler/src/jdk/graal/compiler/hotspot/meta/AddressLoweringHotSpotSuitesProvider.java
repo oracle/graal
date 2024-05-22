@@ -30,10 +30,11 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.Speculative;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
+import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.tiers.SuitesCreator;
-
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -53,6 +54,21 @@ public class AddressLoweringHotSpotSuitesProvider extends HotSpotSuitesProvider 
     public Suites createSuites(OptionValues options, Architecture arch) {
         Suites suites = super.createSuites(options, arch);
         suites.getLowTier().replacePlaceholder(AddressLoweringPhase.class, addressLowering);
+        suites.getLowTier().replacePlaceholder(TransplantGraphsPhase.class, new TransplantGraphsPhase(createSuitesForLateSnippetTemplate(suites)));
         return suites;
+    }
+
+    private static Suites createSuitesForLateSnippetTemplate(Suites regularCompileSuites) {
+
+        Suites s = regularCompileSuites.copy();
+
+        // massage the phase plan for the low tier snippets
+        s.getHighTier().removeSubTypePhases(Speculative.class);
+        s.getMidTier().removeSubTypePhases(Speculative.class);
+        s.getLowTier().removeSubTypePhases(Speculative.class);
+
+        s.getLowTier().removeAllPlaceHolderOfType(TransplantGraphsPhase.class);
+
+        return s;
     }
 }
