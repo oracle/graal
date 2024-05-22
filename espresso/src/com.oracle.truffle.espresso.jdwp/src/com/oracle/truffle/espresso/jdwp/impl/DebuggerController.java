@@ -748,10 +748,6 @@ public final class DebuggerController implements ContextsListener {
         return null;
     }
 
-    public void cancelBlockingCallFrames(Object guestThread) {
-        suspendedInfos.remove(guestThread);
-    }
-
     private class SuspendedCallbackImpl implements SuspendedCallback {
 
         @Override
