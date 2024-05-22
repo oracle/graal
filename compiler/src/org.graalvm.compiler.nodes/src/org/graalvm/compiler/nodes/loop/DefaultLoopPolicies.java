@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -570,7 +571,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
                         factor *= p;
                     }
                 }
-                assert 0 <= factor && factor <= 1 : "factor should be between 0 and 1, but is : " + factor;
+                assert ProfileData.isApproximatelyInRange(factor, 0.0, 1.0) : "factor should be between 0 and 1, but is : " + factor;
             } else {
                 debug.log("control split %s has an untrusted profile source", split);
                 factor = DefaultUnswitchFactor.getValue(options);

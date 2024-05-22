@@ -476,4 +476,5 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         new LoopUnswitchingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, getDefaultHighTierContext());
     }
+
 }

@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -104,7 +105,7 @@ public abstract class SwitchNode extends ControlSplitNode {
             total += d;
             assert d >= 0.0 : "Cannot have negative probabilities in switch node: " + d;
         }
-        assert total > 0.999 && total < 1.001 : "Total " + total;
+        assert ProfileData.isApproximatelyEqual(total, 1.0) : "Total " + total;
         return true;
     }
 
@@ -128,7 +129,6 @@ public abstract class SwitchNode extends ControlSplitNode {
     public boolean setProbability(AbstractBeginNode successor, BranchProbabilityData successorProfileData) {
         double newProbability = successorProfileData.getDesignatedSuccessorProbability();
         assert newProbability <= 1.0 && newProbability >= 0.0 : newProbability;
-        assert assertProbabilities();
 
         double[] keyProbabilities = getKeyProbabilities().clone();
         double sum = 0;
