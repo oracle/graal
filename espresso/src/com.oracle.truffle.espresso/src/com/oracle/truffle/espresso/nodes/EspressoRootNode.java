@@ -240,30 +240,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         frame.setAuxiliarySlot(cookieSlot, FrameCookie.createStackWalkCookie(anchor));
     }
 
-    /**
-     * Used as part of the continuation resumption process. This is a bit of a hack to work around
-     * the fact that we can't add arguments to {@link BytecodeNode#execute(VirtualFrame)}, as the
-     * prototype is specified by Truffle, and we don't want to add a pointer to every bytecode node
-     * for memory consumption reasons. So during the resume process the frame is initialized from
-     * the host frame record, which is also needed later, and that's stashed in a frame cookie.
-     */
-    public final void setContinuationHostFrameRecord(Frame frame, HostFrameRecord hfr) {
-        initCookieSlot(frame);
-        // These edge cases are supposed to be caught during the unwind for suspend, so we should
-        // never encounter a case where a cookie is already set unless more cookie use cases are
-        // added.
-        assert getCookie(frame) == null : "Illegal attempt to resume through a privileged frame or during an ongoing stack walk.";
-        frame.setAuxiliarySlot(cookieSlot, FrameCookie.createResumeCookie(hfr));
-    }
-
-    public final HostFrameRecord getContinuationHostFrameRecord(Frame frame) {
-        FrameCookie cookie = getCookie(frame);
-        if (cookie != null && cookie.isResume()) {
-            return (HostFrameRecord) cookie.getData();
-        }
-        return null;
-    }
-
     public final void clearCookie(Frame frame) {
         frame.setAuxiliarySlot(cookieSlot, null);
     }

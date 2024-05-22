@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.vm;
 
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 /**
  * A cookie to be inserted into a {@link com.oracle.truffle.api.frame.Frame}. Espresso currently
@@ -44,7 +43,6 @@ public final class FrameCookie {
     enum CookieKind {
         Privileged,
         StackWalk,
-        ContinuationResume
     }
 
     private final CookieKind kind;
@@ -67,10 +65,6 @@ public final class FrameCookie {
         return new FrameCookie(CookieKind.StackWalk, data);
     }
 
-    public static FrameCookie createResumeCookie(HostFrameRecord data) {
-        return new FrameCookie(CookieKind.ContinuationResume, data);
-    }
-
     public boolean isPrivileged() {
         return kind == CookieKind.Privileged;
     }
@@ -78,9 +72,4 @@ public final class FrameCookie {
     public boolean isStackWalk() {
         return kind == CookieKind.StackWalk;
     }
-
-    public boolean isResume() {
-        return kind == CookieKind.ContinuationResume;
-    }
-
 }
