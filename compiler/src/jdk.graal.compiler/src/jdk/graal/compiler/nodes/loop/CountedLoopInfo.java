@@ -503,16 +503,6 @@ public class CountedLoopInfo {
         return counterNeverOverflows() || getOverFlowGuard() != null;
     }
 
-// private boolean mayOverflowToTerminate() {
-// InductionVariable limitCheckedIV = getLimitCheckedIV();
-// /*
-// * Get the init of the root IV and the limit of the limit checked IV - it might be that a
-// * loop requires an overflow or underflow to terminate.
-// */
-// ValueNode extremumNodeBaseIV = limitCheckedIV.extremumNode();
-// ValueNode initNodeBaseIV = limitCheckedIV.getRootIV().initNode();
-// }
-
     public boolean counterNeverOverflows() {
         if (loop.loopBegin().canNeverOverflow()) {
             return true;
