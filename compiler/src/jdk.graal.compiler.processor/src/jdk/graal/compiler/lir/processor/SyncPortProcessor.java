@@ -75,6 +75,9 @@ public class SyncPortProcessor extends AbstractProcessor {
     // HOTSPOT_PORT_SYNC_CHECK=true HOTSPOT_PORT_SYNC_SHIFT_UPDATE_CMD_FILE="update.sh" mx build &&
     // bash update.sh
     static final String SYNC_SHIFT_UPDATE_COMMAND_DUMP_FILE_ENV_VAR = "HOTSPOT_PORT_SYNC_SHIFT_UPDATE_CMD_FILE";
+    // Allows searching code in the range [BEGIN-$HOTSPOT_PORT_SYNC_SEARCH_RANGE,
+    // END+HOTSPOT_PORT_SYNC_SEARCH_RANGE].
+    static final String SYNC_SEARCH_RANGE_VAR = "HOTSPOT_PORT_SYNC_SEARCH_RANGE";
 
     static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/master/";
     static final String JDK_LATEST_HUMAN = "https://github.com/openjdk/jdk/blob/master/";
@@ -85,7 +88,28 @@ public class SyncPortProcessor extends AbstractProcessor {
 
     static final Pattern URL_PATTERN = Pattern.compile("^https://github.com/openjdk/jdk/blob/(?<commit>[0-9a-fA-F]{40})/(?<path>[-_./A-Za-z0-9]+)#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+)$");
 
-    static final int SEARCH_RANGE = 200;
+    static final int DEFAULT_SEARCH_RANGE = 200;
+
+    private final boolean isEnabled;
+    private final boolean shouldDump;
+    private final String dumpUpdateCommandsEnvVar;
+    private final String overwriteURL;
+    private final int searchRange;
+
+    public SyncPortProcessor() {
+        this.isEnabled = Boolean.parseBoolean(System.getenv(SYNC_CHECK_ENV_VAR));
+        this.shouldDump = Boolean.parseBoolean(System.getenv(SYNC_DUMP_ENV_VAR));
+        this.dumpUpdateCommandsEnvVar = System.getenv(SYNC_SHIFT_UPDATE_COMMAND_DUMP_FILE_ENV_VAR);
+        this.overwriteURL = System.getenv(SYNC_OVERWRITE_ENV_VAR);
+
+        int tempSearchRange = DEFAULT_SEARCH_RANGE;
+        try {
+            tempSearchRange = Integer.parseInt(System.getenv(SYNC_SEARCH_RANGE_VAR));
+        } catch (NumberFormatException e) {
+            // SYNC_SEARCH_RANGE_VAR not set or illegal
+        }
+        this.searchRange = tempSearchRange;
+    }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -109,7 +133,6 @@ public class SyncPortProcessor extends AbstractProcessor {
         int lineStart = Integer.parseInt(matcher.group("lineStart"));
         int lineEnd = Integer.parseInt(matcher.group("lineEnd"));
 
-        String dumpUpdateCommandsEnvVar = System.getenv(SYNC_SHIFT_UPDATE_COMMAND_DUMP_FILE_ENV_VAR);
         PrintWriter dumpUpdateCommands;
         if (dumpUpdateCommandsEnvVar != null) {
             dumpUpdateCommands = new PrintWriter(new FileOutputStream(dumpUpdateCommandsEnvVar, true));
@@ -117,7 +140,6 @@ public class SyncPortProcessor extends AbstractProcessor {
             dumpUpdateCommands = null;
         }
         try (dumpUpdateCommands) {
-            String overwriteURL = System.getenv(SYNC_OVERWRITE_ENV_VAR);
             boolean isURLOverwritten = overwriteURL != null && !"".equals(overwriteURL);
 
             String urlPrefix = isURLOverwritten ? overwriteURL : JDK_LATEST;
@@ -135,7 +157,7 @@ public class SyncPortProcessor extends AbstractProcessor {
 
             if (sha1.equals(sha1Old)) {
                 String latestCommit = getLatestCommit(proxy);
-                int idx = find(proxy, urlOld, url, lineStart - 1, lineEnd, SEARCH_RANGE);
+                int idx = find(proxy, urlOld, url, lineStart - 1, lineEnd, searchRange);
                 if (idx != -1) {
                     int idxInclusive = idx + 1;
                     kind = NOTE;
@@ -168,7 +190,7 @@ public class SyncPortProcessor extends AbstractProcessor {
                                     latestCommit,
                                     latestCommit,
                                     path);
-                    if (Boolean.parseBoolean(System.getenv(SYNC_DUMP_ENV_VAR))) {
+                    if (shouldDump) {
                         dump(proxy, urlOld, lineStart - 1, lineEnd, element + ".old");
                         dump(proxy, url, lineStart - 1, lineEnd, element + ".new");
                     }
@@ -286,7 +308,7 @@ public class SyncPortProcessor extends AbstractProcessor {
 
     @Override
     protected boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (Boolean.parseBoolean(System.getenv(SYNC_CHECK_ENV_VAR))) {
+        if (isEnabled) {
             if (!roundEnv.processingOver()) {
                 try {
                     // Set https.protocols explicitly to avoid handshake failure

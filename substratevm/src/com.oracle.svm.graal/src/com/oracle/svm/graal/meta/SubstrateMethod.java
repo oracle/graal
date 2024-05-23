@@ -225,6 +225,11 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
+    public boolean forceIndirectCall() {
+        return false;
+    }
+
+    @Override
     public int getEncodedGraphStartOffset() {
         return encodedGraphStartOffset;
     }

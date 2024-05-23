@@ -28,15 +28,15 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.graalvm.collections.EconomicMap;
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Test;
 
 /**
  * Check that setting the dump path results in files ending up in the right directory with matching
@@ -52,7 +52,7 @@ public class DumpPathTest extends GraalCompilerTest {
     @Test
     public void testDump() throws Exception {
         assumeManagementLibraryIsLoadable();
-        try (TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "DumpPathTest")) {
+        try (TemporaryDirectory temp = new TemporaryDirectory(this, "DumpPathTest")) {
             String[] extensions = new String[]{".cfg", ".bgv", ".graph-strings"};
             EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
             overrides.put(DebugOptions.DumpPath, temp.toString());

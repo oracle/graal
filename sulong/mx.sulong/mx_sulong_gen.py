@@ -28,6 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import os
+import tempfile
 from argparse import ArgumentParser
 
 import mx
@@ -38,7 +39,7 @@ _suite = mx.suite('sulong')
 
 COPYRIGHT_HEADER_BSD = """\
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -74,7 +75,7 @@ COPYRIGHT_HEADER_BSD = """\
 
 COPYRIGHT_HEADER_BSD_HASH = """\
 #
-# Copyright (c) 2020, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -205,8 +206,28 @@ def create_generated_sources(args=None, out=None):
     parser.add_argument('--check', action='store_true', help='check for differences, fail if anything changed')
     parsed_args, args = parser.parse_known_args(args)
 
-    create_parsers(args, out=out)
-    generate_llvm_config(args, out=out)
-
     if parsed_args.check:
-        mx.run(['git', 'diff', '--exit-code'])
+        witness = tempfile.NamedTemporaryFile()
+        mx.run(['git', 'diff', '--', _suite.dir], out=witness)
+
+    try:
+        create_parsers(args, out=out)
+        generate_llvm_config(args, out=out)
+
+        if parsed_args.check:
+            with tempfile.NamedTemporaryFile() as f2:
+                mx.run(['git', 'diff', '--', _suite.dir], out=f2)
+                with open(witness.name, 'r') as before, open(f2.name, 'r') as after:
+                    while True:
+                        line_before = before.readline()
+                        line_after = after.readline()
+                        if line_before != line_after:
+                            mx.run(['git', 'diff', '--', _suite.dir])
+                            if os.path.getsize(witness.name) > 0:
+                                mx.warn("There were changes before so the diff above might be misleading (e.g., create-generated-sources might have reverted some changes)")
+                            raise mx.abort('Generating sources changed some files. See diff above')
+                        if line_before == '' or line_after == '':
+                            break
+    finally:
+        if parsed_args.check:
+            witness.close()

@@ -991,6 +991,7 @@ suite = {
         "TRUFFLE_NFI",
         "TRUFFLE_TCK",
         "TRUFFLE_TEST_NATIVE",
+        "sdk:POLYGLOT",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1497,7 +1498,6 @@ suite = {
       "distDependencies" : [
         "sdk:POLYGLOT",
         "TRUFFLE_API",
-        "TRUFFLE_RUNTIME",
         "TRUFFLE_SL",
         "TRUFFLE_MODULARIZED_TEST_SEPARATE_MODULE_TEST",
       ],
@@ -1837,6 +1837,9 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi_panama",
+        "requires": [
+          "org.graalvm.truffle",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "22+",
@@ -2170,7 +2173,6 @@ suite = {
        ],
        "distDependencies" : [
          "TRUFFLE_API",
-         "TRUFFLE_RUNTIME",
          "TRUFFLE_SL",
          "TRUFFLE_TCK_COMMON",
          "TRUFFLE_TCK_TESTS",
@@ -2304,6 +2306,8 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.shadowed.icu4j",
         "requires" : [
+          "static java.xml",
+          "static java.desktop",
         ],
         "exports" : [
           # Qualified exports.

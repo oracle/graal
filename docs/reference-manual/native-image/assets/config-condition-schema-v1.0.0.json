@@ -1,15 +1,21 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
-  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/config-condition-schema-v1.0.0.json",
+  "$id": "https://raw.githubusercontent.com/oracle/graal/master/docs/reference-manual/native-image/assets/config-condition-schema-v1.0.0.json",
   "title": "JSON schema for the conditions used in GraalVM Native Image configuration files",
   "properties": {
     "typeReachable": {
-      "type": "string",
+      "deprecated": true,
+      "$ref": "config-type-schema-v1.0.0.json",
       "title": "Fully qualified name of a class that must be reachable in order to register the type <type> for reflection"
+    },
+    "typeReached": {
+      "$ref": "config-type-schema-v1.0.0.json",
+      "title": "Fully qualified name of a class that must be reached in order to register the type <type> for reflection"
     }
   },
-  "required": [
-    "typeReachable"
+  "oneOf": [
+    "typeReachable",
+    "typeReached"
   ],
   "additionalProperties": false,
   "type": "object"

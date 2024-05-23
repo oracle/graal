@@ -44,10 +44,12 @@ Arrays.stream(persons)
 
 Follow these steps to build an optimized native executable using PGO.
 
-> Note: Make sure you have installed a GraalVM JDK. The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal). For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
+### Prerequisite 
+Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 1.  Save [the following code](https://github.com/graalvm/graalvm-demos/blob/master/streams/Streams.java) to the file named _Streams.java_:
-
     ```java
     import java.util.Arrays;
     import java.util.Random;
@@ -143,32 +145,30 @@ Follow these steps to build an optimized native executable using PGO.
 
 2.  Compile the application:
     ```shell 
-    $JAVA_HOME/bin/javac Streams.java
+    javac Streams.java
     ```
     (Optional) Run the demo application, providing some arguments to observe performance.
     ```shell
-    $JAVA_HOME/bin/java Streams 100000 200
+    java Streams 100000 200
     ```
 
 3. Build a native executable from the class file, and run it to compare the performance:
     ```shell
-    $JAVA_HOME/bin/native-image Streams
+    native-image Streams
     ```
-    An executable file, `streams`, is created in the current working directory. 
+    An executable file, _streams_, is created in the current working directory. 
     Now run it with the same arguments to see the performance:
-
     ```shell
     ./streams 100000 200
     ```
     This version of the program is expected to run slower than on GraalVM's or any regular JDK.
 
-4. Build an instrumented native executable by passing the `--pgo-instrument` option to `native-image`:
-    
+4. Build an instrumented native executable by passing the `--pgo-instrument` option to `native-image`:  
     ```shell
-    $JAVA_HOME/bin/native-image --pgo-instrument Streams
+    native-image --pgo-instrument Streams
     ```
-5. Run it to collect the code-execution-frequency profiles:
 
+5. Run it to collect the code-execution-frequency profiles:
     ```shell
     ./streams 100000 20
     ```
@@ -177,9 +177,8 @@ Follow these steps to build an optimized native executable using PGO.
     Profiles collected from this run are stored by default in the _default.iprof_ file.
 
 6. Finally, build an optimized native executable. The profile file has the default name and location, so it will be picked up automatically:
-
     ```shell
-    $JAVA_HOME/bin/native-image --pgo Streams
+    native-image --pgo Streams
     ```
 
 7. Run this optimized native executable timing the execution to see the system resources and CPU usage:

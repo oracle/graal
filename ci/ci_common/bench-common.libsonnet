@@ -55,13 +55,6 @@
       threads_per_node:: if self.is_numa then self.num_threads / std.length(self.numa_nodes) else self.num_threads,
     },
 
-    x52:: common.linux_amd64 + self._bench_machine + {
-      machine_name:: "x52",
-      capabilities+: ["tmpfs25g"],
-      numa_nodes:: [0, 1],
-      default_numa_node:: 0,
-      num_threads:: 72
-    },
     e3:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "e3",
       capabilities: ["e3", "tmpfs25g", "linux", "amd64"],
@@ -127,6 +120,12 @@
     ]
   },
 
+  generate_fork_tags(suite_obj):: if std.objectHasAll(suite_obj, "tags") && std.objectHasAll(suite_obj.tags, "opt_post_merge") then {
+    tags: {opt_post_merge: [tag +"-many-forks" for tag in suite_obj.tags.opt_post_merge]},
+  } else {
+    tags: {}
+  },
+
   generate_fork_builds(suite_obj, subdir='compiler', forks_file_base_name=null)::
     /* based on a benchmark suite definition, generates the many forks version based on the hidden fields
      * 'forks_batches' that specifies the number of batches this job should be split into and the corresponding
@@ -141,13 +140,12 @@
         local batch_str = if suite_obj.forks_batches > 1 then "batch"+i else null,
         "job_prefix":: "bench-forks-" + subdir,
         "job_suffix":: batch_str,
-        tags: if std.objectHasAll(suite_obj, "tags") then [tag +"-many-forks" for tag in suite_obj.tags] else [],
         "timelimit": suite_obj.forks_timelimit,
         local base_name = if forks_file_base_name != null then forks_file_base_name else suite_obj.suite,
         "environment" +: {
           FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/" + subdir + "/" + base_name + "_forks" + (if batch_str != null then "_"+batch_str else "") + ".json"
         }
-      }
+      } + $.generate_fork_tags(suite_obj)
       for i in std.range(0, suite_obj.forks_batches - 1)]
     else
       [],

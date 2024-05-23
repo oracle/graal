@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -289,6 +289,8 @@ suite = {
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
+                            # newer LLVM versions default to --no-undefined-version
+                            "-Wl,--undefined-version",
                         ],
                         "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
@@ -299,6 +301,8 @@ suite = {
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
+                            # newer LLVM versions default to --no-undefined-version
+                            "-Wl,--undefined-version",
                         ],
                         "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
@@ -396,8 +400,7 @@ suite = {
                 "truffle:TRUFFLE_NFI_LIBFFI",
                 "truffle:TRUFFLE_RUNTIME",
                 # sulong is not strictly required but it'll work out of the box in more cases if it's there
-                "sulong:SULONG_NFI",
-                "sulong:SULONG_NATIVE",
+                "sulong:LLVM_NATIVE_COMMUNITY",
             ],
             "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "maven": {
@@ -460,6 +463,7 @@ suite = {
             "useModulePath": True,
             "description": "Libraries used by the Java on Truffle (aka Espresso) implementation",
             "maven" : {
+                "artifactId": "espresso-libs-resources",
                 "tag": ["default", "public"],
             },
         },
@@ -537,6 +541,7 @@ suite = {
             "useModulePath": True,
             "description": "Runtime environment used by the Java on Truffle (aka Espresso) implementation",
             "maven" : {
+                "artifactId": "espresso-runtime-resources",
                 "tag": ["default", "public"],
             },
         },

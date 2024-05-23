@@ -162,14 +162,15 @@ public final class PointsToAnalyzer {
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
         HostedValuesProvider hostedValuesProvider = new HostedValuesProvider(aMetaAccess, aUniverse);
-        ImageLayerLoader imageLayerLoader = new ImageLayerLoader(aUniverse);
+        ImageLayerLoader imageLayerLoader = new ImageLayerLoader();
+        imageLayerLoader.setUniverse(aUniverse);
         aUniverse.setImageLayerLoader(imageLayerLoader);
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
                         snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, hostedValuesProvider);
         aUniverse.setHeapScanner(heapScanner);
         imageLayerLoader.executeHeapScannerTasks();
-        ImageLayerWriter imageLayerWriter = new ImageLayerWriter(heap);
-        aUniverse.setImageLayerWriter(imageLayerWriter);
+        ImageLayerWriter imageLayerWriter = new ImageLayerWriter();
+        imageLayerWriter.setImageHeap(heap);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);
         /* Register already created types as assignable. */
@@ -186,14 +187,14 @@ public final class PointsToAnalyzer {
          * good example.
          */
         try (Indent ignored = debugContext.logAndIndent("add initial classes/fields/methods")) {
-            bigbang.addRootClass(Object.class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(String.class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(String[].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootField(String.class, "value").registerAsInHeap("root class");
-            bigbang.addRootClass(long[].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(byte[].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(byte[][].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(Object[].class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(Object.class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(String.class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(String[].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootField(String.class, "value").registerAsInstantiated("root class");
+            bigbang.addRootClass(long[].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(byte[].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(byte[][].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(Object[].class, false, false).registerAsInstantiated("root class");
 
             var rootReason = "Registered in " + PointsToAnalyzer.class;
             bigbang.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, rootReason);
@@ -357,7 +358,7 @@ public final class PointsToAnalyzer {
                 boolean isInvokeSpecial = m.isConstructor() || m.isFinal();
                 AnalysisType t = m.getDeclaringClass();
                 if (!t.isAbstract()) {
-                    t.registerAsInHeap("Root class.");
+                    t.registerAsInstantiated("Root class.");
                 }
                 bigbang.addRootMethod(m, isInvokeSpecial, "Entry point from file, registered in " + PointsToAnalyzer.class);
             });

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -282,6 +282,13 @@ public class LoopFragmentInside extends LoopFragment {
 
         if (mainCounted.getBody() != loop.loopBegin()) {
             // regular loop
+            Node predecessor = newSegmentLoopTest.predecessor();
+            while (predecessor instanceof FixedWithNextNode fixedPredecessor) {
+                for (Node usage : fixedPredecessor.usages().snapshot()) {
+                    usage.replaceFirstInput(fixedPredecessor, loopTest.predecessor());
+                }
+                predecessor = fixedPredecessor.predecessor();
+            }
             AbstractBeginNode falseSuccessor = newSegmentLoopTest.falseSuccessor();
             for (Node usage : falseSuccessor.anchored().snapshot()) {
                 usage.replaceFirstInput(falseSuccessor, loopTest.falseSuccessor());

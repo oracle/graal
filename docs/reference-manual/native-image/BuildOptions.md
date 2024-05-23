@@ -69,7 +69,6 @@ Run `native-image --help` for help on build options.
 * `--pgo`: provide a comma-separated list of files from which to read the data collected for Profile-guided optimization of AOT-compiled code (reads from  _default.iprof_ if nothing is specified). Each file must contain a single `PGOProfiles` object, serialized in JSON format, optionally compressed by gzip. (Not available in GraalVM Community Edition.)
 * `--pgo-instrument`: instrument AOT-compiled code to collect data for Profile-guided optimization into the _default.iprof_ file. (Not available in GraalVM Community Edition.)
 * `--pgo-sampling`: perform profiling by sampling the AOT compiled code to collect data for Profile-guided optimization. (Not available in GraalVM Community Edition.)
-* `--report-unsupported-elements-at-runtime`: report the usage of unsupported methods and fields at run time when they are accessed the first time, instead of an error during executable's building
 * `--shared`: build a shared library
 * `--silent`: silence build output
 * `--static`: build a statically-linked executable (requires `libc` and `zlib` static libraries)

@@ -118,7 +118,7 @@ public abstract class InductionVariable {
      */
     public abstract void deleteUnusedNodes();
 
-    /**
+    /*
      * Range check predication support.
      */
 

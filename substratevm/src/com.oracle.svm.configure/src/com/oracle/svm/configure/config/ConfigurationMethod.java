@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.core.util.json.JsonPrintable;
 import com.oracle.svm.core.util.json.JsonWriter;
 

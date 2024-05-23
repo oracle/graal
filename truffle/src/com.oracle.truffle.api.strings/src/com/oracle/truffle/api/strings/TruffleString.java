@@ -3888,10 +3888,27 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 23.0
          */
-        public abstract int execute(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet);
+        public final int execute(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet) {
+            return execute(a, fromByteIndex, toByteIndex, codePointSet, true);
+        }
+
+        /**
+         * Returns the byte index of the first codepoint present in the given {@link CodePointSet},
+         * bounded by {@code fromByteIndex} (inclusive) and {@code toByteIndex} (exclusive).
+         * 
+         * @param usePreciseCodeRange If this parameter is set to {@code true}, the node may
+         *            evaluate the input string's precise code range for better search performance.
+         *            For more details, see {@link GetCodeRangeNode} and
+         *            {@link GetCodeRangeImpreciseNode}. This parameter is expected to be
+         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
+         *            constant}.
+         * 
+         * @since 24.1
+         */
+        public abstract int execute(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet, boolean usePreciseCodeRange);
 
         @Specialization(guards = "codePointSet == cachedCodePointSet", limit = "1")
-        static int indexOfSpecialized(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet,
+        static int indexOfSpecialized(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet, boolean usePreciseCodeRange,
                         @Bind("this") Node node,
                         @Cached @Exclusive ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
@@ -3900,6 +3917,7 @@ public final class TruffleString extends AbstractTruffleString {
             Encoding encoding = cachedCodePointSet.encoding;
             CompilerAsserts.partialEvaluationConstant(codePointSet);
             CompilerAsserts.partialEvaluationConstant(encoding);
+            CompilerAsserts.partialEvaluationConstant(usePreciseCodeRange);
             a.checkEncoding(encoding);
             if (a.isEmpty()) {
                 return -1;
@@ -3911,11 +3929,12 @@ public final class TruffleString extends AbstractTruffleString {
                 return -1;
             }
             Object arrayA = toIndexableNode.execute(node, a, a.data());
-            return byteIndex(internalNode.execute(arrayA, a.offset(), a.length(), a.stride(), getPreciseCodeRangeNode.execute(node, a, encoding), fromIndex, toIndex), encoding);
+            int codeRangeA = usePreciseCodeRange ? getPreciseCodeRangeNode.execute(node, a, encoding) : a.codeRange();
+            return byteIndex(internalNode.execute(arrayA, a.offset(), a.length(), a.stride(), codeRangeA, fromIndex, toIndex), encoding);
         }
 
         @Specialization(replaces = "indexOfSpecialized")
-        int indexOfUncached(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet,
+        int indexOfUncached(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet, @SuppressWarnings("unused") boolean usePreciseCodeRange,
                         @Cached @Exclusive ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeForIndexCalculationNode getCodeRangeNode,
                         @Cached TruffleStringIterator.InternalNextNode nextNode) {

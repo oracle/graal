@@ -833,10 +833,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getRawSignature().toString();
     }
 
-    public KlassRef[] getParameters() {
-        return resolveParameterKlasses();
-    }
-
     @TruffleBoundary
     public Object invokeMethod(Object callee, Object[] args) {
         if (isConstructor()) {

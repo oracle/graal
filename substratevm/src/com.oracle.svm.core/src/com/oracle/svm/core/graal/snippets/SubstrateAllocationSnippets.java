@@ -474,33 +474,27 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Object callNewInstanceStub(Word objectHeader) {
+    protected final Object callNewInstanceStub(Word objectHeader, boolean withException) {
+        if (withException) {
+            return callSlowNewInstanceWithException(gcAllocationSupport().getNewInstanceStub(), objectHeader);
+        }
         return callSlowNewInstance(gcAllocationSupport().getNewInstanceStub(), objectHeader);
     }
 
     @Override
-    protected final Object callNewInstanceWithExceptionStub(Word objectHeader) {
-        return callSlowNewInstanceWithException(gcAllocationSupport().getNewInstanceStub(), objectHeader);
-    }
-
-    @Override
-    protected final Object callNewArrayStub(Word objectHeader, int length) {
+    protected final Object callNewArrayStub(Word objectHeader, int length, boolean withException) {
+        if (withException) {
+            return callSlowNewArrayWithException(gcAllocationSupport().getNewArrayStub(), objectHeader, length);
+        }
         return callSlowNewArray(gcAllocationSupport().getNewArrayStub(), objectHeader, length);
     }
 
     @Override
-    protected Object callNewArrayWithExceptionStub(Word hub, int length) {
-        return callSlowNewArrayWithException(gcAllocationSupport().getNewArrayStub(), hub, length);
-    }
-
-    @Override
-    protected final Object callNewMultiArrayStub(Word objectHeader, int rank, Word dims) {
+    protected final Object callNewMultiArrayStub(Word objectHeader, int rank, Word dims, boolean withException) {
+        if (withException) {
+            return callNewMultiArrayWithException(NEW_MULTI_ARRAY, objectHeader, rank, dims);
+        }
         return callNewMultiArray(NEW_MULTI_ARRAY, objectHeader, rank, dims);
-    }
-
-    @Override
-    protected Object callNewMultiArrayStubWithException(Word objectHeader, int rank, Word dims) {
-        return callNewMultiArrayWithException(NEW_MULTI_ARRAY, objectHeader, rank, dims);
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)

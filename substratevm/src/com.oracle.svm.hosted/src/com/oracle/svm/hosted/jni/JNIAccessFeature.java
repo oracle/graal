@@ -98,6 +98,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.KnownOffsetsFeature;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
+import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -185,7 +186,7 @@ public class JNIAccessFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         // Ensure that KnownOffsets is fully initialized before we access it
-        return List.of(KnownOffsetsFeature.class);
+        return List.of(KnownOffsetsFeature.class, DynamicProxyFeature.class);
     }
 
     @Override
@@ -199,7 +200,7 @@ public class JNIAccessFeature implements Feature {
 
         ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                         ClassInitializationSupport.singleton());
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(conditionResolver, runtimeSupport, access.getImageClassLoader());
+        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(conditionResolver, runtimeSupport, null, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
     }
@@ -355,7 +356,7 @@ public class JNIAccessFeature implements Feature {
             if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
                 analysisClass.registerAsReachable("is accessed via JNI");
             } else {
-                access.getBigBang().registerTypeAsAllocated(analysisClass, "is accessed via JNI");
+                analysisClass.registerAsInstantiated("is accessed via JNI");
             }
             return new JNIAccessibleClass(classObj);
         });
@@ -435,7 +436,7 @@ public class JNIAccessFeature implements Feature {
             if (fieldType.isArray() && !access.isReachable(fieldType)) {
                 // For convenience, make the array type reachable if its elemental type becomes
                 // such, allowing the array creation via JNI without an explicit reflection config.
-                access.registerReachabilityHandler(a -> access.getBigBang().registerTypeAsAllocated(fieldType, "Is accessed via JNI."),
+                access.registerReachabilityHandler(a -> fieldType.registerAsInstantiated("Is accessed via JNI."),
                                 (fieldType.getElementalType()).getJavaClass());
             }
         } else if (field.isStatic() && field.isFinal()) {

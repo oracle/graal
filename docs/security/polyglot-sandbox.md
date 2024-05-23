@@ -232,7 +232,7 @@ Certain limits can be [reset](#resetting-resource-limits) at any point of time d
 
 The `sandbox.MaxCPUTime` option allows you to specify the maximum CPU time spent running guest code.
 CPU time spent depends on the underlying hardware.
-The maximum [CPU time](https://docs.oracle.com/en/java/javase/17/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically canceled and the context is closed.
+The maximum [CPU time](https://docs.oracle.com/en/java/javase/22/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically canceled and the context is closed.
 By default the time limit is checked every 10 milliseconds.
 This can be customized using the `sandbox.MaxCPUTimeCheckInterval` option.
 
@@ -342,7 +342,7 @@ try (Context context = Context.newBuilder("js")
 }
 ```
 
-The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on [low memory notification](https://docs.oracle.com/en/java/javase/11/docs/api/java.management/java/lang/management/MemoryMXBean.html).
+The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on [low memory notification](https://docs.oracle.com/en/java/javase/22/docs/api/java.management/java/lang/management/MemoryMXBean.html).
 
 The allocated bytes are checked by a separate high-priority thread that will be woken regularly.
 There is one such thread for each memory-limited context (one with `sandbox.MaxHeapMemory` set).
@@ -359,7 +359,7 @@ Retained size computation for a context can be customized using the expert optio
 
 Retained size computation for a context is triggered when a retained bytes estimate exceeds a certain factor of specified `sandbox.MaxHeapMemory`.
 The estimate is based on heap memory
-[allocated](https://docs.oracle.com/en/java/javase/17/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) by threads where the context has been active.
+[allocated](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) by threads where the context has been active.
 More precisely, the estimate is the result of previous retained bytes computation, if available, plus bytes allocated since the start of the previous computation.
 By default the factor of `sandbox.MaxHeapMemory` is 1.0 and it can be customized by the `sandbox.AllocatedBytesCheckFactor` option.
 The factor must be positive.
@@ -376,7 +376,7 @@ This can be configured by the `sandbox.RetainedBytesCheckInterval` option. The i
 The allocated bytes checking for a context can be disabled by the `sandbox.AllocatedBytesCheckEnabled` option.
 By default it is enabled ("true"). If disabled ("false"), retained size checking for the context can be triggered only by the low memory trigger.
 
-When the total number of bytes allocated in the heap for the whole host VM exceeds a certain factor of the total heap memory of the VM, [low memory notification](https://docs.oracle.com/en/java/javase/17/docs/api/java.management/java/lang/management/MemoryMXBean.html) is invoked and initiates the following process.
+When the total number of bytes allocated in the heap for the whole host VM exceeds a certain factor of the total heap memory of the VM, [low memory notification](https://docs.oracle.com/en/java/javase/22/docs/api/java.management/java/lang/management/MemoryMXBean.html) is invoked and initiates the following process.
 The execution for all engines with at least one execution context which has the `sandbox.MaxHeapMemory` option set is paused, retained bytes in the heap for each memory-limited context are computed, contexts exceeding their limits are canceled, and then the execution is resumed.
 The default factor is 0.7. This can be configured by the `sandbox.RetainedBytesCheckFactor` option.
 The factor must be between 0.0 and 1.0. All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.RetainedBytesCheckFactor`.

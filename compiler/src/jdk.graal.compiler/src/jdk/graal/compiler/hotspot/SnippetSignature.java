@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  */
 public final class SnippetSignature implements Signature {
 
-    private final List<String> parameters = new ArrayList<>();
+    private final List<String> parameters;
     private final String returnType;
     private final String originalString;
 
@@ -66,7 +66,9 @@ public final class SnippetSignature implements Signature {
     }
 
     public SnippetSignature(String signature) {
-        returnType = SignatureUtil.parseSignature(signature, parameters);
+        ArrayList<String> buffer = new ArrayList<>();
+        returnType = SignatureUtil.parseSignature(signature, buffer);
+        parameters = List.copyOf(buffer);
         originalString = signature;
     }
 

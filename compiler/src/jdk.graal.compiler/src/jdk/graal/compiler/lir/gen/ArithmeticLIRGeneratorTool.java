@@ -100,7 +100,16 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitSignExtend(Value inputVal, int fromBits, int toBits);
 
-    Value emitZeroExtend(Value inputVal, int fromBits, int toBits);
+    default Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
+        return emitZeroExtend(inputVal, fromBits, toBits, true, true);
+    }
+
+    /**
+     * Some architectures support implicit zero extend. Hint the backend to omit zero extend where
+     * possible by passing false to {@code requiresExplicitZeroExtend}, and to avoid generating
+     * intermediate value of the result LIRKind by passing false to {@code requiresLIRKindChange}.
+     */
+    Value emitZeroExtend(Value inputVal, int fromBits, int toBits, boolean requiresExplicitZeroExtend, boolean requiresLIRKindChange);
 
     Value emitMathAbs(Value input);
 

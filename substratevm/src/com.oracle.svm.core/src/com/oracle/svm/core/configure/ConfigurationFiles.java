@@ -67,10 +67,10 @@ public final class ConfigurationFiles {
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReflectionConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @OptionMigrationMessage("Use a proxy-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.")//
-        @Option(help = "file:doc-files/ProxyConfigurationFilesHelp.txt", type = OptionType.User)//
+        @Option(help = "file:doc-files/ProxyConfigurationFilesHelp.txt", type = OptionType.User, deprecated = true)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DynamicProxyConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User)//
+        @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User, deprecated = true)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicProxyConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @OptionMigrationMessage("Use a serialization-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.")//
@@ -125,6 +125,11 @@ public final class ConfigurationFiles {
         @Option(help = "When configuration files do not match their schema, abort the image build instead of emitting a warning.")//
         public static final HostedOptionKey<Boolean> StrictConfiguration = new HostedOptionKey<>(false);
 
+        @Option(help = "Testing flag: the typeReachable condition is treated as typeReached so the semantics of programs can change.")//
+        public static final HostedOptionKey<Boolean> TreatAllReachableConditionsAsReached = new HostedOptionKey<>(false);
+
+        @Option(help = "Testing flag: every type is considered as it participates in a typeReachable condition.")//
+        public static final HostedOptionKey<Boolean> TreatAllUserSpaceTypesAsTrackedForTypeReached = new HostedOptionKey<>(false);
         @Option(help = "Warn when reflection and JNI configuration files have elements that could not be found on the classpath or modulepath.", type = OptionType.Expert)//
         public static final HostedOptionKey<Boolean> WarnAboutMissingReflectionOrJNIMetadataElements = new HostedOptionKey<>(false);
     }

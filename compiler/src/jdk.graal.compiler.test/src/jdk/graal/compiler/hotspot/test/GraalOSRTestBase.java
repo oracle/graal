@@ -95,7 +95,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
     /**
      * Returns the target BCIs of all bytecode backedges.
      */
-    public int[] getBackedgeBCIs(DebugContext debug, ResolvedJavaMethod method) {
+    public static int[] getBackedgeBCIs(DebugContext debug, ResolvedJavaMethod method) {
         Bytecode code = new ResolvedJavaMethodBytecode(method);
         BytecodeStream stream = new BytecodeStream(code.getCode());
         OptionValues options = debug.getOptions();
@@ -103,7 +103,8 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
 
         List<Integer> backedgeBcis = new ArrayList<>();
         for (BciBlockMapping.BciBlock block : bciBlockMapping.getBlocks()) {
-            if (block.getStartBci() != -1) {
+            // ignore exception entries, as they may never be reached
+            if (block.getStartBci() != -1 && !block.isExceptionEntry()) {
                 int bci = block.getEndBci();
                 for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
                     if (succ.getStartBci() != -1) {
@@ -132,7 +133,15 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
         compileOSR(options, method, true);
     }
 
+    public interface Parser {
+        StructuredGraph parse(ResolvedJavaMethod m, AllowAssumptions a, OptionValues o);
+    }
+
     protected void compileOSR(OptionValues options, ResolvedJavaMethod method, boolean expectBackedge) {
+        compileOSR(options, method, expectBackedge, (x, y, z) -> parseEager(x, y, z));
+    }
+
+    public static void compileOSR(OptionValues options, ResolvedJavaMethod method, boolean expectBackedge, Parser p) {
         OptionValues goptions = options;
         // Silence diagnostics for permanent bailout errors as they
         // are expected for some OSR tests.
@@ -140,7 +149,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
             goptions = new OptionValues(options, GraalCompilerOptions.CompilationBailoutAsFailure, false);
         }
         // ensure eager resolving
-        StructuredGraph graph = parseEager(method, AllowAssumptions.YES, goptions);
+        StructuredGraph graph = p.parse(method, AllowAssumptions.YES, goptions);
         DebugContext debug = graph.getDebug();
         int[] backedgeBCIs = getBackedgeBCIs(debug, method);
         if (expectBackedge && backedgeBCIs.length == 0) {

@@ -32,9 +32,15 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK22OrEarlier;
+import com.oracle.svm.core.jdk.JDK23OrLater;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
+
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.annotate.Alias;
@@ -366,9 +372,14 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          * clear the virtual thread interrupt.
          */
         long compensation = -1;
+        boolean attempted = false;
         boolean pinned = JavaThreads.isCurrentThreadVirtualAndPinned();
         if (pinned) {
-            compensation = Target_jdk_internal_misc_Blocker.begin();
+            if (JavaVersionUtil.JAVA_SPEC < 23) {
+                compensation = Target_jdk_internal_misc_Blocker.beginJDK22();
+            } else {
+                attempted = Target_jdk_internal_misc_Blocker.begin();
+            }
         }
         try {
             /*
@@ -384,7 +395,11 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             }
         } finally {
             if (pinned) {
-                Target_jdk_internal_misc_Blocker.end(compensation);
+                if (JavaVersionUtil.JAVA_SPEC < 23) {
+                    Target_jdk_internal_misc_Blocker.endJDK22(compensation);
+                } else {
+                    Target_jdk_internal_misc_Blocker.end(attempted);
+                }
             }
         }
     }
@@ -490,15 +505,20 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             if (existingMonitor != null || !createIfNotExisting) {
                 return existingMonitor;
             }
-            long startTicks = JfrTicks.elapsedTicks();
-            JavaMonitor newMonitor = newMonitorLock();
-            JavaMonitor previousEntry = additionalMonitors.put(obj, newMonitor);
-            VMError.guarantee(previousEntry == null, "Replaced monitor in secondary storage map");
-            JavaMonitorInflateEvent.emit(obj, startTicks, cause);
-            return newMonitor;
+            return createMonitorAndAddToMap(obj, cause);
         } finally {
             additionalMonitorsLock.unlock();
         }
+    }
+
+    @NeverInline("Prevent deadlocks in case of an OutOfMemoryError.")
+    private JavaMonitor createMonitorAndAddToMap(Object obj, MonitorInflationCause cause) {
+        long startTicks = JfrTicks.elapsedTicks();
+        JavaMonitor newMonitor = newMonitorLock();
+        JavaMonitor previousEntry = additionalMonitors.put(obj, newMonitor);
+        VMError.guarantee(previousEntry == null, "Replaced monitor in secondary storage map");
+        JavaMonitorInflateEvent.emit(obj, startTicks, cause);
+        return newMonitor;
     }
 
     protected JavaMonitor newMonitorLock() {
@@ -509,8 +529,18 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 @TargetClass(className = "jdk.internal.misc.Blocker")
 final class Target_jdk_internal_misc_Blocker {
     @Alias
-    public static native long begin();
+    @TargetElement(name = "begin", onlyWith = JDK22OrEarlier.class)
+    public static native long beginJDK22();
 
     @Alias
-    public static native void end(long compensateReturn);
+    @TargetElement(name = "end", onlyWith = JDK22OrEarlier.class)
+    public static native void endJDK22(long compensateReturn);
+
+    @Alias
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    public static native boolean begin();
+
+    @Alias
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    public static native void end(boolean attempted);
 }

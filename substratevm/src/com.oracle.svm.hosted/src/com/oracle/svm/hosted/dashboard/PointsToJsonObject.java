@@ -428,8 +428,6 @@ class PointsToJsonObject extends JsonObject {
             names.put(OffsetStoreTypeFlow.StoreIndexedTypeFlow.class, "storeIndexed");
             names.put(OffsetLoadTypeFlow.UnsafeLoadTypeFlow.class, "unsafeLoad");
             names.put(OffsetStoreTypeFlow.UnsafeStoreTypeFlow.class, "unsafeStore");
-            names.put(OffsetLoadTypeFlow.UnsafePartitionLoadTypeFlow.class, "unsafeLoad");
-            names.put(OffsetStoreTypeFlow.UnsafePartitionStoreTypeFlow.class, "unsafeStore");
             names.put(AllInstantiatedTypeFlow.class, "allInstantiated");
             names.put(AllSynchronizedTypeFlow.class, "allSynchronized");
             names.put(ArrayElementsTypeFlow.class, "arrayElements");

@@ -188,6 +188,7 @@ The current set of available options is as follows.
 - `--cpusampler.FilterLanguage=<languageId>` : Only profile the language with given ID. (for example, js) (default: profile all).
 - `--cpusampler.FilterMimeType=<mime-type>` : Only profile the language with given mime-type. (for example, application/javascript) (default: profile all)
 - `--cpusampler.FilterRootName=<filter>` : Wildcard filter for program roots. (for example, Math.*) (default: no filter).
+- `--cpusampler.GatherAsyncStackTrace=true|false` : Try to gather async stack trace elements for each sample (default: true). Disabling this option may reduce sampling overhead.
 - `--cpusampler.GatherHitTimes` : Save a timestamp for each taken sample.
 - `--cpusampler.MinSamples=[0, inf)` : Remove elements from output if they have less samples than this value (default: 0)
 - `--cpusampler.Output=histogram|calltree|json|flamegraph` : Specify the output format to one of: histogram, calltree, json or flamegraph (default: histogram).

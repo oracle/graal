@@ -27,26 +27,33 @@ package com.oracle.svm.hosted.config;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.ClassUtil;
-
-import jdk.vm.ci.meta.MetaUtil;
 
 public class RegistryAdapter implements ReflectionConfigurationParserDelegate<ConfigurationCondition, Class<?>> {
     private final ReflectionRegistry registry;
     private final ImageClassLoader classLoader;
 
-    public static RegistryAdapter create(ReflectionRegistry registry, ImageClassLoader classLoader) {
+    public static RegistryAdapter create(ReflectionRegistry registry, ProxyRegistry proxyRegistry, ImageClassLoader classLoader) {
         if (registry instanceof RuntimeReflectionSupport) {
-            return new ReflectionRegistryAdapter((RuntimeReflectionSupport) registry, classLoader);
+            return new ReflectionRegistryAdapter((RuntimeReflectionSupport) registry, proxyRegistry, classLoader);
         } else {
             return new RegistryAdapter(registry, classLoader);
         }
@@ -63,18 +70,41 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives, boolean includeAllElements) {
-        String name = canonicalizeTypeName(typeName);
-        return classLoader.findClass(name, allowPrimitives);
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean includeAllElements) {
+        switch (typeDescriptor.getDescriptorType()) {
+            case NAMED -> {
+                return resolveNamedType(((NamedConfigurationTypeDescriptor) typeDescriptor), allowPrimitives);
+            }
+            case PROXY -> {
+                return resolveProxyType((ProxyConfigurationTypeDescriptor) typeDescriptor);
+            }
+            default -> {
+                throw VMError.shouldNotReachHere("Unknown type descriptor kind: %s", typeDescriptor.getDescriptorType());
+            }
+        }
     }
 
-    public static String canonicalizeTypeName(String typeName) {
-        String name = typeName;
-        if (name.indexOf('[') != -1) {
-            /* accept "int[][]", "java.lang.String[]" */
-            name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
+    private TypeResult<Class<?>> resolveNamedType(NamedConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+        return classLoader.findClass(typeDescriptor.name(), allowPrimitives);
+    }
+
+    private TypeResult<Class<?>> resolveProxyType(ProxyConfigurationTypeDescriptor typeDescriptor) {
+        String typeName = typeDescriptor.toString();
+        List<TypeResult<Class<?>>> interfaceResults = Arrays.stream(typeDescriptor.interfaceNames()).map(name -> resolveNamedType(new NamedConfigurationTypeDescriptor(name), false)).toList();
+        List<Class<?>> interfaces = new ArrayList<>();
+        for (TypeResult<Class<?>> intf : interfaceResults) {
+            if (!intf.isPresent()) {
+                return TypeResult.forException(typeName, intf.getException());
+            }
+            interfaces.add(intf.get());
         }
-        return name;
+        try {
+            DynamicProxyRegistry proxyRegistry = ImageSingletons.lookup(DynamicProxyRegistry.class);
+            Class<?> proxyClass = proxyRegistry.getProxyClassHosted(interfaces.toArray(Class<?>[]::new));
+            return TypeResult.forType(typeName, proxyClass);
+        } catch (Throwable t) {
+            return TypeResult.forException(typeName, t);
+        }
     }
 
     @Override

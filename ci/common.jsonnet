@@ -60,6 +60,8 @@ local common_json = import "../common.json";
   } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
+  } + {
+    'graalvm-ee-21': jdk_base + common_json.jdks["graalvm-ee-21"] + { jdk_version:: 21 },
   },
   # We do not want to expose galahad-jdk
   assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], std.objectFields(jdks_data)),
@@ -128,6 +130,7 @@ local common_json = import "../common.json";
     mx: {
       environment+: {
         MX_PYTHON: "python3.8",
+        PYTHONIOENCODING: "utf-8",
       },
       packages+: {
         python3: "==3.8.10",
@@ -145,6 +148,8 @@ local common_json = import "../common.json";
         "Dumping debug output to '(?P<filename>[^']+)'",
         # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
         " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
+        # Keep in sync with jdk.graal.compiler.test.SubprocessUtil#makeArgfile
+        "@(?P<filename>.*SubprocessUtil-argfiles.*\\.argfile)",
       ],
     },
 
@@ -326,7 +331,7 @@ local common_json = import "../common.json";
     },
     opt_post_merge: {
       targets+: ["opt-post-merge"],
-      tags+: []
+      tags+: {opt_post_merge +: []},
     },
     daily: {
       targets+: ["daily"],

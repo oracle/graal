@@ -26,28 +26,30 @@ package com.oracle.svm.hosted.code.amd64;
 
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.asm.Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
+import jdk.graal.compiler.asm.Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 
 @AutomaticallyRegisteredImageSingleton(HostedDirectCallTrampolineSupport.class)
 @Platforms(Platform.AMD64.class)
-public class AMD64HostedTrampolineSupport implements HostedDirectCallTrampolineSupport {
+public class AMD64HostedTrampolineSupport implements HostedDirectCallTrampolineSupport, FeatureSingleton, UnsavedSingleton {
 
     @Override
     public boolean mayNeedTrampolines() {

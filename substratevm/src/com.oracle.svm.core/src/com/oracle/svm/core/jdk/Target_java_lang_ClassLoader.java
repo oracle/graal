@@ -50,6 +50,7 @@ import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.util.Digest;
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.loader.NativeLibrary;
 
@@ -174,7 +175,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute //
     @SuppressWarnings({"unused"}) //
     private Class<?> findLoadedClass0(String name) {
-        return ClassForNameSupport.forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
+        return ClassForNameSupport.singleton().forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     /**
@@ -285,7 +286,7 @@ public final class Target_java_lang_ClassLoader {
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
         if (!PredefinedClassesSupport.hasBytecodeClasses()) {
-            throw PredefinedClassesSupport.throwNoBytecodeClasses();
+            throw PredefinedClassesSupport.throwNoBytecodeClasses(name);
         }
         byte[] array;
         int off;
@@ -318,7 +319,7 @@ public final class Target_java_lang_ClassLoader {
     private static Class<?> defineClass0(ClassLoader loader, Class<?> lookup, String name, byte[] b, int off, int len, ProtectionDomain pd, boolean initialize, int flags, Object classData) {
         String actualName = name;
         if (LambdaUtils.isLambdaClassName(name)) {
-            actualName += LambdaUtils.digest(b);
+            actualName += Digest.digest(b);
         }
         return PredefinedClassesSupport.loadClass(loader, actualName.replace('/', '.'), b, off, b.length, null);
     }

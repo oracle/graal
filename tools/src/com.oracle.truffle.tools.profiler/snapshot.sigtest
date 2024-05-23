@@ -7,6 +7,7 @@ intf java.io.Closeable
 meth public boolean hasData()
 meth public boolean hasStackOverflowed()
 meth public boolean isCollecting()
+meth public boolean isGatherAsyncStackTrace()
 meth public boolean isGatherSelfHitTimes()
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter getFilter()
 meth public int getStackLimit()
@@ -22,12 +23,13 @@ meth public void close()
 meth public void setCollecting(boolean)
 meth public void setDelay(long)
 meth public void setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
+meth public void setGatherAsyncStackTrace(boolean)
 meth public void setGatherSelfHitTimes(boolean)
 meth public void setPeriod(long)
 meth public void setSampleContextInitialization(boolean)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds COPY_PAYLOAD,DEFAULT_FILTER,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,nextContextIndex,period,processingExecutionService,processingThreadFuture,processingThreadRunnable,resultsToProcess,safepointStackSampler,sampleContextInitialization,samplerData,samplerExecutionService,samplerFuture,stackLimit
+hfds COPY_PAYLOAD,DEFAULT_FILTER,DEFAULT_STACK_LIMIT,activeContexts,closed,collecting,delay,env,gatherSelfHitTimes,nextContextIndex,period,processingExecutionService,processingThreadFuture,processingThreadRunnable,resultsToProcess,safepointStackSampler,sampleContextInitialization,samplerData,samplerExecutionService,samplerFuture
 hcls MutableSamplerData,ResultProcessingRunnable,SamplingResult,SamplingTask
 
 CLSS public final static com.oracle.truffle.tools.profiler.CPUSampler$Payload
@@ -52,7 +54,7 @@ meth public long getSampleInterval()
 meth public long getSamples()
 meth public long missedSamples()
 supr java.lang.Object
-hfds biasStatistics,contextIndex,durationStatistics,intervalMs,missedSamples,samplesTaken,threadData
+hfds biasStatistics,contextIndex,contextRef,durationStatistics,intervalMs,missedSamples,samplesTaken,threadData
 
 CLSS public final com.oracle.truffle.tools.profiler.CPUTracer
 innr public final static Payload
@@ -157,7 +159,6 @@ meth public boolean isCompilationRoot()
 meth public boolean isCompiled()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public boolean isInlined()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public boolean isInterpreted()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()

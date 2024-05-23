@@ -855,6 +855,7 @@ class NativeImageVM(GraalVm):
     def image_build_analysis_rules(self, benchmarks):
         return [
             AnalysisReportJsonFileRule(self.config.image_build_reports_directory, self.is_gate, {
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",
@@ -865,6 +866,7 @@ class NativeImageVM(GraalVm):
                 "metric.object": "call-edges",
             }, ['total_call_edges']),
             AnalysisReportJsonFileRule(self.config.image_build_reports_directory, self.is_gate, {
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",
@@ -875,6 +877,7 @@ class NativeImageVM(GraalVm):
                 "metric.object": "reachable-types",
             }, ['total_reachable_types']),
             AnalysisReportJsonFileRule(self.config.image_build_reports_directory, self.is_gate, {
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",
@@ -885,6 +888,7 @@ class NativeImageVM(GraalVm):
                 "metric.object": "reachable-methods",
             }, ['total_reachable_methods']),
             AnalysisReportJsonFileRule(self.config.image_build_reports_directory, self.is_gate, {
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",
@@ -895,6 +899,7 @@ class NativeImageVM(GraalVm):
                 "metric.object": "reachable-fields",
             }, ['total_reachable_fields']),
             AnalysisReportJsonFileRule(self.config.image_build_reports_directory, self.is_gate, {
+                "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",

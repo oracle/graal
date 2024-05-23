@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
@@ -96,18 +95,24 @@ public final class FloatLessThanNode extends CompareNode {
             if (result != null) {
                 return result;
             }
-            if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY) && !unorderedIsTrue) {
-                return LogicConstantNode.contradiction();
+            if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+                if (!unorderedIsTrue || (((FloatStamp) forX.stamp(view)).isNonNaN() && ((FloatStamp) forY.stamp(view)).isNonNaN())) {
+                    /*
+                     * If x is NaN and an unordered result is false, x < x is false. Otherwise, if x
+                     * cannot be NaN, x < x is false too.
+                     */
+                    return LogicConstantNode.contradiction();
+                }
             }
             return null;
         }
 
         @Override
-        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
+        protected LogicNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
             if (newX.stamp(NodeView.DEFAULT) instanceof FloatStamp && newY.stamp(NodeView.DEFAULT) instanceof FloatStamp) {
-                return new FloatLessThanNode(newX, newY, unorderedIsTrue);
+                return FloatLessThanNode.create(newX, newY, unorderedIsTrue, view);
             } else if (newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
-                return new IntegerLessThanNode(newX, newY);
+                return IntegerLessThanNode.create(newX, newY, view);
             }
             throw GraalError.shouldNotReachHere(newX.stamp(view) + " " + newY.stamp(view)); // ExcludeFromJacocoGeneratedReport
         }

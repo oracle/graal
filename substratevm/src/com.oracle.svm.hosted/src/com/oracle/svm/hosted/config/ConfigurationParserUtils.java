@@ -49,15 +49,16 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 
 import jdk.graal.compiler.util.json.JSONParserException;
 
 public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(
-                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
+                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, ProxyRegistry proxyRegistry, ImageClassLoader imageClassLoader) {
         return new ReflectionConfigurationParser<>(conditionResolver,
-                        RegistryAdapter.create(registry, imageClassLoader),
+                        RegistryAdapter.create(registry, proxyRegistry, imageClassLoader),
                         ConfigurationFiles.Options.StrictConfiguration.getValue(),
                         ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue());
     }

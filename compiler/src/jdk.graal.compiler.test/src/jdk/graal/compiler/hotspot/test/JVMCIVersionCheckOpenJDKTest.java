@@ -24,19 +24,19 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
-import org.junit.Assert;
-import org.junit.Test;
-
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 
 /**
  * Tests that {@link JVMCIVersionCheck} handles OpenJDK versions correctly.
@@ -54,6 +54,18 @@ public class JVMCIVersionCheckOpenJDKTest extends GraalCompilerTest {
                         expectFail("99+99-jvmci-b02", "99+98"),
                         expectPass("99+99-jvmci-b02", "99+99"),
                         expectPass("99+99-jvmci-b02", "99+100"),
+                        /*
+                         * Also if comparing against an OpenJDK early access version.
+                         */
+                        expectFail("99+99-jvmci-b02", "99-ea+98"),
+                        expectPass("99+99-jvmci-b02", "99-ea+99"),
+                        expectPass("99+99-jvmci-b02", "99-ea+100"),
+                        /*
+                         * OpenJDK version with unknown $PRE value are ignored.
+                         */
+                        expectPass("99+99-jvmci-b02", "99-something+98"),
+                        expectPass("99+99-jvmci-b02", "99-something+99"),
+                        expectPass("99+99-jvmci-b02", "99-something+100"),
                         /*
                          * If comparing a LabsJDK version against a LabsJDK version, respect the
                          * JVMCI build.

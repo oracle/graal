@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,11 @@
 package com.oracle.svm.hosted;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
@@ -42,50 +44,63 @@ public class ProgressReporterJsonHelper {
 
     private final Map<String, Object> statsHolder = new HashMap<>();
 
+    /**
+     * Builds a list of keys leaving out any {@code null} values.
+     * <p>
+     * To be used with {@link #putValue(List, Object)}.
+     */
+    private static List<String> buildKeys(String... keys) {
+        return Arrays.stream(keys).filter(Objects::nonNull).toList();
+    }
+
+    /**
+     * Returns the {@link Map} stored in the given object under the given key.
+     * <p>
+     * Creates an empty map if it doesn't exist yet.
+     *
+     * @throws ClassCastException if the existing value is not a map.
+     */
     @SuppressWarnings("unchecked")
+    private static Map<String, Object> getOrCreateMap(Map<String, Object> object, String key) {
+        Objects.requireNonNull(key, "JSON keys must not be 'null'");
+        return (Map<String, Object>) object.computeIfAbsent(key, k -> new HashMap<>());
+    }
+
+    /**
+     * Insert value into {@link #statsHolder} nested with the given key sequence.
+     * <p>
+     * For example for {@code keys = [a, b, c, d]} it will set
+     * {@code statsHolder[a][b][c][d] = value} while creating all intermediate maps.
+     */
+    private void putValue(List<String> keys, Object value) {
+        assert !keys.isEmpty();
+        Map<String, Object> currentLevel = statsHolder;
+
+        /*
+         * Iteratively index into the next level until the second-last key. Each iteration creates a
+         * new map in the current level (unless the key already exists)
+         */
+        for (int i = 0; i < keys.size() - 1; i++) {
+            currentLevel = getOrCreateMap(currentLevel, keys.get(i));
+        }
+
+        currentLevel.put(keys.getLast(), value);
+    }
+
     public void putAnalysisResults(AnalysisResults key, long value) {
-        Map<String, Object> analysisMap = (Map<String, Object>) statsHolder.computeIfAbsent(ANALYSIS_RESULTS_KEY, k -> new HashMap<>());
-        Map<String, Object> bucketMap = (Map<String, Object>) analysisMap.computeIfAbsent(key.bucket(), bk -> new HashMap<>());
-        bucketMap.put(key.jsonKey(), value);
+        putValue(buildKeys(ANALYSIS_RESULTS_KEY, key.bucket, key.key), value);
     }
 
-    @SuppressWarnings("unchecked")
     public void putGeneralInfo(GeneralInfo info, Object value) {
-        Map<String, Object> generalInfoMap = (Map<String, Object>) statsHolder.computeIfAbsent(GENERAL_INFO_KEY, gi -> new HashMap<>());
-        if (info.bucket != null) {
-            Map<String, Object> subMap = (Map<String, Object>) generalInfoMap.computeIfAbsent(info.bucket, k -> new HashMap<>());
-            subMap.put(info.jsonKey(), value);
-        } else {
-            generalInfoMap.put(info.jsonKey(), value);
-        }
+        putValue(buildKeys(GENERAL_INFO_KEY, info.bucket, info.key), value);
     }
 
-    @SuppressWarnings("unchecked")
-    public void putImageDetails(ImageDetailKey key, Object value) {
-        Map<String, Object> imageDetailsMap = (Map<String, Object>) statsHolder.computeIfAbsent(IMAGE_DETAILS_KEY, id -> new HashMap<>());
-        if (key.bucket == null && key.subBucket == null) {
-            imageDetailsMap.put(key.jsonKey, value);
-        } else if (key.subBucket == null) {
-            assert key.bucket != null;
-            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket, sb -> new HashMap<>());
-            bucketMap.put(key.jsonKey, value);
-        } else {
-            assert key.subBucket != null;
-            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket, sb -> new HashMap<>());
-            Map<String, Object> subbucketMap = (Map<String, Object>) bucketMap.computeIfAbsent(key.subBucket, sb -> new HashMap<>());
-            subbucketMap.put(key.jsonKey, value);
-        }
+    private void putImageDetails(ImageDetailKey key, Object value) {
+        putValue(buildKeys(IMAGE_DETAILS_KEY, key.bucket, key.subBucket, key.jsonKey), value);
     }
 
-    @SuppressWarnings("unchecked")
-    public void putResourceUsage(ResourceUsageKey key, Object value) {
-        Map<String, Object> resUsageMap = (Map<String, Object>) statsHolder.computeIfAbsent(RESOURCE_USAGE_KEY, ru -> new HashMap<>());
-        if (key.bucket != null) {
-            Map<String, Object> subMap = (Map<String, Object>) resUsageMap.computeIfAbsent(key.bucket, k -> new HashMap<>());
-            subMap.put(key.jsonKey, value);
-        } else {
-            resUsageMap.put(key.jsonKey, value);
-        }
+    private void putResourceUsage(ResourceUsageKey key, Object value) {
+        putValue(buildKeys(RESOURCE_USAGE_KEY, key.bucket, key.jsonKey), value);
     }
 
     public void print(JsonWriter writer) throws IOException {

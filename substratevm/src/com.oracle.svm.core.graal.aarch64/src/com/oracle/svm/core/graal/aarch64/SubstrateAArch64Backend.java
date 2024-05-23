@@ -335,7 +335,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                         VMError.guarantee(!nextMemoryAccessNeedsDecompress, "Comparison with compressed null value not implemented");
                         masm.cbnz(addressBitSize, computeRegister, done);
 
-                        SubstrateObjectConstant object = (SubstrateObjectConstant) ((ComputedIndirectCallTargetNode.FieldLoadIfZero) computation).getObject();
+                        JavaConstant object = ((ComputedIndirectCallTargetNode.FieldLoadIfZero) computation).getObject();
                         field = (SharedField) ((ComputedIndirectCallTargetNode.FieldLoadIfZero) computation).getField();
                         addressBitSize = getFieldSize(field);
 

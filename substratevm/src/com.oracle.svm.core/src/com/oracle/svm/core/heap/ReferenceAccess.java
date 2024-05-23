@@ -125,7 +125,8 @@ public interface ReferenceAccess {
     int getCompressionShift();
 
     /**
-     * Returns the size of the address space, based on the reference size.
+     * Returns the maximum size that the Java heap address space can have at run-time (e.g., based
+     * on the reference size).
      */
     UnsignedWord getAddressSpaceSize();
 }

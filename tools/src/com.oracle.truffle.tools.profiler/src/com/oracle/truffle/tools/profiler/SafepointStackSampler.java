@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,11 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -59,12 +63,13 @@ import com.oracle.truffle.api.source.SourceSection;
 final class SafepointStackSampler {
 
     private static final Set<Class<?>> VISITOR_TAGS = new HashSet<>(Arrays.asList(StandardTags.RootTag.class));
-    private final int stackLimit;
-    private final SourceSectionFilter sourceSectionFilter;
+    private volatile int stackLimit;
+    private volatile SourceSectionFilter sourceSectionFilter;
     private final ConcurrentLinkedQueue<StackVisitor> stackVisitorCache = new ConcurrentLinkedQueue<>();
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
     private final ThreadLocal<SyntheticFrame> syntheticFrameThreadLocal = ThreadLocal.withInitial(() -> null);
     private volatile boolean overflowed;
+    private volatile boolean includeAsyncStackTrace;
     private final AtomicLong sampleIndex = new AtomicLong(0);
 
     SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter) {
@@ -75,7 +80,7 @@ final class SafepointStackSampler {
     private StackVisitor fetchStackVisitor() {
         StackVisitor visitor = stackVisitorCache.poll();
         if (visitor == null) {
-            visitor = new StackVisitor(stackLimit);
+            visitor = new StackVisitor(stackLimit, sourceSectionFilter, includeAsyncStackTrace);
         }
         return visitor;
     }
@@ -165,6 +170,40 @@ final class SafepointStackSampler {
         }
     }
 
+    int getStackLimit() {
+        return stackLimit;
+    }
+
+    void setStackLimit(int stackLimit) {
+        this.stackLimit = stackLimit;
+        this.stackVisitorCache.clear();
+    }
+
+    SourceSectionFilter getSourceSectionFilter() {
+        return sourceSectionFilter;
+    }
+
+    void setSourceSectionFilter(SourceSectionFilter sourceSectionFilter) {
+        this.sourceSectionFilter = sourceSectionFilter;
+        this.stackVisitorCache.clear();
+    }
+
+    boolean isIncludeAsyncStackTrace() {
+        return includeAsyncStackTrace;
+    }
+
+    void setIncludeAsyncStackTrace(boolean includeAsyncStackTrace) {
+        this.includeAsyncStackTrace = includeAsyncStackTrace;
+    }
+
+    void resetSampling() {
+        // Note: synchronized on CPUSampler instance in the caller.
+        this.sampleIndex.set(0);
+        this.cachedAction.set(null);
+        this.overflowed = false;
+        this.stackVisitorCache.clear();
+    }
+
     static final class StackSample {
 
         final Thread thread;
@@ -184,20 +223,26 @@ final class SafepointStackSampler {
 
     private class StackVisitor implements FrameInstanceVisitor<FrameInstance>, CollectionResult {
 
+        // filled from top to bottom of stack, i.e. inner to outer frame
         private final CallTarget[] targets;
         private final int[] tiers;
         private final boolean[] roots;
+        private final SourceSectionFilter sourceSectionFilter;
+        private final boolean includeAsyncStackTrace;
         private Thread thread;
+        /** Next frame index and the number of captured entries. */
         private int nextFrameIndex;
         private long startTime;
         private long endTime;
         private boolean overflowed;
 
-        StackVisitor(int stackLimit) {
+        StackVisitor(int stackLimit, SourceSectionFilter sourceSectionFilter, boolean includeAsyncStackTrace) {
             assert stackLimit > 0;
             this.tiers = new int[stackLimit];
             this.roots = new boolean[stackLimit];
             this.targets = new CallTarget[stackLimit];
+            this.sourceSectionFilter = sourceSectionFilter;
+            this.includeAsyncStackTrace = includeAsyncStackTrace;
         }
 
         final void iterateFrames() {
@@ -221,16 +266,61 @@ final class SafepointStackSampler {
         }
 
         public FrameInstance visitFrame(FrameInstance frameInstance) {
-            tiers[nextFrameIndex] = frameInstance.getCompilationTier();
-            roots[nextFrameIndex] = frameInstance.isCompilationRoot();
-            targets[nextFrameIndex] = frameInstance.getCallTarget();
-            nextFrameIndex++;
-            if (nextFrameIndex >= targets.length) {
-                // stop traversing
+            CallTarget callTarget = frameInstance.getCallTarget();
+            int compilationTier = frameInstance.getCompilationTier();
+            boolean compilationRoot = frameInstance.isCompilationRoot();
+            boolean continueVisiting = addStackTraceEntry(callTarget, compilationTier, compilationRoot);
+            if (continueVisiting && includeAsyncStackTrace) {
+                continueVisiting = addAnyAsyncStackTraceEntries(callTarget, frameInstance.getFrame(FrameAccess.READ_ONLY));
+            }
+            if (continueVisiting) {
+                return null;
+            } else {
                 overflowed = true;
                 return frameInstance;
             }
-            return null;
+        }
+
+        private boolean addStackTraceEntry(CallTarget callTarget, int compilationTier, boolean compilationRoot) {
+            assert !overflowed;
+            tiers[nextFrameIndex] = compilationTier;
+            roots[nextFrameIndex] = compilationRoot;
+            targets[nextFrameIndex] = callTarget;
+            nextFrameIndex++;
+            return nextFrameIndex < targets.length; // continue?
+        }
+
+        private boolean addAnyAsyncStackTraceEntries(CallTarget callTarget, Frame frame) {
+            assert !overflowed;
+            // Try to mix in async stack trace elements.
+            List<TruffleStackTraceElement> asyncStackTrace = TruffleStackTrace.getAsynchronousStackTrace(callTarget, frame);
+            if (asyncStackTrace != null && !asyncStackTrace.isEmpty()) {
+                List<TruffleStackTraceElement> nextAsyncStackTrace = asyncStackTrace;
+                do {
+                    asyncStackTrace = nextAsyncStackTrace;
+                    nextAsyncStackTrace = null;
+                    for (TruffleStackTraceElement element : asyncStackTrace) {
+                        RootCallTarget asyncTarget = element.getTarget();
+                        Frame asyncFrame = element.getFrame();
+                        if (!addStackTraceEntry(asyncTarget, 0, true)) {
+                            return false; // stop
+                        }
+                        // Include nested async stack frames at the end, e.g.
+                        // a <- b <- resume c (async trace: c <- d <- resume e)
+                        // c <- d <- resume e (async trace: e <- f <- start)
+                        // e <- f <- start
+                        // should be reconstructed as:
+                        // a <- b <- c <- d <- e <- start
+                        if (asyncFrame != null && nextAsyncStackTrace == null) {
+                            List<TruffleStackTraceElement> nestedAsyncStacktrace = TruffleStackTrace.getAsynchronousStackTrace(asyncTarget, asyncFrame);
+                            if (nestedAsyncStacktrace != null && !nestedAsyncStacktrace.isEmpty()) {
+                                nextAsyncStackTrace = nestedAsyncStacktrace;
+                            }
+                        }
+                    }
+                } while (nextAsyncStackTrace != null);
+            }
+            return true; // continue
         }
 
         void resetAndReturn() {

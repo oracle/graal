@@ -41,6 +41,7 @@
 package com.oracle.truffle.object;
 
 import java.util.AbstractSet;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
@@ -155,6 +156,7 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
     }
 
     private boolean verify() {
+        assert root != null;
         assert (size == 0 && head == null && tail == null) || (size != 0 && head != null && tail != null) : "size=" + size + ", head=" + head + ", tail=" + tail;
         assert head == null || head == getEntry(head.getKey());
         assert tail == null || tail == getEntry(tail.getKey());
@@ -211,7 +213,7 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
     @Override
     public LinkedPropertyEntry getEntry(Object key) {
         LinkedPropertyEntry entry = root.find(key, hash(key));
-        assert entry == null || entry.getKey().equals(key);
+        assert entry == null || entry.getKey().equals(key) : Arrays.asList(entry, key);
         return entry;
     }
 
@@ -268,17 +270,13 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
             newTail = tail;
 
             newEntry = existing.withValue(value);
-            assert !newEntry.equals(existing);
-            if (existing.getPrevKey() != null) {
-                assert getEntry(existing.getPrevKey()).getNextKey().equals(key);
-            } else {
-                assert existing == head;
+            assert !newEntry.equals(existing) : Arrays.asList(newEntry, existing);
+            if (existing.getPrevKey() == null) {
+                assert existing == head : Arrays.asList(existing, head);
                 newHead = newEntry;
             }
-            if (existing.getNextKey() != null) {
-                assert getEntry(existing.getNextKey()).getPrevKey().equals(key);
-            } else {
-                assert existing == tail;
+            if (existing.getNextKey() == null) {
+                assert existing == tail : Arrays.asList(existing, tail);
                 newTail = newEntry;
             }
         }
@@ -329,7 +327,6 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
             }
         }
         newRoot = newRoot.remove(key, hash);
-        assert newRoot != null;
         return new TriePropertyMap(size - 1, newRoot, newHead, newTail);
     }
 

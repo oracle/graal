@@ -77,7 +77,7 @@ public abstract class CustomTypeFieldHandler {
     private void injectFieldTypes(AnalysisField field, List<AnalysisType> customTypes) {
         for (AnalysisType type : customTypes) {
             if (!type.isPrimitive()) {
-                type.registerAsAllocated("Is declared as the type of an unknown object field.");
+                type.registerAsInstantiated("Is declared as the type of an unknown object field.");
             }
         }
 
@@ -85,7 +85,7 @@ public abstract class CustomTypeFieldHandler {
         injectFieldTypes(field, customTypes.toArray(new AnalysisType[0]));
     }
 
-    protected abstract void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes);
+    public abstract void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes);
 
     private List<AnalysisType> transformTypes(AnalysisField field, List<Class<?>> types) {
         List<AnalysisType> customTypes = new ArrayList<>();

@@ -80,8 +80,6 @@ import com.oracle.svm.util.ClassUtil;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeList;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -278,14 +276,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public AnalysisType getObjectArrayType() {
         return metaAccess.lookupJavaType(Object[].class);
-    }
-
-    public AnalysisType getGraalNodeType() {
-        return metaAccess.lookupJavaType(Node.class);
-    }
-
-    public AnalysisType getGraalNodeListType() {
-        return metaAccess.lookupJavaType(NodeList.class);
     }
 
     public TypeFlow<?> getAllInstantiatedTypeFlow() {
@@ -630,12 +620,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public void onTypeInstantiated(AnalysisType type, AnalysisType.UsageKind usageKind) {
+    public void onTypeInstantiated(AnalysisType type) {
         /* Register the type as instantiated with all its super types. */
 
-        assert type.isAllocated() || type.isInHeap() : type;
+        assert type.isInstantiated() : type;
         AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()));
-        universe.hostVM().checkForbidden(type, usageKind);
 
         TypeState typeState = TypeState.forExactType(this, type, true);
         TypeState typeStateNonNull = TypeState.forExactType(this, type, false);

@@ -24,16 +24,14 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import java.util.List;
+import java.util.Collection;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -219,7 +217,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             }
         }
 
-        void handleUnsafeAccessedFields(PointsToAnalysis bb, List<AnalysisField> unsafeAccessedFields, AnalysisObject object) {
+        void handleUnsafeAccessedFields(PointsToAnalysis bb, Collection<AnalysisField> unsafeAccessedFields, AnalysisObject object) {
             for (AnalysisField field : unsafeAccessedFields) {
                 /* Write through the field filter flow. */
                 if (field.hasUnsafeFrozenTypeState()) {
@@ -271,7 +269,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
                     TypeFlow<?> elementsFlow = object.getArrayElementsFlow(bb, true);
                     this.addUse(bb, elementsFlow);
                 } else {
-                    handleUnsafeAccessedFields(bb, type.unsafeAccessedFields(DefaultUnsafePartition.get()), object);
+                    handleUnsafeAccessedFields(bb, type.unsafeAccessedFields(), object);
                 }
             }
         }
@@ -303,65 +301,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         @Override
         public String toString() {
             return "UnsafeStoreTypeFlow<" + getState() + ">";
-        }
-    }
-
-    public static class UnsafePartitionStoreTypeFlow extends AbstractUnsafeStoreTypeFlow {
-
-        protected final UnsafePartitionKind partitionKind;
-        protected final AnalysisType partitionType;
-
-        public UnsafePartitionStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow,
-                        UnsafePartitionKind partitionKind, AnalysisType partitionType) {
-            super(storeLocation, objectType, componentType, objectFlow, valueFlow);
-            this.partitionKind = partitionKind;
-            this.partitionType = partitionType;
-        }
-
-        public UnsafePartitionStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafePartitionStoreTypeFlow original) {
-            super(bb, methodFlows, original);
-            this.partitionKind = original.partitionKind;
-            this.partitionType = original.partitionType;
-        }
-
-        @Override
-        public UnsafePartitionStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new UnsafePartitionStoreTypeFlow(bb, methodFlows, this);
-        }
-
-        @Override
-        public TypeState filter(PointsToAnalysis bb, TypeState update) {
-            if (partitionType.equals(bb.getObjectType())) {
-                /* No need to filter. */
-                return update;
-            } else {
-                /* Filter the incoming state with the partition type. */
-                return TypeState.forIntersection(bb, update, partitionType.getAssignableTypes(true));
-            }
-        }
-
-        @Override
-        public void onObservedUpdate(PointsToAnalysis bb) {
-            TypeState objectState = objectFlow.getState();
-
-            /* Iterate over the receiver objects. */
-            for (AnalysisObject object : objectState.objects(bb)) {
-                AnalysisType type = object.type();
-                assert !type.isArray() : type;
-
-                handleUnsafeAccessedFields(bb, type.unsafeAccessedFields(partitionKind), object);
-            }
-        }
-
-        @Override
-        public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            /* When receiver object flow saturates start observing the flow of the object type. */
-            replaceObservedWith(bb, objectType);
-        }
-
-        @Override
-        public String toString() {
-            return "UnsafePartitionStoreTypeFlow<" + getState() + "> : " + partitionKind;
         }
     }
 }

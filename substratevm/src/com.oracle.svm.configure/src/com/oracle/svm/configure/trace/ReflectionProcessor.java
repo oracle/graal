@@ -38,10 +38,12 @@ import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemb
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.configure.config.TypeConfiguration;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.ProxyConfigurationTypeDescriptor;
 
 import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.vm.ci.meta.MetaUtil;
@@ -107,13 +109,15 @@ class ReflectionProcessor extends AbstractProcessor {
             }
             return;
         }
-        String clazz = (String) entry.get("class");
-        if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {
-            return;
+        ConfigurationTypeDescriptor clazz = descriptorForClass(entry.get("class"));
+        for (String className : clazz.getAllQualifiedJavaNames()) {
+            if (advisor.shouldIgnore(lazyValue(className), lazyValue(callerClass))) {
+                return;
+            }
         }
         ConfigurationMemberDeclaration declaration = ConfigurationMemberDeclaration.PUBLIC;
         ConfigurationMemberAccessibility accessibility = Boolean.TRUE.equals(entry.get("result")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
-        String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
+        ConfigurationTypeDescriptor clazzOrDeclaringClass = entry.containsKey("declaring_class") ? descriptorForClass(entry.get("declaring_class")) : clazz;
         switch (function) {
             case "getDeclaredFields": {
                 configuration.getOrCreateType(condition, clazz).setAllDeclaredFields();
@@ -227,17 +231,17 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "getProxyClass": {
                 expectSize(args, 2);
-                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configurationSet.getProxyConfiguration());
+                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configuration);
                 break;
             }
             case "newProxyInstance": {
                 expectSize(args, 3);
-                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configurationSet.getProxyConfiguration());
+                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configuration);
                 break;
             }
             case "newMethodHandleProxyInstance": {
                 expectSize(args, 1);
-                addDynamicProxyUnchecked((List<?>) args.get(0), Collections.singletonList("sun.invoke.WrapperInstance"), lazyValue(callerClass), configurationSet.getProxyConfiguration());
+                addDynamicProxyUnchecked((List<?>) args.get(0), Collections.singletonList("sun.invoke.WrapperInstance"), lazyValue(callerClass), configuration);
                 break;
             }
 
@@ -249,8 +253,9 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "newInstance": {
-                if (clazz.equals("java.lang.reflect.Array")) { // reflective array instantiation
-                    configuration.getOrCreateType(condition, (String) args.get(0));
+                if (clazz.toString().equals("java.lang.reflect.Array")) { // reflective array
+                                                                          // instantiation
+                    configuration.getOrCreateType(condition, new NamedConfigurationTypeDescriptor((String) args.get(0)));
                 } else {
                     configuration.getOrCreateType(condition, clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberDeclaration.DECLARED,
                                     ConfigurationMemberAccessibility.ACCESSED);
@@ -276,6 +281,15 @@ class ReflectionProcessor extends AbstractProcessor {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private static ConfigurationTypeDescriptor descriptorForClass(Object clazz) {
+        if (clazz instanceof List<?>) {
+            return new ProxyConfigurationTypeDescriptor(((List<String>) clazz).toArray(String[]::new));
+        } else {
+            return new NamedConfigurationTypeDescriptor((String) clazz);
+        }
+    }
+
     private static void addFullyQualifiedDeclaredMethod(String descriptor, TypeConfiguration configuration) {
         int sigbegin = descriptor.indexOf('(');
         int classend = descriptor.lastIndexOf('.', sigbegin - 1);
@@ -285,18 +299,17 @@ class ReflectionProcessor extends AbstractProcessor {
         configuration.getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberDeclaration.DECLARED);
     }
 
-    private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass, ProxyConfiguration proxyConfiguration) {
-        @SuppressWarnings("unchecked")
-        List<String> interfaces = (List<String>) interfaceList;
-        for (String iface : interfaces) {
+    private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass, TypeConfiguration configuration) {
+        ConfigurationTypeDescriptor typeDescriptor = descriptorForClass(interfaceList);
+        for (String iface : typeDescriptor.getAllQualifiedJavaNames()) {
             if (advisor.shouldIgnore(lazyValue(iface), callerClass)) {
                 return;
             }
         }
-        proxyConfiguration.add(UnresolvedConfigurationCondition.alwaysTrue(), interfaces);
+        configuration.getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor);
     }
 
-    private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass, ProxyConfiguration proxyConfiguration) {
+    private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass, TypeConfiguration configuration) {
         @SuppressWarnings("unchecked")
         List<String> checkedInterfaces = (List<String>) checkedInterfaceList;
         for (String iface : checkedInterfaces) {
@@ -310,6 +323,6 @@ class ReflectionProcessor extends AbstractProcessor {
         List<String> interfaces = new ArrayList<>();
         interfaces.addAll(checkedInterfaces);
         interfaces.addAll(uncheckedInterfaces);
-        proxyConfiguration.add(UnresolvedConfigurationCondition.alwaysTrue(), interfaces);
+        configuration.getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), descriptorForClass(interfaces));
     }
 }

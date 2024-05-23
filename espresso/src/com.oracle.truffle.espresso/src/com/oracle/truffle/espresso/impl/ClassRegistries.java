@@ -55,6 +55,7 @@ public final class ClassRegistries {
     private final LoadingConstraints constraints;
     private final EspressoContext context;
 
+    // access to this list is done under the bootloader's package table lock
     private List<Klass> fixupModuleList = new ArrayList<>();
 
     private final Set<StaticObject> weakClassLoaderSet = Collections.newSetFromMap(new WeakHashMap<>());
@@ -322,6 +323,7 @@ public final class ClassRegistries {
     }
 
     public void processFixupList(StaticObject javaBase) {
+        assert StaticObject.notNull(javaBase);
         for (PrimitiveKlass k : context.getMeta().PRIMITIVE_KLASSES) {
             context.getMeta().java_lang_Class_module.setObject(k.initializeEspressoClass(), javaBase);
         }

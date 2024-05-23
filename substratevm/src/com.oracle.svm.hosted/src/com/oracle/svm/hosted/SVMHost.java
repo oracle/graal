@@ -140,6 +140,7 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
+import jdk.internal.loader.NativeLibraries;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -150,7 +151,12 @@ public class SVMHost extends HostVM {
     private final ConcurrentHashMap<AnalysisType, DynamicHub> typeToHub = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<DynamicHub, AnalysisType> hubToType = new ConcurrentHashMap<>();
 
-    private final Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes;
+    public enum UsageKind {
+        Instantiated,
+        Reachable;
+    }
+
+    private final Map<String, Set<UsageKind>> forbiddenTypes;
     private final Platform platform;
     private final ClassInitializationSupport classInitializationSupport;
     private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
@@ -206,7 +212,7 @@ public class SVMHost extends HostVM {
         }
         fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
-        useBaseLayer = SubstrateOptions.LoadImageLayer.hasBeenSet();
+        useBaseLayer = SVMImageLayerSupport.singleton().loadAnalysis();
         if (SubstrateOptions.includeAll()) {
             initializeExcludedFields();
         }
@@ -221,19 +227,19 @@ public class SVMHost extends HostVM {
         return new InlineBeforeAnalysisPolicyUtils();
     }
 
-    private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
+    private static Map<String, Set<UsageKind>> setupForbiddenTypes(OptionValues options) {
         List<String> forbiddenTypesOptionValues = SubstrateOptions.ReportAnalysisForbiddenType.getValue(options).values();
-        Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes = new HashMap<>();
+        Map<String, Set<UsageKind>> forbiddenTypes = new HashMap<>();
         for (String forbiddenTypesOptionValue : forbiddenTypesOptionValues) {
             String[] typeNameUsageKind = forbiddenTypesOptionValue.split(":", 2);
-            EnumSet<AnalysisType.UsageKind> usageKinds;
+            EnumSet<UsageKind> usageKinds;
             if (typeNameUsageKind.length == 1) {
-                usageKinds = EnumSet.allOf(AnalysisType.UsageKind.class);
+                usageKinds = EnumSet.allOf(UsageKind.class);
             } else {
-                usageKinds = EnumSet.noneOf(AnalysisType.UsageKind.class);
+                usageKinds = EnumSet.noneOf(UsageKind.class);
                 String[] usageKindValues = typeNameUsageKind[1].split(",");
                 for (String usageKindValue : usageKindValues) {
-                    usageKinds.add(AnalysisType.UsageKind.valueOf(usageKindValue));
+                    usageKinds.add(UsageKind.valueOf(usageKindValue));
                 }
 
             }
@@ -242,8 +248,7 @@ public class SVMHost extends HostVM {
         return forbiddenTypes.isEmpty() ? null : forbiddenTypes;
     }
 
-    @Override
-    public void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind) {
+    private void checkForbidden(AnalysisType type, UsageKind kind) {
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             NativeImageGenerator.checkName(type.getWrapped().toJavaName(), null, null);
         }
@@ -260,7 +265,7 @@ public class SVMHost extends HostVM {
          * seems less likely that someone registers an interface as forbidden.
          */
         for (AnalysisType cur = type; cur != null; cur = cur.getSuperclass()) {
-            EnumSet<AnalysisType.UsageKind> forbiddenType = forbiddenTypes.get(cur.getWrapped().toJavaName());
+            var forbiddenType = forbiddenTypes.get(cur.getWrapped().toJavaName());
             if (forbiddenType != null && forbiddenType.contains(kind)) {
                 throw new UnsupportedFeatureException("Forbidden type " + cur.getWrapped().toJavaName() +
                                 (cur.equals(type) ? "" : " (superclass of " + type.getWrapped().toJavaName() + ")") +
@@ -310,12 +315,18 @@ public class SVMHost extends HostVM {
         if (BuildPhaseProvider.isAnalysisFinished()) {
             throw VMError.shouldNotReachHere("Initializing type after analysis: " + analysisType);
         }
+        checkForbidden(analysisType, UsageKind.Reachable);
 
         /* Decide when the type should be initialized. */
         classInitializationSupport.maybeInitializeAtBuildTime(analysisType);
 
         /* Compute the automatic substitutions. */
         automaticUnsafeTransformations.computeTransformations(bb, this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
+    }
+
+    @Override
+    public void onTypeInstantiated(BigBang bb, AnalysisType type) {
+        checkForbidden(type, UsageKind.Instantiated);
     }
 
     @Override
@@ -576,7 +587,7 @@ public class SVMHost extends HostVM {
                  */
                 new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMultiMethodKey()));
             }
-            UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
+            UninterruptibleAnnotationChecker.checkAfterParsing(method, graph, bb.getConstantReflectionProvider());
 
             optimizeAfterParsing(bb, method, graph);
             /*
@@ -797,6 +808,8 @@ public class SVMHost extends HostVM {
         excludedFields.add(ReflectionUtil.lookupField(VMThreadLocalInfo.class, "sizeSupplier"));
         /* This field cannot be written to (see documentation) */
         excludedFields.add(ReflectionUtil.lookupField(Counter.Group.class, "enabled"));
+        /* This field can contain a reference to a Thread, which is not allowed in the heap */
+        excludedFields.add(ReflectionUtil.lookupField(NativeLibraries.class, "nativeLibraryLockMap"));
     }
 
     @Override

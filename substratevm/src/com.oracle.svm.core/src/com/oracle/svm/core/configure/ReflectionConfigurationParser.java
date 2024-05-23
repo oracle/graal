@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -82,38 +83,25 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         if (!conditionResult.isPresent()) {
             return;
         }
+        C condition = conditionResult.get();
 
-        String className;
-        Object typeObject = data.get("type");
         /*
          * Classes registered using the old ("class") syntax will require elements (fields, methods,
          * constructors, ...) to be registered for runtime queries, whereas the new ("type") syntax
          * will automatically register all elements as queried.
          */
-        if (typeObject != null) {
-            if (typeObject instanceof String stringValue) {
-                className = stringValue;
-            } else {
-                /*
-                 * We warn if we find a future version of a type descriptor (as a JSON object)
-                 * instead of failing parsing.
-                 */
-                asMap(typeObject, "type descriptor should be a string or object");
-                handleMissingElement("Unsupported type descriptor of type object");
-                return;
-            }
-        } else {
-            className = asString(data.get("name"), "class name should be a string");
+        Optional<ConfigurationTypeDescriptor> type = parseType(data);
+        if (type.isEmpty()) {
+            return;
         }
 
         /*
          * Even if primitives cannot be queried through Class.forName, they can be registered to
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
-        C condition = conditionResult.get();
-        TypeResult<T> result = delegate.resolveType(condition, className, true, false);
+        TypeResult<T> result = delegate.resolveType(condition, type.get(), true, false);
         if (!result.isPresent()) {
-            handleMissingElement("Could not resolve class " + className + " for reflection configuration.", result.getException());
+            handleMissingElement("Could not resolve " + type.get() + " for reflection configuration.", result.getException());
             return;
         }
         T clazz = result.get();
@@ -298,7 +286,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), typeName, true, false);
+            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), new NamedConfigurationTypeDescriptor(typeName), true, false);
             if (!typeResult.isPresent()) {
                 handleMissingElement("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;

@@ -25,9 +25,16 @@
 package com.oracle.svm.hosted.classinitialization;
 
 import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllUserSpaceTypesAsTrackedForTypeReached;
 
+import java.io.Serializable;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Proxy;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.Formattable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,6 +82,22 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * ground truth about what got initialized during image building.
      */
     final ConcurrentMap<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
+
+    /**
+     * We need always-reached types to avoid users injecting class initialization checks in our VM
+     * implementation and hot paths and to prevent users from making the whole class hierarchy
+     * require initialization nodes.
+     */
+    @SuppressWarnings("DataFlowIssue")//
+    private static final Set<Class<?>> alwaysReachedTypes = Set.of(
+                    Object.class, Class.class, String.class,
+                    Character.class, Byte.class, Short.class, Integer.class, Long.class, Float.class, Double.class, Boolean.class,
+                    Enum.class, Cloneable.class, Formattable.class, Throwable.class, Serializable.class, AutoCloseable.class, Runnable.class,
+                    Iterable.class, Collection.class, Set.class, List.class, Map.class,
+                    System.class, Thread.class,
+                    Reference.class, SoftReference.class, StackWalker.class, ReferenceQueue.class);
+
+    final Set<Class<?>> typesRequiringReachability = ConcurrentHashMap.newKeySet();
 
     boolean configurationSealed;
 
@@ -133,7 +156,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
 
     /**
      * Returns true if the provided type is initialized at image build time.
-     *
+     * <p>
      * If the return value is true, then the class is also guaranteed to be initialized already.
      * This means that calling this method might trigger class initialization, i.e., execute
      * arbitrary user code.
@@ -144,7 +167,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
 
     /**
      * Returns true if the provided type is initialized at image build time.
-     *
+     * <p>
      * If the return value is true, then the class is also guaranteed to be initialized already.
      * This means that calling this method might trigger class initialization, i.e., execute
      * arbitrary user code.
@@ -328,7 +351,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * Computes the class initialization kind of the provided class, all superclasses, and all
      * interfaces that the provided class depends on (i.e., interfaces implemented by the provided
      * class that declare default methods).
-     *
+     * <p>
      * Also defines class initialization based on a policy of the subclass.
      */
     InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz, boolean memoize) {
@@ -449,5 +472,56 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
                 addAllInterfaces(interf, result);
             }
         }
+    }
+
+    public void addForTypeReachedTracking(Class<?> clazz) {
+        if (!isAlwaysReached(clazz)) {
+            UserError.guarantee(!configurationSealed, "It is not possible to register types for reachability tracking after the analysis has started.");
+            typesRequiringReachability.add(clazz);
+        }
+    }
+
+    public boolean isAlwaysReached(Class<?> jClass) {
+        Set<String> systemModules = Set.of("org.graalvm.nativeimage.builder", "org.graalvm.nativeimage", "org.graalvm.nativeimage.base", "com.oracle.svm.svm_enterprise",
+                        "org.graalvm.word", "jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise");
+        Set<String> jdkModules = Set.of("java.base", "jdk.management", "java.management", "org.graalvm.collections");
+
+        String classModuleName = jClass.getModule().getName();
+        boolean alwaysReachedModule = classModuleName != null && (systemModules.contains(classModuleName) || jdkModules.contains(classModuleName));
+        return jClass.isPrimitive() ||
+                        jClass.isArray() ||
+                        alwaysReachedModule ||
+                        alwaysReachedTypes.contains(jClass);
+    }
+
+    /**
+     * If any type in the type hierarchy was marked as "type reached", we have to track
+     * initialization for all its subtypes. Otherwise, marking the supertype as reached could be
+     * missed when the initializer of the subtype is computed at build time.
+     */
+    public boolean requiresInitializationNodeForTypeReached(ResolvedJavaType type) {
+        if (type == null) {
+            return false;
+        }
+        var jClass = OriginalClassProvider.getJavaClass(type);
+        if (isAlwaysReached(jClass)) {
+            return false;
+        }
+
+        if (TreatAllUserSpaceTypesAsTrackedForTypeReached.getValue()) {
+            return true;
+        }
+
+        if (typesRequiringReachability.contains(jClass) ||
+                        requiresInitializationNodeForTypeReached(type.getSuperclass())) {
+            return true;
+        }
+
+        for (ResolvedJavaType anInterface : type.getInterfaces()) {
+            if (requiresInitializationNodeForTypeReached(anInterface)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

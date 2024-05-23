@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
@@ -103,6 +104,23 @@ public class SubstrateOptions {
     @Option(help = "Build shared library")//
     public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
 
+    @Option(help = "Build a Native Image layer.")//
+    public static final HostedOptionKey<Boolean> ImageLayer = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            LayeredBaseImageAnalysis.update(values, newValue);
+            ClosedTypeWorld.update(values, !newValue);
+            PersistImageLayerAnalysis.update(values, newValue);
+            PersistImageLayerSingletons.update(values, newValue);
+            StripDebugInfo.update(values, !newValue);
+            AOTTrivialInline.update(values, !newValue);
+            if (imageLayerEnabledHandler != null) {
+                imageLayerEnabledHandler.onOptionEnabled(values);
+            }
+            UseContainerSupport.update(values, !newValue);
+        }
+    };
+
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
@@ -176,6 +194,7 @@ public class SubstrateOptions {
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
+    private static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
 
     @Fold
     public static boolean getSourceLevelDebug() {
@@ -264,6 +283,14 @@ public class SubstrateOptions {
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.SourceLevelDebug.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.AOTTrivialInline.update(values, newLevel != OptimizationLevel.O0);
+
+            /*
+             * We do not want to enable this optimization yet by default, because it reduces the
+             * precision of implicit stack traces. But for optimized release builds, including pgo
+             * builds, it is a valuable image size reduction.
+             */
+            SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, newLevel == OptimizationLevel.O3);
+
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
@@ -324,8 +351,16 @@ public class SubstrateOptions {
         void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T newValue);
     }
 
+    public interface OptionEnabledHandler<T> {
+        void onOptionEnabled(EconomicMap<OptionKey<?>, Object> values);
+    }
+
     public static void setOptimizeValueUpdateHandler(ValueUpdateHandler<OptimizationLevel> updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
+    }
+
+    public static void setImageLayerEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {
+        SubstrateOptions.imageLayerEnabledHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
@@ -633,7 +668,7 @@ public class SubstrateOptions {
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
-    @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, Reachable).", type = OptionType.Debug)//
+    @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: Reachable, Instantiated).", type = OptionType.Debug)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Backend used by the compiler", type = OptionType.User)//
@@ -685,6 +720,8 @@ public class SubstrateOptions {
      */
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN);
+    @Option(help = "Ignore undefined symbols referenced from the built image.")//
+    public static final HostedOptionKey<Boolean> IgnoreUndefinedReferences = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
     @Option(help = "Compatibility option to make symbols used for the image heap global. " +
@@ -1088,13 +1125,35 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Persist the image heap and the AnalysisUniverse (types, methods and fields) of the current build", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> PersistImageLayer = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> PersistImageLayerAnalysis = new HostedOptionKey<>(false);
+
+    @Option(help = "Persist the layered image singletons of the current build", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> PersistImageLayerSingletons = new HostedOptionKey<>(false);
 
     @Option(help = "Throws an exception on potential type conflict during heap persisting if enabled", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> AbortOnNameConflict = new HostedOptionKey<>(false);
 
     @Option(help = "Names of layer snapshots produced by PersistImageLayer", type = OptionType.Debug) //
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
+    @BundleMember(role = BundleMember.Role.Input)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build()) {
+        @Override
+        public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
+            super.update(values, boxedValue);
+            ClosedTypeWorld.update(values, false);
+            /* Ignore any potential undefined references caused by inlining in base layer. */
+            IgnoreUndefinedReferences.update(values, true);
+            AOTTrivialInline.update(values, false);
+            if (imageLayerEnabledHandler != null) {
+                imageLayerEnabledHandler.onOptionEnabled(values);
+            }
+        }
+    };
+
+    @Option(help = "Load the image heap and the AnalysisUniverse into the current build", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> LoadImageLayerAnalysis = new HostedOptionKey<>(true);
+
+    @Option(help = "Load the layered image singleton information into the current build", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> LoadImageLayerSingletons = new HostedOptionKey<>(true);
 
     public static class TruffleStableOptions {
 
@@ -1103,4 +1162,8 @@ public class SubstrateOptions {
                         "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
         public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
     }
+
+    @Option(help = "Reduce the amount of metadata in the image for implicit exceptions by removing inlining information from the stack trace. " +
+                    "This makes the image smaller, but also the stack trace of implicit exceptions less precise.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> ReduceImplicitExceptionStackTraceInformation = new HostedOptionKey<>(false);
 }

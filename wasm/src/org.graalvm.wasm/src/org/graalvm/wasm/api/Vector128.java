@@ -42,12 +42,14 @@ package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+
+import java.nio.ByteOrder;
 
 @ExportLibrary(InteropLibrary.class)
 @CompilerDirectives.ValueType
@@ -58,10 +60,19 @@ public final class Vector128 implements TruffleObject {
 
     public static final Vector128 ZERO = new Vector128(new byte[16]);
 
+    public static final int BYTES = 16;
+
+    public static final int BYTE_LENGTH = BYTES / Byte.BYTES;
+    public static final int SHORT_LENGTH = BYTES / Short.BYTES;
+    public static final int INT_LENGTH = BYTES / Integer.BYTES;
+    public static final int LONG_LENGTH = BYTES / Long.BYTES;
+    public static final int FLOAT_LENGTH = BYTES / Float.BYTES;
+    public static final int DOUBLE_LENGTH = BYTES / Double.BYTES;
+
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final byte[] bytes;
 
     public Vector128(byte[] bytes) {
-        assert bytes.length == 16;
+        assert bytes.length == BYTES;
         this.bytes = bytes;
     }
 
@@ -111,124 +122,168 @@ public final class Vector128 implements TruffleObject {
 
     @ExplodeLoop
     public static short[] fromBytesToShorts(byte[] bytes) {
-        assert bytes.length == 16;
-        short[] shorts = new short[8];
-        for (int i = 0; i < 8; i++) {
-            shorts[i] = byteArraySupport.getShort(bytes, i * 2);
+        assert bytes.length == BYTES;
+        short[] shorts = new short[SHORT_LENGTH];
+        for (int i = 0; i < SHORT_LENGTH; i++) {
+            shorts[i] = byteArraySupport.getShort(bytes, i * Short.BYTES);
         }
         return shorts;
     }
 
     @ExplodeLoop
     public static int[] fromBytesToInts(byte[] bytes) {
-        assert bytes.length == 16;
-        int[] ints = new int[4];
-        for (int i = 0; i < 4; i++) {
-            ints[i] = byteArraySupport.getInt(bytes, i * 4);
+        assert bytes.length == BYTES;
+        int[] ints = new int[INT_LENGTH];
+        for (int i = 0; i < INT_LENGTH; i++) {
+            ints[i] = byteArraySupport.getInt(bytes, i * Integer.BYTES);
         }
         return ints;
     }
 
     @ExplodeLoop
     public static long[] fromBytesToLongs(byte[] bytes) {
-        assert bytes.length == 16;
-        long[] longs = new long[2];
-        for (int i = 0; i < 2; i++) {
-            longs[i] = byteArraySupport.getLong(bytes, i * 8);
+        assert bytes.length == BYTES;
+        long[] longs = new long[LONG_LENGTH];
+        for (int i = 0; i < LONG_LENGTH; i++) {
+            longs[i] = byteArraySupport.getLong(bytes, i * Long.BYTES);
         }
         return longs;
     }
 
     @ExplodeLoop
     public static float[] fromBytesToFloats(byte[] bytes) {
-        assert bytes.length == 16;
-        float[] floats = new float[4];
-        for (int i = 0; i < 4; i++) {
-            floats[i] = byteArraySupport.getFloat(bytes, i * 4);
+        assert bytes.length == BYTES;
+        float[] floats = new float[FLOAT_LENGTH];
+        for (int i = 0; i < FLOAT_LENGTH; i++) {
+            floats[i] = byteArraySupport.getFloat(bytes, i * Float.BYTES);
         }
         return floats;
     }
 
     @ExplodeLoop
     public static double[] fromBytesToDoubles(byte[] bytes) {
-        assert bytes.length == 16;
-        double[] doubles = new double[2];
-        for (int i = 0; i < 2; i++) {
-            doubles[i] = byteArraySupport.getDouble(bytes, i * 8);
+        assert bytes.length == BYTES;
+        double[] doubles = new double[DOUBLE_LENGTH];
+        for (int i = 0; i < DOUBLE_LENGTH; i++) {
+            doubles[i] = byteArraySupport.getDouble(bytes, i * Double.BYTES);
         }
         return doubles;
     }
 
     @ExplodeLoop
     public static byte[] fromShortsToBytes(short[] shorts) {
-        assert shorts.length == 8;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 8; i++) {
-            byteArraySupport.putShort(bytes, i * 2, shorts[i]);
+        assert shorts.length == SHORT_LENGTH;
+        byte[] bytes = new byte[BYTES];
+        for (int i = 0; i < SHORT_LENGTH; i++) {
+            byteArraySupport.putShort(bytes, i * Short.BYTES, shorts[i]);
         }
         return bytes;
     }
 
     @ExplodeLoop
     public static byte[] fromIntsToBytes(int[] ints) {
-        assert ints.length == 4;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 4; i++) {
-            byteArraySupport.putInt(bytes, i * 4, ints[i]);
+        assert ints.length == INT_LENGTH;
+        byte[] bytes = new byte[BYTES];
+        for (int i = 0; i < INT_LENGTH; i++) {
+            byteArraySupport.putInt(bytes, i * Integer.BYTES, ints[i]);
         }
         return bytes;
     }
 
     @ExplodeLoop
     public static byte[] fromLongsToBytes(long[] longs) {
-        assert longs.length == 2;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 2; i++) {
-            byteArraySupport.putLong(bytes, i * 8, longs[i]);
+        assert longs.length == LONG_LENGTH;
+        byte[] bytes = new byte[BYTES];
+        for (int i = 0; i < LONG_LENGTH; i++) {
+            byteArraySupport.putLong(bytes, i * Long.BYTES, longs[i]);
         }
         return bytes;
     }
 
     @ExplodeLoop
     public static byte[] fromFloatsToBytes(float[] floats) {
-        assert floats.length == 4;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 4; i++) {
-            byteArraySupport.putFloat(bytes, i * 4, floats[i]);
+        assert floats.length == FLOAT_LENGTH;
+        byte[] bytes = new byte[BYTES];
+        for (int i = 0; i < FLOAT_LENGTH; i++) {
+            byteArraySupport.putFloat(bytes, i * Float.BYTES, floats[i]);
         }
         return bytes;
     }
 
     @ExplodeLoop
     public static byte[] fromDoublesToBytes(double[] doubles) {
-        assert doubles.length == 2;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 2; i++) {
-            byteArraySupport.putDouble(bytes, i * 8, doubles[i]);
+        assert doubles.length == DOUBLE_LENGTH;
+        byte[] bytes = new byte[BYTES];
+        for (int i = 0; i < DOUBLE_LENGTH; i++) {
+            byteArraySupport.putDouble(bytes, i * Double.BYTES, doubles[i]);
         }
         return bytes;
     }
 
+    private static ByteArraySupport byteArraySupportForByteOrder(ByteOrder byteOrder) {
+        if (byteOrder == ByteOrder.LITTLE_ENDIAN) {
+            return ByteArraySupport.littleEndian();
+        } else {
+            assert byteOrder == ByteOrder.BIG_ENDIAN;
+            return ByteArraySupport.bigEndian();
+        }
+    }
+
     @ExportMessage
-    protected static boolean hasArrayElements(@SuppressWarnings("unused") Vector128 receiver) {
+    protected static boolean hasBufferElements(@SuppressWarnings("unused") Vector128 receiver) {
         return true;
     }
 
     @ExportMessage
-    protected static int getArraySize(@SuppressWarnings("unused") Vector128 receiver) {
-        return 16;
+    protected static int getBufferSize(@SuppressWarnings("unused") Vector128 receiver) {
+        return BYTES;
     }
 
-    @ExportMessage
-    protected static boolean isArrayElementReadable(@SuppressWarnings("unused") Vector128 receiver, long index) {
-        return index >= 0 && index < 16;
-    }
-
-    @ExportMessage
-    protected byte readArrayElement(long index) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(this, index)) {
-            throw InvalidArrayIndexException.create(index);
+    private void validateReadByteOffset(long byteOffset, int length) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || byteOffset > getBufferSize(this) - length) {
+            throw InvalidBufferOffsetException.create(byteOffset, length);
         }
-        return bytes[(int) index];
+    }
+
+    @ExportMessage
+    protected byte readBufferByte(long byteOffset) throws InvalidBufferOffsetException {
+        validateReadByteOffset(byteOffset, Byte.BYTES);
+        return bytes[(int) byteOffset];
+    }
+
+    @ExportMessage
+    protected void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length) throws InvalidBufferOffsetException {
+        validateReadByteOffset(byteOffset, length);
+        System.arraycopy(bytes, (int) byteOffset, destination, destinationOffset, length);
+    }
+
+    @ExportMessage
+    protected short readBufferShort(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        validateReadByteOffset(byteOffset, Short.BYTES);
+        return byteArraySupportForByteOrder(byteOrder).getShort(bytes, (int) byteOffset);
+    }
+
+    @ExportMessage
+    protected int readBufferInt(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        validateReadByteOffset(byteOffset, Integer.BYTES);
+        return byteArraySupportForByteOrder(byteOrder).getInt(bytes, (int) byteOffset);
+    }
+
+    @ExportMessage
+    protected long readBufferLong(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        validateReadByteOffset(byteOffset, Long.BYTES);
+        return byteArraySupportForByteOrder(byteOrder).getLong(bytes, (int) byteOffset);
+    }
+
+    @ExportMessage
+    protected float readBufferFloat(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        validateReadByteOffset(byteOffset, Float.BYTES);
+        return byteArraySupportForByteOrder(byteOrder).getFloat(bytes, (int) byteOffset);
+    }
+
+    @ExportMessage
+    protected double readBufferDouble(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        validateReadByteOffset(byteOffset, Double.BYTES);
+        return byteArraySupportForByteOrder(byteOrder).getDouble(bytes, (int) byteOffset);
     }
 }

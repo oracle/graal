@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.snippets;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -37,10 +38,14 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
+import com.oracle.svm.core.code.BaseLayerMethodAccessor;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
@@ -50,6 +55,7 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -112,6 +118,7 @@ public abstract class NonSnippetLowerings {
 
     public static final SnippetRuntime.SubstrateForeignCallDescriptor REPORT_VERIFY_TYPES_ERROR = SnippetRuntime.findForeignCall(NonSnippetLowerings.class, "reportVerifyTypesError", HAS_SIDE_EFFECT,
                     LocationIdentity.any());
+    public static final Field boxedRelocatedPointerField = ReflectionUtil.lookupField(BoxedRelocatedPointer.class, "pointer");
 
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 
@@ -154,6 +161,7 @@ public abstract class NonSnippetLowerings {
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.GET_CACHED_ARITHMETIC_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, ImplicitExceptions.GET_CACHED_ILLEGAL_MONITOR_STATE_EXCEPTION);
 
         createExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         createExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.CREATE_NULL_POINTER_EXCEPTION);
@@ -170,6 +178,7 @@ public abstract class NonSnippetLowerings {
         createExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.CREATE_LONG_OVERFLOW_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.CREATE_ASSERTION_ERROR_NULLARY);
         createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.CREATE_ASSERTION_ERROR_OBJECT);
+        createExceptionDescriptors.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, ImplicitExceptions.CREATE_ILLEGAL_MONITOR_STATE_EXCEPTION);
 
         throwCachedExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_CACHED_NULL_POINTER_EXCEPTION);
@@ -186,6 +195,7 @@ public abstract class NonSnippetLowerings {
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.THROW_CACHED_ARITHMETIC_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, ImplicitExceptions.THROW_CACHED_ILLEGAL_MONITOR_STATE_EXCEPTION);
 
         throwNewExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_NEW_NULL_POINTER_EXCEPTION);
@@ -202,6 +212,7 @@ public abstract class NonSnippetLowerings {
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.THROW_NEW_LONG_OVERFLOW_EXCEPTION);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_NULLARY);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_OBJECT);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.UNSTRUCTURED_LOCKING, ImplicitExceptions.THROW_NEW_ILLEGAL_MONITOR_STATE_EXCEPTION_WITH_ARGS);
     }
 
     private ForeignCallDescriptor lookupBytecodeException(BytecodeExceptionKind exceptionKind, NodeInputList<ValueNode> exceptionArguments, StructuredGraph graph,
@@ -364,7 +375,23 @@ public abstract class NonSnippetLowerings {
                         targetMethod = implementations[0];
                     }
 
-                    if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
+                    if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
+                        /*
+                         * Lower cross layer boundary direct calls to indirect calls. First load the
+                         * target method absolute address from the method entry stored in the data
+                         * section. Then call that address indirectly.
+                         */
+                        CGlobalDataInfo methodDataInfo = BaseLayerMethodAccessor.singleton().getMethodData(targetMethod);
+                        AddressNode methodPointerAddress = graph.addOrUniqueWithInputs(OffsetAddressNode.create(new CGlobalDataLoadAddressNode(methodDataInfo)));
+
+                        /*
+                         * Use the ANY location identity to prevent ReadNode.canonicalizeRead() to
+                         * try to constant fold the method address.
+                         */
+                        ReadNode entry = graph.add(new ReadNode(methodPointerAddress, LocationIdentity.any(), FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
+                        loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, entry);
+                        graph.addBeforeFixed(node, entry);
+                    } else if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = createDirectCall(graph, callTarget, parameters, signature, callType, invokeKind, targetMethod, node);
                     } else if (!targetMethod.hasImageCodeOffset()) {
                         /*

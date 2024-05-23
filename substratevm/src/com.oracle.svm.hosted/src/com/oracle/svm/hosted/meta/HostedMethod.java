@@ -267,6 +267,11 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
+    public boolean forceIndirectCall() {
+        return wrapped.isInBaseLayer();
+    }
+
+    @Override
     public boolean hasImageCodeOffset() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
@@ -479,7 +484,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean canBeInlined() {
-        return !hasNeverInlineDirective();
+        return wrapped.canBeInlined();
     }
 
     @Override

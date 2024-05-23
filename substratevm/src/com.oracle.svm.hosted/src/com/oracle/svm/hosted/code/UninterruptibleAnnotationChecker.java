@@ -43,12 +43,14 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Checks that {@linkplain Uninterruptible} has been used consistently. */
@@ -69,9 +71,9 @@ public final class UninterruptibleAnnotationChecker {
     UninterruptibleAnnotationChecker() {
     }
 
-    public static void checkAfterParsing(ResolvedJavaMethod method, StructuredGraph graph) {
+    public static void checkAfterParsing(ResolvedJavaMethod method, StructuredGraph graph, ConstantReflectionProvider constantReflectionProvider) {
         if (Uninterruptible.Utils.isUninterruptible(method) && graph != null) {
-            singleton().checkGraph(method, graph);
+            singleton().checkGraph(method, graph, constantReflectionProvider);
         }
     }
 
@@ -252,7 +254,7 @@ public final class UninterruptibleAnnotationChecker {
         }
     }
 
-    private void checkGraph(ResolvedJavaMethod method, StructuredGraph graph) {
+    private void checkGraph(ResolvedJavaMethod method, StructuredGraph graph, ConstantReflectionProvider constantReflectionProvider) {
         Uninterruptible annotation = Uninterruptible.Utils.getAnnotation(method);
         for (Node node : graph.getNodes()) {
             if (isAllocationNode(node)) {
@@ -265,7 +267,10 @@ public final class UninterruptibleAnnotationChecker {
                  * It is therefore safe to have class initialization nodes in methods that are
                  * annotated with calleeMustBe = false.
                  */
-                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to do class initialization.");
+                ValueNode hub = ((EnsureClassInitializedNode) node).getHub();
+
+                var culprit = hub.isConstant() ? constantReflectionProvider.asJavaType(hub.asConstant()).toClassName() : "unknown";
+                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to do class initialization. Initialized type: " + culprit);
             }
         }
     }

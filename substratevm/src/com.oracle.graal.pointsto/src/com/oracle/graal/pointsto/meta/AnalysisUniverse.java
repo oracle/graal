@@ -50,14 +50,12 @@ import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
-import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
-import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -127,7 +125,6 @@ public class AnalysisUniverse implements Universe {
     private AnalysisPolicy analysisPolicy;
     private ImageHeapScanner heapScanner;
     private ImageLayerLoader imageLayerLoader;
-    private ImageLayerWriter imageLayerWriter;
     private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
     private DuringAnalysisAccess concurrentAnalysisAccess;
@@ -673,8 +670,9 @@ public class AnalysisUniverse implements Universe {
         bb.onFieldAccessed(field);
     }
 
-    public void onTypeInstantiated(AnalysisType type, UsageKind usage) {
-        bb.onTypeInstantiated(type, usage);
+    public void onTypeInstantiated(AnalysisType type) {
+        hostVM.onTypeInstantiated(bb, type);
+        bb.onTypeInstantiated(type);
     }
 
     public void onTypeReachable(AnalysisType type) {
@@ -730,14 +728,6 @@ public class AnalysisUniverse implements Universe {
 
     public ImageLayerLoader getImageLayerLoader() {
         return imageLayerLoader;
-    }
-
-    public ImageLayerWriter getImageLayerWriter() {
-        return imageLayerWriter;
-    }
-
-    public void setImageLayerWriter(ImageLayerWriter imageLayerWriter) {
-        this.imageLayerWriter = imageLayerWriter;
     }
 
     public HostedValuesProvider getHostedValuesProvider() {

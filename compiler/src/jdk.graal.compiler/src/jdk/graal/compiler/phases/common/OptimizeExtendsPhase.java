@@ -258,7 +258,7 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
 
             // create needed new extends
             if (maxZeroExtend != UNSET && newZeroExtend == null) {
-                newZeroExtend = graph.addOrUnique(new ZeroExtendNode(extendInput, inputBitsSize, maxZeroExtend, false));
+                newZeroExtend = graph.addOrUnique(new ZeroExtendNode(extendInput, inputBitsSize, maxZeroExtend));
             }
             if (maxSignExtend != UNSET && newSignExtend == null) {
                 newSignExtend = graph.addOrUnique(new SignExtendNode(extendInput, inputBitsSize, maxSignExtend));

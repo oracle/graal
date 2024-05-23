@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,22 +59,9 @@ public class ErrorContext {
         };
     }
 
-    private Throwable throwable = null;
     @SuppressWarnings("preview") private MemorySegment errnoLocation;
     private Integer nativeErrno = null;
     final PanamaNFIContext ctx;
-
-    public void setThrowable(Throwable throwable) {
-        this.throwable = throwable;
-    }
-
-    void handleThrowables() {
-        if (throwable != null) {
-            Throwable temp = throwable;
-            throwable = null;
-            throw silenceThrowable(RuntimeException.class, temp);
-        }
-    }
 
     public boolean nativeErrnoSet() {
         return (nativeErrno != null);
@@ -118,10 +105,5 @@ public class ErrorContext {
 
     ErrorContext(PanamaNFIContext ctx, Thread thread) {
         this.ctx = ctx;
-    }
-
-    @SuppressWarnings("unchecked")
-    static <E extends Throwable> RuntimeException silenceThrowable(Class<E> type, Throwable t) throws E {
-        throw (E) t;
     }
 }

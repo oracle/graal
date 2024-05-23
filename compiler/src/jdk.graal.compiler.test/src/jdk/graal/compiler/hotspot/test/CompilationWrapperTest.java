@@ -240,7 +240,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                     List<ZipProbe> initialZipProbes,
                     List<String> extraVmArgs,
                     String... mainClassAndArgs) throws IOException, InterruptedException {
-        final File dumpPath = new File(CompilationWrapperTest.class.getSimpleName() + "_" + System.currentTimeMillis()).getAbsoluteFile();
+        final Path dumpPath = getOutputDirectory(CompilationWrapperTest.class).resolve(CompilationWrapperTest.class.getSimpleName() + "_" + nowAsFileName());
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
         vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
         vmArgs.remove("-esa");
@@ -252,7 +252,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
 
         Subprocess proc = SubprocessUtil.java(vmArgs, mainClassAndArgs);
         if (VERBOSE) {
-            System.out.println(proc);
+            System.out.printf("%n%s%n", proc.preserveArgfile());
         }
 
         try {
@@ -274,7 +274,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             for (Probe probe : probes) {
                 String error = probe.test();
                 if (error != null) {
-                    Assert.fail(String.format("Did not find expected occurrences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
+                    Assert.fail(String.format("Did not find expected occurrences of '%s' in output of command: %s%n%s", probe.substring, error, proc.preserveArgfile()));
                 }
             }
 
@@ -284,7 +284,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             Assert.assertTrue(line, m.find());
             String diagnosticOutputZip = m.group(1);
 
-            List<String> dumpPathEntries = Arrays.asList(dumpPath.list());
+            List<String> dumpPathEntries = List.of(dumpPath.toFile().list());
 
             File zip = new File(diagnosticOutputZip).getAbsoluteFile();
             Assert.assertTrue(zip.toString(), zip.exists());
@@ -317,14 +317,14 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                 for (ZipProbe probe : zipProbes) {
                     String error = probe.test();
                     if (error != null) {
-                        Assert.fail(String.format("Did not find expected occurrences of '%s' files in %s: %s%n%s", probe.suffix, entries, error, proc));
+                        Assert.fail(String.format("Did not find expected occurrences of '%s' files in %s: %s%n%s", probe.suffix, entries, error, proc.preserveArgfile()));
                     }
                 }
             } finally {
                 zip.delete();
             }
         } finally {
-            Path directory = dumpPath.toPath();
+            Path directory = dumpPath;
             removeDirectory(directory);
         }
     }

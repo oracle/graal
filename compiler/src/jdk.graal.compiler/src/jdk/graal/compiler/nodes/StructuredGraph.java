@@ -57,6 +57,7 @@ import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
@@ -67,6 +68,7 @@ import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
@@ -101,11 +103,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private final ControlFlowGraph cfg;
         private final NodeMap<HIRBlock> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
+        public final SchedulingStrategy strategy;
 
-        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
+        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, SchedulingStrategy strategy) {
             this.cfg = cfg;
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
+            this.strategy = strategy;
         }
 
         public ControlFlowGraph getCFG() {
@@ -301,7 +305,67 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     private final Assumptions assumptions;
 
+    /**
+     * The last schedule which was computed for this graph. Only re-use if
+     * {@link #isLastScheduleValid()} is {@code true}.
+     */
     private ScheduleResult lastSchedule;
+
+    /**
+     * The last control flow graph which was computed for this graph. Only re-use if
+     * {@link #isLastCFGValid()} is {@code true}.
+     */
+    private ControlFlowGraph lastCFG;
+
+    private final CacheInvalidationListener cacheInvalidationListener;
+    private NodeEventScope cacheInvalidationNES;
+
+    /**
+     * Invalidates cached values (e.g., schedule or CFG) if the graph changes. Afterwards, removes
+     * itself from the graph's list of listeners. Needs to be added to the graph again after one of
+     * the caches is set to ensure proper invalidation.
+     */
+    private final class CacheInvalidationListener extends NodeEventListener {
+
+        private boolean lastCFGValid;
+        private boolean lastScheduleValid;
+
+        @Override
+        public void changed(NodeEvent e, Node node) {
+            lastCFGValid = false;
+            lastScheduleValid = false;
+            disableCacheInvalidationListener();
+        }
+    }
+
+    /**
+     * Returns {@code true} if the graph has not changed since calculating the last schedule. Use
+     * {@link #getLastSchedule()} for obtaining the cached schedule.
+     */
+    public boolean isLastScheduleValid() {
+        return cacheInvalidationListener.lastScheduleValid;
+    }
+
+    /**
+     * Returns {@code true} if the graph has not changed since calculating the last control flow
+     * graph. Use {@link #getLastCFG()} for obtaining the cached cfg.
+     */
+    public boolean isLastCFGValid() {
+        return cacheInvalidationListener.lastCFGValid;
+    }
+
+    private void enableCacheInvalidationListener() {
+        if (cacheInvalidationNES == null) {
+            cacheInvalidationNES = this.trackNodeEvents(cacheInvalidationListener);
+        }
+    }
+
+    private void disableCacheInvalidationListener() {
+        if (cacheInvalidationNES != null) {
+            cacheInvalidationNES.close();
+            cacheInvalidationNES = null;
+        }
+    }
 
     private InliningLog inliningLog;
 
@@ -375,19 +439,52 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isStructuredOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
+        this.cacheInvalidationListener = new CacheInvalidationListener();
     }
 
     public void setLastSchedule(ScheduleResult result) {
         GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
+        cacheInvalidationListener.lastScheduleValid = result != null;
+        if (result != null) {
+            enableCacheInvalidationListener();
+        }
     }
 
+    /**
+     * Returns the last schedule which has been computed for this graph. Use
+     * {@link #isLastScheduleValid()} to verify that the graph has not changed since the last
+     * schedule has been computed.
+     */
     public ScheduleResult getLastSchedule() {
         return lastSchedule;
     }
 
     public void clearLastSchedule() {
         setLastSchedule(null);
+        clearLastCFG();
+    }
+
+    /**
+     * Returns the last control flow graph which has been computed for this graph. Use
+     * {@link #isLastCFGValid()} to verify that the graph has not changed since the last cfg has
+     * been computed. Creating a {@link ControlFlowGraph} via
+     * {@link ControlFlowGraphBuilder#build()} will implicitly return and/or update the cached cfg.
+     */
+    public ControlFlowGraph getLastCFG() {
+        return lastCFG;
+    }
+
+    public void setLastCFG(ControlFlowGraph cfg) {
+        lastCFG = cfg;
+        cacheInvalidationListener.lastCFGValid = cfg != null;
+        if (cfg != null) {
+            enableCacheInvalidationListener();
+        }
+    }
+
+    public void clearLastCFG() {
+        setLastCFG(null);
     }
 
     @Override

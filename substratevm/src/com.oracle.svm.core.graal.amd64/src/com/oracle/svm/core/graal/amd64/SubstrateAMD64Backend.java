@@ -43,6 +43,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -53,6 +54,7 @@ import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
+import com.oracle.svm.core.code.BaseLayerMethodAccessor;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -664,12 +666,22 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         protected Value emitIndirectForeignCallAddress(ForeignCallLinkage linkage) {
+            SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
+            SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
+            if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
+                /*
+                 * Load the absolute address of the target method from the method entry stored in
+                 * the data section.
+                 */
+                CGlobalDataInfo methodDataInfo = BaseLayerMethodAccessor.singleton().getMethodData(targetMethod);
+                AllocatableValue methodPointerAddress = newVariable(getLIRKindTool().getWordKind());
+                append(new AMD64CGlobalDataLoadAddressOp(methodDataInfo, methodPointerAddress));
+                AMD64AddressValue methodTableEntryAddress = new AMD64AddressValue(getLIRKindTool().getWordKind(), methodPointerAddress, Value.ILLEGAL, Stride.S1, 0);
+                return getArithmetic().emitLoad(getLIRKindTool().getWordKind(), methodTableEntryAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
+            }
             if (!shouldEmitOnlyIndirectCalls()) {
                 return null;
             }
-            SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
-            SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
-
             Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(targetMethod.getImageCodeOffset()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo()));
             Value codeStartField = new AMD64AddressValue(getLIRKindTool().getWordKind(), asAllocatable(codeInfo), KnownOffsets.singleton().getImageCodeInfoCodeStartOffset());
@@ -684,9 +696,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             Value exceptionTemp = getExceptionTemp(info != null && info.exceptionEdge != null);
 
             vzeroupperBeforeCall(this, arguments, info, targetMethod);
-            if (shouldEmitOnlyIndirectCalls()) {
+            if (shouldEmitOnlyIndirectCalls() || targetMethod.forceIndirectCall()) {
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
-                emitMove(targetRegister, targetAddress);
+                emitMove(targetRegister, targetAddress); // targetAddress is a CFunctionPointer
                 append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
                                 Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null));
             } else {

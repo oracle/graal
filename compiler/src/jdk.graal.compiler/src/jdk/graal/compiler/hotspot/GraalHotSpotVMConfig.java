@@ -516,12 +516,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long unsafeArraycopy = getFieldValue("StubRoutines::_unsafe_arraycopy", Long.class, "address");
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
 
-    // Allocation stubs that throw an exception when allocation fails
-    public final long newInstanceAddress = getAddress("JVMCIRuntime::new_instance");
-    public final long newArrayAddress = getAddress("JVMCIRuntime::new_array");
-    public final long newMultiArrayAddress = getAddress("JVMCIRuntime::new_multi_array");
-    public final long dynamicNewInstanceAddress = getAddress("JVMCIRuntime::dynamic_new_instance");
-
     // Allocation stubs that return null when allocation fails
     public final long newInstanceOrNullAddress = getAddress("JVMCIRuntime::new_instance_or_null");
     public final long newArrayOrNullAddress = getAddress("JVMCIRuntime::new_array_or_null");
@@ -530,23 +524,14 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final long invokeJavaMethodAddress = getAddress("JVMCIRuntime::invoke_static_method_one_arg");
 
-    public boolean areNullAllocationStubsAvailable() {
-        return newInstanceOrNullAddress != 0L;
-    }
-
     /**
      * Checks that HotSpot implements all or none of the allocate-or-null stubs.
      */
     private boolean checkNullAllocationStubs() {
-        if (newInstanceOrNullAddress == 0L) {
-            assert newArrayOrNullAddress == 0L : newArrayOrNullAddress;
-            assert newMultiArrayOrNullAddress == 0L : newMultiArrayOrNullAddress;
-            assert dynamicNewInstanceOrNullAddress == 0L : dynamicNewInstanceAddress;
-        } else {
-            assert newArrayOrNullAddress != 0L;
-            assert newMultiArrayOrNullAddress != 0L;
-            assert dynamicNewInstanceOrNullAddress != 0L;
-        }
+        assert newInstanceOrNullAddress != 0L;
+        assert newArrayOrNullAddress != 0L;
+        assert newMultiArrayOrNullAddress != 0L;
+        assert dynamicNewInstanceOrNullAddress != 0L;
         return true;
     }
 

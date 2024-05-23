@@ -323,22 +323,26 @@ The following methods are evaluated at build time when called with constant argu
 
 ### Dynamic Proxy Metadata in JSON
 
-Dynamic proxy metadata should be specified in a _proxy-config.json_ file and conform to the JSON schema defined in
-[proxy-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/proxy-config-schema-v1.0.0.json).
-The schema also includes further details and explanations how this configuration works. Here is the example of the proxy-config.json:
+Dynamic proxy metadata should be specified as part of a _reflect-config.json_ file by adding `"proxy"`-type entries, conforming to the JSON schema defined in [config-type-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/config-type-schema-v1.0.0.json).
+It enables you to register members of a proxy class for reflection the same way as it would be done for a named class.
+The order in which interfaces are given matters and the interfaces will be passed in the same order to generate the proxy class.
+The schema also includes further details and explanations how this configuration works. 
+Here is an example of dynamic proxy metadata in reflect-config.json:
 ```json
 [
   {
     "condition": {
       "typeReachable": "<condition-class>"
     },
-    "interfaces": [
-      "IA",
-      "IB"
-    ]
+    "type": { "proxy": [
+        "IA",
+        "IB"
+      ]}
   }
 ]
 ```
+Contents of _proxy-config.json_ files will still be parsed and honored by Native Image, but this file is now deprecated
+and the [Native Image agent](AutomaticMetadataCollection.md) outputs proxy metadata to reflect-config.json.
 
 ## Serialization
 Java can serialize any class that implements the `Serializable` interface.
@@ -388,6 +392,14 @@ The schema also includes further details and explanations how this configuration
       },
       "type": "<fully-qualified-class-name>",
       "customTargetConstructorClass": "<custom-target-constructor-class>"
+    },
+    {
+      "condition": {
+        "typeReachable": "<condition-class>"
+      },
+      "type": {
+        "proxy": ["<fully-qualified-interface-name-1>", "<fully-qualified-interface-name-n>"]
+      }
     }
   ],
   "lambdaCapturingTypes": [
@@ -397,15 +409,7 @@ The schema also includes further details and explanations how this configuration
       },
       "name": "<fully-qualified-class-name>"
     }
-  ],
- "proxies": [
-   {
-     "condition": {
-       "typeReachable": "<condition-class>"
-     },
-     "interfaces": ["<fully-qualified-interface-name-1>", "<fully-qualified-interface-name-n>"]
-   }
- ]
+  ]
 }
 ```
 

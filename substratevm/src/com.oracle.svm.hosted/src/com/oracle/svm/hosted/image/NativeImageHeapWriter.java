@@ -96,6 +96,14 @@ public final class NativeImageHeapWriter {
         try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject());
+                if (info.getConstant().isInBaseLayer()) {
+                    /*
+                     * Base layer constants are only added to the heap model to store the absolute
+                     * offset in the base layer heap. We don't need to actually write them; their
+                     * absolute offset is used by the objects that reference them.
+                     */
+                    continue;
+                }
                 writeObject(info, buffer);
             }
 
@@ -118,6 +126,10 @@ public final class NativeImageHeapWriter {
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : heap.hUniverse.getFields()) {
+            if (field.wrapped.isInBaseLayer()) {
+                /* Base layer static field values are accessed via the base layer arrays. */
+                continue;
+            }
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
@@ -136,7 +148,7 @@ public final class NativeImageHeapWriter {
 
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw NativeImageHeap.reportIllegalType(target, reason);
+            throw NativeImageHeap.reportIllegalType(target, reason, "Inconsistent image heap.");
         }
     }
 

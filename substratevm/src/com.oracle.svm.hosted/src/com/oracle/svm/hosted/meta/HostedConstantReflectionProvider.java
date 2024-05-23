@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -46,8 +47,8 @@ public class HostedConstantReflectionProvider extends AnalysisConstantReflection
     private final HostedMemoryAccessProvider hMemoryAccess;
 
     @SuppressWarnings("this-escape")
-    public HostedConstantReflectionProvider(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
-        super(hUniverse.getBigBang().getUniverse(), hUniverse.getBigBang().getMetaAccess());
+    public HostedConstantReflectionProvider(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess, ClassInitializationSupport classInitializationSupport) {
+        super(hUniverse.getBigBang().getUniverse(), hUniverse.getBigBang().getMetaAccess(), classInitializationSupport);
         this.hUniverse = hUniverse;
         this.hMetaAccess = hMetaAccess;
         this.hMemoryAccess = new HostedMemoryAccessProvider(hMetaAccess, this);

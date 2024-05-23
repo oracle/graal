@@ -32,7 +32,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
@@ -44,7 +43,6 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
@@ -323,11 +321,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         }
     }
 
-    public void registerAsUnsafeAccessed(Object reason) {
-        registerAsUnsafeAccessed(DefaultUnsafePartition.get(), reason);
-    }
-
-    public boolean registerAsUnsafeAccessed(UnsafePartitionKind partitionKind, Object reason) {
+    public boolean registerAsUnsafeAccessed(Object reason) {
         assert isValidReason(reason) : "Registering a field as unsafe accessed needs to provide a valid reason.";
         registerAsAccessed(reason);
         /*
@@ -356,7 +350,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             } else {
                 /* Register the instance field as unsafe accessed on the declaring type. */
                 AnalysisType declaringType = getDeclaringClass();
-                declaringType.registerUnsafeAccessedField(this, partitionKind);
+                declaringType.registerUnsafeAccessedField(this);
             }
             return true;
         }

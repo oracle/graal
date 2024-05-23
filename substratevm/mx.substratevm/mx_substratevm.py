@@ -2023,20 +2023,24 @@ def native_image_on_jvm(args, **kwargs):
         for key, value in javaProperties.items():
             args.append("-D" + key + "=" + value)
 
-    arg = [executable]
     jacoco_args = mx_gate.get_jacoco_agent_args(agent_option_prefix='-J')
     if jacoco_args is not None:
         arg += jacoco_args
-    arg += args
-    mx.run(arg, **kwargs)
+    mx.run([executable] + _debug_args() + args, **kwargs)
 
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
     executable = vm_executable_path('native-image-configure')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
-    mx.run([executable] + args, **kwargs)
+    mx.run([executable] + _debug_args() + args, **kwargs)
 
+def _debug_args():
+    debug_args = get_jdk().debug_args
+    if debug_args and not mx.is_debug_disabled():
+        # prefix debug args with `--vm.` for bash launchers
+        return [f'--vm.{arg[1:]}' for arg in debug_args]
+    return []
 
 @mx.command(suite.name, 'native-unittest')
 def native_unittest(args):

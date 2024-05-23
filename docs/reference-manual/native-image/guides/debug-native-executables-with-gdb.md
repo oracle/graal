@@ -10,34 +10,38 @@ permalink: /reference-manual/native-image/guides/debug-native-image-process/
 ### Which GDB to Use?
 
 * Please use GDB 10.2 or later. The debug info is tested via `mx debuginfotest` against 10.2.
-* Note that later versions might have slightly different formatting of debugger output (makes e.g. gate checks fail)
+* Note that later versions might have slightly different formatting of debugger output (which, for example, may cause CI/CD gate checks to fail)
 * GDB bundled in recent Linux releases works just fine for debugging sessions 
 
-### Building Images with Debug Information
+### Build a Native Executable with Debug Information
 
-To build a native executable with debug information, provide the `-g` command-line option for `javac` when compiling the application, and then to the `native-image` builder. This enables source-level debugging, and the debugger (GDB) then correlates machine instructions with specific source lines in Java files.
+To build a native executable with debug information, provide the `-g` command-line option for `javac` when compiling the application, and then to the `native-image` builder. 
+This enables source-level debugging, and the debugger (GDB) then correlates machine instructions with specific source lines in Java files.
 
-Adding `-g` to the `native-image` arguments causes debuginfo to be generated.
-Next to the image, there will be an _&lt;imagename&gt;.debug_ file that contains debuginfo and a _sources_ directory that contains Java source files, which the debugger uses to show sources for lineinfo. For example:
+Adding `-g` to the `native-image` arguments causes debuginfo to be generated. 
+Next to the native executable, there will be an _&lt;executable_name&gt;.debug_ file that contains debuginfo and a _sources/_ directory that contains Java source files, which the debugger uses to show sources for lineinfo. For example:
 ```
 hello_image
 hello_image.debug
 sources
 ```
-GDB automatically loads the _&lt;imagename&gt;.debug_ file for a given native executable `<imagename>`. (There is a link between the image and its _*.debug_  file)
+
+GDB automatically loads the _&lt;executable_name&gt;.debug_ file for a given native executable `<executable_name>`. (There is a link between the native executable and its _*.debug_  file)
 
 > For a better debugging experience, we recommend combining `-g` with `-O0`.
 The latter option disables inlining and other optimizations of the Graal compiler, which otherwise would be observable in the debugger (for example, the debugger may jump back and forth between lines instead of allowing you to step from one line to the next one).
 At the same time, `-O0` also enables additional metadata to be collected in the compiler, which then helps the debugger to resolve, for example, local variables.
 
-### Using GDB with New Debug Information
+### Use GDB with New Debug Information
 
-#### Image build information
-The _*.debug_ file contains additional information about the image build, which can be accessed as follows:
+#### Build Information
+
+The _*.debug_ file contains additional information about the build, which can be accessed as follows:
 ```
 readelf -p .debug.svm.imagebuild.classpath hello_image.debug
 ```
-It gives a list of all classpath entries that were used to build the image:
+
+It gives a list of all classpath entries that were used to build the native executable:
 ```
 String dump of section '.debug.svm.imagebuild.classpath':
   [     0]  /home/user/.mx/cache/HAMCREST_e237ae735aac4fa5a7253ec693191f42ef7ddce384c11d29fbf605981c0be077d086757409acad53cb5b9e53d86a07cc428d459ff0f5b00d32a8cbbca390be49/hamcrest.jar
@@ -45,13 +49,15 @@ String dump of section '.debug.svm.imagebuild.classpath':
   [   15a]  /home/user/mx/mxbuild/jdk20/dists/jdk9/junit-tool.jar
   [   1a9]  /home/user/graal/substratevm/mxbuild/jdk20/com.oracle.svm.test/bin
 ```
+
 The following sections are available
 * .debug.svm.imagebuild.classpath
 * .debug.svm.imagebuild.modulepath
 * .debug.svm.imagebuild.arguments
 * .debug.svm.imagebuild.java.properties
 
-#### Where is the main method?
+#### Where is the `main()` Method?
+
 Use
 ```
 info functions ::main
@@ -71,7 +77,8 @@ File java/util/Timer.java:
 Breakpoint 1 at 0x83c030: file hello/Hello.java, line 76.
 ```
 
-#### Setting breakpoints
+#### Set a Breakpoint
+
 First, find the type of the method you want to set a breakpoint in, for example:
 ```
 (gdb) info types ArrayList
@@ -85,10 +92,12 @@ File java/util/ArrayList.java:
 	java.util.ArrayList$ListItr;
 ...
 ```
+
 Now use the following GDB autocompletion:
 ```
 (gdb) b 'java.util.ArrayList::
 ```
+
 Pressing tab twice now shows all `ArrayList` methods to choose from:
 ```
 java.util.ArrayList::ArrayList(int)                                                java.util.ArrayList::iterator()
@@ -107,6 +116,7 @@ If to complete with
 breakpoints in all variants of `add` are installed.
 
 #### Arrays
+
 Arrays have a **`data` field** that can be accessed via an index to get the individual array elements, for example:
 ```
 Thread 1 "hello_image" hit Breakpoint 1, hello.Hello::main(java.lang.String[]*) (args=0x7ff33f800898) at hello/Hello.java:76
@@ -128,7 +138,8 @@ $3 = 0x7ff33f8008a0
 (gdb) ptype args.data
 type = class _z_.java.lang.String : public java.lang.String {
 } *[0]
-``` 
+```
+
 Here `args.data` can be accessed via an index.
 
 In this case, the first of the four array elements is a pointer to a String:
@@ -138,6 +149,7 @@ $4 = (_z_.java.lang.String *) 0x27011a
 ```
 
 #### Strings
+
 To see the actual contents of a Java String object, look at its **`value` field**, for example:
 ```
 (gdb) p args.data[0]
@@ -170,6 +182,7 @@ Let's check the type of `value`:
 (gdb) p args.data[0].value
 $3 = (_z_.byte[] *) 0x250119
 ```
+
 `value` is of type `byte[]`.
 
 As you already learned before, the elements of an array can be accessed via its `data` field.
@@ -194,6 +207,7 @@ $14 = 4
 ```
 
 #### Downcasting
+
 Suppose your source uses a variable of static type `Greeter` and you want to inspect its data.
 ```
 75	    public static void main(String[] args) {
@@ -246,11 +260,13 @@ $21 = (_z_.java.lang.String *) 0xb94a2
 $22 = 0x7ff7f80705b8 "hello.Hello$NamedGreeter\351\001~*"
 ```
 
-So you learned that the actual type of that object is `hello.Hello$NamedGreeter`. 
+So you learned that the actual type of that object is `hello.Hello$NamedGreeter`.
+
 Now cast to that type:
 ```
 (gdb) set $rt_greeter = ('hello.Hello$NamedGreeter' *) greeter
 ```
+
 Now you can inspect the downcasted convenience variable `rt_greeter`:
 ```
 (gdb) p $rt_greeter
@@ -266,23 +282,28 @@ $24 = {
   name = 0x270119
 }
 ```
+
 Now you can see the `name` field that only exists in the `NamedGreeter` subtype.
 ```
 (gdb) p $rt_greeter.name
 $25 = (_z_.java.lang.String *) 0x270119
 ```
+
 So the `name` field is of type String. You already know how to see the contents of a String:
 ```
 (gdb) p $rt_greeter.name.value.data
 $26 = 0x7ff7f91008c0 "FooBar\376\376\200G\273\001\027\001'"
 ```
-##### ⚠️ If the static type that you want to downcast from is a compressed reference then the type used in the downcast also needs to be that of a compressed reference.
+
+> Note: If the static type that you want to downcast from is a compressed reference then the type used in the downcast also needs to be that of a compressed reference.
+
 For example, if you have:
 ```
 (gdb) p elementData.data[0]
 
 $38 = (_z_.java.lang.Object *) 0x290fcc
 ```
+
 In the internal array of an `ArrayList`, the first entry points to a `java.lang.Object` with a `_z_.` prefix, which denotes that this is a **compressed ref**.
 
 To check what the runtime-type of that object is, use:
@@ -291,6 +312,7 @@ To check what the runtime-type of that object is, use:
 
 $40 = 0x7ff7f8665600 "java.lang.String=\256\271`"
 ```
+
 Now you know that the compressed ref actually points to a `java.lang.String`.
 
 **Then, when you cast, do not forget to use the `_z_.` prefix.**
@@ -310,6 +332,7 @@ $43 = {
     value = 0x290fce,
     ...
 ```
+
 To see the contents of that String, again use:
 ```
 (gdb) p $41.value.data
@@ -318,6 +341,7 @@ $44 = 0x7ff7f9207e78 "#subsys_name\thierarchy\tnum_cgroups\tenabled"
 ```
 
 #### Using the `this` variable in instance methods
+
 ```
 (gdb) bt
 #0  hello.Hello$NamedGreeter::greet() (this=0x7ff7f9101208) at hello/Hello.java:71
@@ -353,17 +377,20 @@ $8 = 0x7ff7f91008c0 "FooBar\376\376\200G\273\001\027\001'"
 ```
 
 #### Accessing static fields
+
 While static fields are shown whenever an instance of an object is printed, you just want to see the value of a specific static field.
 ```
 (gdb) p 'java.math.BigDecimal::BIG_TEN_POWERS_TABLE'
 $23 = (_z_.java.math.BigInteger[] *) 0x132b95
 ```
+
 To get a list of all static fields, use:
 ```
 (gdb) info variables ::
 ```
 
 #### Inspecting `.class` Objects
+
 For every Java type in the image, there exists an easy way to access its class object (aka the hub).
 ```
 (gdb) info types PrintStream
@@ -375,6 +402,7 @@ File java/io/PrintStream.java:
 	java.io.PrintStream$1;
 ...
 ```
+
 To access the hub of `java.io.PrintStream`, you can use the `.class` suffix:
 ```
 (gdb) p 'java.io.PrintStream.class'
@@ -398,6 +426,7 @@ $4 = {
   ...
 }
 ```
+
 This allows you, for example, to check which module `java.io.PrintStream` belongs to:
 ```
 (gdb) p 'java.io.PrintStream.class'.module.name.value.data
@@ -405,11 +434,13 @@ $12 = 0x7ff7f866b000 "java.base"
 ```
 
 #### Inlined methods
+
 Setting a breakpoint in `PrintStream.writeln`
 ```
 (gdb) b java.io.PrintStream::writeln
 Breakpoint 2 at 0x4080cb: java.io.PrintStream::writeln. (35 locations)
 ```
+
 Now you navigate to:
 ```
 (gdb) bt
@@ -429,6 +460,7 @@ Now you navigate to:
 #13 com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_e6899342f5939c89e6e2f78e2c71f5f4926b786d(int, org.graalvm.nativeimage.c.type.CCharPointerPointer*) (__0=<optimized out>, __1=<optimized out>)
     at com/oracle/svm/core/code/IsolateEnterStub.java:1
 ```
+
 If you query extra info about the top frame, you see that `min` got inlined into `implWrite`:
 ```
 (gdb) info frame
@@ -455,8 +487,9 @@ When the image gets built with `-H:+IncludeDebugHelperMethods`, additional `@CEn
 (gdb) p greeter 
 $3 = (hello.Hello$Greeter *) 0x7ffff6881900
 ```
+
 Here again, you have a local named `greeter` with the static-type `hello.Hello$Greeter`.
-To see its runtime-type, you can use the methods already described above.\
+To see its runtime-type, you can use the methods already described above.
 
 Alternatively, you can make use of the `svm_dbg_` helper functions.
 For example, from within the running debug session, you can call:
@@ -485,11 +518,13 @@ $5 = 140737339160608
 (gdb) p/x $5
 $6 = 0x7ffff71b7820
 ```
+
 With the help of calling `svm_dbg_obj_uncompress`, you now know that the hub is located at address `0x7ffff71b7820` and you can finally call `svm_dbg_print_hub`:
 ```
 (gdb) call (void) svm_dbg_print_hub($r15, 0x7ffff71b7820)
 hello.Hello$NamedGreeter
 ```
+
 Both calls to `svm_dbg_` helper can be combined into a single command line:
 ```
 (gdb) call (void) svm_dbg_print_hub($r15, svm_dbg_obj_uncompress($r15, greeter.hub))
@@ -497,7 +532,6 @@ hello.Hello$NamedGreeter
 ```
 
 The following `svm_dbg_` helper methods are currently defined:
-
 ```
 int svm_dbg_ptr_isInImageHeap(graal_isolatethread_t* thread, size_t ptr);
 int svm_dbg_ptr_isObject(graal_isolatethread_t* thread, size_t ptr);

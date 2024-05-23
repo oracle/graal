@@ -24,14 +24,20 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.graal.compiler.debug.TTY;
 
-public class TestDoNotMoveAllocationIntrinsic extends SubprocessTest {
+public class TestDoNotMoveAllocationIntrinsic extends GraalCompilerTest {
 
     static Object O;
 
@@ -57,6 +63,13 @@ public class TestDoNotMoveAllocationIntrinsic extends SubprocessTest {
         Object[] array = new Object[10];
         GraalDirectives.ensureAllocatedHere(array);
         O = array;
+    }
+
+    @Override
+    protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationResult compilationResult, CompilationIdentifier compilationId, OptionValues options) {
+        // Do not capture graphs for expected compilation failures.
+        OptionValues newOptions = new OptionValues(options, DebugOptions.DumpOnError, false);
+        return super.compile(installedCodeOwner, graph, compilationResult, compilationId, newOptions);
     }
 
     @Test

@@ -81,4 +81,6 @@ public interface SharedMethod extends ResolvedJavaMethod {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getImageCodeDeoptOffset();
 
+    /** Always call this method indirectly, even if it is normally called directly. */
+    boolean forceIndirectCall();
 }

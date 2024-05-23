@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,8 +60,6 @@ import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
-
-import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
@@ -270,6 +270,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 /* Perform garbage collection of unused input sections. */
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
+            if (SubstrateOptions.IgnoreUndefinedReferences.getValue()) {
+                /* Ignore references to undefined symbols from the object files. */
+                additionalPreOptions.add("-Wl,--unresolved-symbols=ignore-in-object-files");
+            }
 
             /* Use --version-script to control the visibility of image symbols. */
             try {
@@ -316,6 +320,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                         cmd.add("-static");
                     }
                     break;
+                case IMAGE_LAYER:
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     break;
@@ -475,6 +480,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     // Must use /MD in order to link with JDK native libraries built that way
                     cmd.add("/MD");
                     break;
+                case IMAGE_LAYER:
                 case SHARED_LIBRARY:
                     cmd.add("/MD");
                     cmd.add("/LD");

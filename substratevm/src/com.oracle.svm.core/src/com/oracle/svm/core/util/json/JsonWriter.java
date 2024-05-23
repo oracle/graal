@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,36 @@ public class JsonWriter implements AutoCloseable {
 
     public JsonWriter(Writer writer) {
         this.writer = writer;
+    }
+
+    /**
+     * See {@link JsonBuilder} and {@link JsonBuilder#object(JsonWriter)}.
+     * <p>
+     * While the builder is active, this class must not be used directly for printing, it may
+     * otherwise produce invalid JSON.
+     */
+    public JsonBuilder.ObjectBuilder objectBuilder() throws IOException {
+        return JsonBuilder.object(this);
+    }
+
+    /**
+     * See {@link JsonBuilder} and {@link JsonBuilder#array(JsonWriter)}.
+     * <p>
+     * While the builder is active, this class must not be used directly for printing, it may
+     * otherwise produce invalid JSON.
+     */
+    public JsonBuilder.ArrayBuilder arrayBuilder() throws IOException {
+        return JsonBuilder.array(this);
+    }
+
+    /**
+     * See {@link JsonBuilder} and {@link JsonBuilder#value(JsonWriter)}.
+     * <p>
+     * While the builder is active, this class must not be used directly for printing, it may
+     * otherwise produce invalid JSON.
+     */
+    public JsonBuilder.ValueBuilder valueBuilder() {
+        return JsonBuilder.value(this);
     }
 
     public JsonWriter append(char c) throws IOException {

@@ -77,12 +77,10 @@ io.netty.util.NetUtil,io.netty.channel.DefaultChannelPipeline,io.netty.util.conc
 io.netty.util.internal.PlatformDependent0,io.netty.util,io.netty.bootstrap,io.netty.channel,io.netty.buffer,io.netty.resolver,io.netty.handler.codec.CodecOutputList'
 _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'als'               : [
-                           '--report-unsupported-elements-at-runtime',
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
     'chi-square'        : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
                            force_buildtime_init_slf4j_1_7_73_spark,
                            force_buildtime_init_netty_4_1_72,
@@ -99,12 +97,10 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                             force_runtime_init_netty_4_1_72
                           ],
     'log-regression'    : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
                            force_runtime_init_netty_4_1_72
                           ],
     'movie-lens'        : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
                            force_buildtime_init_slf4j_1_7_73_spark,
                            force_buildtime_init_netty_4_1_72,
@@ -114,12 +110,10 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                            '-H:ReflectionConfigurationFiles=' + movie_lens_reflection_config
                           ],
     'dec-tree'          : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
                            force_runtime_init_netty_4_1_72
                           ],
     'page-rank'         : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
                            force_buildtime_init_slf4j_1_7_73_spark,
                            force_buildtime_init_netty_4_1_72,
@@ -128,12 +122,10 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                            force_runtime_init_slf4j_1_7_73
                           ],
     'naive-bayes'       : [
-                            '--report-unsupported-elements-at-runtime',
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
     'gauss-mix'       :   [
-                            '--report-unsupported-elements-at-runtime',
                             force_buildtime_init_slf4j_1_7_73,
                             force_buildtime_init_slf4j_1_7_73_spark,
                             force_buildtime_init_netty_4_1_72,
@@ -142,7 +134,6 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                             force_runtime_init_slf4j_1_7_73
                           ],
     'neo4j-analytics':    [
-                            '--report-unsupported-elements-at-runtime',
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
@@ -352,8 +343,7 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     'pmd':      [],
     # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
     # order that can lead to runtime issues. See GR-26324.
-    'xalan':    ['--report-unsupported-elements-at-runtime',
-                 '--initialize-at-build-time=org.apache.crimson.parser.Parser2,org.apache.crimson.parser.Parser2$Catalog,org.apache.crimson.parser.Parser2$NullHandler,org.apache.xml.utils.res.CharArrayWrapper'],
+    'xalan':    ['--initialize-at-build-time=org.apache.crimson.parser.Parser2,org.apache.crimson.parser.Parser2$Catalog,org.apache.crimson.parser.Parser2$NullHandler,org.apache.xml.utils.res.CharArrayWrapper'],
     # There are two main issues with fop:
     # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However
     #    DaCapo Harness sets the `java.util.logging.config.file` property at run-time. Therefore, we set
@@ -362,8 +352,7 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     #    not exist and would fail the benchmark when assertions are enabled.
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
-    'fop':      ['--report-unsupported-elements-at-runtime',
-                 f"-Djava.util.logging.config.file={_empty_file()}",
+    'fop':      [f"-Djava.util.logging.config.file={_empty_file()}",
                  '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
     'batik':    []
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -356,10 +356,14 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             return LLVMMaybeVaPointer.createWithHeap(p);
         }
 
-        @Specialization(guards = {"isManagedPointer(p)", "!isGlobal(p)"})
+        @Specialization(guards = {"isManagedPointer(p)", "!isGlobal(p)", "isLLVMMaybeVaPointer(p)"})
         Object extractFromManaged(LLVMManagedPointer p) {
-            assert p.getObject() instanceof LLVMMaybeVaPointer;
             return p.getObject();
+        }
+
+        @Specialization(guards = {"isManagedPointer(p)", "!isGlobal(p)", "!isLLVMMaybeVaPointer(p)"})
+        Object createNativeWrapperForeign(LLVMManagedPointer p) {
+            return LLVMMaybeVaPointer.createWithHeap(p);
         }
 
         static boolean isManagedPointer(Object o) {
@@ -368,6 +372,10 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
         static boolean isGlobal(Object o) {
             return LLVMManagedPointer.cast(o).getObject() instanceof LLVMGlobalContainer;
+        }
+
+        static boolean isLLVMMaybeVaPointer(Object o) {
+            return LLVMManagedPointer.cast(o).getObject() instanceof LLVMMaybeVaPointer;
         }
 
         static Object getGlobal(Object o) {

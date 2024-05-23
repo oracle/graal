@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -119,7 +120,13 @@ public abstract class RegexTestBase {
     }
 
     Value execRegex(Value compiledRegex, Encodings.Encoding encoding, TruffleString input, int fromIndex) {
-        return compiledRegex.invokeMember("exec", input.switchEncodingUncached(encoding.getTStringEncoding()), fromIndex);
+        TruffleString converted = input.switchEncodingUncached(encoding.getTStringEncoding());
+        int length = converted.byteLength(encoding.getTStringEncoding()) >> encoding.getStride();
+        return execRegex(compiledRegex, encoding, converted, fromIndex, length, 0, length);
+    }
+
+    Value execRegex(Value compiledRegex, Encodings.Encoding encoding, TruffleString input, int fromIndex, int toIndex, int regionFrom, int regionTo) {
+        return compiledRegex.invokeMember("exec", input.switchEncodingUncached(encoding.getTStringEncoding()), fromIndex, toIndex, regionFrom, regionTo);
     }
 
     void test(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
@@ -141,7 +148,25 @@ public abstract class RegexTestBase {
 
     void test(Value compiledRegex, String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         Value result = execRegex(compiledRegex, encoding, input, fromIndex);
-        validateResult(pattern, flags, options, input, fromIndex, result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
+        int groupCount = compiledRegex.getMember("groupCount").asInt();
+        validateResult(pattern, flags, options, input, fromIndex, result, groupCount, isMatch, captureGroupBoundsAndLastGroup);
+
+        TruffleStringBuilder sb = TruffleStringBuilder.create(encoding.getTStringEncoding());
+        sb.appendCodePointUncached('_');
+        sb.appendStringUncached(TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding()));
+        sb.appendCodePointUncached('_');
+        TruffleString padded = sb.toStringUncached();
+        int length = padded.byteLength(encoding.getTStringEncoding()) >> encoding.getStride();
+        int[] boundsAdjusted = new int[captureGroupBoundsAndLastGroup.length];
+        for (int i = 0; i < (boundsAdjusted.length & ~1); i++) {
+            int v = captureGroupBoundsAndLastGroup[i];
+            boundsAdjusted[i] = v < 0 ? v : v + 1;
+        }
+        if ((boundsAdjusted.length & 1) == 1) {
+            boundsAdjusted[boundsAdjusted.length - 1] = captureGroupBoundsAndLastGroup[boundsAdjusted.length - 1];
+        }
+        Value resultSubstring = execRegex(compiledRegex, encoding, padded, fromIndex + 1, length - 1, 1, length - 1);
+        validateResult(pattern, flags, options, input, fromIndex + 1, resultSubstring, groupCount, isMatch, boundsAdjusted);
     }
 
     private static void validateResult(String pattern, String flags, String options, String input, int fromIndex, Value result, int groupCount, boolean isMatch,

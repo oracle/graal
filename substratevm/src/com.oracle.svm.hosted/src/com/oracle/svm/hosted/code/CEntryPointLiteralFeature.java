@@ -36,9 +36,9 @@ import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -76,7 +76,7 @@ public class CEntryPointLiteralFeature implements InternalFeature {
                     AnalysisMethod aStub = CEntryPointCallStubSupport.singleton().getStubForMethod(aMethod);
                     HostedMethod hStub = (HostedMethod) metaAccess.getUniverse().lookup(aStub);
                     assert hStub.wrapped.isEntryPoint();
-                    assert hStub.isCompiled();
+                    assert hStub.isCompiled() || hStub.wrapped.isInBaseLayer();
                     /*
                      * Only during compilation and native image writing, we do the actual
                      * replacement.

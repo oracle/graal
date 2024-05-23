@@ -115,7 +115,7 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
             if (other.getResultBits() > other.getInputBits()) {
                 // sxxx -(zero-extend)-> 0000 sxxx -(sign-extend)-> 00000000 0000sxxx
                 // ==> sxxx -(zero-extend)-> 00000000 0000sxxx
-                return ZeroExtendNode.create(other.getValue(), other.getInputBits(), resultBits, view, other.isInputAlwaysPositive());
+                return ZeroExtendNode.create(other.getValue(), other.getInputBits(), resultBits, view);
             }
         }
 
@@ -124,7 +124,7 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
             if ((inputStamp.mayBeSet() & (1L << (inputBits - 1))) == 0L) {
                 // 0xxx -(sign-extend)-> 0000 0xxx
                 // ==> 0xxx -(zero-extend)-> 0000 0xxx
-                return ZeroExtendNode.create(forValue, inputBits, resultBits, view, true);
+                return ZeroExtendNode.create(forValue, inputBits, resultBits, view);
             }
         }
         if (forValue instanceof NarrowNode) {
