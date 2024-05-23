@@ -27,8 +27,7 @@ package com.oracle.svm.core.reflect.serialize;
 
 public interface SerializationRegistry {
 
-    boolean isRegisteredForSerialization(Class<?> cl);
-
     Object getSerializationConstructorAccessor(Class<?> serializationTargetClass, Class<?> targetConstructorClass);
 
+    boolean isRegisteredForSerialization(Class<?> aClass);
 }

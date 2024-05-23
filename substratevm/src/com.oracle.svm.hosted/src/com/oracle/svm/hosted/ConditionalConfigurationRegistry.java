@@ -34,6 +34,8 @@ import java.util.function.Consumer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+
 public abstract class ConditionalConfigurationRegistry {
     private final Map<Class<?>, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
@@ -46,7 +48,13 @@ public abstract class ConditionalConfigurationRegistry {
         } else {
             Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
             ConfigurationCondition runtimeCondition;
-            runtimeCondition = condition.isRuntimeChecked() ? condition : ConfigurationCondition.alwaysTrue();
+            if (condition.isRuntimeChecked()) {
+                ClassInitializationSupport.singleton().addForTypeReachedTracking(condition.getType());
+                runtimeCondition = condition;
+            } else {
+                runtimeCondition = ConfigurationCondition.alwaysTrue();
+            }
+
             handlers.add(() -> consumer.accept(runtimeCondition));
         }
 

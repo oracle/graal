@@ -31,21 +31,28 @@ import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
 
 public class SerializationSupport implements SerializationRegistry {
+
+    public static SerializationSupport singleton() {
+        return (SerializationSupport) ImageSingletons.lookup(SerializationRegistry.class);
+    }
 
     /**
      * Method MethodAccessorGenerator.generateSerializationConstructor dynamically defines a
@@ -150,28 +157,24 @@ public class SerializationSupport implements SerializationRegistry {
         return null;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class) private final Set<Class<?>> classes = ConcurrentHashMap.newKeySet();
-    @Platforms(Platform.HOSTED_ONLY.class) private static final Set<String> lambdaCapturingClasses = ConcurrentHashMap.newKeySet();
+    private final Map<Class<?>, RuntimeConditionSet> classes = new ConcurrentHashMap<>();
+    private final Map<String, RuntimeConditionSet> lambdaCapturingClasses = new ConcurrentHashMap<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerSerializationTargetClass(Class<?> serializationTargetClass) {
-        classes.add(serializationTargetClass);
+    public void registerSerializationTargetClass(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
+        classes.computeIfAbsent(serializationTargetClass, k -> RuntimeConditionSet.createHosted())
+                        .addCondition(cnd);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerLambdaCapturingClass(String lambdaCapturingClass) {
-        lambdaCapturingClasses.add(lambdaCapturingClass);
+    public void registerLambdaCapturingClass(ConfigurationCondition cnd, String lambdaCapturingClass) {
+        lambdaCapturingClasses.computeIfAbsent(lambdaCapturingClass, k -> RuntimeConditionSet.createHosted())
+                        .addCondition(cnd);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static boolean isLambdaCapturingClassRegistered(String lambdaCapturingClass) {
-        return lambdaCapturingClasses.contains(lambdaCapturingClass);
-    }
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isRegisteredForSerialization(Class<?> cl) {
-        return classes.contains(cl);
+    public boolean isLambdaCapturingClassRegistered(String lambdaCapturingClass) {
+        return lambdaCapturingClasses.containsKey(lambdaCapturingClass);
     }
 
     @Override
@@ -199,5 +202,11 @@ public class SerializationSupport implements SerializationRegistry {
             }
             return null;
         }
+    }
+
+    @Override
+    public boolean isRegisteredForSerialization(Class<?> jClass) {
+        var conditionSet = classes.get(jClass);
+        return conditionSet != null && conditionSet.satisfied();
     }
 }

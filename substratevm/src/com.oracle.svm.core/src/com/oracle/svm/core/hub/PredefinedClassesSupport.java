@@ -151,7 +151,7 @@ public final class PredefinedClassesSupport {
          * lambda-class information from the capturing class.
          */
         if (Serializable.class.isAssignableFrom(lambdaClass) &&
-                        SerializationSupport.isLambdaCapturingClassRegistered(LambdaUtils.capturingClass(lambdaClass.getName()))) {
+                        SerializationSupport.singleton().isLambdaCapturingClassRegistered(LambdaUtils.capturingClass(lambdaClass.getName()))) {
             try {
                 Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
                 RuntimeReflection.register(serializeLambdaMethod);
