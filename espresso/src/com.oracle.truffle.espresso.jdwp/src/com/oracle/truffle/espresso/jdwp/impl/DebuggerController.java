@@ -672,7 +672,7 @@ public final class DebuggerController implements ContextsListener {
                 // suspend all other threads after the invocation
                 for (Object activeThread : allThreads) {
                     if (activeThread != thread) {
-                        suspend(thread);
+                        suspend(activeThread);
                     }
                 }
             } else {
