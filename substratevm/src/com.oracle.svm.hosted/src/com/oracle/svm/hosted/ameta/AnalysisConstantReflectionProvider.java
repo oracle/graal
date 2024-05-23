@@ -280,7 +280,13 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         if (simulateClassInitializerSupport == null) {
             simulateClassInitializerSupport = SimulateClassInitializerSupport.singleton();
         }
-        return simulateClassInitializerSupport.getSimulatedFieldValue(field);
+        JavaConstant simulatedFieldValue = simulateClassInitializerSupport.getSimulatedFieldValue(field);
+        if (simulatedFieldValue != null && field.getJavaKind().getStackKind() != field.getJavaKind()) {
+            // sub-int are represented as int in SimulateClassInitializerSupport
+            // but ConstantReflectionProvider returns sub-int constants
+            return JavaConstant.forPrimitive(field.getJavaKind(), simulatedFieldValue.asInt());
+        }
+        return simulatedFieldValue;
     }
 
     @Override
