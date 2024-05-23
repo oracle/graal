@@ -312,7 +312,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 f"dependency:LLVM_JAVA_HOME/{jdk_lib_dir}/{lib_prefix}*{lib_suffix}",
                 "dependency:LLVM_JAVA_HOME/release"
             ],
-        }, None, True, _resource_license(llvm_java_home_dep.is_ee_implementor)))
+        }, None, True, None))
 
     if not java_home_dep.is_ee_implementor:
         register_espresso_runtime_resources(register_project, register_distribution, _suite, java_home_dep, llvm_java_home_dep)
