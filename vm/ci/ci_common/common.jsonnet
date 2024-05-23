@@ -457,9 +457,9 @@ local devkits = graal_common.devkits;
             downloads+: {
               JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17'],
               EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-' + edition + '-21'],
-              ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+              ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21'],
             } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
-              ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
+              ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21-llvm'],
             } else {
             },
             environment+: {
@@ -470,8 +470,9 @@ local devkits = graal_common.devkits;
           {
             downloads+: {
               JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+              ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21'],
             } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
-              LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
+              ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21-llvm'],
             } else {
             }
           }
