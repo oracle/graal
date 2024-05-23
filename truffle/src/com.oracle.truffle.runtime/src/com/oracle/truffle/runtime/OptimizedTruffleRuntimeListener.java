@@ -266,13 +266,13 @@ public interface OptimizedTruffleRuntimeListener {
      *            change if the {@code target} is compiled again. This value is meaningless if
      *            {@code bailout == false}.
      * @param tier Which compilation tier is in question.
-     * @param serializedException a serialized representation of the exception indicating the reason
-     *            and stack trace for a compilation failure, or {@code null} in the case of a
-     *            bailout or when the compiler does not provide a stack trace. See
+     * @param lazyStackTrace a serialized representation of the exception indicating the reason and
+     *            stack trace for a compilation failure, or {@code null} in the case of a bailout or
+     *            when the compiler does not provide a stack trace. See
      *            {@link TruffleCompilable#serializeException(Throwable)}.
      *
      */
-    default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
+    default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         onCompilationFailed(target, reason, bailout, permanentBailout, tier);
     }
 

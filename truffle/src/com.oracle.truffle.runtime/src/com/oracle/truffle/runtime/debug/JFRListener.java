@@ -139,11 +139,11 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         CompilationData data = getCurrentData();
         statistics.finishCompilation(data.finish(), bailout, 0);
         if (data.event != null) {
-            data.event.failed(tier, isPermanentFailure(bailout, permanentBailout), reason, serializedException);
+            data.event.failed(tier, isPermanentFailure(bailout, permanentBailout), reason, lazyStackTrace);
             data.event.publish();
         }
         currentCompilation.remove();
