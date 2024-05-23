@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.Buffer;
 
@@ -38,7 +37,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 
