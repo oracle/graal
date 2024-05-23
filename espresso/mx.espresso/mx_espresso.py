@@ -384,7 +384,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_distribution: (mx.Distribution) -> None
     """
     java_home_dep = get_java_home_dep()
-    register_project(java_home_dep)
+    register_distribution(java_home_dep)  # a "library" registered as a distribution is not ideal
 
     llvm_java_home_dep = get_llvm_java_home_dep()
     if llvm_java_home_dep:
@@ -392,7 +392,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         lib_prefix = mx.add_lib_prefix('')
         lib_suffix = mx.add_lib_suffix('')
         jdk_lib_dir = 'bin' if mx.is_windows() else 'lib'
-        register_project(llvm_java_home_dep)
+        register_distribution(llvm_java_home_dep)
         register_distribution(mx.LayoutTARDistribution(_suite, 'ESPRESSO_LLVM_SUPPORT', [], {
             "lib/llvm/default/": [
                 f"dependency:LLVM_JAVA_HOME/{jdk_lib_dir}/{lib_prefix}*{lib_suffix}",
@@ -569,6 +569,12 @@ class JavaHomeDependency(mx.BaseLibrary):
             else:
                 arcname = basename(path)
             yield path, arcname
+
+    def post_init(self):
+        pass
+
+    def archived_deps(self):
+        return []
 
 
 class EspressoRuntimeResourceProject(mx.JavaProject):
