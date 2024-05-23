@@ -24,27 +24,18 @@
  */
 package com.oracle.svm.core.imagelayer;
 
-import java.util.EnumSet;
-
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.meta.SharedMethod;
 
-@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-public class DynamicImageLayerInfo implements LayeredImageSingleton {
+public abstract class DynamicImageLayerInfo {
     public final int layerNumber;
     public final int nextLayerNumber;
     public final int numLayers;
 
-    public DynamicImageLayerInfo() {
-        this(0);
-    }
-
-    private DynamicImageLayerInfo(int layerNumber) {
+    protected DynamicImageLayerInfo(int layerNumber) {
         this.layerNumber = layerNumber;
         this.nextLayerNumber = layerNumber + 1;
         this.numLayers = nextLayerNumber;
@@ -54,19 +45,8 @@ public class DynamicImageLayerInfo implements LayeredImageSingleton {
         return ImageSingletons.lookup(DynamicImageLayerInfo.class);
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-    }
-
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        writer.writeInt("nextLayerNumber", nextLayerNumber);
-        return PersistFlags.CREATE;
-    }
-
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        return new DynamicImageLayerInfo(loader.readInt("nextLayerNumber"));
-    }
+    /**
+     * Returns a (Base, Offset) pair which can be used to call a method defined in a prior layer.
+     */
+    public abstract Pair<CGlobalDataInfo, Integer> getPriorLayerMethodLocation(SharedMethod method);
 }

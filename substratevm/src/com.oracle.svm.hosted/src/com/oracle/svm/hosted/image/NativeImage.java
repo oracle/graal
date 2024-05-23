@@ -91,6 +91,7 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -407,6 +408,14 @@ public abstract class NativeImage extends AbstractImage {
         return symbol;
     }
 
+    public static String getTextSectionStartSymbol() {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            return String.format("__svm_layer_code_section_%s", DynamicImageLayerInfo.singleton().layerNumber);
+        } else {
+            return "__svm_code_section";
+        }
+    }
+
     /**
      * Create the image sections for code, constants, and the heap.
      */
@@ -452,6 +461,10 @@ public abstract class NativeImage extends AbstractImage {
 
             // Define symbols for the sections.
             objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false);
+            if (ImageLayerBuildingSupport.buildingSharedLayer() || SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                /* add a dummy function symbol at the start of the code section */
+                objectFile.createDefinedSymbol(getTextSectionStartSymbol(), textSection, 0, 0, true, true);
+            }
             objectFile.createDefinedSymbol("__svm_text_end", textSection, textSectionSize, 0, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
             objectFile.createDefinedSymbol(roDataSection.getName(), roDataSection, 0, 0, false, false);
             objectFile.createDefinedSymbol(rwDataSection.getName(), rwDataSection, 0, 0, false, false);
@@ -468,7 +481,6 @@ public abstract class NativeImage extends AbstractImage {
                                             isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
                             (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
-            BaseLayerSupport.markDynamicRelocationSites((ProgbitsSectionImpl) rwDataSection);
 
             // - Write the heap to its own section.
             // Dynamic linkers/loaders generally don't ensure any alignment to more than page
@@ -921,10 +933,6 @@ public abstract class NativeImage extends AbstractImage {
                  * 3. the linkage names given by @CEntryPoint
                  */
 
-                if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                    /* add a dummy function symbol at the start of the code section */
-                    objectFile.createDefinedSymbol("__svm_code_section", textSection, 0, 0, true, true);
-                }
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
 

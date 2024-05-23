@@ -33,13 +33,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
-import com.oracle.svm.core.code.BaseLayerMethodAccessor;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -49,6 +49,7 @@ import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -369,7 +370,7 @@ public abstract class NonSnippetLowerings {
                     SharedMethod targetMethod = method;
                     if (!invokeKind.isDirect()) {
                         /*
-                         * We only have one possible implementation for a indirect call, so we can
+                         * We only have one possible implementation for an indirect call, so we can
                          * emit a direct call to the unique implementation.
                          */
                         targetMethod = implementations[0];
@@ -378,19 +379,14 @@ public abstract class NonSnippetLowerings {
                     if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
                         /*
                          * Lower cross layer boundary direct calls to indirect calls. First load the
-                         * target method absolute address from the method entry stored in the data
-                         * section. Then call that address indirectly.
+                         * address offset of the text section start and then add in the offset for
+                         * this specific method.
                          */
-                        CGlobalDataInfo methodDataInfo = BaseLayerMethodAccessor.singleton().getMethodData(targetMethod);
-                        AddressNode methodPointerAddress = graph.addOrUniqueWithInputs(OffsetAddressNode.create(new CGlobalDataLoadAddressNode(methodDataInfo)));
-
-                        /*
-                         * Use the ANY location identity to prevent ReadNode.canonicalizeRead() to
-                         * try to constant fold the method address.
-                         */
-                        ReadNode entry = graph.add(new ReadNode(methodPointerAddress, LocationIdentity.any(), FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
-                        loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, entry);
-                        graph.addBeforeFixed(node, entry);
+                        Pair<CGlobalDataInfo, Integer> methodLocation = DynamicImageLayerInfo.singleton().getPriorLayerMethodLocation(targetMethod);
+                        AddressNode methodPointerAddress = graph.addOrUniqueWithInputs(
+                                        new OffsetAddressNode(new CGlobalDataLoadAddressNode(methodLocation.getLeft()),
+                                                        ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), methodLocation.getRight())));
+                        loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, methodPointerAddress);
                     } else if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = createDirectCall(graph, callTarget, parameters, signature, callType, invokeKind, targetMethod, node);
                     } else if (!targetMethod.hasImageCodeOffset()) {
@@ -494,7 +490,7 @@ public abstract class NonSnippetLowerings {
         }
 
         protected IndirectCallTargetNode createIndirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, SharedMethod method, JavaType[] signature,
-                        CallingConvention.Type callType, InvokeKind invokeKind, ReadNode entry) {
+                        CallingConvention.Type callType, InvokeKind invokeKind, ValueNode entry) {
             return graph.add(new IndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
         }
 
