@@ -85,8 +85,8 @@ final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayLi
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent, int tier, Supplier<String> serializedException) {
-        invokeListeners((l) -> l.onCompilationFailed(target, reason, bailout, permanent, tier, serializedException));
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent, int tier, Supplier<String> lazyStackTrace) {
+        invokeListeners((l) -> l.onCompilationFailed(target, reason, bailout, permanent, tier, lazyStackTrace));
     }
 
     @Override
@@ -187,8 +187,8 @@ final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayLi
     }
 
     @Override
-    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
-        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier, serializedException);
+    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
+        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier, lazyStackTrace);
     }
 
     @Override

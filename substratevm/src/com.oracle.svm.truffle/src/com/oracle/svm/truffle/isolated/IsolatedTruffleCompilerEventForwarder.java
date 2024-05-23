@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.isolated;
 
+import com.oracle.svm.graal.isolated.IsolatedHandles;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
@@ -78,9 +79,10 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     }
 
     @Override
-    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
+    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         try (CCharPointerHolder reasonCstr = CTypeConversion.toCString(reason)) {
-            onFailure0(IsolatedCompileContext.get().getClient(), contextHandle, reasonCstr.get(), bailout, permanentBailout, tier, IsolatedCompileContext.get().hand(serializedException));
+            onFailure0(IsolatedCompileContext.get().getClient(), contextHandle, reasonCstr.get(), bailout, permanentBailout, tier,
+                            lazyStackTrace == null ? IsolatedHandles.nullHandle() : IsolatedCompileContext.get().hand(lazyStackTrace));
         }
     }
 
@@ -113,9 +115,10 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void onFailure0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle,
-                    CCharPointer reason, boolean bailout, boolean permanentBailout, int tier, CompilerHandle<Supplier<String>> serializedExceptionHandle) {
+                    CCharPointer reason, boolean bailout, boolean permanentBailout, int tier, CompilerHandle<Supplier<String>> lazyStackTraceHandle) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
-        context.listener.onFailure(context.compilable, CTypeConversion.toJavaString(reason), bailout, permanentBailout, tier, new IsolatedStringSupplier(serializedExceptionHandle));
+        context.listener.onFailure(context.compilable, CTypeConversion.toJavaString(reason), bailout, permanentBailout, tier,
+                        lazyStackTraceHandle.equal(IsolatedHandles.nullHandle()) ? null : new IsolatedStringSupplier(lazyStackTraceHandle));
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)

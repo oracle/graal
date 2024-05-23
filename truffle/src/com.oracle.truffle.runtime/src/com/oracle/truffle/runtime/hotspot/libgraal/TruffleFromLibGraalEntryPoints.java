@@ -94,7 +94,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -364,8 +364,8 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(OnFailure)
-    static void onFailure(Object listener, Object compilable, String reason, boolean bailout, boolean permanentBailout, int tier, long serializedExceptionHandle) {
-        try (LibGraalScopedStringSupplier serializedException = serializedExceptionHandle != 0L ? new LibGraalScopedStringSupplier(serializedExceptionHandle) : null) {
+    static void onFailure(Object listener, Object compilable, String reason, boolean bailout, boolean permanentBailout, int tier, long lazyStackTraceHandle) {
+        try (LibGraalScopedStringSupplier serializedException = lazyStackTraceHandle != 0L ? new LibGraalScopedStringSupplier(lazyStackTraceHandle) : null) {
             ((TruffleCompilerListener) listener).onFailure((TruffleCompilable) compilable, reason, bailout, permanentBailout, tier, serializedException);
         }
     }
@@ -472,7 +472,7 @@ final class TruffleFromLibGraalEntryPoints {
      */
     private static boolean checkHotSpotCalls() {
         Set<Id> unimplemented = EnumSet.allOf(Id.class);
-        Map<Id, List<Method>> idToMethod = new HashMap<>();
+        Map<Id, List<Method>> idToMethod = new LinkedHashMap<>();
         for (Method method : TruffleFromLibGraalEntryPoints.class.getDeclaredMethods()) {
             if (Modifier.isStatic(method.getModifiers())) {
                 TruffleFromLibGraal a = method.getAnnotation(TruffleFromLibGraal.class);

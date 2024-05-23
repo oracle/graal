@@ -302,7 +302,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         if (bailout) {
             if (permanentBailout) {
                 permanentBailouts++;
@@ -769,10 +769,10 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationFailed(target, reason, bailout, permanentBailout, tier, serializedException);
+                listener.onCompilationFailed(target, reason, bailout, permanentBailout, tier, lazyStackTrace);
             }
         }
 

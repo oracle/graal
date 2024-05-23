@@ -49,7 +49,7 @@ public interface CompilationEvent extends RootFunctionEvent {
 
     void compilationStarted();
 
-    void failed(int tier, boolean permanent, String reason, Supplier<String> stackTraceSupplier);
+    void failed(int tier, boolean permanent, String reason, Supplier<String> lazyStackTrace);
 
     void succeeded(int tier);
 

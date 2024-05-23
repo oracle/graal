@@ -187,13 +187,13 @@ public interface TruffleCompilerListener {
      *            change if the {@code target} is compiled again. This value is meaningless if
      *            {@code bailout == false}.
      * @param tier Which compilation tier was the compilation
-     * @param serializedException a serialized representation of the exception indicating the reason
-     *            and stack trace for a compilation failure, or {@code null} in the case of a
-     *            bailout or when the compiler does not provide a stack trace. See
+     * @param lazyStackTrace a serialized representation of the exception indicating the reason and
+     *            stack trace for a compilation failure, or {@code null} in the case of a bailout or
+     *            when the compiler does not provide a stack trace. See
      *            {@link TruffleCompilable#serializeException(Throwable)}.
      *
      */
-    default void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
+    default void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
     }
 
     /**

@@ -99,12 +99,12 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
 
     @TruffleFromLibGraal(OnFailure)
     @Override
-    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
-        try (LibGraalObjectHandleScope serializedExceptionScope = serializedException != null ? LibGraalObjectHandleScope.forObject(serializedException) : null) {
+    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
+        try (LibGraalObjectHandleScope lazyStackTraceScope = lazyStackTrace != null ? LibGraalObjectHandleScope.forObject(lazyStackTrace) : null) {
             JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
             JNIEnv env = JNIMethodScope.env();
             JString hsReason = createHSString(env, reason);
-            callOnFailure(calls, env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier, serializedExceptionScope != null ? serializedExceptionScope.getHandle() : 0L);
+            callOnFailure(calls, env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier, lazyStackTraceScope != null ? lazyStackTraceScope.getHandle() : 0L);
         }
     }
 

@@ -103,11 +103,11 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
     }
 
     @Override
-    public void failed(int tier, boolean permanent, String reason, Supplier<String> serializedException) {
+    public void failed(int tier, boolean permanent, String reason, Supplier<String> lazyStackTrace) {
         end();
         if (failure != null) {
             failure.end();
-            failure.setFailureData(tier, permanent, reason, serializedException == null ? null : serializedException.get());
+            failure.setFailureData(tier, permanent, reason, lazyStackTrace == null ? null : lazyStackTrace.get());
         }
         truffleTier = tier;
         success = false;
