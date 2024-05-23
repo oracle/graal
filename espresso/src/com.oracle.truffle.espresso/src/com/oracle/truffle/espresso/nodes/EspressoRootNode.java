@@ -38,6 +38,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -221,9 +222,9 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
      * Used to implement continuations.
      */
     @TruffleBoundary
-    public static EspressoRootNode createContinuable(Method.MethodVersion methodVersion) {
+    public static EspressoRootNode createContinuable(Method.MethodVersion methodVersion, int bci, EspressoFrameDescriptor fd) {
         BytecodeNode bytecodeNode = new BytecodeNode(methodVersion);
-        return create(bytecodeNode.getFrameDescriptor(), new ContinuableMethodWithBytecode(bytecodeNode));
+        return create(bytecodeNode.getFrameDescriptor(), new ContinuableMethodWithBytecode(bytecodeNode, bci, fd));
     }
 
     public final int readBCI(Frame frame) {

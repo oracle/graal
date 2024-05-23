@@ -28,6 +28,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.ContinuableMethodWithBytecode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -68,7 +69,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         @Specialization
         static void resume0(StaticObject self,
                         @Bind("getLanguage()") EspressoLanguage lang, @Bind("getMeta()") Meta meta,
-                        @Cached("create(meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getContinuableCallTarget())") DirectCallNode rewind) {
+                        @Cached ContinuableMethodWithBytecode.ResumeNextContinuationNode rewind) {
             // This method is an intrinsic and the act of invoking one of those blocks the ability
             // to call suspend, so we have to undo that first.
             EspressoThreadLocalState tls = lang.getThreadLocalState();
@@ -76,7 +77,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
                 throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException,
                                 "Cannot resume a continuation while already running in a continuation.");
             }
-            HostFrameRecord stack = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
+            HostFrameRecord stack = getHFR(self, meta);
             if (stack == null) {
                 throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException, "Continuation was not properly dematerialized.");
             }
@@ -88,7 +89,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // remaining records into the bytecode interpreter, which will then pass them down the
             // stack until everything is fully unwound.
             try (var scope = tls.continuationScope()) {
-                rewind.call(stack);
+                rewind.execute(stack);
             } catch (UnwindContinuationException unwind) {
                 assert unwind.getContinuation() == self;
                 meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, unwind.head);
@@ -96,6 +97,11 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
                 // suspend0()
                 tls.enableSingleStepping();
             }
+        }
+
+        private static HostFrameRecord getHFR(StaticObject self, Meta meta) {
+            HostFrameRecord stack = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
+            return stack;
         }
     }
 

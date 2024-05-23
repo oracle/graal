@@ -61,6 +61,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
+import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
@@ -335,14 +337,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      */
     public CallTarget getCallTargetNoSubstitution() {
         return getMethodVersion().getCallTargetNoSubstitution();
-    }
-
-    /**
-     * Obtains a {@link com.oracle.truffle.espresso.meta.Meta.ContinuumSupport continuation} call
-     * target that can be used for rewinding a continuation.
-     */
-    public CallTarget getContinuableCallTarget() {
-        return getMethodVersion().getContinuableCallTarget();
     }
 
     public boolean usesMonitors() {
@@ -1144,6 +1138,50 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return instance;
     }
 
+    private static final class Continuum {
+        private record ContinuumData(int bci, CallTarget continuable, EspressoFrameDescriptor frameDescriptor) {
+        }
+
+        private static final ContinuumData[] EMPTY_DATA = new ContinuumData[0];
+
+        @CompilationFinal(dimensions = 1) //
+        private volatile ContinuumData[] continuumData = EMPTY_DATA;
+
+        private ContinuumData getData(MethodVersion mv, int bci) {
+            ContinuumData[] localData = continuumData;
+            for (ContinuumData data : localData) {
+                if (data.bci() == bci) {
+                    return data;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                localData = continuumData;
+                for (ContinuumData data : localData) {
+                    if (data.bci() == bci) {
+                        return data;
+                    }
+                }
+                int prevSize = continuumData.length;
+                localData = Arrays.copyOf(continuumData, prevSize + 1);
+                EspressoFrameDescriptor fd = FrameAnalysis.apply(mv, bci);
+                CallTarget ct = EspressoRootNode.createContinuable(mv, bci, fd).getCallTarget();
+                ContinuumData data = new ContinuumData(bci, ct, fd);
+                localData[prevSize] = data;
+                this.continuumData = localData;
+                return data;
+            }
+        }
+
+        public EspressoFrameDescriptor getFrameDescriptor(MethodVersion mv, int bci) {
+            return getData(mv, bci).frameDescriptor();
+        }
+
+        public CallTarget getContinuableCallTarget(MethodVersion mv, int bci) {
+            return getData(mv, bci).continuable();
+        }
+    }
+
     /**
      * Each time a method is changed via class redefinition it gets a new version, and therefore a
      * new MethodVersion object.
@@ -1157,7 +1195,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @CompilationFinal private CallTarget callTarget;
         @CompilationFinal private CallTarget callTargetNoSubstitutions;
-        @CompilationFinal private CallTarget continuableCallTarget;
+        @CompilationFinal private Continuum continuum;
 
         @CompilationFinal private int vtableIndex = -1;
         @CompilationFinal private int itableIndex = -1;
@@ -1323,20 +1361,32 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
                         justification = "Publication uses a release fence, assuming data dependency ordering on the reader side.")
-        public CallTarget getContinuableCallTarget() {
-            if (continuableCallTarget == null) {
+        private Continuum getContinuum() {
+            if (continuum == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 synchronized (this) {
-                    if (CompilerDirectives.isCompilationConstant(this)) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                    }
-                    if (continuableCallTarget == null) {
-                        CallTarget target = EspressoRootNode.createContinuable(this).getCallTarget();
+                    if (continuum == null) {
+                        Continuum c = new Continuum();
                         VarHandle.releaseFence();
-                        continuableCallTarget = target;
+                        continuum = c;
                     }
                 }
             }
-            return continuableCallTarget;
+            return continuum;
+        }
+
+        /**
+         * Obtains a {@link com.oracle.truffle.espresso.meta.Meta.ContinuumSupport continuation}
+         * call target that can be used for rewinding a continuation.
+         */
+        @TruffleBoundary
+        public CallTarget getContinuableCallTarget(int bci) {
+            return getContinuum().getContinuableCallTarget(this, bci);
+        }
+
+        @TruffleBoundary
+        public EspressoFrameDescriptor getFrameDescriptor(int bci) {
+            return getContinuum().getFrameDescriptor(this, bci);
         }
 
         @TruffleBoundary

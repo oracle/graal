@@ -24,10 +24,8 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -40,18 +38,23 @@ import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNodeImpl {
     @Child BytecodeNode bytecodeNode;
-    @Child ResumeThisContinuationNode resumeThis;
+    private final int bci;
+    private final EspressoFrameDescriptor fd;
+    @Child ResumeNextContinuationNode resumeNext;
 
-    public ContinuableMethodWithBytecode(BytecodeNode bytecodeNode) {
+    public ContinuableMethodWithBytecode(BytecodeNode bytecodeNode, int bci, EspressoFrameDescriptor fd) {
         super(bytecodeNode.getMethodVersion());
+        this.bci = bci;
+        this.fd = fd;
         this.bytecodeNode = bytecodeNode;
-        this.resumeThis = ContinuableMethodWithBytecodeFactory.ResumeThisContinuationNodeGen.create();
+        this.resumeNext = ContinuableMethodWithBytecodeFactory.ResumeNextContinuationNodeGen.create();
     }
 
     @Override
     Object execute(VirtualFrame frame) {
         HostFrameRecord frameRecords = getFrameRecords(frame);
-        return resumeThis.execute(frame, frameRecords, bytecodeNode);
+        return bytecodeNode.resumeContinuation(frame, frameRecords,
+                        bci, fd, resumeNext);
     }
 
     private HostFrameRecord getFrameRecords(VirtualFrame frame) {
@@ -75,39 +78,6 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
     }
 
     /**
-     * Used to rewind a frame. At most one cache entry per invoke BCI in the method. Since BCIs need
-     * to be constant during PE, a cache fail means no compilation can happen, so we are using a
-     * larger-than-usual cache to prevent that from happening.
-     */
-    abstract static class ResumeThisContinuationNode extends EspressoNode {
-        // Uncached calls cannot be PE'd, so use a large cache.
-        static final int LARGE_LIMIT = 10;
-
-        public abstract Object execute(VirtualFrame frame, HostFrameRecord records, BytecodeNode bytecodeNode);
-
-        @Specialization(guards = {"sameBciInRecord(records, cachedBci)"}, limit = "LARGE_LIMIT")
-        Object doCached(VirtualFrame frame, HostFrameRecord records, BytecodeNode bytecodeNode,
-                        @Cached("records.bci") int cachedBci,
-                        @Cached("records.frameDescriptor") EspressoFrameDescriptor cachedFD,
-                        @Cached @Exclusive ResumeNextContinuationNode resumeNext) {
-            assert cachedFD.equals(records.frameDescriptor);
-            assert bytecodeNode.getMethodVersion() == records.methodVersion;
-            return bytecodeNode.resumeContinuation(frame, records, cachedBci, cachedFD, resumeNext);
-        }
-
-        @Specialization(replaces = "doCached")
-        Object doUncached(VirtualFrame frame, HostFrameRecord records, BytecodeNode bytecodeNode,
-                        @Cached @Exclusive ResumeNextContinuationNode resumeNext) {
-            MaterializedFrame materializedFrame = frame.materialize();
-            return bytecodeNode.resumeContinuationBoundary(materializedFrame, records, records.bci, records.frameDescriptor, resumeNext);
-        }
-
-        static boolean sameBciInRecord(HostFrameRecord records, int cachedBci) {
-            return records.bci == cachedBci;
-        }
-    }
-
-    /**
      * Passed to the bytecode node, so it can rewind the next continuation in the record.
      */
     public abstract static class ResumeNextContinuationNode extends EspressoNode {
@@ -122,22 +92,23 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
             return StaticObject.NULL;
         }
 
-        @Specialization(guards = {"sameMethodInRecord(records, cachedMethod)"}, limit = "LIMIT")
+        @Specialization(guards = {"sameCachedRecord(records, cachedMethod, cachedBci)"}, limit = "LIMIT")
         Object doCached(HostFrameRecord records,
                         @Cached("records.methodVersion") Method.MethodVersion cachedMethod,
-                        @Cached("create(cachedMethod.getContinuableCallTarget())") DirectCallNode callNode) {
-            assert records.methodVersion == cachedMethod;
+                        @Cached("records.bci") int cachedBci,
+                        @Cached("create(cachedMethod.getContinuableCallTarget(cachedBci))") DirectCallNode callNode) {
+            assert sameCachedRecord(records, cachedMethod, cachedBci);
             return callNode.call(records);
         }
 
         @Specialization(replaces = "doCached")
         Object doUncached(HostFrameRecord records,
                         @Cached IndirectCallNode callNode) {
-            return callNode.call(records.methodVersion.getContinuableCallTarget(), records);
+            return callNode.call(records.methodVersion.getContinuableCallTarget(records.bci), records);
         }
 
-        static boolean sameMethodInRecord(HostFrameRecord records, Method.MethodVersion method) {
-            return records.methodVersion == method;
+        static boolean sameCachedRecord(HostFrameRecord records, Method.MethodVersion method, int cachedBci) {
+            return records.methodVersion == method && records.bci == cachedBci;
         }
 
         static boolean isLastRecord(HostFrameRecord records) {

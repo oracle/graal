@@ -30,7 +30,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
-import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -64,7 +63,7 @@ public final class HostFrameRecord {
     public HostFrameRecord next;
 
     public static HostFrameRecord recordFrame(Frame frame, Method.MethodVersion m, int bci, int top, HostFrameRecord next) {
-        EspressoFrameDescriptor fd = FrameAnalysis.apply(m, bci);
+        EspressoFrameDescriptor fd = m.getFrameDescriptor(bci);
         StaticObject[] objects = new StaticObject[fd.size()];
         long[] primitives = new long[fd.size()];
         fd.importFromFrame(frame, objects, primitives);
@@ -191,7 +190,7 @@ public final class HostFrameRecord {
             StaticObject[] pointers = pointersGuest.unwrap(language);
             long[] primitives = primitivesGuest.unwrap(language);
             Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
-            EspressoFrameDescriptor fd = FrameAnalysis.apply(method.getMethodVersion(), bci);
+            EspressoFrameDescriptor fd = method.getMethodVersion().getFrameDescriptor(bci);
 
             HostFrameRecord next = new HostFrameRecord(fd,
                             pointers.clone(), primitives.clone(), // Defensive copies.
