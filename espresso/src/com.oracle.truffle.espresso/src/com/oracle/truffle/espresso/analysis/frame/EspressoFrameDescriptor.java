@@ -40,7 +40,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
 import com.oracle.truffle.espresso.verifier.StackMapFrameParser.FrameAndLocalEffect;
@@ -78,6 +77,14 @@ public class EspressoFrameDescriptor {
         this.top = top;
     }
 
+    public static long zeroExtend(int value) {
+        return value & INT_MASK;
+    }
+
+    public static int narrow(long value) {
+        return (int) value;
+    }
+
     @ExplodeLoop
     public void importFromFrame(Frame frame, Object[] objects, long[] primitives) {
         assert slotTypes.length == frame.getFrameDescriptor().getNumberOfSlots();
@@ -95,9 +102,7 @@ public class EspressoFrameDescriptor {
         assert slotTypes.length == frame.getFrameDescriptor().getNumberOfSlots();
         assert objects != null && objects.length == slotTypes.length;
         assert primitives != null && primitives.length == slotTypes.length;
-        EspressoFrame.setBCI(frame, bci);
-        // Ignore first slot (bci).
-        for (int slot = 1; slot < slotTypes.length; slot++) {
+        for (int slot = 0; slot < slotTypes.length; slot++) {
             exportSlot(frame, slot, objects, primitives);
         }
     }
@@ -162,14 +167,6 @@ public class EspressoFrameDescriptor {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
-    }
-
-    static long zeroExtend(int value) {
-        return value & INT_MASK;
-    }
-
-    static int narrow(long value) {
-        return (int) value;
     }
 
     private boolean verifyConsistent(Frame frame) {

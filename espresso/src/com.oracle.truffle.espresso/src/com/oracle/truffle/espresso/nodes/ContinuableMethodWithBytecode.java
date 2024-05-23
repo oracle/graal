@@ -95,7 +95,7 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
         @Specialization(guards = {"sameCachedRecord(records, cachedMethod, cachedBci)"}, limit = "LIMIT")
         Object doCached(HostFrameRecord records,
                         @Cached("records.methodVersion") Method.MethodVersion cachedMethod,
-                        @Cached("records.bci") int cachedBci,
+                        @Cached("records.bci()") int cachedBci,
                         @Cached("create(cachedMethod.getContinuableCallTarget(cachedBci))") DirectCallNode callNode) {
             assert sameCachedRecord(records, cachedMethod, cachedBci);
             return callNode.call(records);
@@ -104,11 +104,11 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
         @Specialization(replaces = "doCached")
         Object doUncached(HostFrameRecord records,
                         @Cached IndirectCallNode callNode) {
-            return callNode.call(records.methodVersion.getContinuableCallTarget(records.bci), records);
+            return callNode.call(records.methodVersion.getContinuableCallTarget(records.bci()), records);
         }
 
         static boolean sameCachedRecord(HostFrameRecord records, Method.MethodVersion method, int cachedBci) {
-            return records.methodVersion == method && records.bci == cachedBci;
+            return records.methodVersion == method && records.bci() == cachedBci;
         }
 
         static boolean isLastRecord(HostFrameRecord records) {

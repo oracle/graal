@@ -57,10 +57,14 @@ public final class HostFrameRecord {
     public final EspressoFrameDescriptor frameDescriptor;
     public final StaticObject[] objects;
     public final long[] primitives;
-    public final int bci;
     public final int top;
     public final Method.MethodVersion methodVersion;
     public HostFrameRecord next;
+
+    public int bci() {
+        assert primitives.length > 0;
+        return EspressoFrameDescriptor.narrow(primitives[0]);
+    }
 
     public static HostFrameRecord recordFrame(Frame frame, Method.MethodVersion m, int bci, int top, HostFrameRecord next) {
         EspressoFrameDescriptor fd = m.getFrameDescriptor(bci);
@@ -78,10 +82,10 @@ public final class HostFrameRecord {
         this.frameDescriptor = frameDescriptor;
         this.objects = objects;
         this.primitives = primitives;
-        this.bci = bci;
         this.top = top;
         this.methodVersion = methodVersion;
         this.next = next;
+        primitives[0] = EspressoFrameDescriptor.zeroExtend(bci);
     }
 
     @TruffleBoundary
@@ -97,11 +101,11 @@ public final class HostFrameRecord {
             frameDescriptor.validateImport(objects, primitives, methodVersion.getDeclaringKlass(), meta);
             // Ensures we restore the stack at invokes
             BytecodeStream bs = new BytecodeStream(methodVersion.getOriginalCode());
-            guarantee(Bytecodes.isInvoke(bs.opcode(bci)) && bs.opcode(bci) != Bytecodes.INVOKEDYNAMIC, cat("Frame record would re-wind at a non-invoke bytecode."), meta);
+            guarantee(Bytecodes.isInvoke(bs.opcode(bci())) && bs.opcode(bci()) != Bytecodes.INVOKEDYNAMIC, cat("Frame record would re-wind at a non-invoke bytecode."), meta);
             if (next != null) {
                 // Ensures the next method is a valid invoke
                 ConstantPool pool = methodVersion.getPool();
-                MethodRefConstant ref = pool.methodAt(bs.readCPI(bci));
+                MethodRefConstant ref = pool.methodAt(bs.readCPI(bci()));
                 Symbol<Name> name = ref.getName(pool);
                 Symbol<Signature> signature = ref.getSignature(pool);
                 // Compatible method reference
@@ -126,7 +130,6 @@ public final class HostFrameRecord {
     /**
      * Converts the entire linked list of host records to guest records.
      */
-    @TruffleBoundary
     public StaticObject copyToGuest(Meta meta) {
         // Convert the linked list from host to guest.
         HostFrameRecord cursor = this;
@@ -156,7 +159,7 @@ public final class HostFrameRecord {
         meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers.setObject(guestRecord, StaticObject.wrap(objects, meta));
         meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives.setObject(guestRecord, StaticObject.wrap(primitives, meta));
         meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method.setObject(guestRecord, methodVersion.getMethod().makeMirror(meta));
-        meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci.setInt(guestRecord, bci);
+        meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci.setInt(guestRecord, bci());
         return guestRecord;
     }
 
