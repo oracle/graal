@@ -131,7 +131,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
     }
 
     private static DescriptorImpl asDescriptor(OptionDescriptor descriptor) {
-        if (descriptor == null || !RuntimeOptionValues.singleton().getAllOptionNames().contains(descriptor.getName())) {
+        if (descriptor == null) {
             return null;
         }
         String help = descriptor.getHelp();
