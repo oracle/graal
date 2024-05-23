@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,32 +24,32 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import java.util.List;
-
+import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
-import jdk.graal.compiler.graph.NodeSourcePosition;
 
-public final class SubstrateCompilationResult extends SharedCompilationResult {
+/** Base class common to both hosted and runtime compilations. */
+public abstract class SharedCompilationResult extends CompilationResult {
+    private int frameSize = -1;
+    private int framePointerSaveAreaOffset = -1;
 
-    private List<NodeSourcePosition> deoptimizationSourcePositions;
-
-    public SubstrateCompilationResult(CompilationIdentifier compilationId, String name) {
+    public SharedCompilationResult(CompilationIdentifier compilationId, String name) {
         super(compilationId, name);
     }
 
-    public List<NodeSourcePosition> getDeoptimizationSourcePositions() {
-        return deoptimizationSourcePositions;
+    public int getFrameSize() {
+        assert frameSize != -1 : "frame size not set";
+        return frameSize;
     }
 
-    public void setDeoptimizationSourcePositions(List<NodeSourcePosition> deoptimizationSourcePositions) {
-        assert this.deoptimizationSourcePositions == null;
-        assert deoptimizationSourcePositions.get(0) == null : "First index is reserved for unknown source positions";
-        this.deoptimizationSourcePositions = deoptimizationSourcePositions;
+    public void setFrameSize(int frameSize) {
+        this.frameSize = frameSize;
     }
 
-    @Override
-    public void resetForEmittingCode() {
-        super.resetForEmittingCode();
-        deoptimizationSourcePositions = null;
+    public int getFramePointerSaveAreaOffset() {
+        return framePointerSaveAreaOffset;
+    }
+
+    public void setFramePointerSaveAreaOffset(int framePointerSaveAreaOffset) {
+        this.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
     }
 }
