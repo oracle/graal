@@ -147,7 +147,7 @@ Integer.class.getMethod("parseInt", params2);
 ### Specifying Reflection Metadata in JSON
 
 Reflection metadata should be specified in a _reflect-config.json_ file and conform to the JSON schema defined in 
-[reflect-config-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.1.0.json).
+[reflect-config-schema-v1.2.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.2.0.json).
 The schema also includes further details and explanations how this configuration works. Here is the example of the reflect-config.json:
 ```json
 [
@@ -181,7 +181,10 @@ The schema also includes further details and explanations how this configuration
         "queryAllDeclaredConstructors": true,
         "queryAllPublicMethods": true,
         "queryAllPublicConstructors": true,
-        "unsafeAllocated": true
+        "unsafeAllocated": true,
+        "reasons": [
+          "Created for Demo purposes"
+        ]
     }
 ]
 ```
@@ -209,7 +212,7 @@ It is not possible to specify JNI metadata in code.
 ### JNI Metadata in JSON
 
 JNI metadata should be specified in a _jni-config.json_ file and conform to the JSON schema defined in
-[jni-config-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/jni-config-schema-v1.1.0.json).
+[jni-config-schema-v1.2.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/jni-config-schema-v1.2.0.json).
 The schema also includes further details and explanations how this configuration works. The example of jni-config.json is the same
 as the example of reflect-config.json described above.
 
@@ -240,7 +243,7 @@ class Example {
 ### Resource Metadata in JSON
 
 Resource metadata should be specified in a _resource-config.json_ file and conform to the JSON schema defined in
-[resource-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json).
+[resource-config-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.1.0.json).
 The schema also includes further details and explanations how this configuration works. Here is the example of the resource-config.json:
 ```json
 {
@@ -250,7 +253,10 @@ The schema also includes further details and explanations how this configuration
         "condition": {
           "typeReachable": "<condition-class>"
         },
-        "pattern": ".*\\.txt"
+        "pattern": ".*\\.txt",
+        "reasons": [
+          "We want all txt files"
+        ]
       }
     ],
     "excludes": [
@@ -258,7 +264,10 @@ The schema also includes further details and explanations how this configuration
         "condition": {
           "typeReachable": "<condition-class>"
         },
-        "pattern": ".*\\.txt"
+        "pattern": ".*\\.txt",
+        "reasons": [
+          "We want no txt files"
+        ]
       }
     ]
   },
@@ -268,7 +277,11 @@ The schema also includes further details and explanations how this configuration
         "typeReachable": "<condition-class>"
       },
       "name": "fully.qualified.bundle.name",
-      "locales": ["en", "de", "sk"]
+      "locales": ["en", "de", "sk"],
+      "reasons": [
+        "That's a useful bundle",
+        "We support English, German, and Slovak"
+      ]
     },
     {
       "condition": {
@@ -278,6 +291,9 @@ The schema also includes further details and explanations how this configuration
       "classNames": [
         "fully.qualified.bundle.name_en",
         "fully.qualified.bundle.name_de"
+      ],
+      "reasons": [
+        "English and German have their one additional bundles"
       ]
     }
   ]
@@ -337,7 +353,10 @@ Here is an example of dynamic proxy metadata in reflect-config.json:
     "type": { "proxy": [
         "IA",
         "IB"
-      ]}
+      ]},
+    "reasons": [
+      "We generate dynamic proxies for IA and IB"
+    ]
   }
 ]
 ```
@@ -381,7 +400,7 @@ Proxy classes can only be registered for serialization via the JSON files.
 ### Serialization Metadata in JSON
 
 Serialization metadata should be specified in a _serialization-config.json_ file and conform to the JSON schema defined in
-[serialization-config-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.1.0.json).
+[serialization-config-schema-v1.2.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.2.0.json).
 The schema also includes further details and explanations how this configuration works. Here is the example of the serialization-config.json:
 ```json
 {
@@ -399,7 +418,10 @@ The schema also includes further details and explanations how this configuration
       },
       "type": {
         "proxy": ["<fully-qualified-interface-name-1>", "<fully-qualified-interface-name-n>"]
-      }
+      },
+      "reasons": [
+        "Generated dynamic proxies for interfaces 1 and 2"
+      ]
     }
   ],
   "lambdaCapturingTypes": [
@@ -407,7 +429,10 @@ The schema also includes further details and explanations how this configuration
       "condition": {
         "typeReachable": "<condition-class>"
       },
-      "name": "<fully-qualified-class-name>"
+      "name": "<fully-qualified-class-name>",
+      "reasons": [
+        "Serialized by MyClass"
+      ]
     }
   ]
 }

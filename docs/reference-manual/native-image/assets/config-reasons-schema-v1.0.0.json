@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/config-reasons-schema-v1.0.0.json",
+  "type": "array",
+  "default": [],
+  "items": {
+    "type": "string"
+  },
+  "title": "JSON schema for the reasons justifying a configuration"
+}
