@@ -65,7 +65,7 @@ public record ProxyConfigurationTypeDescriptor(String[] interfaceNames) implemen
     }
 
     @Override
-    public boolean isType() {
+    public boolean definedAsType() {
         return true;
     }
 

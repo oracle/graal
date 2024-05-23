@@ -215,7 +215,7 @@ public abstract class ConfigurationParser {
 
             if (conditionObject.containsKey(TYPE_REACHED_KEY)) {
                 if (!runtimeCondition) {
-                    failOnSchemaError("'" + TYPE_REACHED_KEY + "' condition can not be used in older schemas. Please migrate to the latest schema.");
+                    failOnSchemaError("'" + TYPE_REACHED_KEY + "' condition cannot be used in older schemas. Please migrate the file to the latest schema.");
                 }
                 Object object = conditionObject.get(TYPE_REACHED_KEY);
                 var condition = parseTypeContents(object);
@@ -224,7 +224,7 @@ public abstract class ConfigurationParser {
                     return UnresolvedConfigurationCondition.create(className, true);
                 }
             } else if (conditionObject.containsKey(TYPE_REACHABLE_KEY)) {
-                if (runtimeCondition) {
+                if (runtimeCondition && !TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
                     failOnSchemaError("'" + TYPE_REACHABLE_KEY + "' condition can not be used with the latest schema. Please use '" + TYPE_REACHED_KEY + "'.");
                 }
                 Object object = conditionObject.get(TYPE_REACHABLE_KEY);
@@ -242,13 +242,13 @@ public abstract class ConfigurationParser {
         throw new JSONParserException(message);
     }
 
-    protected static Optional<ConfigurationTypeDescriptor> parseTypeOrName(EconomicMap<String, Object> data) {
+    protected static Optional<ConfigurationTypeDescriptor> parseTypeOrName(EconomicMap<String, Object> data, boolean treatAllNameEntriesAsType) {
         Object typeObject = data.get(TYPE_KEY);
         Object name = data.get(NAME_KEY);
         if (typeObject != null) {
             return parseTypeContents(typeObject);
         } else if (name != null) {
-            return Optional.of(new NamedConfigurationTypeDescriptor(asString(name)));
+            return Optional.of(new NamedConfigurationTypeDescriptor(asString(name), treatAllNameEntriesAsType));
         } else {
             throw failOnSchemaError("must have type or name specified for an element");
         }

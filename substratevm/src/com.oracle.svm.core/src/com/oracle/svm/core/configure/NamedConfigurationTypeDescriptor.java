@@ -30,20 +30,20 @@ import java.util.Collections;
 
 import com.oracle.svm.core.util.json.JsonWriter;
 
-public record NamedConfigurationTypeDescriptor(String name, boolean type) implements ConfigurationTypeDescriptor {
+public record NamedConfigurationTypeDescriptor(String name, boolean definedAsType) implements ConfigurationTypeDescriptor {
 
     public NamedConfigurationTypeDescriptor(String name) {
         this(name, false);
     }
 
-    public NamedConfigurationTypeDescriptor(String name, boolean type) {
+    public NamedConfigurationTypeDescriptor(String name, boolean definedAsType) {
         this.name = ConfigurationTypeDescriptor.checkQualifiedJavaName(name);
-        this.type = type;
+        this.definedAsType = definedAsType;
     }
 
     @Override
-    public boolean isType() {
-        return type;
+    public boolean definedAsType() {
+        return definedAsType;
     }
 
     @Override
@@ -74,5 +74,4 @@ public record NamedConfigurationTypeDescriptor(String name, boolean type) implem
     public void printJson(JsonWriter writer) throws IOException {
         writer.quote(name);
     }
-
 }

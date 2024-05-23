@@ -574,7 +574,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         encoders.classes.addObject(type.getJavaClass());
 
         addType(declaringType);
-        registerField(declaringType, analysisField, new FieldMetadata(RuntimeConditionSet.createHosted(), declaringType, name, type, modifiers));
+        registerField(declaringType, analysisField, new FieldMetadata(RuntimeConditionSet.emptySet(), declaringType, name, type, modifiers));
     }
 
     @Override
@@ -587,7 +587,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         encoders.classes.addObject(returnType.getJavaClass());
 
         addType(declaringType);
-        registerMethod(declaringType, analysisMethod, new MethodMetadata(RuntimeConditionSet.createHosted(), declaringType, name, parameterTypes, modifiers, returnType));
+        registerMethod(declaringType, analysisMethod, new MethodMetadata(RuntimeConditionSet.emptySet(), declaringType, name, parameterTypes, modifiers, returnType));
     }
 
     @Override
@@ -598,7 +598,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         /* Fill encoders with the necessary values. */
         encoders.memberNames.addObject(name);
 
-        registerField(declaringType, field, new FieldMetadata(RuntimeConditionSet.createHosted(), declaringType, name, false));
+        registerField(declaringType, field, new FieldMetadata(RuntimeConditionSet.emptySet(), declaringType, name, false));
     }
 
     @Override
@@ -617,16 +617,16 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         }
 
         if (isMethod) {
-            registerMethod(declaringType, executable, new MethodMetadata(RuntimeConditionSet.createHosted(), declaringType, name, parameterTypeNames));
+            registerMethod(declaringType, executable, new MethodMetadata(RuntimeConditionSet.emptySet(), declaringType, name, parameterTypeNames));
         } else {
-            registerConstructor(declaringType, executable, new ConstructorMetadata(RuntimeConditionSet.createHosted(), declaringType, parameterTypeNames));
+            registerConstructor(declaringType, executable, new ConstructorMetadata(RuntimeConditionSet.emptySet(), declaringType, parameterTypeNames));
         }
     }
 
     @Override
     public void addNegativeFieldQueryMetadata(HostedType declaringClass, String fieldName) {
         encoders.memberNames.addObject(fieldName);
-        registerField(declaringClass, fieldName, new FieldMetadata(RuntimeConditionSet.createHosted(), declaringClass, fieldName, true));
+        registerField(declaringClass, fieldName, new FieldMetadata(RuntimeConditionSet.emptySet(), declaringClass, fieldName, true));
     }
 
     @Override
@@ -635,7 +635,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         for (HostedType parameterType : parameterTypes) {
             encoders.classes.addObject(parameterType.getJavaClass());
         }
-        registerMethod(declaringClass, Pair.create(methodName, parameterTypes), new MethodMetadata(RuntimeConditionSet.createHosted(), declaringClass, methodName, parameterTypes));
+        registerMethod(declaringClass, Pair.create(methodName, parameterTypes), new MethodMetadata(RuntimeConditionSet.emptySet(), declaringClass, methodName, parameterTypes));
     }
 
     @Override
@@ -643,7 +643,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         for (HostedType parameterType : parameterTypes) {
             encoders.classes.addObject(parameterType.getJavaClass());
         }
-        registerConstructor(declaringClass, parameterTypes, new ConstructorMetadata(RuntimeConditionSet.createHosted(), declaringClass, parameterTypes));
+        registerConstructor(declaringClass, parameterTypes, new ConstructorMetadata(RuntimeConditionSet.emptySet(), declaringClass, parameterTypes));
     }
 
     @Override

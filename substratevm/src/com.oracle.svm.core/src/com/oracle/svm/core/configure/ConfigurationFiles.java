@@ -128,10 +128,13 @@ public final class ConfigurationFiles {
         @Option(help = "Testing flag: the typeReachable condition is treated as typeReached so the semantics of programs can change.")//
         public static final HostedOptionKey<Boolean> TreatAllTypeReachableConditionsAsTypeReached = new HostedOptionKey<>(false);
 
-        @Option(help = "Testing flag: the typeReached condition is always satisfied however it prints the stack traces where it would not be satisfied.")//
+        @Option(help = "Testing flag: the 'name' is treated as 'type' reflection configuration.")//
+        public static final HostedOptionKey<Boolean> TreatAllNameEntriesAsType = new HostedOptionKey<>(false);
+
+        @Option(help = "Testing flag: the 'typeReached' condition is always satisfied however it prints the stack trace where it would not be satisfied.")//
         public static final HostedOptionKey<Boolean> TrackUnsatisfiedTypeReachedConditions = new HostedOptionKey<>(false);
 
-        @Option(help = "Testing flag: print typeReached conditions that are used on interfaces.")//
+        @Option(help = "Testing flag: print 'typeReached' conditions that are used on interfaces at build time.")//
         public static final HostedOptionKey<Boolean> TrackTypeReachedOnInterfaces = new HostedOptionKey<>(false);
 
         @Option(help = "Testing flag: every type is considered as it participates in a typeReachable condition.")//

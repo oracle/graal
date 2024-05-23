@@ -56,13 +56,15 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
                     "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated");
     private final boolean printMissingElements;
+    private final boolean treatAllNameEntriesAsType;
 
     public ReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, boolean strictConfiguration,
-                    boolean printMissingElements) {
+                    boolean printMissingElements, boolean treatAllNameEntriesAsType) {
         super(strictConfiguration);
         this.conditionResolver = conditionResolver;
         this.printMissingElements = printMissingElements;
         this.delegate = delegate;
+        this.treatAllNameEntriesAsType = treatAllNameEntriesAsType;
     }
 
     @Override
@@ -80,11 +82,11 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         checkAttributes(data, "reflection class descriptor object", Collections.emptyList(), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
         checkHasExactlyOneAttribute(data, "reflection class descriptor object", List.of("name", "type"));
 
-        Optional<ConfigurationTypeDescriptor> type = parseTypeOrName(data);
+        Optional<ConfigurationTypeDescriptor> type = parseTypeOrName(data, treatAllNameEntriesAsType);
         if (type.isEmpty()) {
             return;
         }
-        boolean isType = type.get().isType();
+        boolean isType = type.get().definedAsType();
 
         UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, isType);
         TypeResult<C> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);

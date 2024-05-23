@@ -27,7 +27,6 @@ package com.oracle.svm.core.hub;
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
 import java.util.Objects;
-import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -190,7 +189,7 @@ public final class ClassForNameSupport {
         Objects.requireNonNull(jClass);
         ConditionalRuntimeValue<Object> conditionalClass = knownClasses.get(jClass.getName());
         if (conditionalClass == null) {
-            return RuntimeConditionSet.createRuntime(Set.of());
+            return RuntimeConditionSet.unmodifiableEmptySet();
         } else {
             return conditionalClass.getConditions();
         }

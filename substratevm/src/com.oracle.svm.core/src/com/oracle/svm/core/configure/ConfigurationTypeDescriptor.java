@@ -73,5 +73,5 @@ public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTyp
         return canonicalizeTypeName(javaName);
     }
 
-    boolean isType();
+    boolean definedAsType();
 }

@@ -33,8 +33,6 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -43,7 +41,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.configure.RuntimeCondition;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -381,11 +378,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
     private static RuntimeConditionSet decodeConditions(UnsafeArrayTypeReader buf) {
         var conditionTypes = decodeArray(buf, Class.class, i -> decodeType(buf));
-        Set<RuntimeCondition> runtimeConditions = new HashSet<>(conditionTypes.length);
-        for (Class<?> conditionType : conditionTypes) {
-            runtimeConditions.add(RuntimeCondition.createTypeReachedCondition(conditionType));
-        }
-        return RuntimeConditionSet.createRuntime(runtimeConditions);
+        return RuntimeConditionSet.createDecoded(conditionTypes);
     }
 
     /**

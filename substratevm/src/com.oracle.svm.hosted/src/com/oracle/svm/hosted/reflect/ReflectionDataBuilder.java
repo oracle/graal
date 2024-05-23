@@ -37,6 +37,7 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_NEST_MEMBE
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
@@ -86,8 +87,8 @@ import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
-import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
@@ -218,7 +219,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
      */
     @SuppressWarnings("unused")
     private static void guaranteeNotRuntimeConditionForQueries(ConfigurationCondition cnd, boolean queriedOnly) {
-        VMError.guarantee(!queriedOnly || cnd.isAlwaysTrue() || !cnd.isRuntimeChecked(), "Bulk queries can only be set with 'name' which does not allow run-time conditions.");
+        if (!TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
+            VMError.guarantee(!queriedOnly || cnd.isAlwaysTrue() || !cnd.isRuntimeChecked(), "Bulk queries can only be set with 'name' which does not allow run-time conditions.");
+        }
     }
 
     @Override
@@ -413,7 +416,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
         var exists = registeredMethods.containsKey(analysisMethod);
-        var conditionalValue = registeredMethods.computeIfAbsent(analysisMethod, (t) -> new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(), reflectExecutable));
+        var conditionalValue = registeredMethods.computeIfAbsent(analysisMethod, (t) -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectExecutable));
         if (!queriedOnly) {
             /* queryOnly methods are conditioned by the type itself */
             conditionalValue.getConditions().addCondition(cnd);
@@ -555,7 +558,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
         }
 
-        var cndValue = registeredFields.computeIfAbsent(analysisField, f -> new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(), reflectField));
+        var cndValue = registeredFields.computeIfAbsent(analysisField, f -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
         cndValue.getConditions().addCondition(cnd);
 
         /*

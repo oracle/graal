@@ -494,7 +494,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     }
 
     public void addForTypeReachedTracking(Class<?> clazz) {
-        if (TrackTypeReachedOnInterfaces.getValue() && clazz.isInterface() && metaAccess.lookupJavaType(clazz).declaresDefaultMethods()) {
+        if (TrackTypeReachedOnInterfaces.getValue() && clazz.isInterface() && !metaAccess.lookupJavaType(clazz).declaresDefaultMethods()) {
             LogUtils.info("Detected 'typeReached' on interface type without default methods: " + clazz);
         }
 
