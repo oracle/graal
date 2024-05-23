@@ -56,52 +56,44 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * <p>
  * A delimited one-shot continuation, which encapsulates a part of the program's execution such that
- * it can be resumed from the point at which it suspended.
- * </p>
+ * it can be resumed from the point at which it was suspended.
  *
  * <p>
  * Continuations allow you to mark a region of code in which the program can <i>suspend</i>, which
  * passes control flow up the stack to the point at which the continuation was <i>resumed</i>. This
  * implementation is low level and doesn't address common needs, such as passing objects in and out
  * of the continuation as it suspends and resumes.
- * </p>
  *
  * <p>
  * Continuations are not threads. When accessing thread locals they see the values that their
  * hosting thread would see. Continuations are also not thread safe.
- * </p>
  *
  * <p>
  * Exceptions thrown from the entry point propagate out of {@link #resume()} and then mark the
  * continuation as failed. Resuming the exception after that point will fail with
  * {@link IllegalContinuationStateException}. If you want to retry a failed continuation you must
  * have a clone from before the failure (see below).
- * </p>
  *
  * <h1>Serialization</h1>
  *
  * <p>
  * Continuations can be serialized to disk and resumed later in a separate process. Alternatively
  * they can be discarded and left for the GC to clean up.
- * </p>
  *
  * <p>
  * Continuation deserialization is <b>not secure</b>. You should only deserialize continuations you
  * yourself suspended, as resuming a malicious continuation can cause arbitrary undefined behaviour,
  * i.e. is equivalent to handing control of the JVM to the attacker.
- * </p>
  *
  * <p>
  * This class implements <i>one shot</i> continuations, meaning you cannot restart a continuation
  * from the same suspend point more than once. For that reason this class is mutable, and the act of
  * calling {@code resume} changes its state. If you want to roll back and retry a resume operation
- * you should start by serializing the continuation, then to try deserialize it to obtain a new
+ * you should start by serializing the continuation, then trying to deserialize it to obtain a new
  * {@code Continuation} that you can resume again. This is required because the continuation may
  * have mutated the heap in arbitrary ways, and so resuming a continuation more than once could
  * cause extremely confusing and apparently 'impossible' states to occur.
- * </p>
  */
 public final class Continuation implements Externalizable {
     // We want a compact serialized representation, so use fields judiciously here.
@@ -123,23 +115,22 @@ public final class Continuation implements Externalizable {
 
     /**
      * <p>
-     * A singly linked list of reified stack frames, from top to bottom. The arrays are of the same
-     * length but each slot is either a pointer or a primitive, in which case the same indexed entry
-     * in the other array has no meaningful content.
-     * </p>
+     * A singly linked list of reified stack frames, from top to bottom. The two arrays,
+     * {@link #pointers} and {@link #primitives} are a representation of the Stack and Local
+     * variables for this frame at the point where the continuation was suspended. They are
+     * inherently VM-dependant, so no assumptions should be made about their content.
      *
      * <p>
-     * The contents of the arrays should be treated as opaque.
-     * </p>
+     * On {@link #resume() resuming}, All declaring classes of methods in the recorded frames are
+     * initialized if they were not already initialized, and this before the rewinding happens.
      *
      * <p>
      * Note that the VM ensures on {@link #ensureDematerialized() dematerialization} that the record
      * is valid. Here are the requirements for a record to be considered valid by the VM:
-     * </p>
      * <ul>
-     * <li>{@link #bci} must point to an invoke opcode in {@link #method}</li>
+     * <li>{@link #bci} must point to an invoke opcode in {@link #method}.</li>
      * <li>If this frame record is the last on the stack, then {@link #method} is
-     * {@link Continuation#suspend() Continuation.suspend()}</li>
+     * {@link Continuation#suspend() Continuation.suspend()}.</li>
      * <li>Otherwise, {@link #next}.{@link #method} had the same Name and Signature than the
      * {@code CONSTANT_Methodref_info} reference constant pointed to by the invoke opcode at
      * {@link #bci}. Furthermore, a {@code loading constraint} is recorded for the return type.</li>
@@ -154,12 +145,12 @@ public final class Continuation implements Externalizable {
         private FrameRecord next;   // Set by the VM
 
         /**
-         * Pointer stack slots. Note that not every slot is used.
+         * Pointer stack and local slots. Note that not every slot is used.
          */
         private final Object[] pointers;
 
         /**
-         * Primitive stack slots. Note that not every slot is used.
+         * Primitive stack and local slots. Note that not every slot is used.
          */
         private final long[] primitives;
 
@@ -258,41 +249,20 @@ public final class Continuation implements Externalizable {
      * Returns true if this VM supports the continuations feature, false otherwise.
      */
     public static boolean isSupported() {
-        return false;
+        return isSupported0();
     }
 
     /**
-     * <p>
-     * Creates a new suspended continuation.
-     * </p>
+     * Creates a new suspended continuation, taking in an {@link EntryPoint}.
      *
      * <p>
-     * Pass an implementation of {@link EntryPoint}. The new continuation starts in the
-     * {@link State#NEW} state. To begin execution call the {@link Continuation#resume()} method.
-     * The entry point will be passed a capability object allowing it to suspend itself. If you
-     * don't want to deal with passing capabilities around, just stick it in a global variable that
-     * you clear when done, or use a thread local.
-     * </p>
-     *
-     * <p>
-     * Be careful with using lambdas as the entry point. It works but you should be careful not to
-     * accidentally capture the calling object if you intend to serialize the results.
-     * </p>
+     * The new continuation starts in the {@link State#NEW} state. To begin execution call the
+     * {@link Continuation#resume()} method. The entry point will be passed a capability object
+     * allowing it to suspend itself.
      */
     public Continuation(EntryPoint entryPoint) {
         this.state = State.NEW;
         this.entryPoint = entryPoint;
-    }
-
-    /**
-     * This constructor is intended only to allow deserialization. You shouldn't use it directly.
-     *
-     * @hidden
-     */
-    public Continuation() {
-        // Note: can't mark this as @hidden in javadoc because the doclet fork used by GraalVM
-        // is too old to understand it.
-        this.state = State.INCOMPLETE;
     }
 
     /**
@@ -313,19 +283,6 @@ public final class Continuation implements Externalizable {
     }
 
     /**
-     * A functional interface you implement to delimit the starting point of the continuation. You
-     * can only suspend the continuation when your implementation of {@code start} is on the stack.
-     */
-    @FunctionalInterface
-    public interface EntryPoint {
-        /**
-         * The starting point of your continuation. The {@code suspendCapability} should only be
-         * invoked on this thread.
-         */
-        void start(SuspendCapability suspendCapability);
-    }
-
-    /**
      * An object provided by the system that lets you yield control and return from
      * {@link Continuation#resume()}.
      */
@@ -336,8 +293,8 @@ public final class Continuation implements Externalizable {
          * Suspends the continuation, unwinding the stack to the point at which it was previously
          * resumed.
          *
-         * @throws IllegalContinuationStateException if you try to call this outside a continuation,
-         *             or if there are native frames on the stack, or if the thread is inside a
+         * @throws IllegalContinuationStateException if trying to suspend outside a continuation, or
+         *             if there are native frames on the stack, or if the thread is inside a
          *             synchronized block.
          */
         public void suspend() {
@@ -366,26 +323,17 @@ public final class Continuation implements Externalizable {
     }
 
     /**
-     * <p>
      * Runs the continuation until it either completes or calls {@link SuspendCapability#suspend()}.
      * The difference between the two reasons for returning is visible in {@link #getState()}. A
      * continuation may not be resumed if it's already {@link State#COMPLETED} or
      * {@link State#FAILED}, nor if it is already {@link State#RUNNING}.
-     * </p>
      *
      * <p>
      * If an exception is thrown by the continuation and escapes the entry point, it will be
      * rethrown here. The continuation is then no longer usable and must be discarded.
-     * </p>
-     *
-     * <p>
-     * Additionally, all declaring classes of methods in the recorded frames are initialized if they
-     * were not already initialized, and this before the rewinding happens.
-     * </p>
      *
      * @throws IllegalContinuationStateException if the {@link #getState()} is not
-     *             {@link State#SUSPENDED}, or if the {@link #stackFrameHead} contains erroneous
-     *             data.
+     *             {@link State#SUSPENDED}.
      * @throws IllegalMaterializedRecordException if the VM rejects the frames recorded in
      *             {@link #stackFrameHead}.
      */
@@ -438,6 +386,17 @@ public final class Continuation implements Externalizable {
 
     private static final int FORMAT_SHIFT = 4;
     private static final int FORMAT_MASK = 0xFF;
+
+    /**
+     * This constructor is intended only to allow deserialization. You shouldn't use it directly.
+     *
+     * @hidden
+     */
+    public Continuation() {
+        // Note: can't mark this as @hidden in javadoc because the doclet fork used by GraalVM
+        // is too old to understand it.
+        this.state = State.INCOMPLETE;
+    }
 
     /**
      * Serializes the continuation using an internal format. The {@link ObjectOutput} will receive
@@ -509,7 +468,7 @@ public final class Continuation implements Externalizable {
         writeClass(out, method.getReturnType(), stringPool);
         Class<?>[] paramTypes = method.getParameterTypes();
         out.writeByte(paramTypes.length);
-        for (var p : paramTypes) {
+        for (Class<?> p : paramTypes) {
             writeClass(out, p, stringPool);
         }
     }
@@ -591,7 +550,7 @@ public final class Continuation implements Externalizable {
         int header = in.readByte();
         int version = (header >> FORMAT_SHIFT) & FORMAT_MASK;
         if (version != FORMAT_VERSION) {
-            throw new FormatVersionException(version);
+            throw new FormatVersionException(version, FORMAT_VERSION);
         }
 
         State serializedState = (State) in.readObject();
@@ -611,7 +570,7 @@ public final class Continuation implements Externalizable {
                     // We could walk the stack to find it just like ObjectInputStream does, but we
                     // go with the context classloader here to make it easier for the user to
                     // control.
-                    var frame = readFrame(in, Thread.currentThread().getContextClassLoader(), stringPool);
+                    FrameRecord frame = readFrame(in, Thread.currentThread().getContextClassLoader(), stringPool);
                     if (last == null) {
                         stackFrameHead = frame;
                     } else {
@@ -648,7 +607,7 @@ public final class Continuation implements Externalizable {
         Class<?> returnType = readClass(in, classLoader, stringPool);
 
         int numArgs = in.readUnsignedByte();
-        var argTypes = new Class<?>[numArgs];
+        Class<?>[] argTypes = new Class<?>[numArgs];
         for (int i = 0; i < numArgs; i++) {
             argTypes[i] = readClass(in, classLoader, stringPool);
         }
@@ -716,7 +675,7 @@ public final class Continuation implements Externalizable {
     @SuppressWarnings("unused")
     private void run() {
         assert state == State.RUNNING : state; // set in #resume()
-        var cap = new SuspendCapability();
+        SuspendCapability cap = new SuspendCapability();
         try {
             try {
                 entryPoint.start(cap);
@@ -802,7 +761,7 @@ public final class Continuation implements Externalizable {
 
     @Override
     public String toString() {
-        var sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         sb.append("Continuation in state ");
         sb.append(getState());
         sb.append("\n");
@@ -818,7 +777,7 @@ public final class Continuation implements Externalizable {
                 sb.append("  Pointers: [");
                 // We start at 1 because the first slot is always a primitive (the bytecode index).
                 for (int i = 1; i < cursor.pointers.length; i++) {
-                    var pointer = cursor.pointers[i];
+                    Object pointer = cursor.pointers[i];
                     if (pointer == null) {
                         sb.append("null");
                     } else if (pointer == this) {
@@ -849,6 +808,8 @@ public final class Continuation implements Externalizable {
     private void suspend() {
         suspend0();
     }
+
+    private static native boolean isSupported0();
 
     private native void start0();
 

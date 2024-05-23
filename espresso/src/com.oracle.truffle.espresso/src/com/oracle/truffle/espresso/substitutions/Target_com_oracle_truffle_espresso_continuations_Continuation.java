@@ -167,7 +167,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     }
 
     @Substitution
-    static boolean isSupported(@Inject Meta meta) {
+    static boolean isSupported0(@Inject Meta meta) {
         return meta.continuum != null;
     }
 }

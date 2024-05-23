@@ -41,18 +41,17 @@
 
 package com.oracle.truffle.espresso.continuations;
 
-import java.io.IOException;
-import java.io.Serial;
+import com.oracle.truffle.espresso.continuations.Continuation.SuspendCapability;
 
 /**
- * Thrown if the format of the serialized continuation is unrecognized i.e. from a newer version of
- * the runtime, or from a version too old to still be supported.
+ * A functional interface to delimit the starting point of the continuation. A Continuation can only
+ * be suspended if {@link #start(SuspendCapability)} is on the calling stack.
  */
-public final class FormatVersionException extends IOException {
-    @Serial private static final long serialVersionUID = 6913545866116536598L;
-
-    public FormatVersionException(int version, int supported) {
-        super("Unsupported serialized continuation version: " + version + "\n" +
-                        "Current supported version: " + supported);
-    }
+@FunctionalInterface
+public interface EntryPoint {
+    /**
+     * The starting point of a continuation. The {@code suspendCapability} should only be invoked on
+     * this thread.
+     */
+    void start(SuspendCapability suspendCapability);
 }
