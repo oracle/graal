@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,9 +33,9 @@
 
 #ifndef _WIN32
 #define _Dcomplex double complex
-#define _DCOMPLEX_(x, y) ((double) (x) + (double) (y) *I)
+#define _DCOMPLEX_(x, y) ((double) (x) + (double) (y) * I)
 #define _Fcomplex float complex
-#define _FCOMPLEX_(x, y) ((float) (x) + (float) (y) *I)
+#define _FCOMPLEX_(x, y) ((float) (x) + (float) (y) * I)
 #define conjf conj
 #endif
 

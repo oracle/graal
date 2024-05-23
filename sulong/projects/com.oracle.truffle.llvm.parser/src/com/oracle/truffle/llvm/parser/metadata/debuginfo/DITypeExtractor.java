@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -326,6 +326,7 @@ final class DITypeExtractor implements MetadataVisitor {
 
         switch (mdType.getTag()) {
 
+            case DW_TAG_VARIABLE:
             case DW_TAG_MEMBER: {
 
                 final String name = MDNameExtractor.getName(mdType.getName());

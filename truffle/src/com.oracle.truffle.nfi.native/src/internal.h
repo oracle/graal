@@ -150,7 +150,7 @@ enum TypeTag {
 };
 
 #define DECODE_OFFSET(encoded) (((unsigned int) (encoded)) >> 4)
-#define DECODE_TAG(encoded) ((enum TypeTag)((encoded) &0x0F))
+#define DECODE_TAG(encoded) ((enum TypeTag)((encoded) & 0x0F))
 
 void initialize_intrinsics(struct __TruffleContextInternal *);
 void *check_intrinsify(struct __TruffleContextInternal *, void *);

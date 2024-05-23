@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,41 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-int gcd(int u, int v) {
-    // simple cases (termination)
-    if (u == v) {
-        return u;
+package com.oracle.truffle.llvm.parser.metadata;
+
+public final class MDAssignID implements MDBaseNode {
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
     }
 
-    if (u == 0) {
-        return v;
+    private MDAssignID() {
     }
 
-    if (v == 0) {
-        return u;
+    @Override
+    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
     }
 
-    // look for factors of 2
-    if (~u & 1) {    // u is even
-        if (v & 1) { // v is odd
-            return gcd(u >> 1, v);
-        } else { // both u and v are even
-            return gcd(u >> 1, v >> 1) << 1;
-        }
+    @Override
+    public String toString() {
+        return String.format("AssignID");
     }
 
-    if (~v & 1) { // u is odd, v is even
-        return gcd(u, v >> 1);
+    public static MDBaseNode create() {
+        return new MDAssignID();
     }
-
-    // reduce larger argument
-    if (u > v) {
-        return gcd((u - v) >> 1, v);
-    }
-
-    return gcd((v - u) >> 1, u);
-}
-
-int main() {
-    return gcd(6515, 3158);
 }

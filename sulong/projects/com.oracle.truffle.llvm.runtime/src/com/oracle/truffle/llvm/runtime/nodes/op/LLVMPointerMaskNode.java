@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,41 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-int gcd(int u, int v) {
-    // simple cases (termination)
-    if (u == v) {
-        return u;
+package com.oracle.truffle.llvm.runtime.nodes.op;
+
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesLongPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
+@TypeSystemReference(LLVMTypesLongPointer.class)
+public abstract class LLVMPointerMaskNode extends LLVMExpressionNode {
+
+    @Specialization
+    LLVMNativePointer doNative(LLVMNativePointer ptr, long mask) {
+        return LLVMNativePointer.create(ptr.asNative() & mask);
     }
 
-    if (u == 0) {
-        return v;
+    @Specialization
+    LLVMManagedPointer doManaged(LLVMManagedPointer ptr, long mask) {
+        /*
+         * Managed pointer are assumed to be "inifinitely aligned", so we only mask the offset part
+         * of the pointer.
+         */
+        return LLVMManagedPointer.create(ptr.getObject(), ptr.getOffset() & mask);
     }
-
-    if (v == 0) {
-        return u;
-    }
-
-    // look for factors of 2
-    if (~u & 1) {    // u is even
-        if (v & 1) { // v is odd
-            return gcd(u >> 1, v);
-        } else { // both u and v are even
-            return gcd(u >> 1, v >> 1) << 1;
-        }
-    }
-
-    if (~v & 1) { // u is odd, v is even
-        return gcd(u, v >> 1);
-    }
-
-    // reduce larger argument
-    if (u > v) {
-        return gcd((u - v) >> 1, v);
-    }
-
-    return gcd((v - u) >> 1, u);
-}
-
-int main() {
-    return gcd(6515, 3158);
 }
