@@ -49,7 +49,9 @@ import java.util.Map;
  * Helper function that allows to dump the AST during creation to a JSON format.
  *
  * @since 0.8 or earlier
+ * @deprecated This class is deprecated and will be removed in a future version.
  */
+@Deprecated(since = "24.1.0")
 public final class JSONHelper {
 
     private JSONHelper() {
