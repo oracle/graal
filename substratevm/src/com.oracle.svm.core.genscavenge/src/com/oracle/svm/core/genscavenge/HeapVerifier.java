@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -113,29 +112,16 @@ public class HeapVerifier {
     }
 
     private static boolean verifyOldGeneration() {
-        boolean success = true;
-        OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();
-        Space fromSpace = oldGeneration.getFromSpace();
-        Space toSpace = oldGeneration.getToSpace();
-
-        if (!toSpace.isEmpty()) {
-            Log.log().string("Old generation to-space contains chunks: firstAlignedChunk: ").zhex(toSpace.getFirstAlignedHeapChunk()).string(", firstUnalignedChunk: ")
-                            .zhex(toSpace.getFirstUnalignedHeapChunk()).newline();
-            success = false;
-        }
-
-        success &= verifySpace(fromSpace);
-        success &= verifySpace(toSpace);
-        return success;
+        return HeapImpl.getHeapImpl().getOldGeneration().verifySpaces();
     }
 
-    protected boolean verifyRememberedSets() {
+    private static boolean verifyRememberedSets() {
         /*
          * After we are done with all other verifications, it is guaranteed that the heap is in a
          * reasonable state. Now, we can verify the remembered sets without having to worry about
          * basic heap consistency.
          */
-        if (!SubstrateOptions.useRememberedSet() || !SerialGCOptions.VerifyRememberedSet.getValue()) {
+        if (!SerialGCOptions.useRememberedSet() || !SerialGCOptions.VerifyRememberedSet.getValue()) {
             return true;
         }
 
@@ -157,18 +143,18 @@ public class HeapVerifier {
             success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
 
-        OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();
-        Space toSpace = oldGeneration.getToSpace();
-        success &= rememberedSet.verify(toSpace.getFirstAlignedHeapChunk());
-        success &= rememberedSet.verify(toSpace.getFirstUnalignedHeapChunk());
-
-        Space fromSpace = oldGeneration.getFromSpace();
-        success &= rememberedSet.verify(fromSpace.getFirstAlignedHeapChunk());
-        success &= rememberedSet.verify(fromSpace.getFirstUnalignedHeapChunk());
+        success &= HeapImpl.getHeapImpl().getOldGeneration().verifyRememberedSets();
         return success;
     }
 
-    private static boolean verifySpace(Space space) {
+    static boolean verifyRememberedSet(Space space) {
+        boolean success = true;
+        success &= RememberedSet.get().verify(space.getFirstAlignedHeapChunk());
+        success &= RememberedSet.get().verify(space.getFirstUnalignedHeapChunk());
+        return success;
+    }
+
+    static boolean verifySpace(Space space) {
         boolean success = true;
         success &= verifyChunkList(space, "aligned", space.getFirstAlignedHeapChunk(), space.getLastAlignedHeapChunk());
         success &= verifyChunkList(space, "unaligned", space.getFirstUnalignedHeapChunk(), space.getLastUnalignedHeapChunk());
@@ -207,6 +193,11 @@ public class HeapVerifier {
             if (space != aChunk.getSpace()) {
                 Log.log().string("Space ").string(space.getName()).string(" contains aligned chunk ").zhex(aChunk).string(" but the chunk does not reference the correct space: ")
                                 .zhex(Word.objectToUntrackedPointer(aChunk.getSpace())).newline();
+                success = false;
+            }
+
+            if (aChunk.getShouldSweepInsteadOfCompact()) {
+                Log.log().string("Aligned chunk ").zhex(aChunk).string(" is marked for sweeping while this should only be used during collections.").newline();
                 success = false;
             }
 
@@ -269,6 +260,11 @@ public class HeapVerifier {
             return false;
         }
 
+        if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
+            Log.log().string("Object ").zhex(ptr).string(" has a marked header: ").zhex(header).newline();
+            return false;
+        }
+
         assert aChunk.isNonNull() ^ uChunk.isNonNull();
         HeapChunk.Header<?> chunk = aChunk.isNonNull() ? aChunk : uChunk;
         if (HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(obj)) {
@@ -309,7 +305,7 @@ public class HeapVerifier {
             // we can't verify that this bit is set.
 
         } else if (space.isOldSpace()) {
-            if (SubstrateOptions.useRememberedSet() && !RememberedSet.get().hasRememberedSet(header)) {
+            if (SerialGCOptions.useRememberedSet() && !RememberedSet.get().hasRememberedSet(header)) {
                 Log.log().string("Object ").zhex(ptr).string(" is in old generation chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
                 return false;
             }

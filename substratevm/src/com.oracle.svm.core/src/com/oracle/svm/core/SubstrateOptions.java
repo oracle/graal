@@ -870,11 +870,6 @@ public class SubstrateOptions {
     @Option(help = "Size of the reserved address space of each compilation isolate (0: default for new isolates).") //
     public static final RuntimeOptionKey<Long> CompilationIsolateAddressSpaceSize = new RuntimeOptionKey<>(0L);
 
-    @Fold
-    public static boolean useRememberedSet() {
-        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
-    }
-
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
 
@@ -896,9 +891,6 @@ public class SubstrateOptions {
 
         @Option(help = "Activate runtime compilation in separate isolates (enable support during image build with option SupportCompileInIsolates).") //
         public static final RuntimeOptionKey<Boolean> CompileInIsolates = new RuntimeOptionKey<>(true, RelevantForCompilationIsolates);
-
-        @Option(help = "Determines if a remembered sets is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
-        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
 
         /** Use {@link VMOperationControl#useDedicatedVMOperationThread()} instead. */
         @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//

@@ -45,6 +45,7 @@ import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
@@ -125,9 +126,7 @@ class GenScavengeGCFeature implements InternalFeature {
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        if (SubstrateOptions.useRememberedSet()) {
-            // Even though I don't hold on to this instance, it is preserved because it becomes the
-            // enclosing instance for the lowerings registered within it.
+        if (SerialGCOptions.useRememberedSet()) {
             BarrierSnippets barrierSnippets = new BarrierSnippets(options, providers);
             barrierSnippets.registerLowerings(providers.getMetaAccess(), lowerings);
         }
@@ -164,7 +163,7 @@ class GenScavengeGCFeature implements InternalFeature {
     }
 
     private static RememberedSet createRememberedSet() {
-        if (SubstrateOptions.useRememberedSet()) {
+        if (SerialGCOptions.useRememberedSet()) {
             return new CardTableBasedRememberedSet();
         } else {
             return new NoRememberedSet();

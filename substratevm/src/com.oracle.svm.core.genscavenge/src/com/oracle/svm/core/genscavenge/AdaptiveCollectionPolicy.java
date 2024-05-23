@@ -155,11 +155,12 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_{attempt_scavenge,full_GC}
         guaranteeSizeParametersInitialized();
 
-        if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(true)) {
+        if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(!SerialGCOptions.useCompactingOldGen())) {
             /*
-             * Default to always doing an incremental collection first because we expect most of the
-             * objects in the young generation to be garbage, and we can reuse their leftover chunks
-             * for copying the live objects in the old generation with fewer allocations.
+             * With a copying collector, default to always doing an incremental collection first
+             * because we expect most of the objects in the young generation to be garbage, and we
+             * can reuse their leftover chunks for copying the live objects in the old generation
+             * with fewer allocations. With a compacting collector, there is no benefit.
              */
             return false;
         }

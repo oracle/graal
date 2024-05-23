@@ -100,7 +100,7 @@ public final class HeapImpl extends Heap {
 
     // Singleton instances, created during image generation.
     private final YoungGeneration youngGeneration = new YoungGeneration("YoungGeneration");
-    private final OldGeneration oldGeneration = new OldGeneration("OldGeneration");
+    private final OldGeneration oldGeneration;
     private final HeapChunkProvider chunkProvider = new HeapChunkProvider();
     private final ObjectHeaderImpl objectHeaderImpl = new ObjectHeaderImpl();
     private final GCImpl gcImpl;
@@ -125,6 +125,8 @@ public final class HeapImpl extends Heap {
     public HeapImpl() {
         this.gcImpl = new GCImpl();
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
+        this.oldGeneration = SerialGCOptions.useCompactingOldGen() ? new CompactingOldGeneration("OldGeneration")
+                        : new CopyingOldGeneration("OldGeneration");
         HeapParameters.initialize();
         DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
         DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
@@ -413,7 +415,7 @@ public final class HeapImpl extends Heap {
     @Fold
     public static boolean usesImageHeapCardMarking() {
         Boolean enabled = SerialGCOptions.ImageHeapCardMarking.getValue();
-        if (enabled == Boolean.FALSE || enabled == null && !SubstrateOptions.useRememberedSet()) {
+        if (enabled == Boolean.FALSE || enabled == null && !SerialGCOptions.useRememberedSet()) {
             return false;
         } else if (enabled == null) {
             return isImageHeapAligned();
@@ -707,7 +709,7 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public void dirtyAllReferencesOf(Object obj) {
-        if (SubstrateOptions.useRememberedSet() && obj != null) {
+        if (SerialGCOptions.useRememberedSet() && obj != null) {
             ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
         }
     }
@@ -762,10 +764,10 @@ public final class HeapImpl extends Heap {
 
         if (allowJavaHeapAccess) {
             // Accessing spaces and chunks is safe if we prevent a GC.
-            if (isInYoungGen(ptr)) {
+            if (youngGeneration.isInSpace(ptr)) {
                 log.string("points into the young generation");
                 return true;
-            } else if (isInOldGen(ptr)) {
+            } else if (oldGeneration.isInSpace(ptr)) {
                 log.string("points into the old generation");
                 return true;
             }
@@ -780,51 +782,7 @@ public final class HeapImpl extends Heap {
     }
 
     boolean isInHeap(Pointer ptr) {
-        return isInImageHeap(ptr) || isInYoungGen(ptr) || isInOldGen(ptr);
-    }
-
-    @Uninterruptible(reason = "Prevent that chunks are freed.")
-    private boolean isInYoungGen(Pointer ptr) {
-        if (findPointerInSpace(youngGeneration.getEden(), ptr)) {
-            return true;
-        }
-
-        for (int i = 0; i < youngGeneration.getMaxSurvivorSpaces(); i++) {
-            if (findPointerInSpace(youngGeneration.getSurvivorFromSpaceAt(i), ptr)) {
-                return true;
-            }
-            if (findPointerInSpace(youngGeneration.getSurvivorToSpaceAt(i), ptr)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Uninterruptible(reason = "Prevent that chunks are freed.")
-    private boolean isInOldGen(Pointer ptr) {
-        return findPointerInSpace(oldGeneration.getFromSpace(), ptr) || findPointerInSpace(oldGeneration.getToSpace(), ptr);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean findPointerInSpace(Space space, Pointer p) {
-        AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
-        while (aChunk.isNonNull()) {
-            Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);
-            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(aChunk))) {
-                return true;
-            }
-            aChunk = HeapChunk.getNext(aChunk);
-        }
-
-        UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
-        while (uChunk.isNonNull()) {
-            Pointer start = UnalignedHeapChunk.getObjectStart(uChunk);
-            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(uChunk))) {
-                return true;
-            }
-            uChunk = HeapChunk.getNext(uChunk);
-        }
-        return false;
+        return isInImageHeap(ptr) || youngGeneration.isInSpace(ptr) || oldGeneration.isInSpace(ptr);
     }
 
     private static boolean printTlabInfo(Log log, Pointer ptr) {
