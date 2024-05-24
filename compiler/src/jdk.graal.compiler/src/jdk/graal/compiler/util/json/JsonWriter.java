@@ -244,7 +244,7 @@ public class JsonWriter implements AutoCloseable {
                 escapeSequence(sb, 'r');
             } else if (c == '\t') {
                 escapeSequence(sb, 't');
-            } else if (c < 0x001F) {
+            } else if (c <= 0x1f) {
                 sb.append(String.format("\\u%04x", (int) c));
             } else {
                 sb.append(c);

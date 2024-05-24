@@ -302,9 +302,8 @@ public class JsonParser {
         while (next != -1) {
             final int c = next();
             if (c <= 0x1f) {
-                // Characters < 0x1f are not allowed in JSON strings.
+                // Characters <= 0x1f are not allowed in JSON strings.
                 throw syntaxError(pos, "String contains control character: " + c);
-
             } else if (c == '\\') {
                 sb.append(parseEscapeSequence());
             } else if (c == '"') {
