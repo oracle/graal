@@ -80,6 +80,7 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -568,6 +569,7 @@ public final class Deoptimizer {
     @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
     public static UnsignedWord deoptStub(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), WordFactory.unsigned(ConfigurationValues.getTarget().stackAlignment));
         VMError.guarantee(VMThreads.StatusSupport.isStatusJava(), "Deopt stub execution must not be visible to other threads.");
         DeoptimizedFrame frame = (DeoptimizedFrame) ReferenceAccess.singleton().readObjectAt(framePointer, true);
 
