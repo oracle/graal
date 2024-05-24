@@ -704,19 +704,24 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
                     Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
         executor.shutdown();
 
+        boolean singletonSupportAvailable = ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(BuildArtifacts.class) && ImageSingletons.contains(TimerCollection.class);
+        if (!singletonSupportAvailable) {
+            l().a("Failed early during image build process").println();
+            printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions, true);
+            return;
+        }
+
         if (optionalUnhandledThrowable.isPresent()) {
             Path errorReportPath = NativeImageOptions.getErrorFilePath(parsedHostedOptions);
             Optional<FeatureHandler> featureHandler = optionalGenerator.map(nativeImageGenerator -> nativeImageGenerator.featureHandler);
             ReportUtils.report("GraalVM Native Image Error Report", errorReportPath,
                             p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, optionalUnhandledThrowable.get()),
                             false);
-            if (ImageSingletonsSupport.isInstalled()) {
-                BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
-            }
+            BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
         }
 
         if (optionalImageName.isEmpty() || optionalGenerator.isEmpty()) {
-            printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
+            printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions, false);
             return;
         }
         String imageName = optionalImageName.get();
@@ -742,17 +747,17 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
                         .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
-        printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
+        printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions, false);
     }
 
-    private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
+    private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions, boolean forceStackTrace) {
         if (optionalUnhandledThrowable.isEmpty()) {
             return;
         }
         Throwable unhandledThrowable = optionalUnhandledThrowable.get();
         l().println();
         l().redBold().a("The build process encountered an unexpected error:").reset().println();
-        if (NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
+        if (forceStackTrace || NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             l().dim().println();
             unhandledThrowable.printStackTrace(builderIO.getOut());
             l().reset().println();
