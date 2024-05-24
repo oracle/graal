@@ -33,28 +33,66 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-public class JsonParser {
+/**
+ * Parses JSON values from a character stream.
+ * <p>
+ * Example: Given the following JSON file:
+ *
+ * <pre>{@code
+ * // test.json
+ * {
+ *     "key1": 42,
+ *     "key2": [1,2,3],
+ * }
+ * }</pre>
+ * <p>
+ * This can be parsed as follows:
+ *
+ * <pre>{@code
+ * JsonParser parser = new JsonParser(new FileReader("test.json"));
+ * EconomicMap<String, Object> outer = (EconomicMap<String, Object>) parser.parse();
+ * assert outer.get("key1") instanceof Integer;
+ * assert (Integer) (outer.get("key1")) == 42;
+ * assert outer.get("key2") instanceof List;
+ * assert (List) (outer.get("key2")).equals(List.of(1, 2, 3));
+ * }</pre>
+ * <p>
+ * See the main entrypoints: {@link #parse()}, {@link #parseAllowedKeys}.
+ */
+public final class JsonParser {
 
     private final Reader source;
+
+    // Current reading position within source
     private int pos = 0;
+    // Current line number, used for error reporting.
     private int line = 0;
+    // Position of the start of the current line in source, used for error reporting.
     private int beginningOfLine = 0;
+    // Next character to be scanned, obtained from source
     private int next;
 
     private static final int EOF = -1;
-
-    private static final String TRUE = "true";
-    private static final String FALSE = "false";
-    private static final String NULL = "null";
 
     private static final int STATE_EMPTY = 0;
     private static final int STATE_ELEMENT_PARSED = 1;
     private static final int STATE_COMMA_PARSED = 2;
 
+    /**
+     * Creates a new {@link JsonParser} to parse the given string.
+     *
+     * @param source JSON text to be parsed.
+     */
     public JsonParser(String source) throws IOException {
         this(new StringReader(source));
     }
 
+    /**
+     * Creates a new {@link JsonParser} that reads characters from {@code source}.
+     *
+     * @param source character stream containing JSON text. Will be adapted internally through a
+     *            {@link BufferedReader}.
+     */
     public JsonParser(Reader source) throws IOException {
         this.source = new BufferedReader(source);
         next = source.read();
@@ -79,7 +117,9 @@ public class JsonParser {
     }
 
     /**
-     * Public parse method. Parse a string into a JSON object.
+     * Parses the next value from the underlying reader as a JSON value, which depending on the text
+     * could be a literal ({@link Number}, {@link Boolean}, or {@code null}), an object (parsed as
+     * an {@link EconomicMap} with {@link String} keys), or an array (parsed as a {@link List}).
      *
      * @return the parsed JSON Object
      */
@@ -93,10 +133,11 @@ public class JsonParser {
     }
 
     /**
-     * Parses the source as a JSON map using a list of allowed keys. The returned map contains
-     * values for the allowed keys only but not necessarily all of them. The method returns as soon
-     * as all allowed keys are parsed, i.e., the rest of the JSON may be left unparsed and
-     * unchecked. This is useful to parse only few keys from the beginning of a large JSON object.
+     * Parses the next value from the underlying reader as a JSON object using a list of allowed
+     * keys. The returned map contains values for the allowed keys only but not necessarily all of
+     * them. The method returns as soon as all allowed keys are parsed, i.e., the rest of the JSON
+     * may be left unparsed and unchecked. This is useful to parse only few keys from the beginning
+     * of a large JSON object.
      *
      * @param allowedKeys the list of allowed keys
      * @return the parsed JSON map containing only values for (not necessarily all) allowed keys
@@ -160,12 +201,20 @@ public class JsonParser {
         throw expectedError(pos, ", or }", "eof");
     }
 
+    /**
+     * Utility method to parse a character stream containing a JSON object into an
+     * {@link EconomicMap} directly.
+     */
     @SuppressWarnings("unchecked")
     public static EconomicMap<String, Object> parseDict(Reader input) throws IOException {
         JsonParser parser = new JsonParser(input);
         return (EconomicMap<String, Object>) parser.parse();
     }
 
+    /**
+     * Utility method to parse a string containing a JSON object into an {@link EconomicMap}
+     * directly.
+     */
     @SuppressWarnings("unchecked")
     public static EconomicMap<String, Object> parseDict(String input) throws IOException {
         JsonParser parser = new JsonParser(input);
@@ -187,11 +236,11 @@ public class JsonParser {
             case '"':
                 return parseString();
             case 'f':
-                return parseKeyword(FALSE, Boolean.FALSE);
+                return parseKeyword("false", Boolean.FALSE);
             case 't':
-                return parseKeyword(TRUE, Boolean.TRUE);
+                return parseKeyword("true", Boolean.TRUE);
             case 'n':
-                return parseKeyword(NULL, null);
+                return parseKeyword("null", null);
             default:
                 if (isDigit(c) || c == '-') {
                     return parseNumber();

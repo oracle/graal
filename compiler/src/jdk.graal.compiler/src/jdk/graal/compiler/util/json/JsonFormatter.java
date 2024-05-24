@@ -32,25 +32,63 @@ import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.debug.GraalError;
 
-public class JsonFormatter {
+/**
+ * Contains some utility wrappers around {@link JsonWriter} to simplify converting maps and lists to
+ * their JSON representation. Please refer to {@link JsonPrettyWriter} to learn when to and when not
+ * to pretty-print JSON output. This class should not be instantiated.
+ */
+public final class JsonFormatter {
+    private JsonFormatter() {
+    }
+
+    /**
+     * Converts {@code map} to a JSON object.
+     *
+     * @return a string containing a JSON object representation of the given map.
+     * @see JsonWriter#print
+     */
     public static <T> String formatJSON(EconomicMap<String, T> map) {
         return formatJSON(map, false);
     }
 
+    /**
+     * Converts {@code map} to a JSON object, with optional pretty-printing.
+     *
+     * @param prettyPrint if true, the JSON object will be formatted to be more human-legible using
+     *            newlines and indentation.
+     * @return a string containing a JSON object representation of the given map.
+     * @see JsonWriter#print
+     * @see JsonPrettyWriter
+     */
     public static <T> String formatJSON(EconomicMap<String, T> map, boolean prettyPrint) {
         StringWriter sw = new StringWriter();
         try (JsonWriter jw = prettyPrint ? new JsonPrettyWriter(sw) : new JsonWriter(sw)) {
             jw.print(map);
         } catch (IOException e) {
-            throw GraalError.shouldNotReachHere(e, "StringWriter threw IOException");
+            throw GraalError.shouldNotReachHere(e);
         }
         return sw.toString();
     }
 
+    /**
+     * Converts {@code list} to a JSON array.
+     *
+     * @return a string containing a JSON array representation of the given list.
+     * @see JsonWriter#print
+     */
     public static <T> String formatJSON(List<T> list) {
         return formatJSON(list, false);
     }
 
+    /**
+     * Converts {@code list} to a JSON array, with optional pretty-printing.
+     *
+     * @param prettyPrint if true, the JSON array will be formatted to be more human-legible using
+     *            newlines and indentation.
+     * @return a string containing a JSON array representation of the given list.
+     * @see JsonWriter#print
+     * @see JsonPrettyWriter
+     */
     public static <T> String formatJSON(List<T> list, boolean prettyPrint) {
         StringWriter sw = new StringWriter();
         try (JsonWriter jw = prettyPrint ? new JsonPrettyWriter(sw) : new JsonWriter(sw)) {

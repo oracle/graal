@@ -43,6 +43,10 @@ import jdk.graal.compiler.util.json.JsonBuilder;
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonWriter;
 
+/**
+ * Tests for {@link JsonBuilder}, checking that printed values round-trip when parsed with
+ * {@link JsonParser}.
+ */
 public class JsonBuilderTest {
 
     private static final String KEY1 = "key with \\ and \"";

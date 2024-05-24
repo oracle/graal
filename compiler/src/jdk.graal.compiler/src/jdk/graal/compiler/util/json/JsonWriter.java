@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.util.json;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -36,15 +37,48 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 
+/**
+ * A wrapper around {@link Writer} for writing JSON tokens to a character stream. Example:
+ *
+ * <pre>{@code
+ * try (JsonWriter writer = new JsonWriter(Path.of("/some/file.json"))) {
+ *     writer.appendObjectStart().quote("key").appendFieldSeparator().appendArrayStart().printValue(1).appendSeparator().printValue(2).appendArrayEnd().appendObjectEnd();
+ * }
+ * }</pre>
+ * <p>
+ * Produces (pretty-printed for readability, though actual output is unformatted):
+ *
+ * <pre>{@code
+ * {
+ *  "key": [1,2]
+ * }
+ * }</pre>
+ * <p>
+ * For a higher-level declarative interface for building JSON objects, see {@link JsonBuilder} and
+ * {@link JsonBuilder#object(JsonWriter)}.
+ *
+ * @see JsonPrettyWriter
+ */
 public class JsonWriter implements AutoCloseable {
     private final Writer writer;
 
     private int indentation = 0;
 
+    /**
+     * Utility constructor that opens a {@link BufferedWriter} to the file at {@code path}, using
+     * UTF-8 encoding and the given options.
+     *
+     * @see Files#newBufferedWriter
+     */
     public JsonWriter(Path path, OpenOption... options) throws IOException {
         this(Files.newBufferedWriter(path, StandardCharsets.UTF_8, options));
     }
 
+    /**
+     * Creates a new {@link JsonWriter} wrapping the given {@link Writer}. Note that characters are
+     * written to the underlying writer directly, so it is advisable to pass a
+     * {@link BufferedWriter} to the constructor if buffering is required.
+     */
     public JsonWriter(Writer writer) {
         this.writer = writer;
     }
@@ -79,53 +113,97 @@ public class JsonWriter implements AutoCloseable {
         return JsonBuilder.value(this);
     }
 
+    /**
+     * Appends a single character to the underlying writer.
+     */
     public JsonWriter append(char c) throws IOException {
         writer.write(c);
         return this;
     }
 
+    /**
+     * Appends a raw unquoted string to the underlying writer.
+     */
     public JsonWriter append(String s) throws IOException {
         writer.write(s);
         return this;
     }
 
+    /**
+     * Appends an object-begin token (i.e. an open curly bracket) to the underlying writer.
+     */
     public JsonWriter appendObjectStart() throws IOException {
         return append('{');
     }
 
+    /**
+     * Appends an object-end token (i.e. a closed curly bracket) to the underlying writer.
+     */
     public JsonWriter appendObjectEnd() throws IOException {
         return append('}');
     }
 
+    /**
+     * Appends an array-start token (i.e. an open square bracket) to the underlying writer.
+     */
     public JsonWriter appendArrayStart() throws IOException {
         return append('[');
     }
 
+    /**
+     * Appends an array-end token (i.e. a closed square bracket) to the underlying writer.
+     */
     public JsonWriter appendArrayEnd() throws IOException {
         return append(']');
     }
 
+    /**
+     * Appends a value-separator token (i.e. a comma) to the underlying writer.
+     */
     public JsonWriter appendSeparator() throws IOException {
         return append(',');
     }
 
+    /**
+     * Appends a name-separator token (i.e. a colon) to the underlying writer.
+     */
     public JsonWriter appendFieldSeparator() throws IOException {
         return append(':');
     }
 
+    /**
+     * Appends a key-value pair of the form {@code "key": value} to the underlying writer. The key
+     * will be {@linkplain #quote(String) quoted}, and the value will be printed as per
+     * {@link #printValue(Object)}.
+     */
     public JsonWriter appendKeyValue(String key, Object value) throws IOException {
         return quote(key).appendFieldSeparator().printValue(value);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    /**
+     * Appends a JSON representation of {@code value} to the underlying writer. The chosen
+     * representation depends on the object's type:
+     * <ul>
+     * <li>{@link Map} and {@link EconomicMap} are printed as JSON objects. The keys are converted
+     * to strings and {@linkplain #quote quoted}, and values are themselves printed recursively.
+     * </li>
+     * <li>{@link Iterator} and {@link List} are printed as JSON arrays, where each element appears
+     * in iteration order and is itself printed recursively.</li>
+     * <li>{@link Number}s and {@link Boolean}s are converted to strings and appended directly to
+     * the writer as raw values, without quoting. Floating-point infinity and NaNs cannot be
+     * represented as raw values and are thus quoted.</li>
+     * <li>{@code null} is translated to a raw {@code null} value.</li>
+     * <li>Every other type is converted to a {@linkplain #quote quoted} string.</li>
+     * </ul>
+     */
     public JsonWriter print(Object value) throws IOException {
-        if (value instanceof Map map) {
-            printMap(map); // Must always be <String, Object>
-        } else if (value instanceof EconomicMap economicMap) {
+        if (value instanceof Map<?, ?> map) {
+            printMap(map);
+        } else if (value instanceof EconomicMap<?, ?> economicMap) {
             printMap(economicMap); // Must always be <String, Object>
-        } else if (value instanceof Iterator it) {
+        } else if (value instanceof Iterator<?> it) {
             printIterator(it);
-        } else if (value instanceof List list) {
+        } else if (value instanceof List<?> list) {
             printIterator(list.iterator());
         } else {
             printValue(value);
@@ -133,25 +211,25 @@ public class JsonWriter implements AutoCloseable {
         return this;
     }
 
-    private <T> void printMap(Map<String, T> map) throws IOException {
+    private void printMap(Map<?, ?> map) throws IOException {
         if (map.isEmpty()) {
             append("{}");
             return;
         }
         appendObjectStart();
         boolean separator = false;
-        for (Map.Entry<String, T> entry : map.entrySet()) {
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
             if (separator) {
                 appendSeparator();
             }
-            quote(entry.getKey()).appendFieldSeparator();
+            quote(entry.getKey().toString()).appendFieldSeparator();
             print(entry.getValue());
             separator = true;
         }
         appendObjectEnd();
     }
 
-    private <T> void printMap(EconomicMap<String, T> map) throws IOException {
+    private void printMap(EconomicMap<?, ?> map) throws IOException {
         if (map.isEmpty()) {
             append("{}");
             return;
@@ -163,14 +241,14 @@ public class JsonWriter implements AutoCloseable {
             if (separator) {
                 appendSeparator();
             }
-            quote(cursor.getKey()).appendFieldSeparator();
+            quote(cursor.getKey().toString()).appendFieldSeparator();
             print(cursor.getValue());
             separator = true;
         }
         appendObjectEnd();
     }
 
-    private <T> void printIterator(Iterator<T> iter) throws IOException {
+    private void printIterator(Iterator<?> iter) throws IOException {
         if (!iter.hasNext()) {
             append("[]");
             return;
@@ -178,7 +256,7 @@ public class JsonWriter implements AutoCloseable {
         appendArrayStart();
         boolean separator = false;
         while (iter.hasNext()) {
-            T item = iter.next();
+            Object item = iter.next();
             if (separator) {
                 appendSeparator();
             }
@@ -188,6 +266,17 @@ public class JsonWriter implements AutoCloseable {
         appendArrayEnd();
     }
 
+    /**
+     * Appends a representation of {@code o} as a raw JSON value (i.e. not an object or an array) to
+     * the underlying writer.
+     * <ul>
+     * <li>{@link Number}s and {@link Boolean}s are converted to strings and appended directly to
+     * the writer as raw values, without quoting. Floating-point infinity and NaNs cannot be
+     * represented as raw values and are thus quoted.</li>
+     * <li>{@code null} is translated to a raw {@code null} value.</li>
+     * <li>Every other type is converted to a {@linkplain #quote quoted} string.</li>
+     * </ul>
+     */
     public JsonWriter printValue(Object o) throws IOException {
         if (o == null) {
             return append("null");
@@ -213,6 +302,11 @@ public class JsonWriter implements AutoCloseable {
         }
     }
 
+    /**
+     * Appends a JSON string to the underlying writer. The resulting string will be surrounded by
+     * double-quotes and have characters replaced by escape sequences as necessary. Refer to <a
+     * href=https://www.ietf.org/rfc/rfc4627.txt>the JSON RFC</a> for character escaping rules.
+     */
     public JsonWriter quote(String s) throws IOException {
         writer.write(quoteString(s));
         return this;
@@ -254,6 +348,13 @@ public class JsonWriter implements AutoCloseable {
         return sb.toString();
     }
 
+    /**
+     * Appends a new line to the underlying writer, followed by whitespace according to the current
+     * indentation level. Each indent will be two spaces wide.
+     *
+     * @see #indent()
+     * @see #unindent()
+     */
     public JsonWriter newline() throws IOException {
         StringBuilder builder = new StringBuilder(1 + 2 * indentation);
         builder.append("\n");
@@ -264,17 +365,32 @@ public class JsonWriter implements AutoCloseable {
         return this;
     }
 
+    /**
+     * Increases the current indentation level by one. This does not print any character to the
+     * writer directly, but modifies how many indents will be printed at the next call to
+     * {@link #newline()}.
+     */
     public JsonWriter indent() {
         indentation++;
         return this;
     }
 
+    /**
+     * Decreases the current indentation level by one. This does not print any character to the
+     * writer directly, but modifies how many indents will be printed at the next call to
+     * {@link #newline()}.
+     */
     public JsonWriter unindent() {
         assert indentation > 0 : "Json indentation underflowed";
         indentation--;
         return this;
     }
 
+    /**
+     * Flushes the underlying writer.
+     *
+     * @see Writer#flush()
+     */
     public void flush() throws IOException {
         writer.flush();
     }

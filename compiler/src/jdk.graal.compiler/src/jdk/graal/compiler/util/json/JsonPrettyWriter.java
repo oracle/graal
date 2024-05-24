@@ -28,9 +28,16 @@ import java.io.IOException;
 import java.io.Writer;
 
 /**
- * Subclass of {@link JsonWriter} that pretty-prints its output.
+ * Subclass of {@link JsonWriter} that pretty-prints its output. More specifically, a newline will
+ * be added after each value separator (in objects and arrays), as well as at the beginning and end
+ * of each object. The contents of objects will also be indented.
+ * <p>
+ * JSON output should never be pretty-printed to make it human-readable (use 'jq' and other tools if
+ * it needs to be read by humans). Only pretty-print JSON output to reduce merge conflicts, so when
+ * it is intended to be stored in files that can be checked into repositories (for example
+ * reachability metadata).
  */
-public class JsonPrettyWriter extends JsonWriter {
+public final class JsonPrettyWriter extends JsonWriter {
     public JsonPrettyWriter(Writer writer) {
         super(writer);
     }
