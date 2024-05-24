@@ -30,6 +30,19 @@ package jdk.graal.compiler.core.common.util;
 public interface EventCounter {
 
     /**
+     * A shallow marker that can be kept alive by {@link CompilationAlarm} without keeping large
+     * data structures (the actual {@link EventCounter} implementation classes) alive.
+     */
+    final class EventCounterMarker {
+    }
+
+    /**
+     * Returns the unique marker object for this event counter. This object is used by
+     * {@link CompilationAlarm} to check for progress.
+     */
+    EventCounterMarker getEventCounterMarker();
+
+    /**
      * Increment the current counter and determine if it overflows max and reset it if so. Users of
      * this class typically take some action if an overflow happens.
      *
