@@ -22,8 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-// @formatter:off
-package com.oracle.svm.core.containers;
+package jdk.internal.platform;
 
 /*
  * @author bobv

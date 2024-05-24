@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-// @formatter:off
-package com.oracle.svm.core.containers;
+package jdk.internal.platform;
 
 import java.lang.reflect.Method;
 
 /**
  * Operating System Metrics class
  *
- * Implementation note:
- * Some of the APIs within this class return metrics for an
+ * @implNote Some of the APIs within this class return metrics for an
  * "Isolation Group" or "Container".  When the term "Isolation Group"
  * is used in the API description, this refers to either:
  *
@@ -57,22 +55,14 @@ public interface Metrics {
      * @return Metrics object or null if not supported on this platform.
      */
     public static Metrics systemMetrics() {
-        try {
-            Class<?> c = Class.forName("com.oracle.svm.core.containers.CgroupMetrics");
-            Method m = c.getMethod("getInstance");
-            return (Metrics) m.invoke(null);
-        } catch (ClassNotFoundException e) {
-            return null;
-        } catch (ReflectiveOperationException e) {
-            throw new InternalError(e);
-        }
+        return SystemMetrics.instance();
     }
 
     /**
      * Returns the interface responsible for providing the
      * platform metrics.
      *
-     * Implementation note:
+     * @implNote
      * Metrics are currently only supported Linux.
      * The provider for Linux is cgroups (version 1 or 2).
      *
@@ -164,7 +154,7 @@ public interface Metrics {
      * Group used for prioritizing the scheduling of processes across
      * all Isolation Groups running on a host.
      *
-     * Implementation note:
+     * @implNote
      * Popular container orchestration systems have standardized shares
      * to be multiples of 1024, where 1024 is interpreted as 1 CPU share
      * of execution.  Users can distribute CPU resources to multiple
@@ -235,7 +225,7 @@ public interface Metrics {
      * to the total number of CPUs and the elements in the array are the
      * physical CPU numbers that are available.  Some of the CPUs returned
      * may be offline.  To get the current online CPUs, use
-     * {@link Metrics#getEffectiveCpuSetCpus()} }.
+     * {@link getEffectiveCpuSetCpus()}.
      *
      * @return An array of available CPUs. Returns null if the metric is not
      *         available or the metric is not supported.
@@ -261,7 +251,7 @@ public interface Metrics {
      * to the total number of nodes and the elements in the array are the
      * physical node numbers that are available.  Some of the nodes returned
      * may be offline.  To get the current online memory nodes, use
-     * {@link Metrics#getEffectiveCpuSetMems()}.
+     * {@link getEffectiveCpuSetMems()}.
      *
      * @return An array of available memory nodes or null
      *         if the metric is not available or is not supported.
@@ -361,6 +351,27 @@ public interface Metrics {
      *
      */
     public long getMemorySoftLimit();
+
+    /*****************************************************************
+     * pids subsystem
+     ****************************************************************/
+
+    /**
+     * Returns the maximum number of tasks that may be created in the Isolation Group.
+     *
+     * @return The maximum number of tasks, -1 if the quota is unlimited or
+     *         -2 if not supported.
+     *
+     */
+    public long getPidsMax();
+
+    /**
+     * Returns the current number of tasks in the Isolation Group.
+     *
+     * @return The current number of tasks or -2 if not supported
+     *
+     */
+    public long getPidsCurrent();
 
     /*****************************************************************
      * BlKIO Subsystem

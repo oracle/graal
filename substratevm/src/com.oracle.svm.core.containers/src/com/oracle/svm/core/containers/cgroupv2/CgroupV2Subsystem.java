@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Red Hat Inc.
+ * Copyright (c) 2020, 2021, Red Hat Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,80 +23,69 @@
  * questions.
  */
 
-// @formatter:off
-package com.oracle.svm.core.containers.cgroupv2;
+package jdk.internal.platform.cgroupv2;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.containers.CgroupSubsystem;
-import com.oracle.svm.core.containers.CgroupSubsystemController;
-import com.oracle.svm.core.containers.CgroupUtil;
+import jdk.internal.platform.CgroupInfo;
+import jdk.internal.platform.CgroupSubsystem;
+import jdk.internal.platform.CgroupSubsystemController;
+import jdk.internal.platform.CgroupUtil;
 
 public class CgroupV2Subsystem implements CgroupSubsystem {
 
-    private static final CgroupV2Subsystem INSTANCE = initSubsystem();
+    private static volatile CgroupV2Subsystem INSTANCE;
     private static final long[] LONG_ARRAY_NOT_SUPPORTED = null;
     private static final int[] INT_ARRAY_UNAVAILABLE = null;
     private final CgroupSubsystemController unified;
     private static final String PROVIDER_NAME = "cgroupv2";
     private static final int PER_CPU_SHARES = 1024;
-    private static final String MAX_VAL = "max";
     private static final Object EMPTY_STR = "";
+    private static final long NO_SWAP = 0;
 
     private CgroupV2Subsystem(CgroupSubsystemController unified) {
         this.unified = unified;
     }
 
-    private long getLongVal(String file) {
+    private long getLongVal(String file, long defaultValue) {
         return CgroupSubsystemController.getLongValue(unified,
                                                       file,
                                                       CgroupV2SubsystemController::convertStringToLong,
-                                                      CgroupSubsystem.LONG_RETVAL_UNLIMITED);
+                                                      defaultValue);
     }
 
-    private static CgroupV2Subsystem initSubsystem() {
-        // read mountinfo so as to determine root mount path
-        String mountPath = null;
-        try {
-            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get("/proc/self/mountinfo"))) {
-                if (line.contains(" - cgroup2 ")) {
-                    String[] tokens = SubstrateUtil.split(line, " ");
-                    mountPath = tokens[4];
-                }
-            }
-        } catch (IOException e) {
-            return null;
-        }
-        String cgroupPath = null;
-        try {
-            List<String> lines = CgroupUtil.readAllLinesPrivileged(Paths.get("/proc/self/cgroup"));
-            for (String line: lines) {
-                String[] tokens = SubstrateUtil.split(line, ":");
-                if (tokens.length != 3) {
-                    return null; // something is not right.
-                }
-                if (!"0".equals(tokens[0])) {
-                    // hierarchy must be zero for cgroups v2
-                    return null;
-                }
-                cgroupPath = tokens[2];
-                break;
-            }
-        } catch (IOException e) {
-            return null;
-        }
-        CgroupSubsystemController unified = new CgroupV2SubsystemController(
-                mountPath,
-                cgroupPath);
-        return new CgroupV2Subsystem(unified);
+    private long getLongVal(String file) {
+        return getLongVal(file, CgroupSubsystem.LONG_RETVAL_UNLIMITED);
     }
 
-    public static CgroupSubsystem getInstance() {
+    /**
+     * Get the singleton instance of a cgroups v2 subsystem. On initialization,
+     * a new object from the given cgroup information 'anyController' is being
+     * created. Note that the cgroup information has been parsed from cgroup
+     * interface files ahead of time.
+     *
+     * See CgroupSubsystemFactory.determineType() for the cgroup interface
+     * files parsing logic.
+     *
+     * @return A singleton CgroupSubsystem instance, never null.
+     */
+    public static CgroupSubsystem getInstance(CgroupInfo anyController) {
+        if (INSTANCE == null) {
+            CgroupSubsystemController unified = new CgroupV2SubsystemController(
+                    anyController.getMountPoint(),
+                    anyController.getCgroupPath());
+            CgroupV2Subsystem tmpCgroupSystem = new CgroupV2Subsystem(unified);
+            synchronized (CgroupV2Subsystem.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = tmpCgroupSystem;
+                }
+            }
+        }
         return INSTANCE;
     }
 
@@ -154,19 +143,12 @@ public class CgroupV2Subsystem implements CgroupSubsystem {
             return CgroupSubsystem.LONG_RETVAL_UNLIMITED;
         }
         // $MAX $PERIOD
-        String[] tokens = SubstrateUtil.split(cpuMaxRaw, " ");
+        String[] tokens = cpuMaxRaw.split("\\s+");
         if (tokens.length != 2) {
             return CgroupSubsystem.LONG_RETVAL_UNLIMITED;
         }
         String quota = tokens[tokenIdx];
-        return limitFromString(quota);
-    }
-
-    private long limitFromString(String strVal) {
-        if (strVal == null || MAX_VAL.equals(strVal)) {
-            return CgroupSubsystem.LONG_RETVAL_UNLIMITED;
-        }
-        return Long.parseLong(strVal);
+        return CgroupSubsystem.limitFromString(quota);
     }
 
     @Override
@@ -261,7 +243,7 @@ public class CgroupV2Subsystem implements CgroupSubsystem {
     @Override
     public long getMemoryLimit() {
         String strVal = CgroupSubsystemController.getStringValue(unified, "memory.max");
-        return limitFromString(strVal);
+        return CgroupSubsystem.limitFromString(strVal);
     }
 
     @Override
@@ -274,21 +256,64 @@ public class CgroupV2Subsystem implements CgroupSubsystem {
         return CgroupV2SubsystemController.getLongEntry(unified, "memory.stat", "sock");
     }
 
+    /**
+     * Note that for cgroups v2 the actual limits set for swap and
+     * memory live in two different files, memory.swap.max and memory.max
+     * respectively. In order to properly report a cgroup v1 like
+     * compound value we need to sum the two values. Setting a swap limit
+     * without also setting a memory limit is not allowed.
+     */
     @Override
     public long getMemoryAndSwapLimit() {
         String strVal = CgroupSubsystemController.getStringValue(unified, "memory.swap.max");
-        return limitFromString(strVal);
+        // We only get a null string when file memory.swap.max doesn't exist.
+        // In that case we return the memory limit without any swap.
+        if (strVal == null) {
+            return getMemoryLimit();
+        }
+        long swapLimit = CgroupSubsystem.limitFromString(strVal);
+        if (swapLimit >= 0) {
+            long memoryLimit = getMemoryLimit();
+            assert memoryLimit >= 0;
+            return memoryLimit + swapLimit;
+        }
+        return swapLimit;
     }
 
+    /**
+     * Note that for cgroups v2 the actual values set for swap usage and
+     * memory usage live in two different files, memory.current and memory.swap.current
+     * respectively. In order to properly report a cgroup v1 like
+     * compound value we need to sum the two values. Setting a swap limit
+     * without also setting a memory limit is not allowed.
+     */
     @Override
     public long getMemoryAndSwapUsage() {
-        return getLongVal("memory.swap.current");
+        long memoryUsage = getMemoryUsage();
+        if (memoryUsage >= 0) {
+            // If file memory.swap.current doesn't exist, only return the regular
+            // memory usage (without swap). Thus, use default value of NO_SWAP.
+            long swapUsage = getLongVal("memory.swap.current", NO_SWAP);
+            return memoryUsage + swapUsage;
+        }
+        return memoryUsage; // case of no memory limits
     }
 
     @Override
     public long getMemorySoftLimit() {
-        String softLimitStr = CgroupSubsystemController.getStringValue(unified, "memory.high");
-        return limitFromString(softLimitStr);
+        String softLimitStr = CgroupSubsystemController.getStringValue(unified, "memory.low");
+        return CgroupSubsystem.limitFromString(softLimitStr);
+    }
+
+    @Override
+    public long getPidsMax() {
+        String pidsMaxStr = CgroupSubsystemController.getStringValue(unified, "pids.max");
+        return CgroupSubsystem.limitFromString(pidsMaxStr);
+    }
+
+    @Override
+    public long getPidsCurrent() {
+        return getLongVal("pids.current");
     }
 
     @Override
@@ -304,11 +329,11 @@ public class CgroupV2Subsystem implements CgroupSubsystem {
 
     private long sumTokensIOStat(Function<String, Long> mapFunc) {
         try {
-            long sum = 0L;
-            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(unified.path(), "io.stat"))) {
-                sum += mapFunc.apply(line);
-            }
-            return sum;
+            return CgroupUtil.readFilePrivileged(Paths.get(unified.path(), "io.stat"))
+                                .map(mapFunc)
+                                .collect(Collectors.summingLong(e -> e));
+        } catch (UncheckedIOException e) {
+            return CgroupSubsystem.LONG_RETVAL_UNLIMITED;
         } catch (IOException e) {
             return CgroupSubsystem.LONG_RETVAL_UNLIMITED;
         }
@@ -336,10 +361,10 @@ public class CgroupV2Subsystem implements CgroupSubsystem {
         if (line == null || EMPTY_STR.equals(line)) {
             return Long.valueOf(0);
         }
-        String[] tokens = SubstrateUtil.split(line, " ");
+        String[] tokens = line.split("\\s+");
         long retval = 0;
         for (String t: tokens) {
-            String[] valKeys = SubstrateUtil.split(t, "=");
+            String[] valKeys = t.split("=");
             if (valKeys.length != 2) {
                 // ignore device ids $MAJ:$MIN
                 continue;

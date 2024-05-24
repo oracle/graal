@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, Red Hat Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +23,18 @@
  * questions.
  */
 
-// @formatter:off
-package com.oracle.svm.core.containers;
+package jdk.internal.platform;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-
-import com.oracle.svm.core.SubstrateUtil;
+import java.util.stream.Stream;
 
 /**
  * Cgroup version agnostic controller logic
@@ -162,19 +161,18 @@ public interface CgroupSubsystemController {
     public static long getLongEntry(CgroupSubsystemController controller, String param, String entryname, long defaultRetval) {
         if (controller == null) return defaultRetval;
 
-        try {
-            Optional<String> result = Optional.empty();
-            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(controller.path(), param))) {
-                String[] tokens = SubstrateUtil.split(line, " ");
-                if (tokens.length == 2 && tokens[0].equals(entryname)) {
-                    result = Optional.of(tokens[1]);
-                    break;
-                }
-            }
+        try (Stream<String> lines = CgroupUtil.readFilePrivileged(Paths.get(controller.path(), param))) {
+
+            Optional<String> result = lines.map(line -> line.split(" "))
+                                           .filter(line -> (line.length == 2 &&
+                                                   line[0].equals(entryname)))
+                                           .map(line -> line[1])
+                                           .findFirst();
 
             return result.isPresent() ? Long.parseLong(result.get()) : defaultRetval;
-        }
-        catch (IOException e) {
+        } catch (UncheckedIOException e) {
+            return defaultRetval;
+        } catch (IOException e) {
             return defaultRetval;
         }
     }
@@ -194,10 +192,10 @@ public interface CgroupSubsystemController {
         if (range == null || EMPTY_STR.equals(range)) return null;
 
         ArrayList<Integer> results = new ArrayList<>();
-        String strs[] = SubstrateUtil.split(range, ",");
+        String strs[] = range.split(",");
         for (String str : strs) {
             if (str.contains("-")) {
-                String lohi[] = SubstrateUtil.split(str, "-");
+                String lohi[] = str.split("-");
                 // validate format
                 if (lohi.length != 2) {
                     continue;
@@ -246,7 +244,8 @@ public interface CgroupSubsystemController {
         } catch (NumberFormatException e) {
             // For some properties (e.g. memory.limit_in_bytes, cgroups v1) we may overflow
             // the range of signed long. In this case, return overflowRetval
-            if (strval.length() > 0 && strval.charAt(0) != '-') {
+            BigInteger b = new BigInteger(strval);
+            if (b.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
                 return overflowRetval;
             }
         }

@@ -23,23 +23,34 @@
  * questions.
  */
 
-// @formatter:off
-package com.oracle.svm.core.containers;
+package jdk.internal.platform;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 public final class CgroupUtil {
+
+    @SuppressWarnings("removal")
+    public static Stream<String> readFilePrivileged(Path path) throws IOException {
+        try {
+            PrivilegedExceptionAction<Stream<String>> pea = () -> Files.lines(path);
+            return AccessController.doPrivileged(pea);
+        } catch (PrivilegedActionException e) {
+            unwrapIOExceptionAndRethrow(e);
+            throw new InternalError(e.getCause());
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
 
     static void unwrapIOExceptionAndRethrow(PrivilegedActionException pae) throws IOException {
         Throwable x = pae.getCause();
@@ -51,34 +62,31 @@ public final class CgroupUtil {
             throw (Error) x;
     }
 
-    @SuppressWarnings({"deprecation"}) // doPrivileged is deprecated on JDK 17
     static String readStringValue(CgroupSubsystemController controller, String param) throws IOException {
         PrivilegedExceptionAction<BufferedReader> pea = () ->
-                new BufferedReader(new InputStreamReader(new FileInputStream(Paths.get(controller.path(), param).toString()), StandardCharsets.UTF_8));
-        try (BufferedReader bufferedReader =
+                Files.newBufferedReader(Paths.get(controller.path(), param));
+        try (@SuppressWarnings("removal") BufferedReader bufferedReader =
                      AccessController.doPrivileged(pea)) {
-            return bufferedReader.readLine();
+            String line = bufferedReader.readLine();
+            return line;
         } catch (PrivilegedActionException e) {
             unwrapIOExceptionAndRethrow(e);
             throw new InternalError(e.getCause());
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
         }
     }
 
-    @SuppressWarnings({"deprecation"}) // doPrivileged is deprecated on JDK 17
+    @SuppressWarnings("removal")
     public static List<String> readAllLinesPrivileged(Path path) throws IOException {
-        PrivilegedExceptionAction<BufferedReader> pea = () ->
-                new BufferedReader(new InputStreamReader(new FileInputStream(path.toString()), StandardCharsets.UTF_8));
-        try (BufferedReader bufferedReader =
-                     AccessController.doPrivileged(pea)) {
-            String line;
-            List<String> lines = new ArrayList<>();
-            while ((line = bufferedReader.readLine()) != null) {
-                lines.add(line);
-            }
-            return lines;
+        try {
+            PrivilegedExceptionAction<List<String>> pea = () -> Files.readAllLines(path);
+            return AccessController.doPrivileged(pea);
         } catch (PrivilegedActionException e) {
             unwrapIOExceptionAndRethrow(e);
             throw new InternalError(e.getCause());
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
         }
     }
 }

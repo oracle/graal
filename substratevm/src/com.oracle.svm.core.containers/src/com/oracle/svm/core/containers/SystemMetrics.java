@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Red Hat Inc.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package jdk.internal.platform;
 
-package jdk.internal.platform.cgroupv1;
-
-public class CgroupV1MemorySubSystemController extends CgroupV1SubsystemController {
-
-    private boolean hierarchical;
-    private boolean swapenabled;
-
-    public CgroupV1MemorySubSystemController(String root, String mountPoint) {
-        super(root, mountPoint);
-    }
-
-    boolean isHierarchical() {
-        return hierarchical;
-    }
-
-    void setHierarchical(boolean hierarchical) {
-        this.hierarchical = hierarchical;
-    }
-
-    boolean isSwapEnabled() {
-        return swapenabled;
-    }
-
-    void setSwapEnabled(boolean swapenabled) {
-        this.swapenabled = swapenabled;
+public class SystemMetrics {
+    public static Metrics instance() {
+        return CgroupMetrics.getInstance();
     }
 }

@@ -23,12 +23,10 @@
  * questions.
  */
 
-// @formatter:off
-package com.oracle.svm.core.containers.cgroupv1;
+package jdk.internal.platform.cgroupv1;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.containers.CgroupSubsystem;
-import com.oracle.svm.core.containers.CgroupSubsystemController;
+import jdk.internal.platform.CgroupSubsystem;
+import jdk.internal.platform.CgroupSubsystemController;
 
 public class CgroupV1SubsystemController implements CgroupSubsystemController {
 
@@ -109,7 +107,7 @@ public class CgroupV1SubsystemController implements CgroupSubsystemController {
     }
 
     public static long convertHierachicalLimitLine(String line) {
-        String[] tokens = SubstrateUtil.split(line, " ");
+        String[] tokens = line.split("\\s");
         if (tokens.length == 2) {
             String strVal = tokens[1];
             return CgroupV1SubsystemController.convertStringToLong(strVal);
