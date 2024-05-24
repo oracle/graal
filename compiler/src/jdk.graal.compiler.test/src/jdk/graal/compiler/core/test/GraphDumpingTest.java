@@ -66,7 +66,7 @@ public class GraphDumpingTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     @Test
     public void testDump() throws IOException {
-        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory(this, "GraphDumpingTest")) {
+        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory("GraphDumpingTest")) {
             compileWithDumping("snippet01", temp);
         }
     }
@@ -74,7 +74,7 @@ public class GraphDumpingTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     @Test
     public void testInvalidNodeProperties() throws IOException {
-        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory(this, "GraphDumpingTest")) {
+        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory("GraphDumpingTest")) {
             StructuredGraph graph = compileWithDumping("snippet02", temp);
 
             // introduce an invalid node with broken properties

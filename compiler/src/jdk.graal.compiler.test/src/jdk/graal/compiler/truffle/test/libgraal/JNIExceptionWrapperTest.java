@@ -24,19 +24,13 @@
  */
 package jdk.graal.compiler.truffle.test.libgraal;
 
-import static jdk.graal.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
+import static com.oracle.truffle.api.test.SubprocessTestUtils.markForRemoval;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.CompilationWrapper;
-import jdk.graal.compiler.core.GraalCompilerOptions;
-import jdk.graal.compiler.test.SubprocessUtil;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.test.TestWithPolyglotOptions;
 import org.junit.Test;
@@ -53,39 +47,16 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
     @Test
     public void testMergedStackTrace() throws Exception {
-        if (isSilent()) {
-            testMergedStackTraceImpl();
-        } else {
-            SubprocessUtil.Subprocess proc = SubprocessUtil.java(makeSilent(getVmArgs()), "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
-            int exitCode = proc.exitCode;
-            if (exitCode != 0) {
-                fail(String.format("non-zero exit code %d for command:%n%s", exitCode, proc));
-            }
-        }
+        SubprocessTestUtils.newBuilder(JNIExceptionWrapperTest.class, this::testMergedStackTraceImpl).//
+        /*
+         * The test verifies correctness of a compilation exception stack trace. It uses
+         * `CompilationFailureAction=Throw`, but we do not want to retain the unnecessary dump file.
+         */
+                        prefixVmOption(markForRemoval("-Djdk.graal.Dump"), "-Djdk.graal.Dump=~").//
+                        run();
     }
 
-    private static boolean isSilent() {
-        Object value = System.getProperty(String.format("%s%s", GRAAL_OPTION_PROPERTY_PREFIX, GraalCompilerOptions.CompilationFailureAction.getName()));
-        return CompilationWrapper.ExceptionAction.Silent.toString().equals(value);
-    }
-
-    private static List<String> getVmArgs() {
-        // Filter out the LogFile option to prevent overriding of the unit tests log file by a
-        // sub-process.
-        List<String> vmArgs = SubprocessUtil.getVMCommandLine().stream().filter((vmArg) -> !vmArg.contains("LogFile")).collect(Collectors.toList());
-        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
-        return vmArgs;
-    }
-
-    private static List<String> makeSilent(List<? extends String> vmArgs) {
-        List<String> newVmArgs = new ArrayList<>();
-        newVmArgs.addAll(vmArgs.stream().filter((vmArg) -> !vmArg.contains(GraalCompilerOptions.CompilationFailureAction.getName())).toList());
-        newVmArgs.add(1, String.format("-D%s%s=%s", GRAAL_OPTION_PROPERTY_PREFIX, GraalCompilerOptions.CompilationFailureAction.getName(),
-                        CompilationWrapper.ExceptionAction.Silent));
-        return newVmArgs;
-    }
-
-    private void testMergedStackTraceImpl() throws Exception {
+    private void testMergedStackTraceImpl() {
         setupContext("engine.CompilationFailureAction", "Throw", "engine.BackgroundCompilation", Boolean.FALSE.toString());
         OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget compilable = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();

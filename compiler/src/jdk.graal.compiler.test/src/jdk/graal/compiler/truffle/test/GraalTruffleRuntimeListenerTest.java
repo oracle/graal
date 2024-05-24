@@ -463,7 +463,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
     private static void executeInSubprocess(Runnable action) throws IOException, InterruptedException {
         Path tmpDir = SubprocessTestUtils.isSubprocess() ? null : Files.createTempDirectory(GraalTruffleRuntimeListenerTest.class.getSimpleName());
         try {
-            SubprocessTestUtils.executeInSubprocess(GraalTruffleRuntimeListenerTest.class, action, String.format("-Djdk.graal.DumpPath=%s", tmpDir));
+            SubprocessTestUtils.newBuilder(GraalTruffleRuntimeListenerTest.class, action).prefixVmOption(String.format("-Djdk.graal.DumpPath=%s", tmpDir)).run();
         } finally {
             if (tmpDir != null) {
                 Files.walk(tmpDir).sorted(Comparator.reverseOrder()).forEach(GraalTruffleRuntimeListenerTest::delete);

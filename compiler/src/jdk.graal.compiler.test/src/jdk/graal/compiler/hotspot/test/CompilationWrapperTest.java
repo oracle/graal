@@ -240,7 +240,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                     List<ZipProbe> initialZipProbes,
                     List<String> extraVmArgs,
                     String... mainClassAndArgs) throws IOException, InterruptedException {
-        final Path dumpPath = getOutputDirectory(CompilationWrapperTest.class).resolve(CompilationWrapperTest.class.getSimpleName() + "_" + nowAsFileName());
+        final Path dumpPath = getOutputDirectory().resolve(CompilationWrapperTest.class.getSimpleName() + "_" + nowAsFileName());
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
         vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
         vmArgs.remove("-esa");

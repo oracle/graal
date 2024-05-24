@@ -150,6 +150,8 @@ local common_json = import "../common.json";
         " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
         # Keep in sync with jdk.graal.compiler.test.SubprocessUtil#makeArgfile
         "@(?P<filename>.*SubprocessUtil-argfiles.*\\.argfile)",
+        # Keep in sync with com.oracle.truffle.api.test.SubprocessTestUtils#makeArgfile
+        "@(?P<filename>.*SubprocessTestUtils-argfiles.*\\.argfile)",
       ],
     },
 
