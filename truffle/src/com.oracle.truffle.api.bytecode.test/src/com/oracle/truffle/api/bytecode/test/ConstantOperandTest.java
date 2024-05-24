@@ -572,4 +572,36 @@ abstract class ConstantOperandErrorRootNode extends RootNode implements Bytecode
         public static void doOperation(VirtualFrame frame, int const1) {
         }
     }
+
+    /**
+     * Regression test: using the name "returnValue" for a constant conflicted with an internal
+     * parameter name. Operations with operands named "returnValue" should be permitted without
+     * issue. Operand names that cannot be Java identifiers are disallowed.
+     */
+    @Operation
+    @ConstantOperand(type = Object.class, name = "returnValue")
+    public static final class OperationWithPermittedConstantName {
+        @Specialization
+        public static void doObject(@SuppressWarnings("unused") Object constant) {
+            // do nothing
+        }
+    }
+
+    @Operation
+    @ExpectWarning({
+                    "Invalid constant operand name \" \". Operand name must be a valid Java identifier.",
+                    "Invalid constant operand name \"4abc\". Operand name must be a valid Java identifier.",
+                    "Invalid constant operand name \"returnValue#\". Operand name must be a valid Java identifier.",
+    })
+    @ConstantOperand(type = Object.class, name = " ")
+    @ConstantOperand(type = Object.class, name = "4abc")
+    @ConstantOperand(type = Object.class, name = "returnValue#")
+    public static final class OperationWithForbiddenConstantName {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doObject(Object const1, Object const2, Object const3) {
+            // do nothing
+        }
+
+    }
 }

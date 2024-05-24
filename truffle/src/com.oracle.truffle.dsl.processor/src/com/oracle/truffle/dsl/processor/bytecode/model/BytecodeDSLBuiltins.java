@@ -218,7 +218,15 @@ public class BytecodeDSLBuiltins {
                                         m.signature(void.class, Object.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         m.returnOperation = m.operation(OperationKind.RETURN, "Return", "Return returns the value produced by {@code result}.") //
-                        .setDynamicOperands(child("result")).setInstruction(m.returnInstruction);
+                        /**
+                         * NB: return doesn't produce a value, but it is convenient to treat it as
+                         * non-void for bytecode validation (e.g., an operation expecting a value
+                         * will accept a return as its child, which is okay because the return ends
+                         * execution before the parent runs).
+                         */
+                        .setVoid(false) //
+                        .setDynamicOperands(child("result")) //
+                        .setInstruction(m.returnInstruction);
         if (m.enableYield) {
             m.yieldInstruction = m.instruction(InstructionKind.YIELD, "yield", m.signature(void.class, Object.class)).addImmediate(ImmediateKind.CONSTANT, "location");
             m.operation(OperationKind.YIELD, "Yield", """
@@ -256,6 +264,7 @@ public class BytecodeDSLBuiltins {
                                             Tag associates {@code tagged} with the given tags.
                                             When the {@link BytecodeConfig} includes one or more of the given tags, the interpreter will automatically invoke instrumentation probes when entering/leaving {@code tagged}.
                                             """) //
+                            .setTransparent(true) //
                             .setOperationBeginArgumentVarArgs(true) //
                             .setOperationBeginArguments(
                                             new OperationArgument(new ArrayCodeTypeMirror(context.getDeclaredType(Class.class)), Encoding.TAGS, "newTags",
