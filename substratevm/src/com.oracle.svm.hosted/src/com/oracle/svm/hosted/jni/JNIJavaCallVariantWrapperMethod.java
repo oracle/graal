@@ -57,8 +57,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
-import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
@@ -77,9 +75,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * Generated code for taking arguments according to a specific signature and {@link CallVariant} and
- * passing them on to a {@link JNIJavaCallWrapperMethod} which does the actual Java call. This
- * method also enters the isolate and catches any exception.
+ * Generates uninterruptible code for taking arguments according to a specific signature and
+ * {@link CallVariant} and passing them on to a {@link JNIJavaCallWrapperMethod} which does the
+ * actual Java call. This method also enters the isolate and catches any exception.
  */
 public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
 
@@ -163,7 +161,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         ValueNode methodId = kit.loadLocal(slotIndex, wordKind);
         slotIndex += wordKind.getSlotCount();
 
-        kit.append(CEntryPointEnterNode.enter(env));
+        kit.invokeJNIEnterIsolate(env);
         ValueNode callAddress = kit.getJavaCallWrapperAddressFromMethodId(methodId);
 
         List<ValueNode> args = new ArrayList<>();
@@ -200,8 +198,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
             kit.getFrameState().pop(returnKind);
         }
 
-        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(CEntryPointLeaveNode.LeaveAction.Leave);
-        kit.append(leave);
+        kit.invokeJNILeaveIsolate();
         kit.createReturn(returnValue, returnKind);
         return kit.finalizeGraph();
     }

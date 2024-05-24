@@ -133,6 +133,10 @@ public final class JNIObjectHandles {
         return (JNIObjectHandle) handle;
     }
 
+    /**
+     * Returns the Java object that is referenced by the given handle. Note that this method may
+     * execute interruptible code.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> T getObject(JNIObjectHandle handle) {
         if (handle.equal(nullHandle())) {
@@ -144,15 +148,15 @@ public final class JNIObjectHandles {
         if (useImageHeapHandles() && JNIImageHeapHandles.isInRange(handle)) {
             return JNIImageHeapHandles.getObject(handle);
         }
-        return getObjectSlow(handle);
+        return getObjectSlowInterruptibly(handle);
     }
 
     @Uninterruptible(reason = "Not really, but our caller is to allow inlining and we must be safe at this point.", calleeMustBe = false)
-    private static <T> T getObjectSlow(JNIObjectHandle handle) {
-        return getObjectSlow0(handle);
+    private static <T> T getObjectSlowInterruptibly(JNIObjectHandle handle) {
+        return getObjectSlowInterruptibly0(handle);
     }
 
-    private static <T> T getObjectSlow0(JNIObjectHandle handle) {
+    private static <T> T getObjectSlowInterruptibly0(JNIObjectHandle handle) {
         if (JNIGlobalHandles.isInRange(handle)) {
             return JNIGlobalHandles.getObject(handle);
         }
@@ -225,6 +229,7 @@ public final class JNIObjectHandles {
         getExistingLocals().popFrame();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void popLocalFramesIncluding(int frame) {
         getExistingLocals().popFramesIncluding(frame);
     }
