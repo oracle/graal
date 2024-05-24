@@ -75,6 +75,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * The main entry point for simulation of class initializer.
@@ -510,12 +511,17 @@ public class SimulateClassInitializerSupport {
             return;
         } else if (node instanceof MarkStaticFinalFieldInitializedNode) {
             return;
-
         } else if (node instanceof StoreFieldNode storeFieldNode) {
             var field = (AnalysisField) storeFieldNode.field();
             if (field.isStatic() && field.getDeclaringClass().equals(clusterMember.type)) {
                 var constantValue = storeFieldNode.value().asJavaConstant();
                 if (constantValue != null) {
+                    if (field.getJavaKind().getStackKind() != field.getJavaKind()) {
+                        assert field.getJavaKind().getStackKind() == JavaKind.Int;
+                        // store sub-int values with their exact kind since that's how the
+                        // ConstantReflectionProvider later expects them
+                        constantValue = JavaConstant.forPrimitive(field.getJavaKind(), constantValue.asInt());
+                    }
                     clusterMember.staticFieldValues.put(field, constantValue);
                     return;
                 }

@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.classinitialization.TypeReachedProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
@@ -50,7 +51,6 @@ import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
-import com.oracle.svm.core.classinitialization.TypeReachedProvider;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -280,13 +280,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         if (simulateClassInitializerSupport == null) {
             simulateClassInitializerSupport = SimulateClassInitializerSupport.singleton();
         }
-        JavaConstant simulatedFieldValue = simulateClassInitializerSupport.getSimulatedFieldValue(field);
-        if (simulatedFieldValue != null && field.getJavaKind().getStackKind() != field.getJavaKind()) {
-            // sub-int are represented as int in SimulateClassInitializerSupport
-            // but ConstantReflectionProvider returns sub-int constants
-            return JavaConstant.forPrimitive(field.getJavaKind(), simulatedFieldValue.asInt());
-        }
-        return simulatedFieldValue;
+        return simulateClassInitializerSupport.getSimulatedFieldValue(field);
     }
 
     @Override
