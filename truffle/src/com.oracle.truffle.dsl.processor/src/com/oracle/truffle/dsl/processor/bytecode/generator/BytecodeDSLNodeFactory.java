@@ -3568,6 +3568,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             result.append(")");
 
+            if (operation.kind == OperationKind.ROOT) {
+                // do nothing
+            } else if (operation.isTransparent) {
+                result.append(" -> void/Object");
+            } else if (operation.isVoid || operation.kind == OperationKind.RETURN) {
+                result.append(" -> void");
+            } else if (operation.kind == OperationKind.CUSTOM) {
+                result.append(" -> ");
+                result.append(ElementUtils.getSimpleName(
+                                operation.instruction.signature.returnType));
+            } else {
+                result.append(" -> Object");
+            }
+
             return result.toString();
         }
 
@@ -4344,7 +4358,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("markReachable(false)");
                     break;
                 case TAG:
-                    emitCastCurrentOperationData(b, operation);
                     b.declaration(type(int.class), "sp", "operationSp - 1");
                     b.startWhile().string("sp >= 0").end().startBlock();
                     b.startIf().string("operationStack[sp].data instanceof TagOperationData t").end().startBlock();

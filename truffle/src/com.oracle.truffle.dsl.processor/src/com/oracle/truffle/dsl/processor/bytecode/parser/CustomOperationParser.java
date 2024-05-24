@@ -633,6 +633,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             int dimensions = ElementUtils.getAnnotationValue(Integer.class, constantOperandMirror, "dimensions");
             ConstantOperandModel constantOperand = new ConstantOperandModel(type, operandName, javadoc, specifyAtEnd, dimensions, constantOperandMirror);
 
+            if (!isValidOperandName(operandName)) {
+                customOperation.addError(constantOperandMirror, ElementUtils.getAnnotationValue(constantOperandMirror, "name"),
+                                "Invalid constant operand name \"%s\". Operand name must be a valid Java identifier.", operandName);
+            }
+
             if (dimensions != 0) {
                 customOperation.addError(constantOperandMirror, ElementUtils.getAnnotationValue(constantOperandMirror, "dimensions"), "Constant operands with non-zero dimensions are not supported.");
             }
@@ -644,6 +649,21 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             }
         }
         return new ConstantOperandsModel(before, after);
+    }
+
+    private static boolean isValidOperandName(String name) {
+        if (name.isEmpty()) {
+            return true;
+        }
+        if (!Character.isJavaIdentifierStart(name.charAt(0))) {
+            return false;
+        }
+        for (int i = 1; i < name.length(); i++) {
+            if (!Character.isJavaIdentifierPart(name.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /*
