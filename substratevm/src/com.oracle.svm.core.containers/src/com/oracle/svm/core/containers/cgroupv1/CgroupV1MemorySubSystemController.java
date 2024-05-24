@@ -23,7 +23,8 @@
  * questions.
  */
 
-package jdk.internal.platform.cgroupv1;
+// @formatter:off
+package com.oracle.svm.core.containers.cgroupv1;
 
 public class CgroupV1MemorySubSystemController extends CgroupV1SubsystemController {
 

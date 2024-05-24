@@ -23,7 +23,8 @@
  * questions.
  */
 
-package jdk.internal.platform;
+// @formatter:off
+package com.oracle.svm.core.containers;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

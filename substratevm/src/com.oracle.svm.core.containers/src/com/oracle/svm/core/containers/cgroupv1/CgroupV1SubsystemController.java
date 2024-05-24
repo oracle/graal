@@ -23,10 +23,11 @@
  * questions.
  */
 
-package jdk.internal.platform.cgroupv1;
+// @formatter:off
+package com.oracle.svm.core.containers.cgroupv1;
 
-import jdk.internal.platform.CgroupSubsystem;
-import jdk.internal.platform.CgroupSubsystemController;
+import com.oracle.svm.core.containers.CgroupSubsystem;
+import com.oracle.svm.core.containers.CgroupSubsystemController;
 
 public class CgroupV1SubsystemController implements CgroupSubsystemController {
 

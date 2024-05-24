@@ -22,7 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.internal.platform;
+// @formatter:off
+package com.oracle.svm.core.containers;
 
 public class SystemMetrics {
     public static Metrics instance() {

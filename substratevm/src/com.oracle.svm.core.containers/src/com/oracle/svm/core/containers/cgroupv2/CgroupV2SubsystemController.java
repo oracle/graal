@@ -23,12 +23,13 @@
  * questions.
  */
 
-package jdk.internal.platform.cgroupv2;
+// @formatter:off
+package com.oracle.svm.core.containers.cgroupv2;
 
 import java.nio.file.Paths;
 
-import jdk.internal.platform.CgroupSubsystem;
-import jdk.internal.platform.CgroupSubsystemController;
+import com.oracle.svm.core.containers.CgroupSubsystem;
+import com.oracle.svm.core.containers.CgroupSubsystemController;
 
 public class CgroupV2SubsystemController implements CgroupSubsystemController {
 

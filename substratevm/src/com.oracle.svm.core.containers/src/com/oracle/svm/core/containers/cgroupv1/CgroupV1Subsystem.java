@@ -23,14 +23,15 @@
  * questions.
  */
 
-package jdk.internal.platform.cgroupv1;
+// @formatter:off
+package com.oracle.svm.core.containers.cgroupv1;
 
 import java.util.Map;
 
-import jdk.internal.platform.CgroupInfo;
-import jdk.internal.platform.CgroupSubsystem;
-import jdk.internal.platform.CgroupSubsystemController;
-import jdk.internal.platform.CgroupV1Metrics;
+import com.oracle.svm.core.containers.CgroupInfo;
+import com.oracle.svm.core.containers.CgroupSubsystem;
+import com.oracle.svm.core.containers.CgroupSubsystemController;
+import com.oracle.svm.core.containers.CgroupV1Metrics;
 
 public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
     private CgroupV1MemorySubSystemController memory;

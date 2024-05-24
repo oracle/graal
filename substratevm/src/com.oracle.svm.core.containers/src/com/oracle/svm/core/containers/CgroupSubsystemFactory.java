@@ -23,7 +23,8 @@
  * questions.
  */
 
-package jdk.internal.platform;
+// @formatter:off
+package com.oracle.svm.core.containers;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -42,8 +43,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import jdk.internal.platform.cgroupv1.CgroupV1Subsystem;
-import jdk.internal.platform.cgroupv2.CgroupV2Subsystem;
+import com.oracle.svm.core.containers.cgroupv1.CgroupV1Subsystem;
+import com.oracle.svm.core.containers.cgroupv2.CgroupV2Subsystem;
 
 public class CgroupSubsystemFactory {
 

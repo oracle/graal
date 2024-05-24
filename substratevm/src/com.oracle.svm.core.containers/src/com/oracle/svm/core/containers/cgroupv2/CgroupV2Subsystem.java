@@ -23,7 +23,8 @@
  * questions.
  */
 
-package jdk.internal.platform.cgroupv2;
+// @formatter:off
+package com.oracle.svm.core.containers.cgroupv2;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -32,10 +33,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jdk.internal.platform.CgroupInfo;
-import jdk.internal.platform.CgroupSubsystem;
-import jdk.internal.platform.CgroupSubsystemController;
-import jdk.internal.platform.CgroupUtil;
+import com.oracle.svm.core.containers.CgroupInfo;
+import com.oracle.svm.core.containers.CgroupSubsystem;
+import com.oracle.svm.core.containers.CgroupSubsystemController;
+import com.oracle.svm.core.containers.CgroupUtil;
 
 public class CgroupV2Subsystem implements CgroupSubsystem {
 
