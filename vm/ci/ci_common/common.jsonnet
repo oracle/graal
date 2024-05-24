@@ -6,8 +6,19 @@ local repo_config = import '../../../repo-configuration.libsonnet';
 local devkits = graal_common.devkits;
 
 {
+  job_name_targets(build)::
+    local has_deploy = std.member(build.targets, 'deploy');
+    local filtered_targets = [target for target in build.targets
+      if target != 'mach5'  # don't add 'mach5' to the job name
+      && target != 'deploy'  # the 'deploy' target is re-added later
+    ];
+    if (has_deploy) then
+      filtered_targets + ['deploy']  # the 'deploy' target appears last in the job name
+    else
+      filtered_targets,
+
   verify_name(build): {
-    expected_prefix:: std.join('-', [target for target in build.targets if target != "mach5"]) + '-vm',
+    expected_prefix:: std.join('-', $.job_name_targets(build)) + '-vm',
     expected_suffix:: build.os + '-' + build.arch,
     assert std.startsWith(build.name, self.expected_prefix) : "'%s' is defined in '%s' with '%s' targets but does not start with '%s'" % [build.name, build.defined_in, build.targets, self.expected_prefix],
     assert std.endsWith(build.name, self.expected_suffix) : "'%s' is defined in '%s' with os/arch '%s/%s' but does not end with '%s'" % [build.name, build.defined_in, build.os, build.arch, self.expected_suffix],
@@ -562,53 +573,37 @@ local devkits = graal_common.devkits;
 
   # Linux/AMD64
   # - JDK-Latest
-  deploy_vm_base_javaLatest_linux_amd64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'amd64', 'post-merge', deploy=true) + self.deploy_graalvm_base('latest') + {name: 'post-merge-deploy-vm-base-java-latest-linux-amd64', notify_groups:: ["deploy"]},
   deploy_vm_standalones_javaLatest_linux_amd64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'amd64', 'daily', deploy=true) + self.deploy_graalvm_components('latest', standalones=true, record_file_sizes=true) + {name: 'daily-deploy-vm-standalones-java-latest-linux-amd64', notify_groups:: ["deploy"]},
   # - JDK21
-  deploy_vm_base_java21_linux_amd64: vm.vm_java_21 + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'amd64', 'weekly', deploy=true) + self.deploy_graalvm_base("java21") + {name: 'weekly-deploy-vm-base-java21-linux-amd64', notify_groups:: ["deploy"]},
   deploy_vm_standalones_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'amd64', 'weekly', deploy=true) + self.deploy_graalvm_components("java21", standalones=true, record_file_sizes=true) + {name: 'weekly-deploy-vm-standalones-java21-linux-amd64', notify_groups:: ["deploy"]},
 
   # Linux/AARCH64
   # - JDK-Latest
-  deploy_vm_base_javaLatest_linux_aarch64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_base('latest') + {name: 'daily-deploy-vm-base-java-latest-linux-aarch64', notify_groups:: ["deploy"], timelimit: '1:30:00', capabilities+: ["!xgene3"]},
   deploy_vm_standalones_javaLatest_linux_aarch64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_components('latest', standalones=true) + {name: 'daily-deploy-vm-standalones-java-latest-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
   # - JDK21
-  deploy_vm_base_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_base("java21") + {name: 'weekly-deploy-vm-base-java21-linux-aarch64', notify_groups:: ["deploy"], timelimit: '1:30:00', capabilities+: ["!xgene3"]},
   deploy_vm_standalones_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_components("java21", standalones=true) + {name: 'weekly-deploy-vm-standalones-java21-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
 
   # Darwin/AMD64
   # - JDK-Latest
-  deploy_vm_base_javaLatest_darwin_amd64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_base('latest') + {name: 'daily-deploy-vm-base-java-latest-darwin-amd64', notify_groups:: ["deploy"], timelimit: '1:45:00'},
   deploy_vm_standalones_javaLatest_darwin_amd64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_components('latest', standalones=true) + {name: 'daily-deploy-vm-standalones-java-latest-darwin-amd64', capabilities+: ["!macmini_late_2014"], notify_groups:: ["deploy"], timelimit: '3:00:00'},
   # - JDK21
-  deploy_vm_base_java21_darwin_amd64: vm.vm_java_21 + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'amd64', 'weekly', deploy=true) + self.deploy_graalvm_base("java21") + {name: 'weekly-deploy-vm-base-java21-darwin-amd64', notify_groups:: ["deploy"], timelimit: '1:45:00'},
   deploy_vm_standalones_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'amd64', 'weekly', deploy=true) + self.deploy_graalvm_components("java21", standalones=true) + {name: 'weekly-deploy-vm-standalones-java21-darwin-amd64', capabilities+: ["!macmini_late_2014"], notify_groups:: ["deploy"], timelimit: '3:00:00'},
 
   # Darwin/AARCH64
   # - JDK-Latest
-  deploy_vm_base_javaLatest_darwin_aarch64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_base('latest') + {name: 'daily-deploy-vm-base-java-latest-darwin-aarch64', notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '1:45:00'},
   deploy_vm_standalones_javaLatest_darwin_aarch64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_components('latest', standalones=true) + {name: 'daily-deploy-vm-standalones-java-latest-darwin-aarch64', notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
   # - JDK21
-  deploy_vm_base_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_base("java21") + {name: 'weekly-deploy-vm-base-java21-darwin-aarch64', notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '1:45:00'},
   deploy_vm_standalones_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_components("java21", standalones=true) + {name: 'weekly-deploy-vm-standalones-java21-darwin-aarch64', notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
 
   # Windows/AMD64
   # - JDK-Latest
-  deploy_vm_base_javaLatest_windows_amd64: vm.vm_java_Latest + self.svm_common_windows_amd64('Latest') + self.js_windows_common + self.vm_base('windows', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_base('latest') + self.deploy_build + {name: 'daily-deploy-vm-base-java-latest-windows-amd64', notify_groups:: ["deploy"], timelimit: '1:30:00'},
   deploy_vm_standalones_javaLatest_windows_amd64: vm.vm_java_Latest + self.svm_common_windows_amd64('Latest') + self.js_windows_common + self.sulong + self.vm_base('windows', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_components('latest', standalones=true) + self.deploy_build + {name: 'daily-deploy-vm-standalones-java-latest-windows-amd64', timelimit: '2:30:00', notify_groups:: ["deploy"]},
   # - JDK21
-  deploy_vm_base_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_common + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_base("java21") + self.deploy_build + {name: 'weekly-deploy-vm-base-java21-windows-amd64', notify_groups:: ["deploy"], timelimit: '1:30:00'},
   deploy_vm_standalones_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_common + self.sulong + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_components("java21", standalones=true) + self.deploy_build + {name: 'weekly-deploy-vm-standalones-java21-windows-amd64', timelimit: '2:30:00', notify_groups:: ["deploy"]},
 
   #
   # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
   #
-
-  deploy_vm_espresso_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'amd64', 'weekly', deploy=true) + self.deploy_graalvm_espresso('linux', 'amd64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-linux-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_espresso('linux', 'aarch64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-linux-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'amd64', 'weekly', deploy=true) + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.sulong + self.deploy_build + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
 
   local sulong_vm_tests = self.svm_common + self.sulong + vm.custom_vm + self.vm_base('linux', 'amd64', 'gate') + {
      run: [
