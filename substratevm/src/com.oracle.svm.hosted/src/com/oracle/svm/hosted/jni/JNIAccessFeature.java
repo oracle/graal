@@ -66,6 +66,7 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.jni.CallVariant;
+import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
 import com.oracle.svm.core.jni.JNIJavaCallTrampolineHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
 import com.oracle.svm.core.jni.access.JNIAccessibleField;
@@ -241,8 +242,8 @@ public class JNIAccessFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
-        if (!ImageSingletons.contains(JNIFieldAccessorMethod.Factory.class)) {
-            ImageSingletons.add(JNIFieldAccessorMethod.Factory.class, new JNIFieldAccessorMethod.Factory());
+        if (!ImageSingletons.contains(JNIGeneratedMethodSupport.class)) {
+            ImageSingletons.add(JNIGeneratedMethodSupport.class, new JNIGeneratedMethodSupport());
         }
         if (!ImageSingletons.contains(JNIJavaCallWrapperMethod.Factory.class)) {
             ImageSingletons.add(JNIJavaCallWrapperMethod.Factory.class, new JNIJavaCallWrapperMethod.Factory());

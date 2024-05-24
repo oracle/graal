@@ -70,7 +70,6 @@ import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
-import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
@@ -371,11 +370,5 @@ public class SubstrateGraphKit extends GraphKit {
         lastFixedNode = noExceptionEdge;
 
         return withExceptionNode;
-    }
-
-    public void appendStateSplitProxy() {
-        StateSplitProxyNode proxy = new StateSplitProxyNode();
-        append(proxy);
-        proxy.setStateAfter(frameState.create(bci(), proxy));
     }
 }

@@ -26,12 +26,13 @@ package com.oracle.svm.core.jni;
 
 import java.lang.reflect.Array;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
@@ -41,13 +42,19 @@ import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Helper code that is used in generated JNI code via {@code JNIGraphKit}.
  */
-public final class JNIGeneratedMethodSupport {
+public class JNIGeneratedMethodSupport {
+    @Fold
+    public static JNIGeneratedMethodSupport singleton() {
+        return ImageSingletons.lookup(JNIGeneratedMethodSupport.class);
+    }
+
     // Careful around here -- these methods are invoked by generated methods.
 
     static PointerBase nativeCallAddress(JNINativeLinkage linkage) {
@@ -58,6 +65,7 @@ public final class JNIGeneratedMethodSupport {
         return JNIObjectHandles.pushLocalFrame(JNIObjectHandles.NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY);
     }
 
+    @Uninterruptible(reason = "Must not throw any exceptions - otherwise, we might leak memory.")
     static void nativeCallEpilogue(int handleFrame) {
         JNIObjectHandles.popLocalFramesIncluding(handleFrame);
     }
@@ -76,31 +84,19 @@ public final class JNIGeneratedMethodSupport {
         return JNIObjectHandles.getObject(handle);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static WordBase getFieldOffsetFromId(JNIFieldId fieldId) {
-        return JNIAccessibleField.getOffsetFromId(fieldId);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static Object getStaticPrimitiveFieldsArray() {
-        return StaticFieldsSupport.getStaticPrimitiveFields();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static Object getStaticObjectFieldsArray() {
-        return StaticFieldsSupport.getStaticObjectFields();
-    }
-
+    @Uninterruptible(reason = "Must not throw any exceptions.")
     static void setPendingException(Throwable t) {
         JNIThreadLocalPendingException.set(t);
     }
 
+    @Uninterruptible(reason = "Must not throw any exceptions.")
     static Throwable getAndClearPendingException() {
         Throwable t = JNIThreadLocalPendingException.get();
         JNIThreadLocalPendingException.clear();
         return t;
     }
 
+    @Uninterruptible(reason = "Must not throw any exceptions, except for the pending exception.")
     static void rethrowPendingException() throws Throwable {
         Throwable t = getAndClearPendingException();
         if (t != null) {
@@ -108,40 +104,59 @@ public final class JNIGeneratedMethodSupport {
         }
     }
 
-    static PointerBase createArrayViewAndGetAddress(Object array, CCharPointer isCopy) throws Throwable {
-        if (array.getClass().isArray()) {
-            PrimitiveArrayView ref = JNIThreadLocalPrimitiveArrayViews.createArrayView(array);
-            if (isCopy.isNonNull()) {
-                isCopy.write(ref.isCopy() ? (byte) 1 : (byte) 0);
-            }
-            return ref.addressOfArrayElement(0);
-        }
-        return WordFactory.nullPointer();
+    public JNIObjectHandle getObjectField(JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        Object result = getObjectField0(o, offset);
+        return JNIObjectHandles.createLocal(result);
     }
 
-    static void destroyNewestArrayViewByAddress(PointerBase address, int mode) throws Throwable {
+    protected Object getObjectField0(Object obj, long offset) {
+        return Unsafe.getUnsafe().getReference(obj, offset);
+    }
+
+    public PointerBase createArrayViewAndGetAddress(JNIObjectHandle handle, CCharPointer isCopy) {
+        Object obj = JNIObjectHandles.getObject(handle);
+        if (!obj.getClass().isArray()) {
+            throw new IllegalArgumentException("Argument is not an array");
+        }
+
+        /* Create a view for the non-null array object. */
+        PrimitiveArrayView ref = JNIThreadLocalPrimitiveArrayViews.createArrayView(obj);
+        if (isCopy.isNonNull()) {
+            isCopy.write(ref.isCopy() ? (byte) 1 : (byte) 0);
+        }
+        return ref.addressOfArrayElement(0);
+    }
+
+    public void destroyNewestArrayViewByAddress(PointerBase address, int mode) {
         JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(address, mode);
     }
 
-    static void getPrimitiveArrayRegion(JavaKind elementKind, Object array, int start, int count, PointerBase buffer) {
-        if (start < 0 || count < 0 || start + count > Array.getLength(array)) {
+    public void getPrimitiveArrayRegion(JavaKind elementKind, JNIObjectHandle handle, int start, int count, PointerBase buffer) {
+        Object obj = JNIObjectHandles.getObject(handle);
+        /* Check if we have a non-null array object and if start/count are valid. */
+        if (start < 0 || count < 0 || start > Array.getLength(obj) - count) {
             throw new ArrayIndexOutOfBoundsException();
         }
         if (count > 0) {
             long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
             int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-            Unsafe.getUnsafe().copyMemory(array, offset, null, buffer.rawValue(), count * elementSize);
+            UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
+            JavaMemoryUtil.copyOnHeap(obj, WordFactory.unsigned(offset), null, WordFactory.unsigned(buffer.rawValue()), bytes);
         }
     }
 
-    static void setPrimitiveArrayRegion(JavaKind elementKind, Object array, int start, int count, PointerBase buffer) {
-        if (start < 0 || count < 0 || start + count > Array.getLength(array)) {
+    public void setPrimitiveArrayRegion(JavaKind elementKind, JNIObjectHandle handle, int start, int count, PointerBase buffer) {
+        Object obj = JNIObjectHandles.getObject(handle);
+        if (start < 0 || count < 0 || start > Array.getLength(obj) - count) {
             throw new ArrayIndexOutOfBoundsException();
         }
         if (count > 0) {
             long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
             int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-            Unsafe.getUnsafe().copyMemory(null, buffer.rawValue(), array, offset, count * elementSize);
+            UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
+            JavaMemoryUtil.copyOnHeap(null, WordFactory.unsigned(buffer.rawValue()), obj, WordFactory.unsigned(offset), bytes);
         }
     }
 }
