@@ -400,16 +400,4 @@ public class SubstrateGraphKit extends GraphKit {
 
         return withExceptionNode;
     }
-
-    public void appendStateSplitProxy(FrameState state) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-        append(proxy);
-        proxy.setStateAfter(state);
-    }
-
-    public void appendStateSplitProxy(FrameStateBuilder stateBuilder) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-        append(proxy);
-        proxy.setStateAfter(stateBuilder.create(bci(), proxy));
-    }
 }

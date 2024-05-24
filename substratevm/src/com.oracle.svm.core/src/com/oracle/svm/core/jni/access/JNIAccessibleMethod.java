@@ -89,12 +89,13 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     }
 
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Must not throw any exceptions.", callerMustBe = true)
     CodePointer getCallWrapperAddress() {
         return callWrapper;
     }
 
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     CodePointer getJavaCallAddress(Object instance, boolean nonVirtual) {
         if (!nonVirtual) {
             assert vtableOffset != JNIAccessibleMethod.VTABLE_OFFSET_NOT_YET_COMPUTED;

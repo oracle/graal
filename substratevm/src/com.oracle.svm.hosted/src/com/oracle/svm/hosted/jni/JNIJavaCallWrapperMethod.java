@@ -71,10 +71,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * Generated code with a specific signature for calling a Java method that has a compatible
- * signature from native code. The wrapper takes care of transitioning to a Java context and back to
- * native code, for catching and retaining unhandled exceptions, and if required, for unboxing
- * object handle arguments and boxing an object return value.
+ * Generates interruptible code with a specific signature for calling a Java method that has a
+ * compatible signature from native code. Note that the generated interruptible code is called by a
+ * separately generated wrapper (see {@link JNIJavaCallVariantWrapperMethod}) that takes care of
+ * transitioning to a Java context and back to native code, as well as catching and retaining
+ * unhandled exceptions.
  *
  * @see <a href=
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">Java 8 JNI

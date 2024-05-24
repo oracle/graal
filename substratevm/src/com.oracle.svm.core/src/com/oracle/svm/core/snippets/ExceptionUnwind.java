@@ -38,6 +38,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
@@ -232,6 +233,7 @@ public abstract class ExceptionUnwind {
             }
 
             /* No handler found in this frame, walk to caller frame. */
+            VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point methods must have an exception handler.");
             hasCalleeSavedRegisters = CodeInfoQueryResult.hasCalleeSavedRegisters(codeInfoQueryResult.getEncodedFrameSize());
             if (!JavaStackWalker.continueWalk(walk, codeInfoQueryResult, deoptFrame)) {
                 /* No more caller frame found. */
