@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
+import static com.oracle.svm.hosted.classinitialization.SimulateClassInitializerGraphDecoder.adaptForImageHeap;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -75,7 +77,6 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 
 /**
  * The main entry point for simulation of class initializer.
@@ -516,13 +517,9 @@ public class SimulateClassInitializerSupport {
             if (field.isStatic() && field.getDeclaringClass().equals(clusterMember.type)) {
                 var constantValue = storeFieldNode.value().asJavaConstant();
                 if (constantValue != null) {
-                    if (field.getJavaKind().getStackKind() != field.getJavaKind()) {
-                        assert field.getJavaKind().getStackKind() == JavaKind.Int;
-                        // store sub-int values with their exact kind since that's how the
-                        // ConstantReflectionProvider later expects them
-                        constantValue = JavaConstant.forPrimitive(field.getJavaKind(), constantValue.asInt());
-                    }
-                    clusterMember.staticFieldValues.put(field, constantValue);
+                    // We use the java kind here and not the storage kind since that's what the
+                    // users of (Analysis)ConstantReflectionProvider expect.
+                    clusterMember.staticFieldValues.put(field, adaptForImageHeap(constantValue, field.getJavaKind()));
                     return;
                 }
             }
