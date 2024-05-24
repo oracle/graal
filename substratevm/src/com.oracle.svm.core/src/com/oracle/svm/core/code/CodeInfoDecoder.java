@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -423,7 +424,7 @@ public final class CodeInfoDecoder {
      * @see CodeInfoEncoder.Encoders#encodeMethodTable
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void fillInSourceClassAndMethodName(FrameInfoQueryResult result) {
+    static void fillSourceFields(FrameInfoQueryResult result) {
         int methodId = result.sourceMethodId;
         CodeInfo info;
         CodeInfo next = CodeInfoTable.getFirstImageCodeInfo();
@@ -436,19 +437,46 @@ public final class CodeInfoDecoder {
 
         boolean shortClass = NonmovableArrays.lengthOf(CodeInfoAccess.getClasses(info)) <= 0xffff;
         boolean shortName = NonmovableArrays.lengthOf(CodeInfoAccess.getMemberNames(info)) <= 0xffff;
+        boolean shortSignature = NonmovableArrays.lengthOf(CodeInfoAccess.getOtherStrings(info)) <= 0xffff;
         int classBytes = shortClass ? Short.BYTES : Integer.BYTES;
-        int entryBytes = classBytes + (shortName ? Short.BYTES : Integer.BYTES);
+        int nameBytes = shortName ? Short.BYTES : Integer.BYTES;
+        int signatureBytes = shortSignature ? Short.BYTES : Integer.BYTES;
+        int modifierBytes = Short.BYTES;
+
+        int classOffset = 0;
+        int nameOffset = classOffset + classBytes;
+        int signatureOffset = nameOffset + nameBytes;
+        int modifierOffset = signatureOffset + signatureBytes;
+
+        int entryBytes = classBytes + nameBytes;
+        if (CodeInfoEncoder.shouldEncodeAllMethodMetadata()) {
+            entryBytes += signatureBytes + modifierBytes;
+        }
 
         int methodIndex = methodId - CodeInfoAccess.getMethodTableFirstId(info);
         NonmovableArray<Byte> methodEncodings = CodeInfoAccess.getMethodTable(info);
         VMError.guarantee(methodIndex >= 0 && methodIndex < NonmovableArrays.lengthOf(methodEncodings) / entryBytes);
 
         Pointer p = NonmovableArrays.addressOf(methodEncodings, methodIndex * entryBytes);
-        int classIndex = shortClass ? (p.readShort(0) & 0xffff) : p.readInt(0);
+        int classIndex = readIndex(p, shortClass, classOffset);
         Class<?> sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getClasses(info), classIndex);
-        int methodNameIndex = shortName ? (p.readShort(classBytes) & 0xffff) : p.readInt(classBytes);
+        int methodNameIndex = readIndex(p, shortName, nameOffset);
         String sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getMemberNames(info), methodNameIndex);
-        result.setSourceClassAndMethodName(sourceClass, sourceMethodName);
+
+        String sourceMethodSignature = CodeInfoEncoder.Encoders.INVALID_METHOD_SIGNATURE;
+        int sourceSignatureModifiers = CodeInfoEncoder.Encoders.INVALID_METHOD_MODIFIERS;
+        if (CodeInfoEncoder.shouldEncodeAllMethodMetadata()) {
+            int sourceSignatureIndex = readIndex(p, shortSignature, signatureOffset);
+            sourceMethodSignature = NonmovableArrays.getObject(CodeInfoAccess.getOtherStrings(info), sourceSignatureIndex);
+
+            sourceSignatureModifiers = readIndex(p, true, modifierOffset);
+        }
+        result.setSourceFields(sourceClass, sourceMethodName, sourceMethodSignature, sourceSignatureModifiers);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int readIndex(Pointer p, boolean isShort, int offset) {
+        return isShort ? (p.readShort(offset) & 0xffff) : p.readInt(offset);
     }
 
     @AlwaysInline("Make IP-lookup loop call free")
