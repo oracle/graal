@@ -23,6 +23,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-43837) `--report-unsupported-elements-at-runtime` is now enabled by default and the option is deprecated.
 * (GR-53359) Provide the `.debug_gdb_scripts` section that triggers auto-loading of `svmhelpers.py` in GDB. Remove single and double quotes from `ClassLoader.nameAndId` in the debuginfo.
 * (GR-47365) Include dynamic proxy metadata in the reflection metadata with the syntax `"type": { "proxy": [<interface list>] }`. This allows members of proxy classes to be accessed reflectively. `proxy-config.json` is now deprecated but will still be honored.
+* (GR-18214) In-place compacting garbage collection for the Serial GC old generation with `-H:+CompactingOldGen`.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.

@@ -35,6 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntSupplier;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.svm.core.NeverInline;
@@ -222,6 +223,7 @@ public class TestThrottler extends JfrRecordingTest {
     }
 
     @Test
+    @Ignore("Can't be executed in the CI infrastructure (may fail if the machine is under high load).")
     public void testDistributionUniform() {
         int maxPopPerWindow = 2000;
         int minPopPerWindow = 2;
@@ -230,6 +232,7 @@ public class TestThrottler extends JfrRecordingTest {
     }
 
     @Test
+    @Ignore("Can't be executed in the CI infrastructure (may fail if the machine is under high load).")
     public void testDistributionHighRate() {
         int maxPopPerWindow = 2000;
         int expectedSamplesPerWindow = 50;
@@ -237,12 +240,14 @@ public class TestThrottler extends JfrRecordingTest {
     }
 
     @Test
+    @Ignore("Can't be executed in the CI infrastructure (may fail if the machine is under high load).")
     public void testDistributionLowRate() {
         int minPopPerWindow = 2;
         testDistribution(() -> minPopPerWindow, minPopPerWindow, 0.05);
     }
 
     @Test
+    @Ignore("Can't be executed in the CI infrastructure (may fail if the machine is under high load).")
     public void testDistributionEarlyBurst() {
         int maxPopulationPerWindow = 2000;
         int expectedSamplesPerWindow = 50;
@@ -252,6 +257,7 @@ public class TestThrottler extends JfrRecordingTest {
     }
 
     @Test
+    @Ignore("Can't be executed in the CI infrastructure (may fail if the machine is under high load).")
     public void testDistributionMidBurst() {
         int maxPopulationPerWindow = 2000;
         int expectedSamplesPerWindow = 50;
@@ -261,6 +267,7 @@ public class TestThrottler extends JfrRecordingTest {
     }
 
     @Test
+    @Ignore("Can't be executed in the CI infrastructure (may fail if the machine is under high load).")
     public void testDistributionLateBurst() {
         int maxPopulationPerWindow = 2000;
         int expectedSamplesPerWindow = 50;

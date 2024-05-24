@@ -25,6 +25,8 @@
 package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -33,7 +35,6 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -41,10 +42,10 @@ import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
 import jdk.graal.compiler.word.Word;
 
-@AutomaticallyRegisteredImageSingleton(ReferenceAccess.class)
-public final class ReferenceAccessImpl implements ReferenceAccess {
+public class ReferenceAccessImpl implements ReferenceAccess {
 
-    ReferenceAccessImpl() {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected ReferenceAccessImpl() {
     }
 
     @Override

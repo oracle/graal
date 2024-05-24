@@ -31,4 +31,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 final class Target_com_oracle_truffle_nfi_backend_spi_NFIState {
 
     @Alias boolean hasPendingException;
+
+    @Alias
+    native void setPendingException(Throwable t);
 }

@@ -26,9 +26,6 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -45,11 +42,17 @@ import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
+import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.word.Word;
 
 final class AlignedChunkRememberedSet {
     private AlignedChunkRememberedSet() {
@@ -63,6 +66,10 @@ final class AlignedChunkRememberedSet {
     @Fold
     public static UnsignedWord getHeaderSize() {
         UnsignedWord headerSize = getFirstObjectTableLimitOffset();
+        if (SerialGCOptions.useCompactingOldGen()) {
+            // Compaction needs room for a ObjectMoveInfo structure before the first object.
+            headerSize = headerSize.add(ObjectMoveInfo.getSize());
+        }
         UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
@@ -269,7 +276,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static Pointer getCardTableStart(AlignedHeader chunk) {
+    static Pointer getCardTableStart(AlignedHeader chunk) {
         return getCardTableStart(HeapChunk.asPointer(chunk));
     }
 

@@ -44,7 +44,7 @@ public interface CollectionPolicy {
     static String getInitialPolicyName() {
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
             return "NeverCollect";
-        } else if (!SubstrateOptions.useRememberedSet()) {
+        } else if (!SerialGCOptions.useRememberedSet()) {
             return "OnlyCompletely";
         }
         String name = SerialGCOptions.InitialCollectionPolicy.getValue();

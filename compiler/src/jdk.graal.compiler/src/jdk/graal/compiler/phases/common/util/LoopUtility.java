@@ -29,6 +29,7 @@ import java.util.EnumSet;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.NodeEvent;
@@ -59,6 +60,45 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUtility {
+
+    public static long addExact(int bits, long a, long b) {
+        if (bits == 32) {
+            int ia = (int) a;
+            int ib = (int) b;
+            assert ia == a && ib == b : Assertions.errorMessage("Conversions must be lossless", bits, a, b, ia, ib);
+            return Math.addExact(ia, ib);
+        } else if (bits == 64) {
+            return Math.addExact(a, b);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
+    }
+
+    public static long subtractExact(int bits, long a, long b) {
+        if (bits == 32) {
+            int ia = (int) a;
+            int ib = (int) b;
+            assert ia == a && ib == b : Assertions.errorMessage("Conversions must be lossless", bits, a, b, ia, ib);
+            return Math.subtractExact(ia, ib);
+        } else if (bits == 64) {
+            return Math.subtractExact(a, b);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
+    }
+
+    public static long multiplyExact(int bits, long a, long b) {
+        if (bits == 32) {
+            int ia = (int) a;
+            int ib = (int) b;
+            assert ia == a && ib == b : Assertions.errorMessage("Conversions must be lossless", bits, a, b, ia, ib);
+            return Math.multiplyExact(ia, ib);
+        } else if (bits == 64) {
+            return Math.multiplyExact(a, b);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
+    }
 
     public static boolean canTakeAbs(long l, int bits) {
         try {

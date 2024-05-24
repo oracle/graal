@@ -170,8 +170,8 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord chunkSize) {
-        HeapChunk.setEndOffset(chunk, chunkSize);
+    public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord endOffset) {
+        HeapChunk.setEndOffset(chunk, endOffset);
         HeapChunk.setTopPointer(chunk, objectsStart);
         HeapChunk.setSpace(chunk, null);
         HeapChunk.setNext(chunk, WordFactory.nullPointer());
@@ -203,7 +203,7 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void setTopPointerCarefully(Header<?> that, Pointer newTop) {
+    public static void setTopPointerCarefully(Header<?> that, Pointer newTop) {
         assert getTopPointer(that).isNonNull() : "Not safe: top currently points to NULL.";
         assert getTopPointer(that).belowOrEqual(newTop) : "newTop too low.";
         assert newTop.belowOrEqual(getEndPointer(that)) : "newTop too high.";

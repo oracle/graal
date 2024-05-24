@@ -58,7 +58,7 @@ public class JfrMethodRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
-    public long getMethodId(Class<?> clazz, String methodName, int methodId) {
+    public long getMethodId(Class<?> clazz, String methodName, String methodSignature, int methodId, int methodModifier) {
         assert clazz != null;
         assert methodName != null;
         assert methodId > 0;
@@ -87,10 +87,8 @@ public class JfrMethodRepository implements JfrRepository {
             JfrNativeEventWriter.putLong(data, methodId);
             JfrNativeEventWriter.putLong(data, typeRepo.getClassId(clazz));
             JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodName, false));
-            /* Dummy value for signature. */
-            JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId("()V", false));
-            /* Dummy value for modifiers. */
-            JfrNativeEventWriter.putShort(data, (short) 0);
+            JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodSignature, false));
+            JfrNativeEventWriter.putInt(data, methodModifier);
             JfrNativeEventWriter.putBoolean(data, !StackTraceUtils.shouldShowFrame(clazz, methodName));
             if (!JfrNativeEventWriter.commit(data)) {
                 return methodId;
