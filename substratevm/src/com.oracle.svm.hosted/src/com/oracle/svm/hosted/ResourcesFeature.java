@@ -197,7 +197,9 @@ public final class ResourcesFeature implements InternalFeature {
 
         public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
             var conditionalResource = Resources.singleton().getResourceStorage().get(createStorageKey(module, resourcePath));
-            conditionalResource.getConditions().addCondition(condition);
+            if (conditionalResource != null) {
+                conditionalResource.getConditions().addCondition(condition);
+            }
         }
 
         /* Adds single resource defined with its module and name */
@@ -231,7 +233,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String name) {
-            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, name));
         }
 
         @Override
@@ -241,7 +243,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
-            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, basename, locales));
         }
 
         /*
@@ -448,6 +450,11 @@ public final class ResourcesFeature implements InternalFeature {
         resourcePatternWorkSet = Set.of();
         globWorkSet = Set.of();
 
+        resourceRegistryImpl().flushConditionalConfiguration(access);
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
         resourceRegistryImpl().flushConditionalConfiguration(access);
     }
 

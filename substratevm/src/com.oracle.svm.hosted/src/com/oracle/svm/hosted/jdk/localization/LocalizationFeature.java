@@ -64,6 +64,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -512,7 +513,7 @@ public class LocalizationFeature implements InternalFeature {
                                          * Locale data bundle class names do not contain underscores
                                          */
                                         String baseName = e.getClassName().split("_")[0];
-                                        prepareNegativeBundle(baseName, locale, true);
+                                        prepareNegativeBundle(ConfigurationCondition.alwaysTrue(), baseName, locale, true);
                                         continue; /* No bundle for this `locale`. */
                                     }
                                     if (bundle instanceof ParallelListResourceBundle) {
@@ -529,14 +530,14 @@ public class LocalizationFeature implements InternalFeature {
              * No eager loading of bundle content, so we need to include the
              * `sun.text.resources.FormatData` bundle supplement as well.
              */
-            prepareBundle("sun.text.resources.JavaTimeSupplementary");
+            prepareBundle(ConfigurationCondition.alwaysTrue(), "sun.text.resources.JavaTimeSupplementary");
         }
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
                         "sun.util.logging.resources.logging"
         };
         for (String bundleName : alwaysRegisteredResourceBundles) {
-            prepareBundle(bundleName);
+            prepareBundle(ConfigurationCondition.alwaysTrue(), bundleName);
         }
 
         for (String bundleName : Options.IncludeResourceBundles.getValue().values()) {
@@ -549,7 +550,7 @@ public class LocalizationFeature implements InternalFeature {
         int splitIndex = input.indexOf('_');
         boolean specificLocaleRequested = splitIndex != -1;
         if (!specificLocaleRequested) {
-            prepareBundle(input, allLocales);
+            prepareBundle(ConfigurationCondition.alwaysTrue(), input, allLocales);
             return;
         }
         Locale locale = splitIndex + 1 < input.length() ? LocalizationSupport.parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
@@ -559,7 +560,7 @@ public class LocalizationFeature implements InternalFeature {
         }
         /*- Get rid of locale specific suffix. */
         String baseName = input.substring(0, splitIndex);
-        prepareBundle(baseName, Collections.singletonList(locale));
+        prepareBundle(ConfigurationCondition.alwaysTrue(), baseName, Collections.singletonList(locale));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -572,8 +573,8 @@ public class LocalizationFeature implements InternalFeature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(String baseName) {
-        prepareBundle(baseName, allLocales);
+    public void prepareBundle(ConfigurationCondition condition, String baseName) {
+        prepareBundle(condition, baseName, allLocales);
     }
 
     private static final String[] RESOURCE_EXTENSION_PREFIXES = new String[]{
@@ -584,37 +585,37 @@ public class LocalizationFeature implements InternalFeature {
     };
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(String baseName, Collection<Locale> wantedLocales) {
-        prepareBundleInternal(baseName, wantedLocales);
+    public void prepareBundle(ConfigurationCondition condition, String baseName, Collection<Locale> wantedLocales) {
+        prepareBundleInternal(condition, baseName, wantedLocales);
 
         String alternativeBundleName = null;
-        for (String resourceExtentionPrefix : RESOURCE_EXTENSION_PREFIXES) {
-            if (baseName.startsWith(resourceExtentionPrefix) && !baseName.startsWith(resourceExtentionPrefix + ".ext")) {
-                alternativeBundleName = baseName.replace(resourceExtentionPrefix, resourceExtentionPrefix + ".ext");
+        for (String resourceExtensionPrefix : RESOURCE_EXTENSION_PREFIXES) {
+            if (baseName.startsWith(resourceExtensionPrefix) && !baseName.startsWith(resourceExtensionPrefix + ".ext")) {
+                alternativeBundleName = baseName.replace(resourceExtensionPrefix, resourceExtensionPrefix + ".ext");
                 break;
             }
         }
         if (alternativeBundleName != null) {
-            prepareBundleInternal(alternativeBundleName, wantedLocales);
+            prepareBundleInternal(condition, alternativeBundleName, wantedLocales);
         }
     }
 
-    private void prepareBundleInternal(String baseName, Collection<Locale> wantedLocales) {
+    private void prepareBundleInternal(ConfigurationCondition condition, String baseName, Collection<Locale> wantedLocales) {
         boolean somethingFound = false;
         for (Locale locale : wantedLocales) {
-            support.registerBundleLookup(baseName);
+            support.registerBundleLookup(condition, baseName);
             List<ResourceBundle> resourceBundle;
             try {
                 resourceBundle = ImageSingletons.lookup(ClassLoaderSupport.class).getResourceBundle(baseName, locale);
             } catch (MissingResourceException mre) {
                 for (Locale candidateLocale : support.control.getCandidateLocales(baseName, locale)) {
-                    prepareNegativeBundle(baseName, candidateLocale, false);
+                    prepareNegativeBundle(condition, baseName, candidateLocale, false);
                 }
                 continue;
             }
             somethingFound |= !resourceBundle.isEmpty();
             for (ResourceBundle bundle : resourceBundle) {
-                prepareBundle(baseName, bundle, locale, false);
+                prepareBundle(condition, baseName, bundle, locale, false);
             }
         }
 
@@ -643,33 +644,33 @@ public class LocalizationFeature implements InternalFeature {
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.";
             trace(errorMessage);
-            prepareNegativeBundle(baseName, Locale.ROOT, false);
+            prepareNegativeBundle(condition, baseName, Locale.ROOT, false);
             for (String language : wantedLocales.stream().map(Locale::getLanguage).collect(Collectors.toSet())) {
-                prepareNegativeBundle(baseName, Locale.of(language), false);
+                prepareNegativeBundle(condition, baseName, Locale.of(language), false);
             }
             for (Locale locale : wantedLocales) {
                 if (!locale.getCountry().isEmpty()) {
-                    prepareNegativeBundle(baseName, locale, false);
+                    prepareNegativeBundle(condition, baseName, locale, false);
                 }
             }
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected void prepareNegativeBundle(String baseName, Locale locale, boolean jdkBundle) {
-        support.registerBundleLookup(baseName);
+    protected void prepareNegativeBundle(ConfigurationCondition condition, String baseName, Locale locale, boolean jdkBundle) {
+        support.registerBundleLookup(condition, baseName);
         support.registerRequiredReflectionAndResourcesForBundleAndLocale(baseName, locale, jdkBundle);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void prepareJDKBundle(ResourceBundle bundle, Locale locale) {
         String baseName = bundle.getBaseBundleName();
-        prepareBundle(baseName, bundle, locale, true);
+        prepareBundle(ConfigurationCondition.alwaysTrue(), baseName, bundle, locale, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale, boolean jdkBundle) {
-        trace("Adding bundle " + bundleName + ", locale " + locale);
+    private void prepareBundle(ConfigurationCondition condition, String bundleName, ResourceBundle bundle, Locale locale, boolean jdkBundle) {
+        trace("Adding bundle " + bundleName + ", locale " + locale + " with condition " + condition);
         /*
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
          * down to the root.
