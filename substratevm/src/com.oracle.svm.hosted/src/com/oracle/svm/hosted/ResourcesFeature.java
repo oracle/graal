@@ -26,6 +26,7 @@
 package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
+import static com.oracle.svm.core.jdk.Resources.createStorageKey;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -194,9 +195,14 @@ public final class ResourcesFeature implements InternalFeature {
             globWorkSet.add(new ConditionalPattern(condition, resolvedGlob));
         }
 
+        public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
+            var conditionalResource = Resources.singleton().getResourceStorage().get(createStorageKey(module, resourcePath));
+            conditionalResource.getConditions().addCondition(condition);
+        }
+
         /* Adds single resource defined with its module and name */
         @Override
-        public void addResource(Module module, String resourcePath) {
+        public void addResourceEntry(Module module, String resourcePath) {
             if (!shouldRegisterResource(module, resourcePath)) {
                 return;
             }
@@ -412,25 +418,23 @@ public final class ResourcesFeature implements InternalFeature {
         excludedResourcePatterns.addAll(Options.ExcludeResources.getValue().values());
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
 
+        FeatureImpl.BeforeAnalysisAccessImpl beforeAnalysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns, beforeAnalysisAccess.getImageClassLoader());
         /*
          * register all included patterns in Resources singleton (if we are throwing
          * MissingRegistrationErrors), so they can be queried at runtime to detect missing entries
          */
         if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-            includePatterns.stream()
-                            .map(pattern -> pattern.compiledPattern)
-                            .forEach(resourcePattern -> {
-                                Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
-                            });
+            includePatterns.forEach(resourcePattern -> collector.registerIncludePattern(resourcePattern.condition, resourcePattern.compiledPattern.moduleName(),
+                            resourcePattern.compiledPattern.pattern.pattern()));
         }
 
         /* if we have any entry in resource config file we should collect resources */
         if (!resourcePatternWorkSet.isEmpty() || !globWorkSet.isEmpty()) {
-            FeatureImpl.BeforeAnalysisAccessImpl beforeAnalysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-            ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns, beforeAnalysisAccess);
             try {
                 collector.prepareProgressReporter();
                 ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
+                collector.flushConditionalConfiguration(access);
             } finally {
                 collector.shutDownProgressReporter();
             }
@@ -447,28 +451,26 @@ public final class ResourcesFeature implements InternalFeature {
         resourceRegistryImpl().flushConditionalConfiguration(access);
     }
 
-    private static final class ResourceCollectorImpl implements ResourceCollector {
+    private static final class ResourceCollectorImpl extends ConditionalConfigurationRegistry implements ResourceCollector {
         private final Set<CompiledConditionalPattern> includePatterns;
         private final ResourcePattern[] excludePatterns;
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
         private static final int WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS = 20;
-        private final FeatureImpl.BeforeAnalysisAccessImpl access;
         private final LongAdder reachedResourceEntries;
         private boolean initialReport;
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
         ConfigurationConditionResolver<ConfigurationCondition> conditionResolver;
 
-        private ResourceCollectorImpl(Set<CompiledConditionalPattern> includePatterns, ResourcePattern[] excludePatterns, FeatureImpl.BeforeAnalysisAccessImpl access) {
+        private ResourceCollectorImpl(Set<CompiledConditionalPattern> includePatterns, ResourcePattern[] excludePatterns, ImageClassLoader imageClassLoader) {
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
 
-            this.access = access;
             this.reachedResourceEntries = new LongAdder();
             this.initialReport = true;
             this.currentlyProcessedEntry = null;
-            this.conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(), ClassInitializationSupport.singleton());
+            this.conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
         }
 
         private void prepareProgressReporter() {
@@ -548,13 +550,16 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addResource(Module module, String resourceName) {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourceName);
+        public void addResourceEntry(Module module, String resourceName) {
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceEntry(module, resourceName);
         }
 
         @Override
         public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition) {
-            access.registerReachabilityHandler(e -> addResource(module, resourceName), condition.getType());
+            registerConditionalConfiguration(condition, cnd -> {
+                addResourceEntry(module, resourceName);
+                ImageSingletons.lookup(RuntimeResourceSupport.class).addCondition(cnd, module, resourceName);
+            });
         }
 
         @Override
@@ -566,6 +571,10 @@ public final class ResourcesFeature implements InternalFeature {
         public void registerNegativeQuery(Module module, String resourceName) {
             EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourceName, "");
             Resources.singleton().registerNegativeQuery(module, resourceName);
+        }
+
+        public void registerIncludePattern(ConfigurationCondition condition, String module, String pattern) {
+            registerConditionalConfiguration(condition, cnd -> Resources.singleton().registerIncludePattern(cnd, module, pattern));
         }
     }
 

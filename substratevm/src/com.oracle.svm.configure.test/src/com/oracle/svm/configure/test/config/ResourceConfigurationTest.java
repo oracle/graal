@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
@@ -102,7 +103,7 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void addResource(Module module, String resourcePath) {
+                public void addResourceEntry(Module module, String resourcePath) {
                     throw VMError.shouldNotReachHere("Unused function.");
                 }
 
@@ -121,6 +122,11 @@ public class ResourceConfigurationTest {
 
                 @Override
                 public void addResourceBundles(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales) {
+
+                }
+
+                @Override
+                public void addCondition(ConfigurationCondition configurationCondition, Module module, String resourcePath) {
 
                 }
 

@@ -162,13 +162,13 @@ public class SerializationSupport implements SerializationRegistry {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerSerializationTargetClass(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
-        classes.computeIfAbsent(serializationTargetClass, k -> RuntimeConditionSet.createHosted())
+        classes.computeIfAbsent(serializationTargetClass, k -> RuntimeConditionSet.emptySet())
                         .addCondition(cnd);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerLambdaCapturingClass(ConfigurationCondition cnd, String lambdaCapturingClass) {
-        lambdaCapturingClasses.computeIfAbsent(lambdaCapturingClass, k -> RuntimeConditionSet.createHosted())
+        lambdaCapturingClasses.computeIfAbsent(lambdaCapturingClass, k -> RuntimeConditionSet.emptySet())
                         .addCondition(cnd);
     }
 

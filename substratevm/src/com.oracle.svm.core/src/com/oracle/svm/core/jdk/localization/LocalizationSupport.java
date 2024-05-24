@@ -161,6 +161,7 @@ public class LocalizationSupport {
                     Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
                     String finalResourceName = resourceName;
                     module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
+
                 }
             }
         }
