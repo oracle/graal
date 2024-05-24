@@ -134,7 +134,7 @@ public class JsonParserTest {
     public void testFormatterTrivial() throws IOException {
         String json = "{\"a\":[\"\\u0019\",true,42.5],\"b\":null}";
         JsonParser parser = new JsonParser(json);
-        String result = JsonFormatter.formatJSON((EconomicMap<String, Object>) parser.parse());
+        String result = JsonFormatter.formatJson((EconomicMap<String, Object>) parser.parse());
         Assert.assertEquals(json, result);
     }
 
@@ -142,7 +142,7 @@ public class JsonParserTest {
     @SuppressWarnings("unchecked")
     public void testFormatterSimpleJSON() throws IOException {
         JsonParser parser = new JsonParser(simpleJSON);
-        String result = JsonFormatter.formatJSON((EconomicMap<String, Object>) parser.parse(), true);
+        String result = JsonFormatter.formatJsonPretty((EconomicMap<String, Object>) parser.parse());
 
         // don't fully check the content, but have some dummy tests
         Assert.assertTrue(result.contains("9007199254740991"));
