@@ -40,6 +40,8 @@ import csv
 import mx
 import mx_truffle
 import mx_sdk_vm
+from mx_sdk_benchmark import JVMCI_JDK_TAG, DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite, RenaissanceBenchmarkSuite
+import mx_graal_benchmark #pylint: disable=unused-import
 
 import mx_gate
 from mx_gate import Task
@@ -59,10 +61,6 @@ import mx_graal_tools #pylint: disable=unused-import
 
 _suite = mx.suite('compiler')
 
-if 'java-benchmarks' in (s.name for s in _suite.suite_imports):
-    # allows removing the static import of `java-benchmarks` from source code bundles
-    import mx_java_benchmarks
-    import mx_graal_benchmark #pylint: disable=unused-import
 
 """ Prefix for running the VM. """
 _vm_prefix = None
@@ -572,7 +570,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     bmSuiteArgs = ["--jvm", "server"]
     benchVmArgs = bmSuiteArgs + _remove_empty_entries(extraVMarguments)
 
-    dacapo_suite = mx_java_benchmarks.DaCapoBenchmarkSuite()
+    dacapo_suite = DaCapoBenchmarkSuite()
     dacapo_gate_iterations = {
         k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
@@ -610,7 +608,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # run Scala DaCapo benchmarks #
     ###############################
-    scala_dacapo_suite = mx_java_benchmarks.ScalaDaCapoBenchmarkSuite()
+    scala_dacapo_suite = ScalaDaCapoBenchmarkSuite()
     scala_dacapo_gate_iterations = {
         k: default_iterations for k, v in scala_dacapo_suite.daCapoIterations().items() if v > 0
     }
@@ -635,7 +633,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # run Renaissance benchmarks #
     ###############################
-    renaissance_suite = mx_java_benchmarks.RenaissanceBenchmarkSuite()
+    renaissance_suite = RenaissanceBenchmarkSuite()
     renaissance_gate_iterations = {
         k: default_iterations for k, v in renaissance_suite.renaissanceIterations().items() if v > 0
     }
@@ -1135,14 +1133,13 @@ def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks
                     if metrics_file:
                         collate_metrics([metrics_file])
 
-_JVMCI_JDK_TAG = 'jvmci'
 
 class GraalJVMCIJDKConfig(mx.JDKConfig):
     """
     A JDKConfig that configures Graal as the JVMCI compiler.
     """
     def __init__(self):
-        mx.JDKConfig.__init__(self, jdk.home, tag=_JVMCI_JDK_TAG)
+        mx.JDKConfig.__init__(self, jdk.home, tag=JVMCI_JDK_TAG)
 
     def run_java(self, args, **kwArgs):
         return run_java(args, **kwArgs)
@@ -1553,7 +1550,7 @@ mx.update_commands(_suite, {
 mx.add_argument('--no-jacoco-exclude-truffle', action='store_false', dest='jacoco_exclude_truffle', help="Don't exclude Truffle classes from jacoco annotations.")
 
 def mx_post_parse_cmd_line(opts):
-    mx.addJDKFactory(_JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
+    mx.addJDKFactory(JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
         if hasattr(dist, 'set_archiveparticipant'):

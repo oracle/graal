@@ -38,8 +38,8 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.hosted.SVMImageLayerSupport;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.image.BaseLayerSupport.BaseLayerMethodAccessorImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -49,7 +49,7 @@ class LoadBaseLayerFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SVMImageLayerSupport.singleton().hasLoader();
+        return ImageLayerBuildingSupport.buildingExtensionLayer();
     }
 
     @Override

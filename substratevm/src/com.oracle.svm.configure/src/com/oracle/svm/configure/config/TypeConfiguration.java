@@ -150,7 +150,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
 
     @Override
     public ConfigurationParser createParser() {
-        return new ReflectionConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), true, false);
+        return new ReflectionConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), true, false, false);
     }
 
     @Override

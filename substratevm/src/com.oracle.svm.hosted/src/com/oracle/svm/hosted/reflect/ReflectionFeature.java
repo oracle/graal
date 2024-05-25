@@ -31,7 +31,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -61,6 +60,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.ClassForNameSupportFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -256,7 +256,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(DynamicProxyFeature.class);
+        return List.of(ClassForNameSupportFeature.class, DynamicProxyFeature.class);
     }
 
     @Override

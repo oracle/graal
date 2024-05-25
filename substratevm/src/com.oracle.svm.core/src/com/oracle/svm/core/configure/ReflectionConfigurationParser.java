@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.util.LogUtils;
@@ -55,13 +56,15 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
                     "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated");
     private final boolean printMissingElements;
+    private final boolean treatAllNameEntriesAsType;
 
     public ReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, boolean strictConfiguration,
-                    boolean printMissingElements) {
+                    boolean printMissingElements, boolean treatAllNameEntriesAsType) {
         super(strictConfiguration);
         this.conditionResolver = conditionResolver;
         this.printMissingElements = printMissingElements;
         this.delegate = delegate;
+        this.treatAllNameEntriesAsType = treatAllNameEntriesAsType;
     }
 
     @Override
@@ -79,19 +82,15 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         checkAttributes(data, "reflection class descriptor object", Collections.emptyList(), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
         checkHasExactlyOneAttribute(data, "reflection class descriptor object", List.of("name", "type"));
 
-        TypeResult<C> conditionResult = conditionResolver.resolveCondition(parseCondition(data));
-        if (!conditionResult.isPresent()) {
+        Optional<ConfigurationTypeDescriptor> type = parseTypeOrName(data, treatAllNameEntriesAsType);
+        if (type.isEmpty()) {
             return;
         }
-        C condition = conditionResult.get();
+        boolean isType = type.get().definedAsType();
 
-        /*
-         * Classes registered using the old ("class") syntax will require elements (fields, methods,
-         * constructors, ...) to be registered for runtime queries, whereas the new ("type") syntax
-         * will automatically register all elements as queried.
-         */
-        Optional<ConfigurationTypeDescriptor> type = parseType(data);
-        if (type.isEmpty()) {
+        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, isType);
+        TypeResult<C> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
+        if (!conditionResult.isPresent()) {
             return;
         }
 
@@ -99,11 +98,14 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
          * Even if primitives cannot be queried through Class.forName, they can be registered to
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
+        C condition = conditionResult.get();
         TypeResult<T> result = delegate.resolveType(condition, type.get(), true, false);
         if (!result.isPresent()) {
             handleMissingElement("Could not resolve " + type.get() + " for reflection configuration.", result.getException());
             return;
         }
+
+        C queryCondition = isType ? conditionResolver.alwaysTrue() : condition;
         T clazz = result.get();
         delegate.registerType(conditionResult.get(), clazz);
 
@@ -145,52 +147,52 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
                         break;
                     case "allDeclaredClasses":
                         if (asBoolean(value, "allDeclaredClasses")) {
-                            delegate.registerDeclaredClasses(condition, clazz);
+                            delegate.registerDeclaredClasses(queryCondition, clazz);
                         }
                         break;
                     case "allRecordComponents":
                         if (asBoolean(value, "allRecordComponents")) {
-                            delegate.registerRecordComponents(condition, clazz);
+                            delegate.registerRecordComponents(queryCondition, clazz);
                         }
                         break;
                     case "allPermittedSubclasses":
                         if (asBoolean(value, "allPermittedSubclasses")) {
-                            delegate.registerPermittedSubclasses(condition, clazz);
+                            delegate.registerPermittedSubclasses(queryCondition, clazz);
                         }
                         break;
                     case "allNestMembers":
                         if (asBoolean(value, "allNestMembers")) {
-                            delegate.registerNestMembers(condition, clazz);
+                            delegate.registerNestMembers(queryCondition, clazz);
                         }
                         break;
                     case "allSigners":
                         if (asBoolean(value, "allSigners")) {
-                            delegate.registerSigners(condition, clazz);
+                            delegate.registerSigners(queryCondition, clazz);
                         }
                         break;
                     case "allPublicClasses":
                         if (asBoolean(value, "allPublicClasses")) {
-                            delegate.registerPublicClasses(condition, clazz);
+                            delegate.registerPublicClasses(queryCondition, clazz);
                         }
                         break;
                     case "queryAllDeclaredConstructors":
                         if (asBoolean(value, "queryAllDeclaredConstructors")) {
-                            delegate.registerDeclaredConstructors(condition, true, clazz);
+                            delegate.registerDeclaredConstructors(queryCondition, true, clazz);
                         }
                         break;
                     case "queryAllPublicConstructors":
                         if (asBoolean(value, "queryAllPublicConstructors")) {
-                            delegate.registerPublicConstructors(condition, true, clazz);
+                            delegate.registerPublicConstructors(queryCondition, true, clazz);
                         }
                         break;
                     case "queryAllDeclaredMethods":
                         if (asBoolean(value, "queryAllDeclaredMethods")) {
-                            delegate.registerDeclaredMethods(condition, true, clazz);
+                            delegate.registerDeclaredMethods(queryCondition, true, clazz);
                         }
                         break;
                     case "queryAllPublicMethods":
                         if (asBoolean(value, "queryAllPublicMethods")) {
-                            delegate.registerPublicMethods(condition, true, clazz);
+                            delegate.registerPublicMethods(queryCondition, true, clazz);
                         }
                         break;
                     case "unsafeAllocated":

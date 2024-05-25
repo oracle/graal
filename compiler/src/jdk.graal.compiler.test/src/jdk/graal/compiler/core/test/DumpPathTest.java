@@ -52,7 +52,7 @@ public class DumpPathTest extends GraalCompilerTest {
     @Test
     public void testDump() throws Exception {
         assumeManagementLibraryIsLoadable();
-        try (TemporaryDirectory temp = new TemporaryDirectory(this, "DumpPathTest")) {
+        try (TemporaryDirectory temp = new TemporaryDirectory("DumpPathTest")) {
             String[] extensions = new String[]{".cfg", ".bgv", ".graph-strings"};
             EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
             overrides.put(DebugOptions.DumpPath, temp.toString());

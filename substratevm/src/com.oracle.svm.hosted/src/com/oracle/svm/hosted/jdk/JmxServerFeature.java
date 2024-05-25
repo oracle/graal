@@ -89,10 +89,10 @@ public class JmxServerFeature implements InternalFeature {
     private static void configureProxy(BeforeAnalysisAccess access) {
         DynamicProxyRegistry dynamicProxySupport = ImageSingletons.lookup(DynamicProxyRegistry.class);
 
-        dynamicProxySupport.addProxyClass(access.findClassByName("java.rmi.Remote"),
+        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.rmi.Remote"),
                         access.findClassByName("java.rmi.registry.Registry"));
 
-        dynamicProxySupport.addProxyClass(access.findClassByName("javax.management.remote.rmi.RMIServer"));
+        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("javax.management.remote.rmi.RMIServer"));
     }
 
     /**

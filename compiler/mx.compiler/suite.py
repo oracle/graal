@@ -30,8 +30,8 @@ suite = {
         "subdir": True
       },
       {
-        "name" : "java-benchmarks",
-        "subdir": True,
+        "name" : "sdk",
+        "subdir": True
       }
     ]
   },

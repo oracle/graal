@@ -82,12 +82,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
-import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
+import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -100,6 +100,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
@@ -602,7 +603,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void checkClassFlag(int mask, String methodName) {
-        if (throwMissingRegistrationErrors() && !isClassFlagSet(mask)) {
+        if (throwMissingRegistrationErrors() && !(isClassFlagSet(mask) && getConditions().satisfied())) {
             MissingReflectionRegistrationUtils.forBulkQuery(DynamicHub.toClass(this), methodName);
         }
     }
@@ -1088,6 +1089,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private Field[] getFields() {
         checkClassFlag(ALL_FIELDS_FLAG, "getFields");
         return copyFields(privateGetPublicFields());
+    }
+
+    private RuntimeConditionSet getConditions() {
+        return ClassForNameSupport.singleton().getConditionFor(DynamicHub.toClass(this));
     }
 
     @Substitute

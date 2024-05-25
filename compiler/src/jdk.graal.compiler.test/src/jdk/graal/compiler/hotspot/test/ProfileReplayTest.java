@@ -110,7 +110,7 @@ public class ProfileReplayTest extends GraalCompilerTest {
             foo(i, i % 4, use);
         }
         final ResolvedJavaMethod method = getResolvedJavaMethod("foo");
-        try (TemporaryDirectory temp = new TemporaryDirectory(getClass(), "ProfileReplayTest")) {
+        try (TemporaryDirectory temp = new TemporaryDirectory("ProfileReplayTest")) {
             OptionValues overrides = new OptionValues(getInitialOptions(), DebugOptions.DumpPath, temp.toString());
             runInitialCompilation(method, overrides, jvmciRuntime, compiler);
             runSanityCompilation(temp.toString(), method, overrides, jvmciRuntime, compiler);

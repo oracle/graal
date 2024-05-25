@@ -65,7 +65,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
         "<graal>/tools/**",
         "<graal>/regex/**",
         "<graal>/sulong/**",
-        "<graal>/java-benchmarks/**",
       ] + base.basic_guard_includes + (if with_compiler then [
         "<graal>/common.json",
         "<graal>/compiler/**",

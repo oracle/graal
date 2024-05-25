@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.code;
 
 import static com.oracle.svm.core.meta.SharedField.LOC_UNINITIALIZED;
 
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
@@ -68,6 +69,7 @@ final class ReflectionRuntimeMetadata {
     }
 
     static class AccessibleObjectMetadata extends AnnotatedElementMetadata {
+        final RuntimeConditionSet conditions;
         final boolean complete;
         final boolean negative;
         final JavaConstant heapObject;
@@ -75,9 +77,11 @@ final class ReflectionRuntimeMetadata {
         final int modifiers;
         final String signature;
 
-        AccessibleObjectMetadata(boolean complete, boolean negative, JavaConstant heapObject, HostedType declaringType, int modifiers, String signature, AnnotationValue[] annotations,
+        AccessibleObjectMetadata(RuntimeConditionSet conditions, boolean complete, boolean negative, JavaConstant heapObject, HostedType declaringType, int modifiers, String signature,
+                        AnnotationValue[] annotations,
                         TypeAnnotationValue[] typeAnnotations) {
             super(annotations, typeAnnotations);
+            this.conditions = conditions;
             this.complete = complete;
             this.negative = negative;
             this.heapObject = heapObject;
@@ -95,9 +99,10 @@ final class ReflectionRuntimeMetadata {
         final int offset;
         final String deletedReason;
 
-        private FieldMetadata(boolean complete, boolean negative, boolean hiding, JavaConstant heapObject, HostedType declaringType, String name, HostedType type, int modifiers, boolean trustedFinal,
+        private FieldMetadata(RuntimeConditionSet conditions, boolean complete, boolean negative, boolean hiding, JavaConstant heapObject, HostedType declaringType, String name, HostedType type,
+                        int modifiers, boolean trustedFinal,
                         String signature, AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations, int offset, String deletedReason) {
-            super(complete, negative, heapObject, declaringType, modifiers, signature, annotations, typeAnnotations);
+            super(conditions, complete, negative, heapObject, declaringType, modifiers, signature, annotations, typeAnnotations);
             this.hiding = hiding;
             this.name = name;
             this.type = type;
@@ -107,24 +112,24 @@ final class ReflectionRuntimeMetadata {
         }
 
         /* Field registered for reflection */
-        FieldMetadata(HostedType declaringType, String name, HostedType type, int modifiers, boolean trustedFinal, String signature, AnnotationValue[] annotations,
+        FieldMetadata(RuntimeConditionSet conditions, HostedType declaringType, String name, HostedType type, int modifiers, boolean trustedFinal, String signature, AnnotationValue[] annotations,
                         TypeAnnotationValue[] typeAnnotations, int offset, String deletedReason) {
-            this(true, false, false, null, declaringType, name, type, modifiers, trustedFinal, signature, annotations, typeAnnotations, offset, deletedReason);
+            this(conditions, true, false, false, null, declaringType, name, type, modifiers, trustedFinal, signature, annotations, typeAnnotations, offset, deletedReason);
         }
 
         /* Field in heap */
-        FieldMetadata(boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations) {
-            this(registered, false, false, heapObject, null, null, null, 0, false, null, annotations, typeAnnotations, LOC_UNINITIALIZED, null);
+        FieldMetadata(RuntimeConditionSet conditions, boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations) {
+            this(conditions, registered, false, false, heapObject, null, null, null, 0, false, null, annotations, typeAnnotations, LOC_UNINITIALIZED, null);
         }
 
         /* Hiding field */
-        FieldMetadata(HostedType declaringType, String name, HostedType type, int modifiers) {
-            this(false, false, true, null, declaringType, name, type, modifiers, false, null, null, null, LOC_UNINITIALIZED, null);
+        FieldMetadata(RuntimeConditionSet conditions, HostedType declaringType, String name, HostedType type, int modifiers) {
+            this(conditions, false, false, true, null, declaringType, name, type, modifiers, false, null, null, null, LOC_UNINITIALIZED, null);
         }
 
         /* Reachable or negative query field */
-        FieldMetadata(HostedType declaringType, String name, boolean negative) {
-            this(false, negative, false, null, declaringType, name, null, 0, false, null, null, null, LOC_UNINITIALIZED, null);
+        FieldMetadata(RuntimeConditionSet conditions, HostedType declaringType, String name, boolean negative) {
+            this(conditions, false, negative, false, null, declaringType, name, null, 0, false, null, null, null, LOC_UNINITIALIZED, null);
         }
     }
 
@@ -135,10 +140,12 @@ final class ReflectionRuntimeMetadata {
         final ReflectParameterMetadata[] reflectParameters;
         final JavaConstant accessor;
 
-        ExecutableMetadata(boolean complete, boolean negative, JavaConstant heapObject, HostedType declaringType, Object[] parameterTypes, int modifiers, HostedType[] exceptionTypes, String signature,
+        ExecutableMetadata(RuntimeConditionSet conditions, boolean complete, boolean negative, JavaConstant heapObject, HostedType declaringType, Object[] parameterTypes, int modifiers,
+                        HostedType[] exceptionTypes, String signature,
                         AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters,
                         JavaConstant accessor) {
-            super(complete, negative, heapObject, declaringType, modifiers, signature, annotations, typeAnnotations);
+            super(conditions, complete, negative, heapObject, declaringType, modifiers, signature, annotations, typeAnnotations);
+
             this.parameterTypes = parameterTypes;
             this.exceptionTypes = exceptionTypes;
             this.parameterAnnotations = parameterAnnotations;
@@ -153,10 +160,12 @@ final class ReflectionRuntimeMetadata {
         final HostedType returnType;
         final AnnotationMemberValue annotationDefault;
 
-        private MethodMetadata(boolean complete, boolean negative, boolean hiding, JavaConstant heapObject, HostedType declaringClass, String name, Object[] parameterTypes, int modifiers,
+        private MethodMetadata(RuntimeConditionSet conditions, boolean complete, boolean negative, boolean hiding, JavaConstant heapObject, HostedType declaringClass, String name,
+                        Object[] parameterTypes, int modifiers,
                         HostedType returnType, HostedType[] exceptionTypes, String signature, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations,
                         AnnotationMemberValue annotationDefault, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters, JavaConstant accessor) {
-            super(complete, negative, heapObject, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations, reflectParameters,
+            super(conditions, complete, negative, heapObject, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations,
+                            reflectParameters,
                             accessor);
             this.hiding = hiding;
             this.name = name;
@@ -165,64 +174,72 @@ final class ReflectionRuntimeMetadata {
         }
 
         /* Method registered for reflection */
-        MethodMetadata(HostedType declaringClass, String name, HostedType[] parameterTypes, int modifiers, HostedType returnType, HostedType[] exceptionTypes, String signature,
+        MethodMetadata(RuntimeConditionSet conditions, HostedType declaringClass, String name, HostedType[] parameterTypes, int modifiers, HostedType returnType, HostedType[] exceptionTypes,
+                        String signature,
                         AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, AnnotationMemberValue annotationDefault, TypeAnnotationValue[] typeAnnotations,
                         ReflectParameterMetadata[] reflectParameters, JavaConstant accessor) {
-            this(true, false, false, null, declaringClass, name, parameterTypes, modifiers, returnType, exceptionTypes, signature, annotations, parameterAnnotations, annotationDefault,
+            this(conditions, true, false, false, null, declaringClass, name, parameterTypes, modifiers, returnType, exceptionTypes, signature, annotations, parameterAnnotations, annotationDefault,
                             typeAnnotations, reflectParameters, accessor);
         }
 
         /* Method in heap */
-        MethodMetadata(boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, AnnotationMemberValue annotationDefault,
+        MethodMetadata(RuntimeConditionSet conditions, boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations,
+                        AnnotationMemberValue annotationDefault,
                         TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters) {
-            this(registered, false, false, heapObject, null, null, null, 0, null, null, null, annotations, parameterAnnotations, annotationDefault, typeAnnotations, reflectParameters, null);
+            this(conditions, registered, false, false, heapObject, null, null, null, 0, null, null, null, annotations, parameterAnnotations, annotationDefault,
+                            typeAnnotations,
+                            reflectParameters, null);
         }
 
         /* Hiding method */
-        MethodMetadata(HostedType declaringClass, String name, HostedType[] parameterTypes, int modifiers, HostedType returnType) {
-            this(false, false, true, null, declaringClass, name, parameterTypes, modifiers, returnType, null, null, null, null, null, null, null, null);
+        MethodMetadata(RuntimeConditionSet conditions, HostedType declaringClass, String name, HostedType[] parameterTypes, int modifiers, HostedType returnType) {
+            this(conditions, false, false, true, null, declaringClass, name, parameterTypes, modifiers, returnType, null, null, null, null, null, null, null, null);
         }
 
         /* Reachable method */
-        MethodMetadata(HostedType declaringClass, String name, String[] parameterTypeNames) {
-            this(false, false, false, null, declaringClass, name, parameterTypeNames, 0, null, null, null, null, null, null, null, null, null);
+        MethodMetadata(RuntimeConditionSet conditions, HostedType declaringClass, String name, String[] parameterTypeNames) {
+            this(conditions, false, false, false, null, declaringClass, name, parameterTypeNames, 0, null, null, null, null, null, null, null, null, null);
         }
 
         /* Negative query method */
-        MethodMetadata(HostedType declaringClass, String name, HostedType[] parameterTypes) {
-            this(false, true, false, null, declaringClass, name, parameterTypes, 0, null, null, null, null, null, null, null, null, null);
+        MethodMetadata(RuntimeConditionSet conditions, HostedType declaringClass, String name, HostedType[] parameterTypes) {
+            this(conditions, false, true, false, null, declaringClass, name, parameterTypes, 0, null, null, null, null, null, null, null, null, null);
         }
     }
 
     static class ConstructorMetadata extends ExecutableMetadata {
 
-        private ConstructorMetadata(boolean complete, boolean negative, JavaConstant heapObject, HostedType declaringClass, Object[] parameterTypes, int modifiers, HostedType[] exceptionTypes,
+        private ConstructorMetadata(RuntimeConditionSet conditions, boolean complete, boolean negative, JavaConstant heapObject, HostedType declaringClass, Object[] parameterTypes, int modifiers,
+                        HostedType[] exceptionTypes,
                         String signature, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters,
                         JavaConstant accessor) {
-            super(complete, negative, heapObject, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations, reflectParameters,
+            super(conditions, complete, negative, heapObject, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations,
+                            reflectParameters,
                             accessor);
         }
 
         /* Constructor registered for reflection */
-        ConstructorMetadata(HostedType declaringClass, HostedType[] parameterTypes, int modifiers, HostedType[] exceptionTypes, String signature, AnnotationValue[] annotations,
+        ConstructorMetadata(RuntimeConditionSet conditions, HostedType declaringClass, HostedType[] parameterTypes, int modifiers, HostedType[] exceptionTypes, String signature,
+                        AnnotationValue[] annotations,
                         AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters, JavaConstant accessor) {
-            this(true, false, null, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations, reflectParameters, accessor);
+            this(conditions, true, false, null, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations, reflectParameters, accessor);
         }
 
         /* Constructor in heap */
-        ConstructorMetadata(boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations,
+        ConstructorMetadata(RuntimeConditionSet conditions, boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations,
+                        TypeAnnotationValue[] typeAnnotations,
                         ReflectParameterMetadata[] reflectParameters) {
-            this(registered, false, heapObject, null, null, 0, null, null, annotations, parameterAnnotations, typeAnnotations, reflectParameters, null);
+            this(conditions, registered, false, heapObject, null, null, 0, null, null, annotations, parameterAnnotations, typeAnnotations, reflectParameters, null);
         }
 
         /* Reachable constructor */
-        ConstructorMetadata(HostedType declaringClass, String[] parameterTypeNames) {
-            this(false, false, null, declaringClass, parameterTypeNames, 0, null, null, null, null, null, null, null);
+        ConstructorMetadata(RuntimeConditionSet conditions, HostedType declaringClass, String[] parameterTypeNames) {
+            this(conditions, false, false, null, declaringClass, parameterTypeNames, 0, null, null, null, null, null, null, null);
         }
 
         /* Negative query constructor */
-        ConstructorMetadata(HostedType declaringClass, HostedType[] parameterTypes) {
-            this(false, true, null, declaringClass, parameterTypes, 0, null, null, null, null, null, null, null);
+        ConstructorMetadata(RuntimeConditionSet conditions, HostedType declaringClass, HostedType[] parameterTypes) {
+            this(conditions, false, true, null, declaringClass, parameterTypes, 0, null, null, null, null, null, null, null);
         }
     }
 

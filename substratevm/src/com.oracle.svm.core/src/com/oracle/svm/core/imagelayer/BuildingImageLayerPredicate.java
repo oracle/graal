@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.code;
+package com.oracle.svm.core.imagelayer;
 
-import com.oracle.objectfile.ObjectFile;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-public interface DynamicMethodAddressResolutionHostedSupport {
+import java.util.function.BooleanSupplier;
 
-    void install(ObjectFile imageObjectFile);
-
+@Platforms(Platform.HOSTED_ONLY.class)
+public class BuildingImageLayerPredicate implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return ImageLayerBuildingSupport.buildingImageLayer();
+    }
 }

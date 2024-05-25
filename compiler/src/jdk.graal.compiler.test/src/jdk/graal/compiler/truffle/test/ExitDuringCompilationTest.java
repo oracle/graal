@@ -44,7 +44,7 @@ public class ExitDuringCompilationTest extends TestWithPolyglotOptions {
 
     @Test
     public void testExit() throws IOException, InterruptedException {
-        var subprocess = SubprocessTestUtils.executeInSubprocess(ExitDuringCompilationTest.class, () -> {
+        SubprocessTestUtils.newBuilder(ExitDuringCompilationTest.class, () -> {
             try {
                 var cond = new NotifyCompilation();
                 OptimizedTruffleRuntime.getRuntime().addListener(cond);
@@ -57,15 +57,12 @@ public class ExitDuringCompilationTest extends TestWithPolyglotOptions {
             } catch (InterruptedException ie) {
                 throw new AssertionError("Interrupted", ie);
             }
-        },
-                        "-Djdk.graal.MethodFilter=RootNode.Constant",
-                        "-Djdk.graal.InjectedCompilationDelay=100");
-        if (SubprocessTestUtils.isSubprocess()) {
-            assert subprocess == null;
-        } else {
-            var output = String.join("\n", subprocess.output);
-            assertFalse(output, Pattern.compile("(Exception|Error)").matcher(output).find());
-        }
+        }).prefixVmOption("-Djdk.graal.MethodFilter=RootNode.Constant", "-Djdk.graal.InjectedCompilationDelay=100").//
+                        onExit((p) -> {
+                            String output = String.join("\n", p.output);
+                            assertFalse(output, Pattern.compile("(Exception|Error)").matcher(output).find());
+                        }).//
+                        run();
     }
 
     private static final class NotifyCompilation implements OptimizedTruffleRuntimeListener {

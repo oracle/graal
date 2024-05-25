@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package bench.console;
+package com.oracle.svm.hosted.code;
 
-public class HelloWorld {
-    public static void main(String[] args) {
-        System.out.println("Hello, World!");
-    }
+import com.oracle.objectfile.ObjectFile;
+
+public interface ObjectFileTransformer {
+
+    void afterAbstractImageCreation(ObjectFile imageObjectFile);
+
 }
