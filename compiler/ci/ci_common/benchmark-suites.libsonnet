@@ -10,7 +10,7 @@
   groups:: {
     open_suites:: unique_suites([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance]),
     spec_suites:: unique_suites([$.specjvm2008, $.specjbb2015]),
-    jmh_micros_suites:: unique_suites([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist]),
+    jmh_micros_suites:: unique_suites([$.micros_graal_dist]),
     graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
     special_suites:: unique_suites([$.dacapo_size_variants, $.scala_dacapo_size_variants]),
     microservice_suites:: unique_suites([$.microservice_benchmarks]),
@@ -201,26 +201,6 @@
       self.benchmark_cmd + ["jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS", "--"] + self.extra_vm_args
     ],
     timelimit: "5:00:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
-  micros_misc_graal_dist: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
-    suite:: "micros-misc-graal-dist",
-    run+: [
-      self.benchmark_cmd + ["jmh-dist:GRAAL_BENCH_MISC", "--"] + self.extra_vm_args
-    ],
-    timelimit: "3:00:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
-  micros_shootout_graal_dist: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
-    suite:: "micros-shootout-graal-dist",
-    run+: [
-      self.benchmark_cmd + ["jmh-dist:GRAAL_BENCH_SHOOTOUT", "--"] + self.extra_vm_args
-    ],
-    timelimit: "3:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   }
