@@ -26,8 +26,8 @@ package com.oracle.svm.hosted.code;
 
 import com.oracle.objectfile.ObjectFile;
 
-public interface DynamicMethodAddressResolutionHostedSupport {
+public interface ObjectFileTransformer {
 
-    void install(ObjectFile imageObjectFile);
+    void afterAbstractImageCreation(ObjectFile imageObjectFile);
 
 }

@@ -32,7 +32,7 @@ import java.util.EnumSet;
 public interface FeatureSingleton extends LayeredImageSingleton {
 
     @Override
-    default EnumSet<ImageBuilderFlags> getImageBuilderFlags() {
-        return EnumSet.of(ImageBuilderFlags.BUILDTIME_ACCESS);
+    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
     }
 }
