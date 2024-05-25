@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.configure;
 
-import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllReachableConditionsAsReached;
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
 import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
 import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
 
@@ -205,7 +205,7 @@ public abstract class ConfigurationParser {
         throw new JSONParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
 
-    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> data) {
+    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> data, boolean runtimeCondition) {
         Object conditionData = data.get(CONDITIONAL_KEY);
         if (conditionData != null) {
             EconomicMap<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
@@ -214,6 +214,9 @@ public abstract class ConfigurationParser {
             }
 
             if (conditionObject.containsKey(TYPE_REACHED_KEY)) {
+                if (!runtimeCondition) {
+                    failOnSchemaError("'" + TYPE_REACHED_KEY + "' condition cannot be used in older schemas. Please migrate the file to the latest schema.");
+                }
                 Object object = conditionObject.get(TYPE_REACHED_KEY);
                 var condition = parseTypeContents(object);
                 if (condition.isPresent()) {
@@ -221,11 +224,14 @@ public abstract class ConfigurationParser {
                     return UnresolvedConfigurationCondition.create(className, true);
                 }
             } else if (conditionObject.containsKey(TYPE_REACHABLE_KEY)) {
+                if (runtimeCondition && !TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
+                    failOnSchemaError("'" + TYPE_REACHABLE_KEY + "' condition can not be used with the latest schema. Please use '" + TYPE_REACHED_KEY + "'.");
+                }
                 Object object = conditionObject.get(TYPE_REACHABLE_KEY);
                 var condition = parseTypeContents(object);
                 if (condition.isPresent()) {
                     String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
-                    return UnresolvedConfigurationCondition.create(className, TreatAllReachableConditionsAsReached.getValue());
+                    return UnresolvedConfigurationCondition.create(className, TreatAllTypeReachableConditionsAsTypeReached.getValue());
                 }
             }
         }
@@ -236,13 +242,13 @@ public abstract class ConfigurationParser {
         throw new JSONParserException(message);
     }
 
-    protected static Optional<ConfigurationTypeDescriptor> parseType(EconomicMap<String, Object> data) {
+    protected static Optional<ConfigurationTypeDescriptor> parseTypeOrName(EconomicMap<String, Object> data, boolean treatAllNameEntriesAsType) {
         Object typeObject = data.get(TYPE_KEY);
         Object name = data.get(NAME_KEY);
         if (typeObject != null) {
             return parseTypeContents(typeObject);
         } else if (name != null) {
-            return Optional.of(new NamedConfigurationTypeDescriptor(asString(name)));
+            return Optional.of(new NamedConfigurationTypeDescriptor(asString(name), treatAllNameEntriesAsType));
         } else {
             throw failOnSchemaError("must have type or name specified for an element");
         }
@@ -250,7 +256,7 @@ public abstract class ConfigurationParser {
 
     protected static Optional<ConfigurationTypeDescriptor> parseTypeContents(Object typeObject) {
         if (typeObject instanceof String stringValue) {
-            return Optional.of(new NamedConfigurationTypeDescriptor(stringValue));
+            return Optional.of(new NamedConfigurationTypeDescriptor(stringValue, true));
         } else {
             EconomicMap<String, Object> type = asMap(typeObject, "type descriptor should be a string or object");
             if (type.containsKey(PROXY_KEY)) {

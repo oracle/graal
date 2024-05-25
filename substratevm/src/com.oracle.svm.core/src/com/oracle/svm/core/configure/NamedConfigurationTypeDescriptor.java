@@ -30,10 +30,20 @@ import java.util.Collections;
 
 import com.oracle.svm.core.util.json.JsonWriter;
 
-public record NamedConfigurationTypeDescriptor(String name) implements ConfigurationTypeDescriptor {
+public record NamedConfigurationTypeDescriptor(String name, boolean definedAsType) implements ConfigurationTypeDescriptor {
 
     public NamedConfigurationTypeDescriptor(String name) {
+        this(name, false);
+    }
+
+    public NamedConfigurationTypeDescriptor(String name, boolean definedAsType) {
         this.name = ConfigurationTypeDescriptor.checkQualifiedJavaName(name);
+        this.definedAsType = definedAsType;
+    }
+
+    @Override
+    public boolean definedAsType() {
+        return definedAsType;
     }
 
     @Override

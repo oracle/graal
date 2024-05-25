@@ -105,7 +105,7 @@ public class ResourceConfigurationParser<C> extends ConfigurationParser {
         EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames", "condition"));
         String basename = asString(resource.get("name"));
-        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource));
+        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource, false));
         if (!resolvedConfigurationCondition.isPresent()) {
             return;
         }
@@ -146,7 +146,7 @@ public class ResourceConfigurationParser<C> extends ConfigurationParser {
     private void parseStringEntry(Object data, String valueKey, BiConsumer<C, String> resourceRegistry, String expectedType, String parentType) {
         EconomicMap<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a " + expectedType);
         checkAttributes(resource, "resource and resource bundle descriptor object", Collections.singletonList(valueKey), Collections.singletonList(CONDITIONAL_KEY));
-        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource));
+        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource, false));
         if (!resolvedConfigurationCondition.isPresent()) {
             return;
         }

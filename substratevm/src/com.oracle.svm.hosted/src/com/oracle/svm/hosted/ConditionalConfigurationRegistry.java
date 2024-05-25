@@ -42,10 +42,11 @@ public abstract class ConditionalConfigurationRegistry {
         Objects.requireNonNull(consumer, "Cannot use null value as runnable for conditional configuration. Please ensure that you register a non-null runnable.");
         if (ConfigurationCondition.alwaysTrue().equals(condition)) {
             /* analysis optimization to include new types as early as possible */
-            consumer.accept(condition);
+            consumer.accept(ConfigurationCondition.alwaysTrue());
         } else {
             Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
-            ConfigurationCondition runtimeCondition = condition.isRuntimeChecked() ? condition : ConfigurationCondition.alwaysTrue();
+            ConfigurationCondition runtimeCondition;
+            runtimeCondition = condition.isRuntimeChecked() ? condition : ConfigurationCondition.alwaysTrue();
             handlers.add(() -> consumer.accept(runtimeCondition));
         }
 

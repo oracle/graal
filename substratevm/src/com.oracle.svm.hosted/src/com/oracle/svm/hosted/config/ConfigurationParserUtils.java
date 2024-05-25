@@ -53,6 +53,8 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 
 import jdk.graal.compiler.util.json.JSONParserException;
 
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllNameEntriesAsType;
+
 public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(
@@ -60,7 +62,7 @@ public final class ConfigurationParserUtils {
         return new ReflectionConfigurationParser<>(conditionResolver,
                         RegistryAdapter.create(registry, proxyRegistry, imageClassLoader),
                         ConfigurationFiles.Options.StrictConfiguration.getValue(),
-                        ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue());
+                        ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue(), TreatAllNameEntriesAsType.getValue());
     }
 
     /**
