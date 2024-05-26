@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,32 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.runtime.jfr;
+package com.oracle.truffle.runtime.hotspot.libgraal;
 
 import java.util.function.Supplier;
 
-/**
- * The JFR event describing a Truffle compilation.
- */
-public interface CompilationEvent extends RootFunctionEvent {
+import static com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope.getIsolateThread;
 
-    void compilationStarted();
+final class LibGraalScopedStringSupplier extends LibGraalScopedHandle implements Supplier<String> {
 
-    void failed(int tier, boolean permanent, String reason, Supplier<String> lazyStackTrace);
+    LibGraalScopedStringSupplier(long handle) {
+        super(handle, LibGraalStringSupplier.class);
+    }
 
-    void succeeded(int tier);
-
-    void setCompiledCodeSize(int size);
-
-    void setCompiledCodeAddress(long addr);
-
-    void setInlinedCalls(int count);
-
-    void setDispatchedCalls(int count);
-
-    void setGraalNodeCount(int count);
-
-    void setPartialEvaluationNodeCount(int count);
-
-    void setPartialEvaluationTime(long time);
+    @Override
+    public String get() {
+        return TruffleToLibGraalCalls.getSuppliedString(getIsolateThread(), getHandle());
+    }
 }
