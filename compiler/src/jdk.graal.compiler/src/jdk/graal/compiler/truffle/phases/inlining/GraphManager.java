@@ -154,7 +154,7 @@ final class GraphManager {
 
     static final class Entry {
         final StructuredGraph graph;
-        final EconomicSet<Invoke> invokeToTruffleCallNode;
+        final EconomicSet<Invoke> directInvokes;
         final List<Invoke> indirectInvokes;
         final boolean trivial;
         // Populated only when debug dump is enabled with debug dump level >= info.
@@ -164,9 +164,9 @@ final class GraphManager {
 
         Entry(StructuredGraph graph, PEAgnosticInlineInvokePlugin plugin, StructuredGraph graphAfterPEForDebugDump, int graphSize) {
             this.graph = graph;
-            this.invokeToTruffleCallNode = plugin.getInvokeToTruffleCallNode();
+            this.directInvokes = plugin.getDirectInvokes();
             this.indirectInvokes = plugin.getIndirectInvokes();
-            this.trivial = invokeToTruffleCallNode.isEmpty() &&
+            this.trivial = directInvokes.isEmpty() &&
                             indirectInvokes.isEmpty() &&
                             graph.getNodes(LoopBeginNode.TYPE).count() == 0 &&
                             graph.getNodeCount() < TRIVIAL_NODE_COUNT_LIMIT;
