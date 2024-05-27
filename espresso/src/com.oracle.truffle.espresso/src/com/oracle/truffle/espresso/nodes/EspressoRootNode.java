@@ -241,10 +241,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         frame.setAuxiliarySlot(cookieSlot, FrameCookie.createStackWalkCookie(anchor));
     }
 
-    public final void clearCookie(Frame frame) {
-        frame.setAuxiliarySlot(cookieSlot, null);
-    }
-
     private FrameCookie getCookie(Frame frame) {
         initCookieSlot(frame);
         return (FrameCookie) frame.getAuxiliarySlot(cookieSlot);
@@ -260,7 +256,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     public final long readFrameIdOrZero(Frame frame) {
         FrameCookie cookie = getCookie(frame);
         if (cookie != null && cookie.isPrivileged()) {
-            return (long) cookie.getData();
+            return cookie.getData();
         }
         return 0L;
     }
@@ -268,7 +264,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     public final long readStackAnchorOrZero(Frame frame) {
         FrameCookie cookie = getCookie(frame);
         if (cookie != null && cookie.isStackWalk()) {
-            return (long) cookie.getData();
+            return cookie.getData();
         }
         return 0L;
     }

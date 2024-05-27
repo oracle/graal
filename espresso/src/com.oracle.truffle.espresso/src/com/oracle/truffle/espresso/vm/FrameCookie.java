@@ -46,13 +46,13 @@ public final class FrameCookie {
     }
 
     private final CookieKind kind;
-    private final Object data;
+    private final long data;
 
-    public Object getData() {
+    public long getData() {
         return data;
     }
 
-    private FrameCookie(CookieKind kind, Object data) {
+    private FrameCookie(CookieKind kind, long data) {
         this.kind = kind;
         this.data = data;
     }
