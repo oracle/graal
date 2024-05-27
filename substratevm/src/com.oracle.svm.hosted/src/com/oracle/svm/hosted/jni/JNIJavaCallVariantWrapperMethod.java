@@ -162,7 +162,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         slotIndex += wordKind.getSlotCount();
 
         kit.invokeJNIEnterIsolate(env);
-        ValueNode callAddress = kit.getJavaCallWrapperAddressFromMethodId(methodId);
+        ValueNode callAddress = kit.invokeGetJavaCallWrapperAddressFromMethodId(methodId);
 
         List<ValueNode> args = new ArrayList<>();
         args.add(receiverOrClassHandle);
@@ -170,7 +170,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         args.add(kit.createInt(nonVirtual ? 1 : 0));
         args.addAll(loadArguments(kit, providers, invokeSignature, args.size(), slotIndex));
 
-        ValueNode formerPendingException = kit.getAndClearPendingException();
+        ValueNode formerPendingException = kit.invokeGetAndClearPendingException();
 
         StampPair returnStamp = StampFactory.forDeclaredType(kit.getAssumptions(), invokeSignature.getReturnType(null), false);
         CallTargetNode callTarget = new IndirectCallTargetNode(callAddress, args.toArray(ValueNode[]::new), returnStamp, invokeSignature.toParameterTypes(null),
@@ -179,9 +179,9 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         int invokeBci = kit.bci();
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(callTarget, kit.getFrameState(), invokeBci);
         kit.noExceptionPart();
-        kit.setPendingException(formerPendingException);
+        kit.invokeSetPendingException(formerPendingException);
         kit.exceptionPart();
-        kit.setPendingException(kit.exceptionObject());
+        kit.invokeSetPendingException(kit.exceptionObject());
         AbstractMergeNode invokeMerge = kit.endInvokeWithException();
 
         ValueNode returnValue = null;
