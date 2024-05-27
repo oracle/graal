@@ -29,7 +29,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 public abstract class InvokeQuickNode extends QuickNode {
     private static final Object[] EMPTY_ARGS = new Object[0];
@@ -60,19 +59,13 @@ public abstract class InvokeQuickNode extends QuickNode {
         this.returnsPrimitive = m.getReturnKind().isPrimitive();
     }
 
-    public StaticObject peekReceiver(VirtualFrame frame) {
+    public final StaticObject peekReceiver(VirtualFrame frame) {
         return EspressoFrame.peekReceiver(frame, top, method.getMethod());
     }
 
-    /**
-     * Called as part of re-winding the stack when the user resumes a suspended continuation.
-     * Executes the target of the invoke using a special calling convention in which the frame
-     * record to unwind is passed as a first argument.
-     */
-    @SuppressWarnings("unused")
-    public final int resumeContinuation(VirtualFrame frame, HostFrameRecord hfr) {
-        // The method that was called is in hfr.methodVersion, no need to re-resolve.
-        return pushResult(frame, hfr.methodVersion.getCallTarget().call(hfr));
+    @Override
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
+        return 0;
     }
 
     protected Object[] getArguments(VirtualFrame frame) {
@@ -131,7 +124,7 @@ public abstract class InvokeQuickNode extends QuickNode {
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return "INVOKE: " + method.getDeclaringKlass().getExternalName() + "." + method.getNameAsString() + ":" + method.getRawSignature();
     }
 }

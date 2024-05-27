@@ -40,28 +40,18 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
     @Child BytecodeNode bytecodeNode;
     private final int bci;
     private final EspressoFrameDescriptor fd;
-    @Child ResumeNextContinuationNode resumeNext;
 
     public ContinuableMethodWithBytecode(BytecodeNode bytecodeNode, int bci, EspressoFrameDescriptor fd) {
         super(bytecodeNode.getMethodVersion());
         this.bci = bci;
         this.fd = fd;
         this.bytecodeNode = bytecodeNode;
-        this.resumeNext = ContinuableMethodWithBytecodeFactory.ResumeNextContinuationNodeGen.create();
     }
 
     @Override
     Object execute(VirtualFrame frame) {
-        HostFrameRecord frameRecords = getFrameRecords(frame);
-        return bytecodeNode.resumeContinuation(frame, frameRecords,
-                        bci, fd, resumeNext);
-    }
-
-    private HostFrameRecord getFrameRecords(VirtualFrame frame) {
-        assert frame.getArguments().length == 1 && frame.getArguments()[0] instanceof HostFrameRecord;
-        HostFrameRecord records = (HostFrameRecord) frame.getArguments()[0];
-        assert records.methodVersion == getMethodVersion();
-        return records;
+        return bytecodeNode.resumeContinuation(frame,
+                        bci, fd.top());
     }
 
     @Override
@@ -77,9 +67,17 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
         return EspressoFrame.getBCI(frame);
     }
 
-    /**
-     * Passed to the bytecode node, so it can rewind the next continuation in the record.
-     */
+    public EspressoFrameDescriptor getFD() {
+        return fd;
+    }
+
+    public HostFrameRecord getFrameRecords(VirtualFrame frame) {
+        assert frame.getArguments().length == 1 && frame.getArguments()[0] instanceof HostFrameRecord;
+        HostFrameRecord records = (HostFrameRecord) frame.getArguments()[0];
+        assert records.methodVersion == getMethodVersion();
+        return records;
+    }
+
     public abstract static class ResumeNextContinuationNode extends EspressoNode {
         static final int LIMIT = 3;
 

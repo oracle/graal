@@ -98,7 +98,7 @@ public class EspressoFrameDescriptor {
     }
 
     @ExplodeLoop
-    public void exportToFrame(Frame frame, Object[] objects, long[] primitives, int bci) {
+    public void exportToFrame(Frame frame, Object[] objects, long[] primitives) {
         assert slotTypes.length == frame.getFrameDescriptor().getNumberOfSlots();
         assert objects != null && objects.length == slotTypes.length;
         assert primitives != null && primitives.length == slotTypes.length;

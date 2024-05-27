@@ -63,7 +63,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         int argCount = Signatures.parameterCount(parsedSignature);
         Object[] args = EspressoFrame.popBasicArgumentsWithArray(frame, top, parsedSignature, false, new Object[argCount + (hasAppendix ? 1 : 0)]);
         if (hasAppendix) {
