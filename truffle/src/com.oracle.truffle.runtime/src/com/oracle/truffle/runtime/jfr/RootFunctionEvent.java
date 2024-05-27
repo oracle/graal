@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.runtime.jfr;
 
-import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public interface RootFunctionEvent extends Event {
 
-    void setRootFunction(RootCallTarget target);
+    void setRootFunction(OptimizedCallTarget target);
 }
