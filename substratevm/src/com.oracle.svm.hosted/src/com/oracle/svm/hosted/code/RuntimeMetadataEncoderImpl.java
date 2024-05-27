@@ -172,7 +172,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void addType(HostedType type) {
-        if (type.getWrapped().isReachable() && sortedTypes.add(type)) {
+        if (type.getWrapped().isReachable() && !type.getWrapped().isInBaseLayer() && sortedTypes.add(type)) {
             encoders.classes.addObject(type.getJavaClass());
         }
     }

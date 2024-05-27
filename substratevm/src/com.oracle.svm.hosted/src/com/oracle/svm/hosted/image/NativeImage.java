@@ -820,6 +820,9 @@ public abstract class NativeImage extends AbstractImage {
         long canonicalizedCount = 0L;
         long canonicalizedSize = 0L;
         for (ObjectInfo info : objects) {
+            if (info.getConstant().isInBaseLayer()) {
+                continue;
+            }
             if (partition == info.getPartition()) {
                 if (uniqueObjectInfo.add(info)) {
                     histogram.add(info, info.getSize());

@@ -96,6 +96,9 @@ public class HeapBreakdownProvider {
         Set<byte[]> seenStringByteArrays = Collections.newSetFromMap(new IdentityHashMap<>());
         final boolean reportStringBytesConstant = reportStringBytes;
         for (ObjectInfo o : access.getImage().getHeap().getObjects()) {
+            if (o.getConstant().isInBaseLayer()) {
+                continue;
+            }
             long objectSize = o.getSize();
             totalObjectSize += objectSize;
             classToDataMap.computeIfAbsent(o.getClazz(), c -> new HeapBreakdownEntry(c)).add(objectSize);
@@ -176,6 +179,7 @@ public class HeapBreakdownProvider {
         newData.add(byteSize, count);
         entries.add(newData);
         byteArrayEntry.remove(byteSize, count);
+        assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
     }
 
     private static byte[] getInternalByteArray(String string) {
