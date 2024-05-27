@@ -1,103 +1,108 @@
 ---
 layout: docs-experimental
 toc_group: wasm
-link_title: WebAssembly Reference
+link_title: GraalWasm 
 permalink: /reference-manual/wasm/
 ---
 
-# GraalVM Implementation of WebAssembly
+# GraalWasm
 
-GraalVM can run programs compiled to WebAssembly.
-It can interpret and compile WebAssembly code in the binary format or embed it into other programs.
-The support for WebAssembly is in the early stages of its development.
+GraalWasm is an open source WebAssembly runtime.
+It runs WebAssembly programs in the binary format and can be used to embed and leverage WebAssembly modules in Java applications.
+GraalWasm is under active development and is tracking a number of WebAssembly extensions.
 
-## Getting Started
+## Running WebAssembly Embedded in Java
 
-The GraalVM WebAssembly runtime (known as Wasm) is available as a standalone distribution.
-You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
+Compiled WebAssembly binary code can be accessed programmatically with [GraalVM SDK Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html), which allows embedding WebAssembly into user applications. 
 
-1. Download the Wasm 24.0 standalone for your operating system:
-   - Native standalone
-      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-linux-aarch64.tar.gz)
-      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-macos-amd64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-windows-amd64.zip)
-   - JVM standalone
-      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-linux-aarch64.tar.gz)
-      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-macos-amd64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-windows-amd64.zip)
+The example below demonstrates how to compile a C function to WebAssembly and run it embedded in a Java application. 
+To run the demo, you need the following:
+- [GraalVM JDK](https://www.graalvm.org/downloads/)
+- [Emscripten compiler frontend](https://emscripten.org/docs/tools_reference/emcc.html)
+- [Maven](https://maven.apache.org/)
 
-2. Unzip the archive:
+### Demo Part
 
-    > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
-    ```shell
-    sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
-    ```
+1. Put the following C program in a file named _floyd.c_:
+    ```c
+    #include <stdio.h>
 
-    Extact:
-    ```shell
-    tar -xzf <archive>.tar.gz
-    ```
-   
-3. A standalone comes with a JVM in addition to its native launcher. Check the version to see GraalVM WebAssembly runtime is active:
-    ```bash
-    ./path/to/bin/wasm --version
-    ```
-
-## Running WebAssembly Programs
-
-You can run a program written in the language that compiles to WebAssembly on GraalVM.
-For example, put the following C program in a file named _floyd.c_:
-```c
-#include <stdio.h>
-
-int main() {
-  int number = 1;
-  int rows = 10;
-  for (int i = 1; i <= rows; i++) {
-    for (int j = 1; j <= i; j++) {
-      printf("%d ", number);
-      ++number;
+    void floyd() {
+        int number = 1;
+        int rows = 10;
+        for (int i = 1; i <= rows; i++) {
+            for (int j = 1; j <= i; j++) {
+                printf("%d ", number);
+                ++number;
+            }
+            printf(".\n");
+        }
     }
-    printf(".\n");
-  }
-  return 0;
-}
-```
 
-Compile it using the most recent [Emscripten compiler frontend](https://emscripten.org/docs/tools_reference/emcc.html) version. It should produce a standalone _floyd.wasm_ file in the current working directory:
-```shell
-emcc -o floyd.wasm floyd.c
-```
+    int main() {
+        floyd();
+        return 0;
+    }
+    ```
+    Note that `floyd` is defined as a separate function and can be exported.
 
-Then you can run the compiled WebAssembly binary on GraalVM as follows:
-```shell
-wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
-```
+2. Compile the C code using the most recent version of the [Emscripten compiler frontend](https://emscripten.org/docs/tools_reference/emcc.html):
+    ```bash
+    emcc --no-entry -s EXPORTED_FUNCTIONS=_floyd -o floyd.wasm floyd.c
+    ```
+    > The exported functions must be prefixed by `_`. If you reference that function in, for example, the Java code, the exported name should not contain the underscore.
 
-In this example, the flag `--Builtins` specifies builtin modules that the [Emscripten toolchain](https://emscripten.org/index.html) requires.
+    It produces a standalone file _floyd.wasm_ in the current working directory.
 
-## Embedding WebAssembly Programs
+3. Add dependencies. The GraalVM SDK Polyglot API is not available by default, but can be easily added as a Maven dependency to your Java project.
+The GraalWasm artifact should be on the Java module or classpath too. Add the following set of dependencies to the project configuration file (_pom.xml_ in case of Maven).
 
-The compiled WebAssembly binary code can be accessed programmatically with [GraalVM Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html), which allows embedding GraalVM WebAssembly into user programs. Here is a simple example of how to call WebAssembly code from a Java application:
+    - To enable the GraalVM polyglot runtime:
+        ```xml
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId> 
+            <version>${graalvm.polyglot.version}</version>
+        </dependency>
+        ```
+    - To enable Wasm:
+        ```xml
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>wasm</artifactId> 
+            <version>${graalvm.polyglot.version}</version>
+            <type>pom</type>
+        </dependency>
+        ```
 
-```java
-import org.graalvm.polyglot.*;
-import org.graalvm.polyglot.io.ByteSequence;
-//Load the WASM contents into a byte array
-byte[] binary = readBytes("example.wasm");
-Context.Builder contextBuilder = Context.newBuilder("wasm");
-Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "example");
-Source source = sourceBuilder.build();
-Context context = contextBuilder.build();
+4. Now you can embed this WebAssembly function in a Java application, for example:
 
-context.eval(source);
+    ```java
+    import org.graalvm.polyglot.*;
+    import org.graalvm.polyglot.io.ByteSequence;
 
-Value mainFunction = context.getBindings("wasm").getMember("main").getMember("_start");
-mainFunction.execute();
-```
+    // Load the WebAssembly contents into a byte array
+    byte[] binary = Files.readAllBytes(Path.of("path", "to", "wasm", "file", "floyd.wasm"));
 
-For more polyglot examples, visit the [Embedding Languages](../embedding/embed-languages.md) guide.
+    // Setup context
+    Context.Builder contextBuilder = Context.newBuilder("wasm").option("wasm.Builtins", "wasi_snapshot_preview1");
+    Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "example");
+    Source source = sourceBuilder.build();
+    Context context = contextBuilder.build();
+
+    // Evaluate the WebAssembly module
+    context.eval(source);
+
+    // Execute the floyd function
+    context.getBindings("wasm").getMember("example").getMember("_initialize").executeVoid();
+    Value mainFunction =context.getBindings("wasm").getMember("example").getMember("floyd");
+    mainFunction.execute();
+    context.close();
+    ```
+
+5. Compile and run this Java application with Maven as usual.
+
+### Related Documentation
+
+- [Embedding Languages documentation](../embedding/embed-languages.md)
+- [GraalWasm](https://github.com/oracle/graal/tree/master/wasm)
