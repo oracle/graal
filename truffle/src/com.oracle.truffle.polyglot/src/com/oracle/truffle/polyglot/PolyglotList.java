@@ -102,23 +102,23 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
     @SuppressWarnings("unchecked")
     @Override
     public T get(int index) {
-        return (T) cache.get.call(languageContext, guestObject, index);
+        return (T) cache.get.call(null, languageContext, guestObject, index);
     }
 
     @Override
     public boolean add(T element) {
-        return (boolean) cache.add.call(languageContext, guestObject, element);
+        return (boolean) cache.add.call(null, languageContext, guestObject, element);
     }
 
     @Override
     public void add(int index, T element) {
-        cache.addAtIndex.call(languageContext, guestObject, index, element);
+        cache.addAtIndex.call(null, languageContext, guestObject, index, element);
     }
 
     @Override
     public T set(int index, T element) {
         T prev = get(index);
-        cache.set.call(languageContext, guestObject, index, element);
+        cache.set.call(null, languageContext, guestObject, index, element);
         return prev;
     }
 
@@ -126,13 +126,13 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
     @Override
     public T remove(int index) {
         T prev = get(index);
-        cache.remove.call(languageContext, guestObject, index);
+        cache.remove.call(null, languageContext, guestObject, index);
         return prev;
     }
 
     @Override
     public int size() {
-        return (Integer) cache.size.call(languageContext, guestObject);
+        return (Integer) cache.size.call(null, languageContext, guestObject);
     }
 
     @Override
