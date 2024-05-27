@@ -479,10 +479,10 @@ class JavaHomeDependency(mx.BaseLibrary):
             yield path, arcname
 
     def post_init(self):
-        pass
+        pass  # help act like a distribution since this is registered as a distribution
 
     def archived_deps(self):
-        return []
+        return []  # help act like a distribution since this is registered as a distribution
 
 
 class EspressoRuntimeResourceProject(mx.JavaProject):
