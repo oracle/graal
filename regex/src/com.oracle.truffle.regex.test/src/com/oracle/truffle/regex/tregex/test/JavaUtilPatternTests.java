@@ -56,6 +56,7 @@ import org.junit.Test;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -1036,7 +1037,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     @Test
     @Ignore
-    public void unicodeProperties() {
+    public void unicodeProperties() throws InterruptedException {
         String[] properties = new String[]{
                         "Cn",
                         "Lu",
@@ -1160,17 +1161,18 @@ public class JavaUtilPatternTests extends RegexTestBase {
         }
     }
 
-    private void testUnicodeProperties(String[] props) {
-        try (ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
-            for (String prop : props) {
-                pool.execute(() -> testUnicodeProperty(prop));
-            }
+    private void testUnicodeProperties(String[] props) throws InterruptedException {
+        ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        for (String prop : props) {
+            pool.execute(() -> testUnicodeProperty(prop));
         }
+        pool.shutdown();
+        Assert.assertTrue(pool.awaitTermination(10, TimeUnit.MINUTES));
     }
 
     @Test
     @Ignore
-    public void unicodePOSIX() {
+    public void unicodePOSIX() throws InterruptedException {
         String[] properties = new String[]{
                         "Alnum",
                         "Alpha",
@@ -1190,7 +1192,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     @Test
     @Ignore
-    public void unicodePredicates() {
+    public void unicodePredicates() throws InterruptedException {
         String[] properties = new String[]{
                         "ALPHABETIC",
                         "ASSIGNED",
@@ -1223,19 +1225,20 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Test
     @Ignore
     @SuppressWarnings("unchecked")
-    public void predefinedCharClasses() {
+    public void predefinedCharClasses() throws InterruptedException {
         char[] classes = {'D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w'};
-        try (ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
-            for (char c : classes) {
-                System.out.println("predefined char class: " + c);
-                pool.execute(() -> testAllCharacters(new Pair[]{
-                                Pair.create("\\" + c, 0),
-                                Pair.create("\\" + c, Pattern.CASE_INSENSITIVE),
-                                Pair.create("\\" + c, Pattern.UNICODE_CHARACTER_CLASS),
-                                Pair.create("\\" + c, Pattern.UNICODE_CHARACTER_CLASS | Pattern.CASE_INSENSITIVE)
-                }));
-            }
+        ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        for (char c : classes) {
+            System.out.println("predefined char class: " + c);
+            pool.execute(() -> testAllCharacters(new Pair[]{
+                            Pair.create("\\" + c, 0),
+                            Pair.create("\\" + c, Pattern.CASE_INSENSITIVE),
+                            Pair.create("\\" + c, Pattern.UNICODE_CHARACTER_CLASS),
+                            Pair.create("\\" + c, Pattern.UNICODE_CHARACTER_CLASS | Pattern.CASE_INSENSITIVE)
+            }));
         }
+        pool.shutdown();
+        Assert.assertTrue(pool.awaitTermination(10, TimeUnit.MINUTES));
     }
 
     @Test

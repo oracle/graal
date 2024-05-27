@@ -108,7 +108,7 @@ public final class InputStringGenerator {
             if (forward) {
                 elements.add(e);
             } else {
-                elements.addFirst(e);
+                elements.add(0, e);
                 nPrepended++;
             }
         }
@@ -119,10 +119,10 @@ public final class InputStringGenerator {
 
         public void removeLast(boolean forward) {
             if (forward) {
-                elements.removeLast();
+                elements.remove(elements.size() - 1);
             } else {
                 nPrepended--;
-                elements.removeFirst();
+                elements.remove(0);
             }
         }
 
