@@ -29,6 +29,8 @@ import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -75,10 +77,18 @@ public class ResourcesUtils {
     /**
      * Returns whether the given resource is directory or not.
      */
-    public static boolean resourceIsDirectory(URL url, boolean fromJar, String resource) throws IOException, URISyntaxException {
+    public static boolean resourceIsDirectory(URL url, boolean fromJar) throws IOException, URISyntaxException {
         if (fromJar) {
             try (JarFile jf = new JarFile(urlToJarPath(url))) {
-                return jf.getEntry(resource).isDirectory();
+                String path = url.getPath();
+                String fullResourcePath = path.substring(path.indexOf("!") + 1);
+                if (fullResourcePath.startsWith("/")) {
+                    fullResourcePath = fullResourcePath.substring(1);
+                }
+
+                /* we are using decoded path to be resilient to spaces */
+                String decodedString = URLDecoder.decode(fullResourcePath, StandardCharsets.UTF_8);
+                return jf.getEntry(decodedString).isDirectory();
             }
         } else {
             return Files.isDirectory(Path.of(url.toURI()));
