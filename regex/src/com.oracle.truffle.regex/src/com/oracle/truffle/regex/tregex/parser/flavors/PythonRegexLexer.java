@@ -46,7 +46,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -54,12 +53,13 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.chardata.UnicodeCharacterAliases;
+import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.charset.ClassSetContents;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -250,6 +250,11 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledCharClassFirstBracketIsLiteral() {
+        return true;
+    }
+
+    @Override
+    protected boolean featureEnabledCCRangeWithPredefCharClass() {
         return true;
     }
 

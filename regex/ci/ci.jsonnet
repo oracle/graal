@@ -14,15 +14,6 @@
     targets: ["gate"],
   },
 
-  local regex_gate_jdkLatest = regex_common + common.deps.eclipse + common.deps.jdt + {
-    name: 'gate-regex-jdk' + self.jdk_version,
-    run: [
-      ["mx", "build"],
-      ["mx", "unittest", "com.oracle.truffle.regex"],
-    ],
-    targets: ["gate"],
-  },
-
   local regex_gate_lite = regex_common + {
     name: 'gate-regex-mac-lite-jdk' + self.jdk_version,
     run: [
@@ -49,7 +40,5 @@
     ] for jdk in [
       common.labsjdk21,
     ]
-  ]) + [
-      common.linux_amd64  + common.labsjdkLatest + regex_gate_jdkLatest,
-  ],
+  ]),
 }

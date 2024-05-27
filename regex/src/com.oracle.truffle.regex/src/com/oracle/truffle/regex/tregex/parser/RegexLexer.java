@@ -134,6 +134,11 @@ public abstract class RegexLexer {
     protected abstract boolean featureEnabledCharClassFirstBracketIsLiteral();
 
     /**
+     * Try to parse ranges with pre-defined inner character classes, e.g. {@code [\w-a]}.
+     */
+    protected abstract boolean featureEnabledCCRangeWithPredefCharClass();
+
+    /**
      * Returns {@code true} if nested character classes are supported. This is required for
      * {@link #featureEnabledPOSIXCharClasses()} .
      */
@@ -1115,7 +1120,7 @@ public abstract class RegexLexer {
                         if (JavaStringUtil.isSingleCodePoint(name)) {
                             return ClassSetContents.createPOSIXCollationEquivalenceClass(name.codePointAt(0));
                         } else {
-                            validatePOSIXCollationElement(name);
+                            validatePOSIXEquivalenceClass(name);
                             return ClassSetContents.createPOSIXCollationEquivalenceClass(name);
                         }
                     default:
@@ -1170,7 +1175,7 @@ public abstract class RegexLexer {
             charClassEmitInvalidRangeAtoms--;
             return firstAtom;
         }
-        if (consumingLookahead("-")) {
+        if ((firstAtom.isAllowedInRange() || featureEnabledCCRangeWithPredefCharClass()) && consumingLookahead("-")) {
             if (atEnd() || lookahead("]")) {
                 position--;
                 return firstAtom;
@@ -1179,18 +1184,19 @@ public abstract class RegexLexer {
                 charClassCurAtomStartIndex = position - 1;
                 ClassSetContents secondAtom = parseCharClassAtomInner(nextC);
                 // Runtime Semantics: CharacterRangeOrUnion(firstAtom, secondAtom)
-                if (!firstAtom.isAllowedInRange() || !secondAtom.isAllowedInRange()) {
-                    handleCCRangeWithPredefCharClass(startPos, firstAtom, secondAtom);
+                boolean invalidAtom = !firstAtom.isAllowedInRange() || !secondAtom.isAllowedInRange();
+                if (invalidAtom || secondAtom.getCodePoint() < firstAtom.getCodePoint()) {
+                    if (invalidAtom) {
+                        handleCCRangeWithPredefCharClass(startPos, firstAtom, secondAtom);
+                    } else {
+                        throw handleCCRangeOutOfOrder(startPos);
+                    }
                     // no syntax error thrown, so we have to emit the range as three separate atoms
                     position = charClassCurAtomStartIndex - 1;
                     charClassEmitInvalidRangeAtoms = 2;
                     return firstAtom;
                 } else {
-                    if (secondAtom.getCodePoint() < firstAtom.getCodePoint()) {
-                        throw handleCCRangeOutOfOrder(startPos);
-                    } else {
-                        return ClassSetContents.createRange(firstAtom.getCodePoint(), secondAtom.getCodePoint());
-                    }
+                    return ClassSetContents.createRange(firstAtom.getCodePoint(), secondAtom.getCodePoint());
                 }
             }
         } else {

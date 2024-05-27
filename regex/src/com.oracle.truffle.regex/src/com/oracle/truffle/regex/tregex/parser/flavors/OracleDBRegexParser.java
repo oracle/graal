@@ -114,8 +114,7 @@ public final class OracleDBRegexParser implements RegexParser {
             if (token.kind != Token.Kind.literalChar && !literalStringBuffer.isEmpty()) {
                 int last = -1;
                 if (token.kind == Token.Kind.quantifier) {
-                    last = literalStringBuffer.get(literalStringBuffer.length() - 1);
-                    literalStringBuffer.setLength(literalStringBuffer.length() - 1);
+                    last = literalStringBuffer.removeLast();
                 }
                 addLiteralString(literalStringBuffer);
                 if (last >= 0) {
@@ -129,38 +128,34 @@ public final class OracleDBRegexParser implements RegexParser {
                     astBuilder.addPositionAssertion(token);
                     break;
                 case caret:
-                    if (prevKind != Token.Kind.caret) {
-                        if (flags.isMultiline()) {
-                            // (?:^|(?<=\n))
-                            astBuilder.pushGroup();
-                            astBuilder.addCaret();
-                            astBuilder.nextSequence();
-                            astBuilder.pushLookBehindAssertion(false);
-                            astBuilder.addCharClass(CodePointSet.create('\n'));
-                            astBuilder.popGroup();
-                            astBuilder.popGroup();
-                        } else {
-                            astBuilder.addPositionAssertion(token);
-                        }
+                    if (flags.isMultiline()) {
+                        // (?:^|(?<=\n))
+                        astBuilder.pushGroup();
+                        astBuilder.addCaret();
+                        astBuilder.nextSequence();
+                        astBuilder.pushLookBehindAssertion(false);
+                        astBuilder.addCharClass(CodePointSet.create('\n'));
+                        astBuilder.popGroup();
+                        astBuilder.popGroup();
+                    } else {
+                        astBuilder.addPositionAssertion(token);
                     }
                     break;
                 case dollar, Z:
-                    if (prevKind != Token.Kind.dollar) {
-                        // multiline mode:
-                        // (?:$|(?=\n))
-                        // otherwise:
-                        // (?:$|(?=\n$))
-                        astBuilder.pushGroup();
+                    // multiline mode:
+                    // (?:$|(?=\n))
+                    // otherwise:
+                    // (?:$|(?=\n$))
+                    astBuilder.pushGroup();
+                    astBuilder.addDollar();
+                    astBuilder.nextSequence();
+                    astBuilder.pushLookAheadAssertion(false);
+                    astBuilder.addCharClass(CodePointSet.create('\n'));
+                    if (token.kind == Token.Kind.Z || !flags.isMultiline()) {
                         astBuilder.addDollar();
-                        astBuilder.nextSequence();
-                        astBuilder.pushLookAheadAssertion(false);
-                        astBuilder.addCharClass(CodePointSet.create('\n'));
-                        if (token.kind == Token.Kind.Z || !flags.isMultiline()) {
-                            astBuilder.addDollar();
-                        }
-                        astBuilder.popGroup();
-                        astBuilder.popGroup();
                     }
+                    astBuilder.popGroup();
+                    astBuilder.popGroup();
                     break;
                 case backReference:
                     astBuilder.addBackReference((Token.BackReference) token, flags.isIgnoreCase());
@@ -170,20 +165,7 @@ public final class OracleDBRegexParser implements RegexParser {
                         // quantifiers without target are ignored
                         break;
                     }
-                    Token.Quantifier quantifier = (Token.Quantifier) token;
-                    if (astBuilder.getCurTerm().isQuantifiableTerm() && astBuilder.getCurTerm().asQuantifiableTerm().hasQuantifier()) {
-                        Token.Quantifier existingQuantifier = astBuilder.getCurTerm().asQuantifiableTerm().getQuantifier();
-                        if (existingQuantifier.getMin() > 1) {
-                            astBuilder.wrapCurTermInGroup();
-                        } else {
-                            astBuilder.addQuantifier(Token.createQuantifier(
-                                            Math.max(quantifier.getMin(), existingQuantifier.getMin()),
-                                            (int) Math.max(Integer.toUnsignedLong(quantifier.getMax()), Integer.toUnsignedLong(existingQuantifier.getMax())),
-                                            quantifier.isGreedy() && existingQuantifier.isGreedy()));
-                            break;
-                        }
-                    }
-                    astBuilder.addQuantifier(quantifier);
+                    astBuilder.addQuantifier((Token.Quantifier) token);
                     break;
                 case alternation:
                     astBuilder.nextSequence();

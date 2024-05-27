@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.util.EmptyArrays;
  *
  * <pre>
  * LongArrayBuffer buf = new LongArrayBuffer();
- * List<long[]> results = new ArrayList<>();
+ * List&lt;long[]> results = new ArrayList&lt;>();
  * for (Object obj : listOfThingsToProcess) {
  *     for (Object x : obj.thingsThatShouldBecomeLongs()) {
  *         buf.add(someCalculation(x));

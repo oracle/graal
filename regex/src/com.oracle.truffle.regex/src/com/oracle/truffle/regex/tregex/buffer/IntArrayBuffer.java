@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.util.EmptyArrays;
  *
  * <pre>
  * IntArrayBuffer buf = new IntArrayBuffer();
- * List<int[]> results = new ArrayList<>();
+ * List&lt;int[]> results = new ArrayList&lt;>();
  * for (Object obj : listOfThingsToProcess) {
  *     for (Object x : obj.thingsThatShouldBecomeInts()) {
  *         buf.add(someCalculation(x));

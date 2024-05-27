@@ -353,10 +353,7 @@ public class Token implements JsonConvertible {
          * Returns {@code true} if the quantified term can never match. This is the case when:
          * <ul>
          * <li>The minimum is virtually infinite (i.e. greater than the maximum string length).</li>
-         * <li>The minimum is larger than the maximum. This is usually a syntax error, but in
-         * {@link com.oracle.truffle.regex.tregex.parser.flavors.OracleDBFlavor} this can happen due
-         * to a quirk in the integer overflow handling in bounded quantifiers, see
-         * {@link com.oracle.truffle.regex.tregex.parser.flavors.OracleDBRegexLexer}.</li>
+         * <li>The minimum is larger than the maximum. This is usually a syntax error.
          * </ul>
          */
         public boolean isDead() {
