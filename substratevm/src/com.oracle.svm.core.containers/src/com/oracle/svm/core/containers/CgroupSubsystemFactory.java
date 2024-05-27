@@ -27,7 +27,6 @@
 package com.oracle.svm.core.containers;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -37,7 +36,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 import com.oracle.svm.core.containers.cgroupv1.CgroupV1Subsystem;
 import com.oracle.svm.core.containers.cgroupv2.CgroupV2Subsystem;
@@ -55,7 +53,7 @@ public class CgroupSubsystemFactory {
         Optional<CgroupTypeResult> optResult = null;
         try {
             optResult = determineType("/proc/self/mountinfo", "/proc/cgroups", "/proc/self/cgroup");
-        } catch (IOException | UncheckedIOException e) {
+        } catch (IOException e) {
             return null;
         }
 
@@ -169,16 +167,15 @@ public class CgroupSubsystemFactory {
         // See:
         //   setCgroupV1Path() for the action run for cgroups v1 systems
         //   setCgroupV2Path() for the action run for cgroups v2 systems
-        try (Stream<String> selfCgroupLines =
-             CgroupUtil.readFilePrivileged(Paths.get(selfCgroup))) {
-            Consumer<String[]> action = (tokens -> setCgroupV1Path(infos, tokens));
-            if (isCgroupsV2) {
-                action = (tokens -> setCgroupV2Path(infos, tokens));
-            }
+        Consumer<String[]> action = (tokens -> setCgroupV1Path(infos, tokens));
+        if (isCgroupsV2) {
+            action = (tokens -> setCgroupV2Path(infos, tokens));
+        }
+        for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(selfCgroup))) {
             // The limit value of 3 is because /proc/self/cgroup contains three
             // colon-separated tokens per line. The last token, cgroup path, might
             // contain a ':'.
-            selfCgroupLines.map(line -> line.split(":", 3)).forEach(action);
+            action.accept(line.split(":", 3));
         }
 
         CgroupTypeResult result = new CgroupTypeResult(isCgroupsV2,

@@ -27,11 +27,9 @@
 package com.oracle.svm.core.containers.cgroupv2;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import com.oracle.svm.core.containers.CgroupInfo;
 import com.oracle.svm.core.containers.CgroupSubsystem;
@@ -330,11 +328,11 @@ public class CgroupV2Subsystem implements CgroupSubsystem {
 
     private long sumTokensIOStat(Function<String, Long> mapFunc) {
         try {
-            return CgroupUtil.readFilePrivileged(Paths.get(unified.path(), "io.stat"))
-                                .map(mapFunc)
-                                .collect(Collectors.summingLong(e -> e));
-        } catch (UncheckedIOException e) {
-            return CgroupSubsystem.LONG_RETVAL_UNLIMITED;
+            long sum = 0L;
+            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(unified.path(), "io.stat"))) {
+                sum += mapFunc.apply(line);
+            }
+            return sum;
         } catch (IOException e) {
             return CgroupSubsystem.LONG_RETVAL_UNLIMITED;
         }
