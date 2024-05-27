@@ -110,21 +110,6 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     protected final long maxAllowedSize;
 
     /**
-     * Optional grow callback to notify the embedder.
-     */
-    private Object growCallback;
-
-    /**
-     * JS callback to implement part of memory.atomic.notify.
-     */
-    private Object notifyCallback;
-
-    /**
-     * JS callback to implement part of memory.atomic.waitN.
-     */
-    private Object waitCallback;
-
-    /**
      * @see #hasIndexType64()
      */
     protected final boolean indexType64;
@@ -820,40 +805,16 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         store_i32_8(null, address, rawValue);
     }
 
-    public void setGrowCallback(Object growCallback) {
-        this.growCallback = growCallback;
-    }
-
-    public Object getGrowCallback() {
-        return growCallback;
-    }
-
     protected void invokeGrowCallback() {
         WebAssembly.invokeMemGrowCallback(this);
     }
 
-    public void setNotifyCallback(Object notifyCallback) {
-        this.notifyCallback = notifyCallback;
+    protected int invokeNotifyCallback(Node node, long address, int count) {
+        return WebAssembly.invokeMemNotifyCallback(node, this, address, count);
     }
 
-    public Object getNotifyCallback() {
-        return notifyCallback;
-    }
-
-    protected int invokeNotifyCallback(long address, int count) {
-        return WebAssembly.invokeMemNotifyCallback(this, address, count);
-    }
-
-    public void setWaitCallback(Object waitCallback) {
-        this.waitCallback = waitCallback;
-    }
-
-    public Object getWaitCallback() {
-        return waitCallback;
-    }
-
-    protected int invokeWaitCallback(long address, long expected, long timeout, boolean is64) {
-        return WebAssembly.invokeMemWaitCallback(this, address, expected, timeout, is64);
+    protected int invokeWaitCallback(Node node, long address, long expected, long timeout, boolean is64) {
+        return WebAssembly.invokeMemWaitCallback(node, this, address, expected, timeout, is64);
     }
 
     public abstract void close();
