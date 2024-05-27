@@ -191,8 +191,8 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
         if (javaReturnType.getJavaKind().isObject()) {
             /*
-             * Must be invoked before the handles are destroyed in the epilogue. Thrown exceptions may cause
-             * a memory leak, see GR-54276.
+             * Must be invoked before the handles are destroyed in the epilogue. Thrown exceptions
+             * may cause a memory leak, see GR-54276.
              */
             returnValue = kit.invokeUnboxHandle(returnValue);
         }
