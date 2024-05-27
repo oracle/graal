@@ -63,7 +63,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 public final class PythonFlavor extends RegexFlavor {
 
     public static final PythonFlavor INSTANCE = new PythonFlavor();
-    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_15_1_0, 0);
+    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_15_0_0, 0);
 
     private PythonFlavor() {
         super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK | USES_LAST_GROUP_RESULT_FIELD |
