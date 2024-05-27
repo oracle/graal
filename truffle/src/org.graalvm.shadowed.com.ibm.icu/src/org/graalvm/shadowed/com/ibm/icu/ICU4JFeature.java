@@ -43,7 +43,7 @@ package org.graalvm.shadowed.com.ibm.icu;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PushbackInputStream;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.lang.module.ModuleReader;
 import java.lang.module.ResolvedModule;
@@ -58,24 +58,20 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.shadowed.com.ibm.icu.impl.ICUData;
+import org.graalvm.shadowed.org.tukaani.xz.FinishableWrapperOutputStream;
+import org.graalvm.shadowed.org.tukaani.xz.LZMA2Options;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 public class ICU4JFeature implements Feature {
 
-    /**
-     * Use highest gzip compression level; it does not have any negative impact on decompression.
-     */
-    private static final int GZIP_COMPRESSION_LEVEL = 9;
     /***
      * Only compress larger than this number of bytes. We want to avoid compressing tiny files:
      * simply not worth any overhead for the negligible potential savings.
@@ -85,6 +81,13 @@ public class ICU4JFeature implements Feature {
      * Only compress if compressedSize / uncompressedSize <= {@link #GOOD_ENOUGH_COMPRESSION_RATIO}.
      */
     private static final double GOOD_ENOUGH_COMPRESSION_RATIO = 0.9;
+    /**
+     * Use a smaller-than-default dictionary size. Results in lower decoder memory consumption at
+     * the cost of slightly worse compression ratio.
+     */
+    static final int DICT_SIZE = 64 * 1024;
+
+    static final int MAGIC = 0xAB02;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private record ResourceEntry(List<String> classNames, List<String> resourcePaths) {
@@ -229,12 +232,13 @@ public class ICU4JFeature implements Feature {
     }
 
     private void addCompressedResources(List<String> patterns, Module module, Stream<String> entryStream, ThrowingFunction<String, InputStream, IOException> openResource) throws IOException {
+        byte[] magic = new byte[]{(byte) ICU4JFeature.MAGIC, (byte) (ICU4JFeature.MAGIC >>> 8)};
         List<Pattern> compiledPatterns = patterns.stream().map(Pattern::compile).toList();
         Stream<String> filteredEntries = entryStream.filter(s -> !s.endsWith("/") && !s.endsWith(".class"));
         for (Iterator<String> iterator = filteredEntries.iterator(); iterator.hasNext();) {
             String name = iterator.next();
             if (compiledPatterns.stream().anyMatch(pattern -> pattern.matcher(name).matches())) {
-                ByteArrayOutputStream gzippedOutput = new ByteArrayOutputStream();
+                ByteArrayOutputStream compressedOutput = new ByteArrayOutputStream();
                 byte[] data = null;
                 // Avoid compressing tiny files, not worth it.
                 int keepUncompressedThreshold = MIN_SIZE_TO_COMPRESS;
@@ -243,15 +247,25 @@ public class ICU4JFeature implements Feature {
                         int uncompressedSize = resourceInput.available();
                         if (uncompressedSize <= keepUncompressedThreshold) {
                             data = resourceInput.readAllBytes();
-                        } else {
-                            try (GZIPOutputStream gzip = new GZIPOutputStream(gzippedOutput) {
-                                {
-                                    def.setLevel(GZIP_COMPRESSION_LEVEL);
-                                }
-                            }) {
-                                resourceInput.transferTo(gzip);
+                            if (data.length >= magic.length && Arrays.equals(data, 0, magic.length, magic, 0, magic.length)) {
+                                throw new IllegalStateException("Uncompressed data must not start with compressed header bytes");
                             }
-                            byte[] compressed = gzippedOutput.toByteArray();
+                        } else {
+                            int preset = LZMA2Options.PRESET_DEFAULT;
+                            var opts = new LZMA2Options(preset);
+                            opts.setDictSize(DICT_SIZE);
+                            compressedOutput.write(magic);
+                            compressedOutput.write(preset);
+                            compressedOutput.write(Integer.numberOfTrailingZeros(DICT_SIZE));
+                            compressedOutput.write(new byte[]{
+                                            (byte) (uncompressedSize),
+                                            (byte) (uncompressedSize >> 8),
+                                            (byte) (uncompressedSize >> 16),
+                                            (byte) (uncompressedSize >> 24)});
+                            try (OutputStream xz = opts.getOutputStream(new FinishableWrapperOutputStream(compressedOutput))) {
+                                resourceInput.transferTo(xz);
+                            }
+                            byte[] compressed = compressedOutput.toByteArray();
                             int compressedSize = compressed.length;
                             if ((double) compressedSize / uncompressedSize > GOOD_ENOUGH_COMPRESSION_RATIO) {
                                 keepUncompressedThreshold = uncompressedSize;
@@ -280,29 +294,42 @@ final class Target_org_graalvm_shadowed_com_ibm_icu_impl_ICUData {
         if (refClass == null && loader == ICUData.class.getClassLoader()) {
             refClass = ICUData.class;
         }
-        InputStream inputStream;
-        if (refClass != null) {
-            inputStream = refClass.getResourceAsStream(resourceName);
-        } else {
-            inputStream = loader.getResourceAsStream(resourceName);
-        }
-        if (inputStream == null) {
-            return null;
-        }
-        try {
-            byte[] expected = new byte[]{(byte) 0x1f, (byte) 0x8b};
-            PushbackInputStream pbis = new PushbackInputStream(inputStream, expected.length);
-            byte[] hdr = new byte[expected.length];
-            int nBytes = pbis.read(hdr);
-            pbis.unread(hdr, 0, nBytes);
-            if (nBytes >= expected.length && Arrays.equals(hdr, 0, expected.length, expected, 0, expected.length)) {
-                inputStream = new GZIPInputStream(pbis);
+        boolean uncompressed = false;
+        do {
+            InputStream inputStream;
+            if (refClass != null) {
+                inputStream = refClass.getResourceAsStream(resourceName);
             } else {
-                inputStream = pbis;
+                inputStream = loader.getResourceAsStream(resourceName);
             }
-            return inputStream;
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+            if (inputStream == null) {
+                return null;
+            }
+            if (uncompressed) {
+                return inputStream;
+            }
+            try {
+                byte[] expected = new byte[]{(byte) ICU4JFeature.MAGIC, (byte) (ICU4JFeature.MAGIC >> 8)};
+                byte[] hdr = new byte[expected.length];
+                int nBytes = inputStream.read(hdr);
+                if (nBytes >= expected.length && Arrays.equals(hdr, 0, expected.length, expected, 0, expected.length)) {
+                    int preset = inputStream.read();
+                    int dictSize = inputStream.read();
+                    int uncompressedSize = inputStream.read() |
+                                    (inputStream.read() << 8) |
+                                    (inputStream.read() << 16) |
+                                    (inputStream.read() << 24);
+                    var opts = new LZMA2Options(preset);
+                    opts.setDictSize(1 << dictSize);
+                    return opts.getInputStream(inputStream);
+                } else {
+                    // Resource is not compressed. Reopen and return the original input stream.
+                    uncompressed = true;
+                    inputStream.close();
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        } while (true);
     }
 }
