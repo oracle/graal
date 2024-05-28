@@ -27,6 +27,7 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -36,8 +37,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
@@ -45,6 +48,11 @@ public class TestSocketEvents extends JfrRecordingTest {
     public static final String MESSAGE = "hello server";
     public static int PORT = 9876;
     public static String HOST = "127.0.0.1";
+
+    @BeforeClass
+    public static void checkJavaVersion() {
+        assumeTrue("skipping JFR socket test", JavaVersionUtil.JAVA_SPEC >= 22);
+    }
 
     @Test
     public void test() throws Throwable {
