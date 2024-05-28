@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
+import java.util.Arrays;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -122,6 +125,8 @@ public final class TransitionGuard {
         checkGroupNotMatched
     }
 
+    @CompilationFinal(dimensions = 1) private static final Kind[] KIND_VALUES = Arrays.copyOf(Kind.values(), Kind.values().length);
+
     private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.loop, Kind.loopInc, Kind.exit, Kind.exitReset);
     private static final EnumSet<Kind> ZERO_WIDTH_QUANTIFIER_GUARDS = EnumSet.of(Kind.enterZeroWidth, Kind.exitZeroWidth, Kind.escapeZeroWidth);
     private static final EnumSet<Kind> GROUP_NUMBER_GUARDS = EnumSet.of(Kind.updateRecursiveBackrefPointer, Kind.checkGroupMatched, Kind.checkGroupNotMatched);
@@ -150,6 +155,7 @@ public final class TransitionGuard {
     }
 
     public static long createEnterZeroWidthFromExit(long guard) {
+        assert is(guard, Kind.exitZeroWidth) || is(guard, Kind.escapeZeroWidth);
         return create(Kind.enterZeroWidth, getZeroWidthQuantifierIndex(guard));
     }
 
@@ -196,7 +202,7 @@ public final class TransitionGuard {
     }
 
     public static Kind getKind(long guard) {
-        return Kind.values()[getKindOrdinal(guard)];
+        return KIND_VALUES[getKindOrdinal(guard)];
     }
 
     public static boolean is(long guard, Kind kind) {
@@ -213,14 +219,14 @@ public final class TransitionGuard {
         return (int) guard;
     }
 
-    /**
-     * Returns the capture group boundary index for {@code updateCG} guards.
-     */
     public static int getGroupNumber(long guard) {
         assert GROUP_NUMBER_GUARDS.contains(getKind(guard));
         return (int) guard;
     }
 
+    /**
+     * Returns the capture group boundary index for {@code updateCG} guards.
+     */
     public static int getGroupBoundaryIndex(long guard) {
         assert GROUP_BOUNDARY_INDEX_GUARDS.contains(getKind(guard));
         return (int) guard;

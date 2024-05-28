@@ -308,11 +308,21 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     }
 
     private Quantifier getQuantifier(long guard) {
-        return quantifiers[TransitionGuard.getQuantifierIndex(guard)];
+        CompilerAsserts.partialEvaluationConstant(guard);
+        int quantifierIndex = TransitionGuard.getQuantifierIndex(guard);
+        CompilerAsserts.partialEvaluationConstant(quantifierIndex);
+        return quantifiers[quantifierIndex];
     }
 
     private Quantifier getZeroWidthQuantifier(long guard) {
-        return zeroWidthQuantifiers[TransitionGuard.getZeroWidthQuantifierIndex(guard)];
+        CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(guard);
+        int zeroWidthQuantifierIndex = TransitionGuard.getZeroWidthQuantifierIndex(guard);
+        CompilerAsserts.partialEvaluationConstant(zeroWidthQuantifiers);
+        CompilerAsserts.partialEvaluationConstant(zeroWidthQuantifierIndex);
+        Quantifier zeroWidthQuantifier = zeroWidthQuantifiers[zeroWidthQuantifierIndex];
+        CompilerAsserts.partialEvaluationConstant(zeroWidthQuantifier);
+        return zeroWidthQuantifier;
     }
 
     @Override
@@ -767,9 +777,15 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         if (transition.hasDollarGuard() && index < locals.getRegionTo()) {
             return false;
         }
-        for (long guard : transition.getGuards()) {
+        long[] guards = transition.getGuards();
+        CompilerAsserts.partialEvaluationConstant(guards);
+        for (int i = 0; i < guards.length; i++) {
+            CompilerAsserts.partialEvaluationConstant(i);
+            long guard = guards[i];
             CompilerAsserts.partialEvaluationConstant(guard);
-            switch (TransitionGuard.getKind(guard)) {
+            TransitionGuard.Kind kind = TransitionGuard.getKind(guard);
+            CompilerAsserts.partialEvaluationConstant(kind);
+            switch (kind) {
                 case loop -> {
                     // retreat if quantifier count is at maximum
                     if (locals.getQuantifierCount(TransitionGuard.getQuantifierIndex(guard)) == getQuantifier(guard).getMax()) {
@@ -784,6 +800,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 }
                 case exitZeroWidth -> {
                     Quantifier q = getZeroWidthQuantifier(guard);
+                    CompilerAsserts.partialEvaluationConstant(q);
                     if (locals.getZeroWidthQuantifierGuardIndex(TransitionGuard.getZeroWidthQuantifierIndex(guard)) == index &&
                                     (!isMonitorCaptureGroupsInEmptyCheck() || locals.isResultUnmodifiedByZeroWidthQuantifier(TransitionGuard.getZeroWidthQuantifierIndex(guard))) &&
                                     // In JS, we allow this guard to pass if we are still in the
@@ -865,6 +882,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 }
                 case exitZeroWidth -> {
                     Quantifier q = getZeroWidthQuantifier(guard);
+                    CompilerAsserts.partialEvaluationConstant(q);
                     boolean emptyCheckFailed = locals.getZeroWidthQuantifierGuardIndex(TransitionGuard.getZeroWidthQuantifierIndex(guard)) == index &&
                                     (!isMonitorCaptureGroupsInEmptyCheck() || locals.isResultUnmodifiedByZeroWidthQuantifier(TransitionGuard.getZeroWidthQuantifierIndex(guard)));
                     boolean advancePastOptionalIterations = !isEmptyChecksOnMandatoryLoopIterations() && q.hasIndex() && locals.getQuantifierCount(q.getIndex()) < q.getMin();
