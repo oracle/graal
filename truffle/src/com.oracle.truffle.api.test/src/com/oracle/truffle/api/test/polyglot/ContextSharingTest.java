@@ -74,7 +74,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
 
 public class ContextSharingTest {
@@ -106,7 +105,6 @@ public class ContextSharingTest {
 
     @Test
     public void testMultiContextNoIdentity() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation(); // TruffleObject
         NoIdentity guest = new NoIdentity();
         Value c0v0 = secondaryContext.asValue(context.asValue(guest));
         Value c1v0 = context.asValue(secondaryContext.asValue(guest));
@@ -141,7 +139,6 @@ public class ContextSharingTest {
 
     @Test
     public void testMultiContextWithIdentity() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation(); // TruffleObject
         Value c0v0 = secondaryContext.asValue(context.asValue(new WithIdentity()));
         Value c1v0 = context.asValue(secondaryContext.asValue(new WithIdentity()));
 
@@ -204,7 +201,6 @@ public class ContextSharingTest {
 
     @Test
     public void testError() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation(); // TruffleObject
         Value c0v0 = secondaryContext.asValue(context.asValue(new ExecutableThrows(context)));
         AbstractPolyglotTest.assertFails(() -> c0v0.execute(), PolyglotException.class, e -> {
             assertFalse(e.isInternalError());
@@ -271,7 +267,6 @@ public class ContextSharingTest {
 
     @Test
     public void testThreadCheck() throws InterruptedException, ExecutionException {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation(); // TruffleObject
         ExecutorService service = Executors.newCachedThreadPool();
 
         Context singleThread = createContext(true);
@@ -404,7 +399,6 @@ public class ContextSharingTest {
 
     @Test
     public void testClosedCheck() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation(); // AbstractTruffleException
         Context c0 = createContext(true);
         Context c1 = createContext(true);
         Value v0c0 = c0.asValue(new IdentityExecutable(c0));

@@ -105,12 +105,6 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.TestAPIAccessor;
-import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -124,15 +118,20 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.OSUtils;
+import com.oracle.truffle.api.test.TestAPIAccessor;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TruffleFileTest {
 
@@ -479,7 +478,6 @@ public class TruffleFileTest {
     @Test
     public void testRelativePathToLanguageHome() throws IOException {
         // reflection access
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         Path cwdPath = new File("").toPath().toRealPath();
         Assume.assumeTrue(cwdPath.getNameCount() > 1);
         Path langHome = cwdPath.getParent().resolve("home");
@@ -721,7 +719,6 @@ public class TruffleFileTest {
 
     @Test
     public void testGetTruffleFileInternalAllowedIO() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         try (Engine engine = Engine.create()) {
             FileSystemsTest.markAsLanguageHome(engine, TestGetTruffleFileInternalAllowedIOLanguage.class, languageHome);
             try (Context ctx = Context.newBuilder().engine(engine).allowIO(IOAccess.ALL).build()) {
@@ -736,7 +733,6 @@ public class TruffleFileTest {
     @Test
     public void testGetTruffleFileInternalCustomFileSystem() {
         // reflection access
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build();
         try (Engine engine = Engine.create()) {
             FileSystemsTest.markAsLanguageHome(engine, TestGetTruffleFileInternalAllowedIOLanguage.class, languageHome);
@@ -786,7 +782,6 @@ public class TruffleFileTest {
 
     @Test
     public void testGetTruffleFileInternalDeniedIO() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         try (Engine engine = Engine.create()) {
             FileSystemsTest.markAsLanguageHome(engine, TestGetTruffleFileInternalDeniedIOLanguage.class, languageHome);
             try (Context ctx = Context.newBuilder().engine(engine).build()) {

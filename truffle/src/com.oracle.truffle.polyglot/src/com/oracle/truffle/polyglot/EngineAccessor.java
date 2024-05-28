@@ -182,12 +182,6 @@ final class EngineAccessor extends Accessor {
         } else if (isValidLoader(systemClassLoader)) {
             return new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader());
         } else {
-            /*
-             * This class loader is necessary for classpath isolation, enabled by the
-             * `-Dpolyglotimpl.DisableClassPathIsolation=false` option. It's needed because the
-             * system classloader does not load Truffle from a new module layer but from an unnamed
-             * module.
-             */
             return new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader());
         }
     }

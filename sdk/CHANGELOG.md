@@ -7,6 +7,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-51962 Added the system property `polyglot.engine.userResourceCache`, which enables embedders to override the default location of the resources cache folder for polyglot applications running on the JVM. By default, the resources cache folder is located in the `org.graalvm.polyglot` directory within the OS specific cache folder in the user's home directory. The main rationale behind this override is to accommodate applications running in containers where the user's home directory may not be writable.
 * GR-51402 Improved Polyglot guest function to host interface proxies to infer the expected return type from the corresponding type argument (`R`) of the generic target type (e.g. `BiFunction<T,U,R>`).
 * GR-53699 `RuntimeOptions.listDescriptors` and `getDescriptor` also returns graal compiler options (if any) that could already be accessed through `RuntimeOptions.get` and `set`.
+* GR-54310 Removed disabled-by-default class-path isolation feature if polyglot is used from the class-path. The option `-Dpolyglotimpl.DisableClassPathIsolation` has no longer any effect.
 
 ## Version 24.0.0
 * (GR-49334) Deprecated the `FileSystems#allowLanguageHomeAccess()` method and introduced `FileSystem#allowInternalResourceAccess()` as a replacement. To ensure compatibility, both methods now provide support for language homes and internal resources.

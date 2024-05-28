@@ -511,7 +511,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @Test
     @SuppressWarnings("unchecked")
     public void executableAsFunction() throws Exception {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         TruffleObject executable = new FunctionObject();
         Function<Integer, Integer> f = context.asValue(executable).as(Function.class);
         assertEquals(13, (int) f.apply(13));
@@ -520,7 +519,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void executableAsFunctionalInterface1() throws Exception {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         TruffleObject executable = new FunctionObject();
         FunctionalWithDefaults f = context.asValue(executable).as(FunctionalWithDefaults.class);
         assertEquals(50, f.call((Object) 13, (Object) 37));
@@ -533,7 +531,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void executableAsFunctionalInterface2() throws Exception {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         TruffleObject executable = new FunctionObject();
         FunctionalWithObjectMethodOverrides f = context.asValue(executable).as(FunctionalWithObjectMethodOverrides.class);
         assertEquals(50, f.call(13, 37));
@@ -547,7 +544,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void executableAsFunctionalInterface3() throws Exception {
         TruffleTestAssumptions.assumeNotAOT();
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         TruffleObject executable = new FunctionObject();
         FunctionalWithDefaults f = context.asValue(executable).as(FunctionalWithDefaults.class);
         assertEquals(42, f.call((Object) 13, (Object) 29));
@@ -734,8 +730,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testRemoveList() {
-        // TruffleObject
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
 
         List<Integer> list = context.asValue(new ArrayTruffleObject(100)).as(List.class);
         assertEquals(100, list.size());
@@ -782,8 +776,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testRemoveMap() {
-        // TruffleObject
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         int size = 15;
         Map<String, String> map = new LinkedHashMap<>();
         for (int i = 0; i < size; i++) {
@@ -900,19 +892,17 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void testByteBuffer() {
         byte[] bytes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-        if (TruffleTestAssumptions.isNoClassLoaderEncapsulation()) {
-            Value hostVal = Value.asValue(new ByteBufferTruffleObject(bytes));
-            byte[] bytesCopy = new byte[bytes.length];
-            hostVal.readBuffer(0, bytesCopy, 0, (int) hostVal.getBufferSize());
-            assertArrayEquals(bytes, bytesCopy);
-            assertArrayEquals(bytes, hostVal.as(ByteSequence.class).toByteArray());
+        Value hostVal = Value.asValue(new ByteBufferTruffleObject(bytes));
+        byte[] bytesCopy = new byte[bytes.length];
+        hostVal.readBuffer(0, bytesCopy, 0, (int) hostVal.getBufferSize());
+        assertArrayEquals(bytes, bytesCopy);
+        assertArrayEquals(bytes, hostVal.as(ByteSequence.class).toByteArray());
 
-            Value val = context.asValue(new ByteBufferTruffleObject(bytes));
-            bytesCopy = new byte[bytes.length];
-            val.readBuffer(0, bytesCopy, 0, (int) val.getBufferSize());
-            assertArrayEquals(bytes, bytesCopy);
-            assertArrayEquals(bytes, val.as(ByteSequence.class).toByteArray());
-        }
+        Value val = context.asValue(new ByteBufferTruffleObject(bytes));
+        bytesCopy = new byte[bytes.length];
+        val.readBuffer(0, bytesCopy, 0, (int) val.getBufferSize());
+        assertArrayEquals(bytes, bytesCopy);
+        assertArrayEquals(bytes, val.as(ByteSequence.class).toByteArray());
 
         Value bytesFromGuest = AbstractExecutableTestLanguage.parseTestLanguage(context, ByteBufferTestLanguage.class, "");
         Value bytesVal = bytesFromGuest.execute();
@@ -966,7 +956,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void testByteBufferFromHostExcludeCLEncapsulation() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         byte[] bytes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
         AbstractExecutableTestLanguage.evalTestLanguage(context, ByteBufferFromHostTestLanguage.class, "", new ByteBufferTruffleObject(bytes));
     }
@@ -979,7 +968,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void testUnsignedByteBuffer() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         int[] unsignedBytes = {200, 1, 202, 3, 204, 5, 206, 7, 208, 9};
         byte[] bytes = new byte[unsignedBytes.length];
         for (int i = 0; i < unsignedBytes.length; i++) {
@@ -992,7 +980,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void testArrayAsCollection() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         Integer[] ints = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
         Value val = context.asValue(new ArrayTruffleObject(10));
         assertArrayEquals(ints, val.as(Collection.class).toArray());
