@@ -1069,10 +1069,7 @@ public final class DebuggerController implements ContextsListener {
         jdwpLogger.severe(supplier);
     }
 
-    @CompilerDirectives.TruffleBoundary
     public void severe(String message, Throwable error) {
-        System.out.println("SEVERE: " + error);
-        error.printStackTrace();
         jdwpLogger.log(Level.SEVERE, message, error);
     }
 

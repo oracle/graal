@@ -88,7 +88,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
     private static final InteropLibrary UNCACHED = InteropLibrary.getUncached();
 
-    private static final long SUSPEND_TIMEOUT = 400;
+    private static final long SUSPEND_TIMEOUT = 100;
 
     private final EspressoContext context;
     private final Ids<Object> ids;
@@ -543,14 +543,17 @@ public final class JDWPContextImpl implements JDWPContext {
             Future<Void> future = context.getEnv().submitThreadLocal(new Thread[]{hostThread}, action);
             try {
                 future.get(SUSPEND_TIMEOUT, TimeUnit.MILLISECONDS);
+                return action.result;
             } catch (ExecutionException e) {
                 throw EspressoError.shouldNotReachHere(e);
             } catch (InterruptedException e) {
                 // OK, when interrupted we can't get stack frames
+                future.cancel(true);
             } catch (TimeoutException ex) {
                 // expected exception when thread in native, so result is just empty then
+                future.cancel(true);
             }
-            return action.result;
+            return new CallFrame[0];
         }
     }
 
@@ -673,49 +676,46 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public int getMonitorEntryCount(Object monitorOwnerThread, Object monitor) {
+        if (!(monitor instanceof StaticObject theMonitor)) {
+            return -1;
+        }
         Thread hostThread = asHostThread(monitorOwnerThread);
         if (Thread.currentThread() == hostThread) {
             // on current thread, we can get the results directly
-            if (monitor instanceof StaticObject) {
-                EspressoLock lock = ((StaticObject) monitor).getLock(context);
-                return lock.getEntryCount();
-            } else {
-                return -1;
-            }
+            EspressoLock lock = theMonitor.getLock(context);
+            return lock.getEntryCount();
         } else {
             // on other threads, we have to utilize Truffle safe points
-            GetMonitorEntryCountAction action = new GetMonitorEntryCountAction(monitor);
+            GetMonitorEntryCountAction action = new GetMonitorEntryCountAction(theMonitor);
             Future<Void> future = context.getEnv().submitThreadLocal(new Thread[]{hostThread}, action);
             try {
                 future.get(SUSPEND_TIMEOUT, TimeUnit.MILLISECONDS);
+                return action.result;
             } catch (ExecutionException e) {
                 throw EspressoError.shouldNotReachHere(e);
-            } catch (InterruptedException e) {
-                // OK, when interrupted we can't get stack frames
-            } catch (TimeoutException ex) {
-                // expected exception when thread in native, so result is just empty then
+            } catch (InterruptedException | TimeoutException e) {
+                future.cancel(true);
+                // OK, not possible to get accurate result, but since we know the monitor is
+                // currently owned by the owner thread, we return 1 because it's currently locked at
+                // least once
+                return 1;
             }
-            return action.result;
         }
     }
 
     private final class GetMonitorEntryCountAction extends ThreadLocalAction {
         int result;
-        Object monitor;
+        StaticObject monitor;
 
-        GetMonitorEntryCountAction(Object monitor) {
+        GetMonitorEntryCountAction(StaticObject monitor) {
             super(false, false);
             this.monitor = monitor;
         }
 
         @Override
         protected void perform(Access access) {
-            if (monitor instanceof StaticObject) {
-                EspressoLock lock = ((StaticObject) monitor).getLock(context);
-                result = lock.getEntryCount();
-            } else {
-                result = -1;
-            }
+            EspressoLock lock = monitor.getLock(context);
+            result = lock.getEntryCount();
         }
     }
 
