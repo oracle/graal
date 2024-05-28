@@ -39,15 +39,12 @@ import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
  * VM entry point from the Continuation class, responsible for unwinding and rewinding the stack.
  */
 @EspressoSubstitutions
-public final class Target_com_oracle_truffle_espresso_continuations_Continuation {
-    private Target_com_oracle_truffle_espresso_continuations_Continuation() {
-    }
-
+public final class Target_org_graalvm_continuations_Continuation {
     @Substitution(hasReceiver = true)
     static void suspend0(StaticObject self, @Inject EspressoLanguage language, @Inject Meta meta) {
         EspressoThreadLocalState tls = language.getThreadLocalState();
         if (tls.isContinuationSuspensionBlocked()) {
-            throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException,
+            throw meta.throwExceptionWithMessage(meta.continuum.org_graalvm_continuations_IllegalContinuationStateException,
                             "Suspension is currently blocked by the presence of unsupported frames on the stack. " +
                                             "Check for synchronized blocks, native calls and VM intrinsics in the stack trace of this exception.");
         }
@@ -65,6 +62,8 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     abstract static class Resume0 extends SubstitutionNode {
         abstract void execute(StaticObject self);
 
+        // Try-with-resources generates a call to 'Throwable.addSuppressed()', which is blocklisted
+        // by SVM.
         @SuppressWarnings("try")
         @Specialization
         static void resume0(StaticObject self,
@@ -74,12 +73,12 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // to call suspend, so we have to undo that first.
             EspressoThreadLocalState tls = lang.getThreadLocalState();
             if (tls.isInContinuation()) {
-                throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException,
+                throw meta.throwExceptionWithMessage(meta.continuum.org_graalvm_continuations_IllegalContinuationStateException,
                                 "Cannot resume a continuation while already running in a continuation.");
             }
             HostFrameRecord stack = getHFR(self, meta);
             if (stack == null) {
-                throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException, "Continuation was not properly dematerialized.");
+                throw meta.throwExceptionWithMessage(meta.continuum.org_graalvm_continuations_IllegalContinuationStateException, "Continuation was not properly dematerialized.");
             }
             assert stack.verify(meta, false);
             // Consume the stack.
@@ -88,7 +87,8 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // The entry node will unpack the head frame record into the stack and then pass the
             // remaining records into the bytecode interpreter, which will then pass them down the
             // stack until everything is fully unwound.
-            try (var scope = tls.continuationScope()) {
+            EspressoThreadLocalState.ContinuationScope scope = tls.continuationScope();
+            try {
                 rewind.execute(stack);
             } catch (UnwindContinuationException unwind) {
                 assert unwind.getContinuation() == self;
@@ -96,7 +96,10 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
                 // Allow reporting of stepping in this thread again. It was blocked by the call to
                 // suspend0()
                 tls.enableSingleStepping();
+            } finally {
+                scope.close();
             }
+
         }
 
         private static HostFrameRecord getHFR(StaticObject self, Meta meta) {
@@ -109,20 +112,23 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     abstract static class Start0 extends SubstitutionNode {
         abstract void execute(StaticObject self);
 
+        // Try-with-resources generates a call to 'Throwable.addSuppressed()', which is blocklisted
+        // by SVM.
         @SuppressWarnings("try")
         @Specialization
         void start0(StaticObject self,
                         @Bind("getMeta()") Meta meta, @Bind("getLanguage()") EspressoLanguage lang,
-                        @Cached("create(meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_run.getCallTarget())") DirectCallNode runCall) {
+                        @Cached("create(meta.continuum.org_graalvm_continuations_Continuation_run.getCallTarget())") DirectCallNode runCall) {
             // This method is an intrinsic and the act of invoking one of those blocks the ability
             // to call suspend, so we have to undo that first.
             EspressoThreadLocalState tls = lang.getThreadLocalState();
             if (tls.isInContinuation()) {
-                throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException,
+                throw meta.throwExceptionWithMessage(meta.continuum.org_graalvm_continuations_IllegalContinuationStateException,
                                 "Cannot resume a continuation while already running in a continuation.");
             }
 
-            try (var scope = tls.continuationScope()) {
+            EspressoThreadLocalState.ContinuationScope scope = tls.continuationScope();
+            try {
                 // The run method is private in Continuation and is the continuation delimiter.
                 // Frames from run onwards will be unwound on suspend, and rewound on resume.
                 runCall.call(self);
@@ -134,6 +140,8 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
                 // Allow reporting of stepping in this thread again. It was blocked by the call to
                 // suspend0()
                 tls.enableSingleStepping();
+            } finally {
+                scope.close();
             }
         }
     }
@@ -145,30 +153,30 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // no host frame to materialize
             return;
         }
-        if (!StaticObject.isNull(meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(self))) {
-            throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException,
+        if (!StaticObject.isNull(meta.continuum.org_graalvm_continuations_Continuation_stackFrameHead.getObject(self))) {
+            throw meta.throwExceptionWithMessage(meta.continuum.org_graalvm_continuations_IllegalMaterializedRecordException,
                             "Somehow, both guest and host records are alive at the same time.");
         }
         StaticObject guestRecord = hfr.copyToGuest(meta);
         // If successful, we can clear the host record
         meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, null, true);
-        meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, guestRecord);
+        meta.continuum.org_graalvm_continuations_Continuation_stackFrameHead.setObject(self, guestRecord);
     }
 
     @Substitution(hasReceiver = true)
     static void dematerialize0(StaticObject self, @Inject Meta meta, @Inject EspressoContext context) {
-        StaticObject guestRecord = meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(self);
+        StaticObject guestRecord = meta.continuum.org_graalvm_continuations_Continuation_stackFrameHead.getObject(self);
         if (StaticObject.isNull(guestRecord)) {
             // no guest frame to dematerialize
             return;
         }
         if (meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true) != null) {
-            throw meta.throwExceptionWithMessage(meta.continuum.com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException,
+            throw meta.throwExceptionWithMessage(meta.continuum.org_graalvm_continuations_IllegalMaterializedRecordException,
                             "Somehow, both guest and host records are alive at the same time.");
         }
         HostFrameRecord hfr = HostFrameRecord.copyFromGuest(self, meta, context);
         // if successful, we can clear the guest side record
-        meta.continuum.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, StaticObject.NULL);
+        meta.continuum.org_graalvm_continuations_Continuation_stackFrameHead.setObject(self, StaticObject.NULL);
         meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, hfr, true);
     }
 

@@ -39,20 +39,17 @@
  * SOFTWARE.
  */
 
-package com.oracle.truffle.espresso.continuations;
+package org.graalvm.continuations;
 
-import java.io.IOException;
 import java.io.Serial;
 
 /**
- * Thrown if the format of the serialized continuation is unrecognized i.e. from a newer version of
- * the runtime, or from a version too old to still be supported.
+ * Thrown by {@link Continuation} methods to indicate the continuation is in an unexpected state.
  */
-public final class FormatVersionException extends IOException {
-    @Serial private static final long serialVersionUID = 6913545866116536598L;
+public final class IllegalContinuationStateException extends IllegalStateException {
+    @Serial private static final long serialVersionUID = 916027401671700751L;
 
-    public FormatVersionException(int version, int supported) {
-        super("Unsupported serialized continuation version: " + version + "\n" +
-                        "Current supported version: " + supported);
+    IllegalContinuationStateException(String s) {
+        super(s);
     }
 }

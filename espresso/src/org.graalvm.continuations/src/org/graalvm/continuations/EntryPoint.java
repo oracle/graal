@@ -39,18 +39,19 @@
  * SOFTWARE.
  */
 
-package com.oracle.truffle.espresso.continuations;
+package org.graalvm.continuations;
 
-import java.io.Serial;
+import org.graalvm.continuations.Continuation.SuspendCapability;
 
 /**
- * Thrown by {@link Continuation} methods to indicate the materialized frame record is faulty with
- * respect to the JVM specifications and thus cannot use it to resume a continuation.
+ * A functional interface to delimit the starting point of the continuation. A Continuation can only
+ * be suspended if {@link #start(SuspendCapability)} is on the calling stack.
  */
-public final class IllegalMaterializedRecordException extends IllegalStateException {
-    @Serial private static final long serialVersionUID = 2905198219671900800L;
-
-    IllegalMaterializedRecordException(String s) {
-        super(s);
-    }
+@FunctionalInterface
+public interface EntryPoint {
+    /**
+     * The starting point of a continuation. The {@code suspendCapability} should only be invoked on
+     * this thread.
+     */
+    void start(SuspendCapability suspendCapability);
 }

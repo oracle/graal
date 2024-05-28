@@ -106,7 +106,7 @@ suite = {
             "license": "UPL",
         },
 
-        "com.oracle.truffle.espresso.continuations": {
+        "org.graalvm.continuations": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -621,15 +621,15 @@ suite = {
         "CONTINUATIONS": {
             "subDir": "src",
             "dependencies": [
-                "com.oracle.truffle.espresso.continuations"
+                "org.graalvm.continuations"
             ],
             "description": "Espresso Continuations API",
             "license": "UPL",
             "javadocType": "api",
             "moduleInfo" : {
-                "name" : "com.oracle.truffle.espresso.continuations",
+                "name" : "org.graalvm.continuations",
                 "exports" : [
-                    "com.oracle.truffle.espresso.continuations",
+                    "org.graalvm.continuations",
                 ]
             },
             "maven": {

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.espresso.continuations;
+package org.graalvm.continuations;
 
 import java.io.Externalizable;
 import java.io.IOException;

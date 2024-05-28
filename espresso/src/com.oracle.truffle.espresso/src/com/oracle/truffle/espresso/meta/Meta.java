@@ -1928,41 +1928,41 @@ public final class Meta extends ContextAccessImpl {
     @CompilationFinal public Method java_beans_Introspector_flushFromCaches;
 
     public final class ContinuumSupport {
-        public final Method com_oracle_truffle_espresso_continuations_Continuation_run;
-        public final Method com_oracle_truffle_espresso_continuations_Continuation_suspend;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead;
+        public final Method org_graalvm_continuations_Continuation_run;
+        public final Method org_graalvm_continuations_Continuation_suspend;
+        public final Field org_graalvm_continuations_Continuation_stackFrameHead;
         public final Field HIDDEN_CONTINUATION_FRAME_RECORD;
-        public final ObjectKlass com_oracle_truffle_espresso_continuations_Continuation_FrameRecord;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next;
-        public final Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci;
-        public final ObjectKlass com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException;
-        public final ObjectKlass com_oracle_truffle_espresso_continuations_IllegalContinuationStateException;
+        public final ObjectKlass org_graalvm_continuations_Continuation_FrameRecord;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_pointers;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_primitives;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_method;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_next;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_bci;
+        public final ObjectKlass org_graalvm_continuations_IllegalMaterializedRecordException;
+        public final ObjectKlass org_graalvm_continuations_IllegalContinuationStateException;
 
         private ContinuumSupport() {
-            ObjectKlass com_oracle_truffle_espresso_continuations_Continuation = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation);
-            com_oracle_truffle_espresso_continuations_Continuation_run = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredMethod(Name.run, Signature._void);
-            com_oracle_truffle_espresso_continuations_Continuation_suspend = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredMethod(Name.suspend, Signature._void);
-            com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredField(Name.stackFrameHead,
-                            Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
-            HIDDEN_CONTINUATION_FRAME_RECORD = com_oracle_truffle_espresso_continuations_Continuation.requireHiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+            ObjectKlass org_graalvm_continuations_Continuation = knownKlass(Type.org_graalvm_continuations_Continuation);
+            org_graalvm_continuations_Continuation_run = org_graalvm_continuations_Continuation.requireDeclaredMethod(Name.run, Signature._void);
+            org_graalvm_continuations_Continuation_suspend = org_graalvm_continuations_Continuation.requireDeclaredMethod(Name.suspend, Signature._void);
+            org_graalvm_continuations_Continuation_stackFrameHead = org_graalvm_continuations_Continuation.requireDeclaredField(Name.stackFrameHead,
+                            Type.org_graalvm_continuations_Continuation_FrameRecord);
+            HIDDEN_CONTINUATION_FRAME_RECORD = org_graalvm_continuations_Continuation.requireHiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD);
+            org_graalvm_continuations_Continuation_FrameRecord = knownKlass(Type.org_graalvm_continuations_Continuation_FrameRecord);
+            org_graalvm_continuations_Continuation_FrameRecord_pointers = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
                             Name.pointers, Type.java_lang_Object_array);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+            org_graalvm_continuations_Continuation_FrameRecord_primitives = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
                             Name.primitives, Type._long_array);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+            org_graalvm_continuations_Continuation_FrameRecord_method = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
                             Name.method, Type.java_lang_reflect_Method);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
-                            Name.next, Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
-            com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_bci = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+            org_graalvm_continuations_Continuation_FrameRecord_next = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+                            Name.next, Type.org_graalvm_continuations_Continuation_FrameRecord);
+            org_graalvm_continuations_Continuation_FrameRecord_bci = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
                             Name.bci, Type._int);
-            com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException = loadKlassWithBootClassLoader(
-                            Type.com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException);
-            com_oracle_truffle_espresso_continuations_IllegalContinuationStateException = loadKlassWithBootClassLoader(
-                            Type.com_oracle_truffle_espresso_continuations_IllegalContinuationStateException);
+            org_graalvm_continuations_IllegalMaterializedRecordException = knownKlass(
+                            Type.org_graalvm_continuations_IllegalMaterializedRecordException);
+            org_graalvm_continuations_IllegalContinuationStateException = knownKlass(
+                            Type.org_graalvm_continuations_IllegalContinuationStateException);
         }
     }
 

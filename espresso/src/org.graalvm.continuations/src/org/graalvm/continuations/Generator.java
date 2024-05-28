@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-package com.oracle.truffle.espresso.continuations;
+package org.graalvm.continuations;
 
 import java.io.Serial;
 import java.io.Serializable;

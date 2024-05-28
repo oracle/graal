@@ -1018,14 +1018,14 @@ public final class Symbol<T> extends ByteSequence {
                         "Lcom/oracle/truffle/espresso/polyglot/impl/EspressoForeignNumber;");
 
         // Continuations
-        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_Continuation_FrameRecord = StaticSymbols.putType(
-                        "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord;");
-        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_Continuation = StaticSymbols.putType(
-                        "Lcom/oracle/truffle/espresso/continuations/Continuation;");
-        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_IllegalMaterializedRecordException = StaticSymbols.putType(
-                        "Lcom/oracle/truffle/espresso/continuations/IllegalMaterializedRecordException;");
-        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_IllegalContinuationStateException = StaticSymbols.putType(
-                        "Lcom/oracle/truffle/espresso/continuations/IllegalContinuationStateException;");
+        public static final Symbol<Type> org_graalvm_continuations_Continuation = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/Continuation;");
+        public static final Symbol<Type> org_graalvm_continuations_Continuation_FrameRecord = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/Continuation$FrameRecord;");
+        public static final Symbol<Type> org_graalvm_continuations_IllegalMaterializedRecordException = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/IllegalMaterializedRecordException;");
+        public static final Symbol<Type> org_graalvm_continuations_IllegalContinuationStateException = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/IllegalContinuationStateException;");
 
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");
