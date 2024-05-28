@@ -182,6 +182,12 @@ public class Graph implements EventCounter {
      * used to trigger certain operations.
      */
     private int eventCounter;
+    private final EventCounterMarker eventCounterMarker = new EventCounterMarker();
+
+    @Override
+    public EventCounterMarker getEventCounterMarker() {
+        return eventCounterMarker;
+    }
 
     @Override
     public boolean eventCounterOverflows(int max) {
