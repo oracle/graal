@@ -218,13 +218,7 @@ public class BytecodeDSLBuiltins {
                                         m.signature(void.class, Object.class, Object.class)) //
                                         .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
         m.returnOperation = m.operation(OperationKind.RETURN, "Return", "Return returns the value produced by {@code result}.") //
-                        /**
-                         * NB: return doesn't produce a value, but it is convenient to treat it as
-                         * non-void for bytecode validation (e.g., an operation expecting a value
-                         * will accept a return as its child, which is okay because the return ends
-                         * execution before the parent runs).
-                         */
-                        .setVoid(false) //
+                        .setVoid(true) //
                         .setDynamicOperands(child("result")) //
                         .setInstruction(m.returnInstruction);
         if (m.enableYield) {

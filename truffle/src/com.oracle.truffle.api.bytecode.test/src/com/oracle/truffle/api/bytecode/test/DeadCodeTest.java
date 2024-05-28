@@ -472,7 +472,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     @Test
     public void testUnreachableConditional1() {
         // @formatter:off
-        // true ? return 42 : return 41;
+        // true ? { return 42; true } : { return 41; false }
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
@@ -481,13 +481,19 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginConditional();
             b.emitLoadConstant(true);
 
+            b.beginBlock();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
+            b.emitLoadConstant(true);
+            b.endBlock();
 
+            b.beginBlock();
             b.beginReturn();
             b.emitLoadConstant(41);
             b.endReturn();
+            b.emitLoadConstant(false);
+            b.endBlock();
 
             b.endConditional();
 
@@ -567,16 +573,19 @@ public class DeadCodeTest extends AbstractInstructionTest {
     @Test
     public void testUnreachableConditionConditional() {
         // @formatter:off
-        // (return 42) ? 41: 41;
+        // (return 42; true) ? 41: 41;
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginConditional();
+            b.beginBlock();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
+            b.emitLoadConstant(true);
+            b.endBlock();
 
             b.emitLoadConstant(41);
 
@@ -598,7 +607,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     @Test
     public void testUnreachableConditionIfThen() {
         // @formatter:off
-        // if (return 42) {
+        // if (return 42; true) {
         //   false;
         // }
         // return 41;
@@ -607,9 +616,13 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginRoot(LANGUAGE);
 
             b.beginIfThen();
+            b.beginBlock();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
+            b.emitLoadConstant(true);
+            b.endBlock();
+
             b.emitLoadConstant(false);
             b.endIfThen();
 
@@ -630,7 +643,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     @Test
     public void testUnreachableConditionWhile() {
         // @formatter:off
-        // while (return 42) {
+        // while (return 42; true) {
         //  false;
         // }
         // return 41;
@@ -639,9 +652,12 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginRoot(LANGUAGE);
 
             b.beginWhile();
+            b.beginBlock();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
+            b.emitLoadConstant(true);
+            b.endBlock();
 
             b.emitLoadConstant(false);
             b.endWhile();
@@ -663,7 +679,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     @Test
     public void testUnreachableConditionIfThenElse() {
         // @formatter:off
-        // if (return 42) {
+        // if (return 42; true) {
         //   41;
         // } else {
         //   41;
@@ -673,9 +689,12 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginRoot(LANGUAGE);
 
             b.beginIfThenElse();
+            b.beginBlock();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
+            b.emitLoadConstant(true);
+            b.endBlock();
 
             b.emitLoadConstant(41);
             b.emitLoadConstant(41);
