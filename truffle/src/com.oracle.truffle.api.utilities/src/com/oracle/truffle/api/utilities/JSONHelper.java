@@ -173,6 +173,7 @@ public final class JSONHelper {
 
         /** @since 0.8 or earlier */
         @Override
+        @SuppressWarnings("deprecation")
         protected void appendTo(StringBuilder sb) {
             sb.append("{");
             boolean comma = false;
@@ -222,6 +223,7 @@ public final class JSONHelper {
 
         /** @since 0.8 or earlier */
         @Override
+        @SuppressWarnings("deprecation")
         protected void appendTo(StringBuilder sb) {
             sb.append("[");
             boolean comma = false;
