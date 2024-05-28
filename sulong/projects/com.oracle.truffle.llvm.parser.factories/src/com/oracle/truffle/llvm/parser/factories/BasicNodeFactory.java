@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -279,6 +279,8 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMStoreVectorNodeGen
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMStructStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMIsFPClassNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerMaskNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode.LLVMAbstractI64ArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMDoubleArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMFP128ArithmeticNodeGen;
@@ -1446,6 +1448,8 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMFunnelShiftNode.getFshlFactory(kind);
             case "fshr":
                 return LLVMFunnelShiftNode.getFshrFactory(kind);
+            case "is.fpclass":
+                return LLVMIsFPClassNode.getIsFPClassFactory(kind);
             default:
                 return null;
         }
@@ -1487,6 +1491,8 @@ public class BasicNodeFactory implements NodeFactory {
         String intrinsicName = declaration.getName();
         try {
             switch (intrinsicName) {
+                case "llvm.ptrmask.p0.i64":
+                    return LLVMPointerMaskNodeGen.create(args[1], args[2]);
                 case "llvm.memset.p0.i32":
                 case "llvm.memset.p0i8.i32":
                 case "llvm.memset.p0.i64":
@@ -1560,8 +1566,10 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.invariant.end.p0i8":
                     return LLVMInvariantEndNodeGen.create(args[1], args[2]);
                 case "llvm.stacksave":
+                case "llvm.stacksave.p0":
                     return LLVMStackSaveNodeGen.create();
                 case "llvm.stackrestore":
+                case "llvm.stackrestore.p0":
                     return LLVMStackRestoreNodeGen.create(args[1]);
                 case "llvm.frameaddress":
                 case "llvm.frameaddress.p0":
@@ -1582,6 +1590,10 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.eh.sjlj.longjmp":
                 case "llvm.eh.sjlj.setjmp":
                     return LLVMUnsupportedInstructionNode.createExpression(UnsupportedReason.SET_JMP_LONG_JMP);
+                case "llvm.dbg.assign":
+                    // https://llvm.org/docs/AssignmentTracking.html
+                    // not used by Sulong
+                    return LLVMNoOpNodeGen.create();
                 case "llvm.dbg.declare":
                 case "llvm.dbg.addr":
                 case "llvm.dbg.value":

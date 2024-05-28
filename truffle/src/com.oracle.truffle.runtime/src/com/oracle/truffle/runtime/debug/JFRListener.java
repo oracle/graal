@@ -45,6 +45,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -135,11 +136,11 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         CompilationData data = getCurrentData();
         statistics.finishCompilation(data.finish(), bailout, 0);
         if (data.event != null) {
-            data.event.failed(isPermanentFailure(bailout, permanentBailout), reason);
+            data.event.failed(tier, isPermanentFailure(bailout, permanentBailout), reason, lazyStackTrace);
             data.event.publish();
         }
         currentCompilation.remove();
@@ -152,23 +153,14 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         statistics.finishCompilation(data.finish(), false, compiledCodeSize);
         if (data.event != null) {
             CompilationEvent event = data.event;
-            event.succeeded();
+            event.succeeded(task.tier());
             event.setCompiledCodeSize(compiledCodeSize);
             if (target.getCodeAddress() != 0) {
                 event.setCompiledCodeAddress(target.getCodeAddress());
             }
 
-            int calls;
-            int inlinedCalls;
-            if (task == null) {
-                TraceCompilationListener.CallCountVisitor visitor = new TraceCompilationListener.CallCountVisitor();
-                target.accept(visitor);
-                calls = visitor.calls;
-                inlinedCalls = 0;
-            } else {
-                calls = task.countCalls();
-                inlinedCalls = task.countInlinedCalls();
-            }
+            int calls = task.countCalls();
+            int inlinedCalls = task.countInlinedCalls();
             int dispatchedCalls = calls - inlinedCalls;
             event.setInlinedCalls(inlinedCalls);
             event.setDispatchedCalls(dispatchedCalls);

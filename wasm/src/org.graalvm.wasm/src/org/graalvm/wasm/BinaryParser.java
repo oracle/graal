@@ -1525,7 +1525,7 @@ public class BinaryParser extends BinaryStreamParser {
                 break;
             case Instructions.ATOMIC:
                 checkThreadsSupport(opcode);
-                int atomicOpcode = read1() & 0xFF;
+                int atomicOpcode = readUnsignedInt32();
                 state.addAtomicFlag();
                 switch (atomicOpcode) {
                     case Instructions.ATOMIC_NOTIFY:
@@ -1802,7 +1802,7 @@ public class BinaryParser extends BinaryStreamParser {
                 break;
             case Instructions.VECTOR:
                 checkSIMDSupport();
-                int vectorOpcode = read1() & 0xFF;
+                int vectorOpcode = readUnsignedInt32();
                 state.addVectorFlag();
                 switch (vectorOpcode) {
                     case Instructions.VECTOR_V128_LOAD:

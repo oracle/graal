@@ -47,12 +47,14 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
     private final ConfigurationConditionResolver<C> conditionResolver;
     private final RuntimeSerializationSupport<C> serializationSupport;
     private final ProxyConfigurationParser<C> proxyConfigurationParser;
+    private final boolean treatAllNameEntriesAsType;
 
     public SerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
         super(strictConfiguration);
         this.serializationSupport = serializationSupport;
         this.proxyConfigurationParser = new ProxyConfigurationParser<>(conditionResolver, strictConfiguration, serializationSupport::registerProxyClass);
         this.conditionResolver = conditionResolver;
+        this.treatAllNameEntriesAsType = false;
     }
 
     @Override
@@ -100,15 +102,14 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
             checkHasExactlyOneAttribute(data, "serialization descriptor object", List.of(TYPE_KEY, NAME_KEY));
         }
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data);
-        var condition = conditionResolver.resolveCondition(unresolvedCondition);
-        if (!condition.isPresent()) {
+        Optional<ConfigurationTypeDescriptor> targetSerializationClass = parseTypeOrName(data, treatAllNameEntriesAsType);
+        if (targetSerializationClass.isEmpty()) {
             return;
         }
 
-        Optional<ConfigurationTypeDescriptor> targetSerializationClass;
-        targetSerializationClass = parseType(data);
-        if (targetSerializationClass.isEmpty()) {
+        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, targetSerializationClass.get().definedAsType());
+        var condition = conditionResolver.resolveCondition(unresolvedCondition);
+        if (!condition.isPresent()) {
             return;
         }
 

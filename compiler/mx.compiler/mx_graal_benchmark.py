@@ -31,94 +31,11 @@ from typing import List, Optional
 import mx
 import mx_benchmark
 import mx_sdk_benchmark
-import mx_compiler
-from mx_java_benchmarks import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
 from mx_benchmark import DataPoints
-from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, Stage
+from mx_sdk_benchmark import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
+from mx_sdk_benchmark import JvmciJdkVm, SUCCESSFUL_STAGE_PATTERNS, Stage
 
 _suite = mx.suite('compiler')
-
-class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
-    def __init__(self, raw_name, raw_config_name, extra_args):
-        super(JvmciJdkVm, self).__init__()
-        self.raw_name = raw_name
-        self.raw_config_name = raw_config_name
-        self.extra_args = extra_args
-
-    def name(self):
-        return self.raw_name
-
-    def config_name(self):
-        return self.raw_config_name
-
-    def post_process_command_line_args(self, args):
-        return [arg if not callable(arg) else arg() for arg in self.extra_args] + args
-
-    def get_jdk(self):
-        tag = mx.get_jdk_option().tag
-        if tag and tag != mx_compiler._JVMCI_JDK_TAG:
-            mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
-                self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
-        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG)
-
-    def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
-        return self.get_jdk().run_java(
-            args, out=out, err=out, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, command_mapper_hooks=self.command_mapper_hooks)
-
-    def generate_java_command(self, args):
-        return self.get_jdk().generate_java_command(self.post_process_command_line_args(args))
-
-    def rules(self, output, benchmarks, bmSuiteArgs):
-        rules = super(JvmciJdkVm, self).rules(output, benchmarks, bmSuiteArgs)
-        return rules
-
-
-def add_or_replace_arg(option_key, value, vm_option_list):
-    """
-    Determines if an option with the same key as option_key is already present in vm_option_list.
-    If so, it replaces the option value with the given one. If not, it appends the option
-    to the end of the list. It then returns the modified list.
-
-    For example, if arg_list contains the argument '-Djdk.graal.CompilerConfig=community', and this function
-    is called with an option_key of '-Djdk.graal.CompilerConfig' and a value of 'economy', the resulting
-    argument list will contain one instance of '-Djdk.graal.CompilerConfig=economy'.
-    """
-    arg_string = option_key + '=' + value
-    idx = next((idx for idx, arg in enumerate(vm_option_list) if arg.startswith(option_key)), -1)
-    if idx == -1:
-        vm_option_list.append(arg_string)
-    else:
-        vm_option_list[idx] = arg_string
-    return vm_option_list
-
-def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0, hosted=True):
-    prefixes = [('', ['-XX:+UseJVMCICompiler'])]
-    if hosted:
-        prefixes.append(('hosted-', ['-XX:-UseJVMCICompiler']))
-    for prefix, args in prefixes:
-        extended_raw_config_name = prefix + raw_config_name
-        extended_extra_args = extra_args + args
-        if include_default:
-            mx_benchmark.add_java_vm(
-                JvmciJdkVm(raw_name, extended_raw_config_name, extended_extra_args), suite, priority)
-        for variant in variants:
-            compiler_config = None
-            if len(variant) == 2:
-                var_name, var_args = variant
-                var_priority = priority
-            elif len(variant) == 3:
-                var_name, var_args, var_priority = variant
-            elif len(variant) == 4:
-                var_name, var_args, var_priority, compiler_config = variant
-            else:
-                raise TypeError("unexpected tuple size for jvmci variant {} (size must be <= 4)".format(variant))
-
-            variant_args = extended_extra_args + var_args
-            if compiler_config is not None:
-                variant_args = add_or_replace_arg('-Djdk.graal.CompilerConfiguration', compiler_config, variant_args)
-
-            mx_benchmark.add_java_vm(
-                JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, variant_args), suite, var_priority)
 
 
 _graal_variants = [
@@ -143,7 +60,7 @@ _graal_variants = [
     ('avx2', ['-XX:UseAVX=2'], 11),
     ('avx3', ['-XX:UseAVX=3'], 11),
 ]
-build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Djdk.graal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
+mx_sdk_benchmark.build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Djdk.graal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
 # On 64 bit systems -client is not supported. Nevertheless, when running with -server, we can
 # force the VM to just compile code with C1 but not with C2 by adding option -XX:TieredStopAtLevel=1.

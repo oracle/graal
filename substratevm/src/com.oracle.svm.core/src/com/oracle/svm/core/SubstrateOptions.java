@@ -110,8 +110,6 @@ public class SubstrateOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             LayeredBaseImageAnalysis.update(values, newValue);
             ClosedTypeWorld.update(values, !newValue);
-            PersistImageLayerAnalysis.update(values, newValue);
-            PersistImageLayerSingletons.update(values, newValue);
             StripDebugInfo.update(values, !newValue);
             AOTTrivialInline.update(values, !newValue);
             if (imageLayerEnabledHandler != null) {
@@ -870,11 +868,6 @@ public class SubstrateOptions {
     @Option(help = "Size of the reserved address space of each compilation isolate (0: default for new isolates).") //
     public static final RuntimeOptionKey<Long> CompilationIsolateAddressSpaceSize = new RuntimeOptionKey<>(0L);
 
-    @Fold
-    public static boolean useRememberedSet() {
-        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
-    }
-
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
 
@@ -896,9 +889,6 @@ public class SubstrateOptions {
 
         @Option(help = "Activate runtime compilation in separate isolates (enable support during image build with option SupportCompileInIsolates).") //
         public static final RuntimeOptionKey<Boolean> CompileInIsolates = new RuntimeOptionKey<>(true, RelevantForCompilationIsolates);
-
-        @Option(help = "Determines if a remembered sets is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
-        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
 
         /** Use {@link VMOperationControl#useDedicatedVMOperationThread()} instead. */
         @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
@@ -1132,12 +1122,6 @@ public class SubstrateOptions {
         return ClosedTypeWorld.getValue();
     }
 
-    @Option(help = "Persist the image heap and the AnalysisUniverse (types, methods and fields) of the current build", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> PersistImageLayerAnalysis = new HostedOptionKey<>(false);
-
-    @Option(help = "Persist the layered image singletons of the current build", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> PersistImageLayerSingletons = new HostedOptionKey<>(false);
-
     @Option(help = "Throws an exception on potential type conflict during heap persisting if enabled", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> AbortOnNameConflict = new HostedOptionKey<>(false);
 
@@ -1156,12 +1140,6 @@ public class SubstrateOptions {
             }
         }
     };
-
-    @Option(help = "Load the image heap and the AnalysisUniverse into the current build", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> LoadImageLayerAnalysis = new HostedOptionKey<>(true);
-
-    @Option(help = "Load the layered image singleton information into the current build", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> LoadImageLayerSingletons = new HostedOptionKey<>(true);
 
     public static class TruffleStableOptions {
 

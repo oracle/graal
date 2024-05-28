@@ -499,7 +499,7 @@ public final class SubprocessUtil {
     private static final Path ARGFILES_DIRECTORY = initArgfilesDirectory();
 
     private static Path initArgfilesDirectory() {
-        return GraalTest.getOutputDirectory(SubprocessUtil.class).resolve("SubprocessUtil-argfiles");
+        return GraalTest.getOutputDirectory().resolve("SubprocessUtil-argfiles");
     }
 
     /**

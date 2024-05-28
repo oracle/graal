@@ -90,7 +90,7 @@ public final class ProxyConfigurationParser<C> extends ConfigurationParser {
 
     private void parseWithConditionalConfig(EconomicMap<String, Object> proxyConfigObject) {
         checkAttributes(proxyConfigObject, "proxy descriptor object", Collections.singleton("interfaces"), Collections.singletonList(CONDITIONAL_KEY));
-        UnresolvedConfigurationCondition condition = parseCondition(proxyConfigObject);
+        UnresolvedConfigurationCondition condition = parseCondition(proxyConfigObject, false);
         TypeResult<C> resolvedCondition = conditionResolver.resolveCondition(condition);
         if (resolvedCondition.isPresent()) {
             parseInterfaceList(resolvedCondition.get(), asList(proxyConfigObject.get("interfaces"), "The interfaces property must be an array of fully qualified interface names"));

@@ -143,7 +143,7 @@ public class CompilationPrinter implements Closeable {
             BytecodePosition curCodePos = codePos;
             List<VirtualObject> virtualObjects = new ArrayList<>();
             do {
-                sb.append(MetaUtil.toLocation(curCodePos.getMethod(), curCodePos.getBCI()));
+                MetaUtil.appendLocation(sb, curCodePos.getMethod(), curCodePos.getBCI());
                 sb.append('\n');
                 if (curCodePos instanceof BytecodeFrame) {
                     BytecodeFrame frame = (BytecodeFrame) curCodePos;

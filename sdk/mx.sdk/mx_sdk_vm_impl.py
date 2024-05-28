@@ -579,7 +579,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             _jvm_library_dest = _component_jvmlib_base
 
             if _component.dir_name:
-                _component_base = _component_type_base + _component.dir_name + '/'
+                _component_base = normpath(_component_type_base + _component.dir_name) + '/'
             else:
                 _component_base = _component_type_base
 
@@ -600,7 +600,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                 # a subset of files from this component's home directory. The file lists will be merged by the NativeImageResourcesFileList project into a single file `native-image-resources.filelist` that will be
                 # written into this component's home directory. As a part of a native image build that includes this component, the files in the merged file list will be copied as resources to a directory named
                 # `resources` next to the produced image. This impacts only the native images built by GraalVM that are not a part of the GraalVM itself.
-                if not _component_base in _lang_homes_with_ni_resources:
+                if _component_base not in _lang_homes_with_ni_resources:
                     _add(layout, _component_base, 'dependency:{}/native-image-resources.filelist'.format(NativeImageResourcesFileList.project_name(_component.dir_name)), _component)
                     _lang_homes_with_ni_resources.append(_component_base)
             _add(layout, '<jdk_base>/include/', [{
@@ -623,27 +623,28 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             else:
                 _jdk_jre_bin = '<jre_base>/bin/'
 
-            _licenses = _component.third_party_license_files
-            if not _no_licenses():
-                _licenses = _licenses + _component.license_files
-            for _license in _licenses:
-                if mx.is_windows() or isinstance(self, mx.AbstractJARDistribution):
-                    if _component_base == '<jdk_base>/':
-                        pass  # already in place from the support dist
-                    elif len(_component.support_distributions) == 1:
-                        _support = _component.support_distributions[0]
-                        _add(layout, '<jdk_base>/', 'extracted-dependency:{}/{}'.format(_support, _license), _component)
-                    elif any(_license.startswith(sd + '/') for sd in _component.support_distributions):
-                        _add(layout, '<jdk_base>/', 'extracted-dependency:{}'.format(_license), _component)
+            if _component_base == '<jdk_base>/':
+                pass  # already in place from the support dist
+            else:
+                _licenses = _component.third_party_license_files
+                if not _no_licenses():
+                    _licenses = _licenses + _component.license_files
+                for _license in _licenses:
+                    if mx.is_windows() or isinstance(self, mx.AbstractJARDistribution):
+                        if len(_component.support_distributions) == 1:
+                            _support = _component.support_distributions[0]
+                            _add(layout, '<jdk_base>/', 'extracted-dependency:{}/{}'.format(_support, _license), _component)
+                        elif any(_license.startswith(sd + '/') for sd in _component.support_distributions):
+                            _add(layout, '<jdk_base>/', 'extracted-dependency:{}'.format(_license), _component)
+                        else:
+                            mx.warn("Can not add license: " + _license)
                     else:
-                        mx.warn("Can not add license: " + _license)
-                else:
-                    for sd in _component.support_distributions:
-                        if _license.startswith(sd + '/'):
-                            _add_link('<jdk_base>/', _component_base + _license[len(sd) + 1:], _component)
-                            break
-                    else:
-                        _add_link('<jdk_base>/', _component_base + _license, _component)
+                        for sd in _component.support_distributions:
+                            if _license.startswith(sd + '/'):
+                                _add_link('<jdk_base>/', _component_base + _license[len(sd) + 1:], _component)
+                                break
+                        else:
+                            _add_link('<jdk_base>/', _component_base + _license, _component)
 
             _jre_bin_names = []
 

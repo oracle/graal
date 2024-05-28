@@ -43,7 +43,6 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.function.BiConsumer;
 
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -60,6 +59,7 @@ import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -1253,6 +1253,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             asm.movq(ValueUtil.asRegister(callingConvention.getArgument(1)), gpReturnReg);
             asm.movdq(ValueUtil.asRegister(callingConvention.getArgument(2)), fpReturnReg);
 
+            /* Add a dummy return address to the stack so that RSP is properly aligned. */
+            asm.subq(registerConfig.getFrameRegister(), FrameAccess.returnAddressSize());
             super.enter(tasm);
         }
     }

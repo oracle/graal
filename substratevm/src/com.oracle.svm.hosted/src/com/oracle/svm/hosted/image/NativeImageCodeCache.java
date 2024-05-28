@@ -73,11 +73,12 @@ import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder;
-import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -371,8 +372,8 @@ public abstract class NativeImageCodeCache {
 
         Set<AnalysisField> includedFields = new HashSet<>();
         Set<AnalysisMethod> includedMethods = new HashSet<>();
-        Map<AnalysisField, Field> configurationFields = reflectionSupport.getReflectionFields();
-        Map<AnalysisMethod, Executable> configurationExecutables = reflectionSupport.getReflectionExecutables();
+        Map<AnalysisField, ConditionalRuntimeValue<Field>> configurationFields = reflectionSupport.getReflectionFields();
+        Map<AnalysisMethod, ConditionalRuntimeValue<Executable>> configurationExecutables = reflectionSupport.getReflectionExecutables();
 
         reflectionSupport.getHeapReflectionFields().forEach(((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
@@ -443,11 +444,11 @@ public abstract class NativeImageCodeCache {
         }
 
         if (throwMissingRegistrationErrors()) {
-            reflectionSupport.getNegativeFieldQueries().forEach((analysisType, fieldNames) -> {
+            reflectionSupport.getNegativeFieldQueries().forEach((analysisType, fields) -> {
                 HostedType hostedType = hUniverse.optionalLookup(analysisType);
                 if (hostedType != null) {
-                    for (String fieldName : fieldNames) {
-                        runtimeMetadataEncoder.addNegativeFieldQueryMetadata(hostedType, fieldName);
+                    for (String field : fields) {
+                        runtimeMetadataEncoder.addNegativeFieldQueryMetadata(hostedType, field);
                     }
                 }
             });
@@ -791,9 +792,9 @@ public abstract class NativeImageCodeCache {
     public interface RuntimeMetadataEncoder extends EncodedRuntimeMetadataSupplier {
         void addClassMetadata(MetaAccessProvider metaAccess, HostedType type, Class<?>[] reflectionClasses);
 
-        void addReflectionFieldMetadata(MetaAccessProvider metaAccess, HostedField sharedField, Field reflectField);
+        void addReflectionFieldMetadata(MetaAccessProvider metaAccess, HostedField sharedField, ConditionalRuntimeValue<Field> reflectField);
 
-        void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, Executable reflectMethod, Object accessor);
+        void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, ConditionalRuntimeValue<Executable> reflectMethod, Object accessor);
 
         void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, WrappedElement hostedElement, AccessibleObject object, boolean registered);
 

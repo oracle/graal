@@ -34,8 +34,8 @@ import com.oracle.svm.core.util.VMError;
 public interface UnsupportedLayeredSingleton extends LayeredImageSingleton {
 
     @Override
-    default EnumSet<ImageBuilderFlags> getImageBuilderFlags() {
-        return EnumSet.of(ImageBuilderFlags.UNSUPPORTED);
+    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return EnumSet.of(LayeredImageSingletonBuilderFlags.UNSUPPORTED);
     }
 
     @Override

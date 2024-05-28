@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -177,4 +177,7 @@ public interface MetadataVisitor extends ValueList.ValueVisitor<MDBaseNode> {
         defaultAction(md);
     }
 
+    default void visit(MDAssignID md) {
+        defaultAction(md);
+    }
 }

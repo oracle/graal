@@ -34,12 +34,16 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
@@ -78,7 +82,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
-    private final EconomicMap<ProxyCacheKey, Object> proxyCache = ImageHeapMap.create();
+    private final EconomicMap<ProxyCacheKey, ConditionalRuntimeValue<Object>> proxyCache = ImageHeapMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicProxySupport() {
@@ -86,7 +90,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void addProxyClass(Class<?>... interfaces) {
+    public synchronized void addProxyClass(ConfigurationCondition condition, Class<?>... interfaces) {
+        VMError.guarantee(condition.isRuntimeChecked(), "The condition used must be a runtime condition.");
         /*
          * Make a defensive copy of the interfaces array to protect against the caller modifying the
          * array.
@@ -95,8 +100,9 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         ProxyCacheKey key = new ProxyCacheKey(intfs);
 
         if (!proxyCache.containsKey(key)) {
-            proxyCache.put(key, createProxyClass(intfs));
+            proxyCache.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), createProxyClass(intfs)));
         }
+        proxyCache.get(key).getConditions().addCondition(condition);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -168,14 +174,15 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     @Override
     public Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
-        Object clazzOrError = proxyCache.get(key);
-        if (clazzOrError == null) {
+        ConditionalRuntimeValue<Object> clazzOrError = proxyCache.get(key);
+
+        if (clazzOrError == null || !clazzOrError.getConditions().satisfied()) {
             throw MissingReflectionRegistrationUtils.errorForProxy(interfaces);
         }
-        if (clazzOrError instanceof Throwable) {
-            throw new GraalError((Throwable) clazzOrError);
+        if (clazzOrError.getValue() instanceof Throwable) {
+            throw new GraalError((Throwable) clazzOrError.getValue());
         }
-        Class<?> clazz = (Class<?>) clazzOrError;
+        Class<?> clazz = (Class<?>) clazzOrError.getValue();
         if (!DynamicHub.fromClass(clazz).isLoaded()) {
             /*
              * NOTE: we might race with another thread in loading this proxy class.

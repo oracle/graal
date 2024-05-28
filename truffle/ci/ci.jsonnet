@@ -19,8 +19,8 @@
   },
 
   local guard = {
-    guard: {
-      includes: ["<graal>/sdk/**", "<graal>/truffle/**", "**.jsonnet"] + top_level_ci,
+    guard+: {
+      includes+: ["<graal>/sdk/**", "<graal>/truffle/**", "**.jsonnet"] + top_level_ci,
     }
   },
 

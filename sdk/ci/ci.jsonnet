@@ -12,8 +12,8 @@
     ],
     targets: ["gate"],
     timelimit: "30:00",
-    guard: {
-        includes: ["<graal>/sdk/**", "**.jsonnet"] + utils.top_level_ci,
+    guard+: {
+        includes+: ["<graal>/sdk/**", "**.jsonnet"] + utils.top_level_ci,
     }
   },
 

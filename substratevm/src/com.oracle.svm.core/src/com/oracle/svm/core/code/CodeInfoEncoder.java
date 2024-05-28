@@ -59,6 +59,7 @@ import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -68,6 +69,7 @@ import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.FrequencyEncoder;
@@ -118,8 +120,10 @@ public class CodeInfoEncoder {
     public static final class Encoders {
         static final Class<?> INVALID_CLASS = null;
         static final String INVALID_METHOD_NAME = "";
+        static final int INVALID_METHOD_MODIFIERS = -1;
+        static final String INVALID_METHOD_SIGNATURE = null;
 
-        public record Member(ResolvedJavaMethod method, Class<?> clazz, String name) {
+        public record Member(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int modifiers) {
         }
 
         public final FrequencyEncoder<JavaConstant> objectConstants;
@@ -158,23 +162,29 @@ public class CodeInfoEncoder {
                 this.methods.addObject(null);
                 this.classes.addObject(INVALID_CLASS);
                 this.memberNames.addObject(INVALID_METHOD_NAME);
+                if (shouldEncodeAllMethodMetadata()) {
+                    this.otherStrings.addObject(INVALID_METHOD_SIGNATURE);
+                }
             }
         }
 
-        public void addMethod(ResolvedJavaMethod method, Class<?> clazz, String name) {
+        public void addMethod(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int modifiers) {
             VMError.guarantee(SubstrateUtil.HOSTED, "Runtime code info must reference image methods by id");
 
-            Member member = new Member(Objects.requireNonNull(method), clazz, name);
+            Member member = new Member(Objects.requireNonNull(method), clazz, name, signature, modifiers);
             if (methods.addObject(member)) {
                 classes.addObject(clazz);
                 memberNames.addObject(name);
+                if (shouldEncodeAllMethodMetadata()) {
+                    otherStrings.addObject(signature);
+                }
             }
         }
 
-        public int findMethodIndex(ResolvedJavaMethod method, Class<?> clazz, String name, boolean optional) {
+        public int findMethodIndex(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int modifiers, boolean optional) {
             VMError.guarantee(SubstrateUtil.HOSTED, "Runtime code info must obtain method ids from image code info");
 
-            Member member = new Member(Objects.requireNonNull(method), clazz, name);
+            Member member = new Member(Objects.requireNonNull(method), clazz, name, signature, modifiers);
             return optional ? methods.findIndex(member) : methods.getIndex(member);
         }
 
@@ -214,7 +224,7 @@ public class CodeInfoEncoder {
          * fewer bytes}. Still, the fields of the entries are dimensioned to not be larger than
          * necessary to index into another array such as {@link #classes}.
          *
-         * @see CodeInfoDecoder#fillInSourceClassAndMethodName
+         * @see CodeInfoDecoder#fillSourceFields
          */
         private NonmovableArray<Byte> encodeMethodTable() {
             if (methods == null) {
@@ -225,18 +235,21 @@ public class CodeInfoEncoder {
 
             final boolean shortClassIndexes = (classes.getLength() <= 0xffff);
             final boolean shortNameIndexes = (memberNames.getLength() <= 0xffff);
+            final boolean shortSignatureIndexes = (otherStrings.getLength() <= 0xffff);
             UnsafeArrayTypeWriter writer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
             assert encodedMethods[0] == null : "id 0 must mean invalid";
-            encodeMethod(writer, INVALID_CLASS, INVALID_METHOD_NAME, shortClassIndexes, shortNameIndexes);
+            encodeMethod(writer, INVALID_CLASS, INVALID_METHOD_NAME, INVALID_METHOD_SIGNATURE, INVALID_METHOD_MODIFIERS, shortClassIndexes, shortNameIndexes, shortSignatureIndexes);
             for (int id = 1; id < encodedMethods.length; id++) {
-                encodeMethod(writer, encodedMethods[id].clazz, encodedMethods[id].name, shortClassIndexes, shortNameIndexes);
+                encodeMethod(writer, encodedMethods[id].clazz, encodedMethods[id].name, encodedMethods[id].signature, encodedMethods[id].modifiers, shortClassIndexes, shortNameIndexes,
+                                shortSignatureIndexes);
             }
             NonmovableArray<Byte> bytes = NonmovableArrays.createByteArray(NumUtil.safeToInt(writer.getBytesWritten()), NmtCategory.Code);
             writer.toByteBuffer(NonmovableArrays.asByteBuffer(bytes));
             return bytes;
         }
 
-        private void encodeMethod(UnsafeArrayTypeWriter writer, Class<?> clazz, String name, boolean shortClassIndexes, boolean shortNameIndexes) {
+        private void encodeMethod(UnsafeArrayTypeWriter writer, Class<?> clazz, String name, String signature, int modifiers, boolean shortClassIndexes, boolean shortNameIndexes,
+                        boolean shortSignatureIndexes) {
             int classIndex = classes.getIndex(clazz);
             if (shortClassIndexes) {
                 writer.putU2(classIndex);
@@ -248,6 +261,15 @@ public class CodeInfoEncoder {
                 writer.putU2(memberNamesIndex);
             } else {
                 writer.putU4(memberNamesIndex);
+            }
+            if (shouldEncodeAllMethodMetadata()) {
+                int signatureNamesIndex = otherStrings.getIndex(signature);
+                if (shortSignatureIndexes) {
+                    writer.putU2(signatureNamesIndex);
+                } else {
+                    writer.putU4(signatureNamesIndex);
+                }
+                writer.putS2(modifiers);
             }
         }
 
@@ -298,6 +320,11 @@ public class CodeInfoEncoder {
 
     public Encoders getEncoders() {
         return encoders;
+    }
+
+    @Fold
+    public static boolean shouldEncodeAllMethodMetadata() {
+        return HasJfrSupport.get();
     }
 
     public static int getEntryOffset(Infopoint infopoint) {

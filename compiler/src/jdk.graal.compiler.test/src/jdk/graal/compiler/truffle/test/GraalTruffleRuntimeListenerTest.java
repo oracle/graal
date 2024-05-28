@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
@@ -425,7 +426,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
 
         @Override
-        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> serializedException) {
             if ((isImportant(target))) {
                 events.add(EventType.COMPILATION_FAILURE);
             }
@@ -463,7 +464,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
     private static void executeInSubprocess(Runnable action) throws IOException, InterruptedException {
         Path tmpDir = SubprocessTestUtils.isSubprocess() ? null : Files.createTempDirectory(GraalTruffleRuntimeListenerTest.class.getSimpleName());
         try {
-            SubprocessTestUtils.executeInSubprocess(GraalTruffleRuntimeListenerTest.class, action, String.format("-Djdk.graal.DumpPath=%s", tmpDir));
+            SubprocessTestUtils.newBuilder(GraalTruffleRuntimeListenerTest.class, action).prefixVmOption(String.format("-Djdk.graal.DumpPath=%s", tmpDir)).run();
         } finally {
             if (tmpDir != null) {
                 Files.walk(tmpDir).sorted(Comparator.reverseOrder()).forEach(GraalTruffleRuntimeListenerTest::delete);

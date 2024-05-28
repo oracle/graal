@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -48,7 +49,7 @@ public final class YoungGeneration extends Generation {
     @Platforms(Platform.HOSTED_ONLY.class)
     YoungGeneration(String name) {
         super(name);
-        this.eden = new Space("Eden", "E", true, 0);
+        this.eden = new Space("Eden", "E", false, 0);
         this.maxSurvivorSpaces = HeapParameters.getMaxSurvivorSpaces();
         this.survivorFromSpaces = new Space[maxSurvivorSpaces];
         this.survivorToSpaces = new Space[maxSurvivorSpaces];
@@ -56,8 +57,8 @@ public final class YoungGeneration extends Generation {
         this.survivorsToSpacesAccounting = new ChunksAccounting();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             int age = i + 1;
-            this.survivorFromSpaces[i] = new Space("Survivor-" + age, "S" + age, true, age);
-            this.survivorToSpaces[i] = new Space("Survivor-" + age + " To", "S" + age, false, age, survivorsToSpacesAccounting);
+            this.survivorFromSpaces[i] = new Space("Survivor-" + age, "S" + age, false, age);
+            this.survivorToSpaces[i] = new Space("Survivor-" + age + " To", "S" + age, true, age, survivorsToSpacesAccounting);
             this.survivorGreyObjectsWalkers[i] = new GreyObjectsWalker();
         }
     }
@@ -153,7 +154,7 @@ public final class YoungGeneration extends Generation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void prepareForPromotion() {
+    void beginPromotion() {
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             assert getSurvivorToSpaceAt(i).isEmpty() : "SurvivorToSpace should be empty.";
             getSurvivorGreyObjectsWalker(i).setScanStart(getSurvivorToSpaceAt(i));
@@ -263,7 +264,7 @@ public final class YoungGeneration extends Generation {
         // survivor space. If it does not, we return null here to tell the caller.
         int age = originalSpace.getNextAgeForPromotion();
         Space toSpace = getSurvivorToSpaceAt(age - 1);
-        return toSpace.promoteAlignedObject(original, originalSpace);
+        return toSpace.copyAlignedObject(original, originalSpace);
     }
 
     @AlwaysInline("GC performance")
@@ -284,7 +285,7 @@ public final class YoungGeneration extends Generation {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
+    protected boolean promotePinnedObject(Object obj, HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
         assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
         if (!fitsInSurvivors(originalChunk, isAligned)) {
@@ -329,5 +330,25 @@ public final class YoungGeneration extends Generation {
             return WordFactory.nullPointer();
         }
         return HeapImpl.getChunkProvider().produceAlignedChunk();
+    }
+
+    @Override
+    public void checkSanityAfterCollection() {
+        assert eden.isEmpty() : "eden should be empty after a collection.";
+    }
+
+    boolean isInSpace(Pointer ptr) {
+        if (getEden().contains(ptr)) {
+            return true;
+        }
+        for (int i = 0; i < getMaxSurvivorSpaces(); i++) {
+            if (getSurvivorFromSpaceAt(i).contains(ptr)) {
+                return true;
+            }
+            if (getSurvivorToSpaceAt(i).contains(ptr)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

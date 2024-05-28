@@ -899,29 +899,29 @@ class NativeWasmMemory extends WasmMemory {
         if (!this.isShared()) {
             return 0;
         }
-        return invokeNotifyCallback(address, count);
+        return invokeNotifyCallback(node, address, count);
     }
 
     @Override
     @TruffleBoundary
     public int atomic_wait32(Node node, long address, int expected, long timeout) {
-        validateAtomicAddress(node, address, 4);
+        validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, false);
+        return invokeWaitCallback(node, address, expected, timeout, false);
     }
 
     @Override
     @TruffleBoundary
     public int atomic_wait64(Node node, long address, long expected, long timeout) {
-        validateAtomicAddress(node, address, 8);
+        validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, true);
+        return invokeWaitCallback(node, address, expected, timeout, true);
     }
 
     @Override

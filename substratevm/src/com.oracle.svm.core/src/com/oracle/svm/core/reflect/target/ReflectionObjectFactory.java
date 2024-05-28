@@ -32,39 +32,46 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.util.VMError;
 
 public final class ReflectionObjectFactory {
     public static final int FIELD_OFFSET_NONE = 0;
 
-    public static Field newField(Class<?> declaringClass, String name, Class<?> type, int modifiers,
+    public static Field newField(RuntimeConditionSet conditions, Class<?> declaringClass, String name, Class<?> type, int modifiers,
                     boolean trustedFinal, String signature, byte[] annotations, int offset, String deletedReason, byte[] typeAnnotations) {
         Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
         field.constructor(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
         field.offset = offset;
         field.deletedReason = deletedReason;
-        SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
+        Target_java_lang_reflect_AccessibleObject accessibleObject = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class);
+        accessibleObject.typeAnnotations = typeAnnotations;
+        accessibleObject.conditions = conditions;
         return SubstrateUtil.cast(field, Field.class);
     }
 
-    public static Method newMethod(Class<?> declaringClass, String name, Class<?>[] parameterTypes, Class<?> returnType, Class<?>[] exceptionTypes, int modifiers,
+    public static Method newMethod(RuntimeConditionSet conditions, Class<?> declaringClass, String name, Class<?>[] parameterTypes, Class<?> returnType, Class<?>[] exceptionTypes, int modifiers,
                     String signature, byte[] annotations, byte[] parameterAnnotations, byte[] annotationDefault, Object accessor, byte[] rawParameters,
                     byte[] typeAnnotations) {
         Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
         method.constructor(declaringClass, name, parameterTypes, returnType, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations, annotationDefault);
-        method.methodAccessor = (Target_jdk_internal_reflect_MethodAccessor) accessor;
+        method.methodAccessorFromMetadata = (Target_jdk_internal_reflect_MethodAccessor) accessor;
         SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class).rawParameters = rawParameters;
-        SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
+        Target_java_lang_reflect_AccessibleObject accessibleObject = SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class);
+        accessibleObject.typeAnnotations = typeAnnotations;
+        accessibleObject.conditions = conditions;
         return SubstrateUtil.cast(method, Method.class);
     }
 
-    public static Constructor<?> newConstructor(Class<?> declaringClass, Class<?>[] parameterTypes, Class<?>[] exceptionTypes, int modifiers, String signature,
+    public static Constructor<?> newConstructor(RuntimeConditionSet conditions, Class<?> declaringClass, Class<?>[] parameterTypes, Class<?>[] exceptionTypes, int modifiers, String signature,
                     byte[] annotations, byte[] parameterAnnotations, Object accessor, byte[] rawParameters, byte[] typeAnnotations) {
         Target_java_lang_reflect_Constructor ctor = new Target_java_lang_reflect_Constructor();
         ctor.constructor(declaringClass, parameterTypes, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations);
         ctor.constructorAccessor = (Target_jdk_internal_reflect_ConstructorAccessor) accessor;
         SubstrateUtil.cast(ctor, Target_java_lang_reflect_Executable.class).rawParameters = rawParameters;
-        SubstrateUtil.cast(ctor, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
+        Target_java_lang_reflect_AccessibleObject accessibleObject = SubstrateUtil.cast(ctor, Target_java_lang_reflect_AccessibleObject.class);
+        accessibleObject.typeAnnotations = typeAnnotations;
+        accessibleObject.conditions = conditions;
         return SubstrateUtil.cast(ctor, Constructor.class);
     }
 

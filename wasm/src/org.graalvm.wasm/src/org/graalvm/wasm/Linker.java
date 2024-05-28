@@ -103,6 +103,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleContext;
 
 public class Linker {
     public enum LinkState {
@@ -248,8 +249,25 @@ public class Linker {
     static void runStartFunction(WasmInstance instance) {
         final WasmFunction start = instance.symbolTable().startFunction();
         if (start != null) {
-            WasmInstance targetInstance = !start.isImported() ? instance : instance.functionInstance(start.index()).moduleInstance();
-            instance.target(start.index()).call(WasmArguments.create(targetInstance));
+            if (start.isImported()) {
+                final WasmFunctionInstance functionInstance = instance.functionInstance(start.index());
+                final WasmContext currentContext = WasmContext.get(null);
+                final WasmContext functionInstanceContext = functionInstance.context();
+                if (functionInstanceContext == currentContext) {
+                    instance.target(start.index()).call(WasmArguments.create(functionInstance.moduleInstance()));
+                } else {
+                    // Enter function's context when it is not from the current one
+                    TruffleContext truffleContext = functionInstance.getTruffleContext();
+                    Object prev = truffleContext.enter(null);
+                    try {
+                        instance.target(start.index()).call(WasmArguments.create(functionInstance.moduleInstance()));
+                    } finally {
+                        truffleContext.leave(null, prev);
+                    }
+                }
+            } else {
+                instance.target(start.index()).call(WasmArguments.create(instance));
+            }
         }
     }
 

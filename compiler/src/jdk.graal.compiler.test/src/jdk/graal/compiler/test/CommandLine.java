@@ -114,6 +114,11 @@ public class CommandLine {
         }
     }
 
+    /**
+     * Lexer for Java argument files. This class has a copy in
+     * {@code com.oracle.truffle.api.test.SubprocessTestUtils}. Ensure that any updates to this
+     * class are kept in sync with the copy.
+     */
     public static class Tokenizer {
         private final Reader in;
         private int ch;
