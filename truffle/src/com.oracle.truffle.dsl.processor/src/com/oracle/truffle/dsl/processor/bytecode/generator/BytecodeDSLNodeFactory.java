@@ -1744,7 +1744,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         CodeTypeElement savedState = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SavedState");
         CodeTypeElement operationStackEntry = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "OperationStackEntry");
-        CodeTypeElement finallyTryContext = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "FinallyTryContext");
+        CodeTypeElement finallyHandlerContext = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "FinallyHandlerContext");
         CodeTypeElement constantPool = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "ConstantPool");
         CodeTypeElement unresolvedBranchImmediate = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "UnresolvedBranchTarget");
 
@@ -1758,9 +1758,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         CodeTypeElement scopeDataType;
 
-        // When we enter a FinallyTry, these fields get stored on the FinallyTryContext.
-        // On exit, they are restored.
-        List<CodeVariableElement> builderContextSensitiveState = new ArrayList<>(List.of(
+        /**
+         * These fields are saved and restored using a FinallyHandlerContext when parsing a finally
+         * handler.
+         */
+        List<CodeVariableElement> handlerSpecificState = new ArrayList<>(List.of(
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bci"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "currentStackHeight"),
@@ -1772,10 +1774,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), unresolvedLabelsType, "unresolvedLabels")));
 
         CodeVariableElement reachable = new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "reachable");
+        CodeVariableElement finallyHandlerContextField = new CodeVariableElement(Set.of(PRIVATE), finallyHandlerContext.asType(), "finallyHandlerContext");
 
-        // This state is shared across all contexts for a given root node. It does not get
-        // saved/restored when entering/leaving a FinallyTry.
-        List<CodeVariableElement> builderContextInsensitiveState = new ArrayList<>(List.of(
+        /**
+         * These fields are used "globally" for the entire root node and do not get saved/restored
+         * when parsing finally handlers.
+         */
+        List<CodeVariableElement> rootState = new ArrayList<>(List.of(
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSequenceNumber"),
                         new CodeVariableElement(Set.of(PRIVATE), new ArrayCodeTypeMirror(operationStackEntry.asType()), "operationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSp"),
@@ -1786,30 +1791,31 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numConditionalBranches"),
                         reachable,
-                        new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
+                        finallyHandlerContextField,
                         new CodeVariableElement(Set.of(PRIVATE), constantPool.asType(), "constantPool")));
 
         {
             reachable.createInitBuilder().string("true");
+            addJavadoc(finallyHandlerContextField, "Represents a stack of the current handlers being parsed. If null, no handlers are being parsed.");
 
             if (model.enableLocalScoping) {
-                builderContextInsensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "maxLocals"));
+                rootState.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "maxLocals"));
             }
 
             if (model.enableTagInstrumentation) {
-                builderContextInsensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), generic(type(List.class), tagNode.asType()), "tagRoots"));
-                builderContextInsensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), generic(type(List.class), tagNode.asType()), "tagNodes"));
+                rootState.add(new CodeVariableElement(Set.of(PRIVATE), generic(type(List.class), tagNode.asType()), "tagRoots"));
+                rootState.add(new CodeVariableElement(Set.of(PRIVATE), generic(type(List.class), tagNode.asType()), "tagNodes"));
             }
 
             // must be last
-            builderContextInsensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState"));
+            rootState.add(new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState"));
 
             if (model.enableTracing) {
-                builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary"));
+                handlerSpecificState.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary"));
             }
 
             if (model.enableYield) {
-                builderContextSensitiveState.add(
+                handlerSpecificState.add(
                                 /**
                                  * Invariant: Continuation locations are sorted by bci, which means
                                  * we can iterate over the bytecodes and continuation locations in
@@ -1820,7 +1826,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
 
-        List<CodeVariableElement> builderState = Stream.of(builderContextSensitiveState, builderContextInsensitiveState).flatMap(Collection::stream).collect(Collectors.toList());
+        List<CodeVariableElement> builderState = Stream.of(handlerSpecificState, rootState).flatMap(Collection::stream).collect(Collectors.toList());
 
         class SavedStateFactory {
             private CodeTypeElement create() {
@@ -2018,7 +2024,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         name = "FinallyTryData";
                         fields = List.of(//
                                         field(bytecodeLocalImpl.asType(), "exceptionLocal").asFinal(),
-                                        field(finallyTryContext.asType(), "finallyTryContext").asFinal(),
+                                        field(finallyHandlerContext.asType(), "finallyHandlerContext").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "finallyReachable"),
                                         field(context.getType(boolean.class), "tryReachable"),
@@ -2290,19 +2296,60 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
 
-        class FinallyTryContextFactory {
+        /**
+         * Generates the members for the {@code FinallyHandlerContext} class.
+         * <p>
+         * The FinallyTry implementation is complicated, so we give an overview of the process here.
+         * <ol>
+         * <li>First, the user invokes {@code beginFinallyTry}. The first child (the finally
+         * handler) will be emitted multiple times: after the try block, in an exception handler,
+         * and before every return/branch in the try block. To support emitting the handler multiple
+         * times, we parse it separately with fresh parsing state; the resultant bytecode (and all
+         * supporting metadata) can then be reused and emitted each time it is needed. So that we
+         * can continue parsing the outer context afterwards, we save the current parsing state
+         * using a {@code FinallyHandlerContext}.
+         * <li>After the finally handler is parsed, in {@code afterChild} we save the handler's
+         * bytecode and metadata into the context using {@code setHandler}. We also restore the old
+         * parsing state and pop the context to resume parsing the outer context.
+         * <li>Then, the {@code doEmitFinallyHandler} method can be used to emit a copy of the
+         * handler bytecode into the current bytecode. We call {@code doEmitFinallyHandler} whenever
+         * the user emits a return or branch while parsing the try block.
+         * <li>Finally, after parsing the try block in {@code endFinallyTry}, we use
+         * {@code doEmitFinallyHandler} to emit the handler for both regular and exceptional cases.
+         * </ol>
+         *
+         * FinallyTryCatch is implemented the same way, except the regular handler is emitted after
+         * the try block in {@code afterChild} and the handler is not emitted for the exceptional
+         * case.
+         * <p>
+         * A finally handler can itself be nested in another finally handler. Thus,
+         * {@code FinallyHandlerContext} acts as a stack: when parsing one finally handler, if
+         * another handler is started, the first is saved in the {@code parentContext} and restored
+         * after parsing the second handler.
+         * <p>
+         * Branches are particularly tricky to get right. A finally handler may branch within its
+         * own handler; we call such a branch "finally-relative". Since branch targets are encoded
+         * as absolute addresses, finally-relative branch targets need to be relocated every time
+         * the handler is emitted. During handler parsing, we remember the set of finally-relative
+         * branches in {@code finallyRelativeBranches}; then, in {@code doEmitFinallyHandler}, we
+         * use the set to determine whether a branch target needs to be relocated. If the target of
+         * the branch is defined in an outer finally handler, we recursively register the
+         * finally-relative branch in the outer context, since it needs to be relocated when the
+         * outer handler is emitted.
+         */
+        class FinallyHandlerContextFactory {
             private CodeTypeElement create() {
-                List<CodeVariableElement> finalFields = new ArrayList<>(builderContextSensitiveState);
+                List<CodeVariableElement> finalFields = new ArrayList<>(handlerSpecificState);
                 finalFields.addAll(List.of(
                                 new CodeVariableElement(context.getType(int.class), "finallyTrySequenceNumber"),
                                 new CodeVariableElement(generic(HashSet.class, context.getDeclaredType(Integer.class)), "finallyRelativeBranches"),
-                                new CodeVariableElement(finallyTryContext.asType(), "parentContext")));
+                                new CodeVariableElement(finallyHandlerContext.asType(), "parentContext")));
                 for (CodeVariableElement field : finalFields) {
                     CodeVariableElement finalField = CodeVariableElement.clone(field);
                     finalField.getModifiers().add(FINAL);
-                    finallyTryContext.add(finalField);
+                    finallyHandlerContext.add(finalField);
                 }
-                finallyTryContext.add(createConstructorUsingFields(Set.of(), finallyTryContext, null));
+                finallyHandlerContext.add(createConstructorUsingFields(Set.of(), finallyHandlerContext, null));
 
                 List<CodeVariableElement> handlerFields = new ArrayList<>(List.of(
                                 new CodeVariableElement(context.getType(short[].class), "handlerBc"),
@@ -2321,13 +2368,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     handlerFields.add(new CodeVariableElement(context.getType(boolean[].class), "handlerBasicBlockBoundary"));
                 }
 
-                finallyTryContext.addAll(handlerFields);
+                finallyHandlerContext.addAll(handlerFields);
 
-                finallyTryContext.add(createSetHandler(handlerFields));
-                finallyTryContext.add(createHandlerIsSet(handlerFields));
-                finallyTryContext.add(createClearHandler(handlerFields));
+                finallyHandlerContext.add(createSetHandler(handlerFields));
+                finallyHandlerContext.add(createHandlerIsSet(handlerFields));
+                finallyHandlerContext.add(createClearHandler(handlerFields));
 
-                return finallyTryContext;
+                return finallyHandlerContext;
             }
 
             private CodeExecutableElement createSetHandler(List<CodeVariableElement> handlerFields) {
@@ -2541,7 +2588,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(new SavedStateFactory().create());
             builder.addAll(new OperationDataClassesFactory().create());
             builder.add(new OperationStackEntryFactory().create());
-            builder.add(new FinallyTryContextFactory().create());
+            builder.add(new FinallyHandlerContextFactory().create());
             builder.add(new ConstantPoolFactory().create());
             builder.add(new BytecodeLocationFactory().create());
 
@@ -2608,8 +2655,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createDoCreateExceptionHandler());
             builder.add(createDoEmitSourceInfo());
             builder.add(createFinish());
-            builder.add(createDoEmitBranch());
-            builder.add(createDoEmitReturn());
+            builder.add(createBeforeEmitBranch());
+            builder.add(createBeforeEmitReturn());
             builder.add(createDoEmitRoot());
             builder.add(createAllocateNode());
             builder.add(createAllocateBranchProfile());
@@ -2621,7 +2668,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     builder.add(createDoEmitTagResume());
                 }
             }
-            builder.add(createInFinallyTryHandler());
+            builder.add(createParsingFinallyHandler());
 
             if (model.enableLocalScoping) {
                 builder.add(createGetCurrentScope());
@@ -3365,6 +3412,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
+            /**
+             * To keep control flow reasonable, emitBranch checks that branches target labels
+             * defined in the same operation or an enclosing one. The check is thwarted if the user
+             * directly defines a label in a branching control structure (e.g.,
+             * TryCatch(emitLabel(lbl), branch(lbl)) is unreasonable but passes the check).
+             * Requiring labels to be defined in Root or Block operations prevents this edge case.
+             */
             b.startIf();
             b.string("operationSp == 0 || (operationStack[operationSp - 1].operation != ").tree(createOperationConstant(model.blockOperation));
             b.string(" && operationStack[operationSp - 1].operation != ").tree(createOperationConstant(model.rootOperation)).string(")");
@@ -3376,7 +3430,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("numLabels++");
             b.string(UNINIT);
             b.string("operationStack[operationSp - 1].sequenceNumber");
-            b.string("finallyTryContext == null ? " + UNINIT + " : finallyTryContext.finallyTrySequenceNumber");
+            b.string("finallyHandlerContext == null ? " + UNINIT + " : finallyHandlerContext.finallyTrySequenceNumber");
             b.end(2);
 
             b.statement("operationStack[operationSp - 1].addDeclaredLabel(result)");
@@ -3630,7 +3684,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.epilogReturn != null && operation == model.epilogReturn.operation) {
                 lines.add("<p>");
                 lines.add(String.format(
-                                "NB: This method does not directly emit %s instructions. Instead, {@link #doEmitReturn} uses the operation stack entry to determine that each Return should be preceded by a %s instruction.",
+                                "NB: This method does not directly emit %s instructions. Instead, {@link #beforeEmitReturn} uses the operation stack entry to determine that each Return should be preceded by a %s instruction.",
                                 operation.name, operation.name));
             } else if (operation.kind == OperationKind.TAG) {
                 lines.add("<p>");
@@ -4070,20 +4124,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 UNINIT,
                                 "this.reachable", "this.reachable", "this.reachable");
                 case FINALLY_TRY, FINALLY_TRY_CATCH -> {
-                    // set finallyTryContext inside createFinallyTryX before calling beginOperation
-                    b.startAssign("finallyTryContext").startNew(finallyTryContext.asType());
-                    for (CodeVariableElement field : builderContextSensitiveState) {
+                    // Push a new FinallyHandlerContext.
+                    b.startAssign("finallyHandlerContext").startNew(finallyHandlerContext.asType());
+                    for (CodeVariableElement field : handlerSpecificState) {
                         b.string(field.getName());
                     }
                     b.string("operationSequenceNumber");
                     b.string("new HashSet<>()");
-                    b.string("finallyTryContext");
+                    b.string("finallyHandlerContext");
                     b.end(2);
 
                     String exceptionLocal = CodeTreeBuilder.createBuilder().cast(bytecodeLocalImpl.asType()).string(operation.getOperationBeginArgumentName(0)).toString();
                     String catchReachable = (operation.kind == OperationKind.FINALLY_TRY_CATCH) ? "this.reachable" : "false";
 
-                    yield createOperationData(className, exceptionLocal, "finallyTryContext", "this.reachable", "this.reachable", "this.reachable", catchReachable);
+                    yield createOperationData(className, exceptionLocal, "finallyHandlerContext", "this.reachable", "this.reachable", "this.reachable", catchReachable);
                 }
                 case CUSTOM, CUSTOM_INSTRUMENTATION -> {
                     if (operation.isTransparent) {
@@ -4353,7 +4407,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case RETURN:
                     emitCastCurrentOperationData(b, operation);
-                    b.statement("doEmitReturn(operationData.childBci)");
+                    b.statement("beforeEmitReturn(operationData.childBci)");
                     buildEmitOperationInstruction(b, operation, null);
                     b.statement("markReachable(false)");
                     break;
@@ -4455,7 +4509,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (operation.instruction != null) {
                         if (operation.instruction.isEpilogReturn()) {
                             // do not emit an instruction for epilog returns
-                            // it should only be emitted in doEmitReturn
+                            // it should only be emitted in beforeEmitReturn
                             break;
                         }
                         buildEmitOperationInstruction(b, operation, constantOperandIndices);
@@ -4859,7 +4913,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(short.class), "exceptionIndex", "(short) operationData.exceptionLocal.frameIndex");
             b.declaration(type(int.class), "handlerSp", "currentStackHeight");
             b.declaration(type(int.class), "exHandlerIndex", UNINIT);
-            b.statement("FinallyTryContext ctx = operationData.finallyTryContext");
+            b.statement("FinallyHandlerContext ctx = operationData.finallyHandlerContext");
 
             b.startIf().string("operationData.operationReachable").end().startBlock();
             b.lineComment("register exception table entry");
@@ -4992,42 +5046,51 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
                     b.end();
 
+                    /**
+                     * To keep branches reasonable, require them to target a label defined in the
+                     * same operation or an enclosing one.
+                     */
                     b.startIf().string("!isFound").end().startBlock();
                     emitThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
                     b.end();
 
-                    b.statement("doEmitBranch(labelImpl.declaringOp)");
+                    b.statement("beforeEmitBranch(labelImpl.declaringOp)");
 
                     b.startIf().string("labelImpl.isDefined()").end().startBlock();
                     emitThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
                     b.end();
 
-                    // Mark the branch target as uninitialized. Add this location to a work list to
-                    // be processed once the label is defined.
                     b.startIf().string("this.reachable").end().startBlock();
+                    /**
+                     * Mark the branch target as uninitialized. Add this location to a work list to
+                     * be processed once the label is defined.
+                     */
                     b.startStatement().startCall("registerUnresolvedLabel");
                     b.string("labelImpl");
                     b.string("bci + 1");
                     b.string("currentStackHeight");
                     b.end(2);
                     b.newLine();
+
+                    /**
+                     * If the label was defined inside a finally handler, this branch instruction is
+                     * as well (because the label is defined in the same operation or an enclosing
+                     * one). Mark it as finally-relative.
+                     */
+                    b.startIf().string("labelImpl.finallyHandlerOp != " + UNINIT).end().startBlock();
+                    b.statement("FinallyHandlerContext ctx = finallyHandlerContext");
+                    b.startWhile().string("ctx.finallyTrySequenceNumber != labelImpl.finallyHandlerOp").end().startBlock();
+                    b.statement("ctx = ctx.parentContext");
                     b.end();
 
-                    // Branches inside finally handlers can only be relative to the handler,
-                    // otherwise a finally handler emitted before a "return" could branch out of the
-                    // handler and circumvent the return.
-                    b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
-
-                    b.startIf().string("labelImpl.finallyTryOp != finallyTryContext.finallyTrySequenceNumber").end().startBlock();
-                    emitThrowIllegalStateException(b, "\"Branches inside finally handlers can only target labels defined in the same handler.\"");
-                    b.end();
-
-                    b.startIf().string("this.reachable").end().startBlock();
+                    b.startIf().string("parsingFinallyHandler(ctx)").end().startBlock();
                     b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
-                    b.statement("finallyTryContext.finallyRelativeBranches.add(bci + 1)");
+                    b.statement("finallyHandlerContext.finallyRelativeBranches.add(bci + 1)");
                     b.end();
 
-                    b.end();
+                    b.end(); // if emitted in finally handler
+
+                    b.end(); // if reachable
                     yield new String[]{UNINIT};
                 }
                 case YIELD -> {
@@ -5728,7 +5791,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                         "unresolvedBranchStackHeights",
                                         CodeTreeBuilder.createBuilder().startStaticCall(bytecodeBuilderType, "createBranchStackHeightMapping").string("unresolvedLabels").end());
 
-                        b.startStatement().startCall("finallyTryContext", "setHandler");
+                        b.startStatement().startCall("finallyHandlerContext", "setHandler");
                         b.string("Arrays.copyOf(bc, bci)");
                         b.string("maxStackHeight");
                         b.string("parseSources ? Arrays.copyOf(sourceInfo, sourceInfoIndex) : null");
@@ -5743,10 +5806,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                         b.end(2);
 
-                        for (CodeVariableElement field : builderContextSensitiveState) {
-                            b.startAssign(field.getName()).field("finallyTryContext", field).end();
+                        for (CodeVariableElement field : handlerSpecificState) {
+                            b.startAssign(field.getName()).field("finallyHandlerContext", field).end();
                         }
-                        b.statement("finallyTryContext = finallyTryContext.parentContext");
+                        b.statement("finallyHandlerContext = finallyHandlerContext.parentContext");
 
                         // The guarded range starts at this bci (the start of the try).
                         b.statement("operationData.guardedStartBci = bci");
@@ -5872,7 +5935,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createDoEmitFinallyHandler() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitFinallyHandler");
-            ex.addParameter(new CodeVariableElement(finallyTryContext.asType(), "context"));
+            ex.addParameter(new CodeVariableElement(finallyHandlerContext.asType(), "context"));
             CodeTreeBuilder b = ex.createBuilder();
             b.startIf().string("!this.reachable").end().startBlock();
             b.statement("return");
@@ -6090,12 +6153,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("int branchIdx = handlerBci + 1"); // BCI of branch
                     b.statement("short branchTarget = " + readHandlerBc("branchIdx"));
                     if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
-                        // Backward branches are only used internally by while
-                        // loops. They should be resolved when the while loop ends.
+                        /**
+                         * Backward branches are only used internally by While operations. They
+                         * should be resolved when the while loop is done parsing.
+                         */
                         b.startAssert().string("branchTarget != " + UNINIT).end();
+                        b.newLine();
+                        /**
+                         * The While must be nested within the handler, so the branch should always
+                         * be handler-relative.
+                         */
+                        b.startAssert().string("context.finallyRelativeBranches.contains(branchIdx)").end();
+                        b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
+                        registerFinallyRelativeBranchInParent(b);
                     } else {
+                        b.declaration(type(boolean.class), "branchTargetResolved", "branchTarget != " + UNINIT);
                         // Mark branch target as unresolved, if necessary.
-                        b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
+                        b.startIf().string("!branchTargetResolved").end().startBlock();
                         b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation.");
                         b.statement("BytecodeLabelImpl lbl = (BytecodeLabelImpl) context.handlerUnresolvedBranchLabels.get(branchIdx)");
                         b.statement("int sp = context.handlerUnresolvedBranchStackHeights.get(branchIdx)");
@@ -6105,32 +6179,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.string("offsetBci + branchIdx");
                         b.string("currentStackHeight + sp");
                         b.end(3);
-                    }
+                        b.newLine();
 
-                    b.newLine();
-
-                    // Adjust relative branch targets.
-                    if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
-                        // Backward branches are only used for While. The While must be nested
-                        // within the handler, and so the branch should always be handler-relative.
-                        b.startAssert().string("context.finallyRelativeBranches.contains(branchIdx)").end();
-                    } else {
+                        // case 1: Branch is finally-relative.
                         b.startIf().string("context.finallyRelativeBranches.contains(branchIdx)").end().startBlock();
-                    }
-                    b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
-                    b.startIf().string("inFinallyTryHandler(context.parentContext)").end().startBlock();
-                    b.lineComment("If we're currently nested inside some other finally handler, the branch will also need to be relocated in that handler.");
-                    b.statement("context.parentContext.finallyRelativeBranches.add(offsetBci + branchIdx)");
-                    b.end();
+                        // Only relocate the target if it's resolved; leave it as UNINIT otherwise.
+                        b.startIf().string("branchTargetResolved").end().startBlock();
+                        b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
+                        b.end();
+                        registerFinallyRelativeBranchInParent(b);
+                        b.end();
 
-                    if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
-                        // do nothing
-                    } else {
-                        b.end().startElseBlock();
+                        // case 2: Branch is not finally-relative.
+                        b.startElseBlock();
                         b.statement(writeBc("offsetBci + branchIdx", "branchTarget"));
                         b.end();
                     }
-                    b.end();
+                    b.end(); // block
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
                     b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(),
@@ -6139,6 +6204,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 default:
                     throw new AssertionError("Unexpected instruction with branch target: " + instr.name);
             }
+        }
+
+        private void registerFinallyRelativeBranchInParent(CodeTreeBuilder b) {
+            b.startIf().string("parsingFinallyHandler(context.parentContext)").end().startBlock();
+            b.lineComment("If we're currently nested inside some other finally handler, the branch will also need to be relocated in that handler.");
+            b.statement("context.parentContext.finallyRelativeBranches.add(offsetBci + branchIdx)");
+            b.end();
         }
 
         private CodeExecutableElement createDoEmitLocal() {
@@ -6602,8 +6674,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          * pending operations. In particular, we emit finally handlers, tag leave, and epilog
          * instructions.
          */
-        private CodeExecutableElement createDoEmitReturn() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitReturn");
+        private CodeExecutableElement createBeforeEmitReturn() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitReturn");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "parentBci"));
 
             CodeTreeBuilder b = ex.createBuilder();
@@ -6710,7 +6782,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         /**
-         * doEmitReturn and doEmitBranch use this helper to generate common code.
+         * beforeEmitReturn and beforeEmitBranch use this helper to generate common code.
          */
         private void emitFinallyLeaveCases(CodeTreeBuilder b) {
             /**
@@ -6730,7 +6802,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startBlock();
             emitCastOperationData(b, model.finallyTryOperation, "i");
 
-            b.statement("FinallyTryContext ctx = operationData.finallyTryContext");
+            b.statement("FinallyHandlerContext ctx = operationData.finallyHandlerContext");
             b.startIf().string("ctx.handlerIsSet() && reachable").end().startBlock();
             b.startStatement().startCall("operationData.addExceptionTableEntry");
             b.string("doCreateExceptionHandler(operationData.guardedStartBci, bci, " + UNINIT + " /* handler start */, " + UNINIT + " /* stack height */, operationData.exceptionLocal.frameIndex)");
@@ -6744,7 +6816,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         /**
-         * doEmitReturn and doEmitBranch use this helper to generate common code.
+         * beforeEmitReturn and beforeEmitBranch use this helper to generate common code.
          */
         private void emitFinallyLeaveSetNewGuardBci(CodeTreeBuilder b, InstructionModel instruction) {
             b.startJavadoc();
@@ -6771,7 +6843,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY_CATCH))).end();
             b.startBlock();
             emitCastOperationData(b, model.finallyTryOperation, "i");
-            b.startIf().string("operationData.finallyTryContext.handlerIsSet()").end().startBlock();
+            b.startIf().string("operationData.finallyHandlerContext.handlerIsSet()").end().startBlock();
             b.statement("operationData.guardedStartBci = newGuardedStartBci");
             b.end(); // if
             b.end(); // case finally
@@ -6791,8 +6863,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return args;
         }
 
-        private CodeExecutableElement createDoEmitBranch() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitBranch");
+        private CodeExecutableElement createBeforeEmitBranch() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitBranch");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "targetSeq"));
 
             CodeTreeBuilder b = ex.createBuilder();
@@ -6831,7 +6903,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return -1");
             b.end();
 
-            b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
+            b.startIf().string("parsingFinallyHandler(finallyHandlerContext)").end().startBlock();
             b.lineComment("We allocate nodes later when the finally block is emitted.");
             b.startReturn().string("-1").end();
             b.end();
@@ -6851,7 +6923,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return -1");
             b.end();
 
-            b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
+            b.startIf().string("parsingFinallyHandler(finallyHandlerContext)").end().startBlock();
             b.lineComment("We allocate nodes later when the finally block is emitted.");
             b.startReturn().string("-1").end();
             b.end();
@@ -6871,7 +6943,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return -1");
             b.end();
 
-            b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
+            b.startIf().string("parsingFinallyHandler(finallyHandlerContext)").end().startBlock();
             b.lineComment("We allocate a constant later when the finally block is emitted.");
             b.startReturn().string("-1").end();
             b.end();
@@ -6883,13 +6955,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createInFinallyTryHandler() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(boolean.class), "inFinallyTryHandler");
-            ex.addParameter(new CodeVariableElement(finallyTryContext.asType(), "context"));
+        private CodeExecutableElement createParsingFinallyHandler() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(boolean.class), "parsingFinallyHandler");
+            ex.addParameter(new CodeVariableElement(finallyHandlerContext.asType(), "context"));
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startReturn();
-            b.string("context != null && (!context.handlerIsSet() || inFinallyTryHandler(context.parentContext))");
+            b.string("context != null && (!context.handlerIsSet() || parsingFinallyHandler(context.parentContext))");
             b.end();
 
             return ex;
@@ -6907,14 +6979,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          * Finally handler code gets emitted in multiple locations. When a branch target is inside a
          * finally handler, the instruction referencing it needs to be remembered so that we can
          * relocate the target each time we emit the instruction. This helper should only be used
-         * for a local branch within the same operation (i.e., the "defining context" of the branch
-         * target is the current finallyTryContext). For potentially non-local branches (i.e.
+         * for a local branch within the same operation (i.e., when we know with certainty that the
+         * branch is relative and needs to be relocated). For potentially non-local branches (i.e.
          * branches to outer operations) we must instead determine the context that defines the
          * branch target.
          */
         private void emitFinallyRelativeBranchCheck(CodeTreeBuilder b, int offset) {
-            b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
-            b.statement("finallyTryContext.finallyRelativeBranches.add(bci + " + offset + ")");
+            b.startIf().string("parsingFinallyHandler(finallyHandlerContext)").end().startBlock();
+            b.statement("finallyHandlerContext.finallyRelativeBranches.add(bci + " + offset + ")");
             b.end();
         }
 
@@ -13535,7 +13607,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             bytecodeLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "id"));
             bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "bci"));
             bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "declaringOp"));
-            bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "finallyTryOp"));
+
+            CodeVariableElement finallyHandlerOp = new CodeVariableElement(context.getType(int.class), "finallyHandlerOp");
+            addJavadoc(finallyHandlerOp, "The operation id for the handler in which this label is declared, or " + BuilderFactory.UNINIT + " if no handler.");
+            bytecodeLabelImpl.add(finallyHandlerOp);
 
             bytecodeLabelImpl.add(createConstructorUsingFields(Set.of(), bytecodeLabelImpl, null));
             bytecodeLabelImpl.add(createIsDefined());

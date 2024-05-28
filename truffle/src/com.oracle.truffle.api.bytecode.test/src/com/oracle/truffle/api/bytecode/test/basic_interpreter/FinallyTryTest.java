@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -316,6 +317,50 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
     public void testFinallyTryBranchForwardOutOfHandler() {
         // try {
         //   arg0.append(1);
+        // } finally {
+        //   arg0.append(2);
+        //   goto lbl;
+        // }
+        // arg0.append(3);
+        // lbl:
+        // arg0.append(4);
+
+        RootCallTarget root = parse("finallyTryBranchForwardOutOfHandler", b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginFinallyTry(b.createLocal());
+                b.beginBlock();
+                    emitAppend(b, 2);
+                    b.emitBranch(lbl);
+                b.endBlock();
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                b.endBlock();
+            b.endFinallyTry();
+
+            emitAppend(b, 3);
+            b.emitLabel(lbl);
+            emitAppend(b, 4);
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 2L, 4L);
+    }
+
+    @Test
+    @Ignore("unbalanced branches not yet supported")
+    public void testFinallyTryBranchForwardOutOfHandlerUnbalanced() {
+        /**
+         * This test is the same as the previous, but because of the "return 0",
+         * the sp at the branch does not match the sp at the label.
+         */
+
+        // try {
+        //   arg0.append(1);
         //   return 0;
         // } finally {
         //   arg0.append(2);
@@ -325,9 +370,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // lbl:
         // arg0.append(4);
 
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branches inside finally handlers can only target labels defined in the same handler.");
-        parse("finallyTryBranchForwardOutOfHandler", b -> {
+        RootCallTarget root = parse("finallyTryBranchForwardOutOfHandler", b -> {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
 
@@ -350,6 +393,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
             b.endRoot();
         });
+
+        testOrdering(false, root, 1L, 2L, 4L);
     }
 
     @Test
@@ -978,6 +1023,66 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
     public void testFinallyTryBranchIntoOuterFinally() {
         // try {
         //   arg0.append(1);
+        // } finally {
+        //   try {
+        //     arg0.append(3);
+        //   } finally {
+        //     arg0.append(5);
+        //     goto lbl;
+        //     arg0.append(6);
+        //   }
+        //   arg0.append(7);
+        //   lbl:
+        //   arg0.append(8);
+        //   return 0;
+        // }
+        RootCallTarget root = parse("finallyTryBranchIntoOuterFinally", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry(b.createLocal());
+                b.beginBlock();
+                    BytecodeLabel lbl = b.createLabel();
+
+                    b.beginFinallyTry(b.createLocal());
+                        b.beginBlock();
+                            emitAppend(b, 5);
+                            b.emitBranch(lbl);
+                            emitAppend(b, 6);
+                        b.endBlock();
+
+                        b.beginBlock();
+                            emitAppend(b, 3);
+                        b.endBlock();
+                    b.endFinallyTry();
+
+                    emitAppend(b, 7);
+                    b.emitLabel(lbl);
+                    emitAppend(b, 8);
+                    emitReturn(b, 0);
+
+                b.endBlock();
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                b.endBlock();
+            b.endFinallyTry();
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 5L, 8L);
+    }
+
+
+    @Test
+    @Ignore("unbalanced branches not yet supported")
+    public void testFinallyTryBranchIntoOuterFinallyUnbalanced() {
+        /**
+         * This test is the same as the previous, but because of the "return 0"'s,
+         * the sp at the branch does not match the sp at the label.
+         */
+
+        // try {
+        //   arg0.append(1);
         //   return 0;
         //   arg0.append(2);
         // } finally {
@@ -995,10 +1100,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   arg0.append(8);
         //   return 0;
         // }
-
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branches inside finally handlers can only target labels defined in the same handler.");
-        parse("finallyTryBranchIntoOuterFinally", b -> {
+        RootCallTarget root = parse("finallyTryBranchIntoOuterFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal());
@@ -1034,10 +1136,92 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endFinallyTry();
             b.endRoot();
         });
+
+        testOrdering(false, root, 1L, 3L, 5L, 8L);
     }
 
     @Test
     public void testFinallyTryBranchIntoOuterFinallyNestedInAnotherFinally() {
+        // try {                    // a
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   try {                  // b
+        //     arg0.append(3);
+        //   } finally {
+        //     arg0.append(5);
+        //     try {                // c
+        //       arg0.append(6);
+        //     } finally {
+        //       arg0.append(8);
+        //       goto lbl;
+        //       arg0.append(9);
+        //     }
+        //     arg0.append(10);
+        //     lbl:
+        //     arg0.append(11);
+        //   }
+        //   arg0.append(12);
+        //   return 0;
+        // }
+        RootCallTarget root = parse("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry(b.createLocal()); // a
+                b.beginBlock();
+                    b.beginFinallyTry(b.createLocal()); // b
+                        b.beginBlock();
+                            BytecodeLabel lbl = b.createLabel();
+
+                            emitAppend(b, 5);
+                            b.beginFinallyTry(b.createLocal()); // c
+                                b.beginBlock();
+                                    emitAppend(b, 8);
+                                    b.emitBranch(lbl);
+                                    emitAppend(b, 9);
+                                b.endBlock();
+
+                                b.beginBlock();
+                                    emitAppend(b, 6);
+                                b.endBlock();
+                            b.endFinallyTry();
+
+                            emitAppend(b, 10);
+                            b.emitLabel(lbl);
+                            emitAppend(b, 11);
+                        b.endBlock();
+
+                        b.beginBlock(); // b try
+                            emitAppend(b, 3);
+                        b.endBlock();
+
+                    b.endFinallyTry();
+
+                    emitAppend(b, 12);
+                    emitReturn(b, 0);
+                b.endBlock();
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    emitReturn(b, 0);
+                    emitAppend(b, 2);
+                b.endBlock();
+            b.endFinallyTry();
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 5L, 6L, 8L, 11L, 12L);
+    }
+
+    @Test
+    @Ignore("unbalanced branches not yet supported")
+    public void testFinallyTryBranchIntoOuterFinallyNestedInAnotherFinallyUnbalanced() {
+        /**
+         * This test is the same as the previous, but because of the "return 0"'s in handlers b and c,
+         * the sp at the branch does not match the sp at the label.
+         */
+
         // try {                    // a
         //   arg0.append(1);
         //   return 0;
@@ -1065,10 +1249,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   arg0.append(12);
         //   return 0;
         // }
-
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branches inside finally handlers can only target labels defined in the same handler.");
-        parse("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
+        RootCallTarget root = parse("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal()); // a
@@ -1117,6 +1298,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endFinallyTry();
             b.endRoot();
         });
+
+        testOrdering(false, root, 1L, 3L, 5L, 6L, 8L, 11L, 12L);
     }
 
     @Test
