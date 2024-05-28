@@ -6400,9 +6400,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case LOAD_LOCAL_MATERIALIZED:
                 case THROW:
                 case YIELD:
-                case RETURN:
                 case CLEAR_LOCAL:
                     break;
+                case RETURN:
                 case BRANCH_FALSE:
                 case POP:
                 case STORE_LOCAL:
