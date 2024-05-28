@@ -26,8 +26,9 @@ package com.oracle.truffle.espresso.vm.continuation;
 import static com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor.guarantee;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -66,11 +67,19 @@ public final class HostFrameRecord {
         return EspressoFrameDescriptor.narrow(primitives[0]);
     }
 
-    public static HostFrameRecord recordFrame(Frame frame, Method.MethodVersion m, int bci, int top, HostFrameRecord next) {
+    public static HostFrameRecord recordFrame(VirtualFrame frame, Method.MethodVersion m, int bci, int top, HostFrameRecord next) {
+        // With these being constant, the lookup loop in 'm.getFrameDescriptor(bci)' can fold away.
+        CompilerAsserts.partialEvaluationConstant(m);
+        CompilerAsserts.partialEvaluationConstant(bci);
+
         EspressoFrameDescriptor fd = m.getFrameDescriptor(bci);
+        // With 'fd' being constant, the import loop can be exploded.
+        CompilerAsserts.partialEvaluationConstant(fd);
+
         StaticObject[] objects = new StaticObject[fd.size()];
         long[] primitives = new long[fd.size()];
         fd.importFromFrame(frame, objects, primitives);
+
         HostFrameRecord hfr = new HostFrameRecord(fd, objects, primitives, bci, top, m, next);
         // Result is trusted, but it never hurts to assert that.
         assert top == fd.top() : "Mismatched tops: " + top + ", " + fd.top();

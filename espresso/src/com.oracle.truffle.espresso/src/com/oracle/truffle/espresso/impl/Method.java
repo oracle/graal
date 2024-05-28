@@ -57,6 +57,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -1147,6 +1148,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @CompilationFinal(dimensions = 1) //
         private volatile ContinuumData[] continuumData = EMPTY_DATA;
 
+        @ExplodeLoop
         private ContinuumData getData(MethodVersion mv, int bci) {
             ContinuumData[] localData = continuumData;
             for (ContinuumData data : localData) {
@@ -1379,12 +1381,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
          * Obtains a {@link com.oracle.truffle.espresso.meta.Meta.ContinuumSupport continuation}
          * call target that can be used for rewinding a continuation.
          */
-        @TruffleBoundary
         public CallTarget getContinuableCallTarget(int bci) {
             return getContinuum().getContinuableCallTarget(this, bci);
         }
 
-        @TruffleBoundary
         public EspressoFrameDescriptor getFrameDescriptor(int bci) {
             return getContinuum().getFrameDescriptor(this, bci);
         }

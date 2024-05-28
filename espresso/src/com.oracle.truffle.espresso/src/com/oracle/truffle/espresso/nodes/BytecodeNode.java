@@ -286,7 +286,6 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -444,7 +443,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // All implicit exception paths in the method will be compiled if at least one implicit
     // exception is thrown.
     @CompilationFinal private boolean implicitExceptionProfile;
-
     @CompilationFinal private boolean linkageExceptionProfile;
 
     private final LivenessAnalysis livenessAnalysis;
@@ -550,6 +548,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
     }
 
+    // region continuation
+
     public void createContinuableNode(int bci, int top) {
         int opcode = bs.opcode(bci);
         if (opcode == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeContinuableNode) {
@@ -557,7 +557,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         for (;;) { // At most 2 iterations
-            opcode = bs.opcode(bci);
+            opcode = bs.volatileOpcode(bci);
             if (opcode == QUICK) {
                 assert nodes[bs.readCPI2(bci)] instanceof InvokeQuickNode;
                 InvokeQuickNode quick = (InvokeQuickNode) nodes[bs.readCPI2(bci)];
@@ -594,13 +594,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         createContinuableNode(bci, top);
 
         // set up local state.
-        int opcode = bs.opcode(bci);
         InstrumentationSupport instrument = instrumentation;
         int statementIndex = instrument == null ? 0 : instrument.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI());
-        assert opcode == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeContinuableNode;
+        assert bs.opcode(bci) == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeContinuableNode;
 
         return executeBodyFromBCI(frame, bci, top, statementIndex, true, true);
     }
+
+    // endregion continuation
 
     public void checkNoForeignObjectAssumption(StaticObject object) {
         if (noForeignObjects.isValid() && object.isForeignObject()) {
@@ -1492,8 +1493,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
             } catch (UnwindContinuationException unwindContinuationExceptionRequest) {
+                /*
+                 * Note: The absence of a continuum record for the bci in the method acts as a
+                 * per-bci profile.
+                 */
                 // Get the frame from the stack into the VM heap.
-                copyFrameToUnwindRequest(curBCI, unwindContinuationExceptionRequest, frame.materialize(), top, statementIndex);
+                copyFrameToUnwindRequest(frame, unwindContinuationExceptionRequest, curBCI, top);
                 throw unwindContinuationExceptionRequest;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
@@ -1618,8 +1623,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
     }
 
-    @TruffleBoundary
-    private void copyFrameToUnwindRequest(int bci, UnwindContinuationException unwindContinuationExceptionRequest, MaterializedFrame materializedFrame, int top, int statementIndex) {
+    private void copyFrameToUnwindRequest(VirtualFrame materializedFrame, UnwindContinuationException unwindContinuationExceptionRequest, int bci, int top) {
         // Extend the linked list of frame records as we unwind.
         unwindContinuationExceptionRequest.head = HostFrameRecord.recordFrame(materializedFrame, getMethodVersion(), bci, top, unwindContinuationExceptionRequest.head);
     }
