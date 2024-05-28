@@ -164,10 +164,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
 class LibGraalOptions {
-    @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
+    @Option(help = "If non-zero, converts an exception triggered by the CrashAt option into a fatal error " +
                     "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
+                    "The value of this option is the number of milliseconds to sleep before calling _fatal. " +
                     "This option exists for the purpose of testing fatal error handling in libgraal.") //
-    static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new LibGraalRuntimeOptionKey<>(false);
+    static final RuntimeOptionKey<Integer> CrashAtIsFatal = new LibGraalRuntimeOptionKey<>(0);
     @Option(help = "The fully qualified name of a no-arg, void, static method to be invoked " +
                     "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
                     "This option exists for the purpose of testing callbacks in this context.") //
@@ -889,8 +890,8 @@ final class HotSpotGraalOptionValuesUtil {
             options.update(values);
         }
 
-        if (LibGraalOptions.CrashAtThrowsOOME.getValue() && LibGraalOptions.CrashAtIsFatal.getValue()) {
-            throw new IllegalArgumentException("CrashAtThrowsOOME and CrashAtIsFatal cannot both be true");
+        if (LibGraalOptions.CrashAtThrowsOOME.getValue() && LibGraalOptions.CrashAtIsFatal.getValue() != 0) {
+            throw new IllegalArgumentException("CrashAtThrowsOOME and CrashAtIsFatal cannot both be enabled");
         }
 
         return options;
@@ -939,9 +940,14 @@ final class Target_jdk_graal_compiler_core_GraalCompiler {
                 // Remaining compilations should proceed so that test finishes quickly.
                 return false;
             }
-        } else if (LibGraalOptions.CrashAtIsFatal.getValue()) {
+        } else if (LibGraalOptions.CrashAtIsFatal.getValue() != 0) {
             LogHandler handler = ImageSingletons.lookup(LogHandler.class);
             if (handler instanceof FunctionPointerLogHandler) {
+                try {
+                    Thread.sleep(LibGraalOptions.CrashAtIsFatal.getValue());
+                } catch (InterruptedException e) {
+                    // ignore
+                }
                 VMError.shouldNotReachHere(crashMessage);
             }
             // If changing this message, update the test for it in mx_vm_gate.py
