@@ -32,6 +32,7 @@ import java.util.function.Function;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -86,7 +87,7 @@ public class EspressoFrameDescriptor {
     }
 
     @ExplodeLoop
-    public void importFromFrame(Frame frame, Object[] objects, long[] primitives) {
+    public void importFromFrame(VirtualFrame frame, StaticObject[] objects, long[] primitives) {
         assert slotTypes.length == frame.getFrameDescriptor().getNumberOfSlots();
         assert verifyConsistent(frame);
         assert objects != null && primitives != null;
@@ -98,7 +99,7 @@ public class EspressoFrameDescriptor {
     }
 
     @ExplodeLoop
-    public void exportToFrame(Frame frame, Object[] objects, long[] primitives) {
+    public void exportToFrame(VirtualFrame frame, StaticObject[] objects, long[] primitives) {
         assert slotTypes.length == frame.getFrameDescriptor().getNumberOfSlots();
         assert objects != null && objects.length == slotTypes.length;
         assert primitives != null && primitives.length == slotTypes.length;
@@ -115,7 +116,7 @@ public class EspressoFrameDescriptor {
         return top;
     }
 
-    private void importSlot(Frame frame, int slot, Object[] objects, long[] primitives) {
+    private void importSlot(Frame frame, int slot, StaticObject[] objects, long[] primitives) {
         switch (slotTypes[slot].kind()) {
             case Int:
                 primitives[slot] = zeroExtend(frame.getIntStatic(slot));
@@ -142,7 +143,7 @@ public class EspressoFrameDescriptor {
         }
     }
 
-    private void exportSlot(Frame frame, int slot, Object[] objects, long[] primitives) {
+    private void exportSlot(Frame frame, int slot, StaticObject[] objects, long[] primitives) {
         switch (slotTypes[slot].kind()) {
             case Int:
                 frame.setIntStatic(slot, narrow(primitives[slot]));
@@ -315,13 +316,13 @@ public class EspressoFrameDescriptor {
         }
 
         public FrameType pop(JavaKind k) {
-            FrameType top = pop();
-            assert top.kind() == k;
+            FrameType popped = pop();
+            assert popped.kind() == k;
             if (k.needsTwoSlots()) {
                 FrameType dummy = pop();
                 assert dummy == FrameType.ILLEGAL;
             }
-            return top;
+            return popped;
         }
 
         public FrameType pop() {

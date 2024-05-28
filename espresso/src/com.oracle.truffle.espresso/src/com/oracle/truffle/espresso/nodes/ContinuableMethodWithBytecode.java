@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -50,8 +51,7 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
 
     @Override
     Object execute(VirtualFrame frame) {
-        return bytecodeNode.resumeContinuation(frame,
-                        bci, fd.top());
+        return bytecodeNode.resumeContinuation(frame, bci, fd.top());
     }
 
     @Override
@@ -78,6 +78,7 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
         return records;
     }
 
+    @GenerateInline(false)
     public abstract static class ResumeNextContinuationNode extends EspressoNode {
         static final int LIMIT = 3;
 

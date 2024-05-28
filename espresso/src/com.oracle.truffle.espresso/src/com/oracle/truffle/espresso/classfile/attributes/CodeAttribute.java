@@ -124,14 +124,14 @@ public final class CodeAttribute extends Attribute {
         byte localFlags = flags;
         if (localFlags == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            flags = localFlags = computeFlags();
+            flags = localFlags = computeFlags(originalCode);
             assert localFlags != 0;
         }
         return localFlags;
     }
 
-    private byte computeFlags() {
-        BytecodeStream bs = new BytecodeStream(originalCode);
+    private static byte computeFlags(byte[] code) {
+        BytecodeStream bs = new BytecodeStream(code);
         int bci = 0;
         int flags = FLAGS_READY;
         while (bci < bs.endBCI()) {

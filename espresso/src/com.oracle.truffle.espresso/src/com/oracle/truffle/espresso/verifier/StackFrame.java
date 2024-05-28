@@ -117,9 +117,9 @@ class StackFrame implements StackMapFrameParser.FrameState {
         if (builder instanceof MethodVerifier verifier) {
             Operand op = verifier.getOperandFromVerificationType(vfi);
             formatGuarantee(op.slots() <= verifier.getMaxStack(), "Stack map entry requires more stack than allowed by maxStack.");
-            OperandStack stack = new OperandStack(2);
-            stack.push(op);
-            return new StackFrame(stack, locals);
+            OperandStack newStack = new OperandStack(2);
+            newStack.push(op);
+            return new StackFrame(newStack, locals);
         }
         throw EspressoError.shouldNotReachHere();
     }

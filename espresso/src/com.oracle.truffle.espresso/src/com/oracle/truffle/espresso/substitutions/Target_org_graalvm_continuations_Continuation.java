@@ -62,8 +62,6 @@ public final class Target_org_graalvm_continuations_Continuation {
     abstract static class Resume0 extends SubstitutionNode {
         abstract void execute(StaticObject self);
 
-        // Try-with-resources generates a call to 'Throwable.addSuppressed()', which is blocklisted
-        // by SVM.
         @SuppressWarnings("try")
         @Specialization
         static void resume0(StaticObject self,
@@ -84,9 +82,8 @@ public final class Target_org_graalvm_continuations_Continuation {
             // Consume the stack.
             meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, null, true);
 
-            // The entry node will unpack the head frame record into the stack and then pass the
-            // remaining records into the bytecode interpreter, which will then pass them down the
-            // stack until everything is fully unwound.
+            // Try-with-resources generates a call to 'Throwable.addSuppressed()', which is
+            // blocklisted by SVM.
             EspressoThreadLocalState.ContinuationScope scope = tls.continuationScope();
             try {
                 rewind.execute(stack);

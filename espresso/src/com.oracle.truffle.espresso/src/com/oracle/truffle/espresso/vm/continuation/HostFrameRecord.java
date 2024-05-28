@@ -145,14 +145,14 @@ public final class HostFrameRecord {
         StaticObject guestHead = null;
         StaticObject guestCursor = null;
         while (cursor != null) {
-            StaticObject next = cursor.copyToGuestSingle(meta);
+            StaticObject guestNext = cursor.copyToGuestSingle(meta);
             if (guestHead == null) {
-                guestHead = next;
+                guestHead = guestNext;
             }
             if (guestCursor != null) {
-                meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_next.setObject(guestCursor, next);
+                meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_next.setObject(guestCursor, guestNext);
             }
-            guestCursor = next;
+            guestCursor = guestNext;
             cursor = cursor.next;
         }
         return guestHead;

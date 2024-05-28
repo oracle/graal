@@ -783,7 +783,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         }
     }
 
-    private FrameType newPrimitiveArray(byte b) {
+    private static FrameType newPrimitiveArray(byte b) {
         switch (b) {
             case Constants.JVM_ArrayType_Boolean:
                 return FrameType.forType(Type._boolean_array);
