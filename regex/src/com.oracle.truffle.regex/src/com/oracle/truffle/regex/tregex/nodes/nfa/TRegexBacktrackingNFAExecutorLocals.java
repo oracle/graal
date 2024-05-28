@@ -48,7 +48,9 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.buffer.IntRingBuffer;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 import com.oracle.truffle.regex.util.BitSets;
 
 /**
@@ -79,6 +81,8 @@ import com.oracle.truffle.regex.util.BitSets;
  * </pre>
  */
 public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLocals {
+
+    private static final int MULTI_CHAR_EXPANSION_LENGTH_POWER_OF_2 = MathUtil.log2ceil(CaseFoldData.MAX_MULTI_CHAR_SEQUENCE_LENGTH);
 
     private final int stackFrameSize;
     private final int nQuantifierCounts;
@@ -175,8 +179,8 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                         trackLastGroup,
                         dontOverwriteLastGroup,
                         recursiveBackrefs,
-                        backrefMultiCharExpansion ? new IntRingBuffer(7) : null,
-                        backrefMultiCharExpansion ? new IntRingBuffer(7) : null);
+                        backrefMultiCharExpansion ? new IntRingBuffer(MULTI_CHAR_EXPANSION_LENGTH_POWER_OF_2) : null,
+                        backrefMultiCharExpansion ? new IntRingBuffer(MULTI_CHAR_EXPANSION_LENGTH_POWER_OF_2) : null);
         ret.setIndex(fromIndex);
         ret.clearCaptureGroups();
         if (recursiveBackrefs) {

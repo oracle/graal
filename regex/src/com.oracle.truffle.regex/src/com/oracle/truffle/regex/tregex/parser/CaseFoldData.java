@@ -624,6 +624,7 @@ public class CaseFoldData {
                     "xii",
                     "fo",
     };
+    public static final int MAX_MULTI_CHAR_SEQUENCE_LENGTH = 4;
     private static final CaseFoldEquivalenceTable UNICODE_15_1_0_SIMPLE = new CaseFoldEquivalenceTable(null, new CodePointSet[]{
                     rangeSet(0x00004b, 0x00004b, 0x00006b, 0x00006b, 0x00212a, 0x00212a),
                     rangeSet(0x000053, 0x000053, 0x000073, 0x000073, 0x00017f, 0x00017f),
