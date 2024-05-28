@@ -546,14 +546,11 @@ public final class JDWPContextImpl implements JDWPContext {
                 return action.result;
             } catch (ExecutionException e) {
                 throw EspressoError.shouldNotReachHere(e);
-            } catch (InterruptedException e) {
+            } catch (InterruptedException | TimeoutException e) {
                 // OK, when interrupted we can't get stack frames
                 future.cancel(true);
-            } catch (TimeoutException ex) {
-                // expected exception when thread in native, so result is just empty then
-                future.cancel(true);
+                return new CallFrame[0];
             }
-            return new CallFrame[0];
         }
     }
 
@@ -714,6 +711,8 @@ public final class JDWPContextImpl implements JDWPContext {
 
         @Override
         protected void perform(Access access) {
+            // Since by the time we get here this thread might not own the lock, so we'll return 0.
+            // In this case it's up to the caller to handle that.
             EspressoLock lock = monitor.getLock(context);
             result = lock.getEntryCount();
         }
