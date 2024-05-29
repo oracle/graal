@@ -222,13 +222,6 @@ public class AnalysisUniverse implements Universe {
         if (result == null) {
             result = createType(type);
         }
-        if (result.isInBaseLayer()) {
-            /*
-             * The constants can only be relinked after the type is registered as the dynamic hub is
-             * not available otherwise.
-             */
-            getImageLayerLoader().loadAndRelinkTypeConstants(result);
-        }
         assert typesById[result.getId()].equals(result) : result;
         return result;
     }

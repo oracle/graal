@@ -29,6 +29,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_JAVA_N
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.COMPONENT_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANTS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANTS_TO_RELINK_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANT_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.DATA_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENCLOSING_TYPE_TAG;
@@ -102,6 +103,7 @@ public class ImageLayerWriter {
     private String[] imageInternedStrings;
 
     protected EconomicMap<String, Object> jsonMap = EconomicMap.create();
+    protected List<Integer> constantsToRelink;
     FileInfo fileInfo;
 
     private record FileInfo(Path layerSnapshotPath, String fileName, String suffix) {
@@ -113,6 +115,7 @@ public class ImageLayerWriter {
 
     public ImageLayerWriter(ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
+        this.constantsToRelink = new ArrayList<>();
     }
 
     public void setImageInternedStrings(String[] imageInternedStrings) {
@@ -190,6 +193,7 @@ public class ImageLayerWriter {
             }
         }
         jsonMap.put(CONSTANTS_TAG, constantsMap);
+        jsonMap.put(CONSTANTS_TO_RELINK_TAG, constantsToRelink);
     }
 
     /**
@@ -319,12 +323,12 @@ public class ImageLayerWriter {
         boolean simulated = hostedObject == null;
         constantMap.put(SIMULATED_TAG, simulated);
         if (!simulated) {
-            persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject);
+            persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject, imageHeapConstant.constantData.id);
         }
     }
 
     @SuppressFBWarnings(value = "ES", justification = "Reference equality check needed to detect intern status")
-    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject) {
+    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject, int id) {
         if (clazz.equals(String.class)) {
             String value = bb.getSnippetReflectionProvider().asObject(String.class, hostedObject);
             int stringIndex = Arrays.binarySearch(imageInternedStrings, value);
@@ -334,11 +338,13 @@ public class ImageLayerWriter {
              */
             if (stringIndex >= 0 && imageInternedStrings[stringIndex] == value) {
                 constantMap.put(VALUE_TAG, value);
+                constantsToRelink.add(id);
             }
         } else if (Enum.class.isAssignableFrom(clazz)) {
             Enum<?> value = bb.getSnippetReflectionProvider().asObject(Enum.class, hostedObject);
             constantMap.put(ENUM_CLASS_TAG, value.getDeclaringClass().getName());
             constantMap.put(ENUM_NAME_TAG, value.name());
+            constantsToRelink.add(id);
         }
     }
 

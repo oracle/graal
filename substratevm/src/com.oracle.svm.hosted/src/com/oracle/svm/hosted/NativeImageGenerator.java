@@ -225,9 +225,9 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
 import com.oracle.svm.hosted.code.CompileQueue;
-import com.oracle.svm.hosted.code.ObjectFileTransformer;
 import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
+import com.oracle.svm.hosted.code.ObjectFileTransformer;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 import com.oracle.svm.hosted.heap.ObservableImageHeapMapProviderImpl;
@@ -822,10 +822,6 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.beforeAnalysis(config));
                 ServiceCatalogSupport.singleton().seal();
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
-            }
-
-            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                HostedImageLayerBuildingSupport.singleton().getLoader().loadLayerConstants();
             }
 
             try (ReporterClosable c = ProgressReporter.singleton().printAnalysis(bb.getUniverse(), nativeLibraries.getLibraries())) {

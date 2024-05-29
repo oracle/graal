@@ -158,7 +158,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject) {
+    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject, int id) {
         ResolvedJavaType type = bb.getConstantReflectionProvider().asJavaType(hostedObject);
         if (type instanceof AnalysisType analysisType) {
             /*
@@ -170,9 +170,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
              */
             if (!isTypeSwitch(analysisType)) {
                 constantMap.put(CLASS_ID_TAG, analysisType.getId());
+                constantsToRelink.add(id);
             }
         } else {
-            super.persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject);
+            super.persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject, id);
         }
     }
 

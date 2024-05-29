@@ -82,6 +82,7 @@ public final class LIR extends LIRGenerator.VariableProvider implements EventCou
      * to trigger certain operations.
      */
     private int eventCounter;
+    private final EventCounterMarker eventCounterMarker = new EventCounterMarker();
 
     /**
      * Creates a new LIR instance for the specified compilation.
@@ -96,6 +97,11 @@ public final class LIR extends LIRGenerator.VariableProvider implements EventCou
         this.lirInstructions = new BlockMap<>(cfg);
         this.options = options;
         this.debug = debug;
+    }
+
+    @Override
+    public EventCounterMarker getEventCounterMarker() {
+        return eventCounterMarker;
     }
 
     @Override

@@ -75,6 +75,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
+    protected void prepareConstantRelinking(EconomicMap<String, Object> constantData, int id) {
+        Integer tid = get(constantData, CLASS_ID_TAG);
+        if (tid != null) {
+            typeToConstant.put(tid, id);
+        } else {
+            super.prepareConstantRelinking(constantData, id);
+        }
+    }
+
+    @Override
     protected boolean delegateProcessing(String constantType, Object constantValue, Object[] values, int i) {
         if (constantType.equals(METHOD_POINTER_TAG)) {
             AnalysisType methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
@@ -112,31 +122,22 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected void relinkConstant(ImageHeapInstance imageHeapInstance, EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
+    protected JavaConstant getHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
         if (clazz.equals(Class.class)) {
             Integer tid = get(baseLayerConstant, CLASS_ID_TAG);
             /* DynamicHub corresponding to $$TypeSwitch classes are not relinked */
             if (tid != null) {
-                if (universe.isTypeCreated(tid)) {
-                    relinkDynamicHub(imageHeapInstance, tid);
-                } else {
-                    /*
-                     * If the DynamicHub is not created yet, we create a task that will be executed
-                     * on the DynamicHub creation
-                     */
-                    AnalysisFuture<Void> task = new AnalysisFuture<>(() -> relinkDynamicHub(imageHeapInstance, tid));
-                    missingTypeTasks.computeIfAbsent(tid, unused -> ConcurrentHashMap.newKeySet()).add(task);
-                }
+                return getDynamicHub(tid);
             }
-        } else {
-            super.relinkConstant(imageHeapInstance, baseLayerConstant, clazz);
         }
+        return super.getHostedObject(baseLayerConstant, clazz);
     }
 
-    private void relinkDynamicHub(ImageHeapInstance imageHeapInstance, int tid) {
+    private JavaConstant getDynamicHub(int tid) {
+        getAnalysisType(tid);
         AnalysisType type = universe.getType(tid);
         DynamicHub hub = ((SVMHost) universe.hostVM()).dynamicHub(type);
-        relinkConstant(hub, imageHeapInstance);
+        return getHostedObject(hub);
     }
 
     @Override
@@ -183,6 +184,25 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 universe.getHeapScanner().rescanField(hub, SVMImageLayerSnapshotUtil.enumConstantsReference);
             }
         }
+    }
+
+    @Override
+    protected boolean hasValueForObject(Object object) {
+        if (object instanceof DynamicHub dynamicHub) {
+            AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(dynamicHub);
+            return typeToConstant.containsKey(type.getId());
+        }
+        return super.hasValueForObject(object);
+    }
+
+    @Override
+    protected ImageHeapConstant getValueForObject(Object object) {
+        if (object instanceof DynamicHub dynamicHub) {
+            AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(dynamicHub);
+            int id = typeToConstant.get(type.getId());
+            return getOrCreateConstant(id);
+        }
+        return super.getValueForObject(object);
     }
 
     public Map<Object, Set<Class<?>>> loadImageSingletons(Object forbiddenObject) {
