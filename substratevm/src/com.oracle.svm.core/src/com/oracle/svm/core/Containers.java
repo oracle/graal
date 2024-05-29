@@ -33,8 +33,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
@@ -169,5 +172,19 @@ class ContainersFeature implements InternalFeature {
         RuntimeClassInitializationSupport classInitSupport = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         classInitSupport.initializeAtRunTime("com.oracle.svm.core.containers.cgroupv1.CgroupV1Subsystem", "for cgroup support");
         classInitSupport.initializeAtRunTime("com.oracle.svm.core.containers.cgroupv2.CgroupV2Subsystem", "for cgroup support");
+    }
+}
+
+@Platforms(Platform.LINUX.class)
+@TargetClass(className = "com.oracle.svm.core.containers.CgroupMetrics")
+final class Target_com_oracle_svm_core_containers_CgroupMetrics {
+    @Substitute
+    static boolean isUseContainerSupport() {
+        return UseContainerSupport.getValue();
+    }
+
+    @Substitute
+    static long getTotalMemorySize0() {
+        return ImageSingletons.lookup(PhysicalMemory.PhysicalMemorySupport.class).size().rawValue();
     }
 }
