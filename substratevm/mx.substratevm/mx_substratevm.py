@@ -1729,6 +1729,66 @@ def cinterfacetutorial(args):
     native_image_context_run(_cinterfacetutorial, args)
 
 
+@mx.command(suite.name, 'javaagenttest', 'Runs tests for java agent with native image')
+def agenttest(args):
+    def build_and_test_agent_image(native_image, args):
+        args = [] if args is None else args
+        build_dir = join(svmbuild_dir(), 'javaagenttest')
+
+        # clean / create output directory
+        if exists(build_dir):
+            mx.rmtree(build_dir)
+        mx_util.ensure_dir_exists(build_dir)
+        test_build_output = mx.dependency('com.oracle.svm.test').classpath_repr()
+
+        # create agent jar file
+        agent1 = join(build_dir, 'testagent1.jar')
+        mx.run([mx.get_jdk().jar, 'cmf', join(test_build_output, 'resources','agent1', 'MANIFEST.MF'),
+                agent1,
+                join('com', 'oracle', 'svm', 'test', 'agent', 'Agent.class'),
+                join('com', 'oracle', 'svm', 'test', 'agent', 'Agent$DemoTransformer.class'),
+                join('com', 'oracle', 'svm', 'test', 'agent', 'AgentPremainHelper.class')],
+               cwd = test_build_output)
+
+        agent2 = join(build_dir, 'testagent2.jar')
+        mx.run([mx.get_jdk().jar, 'cmf', join(test_build_output, 'resources','agent2', 'MANIFEST.MF'),
+                agent2,
+                join('com', 'oracle', 'svm', 'test', 'agent', 'Agent2.class'),
+                join('com', 'oracle', 'svm', 'test', 'agent', 'AgentPremainHelper.class')],
+               cwd = test_build_output)
+
+        # build test with agent
+        test_cp = os.pathsep.join([classpath('com.oracle.svm.test'), agent1, agent2])
+
+
+        nativeagent_premain_options=['-XXpremain:com.oracle.svm.test.agent.Agent:test.agent=true',
+                                     '-XXpremain:com.oracle.svm.test.agent.Agent2:test.agent2=true']
+
+        binary_path = join(build_dir, 'agenttest1')
+        native_image([
+                         '-cp', test_cp,
+                         '-J-ea', '-J-esa',
+                         '-o', binary_path,
+                         '-H:+ReportExceptionStackTraces',
+                         '-H:PremainClasses=com.oracle.svm.test.agent.Agent,com.oracle.svm.test.agent.Agent2',
+                         '-H:Class=com.oracle.svm.test.agent.AgentTest',
+                     ]  + args)
+        mx.run([binary_path] + nativeagent_premain_options)
+
+        # Switch the premain sequence of agent1 and agent2
+        binary_path = join(build_dir, 'agenttest2')
+        native_image([
+                         '-cp', test_cp,
+                         '-J-ea', '-J-esa',
+                         '-o', binary_path,
+                         '-H:+ReportExceptionStackTraces',
+                         '-H:PremainClasses=com.oracle.svm.test.agent.Agent2,com.oracle.svm.test.agent.Agent',
+                         '-H:Class=com.oracle.svm.test.agent.AgentTest',
+                     ]  + args)
+        mx.run([binary_path] + nativeagent_premain_options)
+
+    native_image_context_run(build_and_test_agent_image, args)
+
 @mx.command(suite.name, 'clinittest', 'Runs the ')
 def clinittest(args):
     def build_and_test_clinittest_image(native_image, args):
