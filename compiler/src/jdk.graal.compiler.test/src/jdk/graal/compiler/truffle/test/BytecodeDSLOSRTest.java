@@ -35,13 +35,14 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -328,24 +329,28 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         }
 
         @Operation
+        @ConstantOperand(type = LocalSetter.class)
         static final class Increment {
             @Specialization
-            public static void perform(VirtualFrame frame, int currentValue, LocalSetter variable) {
-                variable.setInt(frame, currentValue + 1);
+            public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
+                            @Bind("$bytecode") BytecodeNode bytecodeNode, @Bind("$bci") int bci) {
+                variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
             }
         }
 
         @Operation
+        @ConstantOperand(type = LocalSetter.class)
         static final class IncrementIfCompiled {
             @Specialization
-            public static void perform(VirtualFrame frame, int currentValue, LocalSetter variable) {
+            public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
+                            @Bind("$bytecode") BytecodeNode bytecodeNode, @Bind("$bci") int bci) {
                 /**
                  * NB: this is implemented as one operation rather than a built-in IfThen operation
                  * because the IfThen branch profile would mark the "in compiled code" branch as
                  * dead and we'd deopt on OSR entry.
                  */
                 if (CompilerDirectives.inCompiledCode()) {
-                    variable.setInt(frame, currentValue + 1);
+                    variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
                 }
             }
         }
@@ -392,24 +397,28 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         }
 
         @Operation
+        @ConstantOperand(type = LocalSetter.class)
         static final class Increment {
             @Specialization
-            public static void perform(VirtualFrame frame, int currentValue, LocalSetter variable) {
-                variable.setInt(frame, currentValue + 1);
+            public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
+                            @Bind("$bytecode") BytecodeNode bytecodeNode, @Bind("$bci") int bci) {
+                variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
             }
         }
 
         @Operation
+        @ConstantOperand(type = LocalSetter.class)
         static final class IncrementIfCompiled {
             @Specialization
-            public static void perform(VirtualFrame frame, int currentValue, LocalSetter variable) {
+            public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
+                            @Bind("$bytecode") BytecodeNode bytecodeNode, @Bind("$bci") int bci) {
                 /**
                  * NB: this is implemented as one operation rather than a built-in IfThen operation
                  * because the IfThen branch profile would mark the "in compiled code" branch as
                  * dead and we'd deopt on OSR entry.
                  */
                 if (CompilerDirectives.inCompiledCode()) {
-                    variable.setInt(frame, currentValue + 1);
+                    variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
                 }
             }
         }
