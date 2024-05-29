@@ -239,7 +239,7 @@ def _test_libgraal_fatal_error_handling():
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     vmargs = ['-XX:+PrintFlagsFinal',
               '-Djdk.libgraal.CrashAt=*',
-              '-Djdk.libgraal.CrashAtIsFatal=true']
+              '-Djdk.libgraal.CrashAtIsFatal=1']
     cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
     out = mx.OutputCapture()
     scratch_dir = mkdtemp(dir='.')
