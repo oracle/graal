@@ -54,6 +54,7 @@ import com.oracle.truffle.dsl.processor.model.SpecializationData;
 public final class InstructionModel implements PrettyPrintable {
     public enum InstructionKind {
         BRANCH,
+        BRANCH_UNALIGNED,
         BRANCH_BACKWARD,
         BRANCH_FALSE,
         POP,
@@ -104,6 +105,7 @@ public final class InstructionModel implements PrettyPrintable {
         LOCAL_ROOT("localRoot"),
         INTEGER("int"),
         BYTECODE_INDEX("bci"),
+        STACK_POINTER("sp"),
         CONSTANT("const"),
         NODE_PROFILE("node"),
         TAG_NODE("tag"),
@@ -295,6 +297,7 @@ public final class InstructionModel implements PrettyPrintable {
     public boolean isControlFlow() {
         switch (kind) {
             case BRANCH:
+            case BRANCH_UNALIGNED:
             case BRANCH_BACKWARD:
             case BRANCH_FALSE:
             case RETURN:

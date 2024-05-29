@@ -1750,7 +1750,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private final CodeTypeElement bytecodeLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLocalImpl");
 
-        TypeMirror unresolvedLabelsType = generic(HashMap.class, types.BytecodeLabel, generic(context.getDeclaredType(ArrayList.class), unresolvedBranchImmediate.asType()));
+        TypeMirror unresolvedLabelsType = generic(HashMap.class, types.BytecodeLabel, generic(context.getDeclaredType(ArrayList.class), context.getDeclaredType(Integer.class)));
 
         Map<Integer, CodeExecutableElement> doEmitInstructionMethods = new TreeMap<>();
 
@@ -1916,6 +1916,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case BLOCK:
                         name = "BlockData";
                         fields = List.of(//
+                                        field(context.getType(int.class), "startStackHeight").asFinal(),
                                         field(context.getType(boolean.class), "producedValue"),
                                         field(context.getType(int.class), "childBci"));
                         if (model.enableLocalScoping) {
@@ -2327,15 +2328,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          * another handler is started, the first is saved in the {@code parentContext} and restored
          * after parsing the second handler.
          * <p>
-         * Branches are particularly tricky to get right. A finally handler may branch within its
-         * own handler; we call such a branch "finally-relative". Since branch targets are encoded
-         * as absolute addresses, finally-relative branch targets need to be relocated every time
-         * the handler is emitted. During handler parsing, we remember the set of finally-relative
-         * branches in {@code finallyRelativeBranches}; then, in {@code doEmitFinallyHandler}, we
-         * use the set to determine whether a branch target needs to be relocated. If the target of
-         * the branch is defined in an outer finally handler, we recursively register the
-         * finally-relative branch in the outer context, since it needs to be relocated when the
-         * outer handler is emitted.
+         * Branches are particularly tricky to get right:
+         * <ul>
+         * <li>A finally handler may branch within its own handler; we call such a branch
+         * "finally-relative". Since branch targets are encoded as absolute addresses,
+         * finally-relative branch targets need to be relocated every time the handler is emitted.
+         * During handler parsing, we remember the set of finally-relative branches in
+         * {@code finallyRelativeBranches}; then, in {@code doEmitFinallyHandler}, we relocate any
+         * branch target included in the set.
+         * <li>Additionally, if {@code doEmitFinallyHandler} emits a finally-relative branch while
+         * we are parsing some outer handler, the branches need to be relocated again when the outer
+         * handler is emitted, so they are registered as finally-relative in the outer handler.
+         * <li>For unaligned branches (where the sp at the branch may differ from the branch
+         * target), the expected sp is also encoded in the instruction and needs to be adjusted to
+         * account for the sp at the emission site. The expected sp should only be adjusted if the
+         * branch target (i.e., the label) is part of the relocated handler (otherwise, the target
+         * location is not part of the relocation).
+         * </ul>
          */
         class FinallyHandlerContextFactory {
             private CodeTypeElement create() {
@@ -2356,9 +2365,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(context.getType(int.class), "handlerMaxStackHeight"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerSourceInfo"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerExHandlers"),
-                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel), "handlerUnresolvedBranchLabels"),
-                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
-                                                "handlerUnresolvedBranchStackHeights")));
+                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel), "handlerUnresolvedBranchLabels")));
 
                 if (model.enableYield) {
                     handlerFields.add(new CodeVariableElement(generic(ArrayList.class, continuationLocation.asType()), "handlerContinuationLocations"));
@@ -2498,21 +2505,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
 
-        class BytecodeLocationFactory {
-            private CodeTypeElement create() {
-                List<CodeVariableElement> fields = List.of(
-                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "bci"),
-                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "sp"));
-
-                unresolvedBranchImmediate.addAll(fields);
-
-                CodeExecutableElement ctor = createConstructorUsingFields(Set.of(), unresolvedBranchImmediate, null);
-                unresolvedBranchImmediate.add(ctor);
-
-                return unresolvedBranchImmediate;
-            }
-        }
-
         class DeserializerContextImplFactory {
             private CodeTypeElement create() {
                 deserializerContextImpl.setEnclosingElement(bytecodeNodeGen);
@@ -2590,7 +2582,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(new OperationStackEntryFactory().create());
             builder.add(new FinallyHandlerContextFactory().create());
             builder.add(new ConstantPoolFactory().create());
-            builder.add(new BytecodeLocationFactory().create());
 
             builder.add(createOperationNames());
 
@@ -2627,7 +2618,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createRegisterUnresolvedLabel());
             builder.add(createResolveUnresolvedLabel());
             builder.add(createCreateBranchLabelMapping());
-            builder.add(createCreateBranchStackHeightMapping());
 
             for (OperationModel operation : model.getOperations()) {
                 if (omitBuilderMethods(operation)) {
@@ -3444,12 +3434,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "registerUnresolvedLabel");
             ex.addParameter(new CodeVariableElement(types.BytecodeLabel, "label"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "immediateBci"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "stackHeight"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(generic(context.getDeclaredType(ArrayList.class), unresolvedBranchImmediate.asType()), "locations", "unresolvedLabels.computeIfAbsent(label, k -> new ArrayList<>())");
+            b.declaration(generic(context.getDeclaredType(ArrayList.class), context.getDeclaredType(Integer.class)), "locations", "unresolvedLabels.computeIfAbsent(label, k -> new ArrayList<>())");
             b.startStatement().startCall("locations.add");
-            b.startNew(unresolvedBranchImmediate.asType()).string("immediateBci").string("stackHeight").end();
+            b.string("immediateBci");
             b.end(2);
 
             return ex;
@@ -3464,20 +3453,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.statement("BytecodeLabelImpl impl = (BytecodeLabelImpl) label");
             b.statement("assert impl.isDefined()");
-            b.declaration(generic(List.class, unresolvedBranchImmediate.asType()), "sites", "unresolvedLabels.remove(impl)");
+            b.declaration(generic(List.class, context.getDeclaredType(Integer.class)), "sites", "unresolvedLabels.remove(impl)");
             b.startIf().string("sites != null").end().startBlock();
-            b.startFor().startGroup().type(unresolvedBranchImmediate.asType()).string(" site : sites").end(2).startBlock();
+            b.startFor().startGroup().type(context.getDeclaredType(Integer.class)).string(" site : sites").end(2).startBlock();
 
-            b.startIf().string("stackHeight != site.sp").end().startBlock();
-            b.startThrow().startNew(type(IllegalStateException.class));
-            b.startStaticCall(type(String.class), "format");
-            b.doubleQuote("BytecodeLabel was emitted at a position with a different stack height than a branch instruction that targets it. Expected stack height %s, but was %s. Branches must be balanced.");
-            b.string("site.sp");
-            b.string("stackHeight");
-            b.end(); // String.format
-            b.end(2);
-            b.end();
-            b.statement(writeBc("site.bci", "(short) impl.bci"));
+            b.statement(writeBc("site", "(short) impl.bci"));
             b.end(2);
 
             return ex;
@@ -3491,26 +3471,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("HashMap<Integer, BytecodeLabel> result = new HashMap<>()");
             b.startFor().string("BytecodeLabel lbl : unresolvedLabels.keySet()").end().startBlock();
-            b.startFor().startGroup().type(unresolvedBranchImmediate.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
-            b.statement("assert !result.containsKey(site.bci)");
-            b.statement("result.put(site.bci, lbl)");
-            b.end(2);
-            b.startReturn().string("result").end();
-
-            return ex;
-        }
-
-        private CodeExecutableElement createCreateBranchStackHeightMapping() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
-                            "createBranchStackHeightMapping");
-            ex.addParameter(new CodeVariableElement(unresolvedLabelsType, "unresolvedLabels"));
-
-            CodeTreeBuilder b = ex.createBuilder();
-            b.statement("HashMap<Integer, Integer> result = new HashMap<>()");
-            b.startFor().string("BytecodeLabel lbl : unresolvedLabels.keySet()").end().startBlock();
-            b.startFor().startGroup().type(unresolvedBranchImmediate.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
-            b.statement("assert !result.containsKey(site.bci)");
-            b.statement("result.put(site.bci, site.sp)");
+            b.startFor().startGroup().type(context.getDeclaredType(Integer.class)).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
+            b.statement("assert !result.containsKey(site)");
+            b.statement("result.put(site, lbl)");
             b.end(2);
             b.startReturn().string("result").end();
 
@@ -4182,6 +4145,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
                 case RETURN -> {
                     yield createOperationData(className, "false", UNINIT);
+                }
+                case BLOCK -> {
+                    yield createOperationData(className, "this.currentStackHeight", "false", UNINIT);
                 }
                 default -> {
                     if (operation.isTransparent) {
@@ -5038,10 +5004,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case BRANCH -> {
                     b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationBeginArgumentName(0)).end();
 
-                    b.statement("boolean isFound = false");
+                    b.declaration(operationStackEntry.asType(), "declaringOperation", "null");
                     b.startFor().string("int i = 0; i < " + sp + "; i++").end().startBlock();
                     b.startIf().string("operationStack[i].sequenceNumber == labelImpl.declaringOp").end().startBlock();
-                    b.statement("isFound = true");
+                    b.startAssign("declaringOperation").string("operationStack[i]").end();
                     b.statement("break");
                     b.end();
                     b.end();
@@ -5050,14 +5016,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                      * To keep branches reasonable, require them to target a label defined in the
                      * same operation or an enclosing one.
                      */
-                    b.startIf().string("!isFound").end().startBlock();
+                    b.startIf().string("declaringOperation == null").end().startBlock();
                     emitThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
+                    b.end();
+
+                    b.startIf().string("labelImpl.isDefined()").end().startBlock();
+                    emitThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
                     b.end();
 
                     b.statement("beforeEmitBranch(labelImpl.declaringOp)");
 
-                    b.startIf().string("labelImpl.isDefined()").end().startBlock();
-                    emitThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
+                    b.declaration(type(int.class), "targetStackHeight");
+                    b.startIf().string("declaringOperation.data instanceof " + getDataClassName(model.blockOperation) + " blockData").end().startBlock();
+                    b.startAssign("targetStackHeight").string("blockData.startStackHeight").end();
+                    b.end().startElseBlock();
+                    b.startAssert().string("declaringOperation.data instanceof " + getDataClassName(model.rootOperation)).end();
+                    b.startAssign("targetStackHeight").string("0").end();
                     b.end();
 
                     b.startIf().string("this.reachable").end().startBlock();
@@ -5068,7 +5042,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startStatement().startCall("registerUnresolvedLabel");
                     b.string("labelImpl");
                     b.string("bci + 1");
-                    b.string("currentStackHeight");
                     b.end(2);
                     b.newLine();
 
@@ -5078,20 +5051,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                      * one). Mark it as finally-relative.
                      */
                     b.startIf().string("labelImpl.finallyHandlerOp != " + UNINIT).end().startBlock();
-                    b.statement("FinallyHandlerContext ctx = finallyHandlerContext");
-                    b.startWhile().string("ctx.finallyTrySequenceNumber != labelImpl.finallyHandlerOp").end().startBlock();
-                    b.statement("ctx = ctx.parentContext");
-                    b.end();
-
-                    b.startIf().string("parsingFinallyHandler(ctx)").end().startBlock();
                     b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
                     b.statement("finallyHandlerContext.finallyRelativeBranches.add(bci + 1)");
                     b.end();
 
-                    b.end(); // if emitted in finally handler
-
                     b.end(); // if reachable
-                    yield new String[]{UNINIT};
+                    yield new String[]{UNINIT, "targetStackHeight"};
                 }
                 case YIELD -> {
                     b.declaration(context.getType(int.class), "constantPoolIndex", "allocateContinuationConstant()");
@@ -5184,6 +5149,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.startIf().string("labelImpl.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
                 emitThrowIllegalStateException(b, "\"BytecodeLabel must be emitted inside the same operation it was created in.\"");
+                b.end();
+
+                b.startIf().string("operationStack[operationSp - 1].data instanceof " + getDataClassName(model.blockOperation) + " blockData").end().startBlock();
+                b.startAssert().string("this.currentStackHeight == blockData.startStackHeight").end();
+                b.end().startElseBlock();
+                b.startAssert().string("operationStack[operationSp - 1].data instanceof " + getDataClassName(model.rootOperation)).end();
+                b.startAssert().string("this.currentStackHeight == 0").end();
                 b.end();
 
                 b.statement("labelImpl.bci = bci");
@@ -5361,7 +5333,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case CONSTANT -> constantOperandIndices.get(constantIndex++);
                     case NODE_PROFILE -> "allocateNode()";
                     case TAG_NODE -> "node";
-                    case LOCAL_OFFSET, LOCAL_INDEX, LOCAL_ROOT, INTEGER, BRANCH_PROFILE -> throw new AssertionError(
+                    case LOCAL_OFFSET, LOCAL_INDEX, LOCAL_ROOT, INTEGER, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError(
                                     "Operation " + operation.name + " takes an immediate " + immediate.name() + " with unexpected kind " + immediate.kind() +
                                                     ". This is a bug in the Bytecode DSL processor.");
                 };
@@ -5787,9 +5759,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.declaration(generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel),
                                         "unresolvedBranchLabels",
                                         CodeTreeBuilder.createBuilder().startStaticCall(bytecodeBuilderType, "createBranchLabelMapping").string("unresolvedLabels").end());
-                        b.declaration(generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
-                                        "unresolvedBranchStackHeights",
-                                        CodeTreeBuilder.createBuilder().startStaticCall(bytecodeBuilderType, "createBranchStackHeightMapping").string("unresolvedLabels").end());
 
                         b.startStatement().startCall("finallyHandlerContext", "setHandler");
                         b.string("Arrays.copyOf(bc, bci)");
@@ -5797,7 +5766,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.string("parseSources ? Arrays.copyOf(sourceInfo, sourceInfoIndex) : null");
                         b.string("Arrays.copyOf(exHandlers, exHandlerCount)");
                         b.string("unresolvedBranchLabels");
-                        b.string("unresolvedBranchStackHeights");
                         if (model.enableYield) {
                             b.string("continuationLocations");
                         }
@@ -6086,8 +6054,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private static boolean needsRelocation(InstructionImmediate i) {
             return switch (i.kind()) {
                 case LOCAL_INDEX, LOCAL_OFFSET, LOCAL_ROOT, CONSTANT, INTEGER, TAG_NODE -> false;
-                case BYTECODE_INDEX, NODE_PROFILE, BRANCH_PROFILE -> true;
-                default -> throw new AssertionError("Unexpected kind");
+                case BYTECODE_INDEX, NODE_PROFILE, BRANCH_PROFILE, STACK_POINTER -> true;
             };
         }
 
@@ -6096,9 +6063,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 throw new AssertionError("Inconsistent grouping");
             }
 
-            // instruction specific logic
+            // Instruction-specific relocation
             switch (instr.kind) {
                 case YIELD:
+                    b.startBlock();
                     b.statement("int locationBci = handlerBci + " + instr.getImmediate(ImmediateKind.CONSTANT).offset());
                     b.statement("int constantPoolIndex = " + readHandlerBc("locationBci"));
                     b.statement("ContinuationLocation continuationLocation = context.handlerContinuationLocations.get(continuationIndex++)");
@@ -6108,9 +6076,103 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("ContinuationLocation newContinuationLocation = new ContinuationLocation(newConstantPoolIndex, offsetBci + continuationLocation.bci, currentStackHeight + continuationLocation.sp)");
                     b.statement(writeBc("offsetBci + locationBci", "(short) newConstantPoolIndex"));
                     b.statement("continuationLocations.add(newContinuationLocation)");
-                    break;
+                    b.end();
+                    return;
+                case BRANCH_UNALIGNED:
+                    b.startBlock();
+                    InstructionImmediate branchTarget = instr.getImmediate(ImmediateKind.BYTECODE_INDEX);
+                    b.declaration(type(int.class), "branchIdx", "handlerBci + " + branchTarget.offset());
+                    b.declaration(type(short.class), "branchTarget", readHandlerBc("branchIdx"));
+                    b.declaration(type(boolean.class), "branchTargetResolved", "branchTarget != " + UNINIT);
+                    /**
+                     * If the branch hasn't been resolved yet, register a new unresolved branch at
+                     * the bci it was copied to, so that the label bci can be patched in later.
+                     */
+                    b.startIf().string("!branchTargetResolved").end().startBlock();
+                    b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation.");
+                    b.statement("BytecodeLabelImpl lbl = (BytecodeLabelImpl) context.handlerUnresolvedBranchLabels.get(branchIdx)");
+                    b.statement("assert !lbl.isDefined()");
+                    b.startStatement().startCall("registerUnresolvedLabel");
+                    b.string("lbl");
+                    b.string("offsetBci + branchIdx");
+                    b.end(3);
+                    b.newLine();
+                    /**
+                     * If the branch is finally-relative, it needs to be relocated. If the parent
+                     * context is also a finally handler, this new branch should also be marked
+                     * finally-relative in the parent (it should be relocated when the parent
+                     * handler is emitted).
+                     */
+                    b.startIf().string("context.finallyRelativeBranches.contains(branchIdx)").end().startBlock();
+                    /**
+                     * Only relocate the target if it's resolved. Leave it as UNINIT otherwise so
+                     * that we know the branch is still unresolved.
+                     */
+                    b.startIf().string("branchTargetResolved").end().startBlock();
+                    b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
+                    b.end();
+                    registerFinallyRelativeBranchInParent(b);
+                    b.end();
+
+                    /**
+                     * If the branch target has been resolved, the label was emitted somewhere in
+                     * the finally handler. In other words, the label itself is being "relocated"
+                     * here, and the expected stack pointer should be adjusted. For example, in the
+                     * following code:
+                     *
+                     * <pre>
+                     * try {
+                     *   return 42
+                     * } finally {
+                     *   ...
+                     *   branch lbl
+                     *   ...
+                     *   lbl:
+                     *   ...
+                     * }
+                     * </pre>
+                     *
+                     * When we parse the finally handler, the expected sp at "lbl" is 0. When we
+                     * emit a copy of the handler after computing "42" (before the return), it gets
+                     * relocated in a context where the sp is 1. The expected stack pointer should
+                     * be adjusted.
+                     *
+                     * On the other hand, if the branch target has not been resolved, we shouldn't
+                     * adjust the expected stack pointer, because the label is outside of the
+                     * handler and has not been "relocated". For example, in the following code:
+                     *
+                     * <pre>
+                     * try {
+                     *   return 42
+                     * } finally {
+                     *   ...
+                     *   branch lbl
+                     *   ...
+                     * }
+                     * ...
+                     * lbl:
+                     * ...
+                     * </pre>
+                     *
+                     * The expected stack pointer at "lbl" does not change regardless of where the
+                     * finally handler is emitted. (However, if this code was itself nested in an
+                     * outer finally handler, the stack pointer at "lbl" could change when *that*
+                     * handler is relocated. By the time the outer handler is being emitted, the
+                     * branch *will* be resolved and the stack pointer will be adjusted.)
+                     */
+                    b.startIf().string("branchTargetResolved").end().startBlock();
+                    b.lineComment("The label was emitted somewhere in this handler. Adjust the expected stack pointer.");
+                    InstructionImmediate stackPointer = instr.getImmediate(ImmediateKind.STACK_POINTER);
+                    b.declaration(type(int.class), "targetSpIdx", "handlerBci + " + stackPointer.offset());
+                    b.declaration(type(short.class), "targetSp", readHandlerBc("targetSpIdx"));
+                    b.statement(writeBc("offsetBci + targetSpIdx", "(short) (currentStackHeight + targetSp)"));
+                    b.end();
+
+                    b.end(); // block
+                    return;
             }
 
+            b.startBlock();
             List<InstructionImmediate> immediates = instr.getImmediates();
             for (int i = 0; i < immediates.size(); i++) {
                 InstructionImmediate immediate = immediates.get(i);
@@ -6142,6 +6204,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         break;
                 }
             }
+            b.end();
         }
 
         private void relocateBranchTarget(CodeTreeBuilder b, InstructionModel instr, InstructionImmediate immediate) {
@@ -6149,53 +6212,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case BRANCH:
                 case BRANCH_BACKWARD:
                 case BRANCH_FALSE:
-                    b.startBlock();
-                    b.statement("int branchIdx = handlerBci + 1"); // BCI of branch
+                    // BCI of branch target immediate
+                    b.statement("int branchIdx = handlerBci + " + immediate.offset());
                     b.statement("short branchTarget = " + readHandlerBc("branchIdx"));
-                    if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
-                        /**
-                         * Backward branches are only used internally by While operations. They
-                         * should be resolved when the while loop is done parsing.
-                         */
-                        b.startAssert().string("branchTarget != " + UNINIT).end();
-                        b.newLine();
-                        /**
-                         * The While must be nested within the handler, so the branch should always
-                         * be handler-relative.
-                         */
-                        b.startAssert().string("context.finallyRelativeBranches.contains(branchIdx)").end();
-                        b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
-                        registerFinallyRelativeBranchInParent(b);
-                    } else {
-                        b.declaration(type(boolean.class), "branchTargetResolved", "branchTarget != " + UNINIT);
-                        // Mark branch target as unresolved, if necessary.
-                        b.startIf().string("!branchTargetResolved").end().startBlock();
-                        b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation.");
-                        b.statement("BytecodeLabelImpl lbl = (BytecodeLabelImpl) context.handlerUnresolvedBranchLabels.get(branchIdx)");
-                        b.statement("int sp = context.handlerUnresolvedBranchStackHeights.get(branchIdx)");
-                        b.statement("assert !lbl.isDefined()");
-                        b.startStatement().startCall("registerUnresolvedLabel");
-                        b.string("lbl");
-                        b.string("offsetBci + branchIdx");
-                        b.string("currentStackHeight + sp");
-                        b.end(3);
-                        b.newLine();
-
-                        // case 1: Branch is finally-relative.
-                        b.startIf().string("context.finallyRelativeBranches.contains(branchIdx)").end().startBlock();
-                        // Only relocate the target if it's resolved; leave it as UNINIT otherwise.
-                        b.startIf().string("branchTargetResolved").end().startBlock();
-                        b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
-                        b.end();
-                        registerFinallyRelativeBranchInParent(b);
-                        b.end();
-
-                        // case 2: Branch is not finally-relative.
-                        b.startElseBlock();
-                        b.statement(writeBc("offsetBci + branchIdx", "branchTarget"));
-                        b.end();
-                    }
-                    b.end(); // block
+                    /**
+                     * All aligned branches are internal branches: the branch and branch target both
+                     * reside in the same operation (they do not branch "out"), so the branch
+                     * targets should have been filled in when the handler finished parsing.
+                     */
+                    b.startAssert().string("branchTarget != " + UNINIT).end();
+                    b.newLine();
+                    /**
+                     * The branch should always be handler-relative (because the branch and its
+                     * target are both enclosed in the finally handler).
+                     */
+                    b.startAssert().string("context.finallyRelativeBranches.contains(branchIdx)").end();
+                    b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
+                    registerFinallyRelativeBranchInParent(b);
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
                     b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(),
@@ -6296,6 +6329,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startIf().string("stackEffect != 0").end().startBlock();
             b.statement("currentStackHeight += stackEffect");
+            b.startAssert().string("currentStackHeight >= 0").end();
             b.end();
 
             b.startIf().string("!reachable").end().startBlock();
@@ -6391,6 +6425,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             int stackEffect = 0;
             switch (instr.kind) {
                 case BRANCH:
+                case BRANCH_UNALIGNED:
                 case BRANCH_BACKWARD:
                 case TAG_ENTER:
                 case TAG_LEAVE:
@@ -6825,14 +6860,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
             b.startIf().string("finallyTryHandlerEmitted").end().startBlock();
             String friendlyName = switch (instruction.kind) {
-                case BRANCH -> "branch";
+                case BRANCH_UNALIGNED -> "branch";
                 case RETURN -> "return";
                 default -> throw new AssertionError("Unexpected instruction " + instruction);
             };
             b.declaration(type(int.class), "newGuardedStartBci", "bci + " + instruction.getInstructionLength() + " /* after the " + friendlyName + " */");
             b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
 
-            if (instruction.kind == InstructionKind.BRANCH) {
+            if (instruction.kind == InstructionKind.BRANCH_UNALIGNED) {
                 b.startIf().string("operationStack[i].sequenceNumber == targetSeq").end().startBlock();
                 b.statement("break");
                 b.end();
@@ -6891,7 +6926,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // switch
             b.end(); // for
 
-            emitFinallyLeaveSetNewGuardBci(b, model.branchInstruction);
+            emitFinallyLeaveSetNewGuardBci(b, model.branchUnalignedInstruction);
 
             return ex;
         }
@@ -8103,9 +8138,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     return "ConstantArgument";
                 case LOCAL_OFFSET:
                     return "LocalOffsetArgument";
+                case INTEGER:
                 case LOCAL_INDEX:
                 case LOCAL_ROOT:
-                case INTEGER:
+                case STACK_POINTER:
                     return "IntegerArgument";
                 case NODE_PROFILE:
                     return "NodeProfileArgument";
@@ -8173,6 +8209,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case INTEGER:
                     case LOCAL_INDEX:
                     case LOCAL_ROOT:
+                    case STACK_POINTER:
                         type.add(createAsInteger());
                         break;
                     case LOCAL_OFFSET:
@@ -8310,7 +8347,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case BYTECODE_INDEX -> "BYTECODE_INDEX";
                     case CONSTANT -> "CONSTANT";
                     case LOCAL_OFFSET -> "LOCAL_OFFSET";
-                    case LOCAL_INDEX, LOCAL_ROOT, INTEGER -> "INTEGER";
+                    case INTEGER, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
                     case NODE_PROFILE -> "NODE_PROFILE";
                     case TAG_NODE -> "TAG_NODE";
                 };
@@ -9287,6 +9324,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.end();
                             break;
                         case INTEGER:
+                        case STACK_POINTER:
                             break;
                         case LOCAL_OFFSET: {
                             InstructionImmediate root = instr.getImmediate(ImmediateKind.LOCAL_ROOT);
@@ -11094,7 +11132,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 switch (instr.kind) {
                     case BRANCH:
-                        b.statement("bci = " + readBc("bci + 1"));
+                        b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+                        b.statement("continue loop");
+                        break;
+                    case BRANCH_UNALIGNED:
+                        b.declaration(type(int.class), "targetSp", "$root.numLocals + " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.STACK_POINTER)));
+                        b.startAssert().string("targetSp <= sp").end();
+                        b.startWhile().string("targetSp < sp").end().startBlock();
+                        b.statement(clearFrame("frame", "sp - 1"));
+                        b.statement("sp -= 1");
+                        b.end();
+                        b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                         b.statement("continue loop");
                         break;
                     case BRANCH_BACKWARD:
@@ -11102,7 +11150,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.startIf().string("--uncachedExecuteCount <= 0").end().startBlock();
                             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                             b.statement("$root.transitionToCached()");
-                            b.statement("return (sp << 16) | " + readBc("bci + 1"));
+                            b.statement("return (sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                             b.end();
                         } else {
                             emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
@@ -11127,7 +11175,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.startAssign("Object osrResult");
                             b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
                             b.string("this");
-                            b.string("(sp << 16) | " + readBc("bci + 1")); // target
+                            b.string("(sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))); // target
 
                             if (model.enableYield) {
                                 b.string("interpreterState");
@@ -11152,7 +11200,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                             b.end();
                         }
-                        b.statement("bci = + " + readBc("bci + 1"));
+                        b.statement("bci = + " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                         b.statement("continue loop");
                         break;
                     case BRANCH_FALSE:
@@ -11193,7 +11241,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("continue loop");
                         b.end().startElseBlock();
                         b.statement("sp -= 1");
-                        b.statement("bci = " + readBc("bci + 1"));
+                        b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate("branch_target")));
                         b.statement("continue loop");
                         b.end();
                         break;
