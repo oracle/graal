@@ -3736,24 +3736,90 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Retrieves the top scope object of {@code language}, if available. This method first
-         * checks if the specified {@code language} is accessible from the current language. If not,
-         * a {@link IllegalArgumentException} is thrown. If the language is accessible, this method
-         * initializes the language if it has not been initialized already, and then returns the
-         * top-level scope object. The returned object is an
+         * Returns the scope object of a non-null {@link #getPublicLanguages() public language}. The
+         * returned value follows the contract of {@link TruffleLanguage#getScope(Object)} of the
+         * other language, therefore it must be an
          * {@link com.oracle.truffle.api.interop.InteropLibrary#isScope(Object) interop scope
-         * object}, or {@code null} if the language does not support such concept.
+         * object} and may have
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#hasScopeParent(Object) parent
+         * scopes}. The bindings object exposes all top scopes variables as flattened
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#getMembers(Object) members}. In
+         * addition to being a scope the returned object may implement any number of the
+         * {@link com.oracle.truffle.api.interop.InteropLibrary interop traits}. The interop members
+         * of the returned object are typically writable, but that is not guaranteed.
+         * <p>
+         * The suffix <code>public</code> in the method name indicates that the result of this
+         * method is safe to be exposed by default to guest applications. For example, languages
+         * should use this method to implement the semantics of their polyglot bindings builtin, but
+         * is not limited to that.
+         * <p>
+         * All {@link #getPublicLanguages() public} languages with
+         * {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions} are accessible. If a
+         * language is not accessible then an {@link SecurityException} is thrown. The scope of the
+         * current language is always accessible, but it is recommended to use a language specific
+         * way to access symbols of the current language.
+         * <p>
+         * Languages should check for {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions}
+         * for each {@link #getPublicLanguages() public language} prior to calling this method,
+         * otherwise it might cause an internal error if not sufficient privileges are available.
          *
-         * @see TruffleLanguage#getScope(Object)
+         * @return the scope, or <code>null</code> if the requested language does not support such a
+         *         concept
+         * @throws IllegalStateException if polyglot context associated with this environment is not
+         *             entered
+         * @throws SecurityException if polyglot scope access is not enabled for this language.
+         * @see #getScopeInternal(LanguageInfo)
+         * @see #isPolyglotEvalAllowed(LanguageInfo)
+         * @see #getPolyglotBindings()
+         *
          * @since 24.1
          */
         @TruffleBoundary
-        public Object getScope(LanguageInfo language) {
+        public Object getScopePublic(LanguageInfo language) throws IllegalArgumentException {
+            Objects.requireNonNull(language);
+            checkDisposed();
             try {
-                Env env = LanguageAccessor.engineAccess().getEnvForLanguage(polyglotLanguageContext, language, getSpi().languageInfo);
-                Object result = env.getSpi().getScope(env.context);
-                assert result == null || LanguageAccessor.interopAccess().isScopeObject(result) : String.format("%s is not a scope", result);
-                return result;
+                return LanguageAccessor.engineAccess().getScope(polyglotLanguageContext, language, false);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns the scope object of a non-null {@link #getInternalLanguages() internal language}.
+         * Works the same as {@link #getScopePublic(LanguageInfo)} but it also returns scopes of
+         * internal and dependent languages.
+         * <p>
+         * The suffix <code>internal</code> in the method name indicates that the result of this
+         * method is <b>not</b> safe to be exposed to arbitrary guest code, by default. Use
+         * {@link #getScopePublic(LanguageInfo)} for that purpose instead. For example, this method
+         * could be used to access a fixed set of symbols from the Truffle Native Interface, e.g. to
+         * load native language extensions. Languages may decide to expose scopes of internal
+         * languages to arbitrary guest code for testing purposes. Make sure this option is disabled
+         * by default and enabled using an {@link OptionCategory#INTERNAL internal} option only.
+         * <p>
+         * The scope of the current language is always accessible, but it is recommended to use a
+         * language specific way to access symbols of the current language.
+         * <p>
+         * It is recommended to only use this method for {@link LanguageInfo#isInternal() internal}
+         * or {@link TruffleLanguage.Registration#dependentLanguages() dependent languages}. For
+         * convenience, this method will also succeed for all accessible
+         * {@link #getPublicLanguages() public languages} with
+         * {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions}.
+         *
+         * @see #getScopePublic(LanguageInfo)
+         * @return the scope, or <code>null</code> if the requested language does not support such a
+         *         concept
+         * @throws IllegalStateException if polyglot context associated with this environment is not
+         *             entered
+         * @throws SecurityException if polyglot scope access is not enabled for this language.
+         * @since 24.1
+         */
+        @TruffleBoundary
+        public Object getScopeInternal(LanguageInfo language) {
+            checkDisposed();
+            try {
+                return LanguageAccessor.engineAccess().getScope(polyglotLanguageContext, language, true);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

@@ -368,7 +368,7 @@ public abstract class Accessor {
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
-        public abstract Env getEnvForLanguage(Object polyglotLanguageContext, LanguageInfo requiredLanguage, LanguageInfo accessingLanguage);
+        public abstract Object getScope(Object polyglotLanguageContext, LanguageInfo languageInfo, boolean internal);
 
         public abstract boolean hasCurrentContext();
 

@@ -504,12 +504,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public TruffleLanguage.Env getEnvForLanguage(Object polyglotLanguageContext, LanguageInfo requiredLanguage, LanguageInfo accessingLanguage) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
+        public Object getScope(Object polyglotLanguageContext, LanguageInfo requiredLanguage, boolean internal) {
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
+            PolyglotContextImpl context = languageContext.context;
+            if ((internal && !getInternalLanguages(languageContext).containsKey(requiredLanguage.getId())) || //
+                            (!internal && !getPublicLanguages(languageContext).containsKey(requiredLanguage.getId()))) {
+                throw new SecurityException(String.format("Access to language '%s' is not permitted.", requiredLanguage.getId()));
+            }
             PolyglotLanguage requiredPolyglotLanguage = context.engine.findLanguage(requiredLanguage);
-            PolyglotLanguage accessingPolyglotLanguage = context.engine.findLanguage(accessingLanguage);
-            PolyglotLanguageContext requestedPolyglotLanguageContext = context.getContextInitialized(requiredPolyglotLanguage, accessingPolyglotLanguage);
-            return requestedPolyglotLanguageContext.env;
+            PolyglotLanguageContext requestedPolyglotLanguageContext = context.getContextInitialized(requiredPolyglotLanguage, languageContext.language);
+            return LANGUAGE.getScope(requestedPolyglotLanguageContext.env);
         }
 
         static PolyglotLanguage findObjectLanguage(PolyglotEngineImpl engine, Object value) {

@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -1068,10 +1069,16 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     private static void assertInternalEvalAllowed(Env env, String targetId) {
         assertTrue(env.getInternalLanguages().containsKey(targetId));
         assertNotNull(env.parseInternal(Source.newBuilder(targetId, "", "").build()));
+        assertNotNull(env.getScopeInternal(env.getInternalLanguages().get(targetId)));
     }
 
     private static void assertPublicEvalDenied(Env env, String targetId) {
-        assertFalse(env.getPublicLanguages().containsKey(targetId));
+        LanguageInfo info = env.getPublicLanguages().get(targetId);
+        assertNull(info);
+        LanguageInfo internalLanguage = env.getInternalLanguages().get(targetId);
+        if (internalLanguage != null) {
+            assertFails(() -> env.getScopePublic(internalLanguage), SecurityException.class);
+        }
         try {
             env.parsePublic(Source.newBuilder(targetId, "", "").build());
             fail();
@@ -1082,11 +1089,13 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     }
 
     private static void assertPublicEvalAllowed(Env env, String targetId) {
-        assertTrue(env.getPublicLanguages().containsKey(targetId));
+        LanguageInfo info = env.getPublicLanguages().get(targetId);
+        assertNotNull(info);
         assertNotNull(env.parsePublic(Source.newBuilder(targetId, "", "").build()));
         if (env.getPublicLanguages().size() > 1) {
             assertTrue(env.isPolyglotEvalAllowed());
         }
+        assertNotNull(env.getScopePublic(info));
     }
 
     @Registration(id = LANGUAGE1, name = LANGUAGE1, dependentLanguages = DEPENDENT)
@@ -1100,6 +1109,11 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return RootNode.createConstantNode(true).getCallTarget();
+        }
+
+        @Override
+        protected Object getScope(Env context) {
+            return new RetainedSizeContextBoundaryTest.ScopeObject();
         }
 
         public static Env getContext(String language) {
