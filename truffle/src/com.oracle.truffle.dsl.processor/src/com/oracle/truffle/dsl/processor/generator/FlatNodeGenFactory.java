@@ -6539,13 +6539,9 @@ public class FlatNodeGenFactory {
                     value = CodeTreeBuilder.singleString(localName);
                 }
                 String message = String.format(
-                                "Specialization '%s' cache '%s' returned a '%s' default value. The cache initializer must never return a default value for this cache. " +
-                                                "Use @%s(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns '%s'.",
-                                ElementUtils.getReadableSignature(specialization.getMethod()),
-                                cache.getParameter().getLocalName(),
-                                defaultValue,
-                                getSimpleName(types.Cached),
-                                defaultValue);
+                                "A specialization cache returned a default value. The cache initializer must never return a default value for this cache. " +
+                                                "Use @%s(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns the default value.",
+                                getSimpleName(types.Cached));
 
                 if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
                     builder.startIf().tree(value).string(" == ").string(defaultValue).end().startBlock();
@@ -6736,11 +6732,11 @@ public class FlatNodeGenFactory {
             return;
         }
         builder.startIf().string(refName).string(" == ").string(ElementUtils.defaultValue(cache.getParameter().getType())).end().startBlock();
-        String message = String.format("Specialization '%s' contains a shared cache with name '%s' that returned a default value for the cached initializer. " +
-                        "Default values are not supported for shared cached initializers because the default value is reserved for the uninitialized state.",
-                        ElementUtils.getReadableSignature(specialization.getMethod()),
-                        cache.getParameter().getLocalName());
-        builder.startThrow().startNew(context.getType(IllegalStateException.class)).doubleQuote(message).end().end();
+        builder.startThrow().startNew(context.getType(IllegalStateException.class));
+        builder.doubleQuote("A specialization returned a default value for a cached initializer. " +
+                        "Default values are not supported for shared cached initializers because the default value is reserved for the uninitialized state.");
+        builder.end().end(); // new, throw
+
         builder.end();
     }
 
