@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
+import static com.oracle.svm.hosted.classinitialization.SimulateClassInitializerGraphDecoder.adaptForImageHeap;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -510,13 +512,14 @@ public class SimulateClassInitializerSupport {
             return;
         } else if (node instanceof MarkStaticFinalFieldInitializedNode) {
             return;
-
         } else if (node instanceof StoreFieldNode storeFieldNode) {
             var field = (AnalysisField) storeFieldNode.field();
             if (field.isStatic() && field.getDeclaringClass().equals(clusterMember.type)) {
                 var constantValue = storeFieldNode.value().asJavaConstant();
                 if (constantValue != null) {
-                    clusterMember.staticFieldValues.put(field, constantValue);
+                    // We use the java kind here and not the storage kind since that's what the
+                    // users of (Analysis)ConstantReflectionProvider expect.
+                    clusterMember.staticFieldValues.put(field, adaptForImageHeap(constantValue, field.getJavaKind()));
                     return;
                 }
             }
