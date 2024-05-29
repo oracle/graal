@@ -109,10 +109,8 @@ public class SubstrateGraphKit extends GraphKit {
         frameState.initializeForMethodStart(null, true, graphBuilderPlugins, collectedArguments);
         initialArguments = Collections.unmodifiableList(collectedArguments);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
-    }
-
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId) {
-        this(debug, stubMethod, providers, graphBuilderPlugins, compilationId, false);
+        // Record method dependency in the graph
+        graph.recordMethod(graph.method());
     }
 
     @Override

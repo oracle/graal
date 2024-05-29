@@ -466,8 +466,8 @@ public class SimulateClassInitializerSupport {
 
         var result = new StructuredGraph.Builder(bb.getOptions(), debug)
                         .method(classInitializer)
-                        .recordInlinedMethods(false)
                         .trackNodeSourcePosition(analysisParsedGraph.getEncodedGraph().trackNodeSourcePosition())
+                        .recordInlinedMethods(analysisParsedGraph.getEncodedGraph().isRecordingInlinedMethods())
                         .build();
 
         try (var scope = debug.scope("SimulateClassInitializerGraphDecoder", result)) {

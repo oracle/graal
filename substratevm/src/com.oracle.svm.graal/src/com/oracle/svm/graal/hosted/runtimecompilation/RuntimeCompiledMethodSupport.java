@@ -220,7 +220,7 @@ public class RuntimeCompiledMethodSupport {
             boolean trackNodeSourcePosition = SubstrateOptions.IncludeNodeSourcePositions.getValue();
 
             AnalysisMethod aMethod = method.getWrapped();
-            StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, trackNodeSourcePosition,
+            StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, trackNodeSourcePosition, false,
                             (arch, analyzedGraph) -> new RuntimeCompilationGraphDecoder(arch, analyzedGraph, compilationState.heapScanner));
             if (graph == null) {
                 throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
