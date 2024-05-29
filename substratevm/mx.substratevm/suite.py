@@ -308,6 +308,9 @@ suite = {
                     "jdk.internal.util",
                     "jdk.internal.org.objectweb.asm",
                 ],
+                "java.instrument":[
+                    "java.lang.instrument"
+                ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
                     "sun.management",
@@ -639,6 +642,9 @@ suite = {
                     "sun.util.locale",
                     "sun.invoke.util",
                 ],
+                "java.instrument":[
+                    "java.lang.instrument"
+                ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver", # Needed for javadoc links (MXBeanIntrospector,DefaultMXBeanMappingFactory, MXBeanProxy)
                     "sun.management", # Needed for javadoc links (MappedMXBeanType)
@@ -933,6 +939,7 @@ suite = {
                 "jdk.jfr",
                 "java.management",
                 "jdk.management.jfr",
+                "java.instrument",
                 "java.rmi",
             ],
             "requiresConcealed" : {
