@@ -29,17 +29,18 @@ import java.util.List;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.LIRGenerationPhase;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.alloc.LinearScanOrder;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
+import jdk.graal.compiler.core.common.cfg.CodeEmissionOrder;
+import jdk.graal.compiler.core.common.cfg.CodeEmissionOrder.ComputationTime;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
-import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.core.common.cfg.CodeEmissionOrder;
-import jdk.graal.compiler.core.common.cfg.CodeEmissionOrder.ComputationTime;
-import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.lir.ComputeCodeEmissionOrder;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.alloc.OutOfRegistersException;
@@ -59,8 +60,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.debug.Assertions;
-
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.ConstantReference;
@@ -168,6 +167,11 @@ public class LIRCompilerBackend {
                 // Dump LIR along with HIR (the LIR is looked up from context)
                 debug.dump(DebugContext.BASIC_LEVEL, graph.getLastSchedule(), "After LIR generation");
                 LIRGenerationResult result = emitLowLevel(backend.getTarget(), lirGenRes, lirGen, lirSuites, registerAllocationConfig, blockOrder);
+                /*
+                 * LIRGeneration may have changed the CFG, so in case a schedule is needed afterward
+                 * we make sure it will be recomputed.
+                 */
+                graph.clearLastSchedule();
                 return result;
             } catch (Throwable e) {
                 throw debug.handle(e);
