@@ -545,7 +545,7 @@ public abstract class Accessor {
 
         public abstract FileSystem getFileSystem(Object polyglotContext);
 
-        public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext);
+        public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext, LanguageInfo language);
 
         public abstract boolean isPolyglotBindingsAccessAllowed(Object polyglotLanguageContext);
 

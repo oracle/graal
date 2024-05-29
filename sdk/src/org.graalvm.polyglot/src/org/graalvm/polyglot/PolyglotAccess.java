@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -263,7 +264,12 @@ public final class PolyglotAccess {
                     languageAccess = EconomicSet.create();
                     evalAccess.put(language, languageAccess);
                 }
-                languageAccess.addAll(Arrays.asList(languages));
+                Set<String> filteredList = new LinkedHashSet<>(Arrays.asList(languages));
+                // filter current language if it is not the only language
+                if (filteredList.size() > 1) {
+                    filteredList.remove(language);
+                }
+                languageAccess.addAll(filteredList);
             }
             return this;
         }

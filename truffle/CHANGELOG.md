@@ -15,6 +15,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-52930 Added `TruffleLanguage.Env.getHostLanguage()` returning the host language info.
 * GR-52930 Added `TruffleLanguage.Env.getScope(LanguageInfo)` returning the top scope object of the language.
 * GR-28866 Added `TruffleLanguage.Env.getScopePublic(LanguageInfo)` and `TruffleLanguage.Env.getScopeInternal(LanguageInfo)` to allow languages direct access to other language scopes to implement new polyglot builtins.
+* GR-28866 Deprecated `TruffleLanguage.Env.isPolyglotEvalAllowed()`. Replace usages with `TruffleLanguage.Env.isPolyglotEvalAllowed(TruffleLanguage)`. Please see javadoc for the updated usage.
 
 ## Version 24.0.0
 

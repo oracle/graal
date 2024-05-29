@@ -237,9 +237,9 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isPolyglotEvalAllowed(Object polyglotLanguageContext) {
+        public boolean isPolyglotEvalAllowed(Object polyglotLanguageContext, LanguageInfo language) {
             PolyglotLanguageContext languageContext = ((PolyglotLanguageContext) polyglotLanguageContext);
-            return languageContext.isPolyglotEvalAllowed(null);
+            return languageContext.isPolyglotEvalAllowed(language);
         }
 
         @Override

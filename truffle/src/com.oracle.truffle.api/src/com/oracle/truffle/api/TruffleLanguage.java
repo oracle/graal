@@ -2476,20 +2476,43 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns <code>true</code> if polyglot evaluation is allowed, else <code>false</code>.
-         * Guest languages should hide or disable all polyglot evaluation builtins if this flag is
-         * set to <code>false</code>. Note that if polyglot evaluation access is disabled, then the
-         * {@link #getInternalLanguages() available languages list} only shows the current language,
-         * {@link Registration#dependentLanguages() dependent languages} and
-         * {@link Registration#internal() internal languages}.
          *
-         * @see org.graalvm.polyglot.Context.Builder#allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
          * @since 19.2
+         * @deprecated in 24.1 use {@link #isPolyglotEvalAllowed(LanguageInfo)
+         *             isPolyglotEvalAllowed(null) instead}. Note that language implementations
+         *             should now check whether polyglot eval is allowed also for individual
+         *             languages, as access could be denied only for an individual language.
          */
         @TruffleBoundary
+        @Deprecated
         public boolean isPolyglotEvalAllowed() {
+            return isPolyglotEvalAllowed(null);
+        }
+
+        /**
+         * Returns <code>true</code> if the current language is allowed to evaluate guest
+         * application provided code of the given language, else <code>false</code>. If this method
+         * returns <code>true</code> then the current language has permission to use
+         * {@link #parsePublic(Source, String...)} and {@link #getScopePublic(LanguageInfo)} for the
+         * given language. If the given language is <code>null</code> then this method will return
+         * <code>true</code> if polyglot access is allowed in principle, else <code>false</code>.
+         * Languages may want to call this method twice. Once with <code>null</code> to determine
+         * whether polyglot eval and scope based builtins should be available to the application at
+         * all and once with the concrete language just before the access.
+         * <p>
+         * The result of this method is safe to be cached per language context, it is guaranteed to
+         * not change for a context and target language combination.
+         *
+         * @see PolyglotAccess.Builder#allowEval(String, String) Embedders can restrict polyglot
+         *      eval access between certain languages.
+         * @see #parsePublic(Source, String...)
+         * @see #getScopePublic(LanguageInfo)
+         * @since 24.1
+         */
+        @TruffleBoundary
+        public boolean isPolyglotEvalAllowed(LanguageInfo targetLanguage) {
             try {
-                return LanguageAccessor.engineAccess().isPolyglotEvalAllowed(polyglotLanguageContext);
+                return LanguageAccessor.engineAccess().isPolyglotEvalAllowed(polyglotLanguageContext, targetLanguage);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2518,10 +2541,9 @@ public abstract class TruffleLanguage<C> {
          * Allows it to be determined if this {@link org.graalvm.polyglot.Context} can execute code
          * written in a language with a given MIME type.
          *
+         * @return a boolean that indicates if the MIME type is supported
          * @see Source#getMimeType()
          * @see #parsePublic(Source, String...)
-         *
-         * @return a boolean that indicates if the MIME type is supported
          * @since 0.11
          */
         @TruffleBoundary
@@ -2543,7 +2565,10 @@ public abstract class TruffleLanguage<C> {
          * <code>source</code> to reference the actual parameters passed to
          * {@link CallTarget#call(java.lang.Object...)}.
          * <p>
-         * Compared to {@link #parsePublic(Source, String...)} this method provides also access to
+         * The suffix <code>internal</code> in the method name indicates that the result of this
+         * method is <b>not</b> safe to exposed to arbitrary guest code, by default. Use
+         * {@link #parsePublic(Source, String...)} for that purpose instead. Compared to
+         * {@link #parsePublic(Source, String...)} this method provides also access to
          * {@link TruffleLanguage.Registration#internal() internal} and dependent languages in
          * addition to public languages. For example, in JavaScript, a call to the eval builtin
          * should forward to {@link #parsePublic(Source, String...)} as it contains code provided by
@@ -2562,6 +2587,8 @@ public abstract class TruffleLanguage<C> {
          * @return the call target representing the parsed result
          * @throws IllegalStateException if polyglot context associated with this environment is not
          *             entered
+         * @throws IllegalArgumentException if the language is not allowed to evaluate code by the
+         *             current language.
          * @see #parsePublic(Source, String...)
          * @since 19.2
          */
@@ -2585,10 +2612,10 @@ public abstract class TruffleLanguage<C> {
          * <code>source</code> to reference the actual parameters passed to
          * {@link CallTarget#call(java.lang.Object...)}.
          * <p>
-         * Compared to {@link #parseInternal(Source, String...)} this method does only provide
-         * access to non internal, non dependent, public languages. Public languages are configured
-         * by the embedder to be accessible to the guest language program. For example, in
-         * JavaScript, a call to the eval builtin should forward to
+         * The suffix <code>public</code> in the method name indicates that the result of this
+         * method is safe to be exposed by default to guest applications. Public languages are
+         * configured by the embedder to be accessible to the guest language program. For example,
+         * in JavaScript, a call to the eval builtin should forward to
          * {@link #parsePublic(Source, String...)} as it contains code provided by the guest
          * language user. Parsing regular expressions with the internal regular expression engine
          * should call {@link #parseInternal(Source, String...)} instead, as this is considered an
@@ -2665,7 +2692,7 @@ public abstract class TruffleLanguage<C> {
          * language} may also be associated with additional services. One can request
          * implementations of such services by calling this method with the type identifying the
          * requested service and its API.
-         *
+         * <p>
          * Services that can be obtained via this method include
          * {@link com.oracle.truffle.api.instrumentation.Instrumenter} and others.
          *
@@ -2948,13 +2975,13 @@ public abstract class TruffleLanguage<C> {
          *
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
-         * @since 19.3.0
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
          * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
          *             {@link Path}
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(java.lang.String)
+         * @since 19.3.0
          */
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(String path) {
@@ -2975,13 +3002,13 @@ public abstract class TruffleLanguage<C> {
          *
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
-         * @since 19.3.0
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
          * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
          *             {@code uri}, does not exist and cannot be created automatically
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(java.net.URI)
+         * @since 19.3.0
          */
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(URI uri) {
@@ -3036,11 +3063,10 @@ public abstract class TruffleLanguage<C> {
          *             {@link URI}
          * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
          *             {@link Path}
-         * @since 21.1.0
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(String)
          * @see #getInternalTruffleFile(String)
-         *
+         * @since 21.1.0
          */
         @TruffleBoundary
         public TruffleFile getTruffleFileInternal(String path, Predicate<TruffleFile> filter) {
@@ -3061,11 +3087,10 @@ public abstract class TruffleLanguage<C> {
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
          * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
          *             {@code uri}, does not exist and cannot be created automatically
-         * @since 21.1.0
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(URI)
          * @see #getInternalTruffleFile(URI)
-         *
+         * @since 21.1.0
          */
         @TruffleBoundary
         public TruffleFile getTruffleFileInternal(URI uri, Predicate<TruffleFile> filter) {
@@ -3480,7 +3505,6 @@ public abstract class TruffleLanguage<C> {
          * @throws UnsupportedOperationException if creating adapter classes is not supported on
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if {@code types} is null
-         *
          * @see #createHostAdapterWithClassOverrides(Object[], Object)
          * @since 22.1
          */
@@ -3522,7 +3546,6 @@ public abstract class TruffleLanguage<C> {
          * @throws UnsupportedOperationException if creating adapter classes is not supported on
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if either {@code types} or {@code classOverrides} is null.
-         *
          * @see #createHostAdapter(Object[])
          * @since 22.1
          */
@@ -3600,7 +3623,6 @@ public abstract class TruffleLanguage<C> {
          *            empty a root logger for language or instrument is returned
          * @return a {@link TruffleLogger}
          * @since 21.1
-         *
          */
         @TruffleBoundary
         public TruffleLogger getLogger(String loggerName) {
@@ -3771,7 +3793,6 @@ public abstract class TruffleLanguage<C> {
          * @see #getScopeInternal(LanguageInfo)
          * @see #isPolyglotEvalAllowed(LanguageInfo)
          * @see #getPolyglotBindings()
-         *
          * @since 24.1
          */
         @TruffleBoundary
@@ -3809,12 +3830,12 @@ public abstract class TruffleLanguage<C> {
          * {@link #getPublicLanguages() public languages} with
          * {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions}.
          *
-         * @see #getScopePublic(LanguageInfo)
          * @return the scope, or <code>null</code> if the requested language does not support such a
          *         concept
          * @throws IllegalStateException if polyglot context associated with this environment is not
          *             entered
          * @throws SecurityException if polyglot scope access is not enabled for this language.
+         * @see #getScopePublic(LanguageInfo)
          * @since 24.1
          */
         @TruffleBoundary
@@ -3951,7 +3972,7 @@ public abstract class TruffleLanguage<C> {
      * current {@link Node}, if available, as parameter.
      * <p>
      * Example intended usage:
-     *
+     * <p>
      * See {@link ContextReference} for a full usage example.
      *
      * @since 0.25 revised in 21.3
@@ -4243,15 +4264,14 @@ public abstract class TruffleLanguage<C> {
     /**
      * Mode of exit operation.
      *
-     * @since 22.0
      * @see #exitContext(Object, ExitMode, int)
+     * @since 22.0
      */
     public enum ExitMode {
         /**
          * Natural exit that occurs during normal context close.
          *
          * @since 22.0
-         *
          */
         NATURAL,
         /**
