@@ -28,7 +28,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.Map;
 
-import jdk.graal.compiler.util.json.JsonParserException;
+import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
 
 public class BundlePathMapParser extends BundleConfigurationParser {
 
@@ -47,11 +47,11 @@ public class BundlePathMapParser extends BundleConfigurationParser {
             var entry = asMap(rawEntry, "Expected a substitution object");
             Object srcPathString = entry.get(substitutionMapSrcField);
             if (srcPathString == null) {
-                throw new JsonParserException("Expected " + substitutionMapSrcField + "-field in substitution object");
+                throw new BundleJSONParserException("Expected " + substitutionMapSrcField + "-field in substitution object");
             }
             Object dstPathString = entry.get(substitutionMapDstField);
             if (dstPathString == null) {
-                throw new JsonParserException("Expected " + substitutionMapDstField + "-field in substitution object");
+                throw new BundleJSONParserException("Expected " + substitutionMapDstField + "-field in substitution object");
             }
             pathMap.put(Path.of(srcPathString.toString()), Path.of(dstPathString.toString()));
         }

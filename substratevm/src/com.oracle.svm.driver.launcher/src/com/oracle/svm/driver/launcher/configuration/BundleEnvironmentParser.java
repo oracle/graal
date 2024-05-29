@@ -27,7 +27,7 @@ package com.oracle.svm.driver.launcher.configuration;
 import java.net.URI;
 import java.util.Map;
 
-import jdk.graal.compiler.util.json.JsonParserException;
+import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
 
 public class BundleEnvironmentParser extends BundleConfigurationParser {
     private static final String environmentKeyField = "key";
@@ -45,11 +45,11 @@ public class BundleEnvironmentParser extends BundleConfigurationParser {
             var entry = asMap(rawEntry, "Expected a environment variable object");
             Object envVarKeyString = entry.get(environmentKeyField);
             if (envVarKeyString == null) {
-                throw new JsonParserException("Expected " + environmentKeyField + "-field in environment variable object");
+                throw new BundleJSONParserException("Expected " + environmentKeyField + "-field in environment variable object");
             }
             Object envVarValueString = entry.get(environmentValueField);
             if (envVarValueString == null) {
-                throw new JsonParserException("Expected " + environmentValueField + "-field in environment variable object");
+                throw new BundleJSONParserException("Expected " + environmentValueField + "-field in environment variable object");
             }
             environment.put(envVarKeyString.toString(), envVarValueString.toString());
         }

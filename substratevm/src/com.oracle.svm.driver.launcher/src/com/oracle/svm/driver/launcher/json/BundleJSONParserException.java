@@ -22,38 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.driver.launcher.configuration;
+package com.oracle.svm.driver.launcher.json;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-
-import com.oracle.svm.driver.launcher.json.BundleJSONParser;
-import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
-
-public abstract class BundleConfigurationParser {
-
-    public void parseAndRegister(Reader reader) throws IOException {
-        parseAndRegister(new BundleJSONParser(reader).parse(), null);
-    }
-
-    public abstract void parseAndRegister(Object json, URI origin) throws IOException;
-
-    @SuppressWarnings("unchecked")
-    public static List<Object> asList(Object data, String errorMessage) {
-        if (data instanceof List) {
-            return (List<Object>) data;
-        }
-        throw new BundleJSONParserException(errorMessage);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static Map<String, Object> asMap(Object data, String errorMessage) {
-        if (data instanceof Map) {
-            return (Map<String, Object>) data;
-        }
-        throw new BundleJSONParserException(errorMessage);
+@SuppressWarnings("serial")
+public final class BundleJSONParserException extends RuntimeException {
+    public BundleJSONParserException(final String msg) {
+        super(msg);
     }
 }
