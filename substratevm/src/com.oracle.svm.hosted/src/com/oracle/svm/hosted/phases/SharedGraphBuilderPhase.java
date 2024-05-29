@@ -1153,7 +1153,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         int argCpi = primitiveConstant.asInt();
                         Object argConstant = loadConstantDynamic(argCpi, opcode == Opcodes.INVOKEDYNAMIC ? Opcodes.LDC : opcode);
                         if (argConstant instanceof ValueNode valueNode) {
-                            currentNode = valueNode;
+                            ResolvedJavaMethod.Parameter[] parameters = bootstrapMethod.getParameters();
+                            if (valueNode.getStackKind().isPrimitive() && i + 3 <= parameters.length && !parameters[i + 3].getKind().isPrimitive()) {
+                                currentNode = append(BoxNode.create(valueNode, getMetaAccess().lookupJavaType(valueNode.getStackKind().toBoxedJavaClass()), valueNode.getStackKind()));
+                            } else {
+                                currentNode = valueNode;
+                            }
                         } else if (argConstant instanceof Throwable || argConstant instanceof UnresolvedJavaType) {
                             /* A nested constant dynamic threw. */
                             return argConstant;
