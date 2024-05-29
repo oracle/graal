@@ -506,11 +506,16 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getScope(Object polyglotLanguageContext, LanguageInfo requiredLanguage, boolean internal) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
-            PolyglotContextImpl context = languageContext.context;
-            if ((internal && !getInternalLanguages(languageContext).containsKey(requiredLanguage.getId())) || //
-                            (!internal && !getPublicLanguages(languageContext).containsKey(requiredLanguage.getId()))) {
-                throw new SecurityException(String.format("Access to language '%s' is not permitted.", requiredLanguage.getId()));
+            boolean allowed;
+            if (internal) {
+                allowed = getInternalLanguages(languageContext).containsKey(requiredLanguage.getId());
+            } else {
+                allowed = getPublicLanguages(languageContext).containsKey(requiredLanguage.getId());
             }
+            if (!allowed) {
+                throw new PolyglotEngineException(new SecurityException(String.format("Access to language '%s' is not permitted.", requiredLanguage.getId())));
+            }
+            PolyglotContextImpl context = languageContext.context;
             PolyglotLanguage requiredPolyglotLanguage = context.engine.findLanguage(requiredLanguage);
             PolyglotLanguageContext requestedPolyglotLanguageContext = context.getContextInitialized(requiredPolyglotLanguage, languageContext.language);
             return LANGUAGE.getScope(requestedPolyglotLanguageContext.env);

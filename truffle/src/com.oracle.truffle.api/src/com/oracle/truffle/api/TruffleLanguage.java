@@ -3779,7 +3779,9 @@ public abstract class TruffleLanguage<C> {
             Objects.requireNonNull(language);
             checkDisposed();
             try {
-                return LanguageAccessor.engineAccess().getScope(polyglotLanguageContext, language, false);
+                Object result = LanguageAccessor.engineAccess().getScope(polyglotLanguageContext, language, false);
+                assert result == null || LanguageAccessor.interopAccess().isScopeObject(result) : String.format("%s is not a scope", result);
+                return result;
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -3819,7 +3821,9 @@ public abstract class TruffleLanguage<C> {
         public Object getScopeInternal(LanguageInfo language) {
             checkDisposed();
             try {
-                return LanguageAccessor.engineAccess().getScope(polyglotLanguageContext, language, true);
+                Object result = LanguageAccessor.engineAccess().getScope(polyglotLanguageContext, language, true);
+                assert result == null || LanguageAccessor.interopAccess().isScopeObject(result) : String.format("%s is not a scope", result);
+                return result;
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
