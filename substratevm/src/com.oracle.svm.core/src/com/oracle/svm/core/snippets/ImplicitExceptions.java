@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core.snippets;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import java.lang.reflect.GenericSignatureFormatError;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.FactoryMethodMarker;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -43,6 +44,9 @@ import com.oracle.svm.core.util.VMError;
  *
  * All methods in this class are an implementation detail that should not be observable by users,
  * therefore these methods are filtered in exception stack traces (see {@link StackTraceUtils}).
+ *
+ * All methods that retrieve or throw a cached exception are marked as {@link Uninterruptible}
+ * because they must not throw a StackOverflowError if they are invoked from interruptible code.
  */
 @InternalVMMethod
 @FactoryMethodMarker
@@ -158,8 +162,9 @@ public class ImplicitExceptions {
         implicitExceptionsAreFatal.set(implicitExceptionsAreFatal.get() - 1);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void vmErrorIfImplicitExceptionsAreFatal(boolean cachedException) {
-        if (cachedException && SubstrateOptions.ImplicitExceptionWithoutStacktraceIsFatal.getValue()) {
+        if (cachedException && SubstrateDiagnostics.Options.implicitExceptionWithoutStacktraceIsFatal()) {
             throw VMError.shouldNotReachHere("AssertionError without stack trace.");
         } else if ((implicitExceptionsAreFatal.get() > 0 || ExceptionUnwind.exceptionsAreFatal()) && !SubstrateDiagnostics.isFatalErrorHandlingThread()) {
             throw VMError.shouldNotReachHere("Implicit exception thrown in code where such exceptions are fatal errors");
@@ -394,7 +399,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #GET_CACHED_NULL_POINTER_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static NullPointerException getCachedNullPointerException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -402,7 +407,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #GET_CACHED_OUT_OF_BOUNDS_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArrayIndexOutOfBoundsException getCachedOutOfBoundsException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -410,7 +415,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #GET_CACHED_CLASS_CAST_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ClassCastException getCachedClassCastException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -418,7 +423,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #GET_CACHED_ARRAY_STORE_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArrayStoreException getCachedArrayStoreException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -426,7 +431,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #GET_CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static IncompatibleClassChangeError getCachedIncompatibleClassChangeError() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -434,7 +439,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static IllegalArgumentException getCachedIllegalArgumentException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -442,7 +447,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #GET_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static NegativeArraySizeException getCachedNegativeArraySizeException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -450,7 +455,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #GET_CACHED_ARITHMETIC_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException getCachedArithmeticException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -458,7 +463,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #GET_CACHED_ASSERTION_ERROR}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static AssertionError getCachedAssertionError() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -466,7 +471,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #THROW_CACHED_NULL_POINTER_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedNullPointerException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -474,7 +479,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedOutOfBoundsException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -482,7 +487,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #THROW_CACHED_CLASS_CAST_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedClassCastException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -490,7 +495,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #THROW_CACHED_ARRAY_STORE_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedArrayStoreException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -498,7 +503,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #THROW_CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedIncompatibleClassChangeError() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -506,7 +511,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedIllegalArgumentException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -514,7 +519,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #THROW_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedNegativeArraySizeException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -522,7 +527,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #THROW_CACHED_ARITHMETIC_EXCEPTION}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedArithmeticException() {
         vmErrorIfImplicitExceptionsAreFatal(true);
@@ -530,7 +535,7 @@ public class ImplicitExceptions {
     }
 
     /** Foreign call: {@link #THROW_CACHED_ASSERTION_ERROR}. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedAssertionError() {
         vmErrorIfImplicitExceptionsAreFatal(true);

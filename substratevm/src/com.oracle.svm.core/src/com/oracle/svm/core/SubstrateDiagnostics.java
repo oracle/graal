@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import java.util.ArrayList;
@@ -1279,5 +1280,23 @@ public class SubstrateDiagnostics {
                 SubstrateDiagnostics.loopOnFatalError = newValue;
             }
         };
+        @Option(help = "Determines if implicit exceptions are fatal if they don't have a stack trace.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> ImplicitExceptionWithoutStacktraceIsFatal = new RuntimeOptionKey<>(false) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                super.onValueUpdate(values, oldValue, newValue);
+                if (ImageSingletons.contains(Options.class)) {
+                    Options.singleton().implicitExceptionWithoutStacktraceIsFatal = newValue;
+                }
+            }
+        };
+
+        private boolean implicitExceptionWithoutStacktraceIsFatal;
+            this.implicitExceptionWithoutStacktraceIsFatal = Options.ImplicitExceptionWithoutStacktraceIsFatal.getValue();
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean implicitExceptionWithoutStacktraceIsFatal() {
+            return singleton().implicitExceptionWithoutStacktraceIsFatal;
     }
 }
