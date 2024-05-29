@@ -91,7 +91,7 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
-    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).")
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     public static void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         Pointer rememberedSetStart = getCardTableStart(chunk);
         UnsignedWord objectIndex = getObjectIndex();

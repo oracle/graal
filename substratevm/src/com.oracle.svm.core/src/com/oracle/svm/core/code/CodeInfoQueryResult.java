@@ -32,8 +32,8 @@ import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 
 /**
  * Information about an instruction pointer (IP), created and returned by methods in
- * {@link CodeInfoTable}. In situations, where we can't allocate any Java heap memory, we use the
- * class {@link SimpleCodeInfoQueryResult} instead.
+ * {@link CodeInfoTable}. In situations where we can't allocate any Java heap memory, we use the
+ * structure {@link SimpleCodeInfoQueryResult} instead.
  *
  * During a stack walk, this class holds information about a physical Java frame (see
  * {@link FrameInfoQueryResult} for the virtual Java frames).

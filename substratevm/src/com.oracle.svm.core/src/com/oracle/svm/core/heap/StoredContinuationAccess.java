@@ -175,9 +175,9 @@ public final class StoredContinuationAccess {
         assert !Heap.getHeap().isInImageHeap(s) : "StoredContinuations in the image heap are read-only and don't need to be visited";
 
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
-        JavaStackWalker.initialize(walk, s);
+        JavaStackWalker.initializeForContinuation(walk, s);
 
-        while (JavaStackWalker.advance(walk, s)) {
+        while (JavaStackWalker.advanceForContinuation(walk, s)) {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
@@ -202,9 +202,9 @@ public final class StoredContinuationAccess {
         assert !Heap.getHeap().isInImageHeap(s) : "StoredContinuations in the image heap are read-only and don't need to be visited";
 
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
-        JavaStackWalker.initialize(walk, s);
+        JavaStackWalker.initializeForContinuation(walk, s);
 
-        while (JavaStackWalker.advance(walk, s)) {
+        while (JavaStackWalker.advanceForContinuation(walk, s)) {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");

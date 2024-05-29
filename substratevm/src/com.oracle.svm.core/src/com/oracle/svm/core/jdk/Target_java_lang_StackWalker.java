@@ -245,6 +245,7 @@ final class Target_java_lang_StackWalker {
         private boolean initialized;
         private JavaStackWalk walk;
         private Target_jdk_internal_vm_Continuation continuation;
+        private StoredContinuation stored;
 
         ContinuationSpliterator(JavaStackWalk walk, Target_jdk_internal_vm_ContinuationScope contScope, Target_jdk_internal_vm_Continuation continuation) {
             assert walk.isNonNull();
@@ -269,6 +270,15 @@ final class Target_java_lang_StackWalker {
                     return false;
                 }
 
+                /*
+                 * Store the StoredContinuation object in a field to avoid problems in case that the
+                 * continuation continues execution in another thread in the meanwhile.
+                 */
+                stored = ContinuationInternals.getStoredContinuation(continuation);
+                if (stored == null) {
+                    return false;
+                }
+
                 if (advancePhysically0()) {
                     return true;
                 } else {
@@ -286,20 +296,19 @@ final class Target_java_lang_StackWalker {
 
         @Uninterruptible(reason = "Prevent GC while in this method.")
         private boolean advancePhysically0() {
-            StoredContinuation stored = ContinuationInternals.getStoredContinuation(continuation);
             if (initialized) {
                 /*
                  * Because we are interruptible in between walking frames, pointers into the stored
                  * continuation become invalid if a garbage collection moves the object. So, we need
                  * to update all cached stack pointer values before we can continue the walk.
                  */
-                JavaStackWalker.updateStackPointer(walk, stored, 0);
+                JavaStackWalker.updateStackPointerForContinuation(walk, stored);
             } else {
                 initialized = true;
-                JavaStackWalker.initialize(walk, stored);
+                JavaStackWalker.initializeForContinuation(walk, stored);
             }
 
-            if (!JavaStackWalker.advance(walk, stored)) {
+            if (!JavaStackWalker.advanceForContinuation(walk, stored)) {
                 return false;
             }
 
@@ -314,7 +323,7 @@ final class Target_java_lang_StackWalker {
             Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
             try {
                 CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-                /* This interruptible call may move the continuation. */
+                /* This interruptible call might trigger a GC that moves continuation objects. */
                 CodeInfoQueryResult physicalFrame = queryCodeInfoInterruptibly(info, frame.getIP());
                 regularVFrame = physicalFrame.getFrameInfo();
             } finally {
@@ -326,6 +335,8 @@ final class Target_java_lang_StackWalker {
         @Override
         protected void invalidate() {
             walk = WordFactory.nullPointer();
+            continuation = null;
+            stored = null;
         }
 
         @Override

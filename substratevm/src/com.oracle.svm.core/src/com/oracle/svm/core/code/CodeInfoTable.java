@@ -137,6 +137,7 @@ public class CodeInfoTable {
         return result;
     }
 
+    /** Note that this method is only called for regular frames but not for deoptimized frames. */
     public static boolean visitObjectReferences(Pointer sp, CodePointer ip, CodeInfo info, ObjectReferenceVisitor visitor) {
         counters().visitObjectReferencesCount.inc();
 

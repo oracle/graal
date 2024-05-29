@@ -45,8 +45,8 @@ public interface JavaStackWalk extends PointerBase {
  * The actual implementation. Most stack-walk related fields may only be accessed in
  * {@link JavaStackWalker}.
  *
- * Note that this data structure stores some information about the current physical stack frame
- * (e.g., SP, IP, frame size) and also some state that is only needed for the stack walk.
+ * Note that this data structure stores some information about the current physical stack frame (see
+ * {@link JavaFrame}) and also some state that is only needed for the stack walk.
  *
  * If interruptible code is executed while a stack walk is in progress, IP and code-related fields
  * in this data structure may contain stale/outdated values (code may get deoptimized).

@@ -233,6 +233,8 @@ public class ThreadStackPrinter {
             if (anchor.isNonNull()) {
                 sp = anchor.getLastJavaSP();
                 ip = anchor.getLastJavaIP();
+            } else {
+                return false;
             }
         }
 

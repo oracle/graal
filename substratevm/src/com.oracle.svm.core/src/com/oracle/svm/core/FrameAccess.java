@@ -50,12 +50,12 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 /**
  * This class can be used to access physical Java frames. It cannot be used to access virtual Java
  * frames, and it must not be used to access physical native frames (we can't assume a specific
- * layout for native frames, especially on platform such as aarch64).
+ * layout for native frames, especially on platforms such as aarch64).
  * <p>
  * When accessing a return address, note that the return address belongs to a different frame than
  * the stack pointer (SP) because the return address is located at a negative offset relative to SP.
- * For Java frames that called native code, the return address is located in the native frame and
- * can't be accessed because we can't assume a specific layout for native frames.
+ * For Java frames that called native code, the return address is located in the native callee frame
+ * and can't be accessed because we can't assume a specific layout for native frames.
  */
 public abstract class FrameAccess {
     @Fold

@@ -66,19 +66,19 @@ public final class ImageHeapWalker {
                         walkPartition(heapInfo.firstReadOnlyHugeObject, heapInfo.lastReadOnlyHugeObject, visitor, false);
     }
 
-    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).")
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     static boolean walkPartition(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks) {
         return walkPartitionInline(firstObject, lastObject, visitor, alignedChunks, false);
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
     static boolean walkPartitionInline(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks) {
         return walkPartitionInline(firstObject, lastObject, visitor, alignedChunks, true);
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
     private static boolean walkPartitionInline(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks, boolean inlineObjectVisit) {
         if (firstObject == null || lastObject == null) {
             assert firstObject == null && lastObject == null;

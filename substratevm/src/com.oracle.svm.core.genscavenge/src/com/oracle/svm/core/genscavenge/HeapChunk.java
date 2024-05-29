@@ -294,13 +294,13 @@ public final class HeapChunk {
     }
 
     @NeverInline("Not performance critical")
-    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).")
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     public static boolean walkObjectsFrom(Header<?> that, Pointer start, ObjectVisitor visitor) {
         return walkObjectsFromInline(that, start, visitor);
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
     public static boolean walkObjectsFromInline(Header<?> that, Pointer start, ObjectVisitor visitor) {
         Pointer p = start;
         while (p.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read

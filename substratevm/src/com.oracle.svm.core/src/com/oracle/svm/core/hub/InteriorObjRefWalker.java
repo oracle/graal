@@ -65,13 +65,13 @@ public class InteriorObjRefWalker {
      * @return True if the walk was successful, or false otherwise.
      */
     @NeverInline("Non-performance critical version")
-    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).")
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     public static boolean walkObject(final Object obj, final ObjectReferenceVisitor visitor) {
         return walkObjectInline(obj, visitor);
     }
 
     @AlwaysInline("Performance critical version")
-    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
     public static boolean walkObjectInline(final Object obj, final ObjectReferenceVisitor visitor) {
         final DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
         final Pointer objPointer = Word.objectToUntrackedPointer(obj);

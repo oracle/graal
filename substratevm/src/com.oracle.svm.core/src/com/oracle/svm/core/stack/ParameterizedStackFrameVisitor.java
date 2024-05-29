@@ -50,7 +50,7 @@ public abstract class ParameterizedStackFrameVisitor {
      * @param sp The stack pointer of the frame being visited.
      * @param ip The instruction pointer of the frame being visited.
      * @param codeInfo Information on the code at the IP, for use with {@link CodeInfoAccess}.
-     * @param data An arbitrary data value passed through the stack walker.
+     * @param data An implementation-provided object that is passed through the stack walker.
      * @return true if visiting should continue, false otherwise.
      */
     protected abstract boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, Object data);
@@ -61,7 +61,7 @@ public abstract class ParameterizedStackFrameVisitor {
      * @param originalSP The stack pointer to the physical (already invalidated) stack frame.
      * @param deoptStubIP The instruction pointer for the deopt stub.
      * @param deoptimizedFrame The deoptimized frame.
-     * @param data An arbitrary data value passed through the stack walker.
+     * @param data An implementation-provided object that is passed through the stack walker.
      * @return true if visiting should continue, false otherwise.
      */
     protected abstract boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame, Object data);
@@ -74,7 +74,7 @@ public abstract class ParameterizedStackFrameVisitor {
      *
      * @param sp The stack pointer of the frame being visited.
      * @param ip The instruction pointer of the frame being visited.
-     * @param data An arbitrary data value passed through the stack walker.
+     * @param data An implementation-provided object that is passed through the stack walker.
      * @return The value returned to the caller of stack walking. Note that walking of the thread is
      *         always aborted, regardless of the return value.
      */

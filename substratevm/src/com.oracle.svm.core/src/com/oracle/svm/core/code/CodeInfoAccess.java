@@ -268,16 +268,12 @@ public final class CodeInfoAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long lookupTotalFrameSize(CodeInfo info, long relativeIP) {
-        SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
-        CodeInfoDecoder.lookupCodeInfo(info, relativeIP, codeInfoQueryResult);
-        return CodeInfoQueryResult.getTotalFrameSize(codeInfoQueryResult.getEncodedFrameSize());
+        return CodeInfoQueryResult.getTotalFrameSize(lookupEncodedFrameSize(info, relativeIP));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long lookupTotalFrameSize(CodeInfo info, CodePointer ip) {
-        SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
-        lookupCodeInfo(info, ip, codeInfoQueryResult);
-        return CodeInfoQueryResult.getTotalFrameSize(codeInfoQueryResult.getEncodedFrameSize());
+        return CodeInfoQueryResult.getTotalFrameSize(lookupEncodedFrameSize(info, ip));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -312,6 +308,11 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long lookupEncodedFrameSize(CodeInfo info, CodePointer ip) {
         long relativeIP = CodeInfoAccess.relativeIP(info, ip);
+        return lookupEncodedFrameSize(info, relativeIP);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static long lookupEncodedFrameSize(CodeInfo info, long relativeIP) {
         SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
         CodeInfoDecoder.lookupCodeInfo(info, relativeIP, codeInfoQueryResult);
         return codeInfoQueryResult.getEncodedFrameSize();

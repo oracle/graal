@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.ref.Reference;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -799,7 +800,7 @@ public final class GCImpl implements GC {
     private void blackenStackRoots() {
         Timer blackenStackRootsTimer = timers.blackenStackRoots.open();
         try {
-            Pointer sp = readCallerStackPointer();
+            Pointer sp = KnownIntrinsics.readCallerStackPointer();
             walkStackRoots(greyToBlackObjRefVisitor, sp, true);
         } finally {
             blackenStackRootsTimer.close();
@@ -814,7 +815,7 @@ public final class GCImpl implements GC {
          * anchor).
          */
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
-        JavaStackWalker.initialize(walk, CurrentIsolate.getCurrentThread(), sp);
+        JavaStackWalker.initialize(walk, CurrentIsolate.getCurrentThread(), currentThreadSp);
         walkStack(CurrentIsolate.getCurrentThread(), walk, visitor, visitRuntimeCodeInfo);
 
         /*
@@ -955,7 +956,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "Due to forced inlining (StoredContinuation objects must not move).")
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     private void blackenImageHeapRoots(ImageHeapInfo imageHeapInfo) {
         walkImageHeapRoots(imageHeapInfo, greyToBlackObjectVisitor);
     }

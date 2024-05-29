@@ -133,46 +133,11 @@ public final class JfrStackWalker {
                  * We might be in the middle of pushing a new frame anchor. In that case, the top
                  * frame anchor will have invalid values and needs to be filtered out.
                  */
-                anchor = filterTopFrameAnchorIfInvalid(anchor, topFrameSP);
+                anchor = filterTopFrameAnchorIfIncomplete(anchor);
 
                 /* Move SP to the top of the caller frame. */
                 long topFrameEncodedSize = CodeInfoAccess.lookupEncodedFrameSize(codeInfo, ip);
                 boolean topFrameIsEntryPoint = CodeInfoQueryResult.isEntryPoint(topFrameEncodedSize);
-                if (isSPAligned(sp)) {
-                    UnsignedWord topFrameSize = WordFactory.unsigned(CodeInfoQueryResult.getTotalFrameSize(topFrameEncodedSize));
-                    if (SubstrateOptions.hasFramePointer() && !hasValidCaller(sp, topFrameSize, topFrameIsEntryPoint, anchor)) {
-                        /*
-                         * If we have a frame pointer, then the stack pointer can be aligned while
-                         * we are in the method prologue/epilogue (i.e., the frame pointer and the
-                         * return address are on top of the stack, but the actual stack frame is
-                         * missing). We should reach the caller if we skip the incomplete top frame
-                         * (frame pointer and return address).
-                         */
-                        sp = sp.add(FrameAccess.wordSize() * 2);
-                    } else {
-                        /*
-                         * Stack looks walkable - skip the top frame as we already recorded the
-                         * corresponding IP.
-                         */
-                        sp = sp.add(topFrameSize);
-                    }
-                } else {
-                    /*
-                     * The async sampler interrupted the thread while it was in the middle of
-                     * manipulating the stack (e.g., in a method prologue/epilogue). Most likely,
-                     * there is a valid return address at the top of the stack that we can just
-                     * skip.
-                     */
-                    sp = sp.add(FrameAccess.wordSize());
-                }
-
-                /* Do a basic sanity check and decide if it makes sense to continue. */
-                assert isSPAligned(sp);
-                if (!isCallerSPValid(topFrameSP, sp)) {
-                    /* One of the assumptions above was incorrect. */
-                    return UNPARSEABLE_STACK;
-                }
-
                 if (topFrameIsEntryPoint) {
                     /*
                      * If the top frame is for an entry point, then the caller needs to be treated
@@ -189,10 +154,42 @@ public final class JfrStackWalker {
                     ip = anchor.getLastJavaIP();
                     anchor = anchor.getPreviousAnchor();
                 } else {
-                    /*
-                     * The top frame and its caller are probably Java frames. Read the return
-                     * address.
-                     */
+                    /* Both the top frame and its caller are probably Java frames. */
+                    if (isSPAligned(sp)) {
+                        UnsignedWord topFrameSize = WordFactory.unsigned(CodeInfoQueryResult.getTotalFrameSize(topFrameEncodedSize));
+                        if (SubstrateOptions.hasFramePointer() && !hasValidCaller(sp, topFrameSize, topFrameIsEntryPoint, anchor)) {
+                            /*
+                             * If we have a frame pointer, then the stack pointer can be aligned
+                             * while we are in the method prologue/epilogue (i.e., the frame pointer
+                             * and the return address are on top of the stack, but the actual stack
+                             * frame is missing). We should reach the caller if we skip the
+                             * incomplete top frame (frame pointer and return address).
+                             */
+                            sp = sp.add(FrameAccess.wordSize() * 2);
+                        } else {
+                            /*
+                             * Stack looks walkable - skip the top frame as we already recorded the
+                             * corresponding IP.
+                             */
+                            sp = sp.add(topFrameSize);
+                        }
+                    } else {
+                        /*
+                         * The async sampler interrupted the thread while it was in the middle of
+                         * manipulating the stack (e.g., in a method prologue/epilogue). Most
+                         * likely, there is a valid return address at the top of the stack that we
+                         * can just skip.
+                         */
+                        sp = sp.add(FrameAccess.wordSize());
+                    }
+
+                    /* Do a basic sanity check and decide if it makes sense to continue. */
+                    assert isSPAligned(sp);
+                    if (!isCallerSPValid(topFrameSP, sp)) {
+                        /* One of the assumptions above was incorrect. */
+                        return UNPARSEABLE_STACK;
+                    }
+
                     ip = FrameAccess.singleton().unsafeReadReturnAddress(sp);
                 }
             } else {
@@ -314,8 +311,8 @@ public final class JfrStackWalker {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static JavaFrameAnchor filterTopFrameAnchorIfInvalid(JavaFrameAnchor anchor, Pointer currentSP) {
-        if (anchor.isNonNull() && !isCallerValid(currentSP, anchor.getLastJavaSP(), anchor.getLastJavaIP())) {
+    private static JavaFrameAnchor filterTopFrameAnchorIfIncomplete(JavaFrameAnchor anchor) {
+        if (anchor.isNonNull() && (anchor.getLastJavaSP().isNull() || anchor.getLastJavaIP().isNull())) {
             /* We are probably in the middle of pushing a frame anchor, so filter the top anchor. */
             return anchor.getPreviousAnchor();
         }

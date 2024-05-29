@@ -239,10 +239,10 @@ public final class Deoptimizer {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static DeoptimizedFrame checkDeoptimized(IsolateThread thread, Pointer sourceSp) {
+    public static DeoptimizedFrame checkDeoptimized(IsolateThread thread, Pointer sp) {
         if (DeoptimizationSupport.enabled()) {
-            CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(thread, sourceSp);
-            return checkDeoptimized0(sourceSp, returnAddress);
+            CodePointer ip = FrameAccess.singleton().readReturnAddress(thread, sp);
+            return checkDeoptimized0(sp, ip);
         }
         return null;
     }
@@ -252,13 +252,13 @@ public final class Deoptimizer {
      * returns the {@link DeoptimizedFrame} in that case.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static DeoptimizedFrame checkDeoptimized0(Pointer sourceSp, CodePointer returnAddress) {
+    private static DeoptimizedFrame checkDeoptimized0(Pointer sp, CodePointer ip) {
         /* A frame is deoptimized when the return address was patched to the deoptStub. */
-        if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
+        if (ip.equal(DeoptimizationSupport.getDeoptStubPointer())) {
             /* The DeoptimizedFrame instance is stored above the return address. */
-            DeoptimizedFrame result = (DeoptimizedFrame) ReferenceAccess.singleton().readObjectAt(sourceSp, true);
+            DeoptimizedFrame result = (DeoptimizedFrame) ReferenceAccess.singleton().readObjectAt(sp, true);
             if (result == null) {
-                throw checkDeoptimizedError(sourceSp);
+                throw checkDeoptimizedError(sp);
             }
             return result;
         }
@@ -266,13 +266,13 @@ public final class Deoptimizer {
     }
 
     @Uninterruptible(reason = "Switch to interruptible code and report a fatal error.", calleeMustBe = false)
-    private static RuntimeException checkDeoptimizedError(Pointer sourceSp) {
-        throw checkDeoptimizedError0(sourceSp);
+    private static RuntimeException checkDeoptimizedError(Pointer sp) {
+        throw checkDeoptimizedError0(sp);
     }
 
     @NeverInline("Throws error and exits")
-    private static RuntimeException checkDeoptimizedError0(Pointer sourceSp) {
-        Log.log().string("Unable to retrieve Deoptimized frame. sp: ").hex(sourceSp.rawValue()).newline();
+    private static RuntimeException checkDeoptimizedError0(Pointer sp) {
+        Log.log().string("Unable to retrieve Deoptimized frame. sp: ").hex(sp.rawValue()).newline();
         throw VMError.shouldNotReachHere("Unable to retrieve Deoptimized frame");
     }
 
@@ -285,8 +285,8 @@ public final class Deoptimizer {
 
         /*
          * Store a pointer to the deoptimizedFrame in the stack slot above the return address. From
-         * this point on, the GC will ignore the original source frame content. Instead, it just
-         * visits the DeoptimizedFrame object.
+         * this point on, the GC will ignore the original source frame content. Instead, it will
+         * visit the DeoptimizedFrame object.
          */
         ReferenceAccess.singleton().writeObjectAt(sourceSp, deoptimizedFrame, true);
     }
@@ -377,20 +377,20 @@ public final class Deoptimizer {
      *            instead of raising an error (use for deoptimzation testing only).
      */
     @NeverInline("Inlining of this method would require that we have deopt targets for callees of this method (SVM internals).")
-    public static void deoptimizeFrame(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
+    public static void deoptimizeFrame(Pointer sp, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
         /*
          * Note that the thread needs to be read outside of the VMOperation, since the operation can
          * run in any different thread.
          */
         IsolateThread targetThread = CurrentIsolate.getCurrentThread();
-        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(targetThread, sourceSp);
+        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(targetThread, sp);
         if (deoptFrame != null) {
             /* Already deoptimized, so nothing to do. */
             registerSpeculationFailure(deoptFrame.getSourceInstalledCode(), speculation);
             return;
         }
 
-        DeoptimizeFrameOperation vmOp = new DeoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, targetThread);
+        DeoptimizeFrameOperation vmOp = new DeoptimizeFrameOperation(sp, ignoreNonDeoptimizable, speculation, targetThread);
         vmOp.enqueue();
     }
 
@@ -411,32 +411,32 @@ public final class Deoptimizer {
         @Override
         protected void operate() {
             VMOperation.guaranteeInProgress("doDeoptimizeFrame");
-            CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
-            deoptimizeFrame(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, targetThread);
+            CodePointer ip = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
+            deoptimizeFrame(targetThread, sourceSp, ip, ignoreNonDeoptimizable, speculation);
         }
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
-    private static void deoptimizeFrame(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodePointer returnAddress, IsolateThread targetThread) {
-        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(returnAddress);
+    private static void deoptimizeFrame(IsolateThread targetThread, Pointer sp, CodePointer ip, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
             CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-            deoptimize(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, info, targetThread);
+            deoptimize(targetThread, sp, ip, ignoreNonDeoptimizable, speculation, info);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
     }
 
     @Uninterruptible(reason = "Pass the now protected CodeInfo object to interruptible code.", calleeMustBe = false)
-    private static void deoptimize(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodePointer returnAddress, CodeInfo info, IsolateThread targetThread) {
-        deoptimize0(sourceSp, ignoreNonDeoptimizable, speculation, returnAddress, info, targetThread);
+    private static void deoptimize(IsolateThread targetThread, Pointer sp, CodePointer ip, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodeInfo info) {
+        deoptimize0(targetThread, sp, ip, ignoreNonDeoptimizable, speculation, info);
     }
 
-    private static void deoptimize0(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodePointer returnAddress, CodeInfo info, IsolateThread targetThread) {
-        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(info, returnAddress);
-        Deoptimizer deoptimizer = new Deoptimizer(sourceSp, queryResult, targetThread);
-        DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrame(returnAddress, ignoreNonDeoptimizable);
+    private static void deoptimize0(IsolateThread targetThread, Pointer sp, CodePointer ip, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodeInfo info) {
+        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(info, ip);
+        Deoptimizer deoptimizer = new Deoptimizer(sp, queryResult, targetThread);
+        DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrame(ip, ignoreNonDeoptimizable);
         if (sourceFrame != null) {
             registerSpeculationFailure(sourceFrame.getSourceInstalledCode(), speculation);
         }
@@ -446,9 +446,9 @@ public final class Deoptimizer {
      * Invalidates the {@link InstalledCode} of the method of the given frame. The method must be a
      * runtime compiled method, since there is not {@link InstalledCode} for native image methods.
      */
-    public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sourceSp, SpeculationReason speculation) {
-        CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(thread, sourceSp);
-        SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(returnAddress);
+    public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sp, SpeculationReason speculation) {
+        CodePointer ip = FrameAccess.singleton().readReturnAddress(thread, sp);
+        SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(ip);
         /*
          * We look up the installedCode before checking if the frame is deoptimized to avoid race
          * conditions. We are not in a VMOperation here. When a deoptimization happens, e.g., at a
@@ -458,7 +458,7 @@ public final class Deoptimizer {
          * installedCode multiple times in case of a race is not a problem because the actual
          * invalidation is in a VMOperation.
          */
-        DeoptimizedFrame deoptimizedFrame = checkDeoptimized(thread, sourceSp);
+        DeoptimizedFrame deoptimizedFrame = checkDeoptimized(thread, sp);
         if (deoptimizedFrame != null) {
             installedCode = deoptimizedFrame.getSourceInstalledCode();
             if (installedCode == null) {
@@ -468,7 +468,7 @@ public final class Deoptimizer {
         } else {
             if (installedCode == null) {
                 throw VMError.shouldNotReachHere(
-                                "Only runtime compiled methods can be invalidated. sp = " + Long.toHexString(sourceSp.rawValue()) + ", returnAddress = " + Long.toHexString(returnAddress.rawValue()));
+                                "Only runtime compiled methods can be invalidated. sp = " + Long.toHexString(sp.rawValue()) + ", returnAddress = " + Long.toHexString(ip.rawValue()));
             }
         }
         registerSpeculationFailure(installedCode, speculation);

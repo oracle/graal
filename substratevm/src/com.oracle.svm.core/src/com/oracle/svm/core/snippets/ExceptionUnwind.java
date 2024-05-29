@@ -183,9 +183,9 @@ public abstract class ExceptionUnwind {
         boolean hasCalleeSavedRegisters = fromMethodWithCalleeSavedRegisters;
 
         /*
-         * callerSP and startIP identify already the caller of the frame that wants to unwind an
-         * exception. So we can start looking for the exception handler immediately in that frame,
-         * without skipping any frames in between.
+         * callerSP identifies the caller of the frame that wants to unwind an exception. So we can
+         * start looking for the exception handler immediately in that frame, without skipping any
+         * frames in between.
          */
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         JavaStackWalker.initialize(walk, thread, startSP);

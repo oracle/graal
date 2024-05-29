@@ -51,7 +51,7 @@ import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 
 /**
  * Maintains the linked list of {@link JavaFrameAnchor} for stack walking. Note that a thread may
- * only push/pop/modify a frame anchor, while its thread status is
+ * only push/pop/modify a frame anchor while its thread status is
  * {@link StatusSupport#STATUS_IN_JAVA}. This is necessary to guarantee that we can walk the stack
  * of other threads consistently while in a VM operation.
  */
@@ -67,8 +67,8 @@ public class JavaFrameAnchors {
 
         /*
          * Set IP and SP to null during initialization, these values will later be overwritten by
-         * proper ones. The intention is to not see stale values when debugging or in signal
-         * handlers.
+         * proper ones (see usages of KnownOffsets.getJavaFrameAnchorLastSPOffset() in the backend).
+         * The intention is to not see stale values when debugging or in signal handlers.
          */
         newAnchor.setLastJavaIP(WordFactory.nullPointer());
         newAnchor.setLastJavaSP(WordFactory.nullPointer());
@@ -98,7 +98,7 @@ public class JavaFrameAnchors {
     /**
      * Returns the last Java frame anchor for the given thread, or null if there is none. Note that
      * even at a safepoint, there is no guarantee that all stopped {@link IsolateThread}s have a
-     * Java frame anchor (e.g., threads that are currently attaching don't necesssarily have a frame
+     * Java frame anchor (e.g., threads that are currently attaching don't necessarily have a frame
      * anchor).
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
