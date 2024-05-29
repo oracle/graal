@@ -2179,7 +2179,7 @@ public final class JDWP {
                 }
 
                 int length = suspendedInfo.getStackFrames().length;
-                reply.writeInt(suspendedInfo.getStackFrames().length);
+                reply.writeInt(length);
                 controller.fine(() -> "current frame count: " + length + " for thread: " + controller.getContext().getThreadName(thread));
 
                 return new CommandResult(reply);
@@ -2388,7 +2388,8 @@ public final class JDWP {
                     // return type methods anyway
                     returnValue = controller.getContext().getNullObject();
                 }
-                CallFrame topFrame = info.getStackFrames().length > 0 ? info.getStackFrames()[0] : null;
+                CallFrame[] stackFrames = info.getStackFrames();
+                CallFrame topFrame = stackFrames.length > 0 ? stackFrames[0] : null;
                 if (topFrame == null || !controller.forceEarlyReturn(info, thread, topFrame, returnValue)) {
                     reply.errorCode(ErrorCodes.OPAQUE_FRAME);
                 }
