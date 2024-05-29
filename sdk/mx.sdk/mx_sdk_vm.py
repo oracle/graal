@@ -560,6 +560,9 @@ def base_jdk():
 def base_jdk_version():
     return base_jdk().javaCompliance.value
 
+def get_jdk_version_for_profiles():
+    jdk_version = mx.get_jdk().javaCompliance.value
+    return '_LATEST' if jdk_version > 21 else jdk_version
 
 def _probe_jvmci_info(jdk, attribute_name):
     if not hasattr(jdk, '.enables_jvmci_by_default'):
