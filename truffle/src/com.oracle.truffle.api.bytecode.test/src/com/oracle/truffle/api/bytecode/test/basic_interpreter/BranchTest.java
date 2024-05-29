@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -123,7 +124,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testBranchOutwardValid() {
+    public void testBranchOutwardBalanced() {
         // {
         //   if(arg0 < 0) goto lbl;
         //   return 123;
@@ -131,7 +132,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // lbl:
         // return 42;
 
-        RootCallTarget root = parse("branchOutwardValid", b -> {
+        RootCallTarget root = parse("branchOutwardBalanced", b -> {
             b.beginRoot(LANGUAGE);
 
             BytecodeLabel lbl = b.createLabel();
@@ -153,7 +154,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
 
             b.emitLabel(lbl);
 
-            emitReturn(b, 42);
+            emitReturn(b, 42L);
 
             b.endRoot();
         });
@@ -163,14 +164,12 @@ public class BranchTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testBranchOutwardInvalid() {
+    public void testBranchOutwardUnbalanced() {
         // return 1 + { goto lbl; 2 }
         // lbl:
-        // return 0;
+        // return 42;
 
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("BytecodeLabel was emitted at a position with a different stack height than a branch instruction that targets it. Expected stack height 1, but was 0. Branches must be balanced.");
-        parse("branchOutwardInvalid", b -> {
+        RootCallTarget root = parse("branchOutwardUnbalanced", b -> {
             b.beginRoot(LANGUAGE);
 
             BytecodeLabel lbl = b.createLabel();
@@ -187,11 +186,12 @@ public class BranchTest extends AbstractBasicInterpreterTest {
 
             b.emitLabel(lbl);
 
-            emitReturn(b, 0);
+            emitReturn(b, 42L);
 
             b.endRoot();
         });
 
+        assertEquals(42L, root.call());
     }
 
     @Test
@@ -234,7 +234,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         //   result
         // };
 
-        RootCallTarget root = parse("branchInvalidStack", b -> {
+        RootCallTarget root = parse("branchBalancedStack", b -> {
             b.beginRoot(LANGUAGE);
             b.beginReturn();
             b.beginAddOperation();

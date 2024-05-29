@@ -352,7 +352,6 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    @Ignore("unbalanced branches not yet supported")
     public void testFinallyTryBranchForwardOutOfHandlerUnbalanced() {
         /**
          * This test is the same as the previous, but because of the "return 0",
@@ -1074,7 +1073,6 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
 
     @Test
-    @Ignore("unbalanced branches not yet supported")
     public void testFinallyTryBranchIntoOuterFinallyUnbalanced() {
         /**
          * This test is the same as the previous, but because of the "return 0"'s,
@@ -1215,7 +1213,6 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    @Ignore("unbalanced branches not yet supported")
     public void testFinallyTryBranchIntoOuterFinallyNestedInAnotherFinallyUnbalanced() {
         /**
          * This test is the same as the previous, but because of the "return 0"'s in handlers b and c,
@@ -1299,7 +1296,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 3L, 5L, 6L, 8L, 11L, 12L);
+        testOrdering(false, root, 1L, 3L, 5L, 6L, 8L, 11L);
     }
 
     @Test
