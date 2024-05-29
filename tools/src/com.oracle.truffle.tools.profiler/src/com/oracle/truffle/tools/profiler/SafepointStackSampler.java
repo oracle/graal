@@ -80,7 +80,7 @@ final class SafepointStackSampler {
         return visitor;
     }
 
-    List<StackSample> sample(Env env, Map<TruffleContext, CPUSampler.MutableSamplerData> contexts, boolean useSyntheticFrames, long timeout, TimeUnit timeoutUnit) {
+    List<StackSample> sample(CPUSampler cpuSampler, Env env, Map<TruffleContext, CPUSampler.MutableSamplerData> contexts, boolean useSyntheticFrames, long timeout, TimeUnit timeoutUnit) {
         long startNanos = System.nanoTime();
         SampleAction action = cachedAction.getAndSet(null);
         if (action == null) {
@@ -115,8 +115,17 @@ final class SafepointStackSampler {
             if (!incompleteSample && timeElapsed < timeoutNanos) {
                 try {
                     futureEntry.getValue().get(timeout, timeoutUnit);
-                } catch (InterruptedException | ExecutionException e) {
+                } catch (ExecutionException e) {
                     env.getLogger(getClass()).log(Level.SEVERE, "Sampling error", e);
+                    incompleteSample = true;
+                } catch (InterruptedException e) {
+                    /*
+                     * Closing the CPUSampler during shutdown of the instrument sends interrupt to
+                     * the sampling thread, which is expected, and so we don't log it.
+                     */
+                    if (!cpuSampler.closed) {
+                        env.getLogger(getClass()).log(Level.SEVERE, "Sampling interrupted", e);
+                    }
                     incompleteSample = true;
                 } catch (TimeoutException e) {
                     future.cancel(false);
