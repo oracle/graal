@@ -221,6 +221,8 @@ public final class TruffleString extends AbstractTruffleString {
         }
         if (bytes instanceof NativePointer) {
             ((NativePointer) bytes).materializeByteArray(null, offset, length << stride, InlinedConditionProfile.getUncached());
+        } else {
+            assert stride == Stride.fromCodeRangeAllowImprecise(codeRange, encoding);
         }
         long attrs = CalcStringAttributesNodeGen.getUncached().execute(CalcStringAttributesNodeGen.getUncached(), null, bytes, offset, length, stride, encoding, 0, knownCodeRange);
         int cpLengthCalc = StringAttributes.getCodePointLength(attrs);
@@ -5031,7 +5033,8 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.CalcStringAttributesNode calcStringAttributesNode,
                         @Cached InlinedConditionProfile brokenProfile,
-                        @Cached InlinedBranchProfile outOfMemoryProfile) {
+                        @Cached InlinedBranchProfile outOfMemoryProfile,
+                        @Cached InlinedBranchProfile compactProfile) {
             a.checkEncoding(expectedEncoding);
             if (n < 0) {
                 throw InternalErrors.illegalArgument("n must be positive");
@@ -5046,27 +5049,38 @@ public final class TruffleString extends AbstractTruffleString {
             int codeRangeA = getPreciseCodeRangeNode.execute(this, a, expectedEncoding);
             int codePointLengthA = getCodePointLengthNode.execute(this, a, expectedEncoding);
             int byteLengthA = (a.length()) << a.stride();
-            long byteLength = ((long) byteLengthA) * n;
+            int stride = Stride.fromCodeRange(codeRangeA, expectedEncoding);
+            long byteLength = (((long) a.length()) << stride) * n;
             if (Long.compareUnsigned(byteLength, TStringConstants.MAX_ARRAY_SIZE) > 0) {
                 outOfMemoryProfile.enter(this);
                 throw InternalErrors.outOfMemory();
             }
             byte[] array = new byte[(int) byteLength];
             int offsetB = 0;
-            for (int i = 0; i < n; i++) {
-                TStringOps.arraycopyWithStride(this, arrayA, a.offset(), 0, 0, array, offsetB, 0, 0, byteLengthA);
-                offsetB += byteLengthA;
-                TStringConstants.truffleSafePointPoll(this, i + 1);
+            if (stride == a.stride()) {
+                for (int i = 0; i < n; i++) {
+                    TStringOps.arraycopyWithStride(this, arrayA, a.offset(), 0, 0, array, offsetB, 0, 0, byteLengthA);
+                    offsetB += byteLengthA;
+                    TStringConstants.truffleSafePointPoll(this, i + 1);
+                }
+            } else {
+                compactProfile.enter(this);
+                int byteLengthCompact = a.length() << stride;
+                for (int i = 0; i < n; i++) {
+                    TStringOps.arraycopyWithStride(this, arrayA, a.offset(), a.stride(), 0, array, offsetB, stride, 0, a.length());
+                    offsetB += byteLengthCompact;
+                    TStringConstants.truffleSafePointPoll(this, i + 1);
+                }
             }
-            int length = (int) (byteLength >> a.stride());
+            int length = (int) (byteLength >> stride);
             if (brokenProfile.profile(this, isBroken(codeRangeA))) {
-                long attrs = calcStringAttributesNode.execute(this, null, array, 0, length, a.stride(), expectedEncoding, 0, codeRangeA);
+                long attrs = calcStringAttributesNode.execute(this, null, array, 0, length, stride, expectedEncoding, 0, codeRangeA);
                 codeRangeA = StringAttributes.getCodeRange(attrs);
                 codePointLengthA = StringAttributes.getCodePointLength(attrs);
             } else {
                 codePointLengthA *= n;
             }
-            return createFromByteArray(array, length, a.stride(), expectedEncoding, codePointLengthA, codeRangeA);
+            return createFromByteArray(array, length, stride, expectedEncoding, codePointLengthA, codeRangeA);
         }
 
         /**
