@@ -30,6 +30,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -66,7 +67,9 @@ public class TestContainerEvent extends JfrRecordingTest {
         long hostTotalMem = re.getValue("hostTotalMemory");
         assertTrue(hostTotalMem > 0);
 
-        long hostTotalSwap = re.getValue("hostTotalSwapMemory");
-        assertTrue("Host swap not implemented", hostTotalSwap < 0);
+        if (JavaVersionUtil.JAVA_SPEC >= 23) {
+            long hostTotalSwap = re.getValue("hostTotalSwapMemory");
+            assertTrue("Host swap not implemented", hostTotalSwap < 0);
+        }
     }
 }
