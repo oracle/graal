@@ -327,29 +327,6 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "jdk.graal.compiler.hotspot.jdk23.test" : {
-      "testProject" : True,
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.graal.compiler.test",
-      ],
-      "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.util",
-          "sun.security.util.math",
-          "sun.security.util.math.intpoly",
-        ],
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-        ],
-      },
-      "checkstyle": "jdk.graal.compiler",
-      "javaCompliance" : "23+",
-      "workingSets" : "Graal,HotSpot,Test",
-      "graalCompilerSourceEdition": "ignore",
-    },
-
     "jdk.graal.compiler.virtual.bench" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -483,7 +460,6 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "jdk.graal.compiler.hotspot.jdk21.test",
-        "jdk.graal.compiler.hotspot.jdk23.test",
       ],
       "distDependencies" : [
         "GRAAL_TEST",
