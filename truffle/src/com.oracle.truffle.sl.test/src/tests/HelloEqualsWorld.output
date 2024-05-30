@@ -1,5 +1,5 @@
 Initial stack trace:
-Frame: root doIt, a=0, hello=null
+Frame: root doIt, a=0
 Frame: root main, i=0
 After 123 assignment:
 Frame: root doIt, a=0, hello=123
@@ -8,7 +8,7 @@ After hello assignment:
 Frame: root doIt, a=0, hello=world
 Frame: root main, i=0
 Initial stack trace:
-Frame: root doIt, a=1, hello=null
+Frame: root doIt, a=1
 Frame: root main, i=1
 After 123 assignment:
 Frame: root doIt, a=1, hello=123
@@ -17,7 +17,7 @@ After hello assignment:
 Frame: root doIt, a=1, hello=world
 Frame: root main, i=1
 Initial stack trace:
-Frame: root doIt, a=2, hello=null
+Frame: root doIt, a=2
 Frame: root main, i=2
 After 123 assignment:
 Frame: root doIt, a=2, hello=123
@@ -26,7 +26,7 @@ After hello assignment:
 Frame: root doIt, a=2, hello=world
 Frame: root main, i=2
 Initial stack trace:
-Frame: root doIt, a=3, hello=null
+Frame: root doIt, a=3
 Frame: root main, i=3
 After 123 assignment:
 Frame: root doIt, a=3, hello=123
@@ -35,7 +35,7 @@ After hello assignment:
 Frame: root doIt, a=3, hello=world
 Frame: root main, i=3
 Initial stack trace:
-Frame: root doIt, a=4, hello=null
+Frame: root doIt, a=4
 Frame: root main, i=4
 After 123 assignment:
 Frame: root doIt, a=4, hello=123
@@ -44,7 +44,7 @@ After hello assignment:
 Frame: root doIt, a=4, hello=world
 Frame: root main, i=4
 Initial stack trace:
-Frame: root doIt, a=5, hello=null
+Frame: root doIt, a=5
 Frame: root main, i=5
 After 123 assignment:
 Frame: root doIt, a=5, hello=123
@@ -53,7 +53,7 @@ After hello assignment:
 Frame: root doIt, a=5, hello=world
 Frame: root main, i=5
 Initial stack trace:
-Frame: root doIt, a=6, hello=null
+Frame: root doIt, a=6
 Frame: root main, i=6
 After 123 assignment:
 Frame: root doIt, a=6, hello=123
@@ -62,7 +62,7 @@ After hello assignment:
 Frame: root doIt, a=6, hello=world
 Frame: root main, i=6
 Initial stack trace:
-Frame: root doIt, a=7, hello=null
+Frame: root doIt, a=7
 Frame: root main, i=7
 After 123 assignment:
 Frame: root doIt, a=7, hello=123
@@ -71,7 +71,7 @@ After hello assignment:
 Frame: root doIt, a=7, hello=world
 Frame: root main, i=7
 Initial stack trace:
-Frame: root doIt, a=8, hello=null
+Frame: root doIt, a=8
 Frame: root main, i=8
 After 123 assignment:
 Frame: root doIt, a=8, hello=123
@@ -80,7 +80,7 @@ After hello assignment:
 Frame: root doIt, a=8, hello=world
 Frame: root main, i=8
 Initial stack trace:
-Frame: root doIt, a=9, hello=null
+Frame: root doIt, a=9
 Frame: root main, i=9
 After 123 assignment:
 Frame: root doIt, a=9, hello=123

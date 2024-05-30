@@ -166,13 +166,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     private enum ParseMode {
         DEFAULT,
-        EXPORTED_MESSAGE
+        EXPORTED_MESSAGE,
+        OPERATION,
     }
 
     private boolean nodeOnly;
     private final ParseMode mode;
     private final TypeMirror exportLibraryType;
     private final TypeElement exportDeclarationType;
+    private final TypeElement bytecodeRootNodeType;
     private final boolean substituteThisToParent;
 
     /*
@@ -181,11 +183,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private NodeData parsingParent;
     private final List<TypeMirror> cachedAnnotations;
 
-    private NodeParser(ParseMode mode, TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
+    private NodeParser(ParseMode mode, TypeMirror exportLibraryType, TypeElement exportDeclarationType, TypeElement bytecodeRootNodeType, boolean substituteThisToParent) {
         this.mode = mode;
         this.exportLibraryType = exportLibraryType;
         this.exportDeclarationType = exportDeclarationType;
         this.cachedAnnotations = getCachedAnnotations();
+        this.bytecodeRootNodeType = bytecodeRootNodeType;
         this.substituteThisToParent = substituteThisToParent;
     }
 
@@ -195,14 +198,18 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
-        NodeParser parser = new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, substituteThisToParent);
+        NodeParser parser = new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, null, substituteThisToParent);
         // the ExportsParse will take care of removing the specializations if the option is set
         parser.setGenerateSlowPathOnly(false);
         return parser;
     }
 
     public static NodeParser createDefaultParser() {
-        return new NodeParser(ParseMode.DEFAULT, null, null, false);
+        return new NodeParser(ParseMode.DEFAULT, null, null, null, false);
+    }
+
+    public static NodeParser createOperationParser(TypeElement bytecodeRootNodeType) {
+        return new NodeParser(ParseMode.OPERATION, null, null, bytecodeRootNodeType, false);
     }
 
     @Override
@@ -239,6 +246,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     @Override
+    public boolean isGenerateSlowPathOnly(TypeElement element) {
+        if (mode == ParseMode.OPERATION) {
+            return false;
+        }
+        return super.isGenerateSlowPathOnly(element);
+    }
+
+    @Override
     public DeclaredType getAnnotationType() {
         return null;
     }
@@ -250,10 +265,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     private NodeData parseRootType(TypeElement rootType) {
         List<NodeData> enclosedNodes = new ArrayList<>();
-        for (TypeElement enclosedType : ElementFilter.typesIn(rootType.getEnclosedElements())) {
-            NodeData enclosedChild = parseRootType(enclosedType);
-            if (enclosedChild != null) {
-                enclosedNodes.add(enclosedChild);
+        // Only top-level nodes need to be parsed for the Bytecode DSL. If a node used as an
+        // Operation has nested nodes, they will be processed during regular node generation.
+        if (mode != ParseMode.OPERATION) {
+            for (TypeElement enclosedType : ElementFilter.typesIn(rootType.getEnclosedElements())) {
+                NodeData enclosedChild = parseRootType(enclosedType);
+                if (enclosedChild != null) {
+                    enclosedNodes.add(enclosedChild);
+                }
             }
         }
         NodeData node;
@@ -298,12 +317,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (mode == ParseMode.DEFAULT && !getRepeatedAnnotation(templateType.getAnnotationMirrors(), types.ExportMessage).isEmpty()) {
             return null;
         }
+        if (mode == ParseMode.DEFAULT && findAnnotationMirror(templateType.getAnnotationMirrors(), types.Operation) != null) {
+            return null;
+        }
 
         List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), templateType);
 
         NodeData node = parseNodeData(templateType, lookupTypes);
 
-        List<Element> declaredMembers = loadMembers(templateType);
+        List<Element> declaredMembers = ElementUtils.loadFilteredMembers(templateType);
         // ensure the processed element has at least one @Specialization annotation.
         if (!containsSpecializations(declaredMembers)) {
             return null;
@@ -421,7 +443,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         initializeFastPathIdempotentGuards(node);
 
-        if (mode == ParseMode.DEFAULT) {
+        if (mode == ParseMode.DEFAULT || mode == ParseMode.OPERATION) {
             boolean emitWarnings = TruffleProcessorOptions.cacheSharingWarningsEnabled(processingEnv) && //
                             !TruffleProcessorOptions.generateSlowPathOnly(processingEnv);
             node.setSharedCaches(computeSharing(node.getTemplateType(), Arrays.asList(node), emitWarnings));
@@ -495,7 +517,24 @@ public final class NodeParser extends AbstractParser<NodeData> {
         globalMembers.addAll(members);
         globalMembers.add(new CodeVariableElement(types.Node, "this"));
         globalMembers.add(new CodeVariableElement(types.Node, NODE_KEYWORD));
-        return new DSLExpressionResolver(context, node.getTemplateType(), globalMembers);
+        TypeElement accessingType = node.getTemplateType();
+
+        if (mode == ParseMode.OPERATION) {
+            /*
+             * Operation nodes can bind extra variables.
+             *
+             * Note that Proxyable nodes can also bind these names. To allow such nodes to be used
+             * for both operation and regular node execution, the DSLExpressionResolver supplies
+             * default values when these names are used.
+             */
+            globalMembers.add(new CodeVariableElement(bytecodeRootNodeType.asType(), "$root"));
+            globalMembers.add(new CodeVariableElement(types.BytecodeNode, "$bytecode"));
+            globalMembers.add(new CodeVariableElement(types.BytecodeLocation, "$location"));
+            globalMembers.add(new CodeVariableElement(context.getType(int.class), "$bci"));
+            // Names should be visible from the package of the generated BytecodeRootNode.
+            accessingType = bytecodeRootNodeType;
+        }
+        return new DSLExpressionResolver(context, accessingType, globalMembers);
     }
 
     private static final class NodeSizeEstimate {
@@ -510,10 +549,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
-    private int computeInstanceSize(TypeMirror mirror) {
+    private static int computeInstanceSize(TypeMirror mirror) {
         TypeElement type = fromTypeMirror(mirror);
         if (type != null) {
-            List<Element> members = loadAllMembers(type);
+            List<Element> members = ElementUtils.loadAllMembers(type);
             int size = ElementUtils.COMPRESSED_HEADER_SIZE;
             for (VariableElement var : ElementFilter.fieldsIn(members)) {
                 size += ElementUtils.getCompressedReferenceSize(var.asType());
@@ -976,7 +1015,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
-    static boolean isGenerateUncached(TypeElement templateType) {
+    public static boolean isGenerateUncached(TypeElement templateType) {
         AnnotationMirror annotation = findGenerateAnnotation(templateType.asType(), ProcessorContext.getInstance().getTypes().GenerateUncached);
         Boolean value = Boolean.FALSE;
         if (annotation != null) {
@@ -998,7 +1037,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return findGenerateAnnotation(templateType.asType(), ProcessorContext.getInstance().getTypes().GenerateInline);
     }
 
-    private static AnnotationMirror findGenerateAnnotation(TypeMirror nodeType, DeclaredType annotationType) {
+    public static AnnotationMirror findGenerateAnnotation(TypeMirror nodeType, DeclaredType annotationType) {
         TypeElement originalType = ElementUtils.castTypeElement(nodeType);
         TypeElement currentType = originalType;
         while (currentType != null) {
@@ -1200,7 +1239,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         declaringElement = node.getTemplateType().getEnclosingElement();
                         if (!declaringElement.getKind().isClass() &&
                                         !declaringElement.getKind().isInterface()) {
-                            throw new AssertionError("Unexpected declared element for generated element: " + declaringElement.toString());
+                            // throw new AssertionError("Unexpected declared element for generated
+                            // element: " + declaringElement.toString());
+
+                            declaringElement = node.getTemplateType();
                         }
                     } else {
                         declaringElement = node.getTemplateType();
@@ -1724,27 +1766,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         for (int i = 1; i < parent.getDelegatedFrom().size(); i++) {
             buildExecutableHierarchy(node, parent.getDelegatedFrom().get(i - 1), parent.getDelegatedFrom().listIterator(i));
         }
-    }
-
-    private List<Element> loadMembers(TypeElement templateType) {
-        List<Element> elements = loadAllMembers(templateType);
-        Iterator<Element> elementIterator = elements.iterator();
-        while (elementIterator.hasNext()) {
-            Element element = elementIterator.next();
-            // not interested in methods of Node
-            if (typeEquals(element.getEnclosingElement().asType(), types.Node)) {
-                elementIterator.remove();
-            }
-            // not interested in methods of Object
-            if (typeEquals(element.getEnclosingElement().asType(), context.getType(Object.class))) {
-                elementIterator.remove();
-            }
-        }
-        return elements;
-    }
-
-    private List<Element> loadAllMembers(TypeElement templateType) {
-        return newElementList(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType));
     }
 
     private boolean containsSpecializations(List<Element> elements) {
@@ -2540,7 +2561,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), templateType);
 
-        // Declaration order is not required for child nodes.
         List<? extends Element> members = CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(processingEnv, templateType);
         NodeData node = parseNodeData(templateType, lookupTypes);
         if (node.hasErrors()) {
@@ -4306,15 +4326,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    /**
-     * @see "https://bugs.openjdk.java.net/browse/JDK-8039214"
-     */
-    @SuppressWarnings("unused")
-    private static List<Element> newElementList(List<? extends Element> src) {
-        List<Element> workaround = new ArrayList<Element>(src);
-        return workaround;
-    }
-
     private static void verifyMissingAbstractMethods(NodeData nodeData, List<? extends Element> originalElements) {
         if (!nodeData.needsFactory()) {
             // missing abstract methods only needs to be implemented
@@ -4322,7 +4333,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return;
         }
 
-        List<Element> elements = newElementList(originalElements);
+        List<Element> elements = ElementUtils.newElementList(originalElements);
         Set<Element> unusedElements = new HashSet<>(elements);
         for (ExecutableElement method : nodeData.getAllTemplateMethods()) {
             unusedElements.remove(method);

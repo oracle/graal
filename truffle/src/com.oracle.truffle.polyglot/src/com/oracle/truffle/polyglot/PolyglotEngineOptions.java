@@ -137,6 +137,14 @@ final class PolyglotEngineOptions {
                     "Asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect. (default: false)")//
     static final OptionKey<Boolean> AssertProbes = new OptionKey<>(false);
 
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Enables and sets the state file path for Bytecode DSL tracer") //
+    static final OptionKey<String> BytecodeTracingState = new OptionKey<>("");
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Dumps the Bytecode DSL decisions. This option is indended for debugging corpus tracing decisions.") //
+    static final OptionKey<Boolean> BytecodeDumpDecisions = new OptionKey<>(false);
+
     enum StaticObjectStorageStrategies {
         DEFAULT,
         ARRAY_BASED,

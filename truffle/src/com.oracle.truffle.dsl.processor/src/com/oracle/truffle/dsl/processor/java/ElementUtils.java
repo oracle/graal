@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.java;
 
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PROTECTED;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.annotation.Repeatable;
@@ -56,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -81,7 +87,9 @@ import javax.lang.model.util.Types;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
@@ -100,9 +108,21 @@ public class ElementUtils {
 
     public static ExecutableElement findMethod(DeclaredType type, String methodName) {
         ProcessorContext context = ProcessorContext.getInstance();
-        TypeElement typeElement = context.getTypeElement(type);
+        return findMethod(context.getTypeElement(type), methodName);
+    }
+
+    public static ExecutableElement findMethod(TypeElement typeElement, String methodName) {
         for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
             if (method.getSimpleName().toString().equals(methodName)) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    public static ExecutableElement findInstanceMethod(TypeElement typeElement, String methodName) {
+        for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
+            if (method.getSimpleName().toString().equals(methodName) && !method.getModifiers().contains(Modifier.STATIC)) {
                 return method;
             }
         }
@@ -185,8 +205,25 @@ public class ElementUtils {
         return ProcessorContext.getInstance().getTypeElement(typeName);
     }
 
+    public static TypeElement getTypeElement(DeclaredType type) {
+        return (TypeElement) type.asElement();
+    }
+
+    public static TypeElement findTypeElement(CodeTypeElement typeElement, String name) {
+        for (TypeElement nestedType : ElementFilter.typesIn(typeElement.getEnclosedElements())) {
+            if (nestedType.getSimpleName().toString().equals(name)) {
+                return nestedType;
+            }
+        }
+        return null;
+    }
+
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
-        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
+        return findExecutableElement(type.asElement(), name);
+    }
+
+    public static ExecutableElement findExecutableElement(Element element, String name) {
+        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(element.getEnclosedElements());
         for (ExecutableElement executableElement : elements) {
             if (executableElement.getSimpleName().toString().equals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
@@ -196,8 +233,11 @@ public class ElementUtils {
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name, int argumentCount) {
-        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
-        for (ExecutableElement executableElement : elements) {
+        return findExecutableElement(type.asElement(), name, argumentCount);
+    }
+
+    public static ExecutableElement findExecutableElement(Element element, String name, int argumentCount) {
+        for (ExecutableElement executableElement : ElementFilter.methodsIn(element.getEnclosedElements())) {
             if (executableElement.getParameters().size() == argumentCount && executableElement.getSimpleName().toString().equals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
             }
@@ -235,6 +275,11 @@ public class ElementUtils {
     public static String createReferenceName(ExecutableElement method) {
         StringBuilder b = new StringBuilder();
 
+        // if (method.getEnclosingElement() != null) {
+        // b.append(method.getEnclosingElement().getSimpleName());
+        // b.append('#');
+        // }
+
         b.append(method.getSimpleName().toString());
         b.append("(");
 
@@ -247,6 +292,10 @@ public class ElementUtils {
 
         b.append(")");
         return b.toString();
+    }
+
+    public static TypeMirror boxType(TypeMirror type) {
+        return boxType(ProcessorContext.getInstance(), type);
     }
 
     public static TypeMirror boxType(ProcessorContext context, TypeMirror primitiveType) {
@@ -641,11 +690,11 @@ public class ElementUtils {
     }
 
     private static String getWildcardName(WildcardType type) {
-        StringBuilder b = new StringBuilder();
+        StringBuilder b = new StringBuilder("?");
         if (type.getExtendsBound() != null) {
-            b.append("? extends ").append(getSimpleName(type.getExtendsBound()));
+            b.append(" extends ").append(getSimpleName(type.getExtendsBound()));
         } else if (type.getSuperBound() != null) {
-            b.append("? super ").append(getSimpleName(type.getExtendsBound()));
+            b.append(" super ").append(getSimpleName(type.getSuperBound()));
         }
         return b.toString();
     }
@@ -985,10 +1034,21 @@ public class ElementUtils {
 
     public static String createConstantName(String simpleName) {
         StringBuilder b = new StringBuilder(simpleName);
+
         int i = 0;
         while (i < b.length()) {
             char c = b.charAt(i);
-            if (Character.isUpperCase(c) && i != 0) {
+            if (Character.isUpperCase(c) && i != 0 &&
+                            Character.isUpperCase(b.charAt(i - 1))) {
+                b.setCharAt(i, Character.toLowerCase(c));
+            }
+            i++;
+        }
+
+        i = 0;
+        while (i < b.length()) {
+            char c = b.charAt(i);
+            if (i > 0 && Character.isUpperCase(b.charAt(i - 1)) && Character.isUpperCase(c)) {
                 b.insert(i, '_');
                 i++;
             } else if (Character.isLowerCase(c)) {
@@ -1310,6 +1370,24 @@ public class ElementUtils {
         }
     }
 
+    public static boolean typeEqualsAny(TypeMirror type1, TypeMirror... types) {
+        for (TypeMirror type2 : types) {
+            if (typeEquals(type1, type2)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean typeEqualsAny(TypeMirror type1, List<? extends TypeMirror> types) {
+        for (TypeMirror type2 : types) {
+            if (typeEquals(type1, type2)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean areTypesCompatible(TypeMirror type1, TypeMirror type2) {
         if (typeEquals(type1, type2)) {
             return true;
@@ -1539,6 +1617,52 @@ public class ElementUtils {
             return false;
         }
         return true;
+    }
+
+    public static boolean isOverridable(ExecutableElement ex) {
+        Set<Modifier> mods = ex.getModifiers();
+        return !mods.contains(FINAL) && !mods.contains(STATIC) && (mods.contains(PUBLIC) || mods.contains(PROTECTED));
+    }
+
+    public static List<ExecutableElement> getOverridableMethods(TypeElement t) {
+        return ElementFilter.methodsIn(t.getEnclosedElements()).stream() //
+                        .filter(ElementUtils::isOverridable).collect(Collectors.toList());
+    }
+
+    /**
+     * Returns true if e1 is an override of e2.
+     */
+    public static boolean isOverride(ExecutableElement e1, ExecutableElement e2) {
+        if (!isOverridable(e2)) {
+            return false;
+        }
+
+        Set<Modifier> mods1 = e1.getModifiers();
+        Set<Modifier> mods2 = e2.getModifiers();
+        if (mods2.contains(PUBLIC)) {
+            if (!mods1.contains(PUBLIC)) {
+                return false;
+            }
+        } else { // e2 is protected
+            if (!mods1.contains(PUBLIC) && !mods1.contains(PROTECTED)) {
+                return false;
+            }
+        }
+        if (mods1.contains(STATIC)) {
+            return false;
+        }
+
+        // NB: we don't check covariance of return type or contravariance of parameters.
+        return signatureEquals(e1, e2);
+    }
+
+    public static ExecutableElement findOverride(TypeElement subclass, ExecutableElement method) {
+        for (ExecutableElement subclassMethod : ElementFilter.methodsIn(subclass.getEnclosedElements())) {
+            if (ElementUtils.isOverride(subclassMethod, method)) {
+                return subclassMethod;
+            }
+        }
+        return null;
     }
 
     public static boolean elementEquals(Element element1, Element element2) {
@@ -1871,6 +1995,44 @@ public class ElementUtils {
         }
 
         return Idempotence.UNKNOWN;
+    }
+
+    /**
+     * Loads all members in declaration order but filters members of truffle Node and Object. Useful
+     * to load all members of template types.
+     */
+    public static List<Element> loadFilteredMembers(TypeElement templateType) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        List<Element> elements = loadAllMembers(templateType);
+        Iterator<Element> elementIterator = elements.iterator();
+        while (elementIterator.hasNext()) {
+            Element element = elementIterator.next();
+            // not interested in methods of Node
+            if (typeEquals(element.getEnclosingElement().asType(), context.getTypes().Node)) {
+                elementIterator.remove();
+            }
+            // not interested in methods of Object
+            if (typeEquals(element.getEnclosingElement().asType(), context.getType(Object.class))) {
+                elementIterator.remove();
+            }
+        }
+        return elements;
+    }
+
+    /**
+     * Loads all members in declaration order. This returns members of the entire type hierarcy.
+     */
+    public static List<Element> loadAllMembers(TypeElement templateType) {
+        return newElementList(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(ProcessorContext.getInstance().getEnvironment(), templateType));
+    }
+
+    /**
+     * @see "https://bugs.openjdk.java.net/browse/JDK-8039214"
+     */
+    @SuppressWarnings("unused")
+    public static List<Element> newElementList(List<? extends Element> src) {
+        List<Element> workaround = new ArrayList<Element>(src);
+        return workaround;
     }
 
 }

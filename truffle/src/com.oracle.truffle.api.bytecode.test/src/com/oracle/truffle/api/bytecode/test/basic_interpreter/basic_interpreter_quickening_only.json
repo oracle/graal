@@ -1,0 +1,8 @@
+[
+	{
+		"id": "test1",
+		"type": "Quicken",
+		"operation": "AddOperation",
+		"specializations": ["addLongs"]
+	}
+]

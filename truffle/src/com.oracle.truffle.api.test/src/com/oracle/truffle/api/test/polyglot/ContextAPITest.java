@@ -180,7 +180,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
 
         @ExportMessage(name = "getSourceLocation")
-        SourceSection getSourceSection() throws UnsupportedMessageException {
+        SourceSection getSourceLocation() throws UnsupportedMessageException {
             if (location == null) {
                 throw UnsupportedMessageException.create();
             }

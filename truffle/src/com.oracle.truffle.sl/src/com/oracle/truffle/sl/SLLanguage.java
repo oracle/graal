@@ -40,32 +40,43 @@
  */
 package com.oracle.truffle.sl;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
@@ -73,6 +84,7 @@ import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
+import com.oracle.truffle.sl.nodes.SLAstRootNode;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -103,7 +115,8 @@ import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
-import com.oracle.truffle.sl.parser.SLNodeFactory;
+import com.oracle.truffle.sl.parser.SLBytecodeVisitor;
+import com.oracle.truffle.sl.parser.SLNodeVisitor;
 import com.oracle.truffle.sl.parser.SimpleLanguageLexer;
 import com.oracle.truffle.sl.parser.SimpleLanguageParser;
 import com.oracle.truffle.sl.runtime.SLBigInteger;
@@ -207,6 +220,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String MIME_TYPE = "application/x-sl";
     private static final Source BUILTIN_SOURCE = Source.newBuilder(SLLanguage.ID, "", "SL builtin").build();
 
+    private static final boolean TRACE_INSTRUMENTATION_TREE = false;
+
     public static final TruffleString.Encoding STRING_ENCODING = TruffleString.Encoding.UTF_16;
 
     private final Assumption singleContext = Truffle.getRuntime().createAssumption("Single SL context.");
@@ -216,6 +231,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     private final Shape rootShape;
 
+    @Option(help = "Use the SL interpreter implemented using the Truffle Bytecode DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseBytecode = new OptionKey<>(false);
+
+    private boolean useBytecode;
+
     public SLLanguage() {
         counter++;
         this.rootShape = Shape.newBuilder().layout(SLObject.class).build();
@@ -223,6 +243,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected SLContext createContext(Env env) {
+        useBytecode = UseBytecode.getValue(env.getOptions());
         return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
     }
 
@@ -230,6 +251,20 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     protected boolean patchContext(SLContext context, Env newEnv) {
         context.patchContext(newEnv);
         return true;
+    }
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return new SLLanguageOptionDescriptors();
+    }
+
+    public boolean isUseBytecode() {
+        return useBytecode;
+    }
+
+    @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        return UseBytecode.getValue(firstOptions).equals(UseBytecode.getValue(newOptions));
     }
 
     public RootCallTarget getOrCreateUndefinedFunction(TruffleString name) {
@@ -274,7 +309,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         builtinBodyNode.setUnavailableSourceSection();
 
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
-        SLRootNode rootNode = new SLRootNode(this, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
+        SLRootNode rootNode = new SLAstRootNode(this, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
 
         /*
          * Register the builtin function in the builtin registry. Call targets for builtins may be
@@ -302,15 +337,13 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
+
         Source source = request.getSource();
-        Map<TruffleString, RootCallTarget> functions;
         /*
          * Parse the provided source. At this point, we do not have a SLContext yet. Registration of
          * the functions with the SLContext happens lazily in SLEvalRootNode.
          */
-        if (request.getArgumentNames().isEmpty()) {
-            functions = SimpleLanguageParser.parseSL(this, source);
-        } else {
+        if (!request.getArgumentNames().isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("function main(");
             String sep = "";
@@ -323,28 +356,103 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             sb.append(source.getCharacters());
             sb.append(";}");
             String language = source.getLanguage() == null ? ID : source.getLanguage();
-            Source decoratedSource = Source.newBuilder(language, sb.toString(), source.getName()).build();
-            functions = SimpleLanguageParser.parseSL(this, decoratedSource);
+            source = Source.newBuilder(language, sb.toString(), source.getName()).build();
         }
 
-        RootCallTarget main = functions.get(SLStrings.MAIN);
-        RootNode evalMain;
-        if (main != null) {
-            /*
-             * We have a main function, so "evaluating" the parsed source means invoking that main
-             * function. However, we need to lazily register functions into the SLContext first, so
-             * we cannot use the original SLRootNode for the main function. Instead, we create a new
-             * SLEvalRootNode that does everything we need.
-             */
-            evalMain = new SLEvalRootNode(this, main, functions);
+        Map<TruffleString, RootCallTarget> targets;
+        if (useBytecode) {
+            targets = SLBytecodeVisitor.parseSL(this, source);
         } else {
-            /*
-             * Even without a main function, "evaluating" the parsed source needs to register the
-             * functions into the SLContext.
-             */
-            evalMain = new SLEvalRootNode(this, null, functions);
+            targets = SLNodeVisitor.parseSL(this, source);
         }
-        return evalMain.getCallTarget();
+
+        if (TRACE_INSTRUMENTATION_TREE) {
+            for (RootCallTarget node : targets.values()) {
+                System.out.println(node.getRootNode().getQualifiedName());
+                printInstrumentationTree(System.out, "  ", node.getRootNode());
+            }
+        }
+
+        RootCallTarget rootTarget = targets.get(SLStrings.MAIN);
+        return new SLEvalRootNode(this, rootTarget, targets).getCallTarget();
+    }
+
+    public static void printInstrumentationTree(PrintStream w, String indent, Node node) {
+        ProvidedTags tags = SLLanguage.class.getAnnotation(ProvidedTags.class);
+        Class<?>[] tagClasses = tags.value();
+        if (node instanceof SLRootNode root) {
+            w.println(root.getSourceSection().getCharacters());
+        }
+        if (node instanceof BytecodeNode bytecode) {
+            w.println(bytecode.dump());
+        }
+
+        String newIndent = indent;
+        List<Class<? extends Tag>> foundTags = getTags(node, tagClasses);
+        if (!foundTags.isEmpty()) {
+            int lineLength = 0;
+            w.print(indent);
+            lineLength += indent.length();
+            w.print("(");
+            lineLength += 1;
+            String sep = "";
+            for (Class<? extends Tag> tag : foundTags) {
+                String identifier = Tag.getIdentifier(tag);
+                if (identifier == null) {
+                    identifier = tag.getSimpleName();
+                }
+                w.print(sep);
+                lineLength += sep.length();
+                w.print(identifier);
+                lineLength += identifier.length();
+                sep = ",";
+            }
+            w.print(")");
+            lineLength += 1;
+            SourceSection sourceSection = node.getSourceSection();
+
+            int spaces = 60 - lineLength;
+            for (int i = 0; i < spaces; i++) {
+                w.print(" ");
+            }
+
+            String characters = sourceSection.getCharacters().toString();
+            characters = characters.replaceAll("\\n", "");
+
+            if (characters.length() > 60) {
+                characters = characters.subSequence(0, 57) + "...";
+            }
+
+            w.printf("%s %3s:%-3s-%3s:%-3s | %3s:%-3s   %s%n", sourceSection.getSource().getName(),
+                            sourceSection.getStartLine(),
+                            sourceSection.getStartColumn(),
+                            sourceSection.getEndLine(),
+                            sourceSection.getEndColumn(),
+                            sourceSection.getCharIndex(),
+                            sourceSection.getCharLength(), characters);
+            newIndent = newIndent + "  ";
+        }
+
+        for (Node child : node.getChildren()) {
+            printInstrumentationTree(w, newIndent, child);
+        }
+
+    }
+
+    @SuppressWarnings({"unchecked", "cast"})
+    private static List<Class<? extends Tag>> getTags(Node node, Class<?>[] tags) {
+        if (node instanceof InstrumentableNode instrumentableNode) {
+            if (instrumentableNode.isInstrumentable()) {
+                List<Class<? extends Tag>> foundTags = new ArrayList<>();
+                for (Class<?> tag : tags) {
+                    if (instrumentableNode.hasTag((Class<? extends Tag>) tag)) {
+                        foundTags.add((Class<? extends Tag>) tag);
+                    }
+                }
+                return foundTags;
+            }
+        }
+        return List.of();
     }
 
     /**

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl.test;
 
-import org.graalvm.polyglot.Engine;
 import org.junit.Assume;
 
 public class TruffleTestAssumptions {
@@ -48,8 +47,6 @@ public class TruffleTestAssumptions {
 
     public static void assumeWeakEncapsulation() {
         Assume.assumeFalse(spawnIsolate);
-        // with engine being in an unnamed module means we are running with class loader isolation
-        Assume.assumeTrue(Engine.class.getModule().isNamed());
     }
 
     public static boolean isWeakEncapsulation() {

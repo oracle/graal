@@ -48,7 +48,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
-public class SLCodeSharingTest {
+public class SLCodeSharingTest extends AbstractSLTest {
 
     private static Source createFib() {
         return Source.newBuilder("sl", "" +
@@ -64,14 +64,14 @@ public class SLCodeSharingTest {
     @Test
     public void testFibSharing() throws Exception {
         Source fib = createFib();
-        try (Engine engine = Engine.create()) {
-            try (Context context = Context.newBuilder().engine(engine).build()) {
+        try (Engine engine = newEngineBuilder().build()) {
+            try (Context context = newContextBuilder().engine(engine).build()) {
                 assertEquals(0, engine.getCachedSources().size());
                 context.eval(fib);
                 assertEquals(1, engine.getCachedSources().size());
                 assertTrue(engine.getCachedSources().contains(fib));
             }
-            try (Context context = Context.newBuilder().engine(engine).build()) {
+            try (Context context = newContextBuilder().engine(engine).build()) {
                 assertEquals(1, engine.getCachedSources().size());
                 assertTrue(engine.getCachedSources().contains(fib));
                 context.eval(fib);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,24 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.test;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-@RunWith(SLTestRunner.class)
-@SLTestSuite({"tests"})
-public class SLSimpleTestSuite {
-
-    public static void main(String[] args) throws Exception {
-        SLTestRunner.runInMain(SLSimpleTestSuite.class, args);
-    }
-
-    /*
-     * Our "mx unittest" command looks for methods that are annotated with @Test. By just defining
-     * an empty method, this class gets included and the test suite is properly executed.
-     */
-    @Test
-    public void unittest() {
-    }
-}
+/**
+ * This package comprises utilities and interfaces used to implement serialization.
+ *
+ * @since 24.1
+ */
+package com.oracle.truffle.api.bytecode.serialization;
