@@ -24,19 +24,5 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
-import java.util.Collection;
-
-public interface LayeredImageSingletonSupport {
-
-    static LayeredImageSingletonSupport singleton() {
-        return ImageSingletons.lookup(LayeredImageSingletonSupport.class);
-    }
-
-    <T> T runtimeLookup(Class<T> key);
-
-    Collection<Class<?>> getMultiLayeredImageSingletonKeys();
-
-    void freezeMultiLayeredImageSingletons();
+public interface ApplicationLayerOnlyImageSingleton extends LayeredImageSingleton {
 }

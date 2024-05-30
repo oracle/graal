@@ -933,7 +933,7 @@ public class ImageLayerLoader {
         throw AnalysisError.shouldNotReachHere("The constant was not in the persisted heap.");
     }
 
-    protected ImageHeapConstant getOrCreateConstant(int id) {
+    public ImageHeapConstant getOrCreateConstant(int id) {
         return getOrCreateConstant(get(jsonMap, CONSTANTS_TAG), id, null);
     }
 

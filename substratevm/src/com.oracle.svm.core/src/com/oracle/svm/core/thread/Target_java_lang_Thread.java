@@ -238,7 +238,8 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     static String genThreadName() {
-        return "Thread-" + JavaThreads.threadInitNumber.incrementAndGet();
+        int threadNum = JavaThreads.JavaThreadNumberSingleton.singleton().threadInitNumber.incrementAndGet();
+        return "Thread-" + threadNum;
     }
 
     /** This constructor is called only by {@code VirtualThread}. */
@@ -583,7 +584,7 @@ final class Target_java_lang_Thread_FieldHolder {
 final class Target_java_lang_Thread_ThreadIdentifiers {
     @Substitute//
     static long next() {
-        return JavaThreads.threadSeqNumber.incrementAndGet();
+        return JavaThreads.JavaThreadNumberSingleton.singleton().threadSeqNumber.incrementAndGet();
     }
 }
 

@@ -24,19 +24,12 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import com.oracle.svm.core.util.VMError;
 
-import java.util.Collection;
+public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
 
-public interface LayeredImageSingletonSupport {
-
-    static LayeredImageSingletonSupport singleton() {
-        return ImageSingletons.lookup(LayeredImageSingletonSupport.class);
+    @SuppressWarnings("unused")
+    static <T extends MultiLayeredImageSingleton> T[] getAllLayers(Class<T> key) {
+        throw VMError.shouldNotReachHere("This can only be called during runtime");
     }
-
-    <T> T runtimeLookup(Class<T> key);
-
-    Collection<Class<?>> getMultiLayeredImageSingletonKeys();
-
-    void freezeMultiLayeredImageSingletons();
 }
