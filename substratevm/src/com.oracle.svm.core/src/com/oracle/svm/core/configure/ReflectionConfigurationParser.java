@@ -24,17 +24,13 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.util.LogUtils;
@@ -45,119 +41,40 @@ import jdk.graal.compiler.util.json.JsonParserException;
  * Parses JSON describing classes, methods and fields and delegates their registration to a
  * {@link ReflectionConfigurationParserDelegate}.
  */
-public final class ReflectionConfigurationParser<C, T> extends ConfigurationParser {
+public abstract class ReflectionConfigurationParser<C, T> extends ConfigurationParser {
     private static final String CONSTRUCTOR_NAME = "<init>";
 
-    private final ConfigurationConditionResolver<C> conditionResolver;
-    private final ReflectionConfigurationParserDelegate<C, T> delegate;
-    private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("name", "type", "allDeclaredConstructors", "allPublicConstructors",
-                    "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                    "allDeclaredClasses", "allRecordComponents", "allPermittedSubclasses", "allNestMembers", "allSigners",
-                    "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
-                    "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated");
+    protected final ConfigurationConditionResolver<C> conditionResolver;
+    protected final ReflectionConfigurationParserDelegate<C, T> delegate;
     private final boolean printMissingElements;
-    private final boolean treatAllNameEntriesAsType;
 
     public ReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, boolean strictConfiguration,
-                    boolean printMissingElements, boolean treatAllNameEntriesAsType) {
+                    boolean printMissingElements) {
         super(strictConfiguration);
         this.conditionResolver = conditionResolver;
         this.printMissingElements = printMissingElements;
         this.delegate = delegate;
-        this.treatAllNameEntriesAsType = treatAllNameEntriesAsType;
     }
 
-    @Override
-    public void parseAndRegister(Object json, URI origin) {
-        parseClassArray(asList(json, "first level of document must be an array of class descriptors"));
+    public static <C, T> ReflectionConfigurationParser<C, T> create(String combinedFileKey, boolean strictMetadata,
+                    ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
+                    boolean strictConfiguration, boolean printMissingElements, boolean treatAllEntriesAsType) {
+        if (strictMetadata) {
+            return new ReflectionMetadataParser<>(combinedFileKey, conditionResolver, delegate, strictConfiguration, printMissingElements);
+        } else {
+            return new LegacyReflectionConfigurationParser<>(conditionResolver, delegate, strictConfiguration, printMissingElements, treatAllEntriesAsType);
+        }
     }
 
-    private void parseClassArray(List<Object> classes) {
+    protected void parseClassArray(List<Object> classes) {
         for (Object clazz : classes) {
             parseClass(asMap(clazz, "second level of document must be class descriptor objects"));
         }
     }
 
-    private void parseClass(EconomicMap<String, Object> data) {
-        checkAttributes(data, "reflection class descriptor object", Collections.emptyList(), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
-        checkHasExactlyOneAttribute(data, "reflection class descriptor object", List.of("name", "type"));
+    protected abstract void parseClass(EconomicMap<String, Object> data);
 
-        Optional<ConfigurationTypeDescriptor> type = parseTypeOrName(data, treatAllNameEntriesAsType);
-        if (type.isEmpty()) {
-            return;
-        }
-        /*
-         * Classes registered using the old ("name") syntax requires elements (fields, methods,
-         * constructors, ...) to be registered for runtime queries, whereas the new ("type") syntax
-         * automatically registers all elements as queried.
-         */
-        boolean isType = type.get().definedAsType();
-
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, isType);
-        TypeResult<C> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
-        if (!conditionResult.isPresent()) {
-            return;
-        }
-
-        /*
-         * Even if primitives cannot be queried through Class.forName, they can be registered to
-         * allow getDeclaredMethods() and similar bulk queries at run time.
-         */
-        C condition = conditionResult.get();
-        TypeResult<T> result = delegate.resolveType(condition, type.get(), true);
-        if (!result.isPresent()) {
-            handleMissingElement("Could not resolve " + type.get() + " for reflection configuration.", result.getException());
-            return;
-        }
-
-        C queryCondition = isType ? conditionResolver.alwaysTrue() : condition;
-        T clazz = result.get();
-        delegate.registerType(conditionResult.get(), clazz);
-
-        registerIfNecessary(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, clazz));
-        registerIfNecessary(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, clazz));
-        registerIfNecessary(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, clazz));
-        registerIfNecessary(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, clazz));
-        registerIfNecessary(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, clazz));
-        registerIfNecessary(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, clazz));
-        registerIfNecessary(data, isType, clazz, "allDeclaredClasses", () -> delegate.registerDeclaredClasses(queryCondition, clazz));
-        registerIfNecessary(data, isType, clazz, "allRecordComponents", () -> delegate.registerRecordComponents(queryCondition, clazz));
-        registerIfNecessary(data, isType, clazz, "allPermittedSubclasses", () -> delegate.registerPermittedSubclasses(queryCondition, clazz));
-        registerIfNecessary(data, isType, clazz, "allNestMembers", () -> delegate.registerNestMembers(queryCondition, clazz));
-        registerIfNecessary(data, isType, clazz, "allSigners", () -> delegate.registerSigners(queryCondition, clazz));
-        registerIfNecessary(data, isType, clazz, "allPublicClasses", () -> delegate.registerPublicClasses(queryCondition, clazz));
-        registerIfNecessary(data, isType, clazz, "queryAllDeclaredConstructors", () -> delegate.registerDeclaredConstructors(queryCondition, true, clazz));
-        registerIfNecessary(data, isType, clazz, "queryAllPublicConstructors", () -> delegate.registerPublicConstructors(queryCondition, true, clazz));
-        registerIfNecessary(data, isType, clazz, "queryAllDeclaredMethods", () -> delegate.registerDeclaredMethods(queryCondition, true, clazz));
-        registerIfNecessary(data, isType, clazz, "queryAllPublicMethods", () -> delegate.registerPublicMethods(queryCondition, true, clazz));
-        if (isType) {
-            delegate.registerDeclaredFields(queryCondition, true, clazz);
-            delegate.registerPublicFields(queryCondition, true, clazz);
-        }
-        registerIfNecessary(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
-        MapCursor<String, Object> cursor = data.getEntries();
-        while (cursor.advance()) {
-            String name = cursor.getKey();
-            Object value = cursor.getValue();
-            try {
-                switch (name) {
-                    case "methods":
-                        parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
-                        break;
-                    case "queriedMethods":
-                        parseMethods(condition, true, asList(value, "Attribute 'queriedMethods' must be an array of method descriptors"), clazz);
-                        break;
-                    case "fields":
-                        parseFields(condition, asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
-                        break;
-                }
-            } catch (LinkageError e) {
-                handleMissingElement("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection.", e);
-            }
-        }
-    }
-
-    private void registerIfNecessary(EconomicMap<String, Object> data, boolean defaultValue, T clazz, String propertyName, Runnable register) {
+    protected void registerIfNotDefault(EconomicMap<String, Object> data, boolean defaultValue, T clazz, String propertyName, Runnable register) {
         if (data.containsKey(propertyName) ? asBoolean(data.get(propertyName), propertyName) : defaultValue) {
             try {
                 register.run();
@@ -167,7 +84,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         }
     }
 
-    private void parseFields(C condition, List<Object> fields, T clazz) {
+    protected void parseFields(C condition, List<Object> fields, T clazz) {
         for (Object field : fields) {
             parseField(condition, asMap(field, "Elements of 'fields' array must be field descriptor objects"), clazz);
         }
@@ -187,7 +104,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         }
     }
 
-    private void parseMethods(C condition, boolean queriedOnly, List<Object> methods, T clazz) {
+    protected void parseMethods(C condition, boolean queriedOnly, List<Object> methods, T clazz) {
         for (Object method : methods) {
             parseMethod(condition, queriedOnly, asMap(method, "Elements of 'methods' array must be method descriptor objects"), clazz);
         }
@@ -270,7 +187,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         handleMissingElement(message, null);
     }
 
-    private void handleMissingElement(String msg, Throwable cause) {
+    protected void handleMissingElement(String msg, Throwable cause) {
         if (printMissingElements) {
             String message = msg;
             if (cause != null) {
