@@ -195,6 +195,7 @@ public final class ResourcesFeature implements InternalFeature {
             globWorkSet.add(new ConditionalPattern(condition, resolvedGlob));
         }
 
+        @Override
         public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
             var conditionalResource = Resources.singleton().getResourceStorage().get(createStorageKey(module, resourcePath));
             if (conditionalResource != null) {
@@ -436,7 +437,7 @@ public final class ResourcesFeature implements InternalFeature {
             try {
                 collector.prepareProgressReporter();
                 ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
-                collector.flushConditionalConfiguration(access);
+                collector.setAnalysisAccess(access);
             } finally {
                 collector.shutDownProgressReporter();
             }
@@ -450,12 +451,7 @@ public final class ResourcesFeature implements InternalFeature {
         resourcePatternWorkSet = Set.of();
         globWorkSet = Set.of();
 
-        resourceRegistryImpl().flushConditionalConfiguration(access);
-    }
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        resourceRegistryImpl().flushConditionalConfiguration(access);
+        resourceRegistryImpl().setAnalysisAccess(access);
     }
 
     private static final class ResourceCollectorImpl extends ConditionalConfigurationRegistry implements ResourceCollector {

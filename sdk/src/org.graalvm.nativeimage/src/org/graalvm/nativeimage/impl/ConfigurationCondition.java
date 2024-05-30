@@ -105,4 +105,11 @@ public final class ConfigurationCondition {
         return Objects.hash(type, runtimeChecked);
     }
 
+    @Override
+    public String toString() {
+        return "ConfigurationCondition(" +
+                        "type=" + type +
+                        ", runtimeChecked=" + runtimeChecked +
+                        ')';
+    }
 }

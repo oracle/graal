@@ -601,7 +601,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         Class<?> annotationClass = method.getDeclaringClass();
         Class<?> proxyClass = Proxy.getProxyClass(annotationClass.getClassLoader(), annotationClass);
         try {
-            var condition = ConfigurationCondition.create(proxyClass, true);
+            /* build-time condition as it is registered during analysis */
+            var condition = ConfigurationCondition.create(proxyClass, false);
             register(condition, queriedOnly, proxyClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
         } catch (NoSuchMethodException e) {
             /*

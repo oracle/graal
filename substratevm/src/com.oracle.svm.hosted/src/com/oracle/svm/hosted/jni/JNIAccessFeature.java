@@ -257,12 +257,7 @@ public class JNIAccessFeature implements Feature {
             registerJavaCallTrampoline(access, variant, true);
         }
 
-        /* duplicated to reduce the number of analysis iterations */
-        getConditionalConfigurationRegistry().flushConditionalConfiguration(access);
-    }
-
-    private static ConditionalConfigurationRegistry getConditionalConfigurationRegistry() {
-        return singleton().runtimeSupport;
+        singleton().runtimeSupport.setAnalysisAccess(access);
     }
 
     private static void registerJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
@@ -319,7 +314,6 @@ public class JNIAccessFeature implements Feature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
-        getConditionalConfigurationRegistry().flushConditionalConfiguration(a);
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         if (!wereElementsAdded()) {
             return;

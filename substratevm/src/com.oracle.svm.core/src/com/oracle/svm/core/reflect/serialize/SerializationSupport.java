@@ -31,9 +31,7 @@ import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -157,19 +155,27 @@ public class SerializationSupport implements SerializationRegistry {
         return null;
     }
 
-    private final Map<Class<?>, RuntimeConditionSet> classes = new ConcurrentHashMap<>();
-    private final Map<String, RuntimeConditionSet> lambdaCapturingClasses = new ConcurrentHashMap<>();
+    private final EconomicMap<Class<?>, RuntimeConditionSet> classes = EconomicMap.create();
+    private final EconomicMap<String, RuntimeConditionSet> lambdaCapturingClasses = EconomicMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerSerializationTargetClass(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
-        classes.computeIfAbsent(serializationTargetClass, k -> RuntimeConditionSet.emptySet())
-                        .addCondition(cnd);
+        synchronized (classes) {
+            var previous = classes.putIfAbsent(serializationTargetClass, RuntimeConditionSet.createHosted(cnd));
+            if (previous != null) {
+                previous.addCondition(cnd);
+            }
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerLambdaCapturingClass(ConfigurationCondition cnd, String lambdaCapturingClass) {
-        lambdaCapturingClasses.computeIfAbsent(lambdaCapturingClass, k -> RuntimeConditionSet.emptySet())
-                        .addCondition(cnd);
+        synchronized (lambdaCapturingClasses) {
+            var previousConditions = lambdaCapturingClasses.putIfAbsent(lambdaCapturingClass, RuntimeConditionSet.createHosted(cnd));
+            if (previousConditions != null) {
+                previousConditions.addCondition(cnd);
+            }
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -205,8 +211,8 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     @Override
-    public boolean isRegisteredForSerialization(Class<?> jClass) {
-        var conditionSet = classes.get(jClass);
+    public boolean isRegisteredForSerialization(Class<?> clazz) {
+        var conditionSet = classes.get(clazz);
         return conditionSet != null && conditionSet.satisfied();
     }
 }

@@ -255,14 +255,13 @@ public class SerializationFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        serializationBuilder.flushConditionalConfiguration(access);
+        serializationBuilder.setAnalysisAccess(access);
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
         OptionValues options = impl.getBigBang().getOptions();
-        serializationBuilder.flushConditionalConfiguration(access);
 
         /*
          * In order to serialize lambda classes we need to register proper methods for reflection.

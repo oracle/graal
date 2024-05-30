@@ -319,6 +319,7 @@ public final class Resources {
      * tried on the same resource name, causing an unexpected exception if we throw directly.
      */
     public ResourceStorageEntryBase getAtRuntime(Module module, String resourceName, boolean throwOnMissing) {
+        VMError.guarantee(ImageInfo.inImageRuntimeCode(), "This function should be used only at runtime.");
         String canonicalResourceName = toCanonicalForm(resourceName);
         String moduleName = moduleName(module);
         ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(createStorageKey(module, canonicalResourceName));
