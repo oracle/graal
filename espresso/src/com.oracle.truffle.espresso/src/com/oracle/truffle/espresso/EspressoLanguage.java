@@ -634,7 +634,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 TruffleFile resource = env.getInternalResource("espresso-runtime-" + runtimeName);
                 if (resource == null) {
                     throw EspressoError.fatal("Couldn't find: espresso-runtime-" + runtimeName + " internal resource.\n" +
-                                    "Did you add the appropriate jar to the classpath?");
+                                    "Did you add the corresponding jar to the class or module path?");
                 }
                 Path resources = Path.of(resource.getAbsoluteFile().toString());
                 assert Files.isDirectory(resources);
@@ -656,8 +656,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                     return Paths.get(System.getProperty("java.home"));
                 }
             }
-            // TODO add potential remedies
-            throw EspressoError.fatal("Couldn't find suitable runtime libraries for espresso");
+            throw EspressoError.fatal("Couldn't find suitable runtime libraries for espresso. You can try to\n" +
+                            "add a jar with the necessary resources such as org.graalvm.espresso:espresso-runtime-resources-*,\n" +
+                            "or set java.JavaHome explicitly.");
         } catch (IOException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
