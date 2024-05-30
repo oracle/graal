@@ -1,3 +1,5 @@
 org.eclipse.jdt.core.compiler.doc.comment.support=disabled
+org.eclipse.jdt.core.compiler.problem.deprecation=ignore
 org.eclipse.jdt.core.compiler.problem.missingOverrideAnnotationForInterfaceMethodImplementation=disabled
 org.eclipse.jdt.core.compiler.problem.reportMethodCanBeStatic=ignore
+org.eclipse.jdt.core.compiler.problem.unusedImport=ignore
