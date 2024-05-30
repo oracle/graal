@@ -2505,8 +2505,8 @@ public abstract class TruffleLanguage<C> {
          * The result of this method is safe to be cached per language context, it is guaranteed to
          * not change for a context and target language combination.
          *
-         * @see PolyglotAccess.Builder#allowEval(String, String) Embedders can restrict polyglot
-         *      eval access between certain languages.
+         * @see org.graalvm.polyglot.PolyglotAccess.Builder#allowEval(String, String) Embedders can
+         *      restrict polyglot eval access between certain languages.
          * @see #parsePublic(Source, String...)
          * @see #getScopePublic(LanguageInfo)
          * @since 24.1
