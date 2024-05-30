@@ -241,6 +241,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final boolean probeAssertionsEnabled;
 
+    final InternalResourceRoots internalResourceRoots;
+
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, SandboxPolicy sandboxPolicy, String[] permittedLanguages,
                     DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
@@ -301,6 +303,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         this.idToPublicLanguage = Collections.unmodifiableMap(publicLanguages);
+        this.internalResourceRoots = InternalResourceRoots.getInstance();
 
         Map<String, Object> publicInstruments = new LinkedHashMap<>();
         for (String key : this.idToInstrument.keySet()) {
@@ -508,6 +511,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.engineLoggerSupplier = prototype.engineLoggerSupplier;
 
         this.polyglotHostService = prototype.polyglotHostService;
+        this.internalResourceRoots = prototype.internalResourceRoots;
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.hostLanguageOnly = prototype.hostLanguageOnly;
@@ -674,6 +678,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.logHandler = newLogHandler;
         this.engineOptionValues = engineOptions;
         this.logLevels = newLogConfig.logLevels;
+        this.internalResourceRoots.patch();
 
         if (PreInitContextHostLanguage.isInstance(hostLanguage)) {
             this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(newHostLanguage), HOST_LANGUAGE_INDEX, null);
@@ -1751,7 +1756,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             } else if (customFileSystem != null) {
                 fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem);
             } else {
-                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newResourcesFileSystem());
+                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newResourcesFileSystem(this));
             }
             if (currentWorkingDirectory != null) {
                 Path publicFsCwd;
@@ -2321,6 +2326,20 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         } else {
             return version;
         }
+    }
+
+    Map<String, Path> languageHomes() {
+        Map<String, Path> languageHomes = new HashMap<>();
+        for (PolyglotLanguage language : languages) {
+            if (language != null) {
+                LanguageCache cache = language.cache;
+                String languageHome = cache.getLanguageHome();
+                if (languageHome != null) {
+                    languageHomes.put(cache.getId(), Path.of(languageHome));
+                }
+            }
+        }
+        return languageHomes;
     }
 
 }
