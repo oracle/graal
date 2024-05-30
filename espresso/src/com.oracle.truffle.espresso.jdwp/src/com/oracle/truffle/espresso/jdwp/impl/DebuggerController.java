@@ -52,7 +52,6 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -63,7 +62,6 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListener;
 
 public final class DebuggerController implements ContextsListener {
@@ -266,9 +264,11 @@ public final class DebuggerController implements ContextsListener {
         return false;
     }
 
-    public boolean forceEarlyReturn(Object guestThread, CallFrame frame, Object returnValue) {
-        SuspendedInfo susp = suspendedInfos.get(guestThread);
-        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
+    public boolean forceEarlyReturn(SuspendedInfo susp, Object guestThread, CallFrame frame, Object returnValue) {
+        assert susp != null;
+        assert frame != null;
+
+        if (!(susp instanceof UnknownSuspendedInfo)) {
             // Truffle unwind will take us to exactly the right location in the caller method
             susp.getEvent().prepareUnwindFrame(frame.getDebugStackFrame(), frame.asDebugValue(returnValue));
             susp.setForceEarlyReturnInProgress();
@@ -403,11 +403,7 @@ public final class DebuggerController implements ContextsListener {
                 // even if the guestThread is executing. If the guestThread is blocked or waiting we
                 // still need to suspend it, thus we manage this with a hard suspend mechanism
                 threadSuspension.addHardSuspendedThread(guestThread);
-                if (suspendedInfos.get(guestThread) == null) {
-                    // if already set, we have captured a blocking suspendedInfo already
-                    // so don't overwrite that information
-                    suspendedInfos.put(guestThread, new UnknownSuspendedInfo(guestThread, getContext()));
-                }
+                suspendedInfos.put(guestThread, new UnknownSuspendedInfo(context, guestThread));
             } catch (Exception e) {
                 fine(() -> "not able to suspend guestThread: " + getThreadName(guestThread));
             }
@@ -677,74 +673,60 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    public CallFrame[] captureCallFramesBeforeBlocking(Object guestThread) {
+    public CallFrame[] getCallFrames(Object guestThread) {
         List<CallFrame> callFrames = new ArrayList<>();
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
-            @Override
-            public Object visitFrame(FrameInstance frameInstance) {
-                KlassRef klass;
-                MethodRef method;
-                RootNode root = getRootNode(frameInstance);
-                if (root == null) {
-                    return null;
-                }
-                method = getContext().getMethodFromRootNode(root);
-                if (method == null) {
-                    return null;
-                }
-
-                klass = method.getDeclaringKlassRef();
-                long klassId = ids.getIdAsLong(klass);
-                long methodId = ids.getIdAsLong(method);
-                byte typeTag = TypeTag.getKind(klass);
-
-                Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
-                // for bytecode-based languages (Espresso) we can read the precise bci from the
-                // frame
-                long codeIndex = -1;
-                try {
-                    codeIndex = context.readBCIFromFrame(root, frame);
-                } catch (Throwable t) {
-                    fine(() -> "Unable to read current BCI from frame in method: " + klass.getNameAsString() + "." + method.getNameAsString());
-                }
-                if (codeIndex == -1) {
-                    // fall back to start of the method then
-                    codeIndex = 0;
-                }
-
-                // check if current bci is higher than the first index on the last line,
-                // in which case we must report the last line index instead
-                long lastLineBCI = method.getBCIFromLine(method.getLastLine());
-                if (codeIndex > lastLineBCI) {
-                    codeIndex = lastLineBCI;
-                }
-                Node currentNode = frameInstance.getCallNode();
-                if (currentNode == null) {
-                    CallTarget callTarget = frameInstance.getCallTarget();
-                    if (callTarget instanceof RootCallTarget) {
-                        currentNode = ((RootCallTarget) callTarget).getRootNode();
-                    }
-                }
-                if (currentNode instanceof RootNode) {
-                    currentNode = context.getInstrumentableNode((RootNode) currentNode);
-                }
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context,
-                                DebuggerController.this));
+        Truffle.getRuntime().iterateFrames(frameInstance -> {
+            KlassRef klass;
+            MethodRef method;
+            RootNode root = getRootNode(frameInstance);
+            if (root == null) {
                 return null;
             }
+            method = getContext().getMethodFromRootNode(root);
+            if (method == null) {
+                return null;
+            }
+
+            klass = method.getDeclaringKlassRef();
+            long klassId = ids.getIdAsLong(klass);
+            long methodId = ids.getIdAsLong(method);
+            byte typeTag = TypeTag.getKind(klass);
+
+            Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+            // for bytecode-based languages (Espresso) we can read the precise bci from the
+            // frame
+            long codeIndex = -1;
+            try {
+                codeIndex = context.readBCIFromFrame(root, frame);
+            } catch (Throwable t) {
+                fine(() -> "Unable to read current BCI from frame in method: " + klass.getNameAsString() + "." + method.getNameAsString());
+            }
+            if (codeIndex == -1) {
+                // fall back to start of the method then
+                codeIndex = 0;
+            }
+
+            // check if current bci is higher than the first index on the last line,
+            // in which case we must report the last line index instead
+            long lastLineBCI = method.getBCIFromLine(method.getLastLine());
+            if (codeIndex > lastLineBCI) {
+                codeIndex = lastLineBCI;
+            }
+            Node currentNode = frameInstance.getCallNode();
+            if (currentNode == null) {
+                CallTarget callTarget = frameInstance.getCallTarget();
+                if (callTarget instanceof RootCallTarget) {
+                    currentNode = ((RootCallTarget) callTarget).getRootNode();
+                }
+            }
+            if (currentNode instanceof RootNode) {
+                currentNode = context.getInstrumentableNode((RootNode) currentNode);
+            }
+            callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context,
+                            DebuggerController.this));
+            return null;
         });
-        CallFrame[] result = callFrames.toArray(new CallFrame[callFrames.size()]);
-
-        // collect monitor info
-        MonitorStackInfo[] ownedMonitorInfos = context.getOwnedMonitors(result);
-        HashMap<Object, Integer> entryCounts = new HashMap<>(ownedMonitorInfos.length);
-        for (MonitorStackInfo ownedMonitorInfo : ownedMonitorInfos) {
-            Object monitor = ownedMonitorInfo.getMonitor();
-            entryCounts.put(monitor, context.getMonitorEntryCount(monitor));
-        }
-
-        suspendedInfos.put(guestThread, new SuspendedInfo(context, result, guestThread, entryCounts));
-        return result;
+        return callFrames.toArray(new CallFrame[0]);
     }
 
     private RootNode getRootNode(FrameInstance frameInstance) {
@@ -752,8 +734,7 @@ public final class DebuggerController implements ContextsListener {
         if (callTarget == null) {
             return null;
         }
-        if (callTarget instanceof RootCallTarget) {
-            RootCallTarget rootCallTarget = (RootCallTarget) callTarget;
+        if (callTarget instanceof RootCallTarget rootCallTarget) {
             RootNode rootNode = rootCallTarget.getRootNode();
             // check if we can read the current bci to validate
             try {
@@ -765,10 +746,6 @@ public final class DebuggerController implements ContextsListener {
             return rootNode;
         }
         return null;
-    }
-
-    public void cancelBlockingCallFrames(Object guestThread) {
-        suspendedInfos.remove(guestThread);
     }
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
@@ -806,7 +783,7 @@ public final class DebuggerController implements ContextsListener {
             CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1, steppingInfo);
             RootNode callerRootNode = callFrames.length > 1 ? callFrames[1].getRootNode() : null;
 
-            SuspendedInfo suspendedInfo = new SuspendedInfo(DebuggerController.this, event, callFrames, currentThread, callerRootNode);
+            SuspendedInfo suspendedInfo = new SuspendedInfo(context, event, callFrames, currentThread, callerRootNode);
             suspendedInfos.put(currentThread, suspendedInfo);
 
             byte suspendPolicy = SuspendStrategy.EVENT_THREAD;

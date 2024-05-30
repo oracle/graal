@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,6 @@ import com.oracle.truffle.espresso.jdwp.impl.RequestedJDWPEvents;
 import com.oracle.truffle.espresso.jdwp.impl.SocketConnection;
 import com.oracle.truffle.espresso.jdwp.impl.SteppingInfo;
 import com.oracle.truffle.espresso.jdwp.impl.SuspendStrategy;
-import com.oracle.truffle.espresso.jdwp.impl.SuspendedInfo;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 
 public final class VMEventListenerImpl implements VMEventListener {
@@ -662,8 +661,6 @@ public final class VMEventListenerImpl implements VMEventListener {
         Object guestThread = context.asGuestThread(Thread.currentThread());
         // a call to wait marks the monitor as contended
         currentContendedMonitor.put(guestThread, monitor);
-        // capture the call frames before entering a known blocking state
-        debuggerController.captureCallFramesBeforeBlocking(guestThread);
 
         if (monitorWaitRequests.isEmpty()) {
             return;
@@ -675,12 +672,9 @@ public final class VMEventListenerImpl implements VMEventListener {
                 // create the call frame for the caller location of Object.wait(timeout)
                 CallFrame frame = context.locateObjectWaitFrame();
 
-                debuggerController.immediateSuspend(guestThread, filter.getSuspendPolicy(), new Callable<Void>() {
-                    @Override
-                    public Void call() {
-                        sendMonitorWaitEvent(monitor, timeout, filter, frame);
-                        return null;
-                    }
+                debuggerController.immediateSuspend(guestThread, filter.getSuspendPolicy(), () -> {
+                    sendMonitorWaitEvent(monitor, timeout, filter, frame);
+                    return null;
                 });
             }
         }
@@ -739,7 +733,6 @@ public final class VMEventListenerImpl implements VMEventListener {
         Object currentThread = context.asGuestThread(Thread.currentThread());
         // remove contended monitor from the thread
         currentContendedMonitor.remove(currentThread);
-        debuggerController.cancelBlockingCallFrames(currentThread);
 
         if (monitorWaitedRequests.isEmpty()) {
             return;
@@ -771,25 +764,20 @@ public final class VMEventListenerImpl implements VMEventListener {
         Object guestThread = context.asGuestThread(Thread.currentThread());
         currentContendedMonitor.put(guestThread, monitor);
 
-        final CallFrame topFrame = debuggerController.captureCallFramesBeforeBlocking(guestThread)[0];
-
         if (monitorContendedRequests.isEmpty()) {
             return;
         }
 
-        Object currentThread = context.asGuestThread(Thread.currentThread());
         for (Map.Entry<Integer, RequestFilter> entry : monitorContendedRequests.entrySet()) {
             RequestFilter filter = entry.getValue();
-            if (currentThread == filter.getThread()) {
+            if (guestThread == filter.getThread()) {
                 // monitor is contended on a requested thread
                 MonitorEvent event = new MonitorEvent(monitor, filter);
+                final CallFrame topFrame = context.getStackTrace(guestThread)[0];
 
-                debuggerController.immediateSuspend(currentThread, filter.getSuspendPolicy(), new Callable<Void>() {
-                    @Override
-                    public Void call() {
-                        sendMonitorContendedEnterEvent(event, topFrame);
-                        return null;
-                    }
+                debuggerController.immediateSuspend(guestThread, filter.getSuspendPolicy(), () -> {
+                    sendMonitorContendedEnterEvent(event, topFrame);
+                    return null;
                 });
             }
         }
@@ -804,27 +792,20 @@ public final class VMEventListenerImpl implements VMEventListener {
         Object guestThread = context.asGuestThread(Thread.currentThread());
         currentContendedMonitor.remove(guestThread);
 
-        SuspendedInfo info = debuggerController.getSuspendedInfo(guestThread);
-        final CallFrame topFrame = info != null ? info.getStackFrames()[0] : debuggerController.captureCallFramesBeforeBlocking(guestThread)[0];
-        debuggerController.cancelBlockingCallFrames(guestThread);
-
         if (monitorContendedEnteredRequests.isEmpty()) {
             return;
         }
 
-        Object currentThread = context.asGuestThread(Thread.currentThread());
         for (Map.Entry<Integer, RequestFilter> entry : monitorContendedEnteredRequests.entrySet()) {
             RequestFilter filter = entry.getValue();
-            if (currentThread == filter.getThread()) {
+            if (guestThread == filter.getThread()) {
                 // monitor is contended on a requested thread
                 MonitorEvent event = new MonitorEvent(monitor, filter);
+                final CallFrame topFrame = context.getStackTrace(guestThread)[0];
 
-                debuggerController.immediateSuspend(currentThread, filter.getSuspendPolicy(), new Callable<Void>() {
-                    @Override
-                    public Void call() {
-                        sendMonitorContendedEnteredEvent(event, topFrame);
-                        return null;
-                    }
+                debuggerController.immediateSuspend(guestThread, filter.getSuspendPolicy(), () -> {
+                    sendMonitorContendedEnteredEvent(event, topFrame);
+                    return null;
                 });
             }
         }
@@ -979,7 +960,6 @@ public final class VMEventListenerImpl implements VMEventListener {
                 return;
             case SuspendStrategy.ALL:
                 debuggerController.suspendAll();
-                return;
         }
     }
 }
