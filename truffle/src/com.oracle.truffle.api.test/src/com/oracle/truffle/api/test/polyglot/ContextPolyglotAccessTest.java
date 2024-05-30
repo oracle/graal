@@ -543,7 +543,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertInternalEvalDenied(language2, LANGUAGE1);
             assertInternalEvalAllowed(language2, LANGUAGE2);
 
-            assertFalse(language1.isPolyglotEvalAllowed(null));
+            assertTrue(language1.isPolyglotEvalAllowed(null));
             assertFalse(language2.isPolyglotEvalAllowed(null));
 
             return null;

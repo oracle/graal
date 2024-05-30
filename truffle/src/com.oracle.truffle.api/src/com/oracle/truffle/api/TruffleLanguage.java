@@ -1425,6 +1425,8 @@ public abstract class TruffleLanguage<C> {
      * <li>Top scopes available in the {@link org.graalvm.polyglot polyglot API} as context
      * {@link Context#getBindings(String) bindings} object. Access to members of the bindings object
      * is applied to the returned scope object via interop.
+     * <li>Languages may expose other language scopes using a polyglot bindings builtin. E.g with
+     * {@link com.oracle.truffle.api.TruffleLanguage.Env#getScopePublic(LanguageInfo)}.
      * </ul>
      * <p>
      *
@@ -2541,9 +2543,10 @@ public abstract class TruffleLanguage<C> {
          * Allows it to be determined if this {@link org.graalvm.polyglot.Context} can execute code
          * written in a language with a given MIME type.
          *
-         * @return a boolean that indicates if the MIME type is supported
          * @see Source#getMimeType()
          * @see #parsePublic(Source, String...)
+         *
+         * @return a boolean that indicates if the MIME type is supported
          * @since 0.11
          */
         @TruffleBoundary
@@ -2586,9 +2589,10 @@ public abstract class TruffleLanguage<C> {
          *            that can be referenced from the source
          * @return the call target representing the parsed result
          * @throws IllegalStateException if polyglot context associated with this environment is not
-         *             entered
+         *             entered, or if the language is neither a {@link #getPublicLanguages() public
+         *             language} nor an {@link #getInternalLanguages() internal language}.
          * @throws IllegalArgumentException if the language is not allowed to evaluate code by the
-         *             current language.
+         *             current language
          * @see #parsePublic(Source, String...)
          * @since 19.2
          */
@@ -2625,13 +2629,21 @@ public abstract class TruffleLanguage<C> {
          * {@link Env#parseInternal(Source, String...)} instead of directly passing the Source to
          * the parser, in order to support code caching with {@link ContextPolicy#SHARED} and
          * {@link ContextPolicy#REUSE}.
+         * <p>
+         * Languages should check for {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions}
+         * for each {@link #getPublicLanguages() public language} prior to calling this method,
+         * otherwise {@link IllegalArgumentException} is thrown if not sufficient privileges are
+         * available.
          *
          * @param source the source to evaluate
          * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments
          *            that can be referenced from the source
          * @return the call target representing the parsed result
          * @throws IllegalStateException if polyglot context associated with this environment is not
-         *             entered
+         *             entered, or if the language is not a {@link #getPublicLanguages() public
+         *             language}
+         * @throws IllegalArgumentException if the language is not allowed to evaluate code by the
+         *             current language
          * @see #parseInternal(Source, String...)
          * @since 19.2
          */
@@ -2692,7 +2704,7 @@ public abstract class TruffleLanguage<C> {
          * language} may also be associated with additional services. One can request
          * implementations of such services by calling this method with the type identifying the
          * requested service and its API.
-         * <p>
+         *
          * Services that can be obtained via this method include
          * {@link com.oracle.truffle.api.instrumentation.Instrumenter} and others.
          *
@@ -2975,13 +2987,13 @@ public abstract class TruffleLanguage<C> {
          *
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
+         * @since 19.3.0
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
          * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
          *             {@link Path}
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(java.lang.String)
-         * @since 19.3.0
          */
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(String path) {
@@ -3002,13 +3014,13 @@ public abstract class TruffleLanguage<C> {
          *
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
+         * @since 19.3.0
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
          * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
          *             {@code uri}, does not exist and cannot be created automatically
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(java.net.URI)
-         * @since 19.3.0
          */
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(URI uri) {
@@ -3063,10 +3075,11 @@ public abstract class TruffleLanguage<C> {
          *             {@link URI}
          * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
          *             {@link Path}
+         * @since 21.1.0
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(String)
          * @see #getInternalTruffleFile(String)
-         * @since 21.1.0
+         *
          */
         @TruffleBoundary
         public TruffleFile getTruffleFileInternal(String path, Predicate<TruffleFile> filter) {
@@ -3087,10 +3100,11 @@ public abstract class TruffleLanguage<C> {
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
          * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
          *             {@code uri}, does not exist and cannot be created automatically
+         * @since 21.1.0
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(URI)
          * @see #getInternalTruffleFile(URI)
-         * @since 21.1.0
+         *
          */
         @TruffleBoundary
         public TruffleFile getTruffleFileInternal(URI uri, Predicate<TruffleFile> filter) {
@@ -3505,6 +3519,7 @@ public abstract class TruffleLanguage<C> {
          * @throws UnsupportedOperationException if creating adapter classes is not supported on
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if {@code types} is null
+         *
          * @see #createHostAdapterWithClassOverrides(Object[], Object)
          * @since 22.1
          */
@@ -3546,6 +3561,7 @@ public abstract class TruffleLanguage<C> {
          * @throws UnsupportedOperationException if creating adapter classes is not supported on
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if either {@code types} or {@code classOverrides} is null.
+         *
          * @see #createHostAdapter(Object[])
          * @since 22.1
          */
@@ -3623,6 +3639,7 @@ public abstract class TruffleLanguage<C> {
          *            empty a root logger for language or instrument is returned
          * @return a {@link TruffleLogger}
          * @since 21.1
+         *
          */
         @TruffleBoundary
         public TruffleLogger getLogger(String loggerName) {
@@ -3783,7 +3800,8 @@ public abstract class TruffleLanguage<C> {
          * <p>
          * Languages should check for {@link #isPolyglotEvalAllowed(LanguageInfo) eval permissions}
          * for each {@link #getPublicLanguages() public language} prior to calling this method,
-         * otherwise it might cause an internal error if not sufficient privileges are available.
+         * otherwise it might cause {@link SecurityException} if not sufficient privileges are
+         * available.
          *
          * @return the scope, or <code>null</code> if the requested language does not support such a
          *         concept
@@ -3972,7 +3990,7 @@ public abstract class TruffleLanguage<C> {
      * current {@link Node}, if available, as parameter.
      * <p>
      * Example intended usage:
-     * <p>
+     *
      * See {@link ContextReference} for a full usage example.
      *
      * @since 0.25 revised in 21.3
@@ -4264,14 +4282,15 @@ public abstract class TruffleLanguage<C> {
     /**
      * Mode of exit operation.
      *
-     * @see #exitContext(Object, ExitMode, int)
      * @since 22.0
+     * @see #exitContext(Object, ExitMode, int)
      */
     public enum ExitMode {
         /**
          * Natural exit that occurs during normal context close.
          *
          * @since 22.0
+         *
          */
         NATURAL,
         /**

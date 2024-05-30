@@ -12,10 +12,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-38322 Added `--engine.TraceMissingSafepointPollInterval=N` to show Java stacktraces when there are [missing `TruffleSafepoint.poll()` calls](https://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md#find-missing-safepoint-polls).
 * GR-52644 Deprecated `TruffleLanguage.Registration.needsAllEncodings`, no longer needs to be declared. It is sufficient for a language module to require `org.graalvm.shadowed.jcodings` to enable all string encodings.
 * GR-51172 Add `CompilerDirectives.ensureAllocatedHere` to mark an allocation as non-movable. This allows language developers to mark special allocations as non-optimizable to allow better control for allocations potentially throwing OutOfMemoryErrors.
-* GR-52930 Added `TruffleLanguage.Env.getHostLanguage()` returning the host language info.
-* GR-52930 Added `TruffleLanguage.Env.getScope(LanguageInfo)` returning the top scope object of the language.
 * GR-28866 Added `TruffleLanguage.Env.getScopePublic(LanguageInfo)` and `TruffleLanguage.Env.getScopeInternal(LanguageInfo)` to allow languages direct access to other language scopes to implement new polyglot builtins.
-* GR-28866 Deprecated `TruffleLanguage.Env.isPolyglotEvalAllowed()`. Replace usages with `TruffleLanguage.Env.isPolyglotEvalAllowed(TruffleLanguage)`. Please see javadoc for the updated usage.
+* GR-28866 Deprecated `TruffleLanguage.Env.isPolyglotEvalAllowed()`. Replace usages with `TruffleLanguage.Env.isPolyglotEvalAllowed(LanguageInfo)`. Please see javadoc for the updated usage.
 
 ## Version 24.0.0
 

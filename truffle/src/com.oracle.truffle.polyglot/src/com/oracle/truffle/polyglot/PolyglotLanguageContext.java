@@ -242,30 +242,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     boolean isPolyglotEvalAllowed(LanguageInfo info) {
-        Map<String, Set<String>> allAccess = getAPIAccess().getEvalAccess(context.config.polyglotAccess);
-        if (allAccess != null && allAccess.size() == 0) {
+        Set<String> languageAccess = getAPIAccess().getEvalAccess(context.config.polyglotAccess, language.getId());
+        if (languageAccess != null && languageAccess.isEmpty()) {
             return false;
         }
-        Set<String> languageAccess = null;
-        if (allAccess != null) {
-            languageAccess = allAccess.get(language.getId());
-            if (languageAccess != null && languageAccess.size() == 0) {
-                return false;
-            }
-        }
-
-        if (languageAccess == null && allAccess != null && allAccess.size() != 0) {
-            // there are other languages configured but this language has no access.
-            return false;
-        }
-
         if (info == null) {
             return true;
         } else {
-            if (languageAccess != null && !info.getId().equals(language.getId()) && !languageAccess.contains(info.getId())) {
-                // check whether the target language is included
-                return false;
-            }
             return getAccessibleLanguages(false).containsKey(info.getId());
         }
     }

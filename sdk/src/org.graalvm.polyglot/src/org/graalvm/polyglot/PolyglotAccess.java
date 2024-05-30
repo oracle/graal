@@ -246,7 +246,7 @@ public final class PolyglotAccess {
          * more than two then all language evaluation combinations will be allowed. This method
          * potentially overrides already configured access rights with
          * {@link #allowEval(String, String)} or {@link #denyEval(String, String)}. The given
-         * language array must be <code>null</code> and individual languages must not be
+         * language array must be non <code>null</code> and individual languages must not be
          * <code>null</code>.
          *
          * @see #allowEval(String, String)
@@ -282,7 +282,7 @@ public final class PolyglotAccess {
          * more than two then all language access combinations will be denied. This method
          * potentially overrides already configured access rights with
          * {@link #allowEval(String, String)} or {@link #denyEval(String, String)}. The given
-         * language array must be <code>null</code> and individual languages must not be
+         * language array must be non <code>null</code> and individual languages must not be
          * <code>null</code>.
          *
          * @see #denyEval(String, String)
