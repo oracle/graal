@@ -616,15 +616,20 @@ final class Target_jdk_internal_loader_BootLoader {
     static String JAVA_HOME;
     // Checkstyle: resume
 
+    /**
+     * Returns the Package of the given name defined to the boot loader or null if the package has
+     * not been defined.
+     */
     @Substitute
-    static Package getDefinedPackage(String name) {
+    public static Package getDefinedPackage(String name) {
         if (name != null) {
-            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
-                            null, null, null, null, null);
-            return SubstrateUtil.cast(pkg, Package.class);
-        } else {
-            return null;
+            for (Package pkg : (Iterable<Package>) packages()::iterator) {
+                if (name.equals(pkg.getName())) {
+                    return pkg;
+                }
+            }
         }
+        return null;
     }
 
     @Substitute
