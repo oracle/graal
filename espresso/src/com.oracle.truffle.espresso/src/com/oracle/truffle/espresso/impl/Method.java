@@ -102,6 +102,7 @@ import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -458,25 +459,32 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      */
     @TruffleBoundary
     public Object invokeWithConversions(Object self, Object... args) {
-        getContext().getJNI().clearPendingException();
-        assert args.length == Signatures.parameterCount(getParsedSignature());
-        // assert !isStatic() || ((StaticObject) self).isStatic();
+        EspressoThreadLocalState tls = getLanguage().getThreadLocalState();
+        // Impossible to call from guest code, so what is above is illegal for continuations.
+        tls.blockContinuationSuspension();
+        try {
+            getContext().getJNI().clearPendingException();
+            assert args.length == Signatures.parameterCount(getParsedSignature());
+            // assert !isStatic() || ((StaticObject) self).isStatic();
 
-        final Object[] filteredArgs;
-        if (isStatic()) {
-            getDeclaringKlass().safeInitialize();
-            filteredArgs = new Object[args.length];
-            for (int i = 0; i < filteredArgs.length; ++i) {
-                filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
+            final Object[] filteredArgs;
+            if (isStatic()) {
+                getDeclaringKlass().safeInitialize();
+                filteredArgs = new Object[args.length];
+                for (int i = 0; i < filteredArgs.length; ++i) {
+                    filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
+                }
+            } else {
+                filteredArgs = new Object[args.length + 1];
+                filteredArgs[0] = getMeta().toGuestBoxed(self);
+                for (int i = 1; i < filteredArgs.length; ++i) {
+                    filteredArgs[i] = getMeta().toGuestBoxed(args[i - 1]);
+                }
             }
-        } else {
-            filteredArgs = new Object[args.length + 1];
-            filteredArgs[0] = getMeta().toGuestBoxed(self);
-            for (int i = 1; i < filteredArgs.length; ++i) {
-                filteredArgs[i] = getMeta().toGuestBoxed(args[i - 1]);
-            }
+            return getMeta().toHostBoxed(getCallTarget().call(filteredArgs));
+        } finally {
+            tls.unblockContinuationSuspension();
         }
-        return getMeta().toHostBoxed(getCallTarget().call(filteredArgs));
     }
 
     /**
@@ -487,17 +495,24 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      */
     @TruffleBoundary
     public Object invokeDirect(Object self, Object... args) {
-        getContext().getJNI().clearPendingException();
-        if (isStatic()) {
-            assert args.length == Signatures.parameterCount(getParsedSignature());
-            getDeclaringKlass().safeInitialize();
-            return getCallTarget().call(args);
-        } else {
-            assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature()) + (isStatic() ? 0 : 1);
-            Object[] fullArgs = new Object[args.length + 1];
-            System.arraycopy(args, 0, fullArgs, 1, args.length);
-            fullArgs[0] = self;
-            return getCallTarget().call(fullArgs);
+        EspressoThreadLocalState tls = getLanguage().getThreadLocalState();
+        // Impossible to call from guest code, so what is above is illegal for continuations.
+        tls.blockContinuationSuspension();
+        try {
+            getContext().getJNI().clearPendingException();
+            if (isStatic()) {
+                assert args.length == Signatures.parameterCount(getParsedSignature());
+                getDeclaringKlass().safeInitialize();
+                return getCallTarget().call(args);
+            } else {
+                assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature()) + (isStatic() ? 0 : 1);
+                Object[] fullArgs = new Object[args.length + 1];
+                System.arraycopy(args, 0, fullArgs, 1, args.length);
+                fullArgs[0] = self;
+                return getCallTarget().call(fullArgs);
+            }
+        } finally {
+            tls.unblockContinuationSuspension();
         }
     }
 
@@ -1385,6 +1400,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return getContinuum().getContinuableCallTarget(this, bci);
         }
 
+        /**
+         * Obtains a {@link EspressoFrameDescriptor} describing the shape of the Espresso execution
+         * frame at this BCI.
+         */
         public EspressoFrameDescriptor getFrameDescriptor(int bci) {
             return getContinuum().getFrameDescriptor(this, bci);
         }
