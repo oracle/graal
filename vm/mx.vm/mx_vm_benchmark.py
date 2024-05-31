@@ -552,7 +552,7 @@ class NativeImageVM(GraalVm):
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
-               r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
         match_name = f"{config_name}-"  # adding trailing dash to simplify the regex
@@ -679,7 +679,7 @@ class NativeImageVM(GraalVm):
         if matching.group("optimization_level") is not None:
             olevel = matching.group("optimization_level")[:-1]
             mx.logv(f"GraalVM optimization level is set to: {olevel}")
-            if olevel in ["O0", "O1", "O2", "O3"]:
+            if olevel in ["O0", "O1", "O2", "O3", "Os"]:
                 self.optimization_level = olevel
             else:
                 mx.abort(f"Unknown configuration for optimization level: {olevel}")
@@ -1801,7 +1801,7 @@ def register_graalvm_vms():
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "native", [], ["--native"]))
             mx_polybenchmarks_benchmark.rules = polybenchmark_rules
 
-    optimization_levels = ['O0', 'O1', 'O2', 'O3']
+    optimization_levels = ['O0', 'O1', 'O2', 'O3', 'Os']
 
     # Inlining before analysis is done by default
     analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
