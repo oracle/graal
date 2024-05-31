@@ -217,6 +217,6 @@ public final class PureNFAGenerator {
     }
 
     private PureNFATransition createEmptyTransition(PureNFAState src, PureNFAState tgt) {
-        return new PureNFATransition(transitionID.inc(), src, tgt, GroupBoundaries.getEmptyInstance(ast.getLanguage()), false, false, QuantifierGuard.NO_GUARDS);
+        return new PureNFATransition(transitionID.inc(), src, tgt, GroupBoundaries.getEmptyInstance(ast.getLanguage()), false, false, TransitionGuard.NO_GUARDS);
     }
 }

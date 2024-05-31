@@ -212,7 +212,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     /**
-     * Indicates whether or not this node should be allowed to match the empty string.
+     * Indicates whether this node should be allowed to match the empty string.
      *
      * @return true if this node is <em>not</em> allowed to match the empty string
      */
@@ -518,6 +518,10 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     public boolean isGroup() {
         return this instanceof Group;
+    }
+
+    public boolean isGroupWithGuards() {
+        return isGroup() && asGroup().hasGroupWithGuardsIndex();
     }
 
     public boolean isConditionalBackReferenceGroup() {
