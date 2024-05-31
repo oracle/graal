@@ -178,11 +178,12 @@ public final class OracleDBCharClassTrieNode {
     }
 
     public void clear() {
+        assert codepoints == null && !isEndOfString : "clear can only be called on the root node";
         children.clear();
     }
 
     public void generateAST(RegexASTBuilder astBuilder, boolean negate) {
-        if (needsGroupWrapper(negate)) {
+        if (rootNeedsGroupWrapper(negate)) {
             astBuilder.pushGroup();
         }
         if (negate) {
@@ -217,7 +218,7 @@ public final class OracleDBCharClassTrieNode {
                 }
             }
         }
-        if (needsGroupWrapper(negate)) {
+        if (rootNeedsGroupWrapper(negate)) {
             astBuilder.popGroup();
         }
     }
@@ -264,5 +265,9 @@ public final class OracleDBCharClassTrieNode {
 
     private boolean needsGroupWrapper(boolean negate) {
         return children.size() > 1 || !negate && isEndOfString() && !children.isEmpty();
+    }
+
+    private boolean rootNeedsGroupWrapper(boolean negate) {
+        return needsGroupWrapper(negate) || negate && children.size() == 1 && !children.get(0).isEndOfString;
     }
 }

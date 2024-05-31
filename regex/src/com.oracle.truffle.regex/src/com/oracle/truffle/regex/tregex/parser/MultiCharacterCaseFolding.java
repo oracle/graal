@@ -259,7 +259,7 @@ public class MultiCharacterCaseFolding {
                     CodePointSet allowedCodePoints, boolean transitiveEquivalence) {
         tmp.clear();
         caseFoldCharClass(algorithm, charClass, (from, to) -> {
-            if ((transitiveEquivalence || hasNoCaseFolding(algorithm, to[0]))) {
+            if (transitiveEquivalence || hasNoCaseFolding(algorithm, to[0])) {
                 if (to.length == 1) {
                     // Add the case-folded version to the character class...
                     if (filter.test(from, to[0])) {

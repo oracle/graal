@@ -271,16 +271,16 @@ public final class OracleDBRegexParser implements RegexParser {
     private void addCCAtomMultiCharExpansion(ClassSetContents contents, CaseFoldAlgorithm algorithm) {
         caseClosure(algorithm, contents.getCodePointSet());
         addCCAtomCodePointSet(charClassTmpCaseClosure.toCodePointSet());
+        assert contents.isCharacter() || contents.isPosixCollationElement() || contents.isPosixCollationEquivalenceClass();
+        assert contents.getCodePointSet().matchesSingleChar();
         // No transitive closure
-        for (Range range : contents.getCodePointSet()) {
-            CaseFoldData.getTable(algorithm).caseFold(range, (codepoint, caseFolded) -> {
-                if (caseFolded.length > 1) {
-                    CodePointSet encodingRange = Encodings.UTF_8.getFullSet();
-                    CompilationBuffer compilationBuffer = lexer.getCompilationBuffer();
-                    MultiCharacterCaseFolding.caseFoldUnfoldString(algorithm, caseFolded, encodingRange, false, false, null, curCharClass, compilationBuffer);
-                }
-            });
-        }
+        CaseFoldData.getTable(algorithm).caseFold(contents.getCodePointSet().iterator().next(), (codepoint, caseFolded) -> {
+            if (caseFolded.length > 1) {
+                CodePointSet encodingRange = Encodings.UTF_8.getFullSet();
+                CompilationBuffer compilationBuffer = lexer.getCompilationBuffer();
+                MultiCharacterCaseFolding.caseFoldUnfoldString(algorithm, caseFolded, encodingRange, false, false, null, curCharClass, compilationBuffer);
+            }
+        });
     }
 
     private void caseClosure(CaseFoldAlgorithm algorithm, CodePointSet codePointSet) {
