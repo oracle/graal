@@ -687,9 +687,9 @@ public final class EspressoOptions {
     public static final OptionKey<String> RuntimeResourceId = new OptionKey<>("");
 
     @Option(help = "Enables the Continuum API.", //
-            category = OptionCategory.USER, //
-            stability = OptionStability.EXPERIMENTAL, //
-            usageSyntax = "false|true") //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Continuum = new OptionKey<>(false);
 
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .

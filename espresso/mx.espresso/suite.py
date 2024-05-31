@@ -112,7 +112,7 @@ suite = {
             "dependencies": [
             ],
             "javaCompliance" : "21+",
-            "checkstyle": "com.oracle.truffle.espresso.polyglot",  # TODO ???
+            "checkstyle": "com.oracle.truffle.espresso.polyglot",
             "license": "UPL",
         },
 

@@ -1,11 +1,13 @@
 # Espresso Changelog
 
 ## Version 24.1.0
+### User-visible changes
 * Added `java.RuntimeResourceId` to allow customizing the truffle resource used to locate the java standard library used by espresso.
   The resource called "espresso-runtime-<RuntimeResourceId>" will be used. By default, "jdk21" then "openjdk21" are attempted.
 * Espresso can now use TRegex to execute java.util.regex patterns. TRegex offers better performance than the standard implementation. Use `java.UseTRegex` to enable this engine.
 * The interop `readBuffer` method can now be used from the guest Interop API and guest ByteBuffer objects implement this interop message.
 * Many issues with espresso's JDWP implementation were fixed, improving the user experience when debugging with a Java IDE.
+* Adds the `org.graalvm.continuations` package, along with support for continuations. see `docs/continuations.md` for more details.
 
 ## Version 24.0.0
 ### User-visible changes

@@ -161,12 +161,14 @@ public class EspressoThreadLocalState {
 
     public final class ContinuationScope implements AutoCloseable {
         private final int startBlocks;
+
         private ContinuationScope() {
             startBlocks = suspensionBlocks;
             suspensionBlocks = 0;
             assert !inContinuation;
             inContinuation = true;
         }
+
         @Override
         public void close() {
             suspensionBlocks = startBlocks;

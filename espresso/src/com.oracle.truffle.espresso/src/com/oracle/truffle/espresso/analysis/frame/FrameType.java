@@ -89,7 +89,7 @@ public abstract class FrameType {
 
     @Override
     public int hashCode() {
-        return kind().toOrdinal();
+        return kind().ordinal();
     }
 
     @Override

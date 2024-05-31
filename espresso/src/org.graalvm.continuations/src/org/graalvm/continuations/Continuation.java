@@ -111,7 +111,7 @@ public final class Continuation implements Externalizable {
     // region Suspended state
 
     // This field is initialized after calling ensureMaterialized().
-    private volatile FrameRecord stackFrameHead;
+    private transient volatile FrameRecord stackFrameHead;
 
     /**
      * <p>
@@ -229,7 +229,7 @@ public final class Continuation implements Externalizable {
     /**
      * The entry point as provided to the constructor.
      */
-    private EntryPoint entryPoint;
+    private transient EntryPoint entryPoint;
     private transient Thread exclusiveOwner;
 
     private void setExclusiveOwner() {
@@ -746,14 +746,14 @@ public final class Continuation implements Externalizable {
             return;
         }
 
-        State state = lock();
-        if (state == State.RUNNING) {
+        State previousState = lock();
+        if (previousState == State.RUNNING) {
             dematerialize0();
         } else {
             try {
                 dematerialize0();
             } finally {
-                unlock(state);
+                unlock(previousState);
             }
         }
         if (stackFrameHead != null) {
