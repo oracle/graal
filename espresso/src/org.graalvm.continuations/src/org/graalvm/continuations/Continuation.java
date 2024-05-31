@@ -82,6 +82,9 @@ import java.util.Map;
  * they can be discarded and left for the GC to clean up.
  *
  * <p>
+ * For a continuation to be serialized, the given {@link EntryPoint} itself must be serializable.
+ *
+ * <p>
  * Continuation deserialization is <b>not secure</b>. You should only deserialize continuations you
  * yourself suspended, as resuming a malicious continuation can cause arbitrary undefined behaviour,
  * i.e. is equivalent to handing control of the JVM to the attacker.
@@ -111,7 +114,8 @@ public final class Continuation implements Externalizable {
     // region Suspended state
 
     // This field is initialized after calling ensureMaterialized().
-    private transient volatile FrameRecord stackFrameHead;
+    @SuppressWarnings("serial") // handled by read/writeExternal
+    private volatile FrameRecord stackFrameHead;
 
     /**
      * <p>
@@ -229,7 +233,8 @@ public final class Continuation implements Externalizable {
     /**
      * The entry point as provided to the constructor.
      */
-    private transient EntryPoint entryPoint;
+    @SuppressWarnings("serial") // handled by read/writeExternal
+    private EntryPoint entryPoint;
     private transient Thread exclusiveOwner;
 
     private void setExclusiveOwner() {
@@ -263,6 +268,10 @@ public final class Continuation implements Externalizable {
      * The new continuation starts in the {@link State#NEW} state. To begin execution call the
      * {@link Continuation#resume()} method. The entry point will be passed a capability object
      * allowing it to suspend itself.
+     *
+     * <p>
+     * The continuation will be serializable so long as the given {@link EntryPoint} is
+     * serializable.
      */
     public Continuation(EntryPoint entryPoint) {
         this.state = State.NEW;
