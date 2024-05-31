@@ -1,6 +1,6 @@
-# mx --dy /espresso,/substratevm,/regex --components="Espresso libjvm,Espresso Standalone jvm.cfg,Java on Truffle,Truffle Macro,GraalVM license files,TRegex" --disable-libpolyglot --non-rebuildable-images=lib:javavm --disable-installables=true graalvm-show --print-env
-DYNAMIC_IMPORTS=/espresso,/regex,/sdk,/substratevm,/truffle,/vm
-COMPONENTS=ejc,ejvm,gvm,icu4j,java,nfi,nfi-libffi,rgx,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc,tflm
+# mx --dy /espresso,/substratevm,/regex,/tools --components="Espresso libjvm,Espresso Standalone jvm.cfg,Java on Truffle,Truffle Macro,GraalVM license files,TRegex,suite:tools" --disable-libpolyglot --non-rebuildable-images=lib:javavm --disable-installables=true graalvm-show --print-env
+DYNAMIC_IMPORTS=/espresso,/regex,/sdk,/substratevm,/tools,/truffle,/vm
+COMPONENTS=cov,dap,ejc,ejvm,gvm,icu4j,ins,insight,insightheap,java,lsp,nfi,nfi-libffi,pro,rgx,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc,tflm,truffle-json
 EXCLUDE_COMPONENTS=libpoly
 NATIVE_IMAGES=lib:javavm
 DISABLE_INSTALLABLES=True

@@ -152,8 +152,8 @@ mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_f
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce-darwin-aarch64')
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce')
 # Other GraalVMs
-mx_sdk_vm.register_vm_config('espresso-community', ['antlr4', 'ejc', 'ejvm', 'ellvm', 'gvm', 'icu4j', 'java', 'llp', 'llrc', 'llrlf', 'llrn', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-llvm-espresso')
-mx_sdk_vm.register_vm_config('espresso-community', ['ejc', 'ejvm', 'gvm', 'icu4j', 'java', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-espresso')
+mx_sdk_vm.register_vm_config('espresso-community', ['antlr4', 'cov', 'dap', 'ejc', 'ejvm', 'ellvm', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'java', 'llp', 'llrc', 'llrlf', 'llrn', 'lsp', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'pro', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json'], _suite, env_file='ce-llvm-espresso')
+mx_sdk_vm.register_vm_config('espresso-community', ['cov', 'dap', 'ejc', 'ejvm', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'java', 'lsp', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'pro', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json'], _suite, env_file='ce-espresso')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'njs', 'njsl', 'rgx', 'sjsvm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['antlr4', 'llrn', 'llp', 'llrc', 'llrl', 'llrlf'], _suite, env_file='ce-llvm')
