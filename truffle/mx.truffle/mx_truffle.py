@@ -469,16 +469,6 @@ def _truffle_jvm_class_path_unit_tests_gate(additional_unittest_options=None):
     unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose',
                    '--max-class-failures=25'] + additional_unittest_options))
 
-    # GR-50223 temporarily still run tests with class-path isolation. they are to be removed.
-    test_classes = [
-        "com.oracle.truffle.api.test.polyglot",
-        "com.oracle.truffle.api.test.examples",
-        "com.oracle.truffle.tck.tests",
-    ]
-    unittest(list(['--suite', 'truffle', '-Dpolyglotimpl.DisableClassPathIsolation=false', '--use-graalvm', '--enable-timing',
-                   '--force-classpath', '--verbose', '--max-class-failures=25'] + additional_unittest_options + test_classes))
-
-
 @mx.command(_suite.name, 'native-truffle-unittest')
 def native_truffle_unittest(args):
     """

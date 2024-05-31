@@ -46,31 +46,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintStream;
-import java.lang.ModuleLayer.Controller;
 import java.lang.invoke.MethodHandles;
-import java.lang.module.Configuration;
-import java.lang.module.FindException;
-import java.lang.module.ModuleDescriptor;
-import java.lang.module.ModuleDescriptor.Provides;
-import java.lang.module.ModuleDescriptor.Requires;
-import java.lang.module.ModuleFinder;
-import java.lang.module.ModuleReference;
-import java.lang.module.ResolvedModule;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.time.Duration;
@@ -84,14 +69,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -123,7 +104,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.IOAccessor;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
-import org.graalvm.polyglot.impl.UnnamedToModuleBridge;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
@@ -620,7 +600,7 @@ public final class Engine implements AutoCloseable {
          * <p>
          * See {@link Instrument#getOptions()} to list all available options for an
          * {@link Instrument instrument}.
-         * 
+         *
          * @since 19.0
          */
         public Builder option(String key, String value) {
@@ -1746,339 +1726,21 @@ public final class Engine implements AutoCloseable {
                 Class<AbstractPolyglotImpl> serviceClass = AbstractPolyglotImpl.class;
                 Iterator<? extends AbstractPolyglotImpl> iterator;
                 Module polyglotModule = serviceClass.getModule();
-
-                if (!polyglotModule.isNamed() && ClassPathIsolation.isEnabled()) {
-                    return ClassPathIsolation.createIsolatedTruffle(serviceClass);
+                Iterable<? extends AbstractPolyglotImpl> services;
+                if (polyglotModule.isNamed()) {
+                    services = ServiceLoader.load(polyglotModule.getLayer(), AbstractPolyglotImpl.class);
                 } else {
-                    Iterable<? extends AbstractPolyglotImpl> services;
-                    if (polyglotModule.isNamed()) {
-                        services = ServiceLoader.load(polyglotModule.getLayer(), AbstractPolyglotImpl.class);
-                    } else {
-                        services = ServiceLoader.load(serviceClass, serviceClass.getClassLoader());
-                    }
+                    services = ServiceLoader.load(serviceClass, serviceClass.getClassLoader());
+                }
+                iterator = services.iterator();
+                if (!iterator.hasNext()) {
+                    services = ServiceLoader.load(AbstractPolyglotImpl.class);
                     iterator = services.iterator();
-                    if (!iterator.hasNext()) {
-                        services = ServiceLoader.load(AbstractPolyglotImpl.class);
-                        iterator = services.iterator();
-                    }
                 }
                 return iterator;
             }
 
         });
-    }
-
-    /**
-     * If Truffle is on the class-path (or a language), we do not want to expose these classes to
-     * embedders (users of the polyglot API). Unless disabled, we load all Truffle jars on the
-     * class-path in a special module layer instead of loading it through the class-path in the
-     * unnamed module.
-     */
-    private static class ClassPathIsolation {
-
-        private static final String TRUFFLE_MODULE_NAME = "org.graalvm.truffle";
-        private static final String POLYGLOT_MODULE_NAME = "org.graalvm.polyglot";
-        private static final String OPTION_DISABLE_CLASS_PATH_ISOLATION = "polyglotimpl.DisableClassPathIsolation";
-        private static final String OPTION_TRACE_CLASS_PATH_ISOLATION = "polyglotimpl.TraceClassPathIsolation";
-
-        private static final boolean TRACE_CLASS_PATH_ISOLATION = Boolean.getBoolean(OPTION_TRACE_CLASS_PATH_ISOLATION);
-        private static final boolean DISABLE_CLASS_PATH_ISOLATION = Boolean.parseBoolean(System.getProperty(OPTION_DISABLE_CLASS_PATH_ISOLATION, "true"));
-
-        static boolean isEnabled() {
-            return !DISABLE_CLASS_PATH_ISOLATION;
-        }
-
-        static Iterator<? extends AbstractPolyglotImpl> createIsolatedTruffle(Class<?> serviceClass) {
-            Module truffleModule = ClassPathIsolation.createIsolatedTruffleModule(serviceClass);
-            if (truffleModule == null) {
-                /*
-                 * Class path isolation did not work for some reason then we create an empty
-                 * polyglot.
-                 */
-                return createInvalidPolyglotImpl();
-            }
-
-            Class<?> modulePolyglot;
-            try {
-                modulePolyglot = truffleModule.getClassLoader().loadClass(AbstractPolyglotImpl.class.getName());
-            } catch (ClassNotFoundException e) {
-                // class must be found on a layer with the truffle module.
-                throw new InternalError(e);
-            }
-            if (modulePolyglot == serviceClass) {
-                throw new AssertionError("Expected module polyglot to be a different class to the service class.");
-            }
-            Iterator<? extends Object> modulePolyglotIterator = ServiceLoader.load(truffleModule.getLayer(), modulePolyglot).iterator();
-            /*
-             * If the polylgot implementation is in separate named module. We need to use polyglot
-             * module bridge to wrap the entire API to delegate from the unnamed module to a named
-             * module.
-             */
-            Object polyglotImpl;
-            try {
-                Class<?> engine = truffleModule.getClassLoader().loadClass(Engine.class.getName());
-                Method m = engine.getDeclaredMethod("loadAndValidateProviders", Iterator.class);
-                m.setAccessible(true);
-                polyglotImpl = m.invoke(null, modulePolyglotIterator);
-                return List.of(UnnamedToModuleBridge.create(modulePolyglot, polyglotImpl).getPolyglot()).iterator();
-            } catch (ClassNotFoundException | IllegalAccessException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
-                throw new InternalError(e);
-            }
-        }
-
-        static Module createIsolatedTruffleModule(Class<?> polyglotClass) {
-            if (TRACE_CLASS_PATH_ISOLATION) {
-                trace("Start polyglot class-path isolation");
-            }
-            assert !polyglotClass.getModule().isNamed();
-            assert isEnabled();
-
-            ModuleLayer parent = ModuleLayer.boot();
-            ClassLoader polyglotClassLoader = polyglotClass.getClassLoader();
-
-            Optional<Module> alreadyLoadedTruffle = parent.findModule(TRUFFLE_MODULE_NAME);
-            if (alreadyLoadedTruffle.isPresent()) {
-                /*
-                 * This may happen if truffle is already configured on the module-path or if if
-                 * polyglot was used in the unnamed module (class-path) and an isolated module class
-                 * loader was spawned to load truffle.
-                 */
-                if (TRACE_CLASS_PATH_ISOLATION) {
-                    trace("Polyglot is available on the module-path. Class isolation is not needed.");
-                }
-                return alreadyLoadedTruffle.get();
-            }
-
-            List<Path> classpath = collectClassPathJars(polyglotClassLoader);
-            if (TRACE_CLASS_PATH_ISOLATION) {
-                for (Path p : classpath) {
-                    trace("Class-path entry: %s", p);
-                }
-            }
-            List<Path> relevantPaths = filterClasspath(parent, classpath);
-            if (relevantPaths == null) {
-                if (TRACE_CLASS_PATH_ISOLATION) {
-                    trace("No truffle-api and/or polyglot found on classpath. ");
-                }
-                return null;
-            }
-
-            if (TRACE_CLASS_PATH_ISOLATION) {
-                trace("Filtering complete using %s out of %s class-path entries.", relevantPaths.size(), classpath.size());
-            }
-
-            if (TRACE_CLASS_PATH_ISOLATION) {
-                for (Path p : classpath) {
-                    trace("Class-path entry: %s", p);
-                }
-            }
-
-            ModuleFinder finder = ModuleFinder.of(relevantPaths.toArray(new Path[relevantPaths.size()]));
-            Configuration config;
-            try {
-                config = parent.configuration().resolveAndBind(finder, ModuleFinder.of(), Set.of(TRUFFLE_MODULE_NAME));
-            } catch (Throwable t) {
-                throw new InternalError(
-                                "The polyglot class isolation failed to load and resolve the module layer. This is typically caused by invalid class-path-entries or duplicated packages on the class-path. Use -D" +
-                                                OPTION_TRACE_CLASS_PATH_ISOLATION +
-                                                "=true to print more details about class loading isolation. " +
-                                                "If the problem persists, it is recommended to use the module-path instead of the class-path to load polyglot.",
-                                t);
-            }
-            if (config.modules().isEmpty()) {
-                // no new modules found
-                if (TRACE_CLASS_PATH_ISOLATION) {
-                    trace("No polyglot related implementation modules found on the class-path");
-                }
-                return null;
-            }
-            if (TRACE_CLASS_PATH_ISOLATION) {
-                trace("Successfuly resolved modules from class-path for class loader isolation.");
-                for (ResolvedModule module : config.modules()) {
-                    trace("Resolved module: %s", module.name());
-                }
-            }
-
-            Controller polyglotController = ModuleLayer.defineModulesWithOneLoader(config, List.of(parent), polyglotClassLoader);
-            Module polyglotModule = polyglotController.layer().findModule("org.graalvm.polyglot").get();
-
-            // Special addOpens required for the unnamed to module bridge in polyglot.
-            polyglotController.addOpens(polyglotModule, "org.graalvm.polyglot.impl", polyglotClassLoader.getUnnamedModule());
-            polyglotController.addOpens(polyglotModule, "org.graalvm.polyglot", polyglotClassLoader.getUnnamedModule());
-
-            Module truffle = polyglotController.layer().findModule(TRUFFLE_MODULE_NAME).orElse(null);
-            if (truffle == null) {
-                if (TRACE_CLASS_PATH_ISOLATION) {
-                    trace("Final resolve of Truffle failed. This could indicate a bug.");
-                }
-            }
-
-            return truffle;
-        }
-
-        private static void trace(String s, Object... args) {
-            PrintStream out = System.out;
-            out.printf("[class-path-isolation] %s%n", String.format(s, args));
-        }
-
-        /*
-         * Class path specifications are not build for the module-path. So we need to be careful
-         * what we put on the module-path for Truffle. This method aims to filter the classpath for
-         * only relevent path entries.
-         */
-        private static List<Path> filterClasspath(ModuleLayer parent, List<Path> classpath) throws InternalError {
-            record ParsedModule(Path p, Set<ModuleReference> modules) {
-            }
-
-            List<ParsedModule> parsedModules = new ArrayList<>();
-            for (Path path : classpath) {
-                ModuleFinder finder = ModuleFinder.of(path);
-                try {
-                    Set<ModuleReference> modules = finder.findAll();
-                    if (modules.size() > 0) {
-                        parsedModules.add(new ParsedModule(path, modules));
-                    } else {
-                        if (TRACE_CLASS_PATH_ISOLATION) {
-                            trace("No modules found in class-path entry %s", path);
-                        }
-                    }
-                } catch (FindException t) {
-                    // error in module finding -> not a valid module descriptor ignore
-                    if (TRACE_CLASS_PATH_ISOLATION) {
-                        trace("FinderException resolving path %s: %s", path, t.toString());
-                    }
-                } catch (Throwable t) {
-                    throw new InternalError("Parsing class-path for path " + path + " failed.", t);
-                }
-            }
-
-            // first find truffle and polyglot on the class-path
-            Set<String> includedModules = new LinkedHashSet<>();
-            for (ParsedModule parsedModule : parsedModules) {
-                for (ModuleReference m : parsedModule.modules()) {
-                    String name = m.descriptor().name();
-                    switch (name) {
-                        case TRUFFLE_MODULE_NAME:
-                        case POLYGLOT_MODULE_NAME:
-                            includedModules.add(name);
-                            break;
-                    }
-                    if (includedModules.size() == 2) {
-                        // found truffle and polyglot
-                        break;
-                    }
-                }
-            }
-            if (includedModules.size() != 2) {
-                // truffle or polyglot not found on the class-path
-                return null;
-            }
-
-            // now iteratively resolve modules until no more modules are included
-            List<ParsedModule> toProcess = new ArrayList<>(parsedModules);
-            Set<String> usedServices = new HashSet<>();
-            int size = 0;
-            while (includedModules.size() != size) {
-                size = includedModules.size();
-
-                ListIterator<ParsedModule> modules = toProcess.listIterator();
-                while (modules.hasNext()) {
-                    ParsedModule module = modules.next();
-                    for (ModuleReference m : module.modules) {
-                        ModuleDescriptor d = m.descriptor();
-
-                        for (Provides p : d.provides()) {
-                            if (usedServices.contains(p.service())) {
-                                if (includedModules.add(d.name())) {
-                                    if (TRACE_CLASS_PATH_ISOLATION) {
-                                        trace("Include module '%s' because an implementation for '%s' is provided that is used.", d.name(), p.service());
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                        if (includedModules.contains(d.name())) {
-                            usedServices.addAll(d.uses());
-                            for (Requires r : d.requires()) {
-                                /*
-                                 * We deliberately follow static resources here, even though they
-                                 * are not real dependencies in the module-graph. If we don't follow
-                                 * static requires we might fallback to the parent class-loader for
-                                 * these classes causing weird problems. So if the module is on the
-                                 * class-path and there is a static requires we pick it up into the
-                                 * module-graph well.
-                                 */
-                                if (includedModules.add(r.name())) {
-                                    if (TRACE_CLASS_PATH_ISOLATION) {
-                                        trace("Include module '%s' because it is required by '%s'.", r.name(), d.name());
-                                    }
-                                }
-                            }
-                            // module processed. we no longer need to visit it
-                            modules.remove();
-                        }
-                    }
-                }
-            }
-
-            List<Path> filteredList = new ArrayList<>();
-            for (ParsedModule module : parsedModules) {
-                for (ModuleReference ref : module.modules()) {
-                    String name = ref.descriptor().name();
-                    if (!includedModules.contains(name)) {
-                        if (TRACE_CLASS_PATH_ISOLATION) {
-                            trace("Filter module '%s' because not reachable on the module graph.", name);
-                        }
-                        continue;
-                    }
-
-                    if (parent.findModule(name).isPresent()) {
-                        if (TRACE_CLASS_PATH_ISOLATION) {
-                            trace("Filter module '%s' because already available in the parent module-layer.", name);
-                        }
-                        continue;
-                    }
-
-                    filteredList.add(module.p());
-                    break;
-                }
-            }
-
-            return filteredList;
-        }
-
-        @SuppressWarnings("unchecked")
-        private static List<Path> collectClassPathJars(ClassLoader cl) {
-            List<Path> paths = new ArrayList<>();
-            if (cl instanceof URLClassLoader) {
-                URLClassLoader urlClassLoader = (URLClassLoader) cl;
-                for (URL url : urlClassLoader.getURLs()) {
-                    try {
-                        paths.add(Path.of(url.toURI().getPath()));
-                    } catch (URISyntaxException e) {
-                        // ignore invalid syntax
-                    }
-                }
-                if (TRACE_CLASS_PATH_ISOLATION) {
-                    trace("Collected %s class-path entries from URLClassloader", paths.size());
-                }
-
-            } else if (System.getProperty("java.class.path") != null) {
-                String classpath = System.getProperty("java.class.path");
-                String[] classpathEntries = classpath.split(File.pathSeparator);
-                for (String entry : classpathEntries) {
-                    paths.add(Paths.get(entry));
-                }
-                if (TRACE_CLASS_PATH_ISOLATION) {
-                    trace("Collected %s class-path entries from java.class.path system property", paths.size());
-                }
-            } else {
-                trace("Could not resolve class-path entries from environment. The class-path isolation only supports URLClassLoader and the java.class.path system property. " +
-                                "If you are using a custom class loader use a URLClassLoader base class or set the java.class.path system property to allow scanning of class-path entries.");
-            }
-            return paths;
-        }
-
     }
 
     /*

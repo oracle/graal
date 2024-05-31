@@ -98,7 +98,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -141,12 +140,6 @@ import com.oracle.truffle.tck.tests.ValueAssert;
 public class LanguageSPITest {
 
     static LanguageContext langContext;
-
-    @BeforeClass
-    public static void beforeClass() {
-        // shared static state
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
-    }
 
     @After
     public void cleanup() {

@@ -134,7 +134,6 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testExceptionWrapping() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         try (Context context1 = Context.create();
                         Context context2 = Context.create()) {
 
@@ -202,8 +201,6 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testLanguageExceptionUnwrapping() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation(); // TruffleObject used
-
         try (Context c = Context.create()) {
 
             Value throwError = c.asValue(new ProxyExecutable() {
@@ -679,8 +676,6 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testCancelDoesNotMaskInternalError() throws InterruptedException, ExecutionException {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
-
         DetectWaitingStartedExecutable detectWaitingStartedExecutable = new DetectWaitingStartedExecutable();
         try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
             ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -726,8 +721,6 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testExceptionMessage() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation(); // uses TruffleObject
-
         try (Context ctx = Context.create()) {
             TestGuestError guestError = new TestGuestError();
             guestError.exceptionMessage = "interop exception message";

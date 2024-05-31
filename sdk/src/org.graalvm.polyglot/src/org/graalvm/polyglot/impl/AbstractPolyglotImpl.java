@@ -48,7 +48,6 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
@@ -94,14 +93,6 @@ import org.graalvm.polyglot.io.ProcessHandler;
 public abstract class AbstractPolyglotImpl {
 
     protected AbstractPolyglotImpl() {
-    }
-
-    Lookup getLookup() {
-        try {
-            return MethodHandles.privateLookupIn(AbstractPolyglotImpl.class, MethodHandles.lookup());
-        } catch (IllegalAccessException e) {
-            throw new AssertionError(e);
-        }
     }
 
     public abstract static class ManagementAccess {
@@ -151,7 +142,7 @@ public abstract class AbstractPolyglotImpl {
 
         protected APIAccess() {
             String name = getClass().getCanonicalName();
-            if (!name.equals("org.graalvm.polyglot.Engine.APIAccessImpl") && getClass() != ModuleToUnnamedAPIAccessGen.class) {
+            if (!name.equals("org.graalvm.polyglot.Engine.APIAccessImpl")) {
                 throw new AssertionError("Only one implementation of APIAccess allowed. " + getClass().getCanonicalName());
             }
         }
@@ -521,10 +512,6 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public void initialize() {
-    }
-
-    public Object initializeModuleToUnnamedAccess(Lookup unnamedLookup, Object unnamedAccess, Object unnamedAPIAccess, Object unnamedIOAccess, Object unnamedManagementAccess) {
-        return getNext().initializeModuleToUnnamedAccess(unnamedLookup, unnamedAccess, unnamedAPIAccess, unnamedIOAccess, unnamedManagementAccess);
     }
 
     public Object buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
