@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -421,10 +421,11 @@ public interface JDWPContext {
     /**
      * Returns the entry count for the monitor on the current thread.
      *
+     * @param monitorOwnerThread the owner thread of the monitor
      * @param monitor the monitor
      * @return entry count of monitor
      */
-    int getMonitorEntryCount(Object monitor);
+    int getMonitorEntryCount(Object monitorOwnerThread, Object monitor);
 
     /**
      * Returns all owned guest-language monitor object of the input call frames.

@@ -79,10 +79,7 @@ import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.calc.NarrowNode;
-import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -96,8 +93,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
-import jdk.graal.compiler.truffle.nodes.AnyNarrowNode;
 import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
 import jdk.graal.compiler.truffle.phases.InstrumentPhase;
 import jdk.graal.compiler.truffle.phases.InstrumentationSuite;
@@ -559,6 +554,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             } catch (Throwable e) {
                 throw context.debug.handle(e);
             }
+
         }
         if (wrapper.statistics != null) {
             wrapper.statistics.afterTruffleTier(wrapper.compilable, graph);
@@ -567,17 +563,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             wrapper.listener.onTruffleTierFinished(wrapper.compilable, wrapper.task, new GraphInfoImpl(graph));
         }
         return graph;
-    }
-
-    private static void replaceAnyExtendNodes(StructuredGraph graph) {
-        // replace all AnyExtendNodes with ZeroExtendNodes
-        for (AnyExtendNode node : graph.getNodes(AnyExtendNode.TYPE)) {
-            node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
-        }
-        // replace all AnyNarrowNodes with NarrowNodes
-        for (AnyNarrowNode node : graph.getNodes(AnyNarrowNode.TYPE)) {
-            node.replaceAndDelete(graph.addOrUnique(NarrowNode.create(node.getValue(), 32, NodeView.DEFAULT)));
-        }
     }
 
     /**
@@ -601,7 +586,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                     InstalledCode[] outInstalledCode,
                     TruffleInliningScope inlining) {
 
-        replaceAnyExtendNodes(graph);
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope("TruffleFinal")) {
             debug.dump(DebugContext.BASIC_LEVEL, graph, "After TruffleTier");

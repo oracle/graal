@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
@@ -36,7 +37,6 @@ import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
@@ -65,7 +65,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, method, providers, providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(),
-                        SubstrateCompilationDirectives.isRuntimeCompiledMethod(method));
+                        ((AnalysisMetaAccess) providers.getMetaAccess()).getUniverse().hostVM().recordInlinedMethods((AnalysisMethod) method));
     }
 
     @Override

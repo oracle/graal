@@ -225,10 +225,14 @@ public final class ProfileReplaySupport {
             String codeSignature = null;
             String graphSignature = null;
             if (result != null) {
-                codeSignature = result.getCodeSignature();
-                assert graph != null;
-                String s = getCanonicalGraphString(graph);
-                graphSignature = CompilationResult.getSignature(s.getBytes(StandardCharsets.UTF_8));
+                try {
+                    codeSignature = result.getCodeSignature();
+                    assert graph != null;
+                    String s = getCanonicalGraphString(graph);
+                    graphSignature = CompilationResult.getSignature(s.getBytes(StandardCharsets.UTF_8));
+                } catch (Throwable t) {
+                    throw debug.handle(t);
+                }
             }
             if (Options.WarnAboutCodeSignatureMismatch.getValue(debug.getOptions())) {
                 if (expectedCodeSignature != null && !Objects.equals(codeSignature, expectedCodeSignature)) {

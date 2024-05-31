@@ -953,23 +953,25 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return null;
         }
 
-        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition(), GraphDecoder::new);
+        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition(), analyzedGraph.isRecordingInlinedMethods(), GraphDecoder::new);
     }
 
     /**
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
      */
-    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition,
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition, boolean recordInlinedMethods,
                     BiFunction<Architecture, StructuredGraph, GraphDecoder> decoderProvider) {
         if (analyzedGraph == null) {
             return null;
         }
 
         var allowAssumptions = getUniverse().hostVM().allowAssumptions(this);
-        // Note we never record inlined methods. This is correct even for runtime compiled methods
-        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
-                        trackNodeSourcePosition).build();
+        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions)
+                        .method(this)
+                        .trackNodeSourcePosition(trackNodeSourcePosition)
+                        .recordInlinedMethods(recordInlinedMethods)
+                        .build();
         GraphDecoder decoder = decoderProvider.apply(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
         /*

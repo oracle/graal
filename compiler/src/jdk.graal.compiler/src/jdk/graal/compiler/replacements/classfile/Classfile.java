@@ -49,8 +49,12 @@ public class Classfile {
     private final List<ClassfileBytecode> codeAttributes;
 
     private static final int MAJOR_VERSION_JAVA_MIN = 51; // JDK7
-    private static final int MAJOR_VERSION_JAVA_MAX = 67; // JDK23
     private static final int MAGIC = 0xCAFEBABE;
+
+    // An upper limit on the major class version is not set as it doesn't
+    // make much of a difference whether a ClassFormatError or the more specific
+    // a UnsupportedClassVersionError is thrown and it avoids the need for an
+    // Graal change when updating to a newer JDK.
 
     /**
      * Creates a {@link Classfile} by parsing the class file bytes for {@code type} loadable from
@@ -67,26 +71,30 @@ public class Classfile {
 
         int minor = stream.readUnsignedShort();
         int major = stream.readUnsignedShort();
-        if (major < MAJOR_VERSION_JAVA_MIN || major > MAJOR_VERSION_JAVA_MAX) {
+        if (major < MAJOR_VERSION_JAVA_MIN) {
             throw new UnsupportedClassVersionError("Unsupported class file version: " + major + "." + minor);
         }
 
-        ClassfileConstantPool cp = new ClassfileConstantPool(stream, context);
+        try {
+            ClassfileConstantPool cp = new ClassfileConstantPool(stream, context);
 
-        // access_flags, this_class, super_class
-        skipFully(stream, 6);
+            // access_flags, this_class, super_class
+            skipFully(stream, 6);
 
-        // interfaces
-        skipFully(stream, stream.readUnsignedShort() * 2);
+            // interfaces
+            skipFully(stream, stream.readUnsignedShort() * 2);
 
-        // fields
-        skipFields(stream);
+            // fields
+            skipFields(stream);
 
-        // methods
-        codeAttributes = readMethods(stream, cp);
+            // methods
+            codeAttributes = readMethods(stream, cp);
 
-        // attributes
-        skipAttributes(stream);
+            // attributes
+            skipAttributes(stream);
+        } catch (ClassFormatError cfe) {
+            throw (ClassFormatError) new ClassFormatError("Error reading class file with version " + major + "." + minor).initCause(cfe);
+        }
     }
 
     public ClassfileBytecode getCode(String name, String descriptor) {

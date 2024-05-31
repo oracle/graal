@@ -30,7 +30,9 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.util.VMError;
@@ -368,4 +370,21 @@ final class Target_java_lang_invoke_DirectMethodHandle_StaticAccessor {
     Object staticBase;
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long staticOffset;
+}
+
+@TargetClass(className = "java.lang.invoke.LazyInitializingVarHandle", onlyWith = JDK23OrLater.class)
+final class Target_java_lang_invoke_LazyInitializingVarHandle {
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    Class<?> refc;
+
+    @Substitute
+    void ensureInitialized() {
+        /*
+         * Without JIT compilation, there is no point in speculating on a @Stable initialized flag.
+         * By emitting a EnsureClassInitializedNode, a VarHandle access to a static field is
+         * optimized like a direct access of a static field, e.g., the class initialization check is
+         * removed when the class initializer can be simulated.
+         */
+        EnsureClassInitializedNode.ensureClassInitialized(refc);
+    }
 }
