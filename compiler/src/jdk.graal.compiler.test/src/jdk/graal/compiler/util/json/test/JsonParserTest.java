@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.util.test;
+package jdk.graal.compiler.util.json.test;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -32,11 +32,11 @@ import org.graalvm.collections.EconomicMap;
 import org.junit.Assert;
 import org.junit.Test;
 
-import jdk.graal.compiler.util.json.JSONFormatter;
-import jdk.graal.compiler.util.json.JSONParser;
-import jdk.graal.compiler.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JsonFormatter;
+import jdk.graal.compiler.util.json.JsonParser;
+import jdk.graal.compiler.util.json.JsonParserException;
 
-public class JSONParserTest {
+public class JsonParserTest {
 
     private static final String simpleJSON = "{\"outer\": {\n" +
                     "    \"value\": \"test\",\n" +
@@ -52,18 +52,18 @@ public class JSONParserTest {
 
     @Test
     public void testSimpleJSONString() throws IOException {
-        JSONParser parser = new JSONParser(simpleJSON);
+        JsonParser parser = new JsonParser(simpleJSON);
         testSimpleIntl(parser);
     }
 
     @Test
     public void testSimpleJSONReader() throws IOException {
-        JSONParser parser = new JSONParser(new StringReader(simpleJSON));
+        JsonParser parser = new JsonParser(new StringReader(simpleJSON));
         testSimpleIntl(parser);
     }
 
     @SuppressWarnings("unchecked")
-    private static void testSimpleIntl(JSONParser parser) throws IOException {
+    private static void testSimpleIntl(JsonParser parser) throws IOException {
         Object result = parser.parse();
 
         Assert.assertTrue(result != null);
@@ -89,7 +89,7 @@ public class JSONParserTest {
 
     @Test
     public void testErrors() throws IOException {
-        JSONParser parser = new JSONParser(new StringReader(simpleJSON));
+        JsonParser parser = new JsonParser(new StringReader(simpleJSON));
         testSimpleIntl(parser);
 
         testErrorIntl("{ \"a\": \"\\uABCX\" }", "Invalid hex digit");
@@ -132,17 +132,17 @@ public class JSONParserTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testFormatterTrivial() throws IOException {
-        String json = "{\"a\": [\"\\u0019\", true, 42.5], \"b\": null}";
-        JSONParser parser = new JSONParser(json);
-        String result = JSONFormatter.formatJSON((EconomicMap<String, Object>) parser.parse());
+        String json = "{\"a\":[\"\\u0019\",true,42.5],\"b\":null}";
+        JsonParser parser = new JsonParser(json);
+        String result = JsonFormatter.formatJson((EconomicMap<String, Object>) parser.parse());
         Assert.assertEquals(json, result);
     }
 
     @Test
     @SuppressWarnings("unchecked")
     public void testFormatterSimpleJSON() throws IOException {
-        JSONParser parser = new JSONParser(simpleJSON);
-        String result = JSONFormatter.formatJSON((EconomicMap<String, Object>) parser.parse(), true);
+        JsonParser parser = new JsonParser(simpleJSON);
+        String result = JsonFormatter.formatJsonPretty((EconomicMap<String, Object>) parser.parse());
 
         // don't fully check the content, but have some dummy tests
         Assert.assertTrue(result.contains("9007199254740991"));
@@ -157,7 +157,7 @@ public class JSONParserTest {
     @Test
     public void parseAllowedKeysSimple() throws IOException {
         String source = " { \"foo\": 1, \"notFoo\": 2, \"bar\": 3 } ";
-        JSONParser parser = new JSONParser(source);
+        JsonParser parser = new JsonParser(source);
         EconomicMap<String, Object> map = parser.parseAllowedKeys(List.of("foo", "bar", "baz"));
         Assert.assertEquals(2, map.size());
         Assert.assertEquals(1, map.get("foo"));
@@ -167,7 +167,7 @@ public class JSONParserTest {
     @Test
     public void parseAllowedKeysEarlyExit() throws IOException {
         String source = "{\"foo\": 1, invalid syntax ";
-        JSONParser parser = new JSONParser(source);
+        JsonParser parser = new JsonParser(source);
         EconomicMap<String, Object> map = parser.parseAllowedKeys(List.of("foo"));
         Assert.assertEquals(1, map.size());
         Assert.assertEquals(1, map.get("foo"));
@@ -175,26 +175,26 @@ public class JSONParserTest {
 
     @Test
     public void parseAllowedKeysEmpty() throws IOException {
-        Assert.assertTrue(new JSONParser("invalid syntax").parseAllowedKeys(List.of()).isEmpty());
+        Assert.assertTrue(new JsonParser("invalid syntax").parseAllowedKeys(List.of()).isEmpty());
     }
 
     @Test
     public void parseAllowedKeysErrors() throws IOException {
         for (String source : List.of("", "[]", "{,}", "{\"a\": 1,}", "{\"a\": 1 \"")) {
             try {
-                new JSONParser(source).parseAllowedKeys(List.of("foo"));
+                new JsonParser(source).parseAllowedKeys(List.of("foo"));
                 Assert.fail("Should have failed to parse: " + source);
-            } catch (JSONParserException ignored) {
+            } catch (JsonParserException ignored) {
             }
         }
     }
 
     private static void testErrorIntl(String json, String expectedMessage) throws IOException {
-        JSONParser parser = new JSONParser(json);
+        JsonParser parser = new JsonParser(json);
         try {
             parser.parse();
             Assert.fail("passed when a failure was expected. Expected error: " + expectedMessage);
-        } catch (JSONParserException ex) {
+        } catch (JsonParserException ex) {
             Assert.assertTrue(ex.getMessage().contains(expectedMessage));
         }
     }

@@ -29,7 +29,8 @@ import java.util.function.Consumer;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JsonPrintable;
+
+import jdk.graal.compiler.util.json.JsonPrintable;
 
 public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> implements JsonPrintable {
 

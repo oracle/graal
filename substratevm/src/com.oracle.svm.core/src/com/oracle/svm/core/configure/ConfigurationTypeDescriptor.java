@@ -26,8 +26,7 @@ package com.oracle.svm.core.configure;
 
 import java.util.Collection;
 
-import com.oracle.svm.core.util.json.JsonPrintable;
-
+import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.vm.ci.meta.MetaUtil;
 
 /**

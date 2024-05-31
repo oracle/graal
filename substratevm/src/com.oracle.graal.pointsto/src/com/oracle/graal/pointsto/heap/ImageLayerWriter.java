@@ -65,6 +65,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.VALUE_TAG;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,7 +88,7 @@ import com.oracle.svm.util.FileDumpingUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.util.json.JSONFormatter;
+import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -146,7 +147,13 @@ public class ImageLayerWriter {
     }
 
     public void dumpFile() {
-        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> JSONFormatter.printJSON(jsonMap, writer));
+        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> {
+            try (JsonWriter jw = new JsonWriter(writer)) {
+                jw.print(jsonMap);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public void persistImageHeapSize(long imageHeapSize) {

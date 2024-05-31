@@ -38,7 +38,7 @@ import org.graalvm.collections.MapCursor;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
-import jdk.graal.compiler.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JsonParserException;
 
 public class ResourceConfigurationParser<C> extends ConfigurationParser {
     private final ResourcesRegistry<C> registry;
@@ -138,7 +138,7 @@ public class ResourceConfigurationParser<C> extends ConfigurationParser {
         String localeTag = asString(input);
         Locale locale = LocalizationSupport.parseLocaleFromTag(localeTag);
         if (locale == null) {
-            throw new JSONParserException(localeTag + " is not a valid locale tag");
+            throw new JsonParserException(localeTag + " is not a valid locale tag");
         }
         return locale;
     }

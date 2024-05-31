@@ -42,7 +42,8 @@ import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.Predicate> {
 

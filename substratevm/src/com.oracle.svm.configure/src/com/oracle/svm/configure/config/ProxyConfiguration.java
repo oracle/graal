@@ -38,7 +38,8 @@ import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ProxyConfigurationParser;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class ProxyConfiguration extends ConfigurationBase<ProxyConfiguration, ProxyConfiguration.Predicate> {
     private final Set<ConditionalElement<List<String>>> interfaceLists = ConcurrentHashMap.newKeySet();

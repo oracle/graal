@@ -24,9 +24,12 @@
  */
 package jdk.graal.compiler.util.json;
 
+/**
+ * Thrown by {@link JsonParser} if an error is encountered during parsing.
+ */
 @SuppressWarnings("serial")
-public final class JSONParserException extends RuntimeException {
-    public JSONParserException(final String msg) {
+public final class JsonParserException extends RuntimeException {
+    public JsonParserException(final String msg) {
         super(msg);
     }
 }

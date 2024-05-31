@@ -47,8 +47,9 @@ import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class ConfigurationGenerateCommand extends ConfigurationCommand {
     @Override

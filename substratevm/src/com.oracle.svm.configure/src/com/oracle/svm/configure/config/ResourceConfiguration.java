@@ -43,8 +43,9 @@ import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonPrinter;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonPrinter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class ResourceConfiguration extends ConfigurationBase<ResourceConfiguration, ResourceConfiguration.Predicate> {
 

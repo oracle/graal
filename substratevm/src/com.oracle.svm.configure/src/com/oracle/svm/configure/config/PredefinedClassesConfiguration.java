@@ -40,9 +40,9 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
-import com.oracle.svm.core.util.json.JsonWriter;
 
 import jdk.graal.compiler.util.Digest;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class PredefinedClassesConfiguration extends ConfigurationBase<PredefinedClassesConfiguration, PredefinedClassesConfiguration.Predicate> {
     private final Path[] classDestinationDirs;

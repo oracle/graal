@@ -85,7 +85,6 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
@@ -104,6 +103,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**

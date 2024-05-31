@@ -39,10 +39,12 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
+
 import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonPrinter;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonPrinter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 /**
  * Type usage information, part of a {@link TypeConfiguration}. Unlike other configuration classes
