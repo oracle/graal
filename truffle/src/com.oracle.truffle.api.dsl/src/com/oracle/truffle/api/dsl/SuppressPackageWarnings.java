@@ -53,7 +53,7 @@ import java.lang.annotation.Target;
  *
  * @since 23.0
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PACKAGE})
 public @interface SuppressPackageWarnings {
 

@@ -59,13 +59,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.library.LibraryExport.DelegateExport;
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
+import com.oracle.truffle.api.library.provider.EagerExportProvider;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.library.provider.DefaultExportProvider;
-import com.oracle.truffle.api.library.provider.EagerExportProvider;
 import com.oracle.truffle.api.utilities.FinalBitSet;
 
 /**
@@ -189,8 +188,6 @@ public abstract class LibraryFactory<T extends Library> {
     @SuppressWarnings("unchecked")
     protected LibraryFactory(Class<T> libraryClass, List<Message> messages) {
         assert this.getClass().getName().endsWith(LibraryExport.GENERATED_CLASS_SUFFIX);
-        assert this.getClass().getAnnotation(GeneratedBy.class) != null;
-        assert this.getClass().getAnnotation(GeneratedBy.class).value() == libraryClass;
         this.libraryClass = libraryClass;
         this.messages = Collections.unmodifiableList(messages);
         Map<String, Message> messagesMap = new LinkedHashMap<>();
