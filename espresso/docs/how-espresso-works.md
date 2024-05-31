@@ -258,6 +258,6 @@ code that needs to generically monitor or control a program can be cleanly facto
 language implementation.
 
 The core of the Espresso-specific code is in `DebuggerController`. High level debugging commands
-like "install breakpoint", "step over" etc are converted into Truffle debug API calls. Truffle
+like "install breakpoint", "step over" etc. are converted into Truffle debug API calls. Truffle
 in turn calls back into Espresso via the `SuspendedCallbackImpl` to inform it when a thread has
-stopped for some reason, which 
+been suspended by the debugger, which allows Espresso to handle the event.
