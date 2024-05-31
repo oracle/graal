@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.nodes;
 
-package org.graalvm.wasm.parser.ir;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
-/**
- * Represents information about a wasm call instruction.
- */
-public class CallNode {
+public final class WasmDirectCallNode extends WasmCallNode {
+
     private final int bytecodeOffset;
-    private final int functionIndex;
-    private final boolean isIndirectCall;
+    private final CallTarget target;
 
-    public CallNode(int bytecodeOffset, int functionIndex) {
+    WasmDirectCallNode(CallTarget target, int bytecodeOffset) {
+        this.target = target;
         this.bytecodeOffset = bytecodeOffset;
-        this.functionIndex = functionIndex;
-        this.isIndirectCall = false;
     }
 
-    public CallNode(int bytecodeOffset) {
-        this.bytecodeOffset = bytecodeOffset;
-        this.functionIndex = -1;
-        this.isIndirectCall = true;
+    public CallTarget getTarget() {
+        return target;
     }
 
+    public Object execute(Object[] args) {
+        return target.call(this, args);
+    }
+
+    @Override
     public int getBytecodeOffset() {
         return bytecodeOffset;
     }
 
-    public int getFunctionIndex() {
-        return functionIndex;
+    @NeverDefault
+    public static WasmDirectCallNode create(CallTarget target, int bytecodeOffset) {
+        return new WasmDirectCallNode(target, bytecodeOffset);
     }
 
-    public boolean isIndirectCall() {
-        return isIndirectCall;
-    }
 }

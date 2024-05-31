@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.nodes;
 
-package org.graalvm.wasm.parser.ir;
+import com.oracle.truffle.api.nodes.Node;
 
-/**
- * Represents information about a wasm call instruction.
- */
-public class CallNode {
-    private final int bytecodeOffset;
-    private final int functionIndex;
-    private final boolean isIndirectCall;
+public abstract class WasmCallNode extends Node {
 
-    public CallNode(int bytecodeOffset, int functionIndex) {
-        this.bytecodeOffset = bytecodeOffset;
-        this.functionIndex = functionIndex;
-        this.isIndirectCall = false;
-    }
+    public abstract int getBytecodeOffset();
 
-    public CallNode(int bytecodeOffset) {
-        this.bytecodeOffset = bytecodeOffset;
-        this.functionIndex = -1;
-        this.isIndirectCall = true;
-    }
-
-    public int getBytecodeOffset() {
-        return bytecodeOffset;
-    }
-
-    public int getFunctionIndex() {
-        return functionIndex;
-    }
-
-    public boolean isIndirectCall() {
-        return isIndirectCall;
-    }
 }
