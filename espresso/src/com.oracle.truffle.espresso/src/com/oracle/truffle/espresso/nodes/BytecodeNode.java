@@ -409,9 +409,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     // Nodes for bytecodes that were replaced with QUICK, indexed by the constant pool index
     // referenced by the bytecode.
-    @Children private BaseQuickNode[] nodes = QuickNode.EMPTY_ARRAY;  // must not be of type
-                                                                      // QuickNode as it might be
-                                                                      // wrapped by instrumentation
+    // Must not be of type QuickNode as it might be wrapped by instrumentation
+    @Children private BaseQuickNode[] nodes = QuickNode.EMPTY_ARRAY;
     @Children private BaseQuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
 
     /**
@@ -579,12 +578,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     /**
      * Entry point for rewinding continuations.
      * <p>
-     * To prevent continuations from interfering with regular execution, the rewinding does not
-     * happen in the main bytecode loop, it is instead unrolled, then execution resumes normally if
-     * the next frame successfully completes, or throws a caught exception.
-     * <p>
-     * One advantage of this way: should a continuation suspend happen before execution of the next
-     * frame completes, we can re-use the same frame records.
+     * The first executed {@code bci} goes to a special {@link InvokeContinuableNode}, which handles
+     * frame restoration and re-winding of further frames. Further executions of this node delegates
+     * to a regular invoke node.
      */
     public Object resumeContinuation(VirtualFrame frame, int bci, int top) {
         CompilerAsserts.partialEvaluationConstant(bci);
@@ -1623,9 +1619,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
     }
 
-    private void copyFrameToUnwindRequest(VirtualFrame materializedFrame, UnwindContinuationException unwindContinuationExceptionRequest, int bci, int top) {
+    private void copyFrameToUnwindRequest(VirtualFrame frame, UnwindContinuationException unwindContinuationExceptionRequest, int bci, int top) {
         // Extend the linked list of frame records as we unwind.
-        unwindContinuationExceptionRequest.head = HostFrameRecord.recordFrame(materializedFrame, getMethodVersion(), bci, top, unwindContinuationExceptionRequest.head);
+        unwindContinuationExceptionRequest.head = HostFrameRecord.recordFrame(frame, getMethodVersion(), bci, top, unwindContinuationExceptionRequest.head);
     }
 
     @Override

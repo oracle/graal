@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -249,7 +249,11 @@ public final class Continuation implements Externalizable {
      * Returns true if this VM supports the continuations feature, false otherwise.
      */
     public static boolean isSupported() {
-        return isSupported0();
+        try {
+            return isSupported0();
+        } catch (UnsatisfiedLinkError e) {
+            return false;
+        }
     }
 
     /**
@@ -393,8 +397,6 @@ public final class Continuation implements Externalizable {
      * @hidden
      */
     public Continuation() {
-        // Note: can't mark this as @hidden in javadoc because the doclet fork used by GraalVM
-        // is too old to understand it.
         this.state = State.INCOMPLETE;
     }
 

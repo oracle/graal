@@ -51,6 +51,8 @@ public final class Target_org_graalvm_continuations_Continuation {
 
         // We don't want to let the user see our upcalls during the unwind process e.g. to do
         // reflection or create the FrameRecords in the guest.
+        // Re-enabled in the catch clause of Continuation.resume0().
+        // TODO(GR-54326): Let Truffle Instrumentation know.
         tls.disableSingleStepping();
 
         // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records
@@ -86,6 +88,10 @@ public final class Target_org_graalvm_continuations_Continuation {
             // blocklisted by SVM.
             EspressoThreadLocalState.ContinuationScope scope = tls.continuationScope();
             try {
+                // Disable stepping until we have fully re-winded.
+                // Re-enabled in ResumeNextContinuationNode.dolast()
+                // TODO(GR-54326): Let Truffle Instrumentation know.
+                tls.disableSingleStepping();
                 rewind.execute(stack);
             } catch (UnwindContinuationException unwind) {
                 assert unwind.getContinuation() == self;
@@ -100,8 +106,7 @@ public final class Target_org_graalvm_continuations_Continuation {
         }
 
         private static HostFrameRecord getHFR(StaticObject self, Meta meta) {
-            HostFrameRecord stack = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
-            return stack;
+            return (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
         }
     }
 

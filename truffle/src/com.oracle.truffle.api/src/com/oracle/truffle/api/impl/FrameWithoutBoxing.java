@@ -290,7 +290,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private Object[] getIndexedLocals() {
-        return unsafeCast(this.indexedLocals, Object[].class, true, true, true);
+        return unsafeCast(indexedLocals, Object[].class, true, true, true);
     }
 
     private long[] getIndexedPrimitiveLocals() {
@@ -298,7 +298,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private byte[] getIndexedTags() {
-        return unsafeCast(this.indexedTags, byte[].class, true, true, true);
+        return unsafeCast(indexedTags, byte[].class, true, true, true);
     }
 
     @Override

@@ -77,7 +77,7 @@ public class InvokeContinuableNode extends InvokeQuickNode {
             return pushResult(frame, resumeNext.execute(next));
         } catch (UnwindContinuationException unwind) {
             // Small optimization: we can re-use the previously computed frame.
-            // TODO: maybe re-import frame, if something modified its contents
+            // TODO(GR-54336): maybe re-import frame, if something modified its contents
             hfr.next = unwind.head;
             unwind.head = hfr;
             // Hijack the early return mechanism of OSR to prevent processing of this unwind in the

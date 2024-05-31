@@ -88,6 +88,8 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
         Object doLast(HostFrameRecord records) {
             assert records == null;
             assert ((EspressoRootNode) getRootNode()).getMethod() == getMeta().continuum.org_graalvm_continuations_Continuation_suspend;
+            // Was disabled in the call to Continuation.resume0().
+            getLanguage().getThreadLocalState().enableSingleStepping();
             return StaticObject.NULL;
         }
 

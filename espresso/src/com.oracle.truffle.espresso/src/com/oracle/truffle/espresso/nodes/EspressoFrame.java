@@ -309,11 +309,11 @@ public final class EspressoFrame {
 
     // endregion Local accessors
 
-    public static void setBCI(Frame frame, int bci) {
+    static void setBCI(Frame frame, int bci) {
         frame.setIntStatic(BCI_SLOT, bci + 1);
     }
 
-    public static int getBCI(Frame frame) {
+    static int getBCI(Frame frame) {
         return frame.getIntStatic(BCI_SLOT) - 1;
     }
 
