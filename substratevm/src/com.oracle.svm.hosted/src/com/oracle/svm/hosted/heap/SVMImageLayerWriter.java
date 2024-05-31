@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HUB_IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LOCATION_TAG;
@@ -43,6 +44,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -52,10 +54,12 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
@@ -94,6 +98,16 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         jsonMap.put(STATIC_PRIMITIVE_FIELDS_TAG, getConstantId(staticPrimitiveFields));
         jsonMap.put(STATIC_OBJECT_FIELDS_TAG, getConstantId(staticObjectFields));
+    }
+
+    @Override
+    protected void persistType(AnalysisType type, AnalysisUniverse analysisUniverse, EconomicMap<String, Object> typeMap) {
+        HostVM hostVM = analysisUniverse.hostVM();
+        SVMHost svmHost = (SVMHost) hostVM;
+        DynamicHub hub = svmHost.dynamicHub(type);
+        typeMap.put(HUB_IDENTITY_HASH_CODE_TAG, System.identityHashCode(hub));
+
+        super.persistType(type, analysisUniverse, typeMap);
     }
 
     @Override
@@ -139,13 +153,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    protected void persistFieldHook(EconomicMap<String, Object> fieldMap, AnalysisField field, Universe universe) {
+    protected void persistField(AnalysisField field, Universe universe, EconomicMap<String, Object> fieldMap) {
         HostedUniverse hostedUniverse = (HostedUniverse) universe;
         HostedField hostedField = hostedUniverse.lookup(field);
         int location = hostedField.getLocation();
         if (hostedField.isStatic() && location > 0) {
             fieldMap.put(LOCATION_TAG, location);
         }
+        super.persistField(field, universe, fieldMap);
     }
 
     @Override

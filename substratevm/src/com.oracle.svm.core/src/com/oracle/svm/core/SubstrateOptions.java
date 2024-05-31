@@ -1193,6 +1193,9 @@ public class SubstrateOptions {
     @Option(help = "Throws an exception on potential type conflict during heap persisting if enabled", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> AbortOnNameConflict = new HostedOptionKey<>(false);
 
+    @Option(help = "Enables logging of failed hash code injection", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> LoggingHashCodeInjection = new HostedOptionKey<>(false);
+
     @Option(help = "Names of layer snapshots produced by PersistImageLayer", type = OptionType.Debug) //
     @BundleMember(role = BundleMember.Role.Input)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build()) {

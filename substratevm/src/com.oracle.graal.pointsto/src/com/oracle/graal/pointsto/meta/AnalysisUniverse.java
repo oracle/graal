@@ -310,7 +310,11 @@ public class AnalysisUniverse implements Universe {
              * ensures that typesById doesn't contain any null values. This could happen since the
              * AnalysisType constructor increments the nextTypeId counter.
              */
-            hostVM.registerType(newValue);
+            if (hostVM.useBaseLayer() && imageLayerLoader.hasDynamicHubIdentityHashCode(newValue.getId())) {
+                hostVM.registerType(newValue, imageLayerLoader.getDynamicHubIdentityHashCode(newValue.getId()));
+            } else {
+                hostVM.registerType(newValue);
+            }
 
             /* Register the type as assignable with all its super types before it is published. */
             if (bb != null) {

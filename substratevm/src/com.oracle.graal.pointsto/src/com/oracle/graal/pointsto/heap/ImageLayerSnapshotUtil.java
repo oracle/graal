@@ -61,6 +61,7 @@ public class ImageLayerSnapshotUtil {
     public static final String CONSTANTS_TO_RELINK_TAG = "constants to relink";
     public static final String TID_TAG = "tid";
     public static final String IDENTITY_HASH_CODE_TAG = "identityHashCode";
+    public static final String HUB_IDENTITY_HASH_CODE_TAG = "hub identityHashCode";
     public static final String ID_TAG = "id";
     public static final String CONSTANT_TYPE_TAG = "constant type";
     public static final String DATA_TAG = "data";

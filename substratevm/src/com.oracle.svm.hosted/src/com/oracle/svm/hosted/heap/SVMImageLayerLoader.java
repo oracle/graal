@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -51,6 +50,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
@@ -59,6 +59,8 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -75,12 +77,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected void prepareConstantRelinking(EconomicMap<String, Object> constantData, int id) {
+    protected void prepareConstantRelinking(EconomicMap<String, Object> constantData, int identityHashCode, int id) {
         Integer tid = get(constantData, CLASS_ID_TAG);
         if (tid != null) {
             typeToConstant.put(tid, id);
         } else {
-            super.prepareConstantRelinking(constantData, id);
+            super.prepareConstantRelinking(constantData, identityHashCode, id);
         }
     }
 
@@ -141,12 +143,25 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
+    protected void injectIdentityHashCode(Object object, Integer identityHashCode) {
+        if (object == null || identityHashCode == null) {
+            return;
+        }
+        boolean result = IdentityHashCodeUtil.injectIdentityHashCode(object, identityHashCode);
+        if (!result) {
+            if (SubstrateOptions.LoggingHashCodeInjection.getValue()) {
+                LogUtils.warning("Object of type %s already had an hash code: %s", object.getClass(), object);
+            }
+        }
+    }
+
+    @Override
     public void ensureHubInitialized(ImageHeapConstant constant) {
         JavaConstant javaConstant = constant.getHostedObject();
         if (constant.getType().getJavaClass().equals(Class.class)) {
             DynamicHub hub = universe.getHostedValuesProvider().asObject(DynamicHub.class, javaConstant);
             AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(hub);
-            ensureHubInitialized(type, () -> hub);
+            ensureHubInitialized(type);
             /*
              * If the persisted constant contains a non-null arrayHub, the corresponding DynamicHub
              * must be created and the initializeMetaDataTask needs to be executed to ensure the
@@ -154,20 +169,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
              */
             if (((ImageHeapInstance) constant).getFieldValue(metaAccess.lookupJavaField(dynamicHubArrayHubField)) != JavaConstant.NULL_POINTER && hub.getArrayHub() == null) {
                 AnalysisType arrayClass = type.getArrayClass();
-                ensureHubInitialized(arrayClass, hub::getArrayHub);
+                ensureHubInitialized(arrayClass);
             }
         }
     }
 
-    private void ensureHubInitialized(AnalysisType type, Supplier<DynamicHub> hubSupplier) {
+    private static void ensureHubInitialized(AnalysisType type) {
         type.registerAsReachable(PERSISTED);
         type.getInitializeMetaDataTask().ensureDone();
-        DynamicHub hub = hubSupplier.get();
-        /*
-         * Now that the hub is initialized, the constant needs to be rescanned because it was
-         * skipped in the DynamicHubInitializer.
-         */
-        rescanHub(type, hub);
     }
 
     @Override

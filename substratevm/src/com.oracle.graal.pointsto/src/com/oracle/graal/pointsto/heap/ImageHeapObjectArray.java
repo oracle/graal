@@ -59,8 +59,8 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
 
         final int length;
 
-        private ObjectArrayData(AnalysisType type, JavaConstant hostedObject, Object[] arrayElementValues, int length) {
-            super(type, hostedObject);
+        private ObjectArrayData(AnalysisType type, JavaConstant hostedObject, Object[] arrayElementValues, int length, int identityHashCode) {
+            super(type, hostedObject, identityHashCode);
             this.arrayElementValues = arrayElementValues;
             this.length = length;
             assert type.isArray() && !type.getComponentType().isPrimitive() : type;
@@ -68,11 +68,15 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
     }
 
     ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, int length) {
-        super(new ObjectArrayData(type, hostedObject, null, length), false);
+        this(type, hostedObject, length, -1);
+    }
+
+    ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, int length, int identityHashCode) {
+        super(new ObjectArrayData(type, hostedObject, null, length, identityHashCode), false);
     }
 
     ImageHeapObjectArray(AnalysisType type, int length) {
-        super(new ObjectArrayData(type, null, new Object[length], length), false);
+        super(new ObjectArrayData(type, null, new Object[length], length, -1), false);
     }
 
     private ImageHeapObjectArray(ConstantData data, boolean compressed) {
@@ -156,6 +160,6 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
         Objects.requireNonNull(arrayElements, "Cannot clone an array before the element values are set.");
         Object[] newArrayElementValues = Arrays.copyOf(arrayElements, arrayElements.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
-        return new ImageHeapObjectArray(new ObjectArrayData(constantData.type, null, newArrayElementValues, arrayElements.length), compressed);
+        return new ImageHeapObjectArray(new ObjectArrayData(constantData.type, null, newArrayElementValues, arrayElements.length, -1), compressed);
     }
 }
