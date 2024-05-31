@@ -13,6 +13,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-52644 Deprecated `TruffleLanguage.Registration.needsAllEncodings`, no longer needs to be declared. It is sufficient for a language module to require `org.graalvm.shadowed.jcodings` to enable all string encodings.
 * GR-51172 Add `CompilerDirectives.ensureAllocatedHere` to mark an allocation as non-movable. This allows language developers to mark special allocations as non-optimizable to allow better control for allocations potentially throwing OutOfMemoryErrors.
 * GR-28103 Deprecated `com.oracle.truffle.api.utilities.JSONHelper` as it is untested, and in its current state does not contain any special logic for dumping AST. JSON printing of AST nodes should be delegated to an external library if necessary. This class will be removed in a future version.
+* GR-54085 Added [`MathUtils`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/utilities/MathUtils.html) API providing additional mathematical functions useful for language implementations, namely: `asinh`, `acosh`, and `atanh`.
 
 ## Version 24.0.0
 

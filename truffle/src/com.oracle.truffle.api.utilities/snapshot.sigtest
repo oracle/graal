@@ -71,6 +71,13 @@ meth protected static void appendValue(java.lang.StringBuilder,java.lang.Object)
 meth public final java.lang.String toString()
 supr java.lang.Object
 
+CLSS public final com.oracle.truffle.api.utilities.MathUtils
+meth public static double acosh(double)
+meth public static double asinh(double)
+meth public static double atanh(double)
+supr java.lang.Object
+hfds LN_2,TWO_POW_M28,TWO_POW_P28
+
 CLSS public final !enum com.oracle.truffle.api.utilities.TriState
 fld public final static com.oracle.truffle.api.utilities.TriState FALSE
 fld public final static com.oracle.truffle.api.utilities.TriState TRUE
