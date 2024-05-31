@@ -5,6 +5,7 @@ local devkits = graal_common.devkits;
 local c = import 'common.jsonnet';
 local g = vm.compiler_gate;
 local utils = import '../../../ci/ci_common/common-utils.libsonnet';
+local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
 {
   local underscore(s) = std.strReplace(s, "-", "_"),
@@ -79,7 +80,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gate_jobs = {
     "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
 

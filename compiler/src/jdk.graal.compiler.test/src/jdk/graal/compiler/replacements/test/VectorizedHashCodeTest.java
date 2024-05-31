@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
@@ -40,13 +41,24 @@ import jdk.internal.util.ArraysSupport;
 @AddExports({"java.base/jdk.internal.util"})
 public class VectorizedHashCodeTest extends GraalCompilerTest {
 
+    private static int getField(String name) {
+        try {
+            var arraysSupport = Class.forName("jdk.internal.util.ArraysSupport");
+            Field f = arraysSupport.getDeclaredField(name);
+            f.setAccessible(true);
+            return f.getInt(null);
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
     public void testJDKConstantValue() {
-        Assert.assertEquals(ArraysSupport.T_BOOLEAN, VectorizedHashCodeInvocationPlugin.T_BOOLEAN);
-        Assert.assertEquals(ArraysSupport.T_CHAR, VectorizedHashCodeInvocationPlugin.T_CHAR);
-        Assert.assertEquals(ArraysSupport.T_BYTE, VectorizedHashCodeInvocationPlugin.T_BYTE);
-        Assert.assertEquals(ArraysSupport.T_SHORT, VectorizedHashCodeInvocationPlugin.T_SHORT);
-        Assert.assertEquals(ArraysSupport.T_INT, VectorizedHashCodeInvocationPlugin.T_INT);
+        Assert.assertEquals(getField("T_BOOLEAN"), VectorizedHashCodeInvocationPlugin.T_BOOLEAN);
+        Assert.assertEquals(getField("T_CHAR"), VectorizedHashCodeInvocationPlugin.T_CHAR);
+        Assert.assertEquals(getField("T_BYTE"), VectorizedHashCodeInvocationPlugin.T_BYTE);
+        Assert.assertEquals(getField("T_SHORT"), VectorizedHashCodeInvocationPlugin.T_SHORT);
+        Assert.assertEquals(getField("T_INT"), VectorizedHashCodeInvocationPlugin.T_INT);
     }
 
     // @formatter:off
@@ -89,7 +101,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     public static int hashByteArray(byte[] array, int fromIndex, int length, int initialValue) {
-        return ArraysSupport.vectorizedHashCode(array, fromIndex, length, initialValue, ArraysSupport.T_BYTE);
+        return ArraysSupport.hashCode(array, fromIndex, length, initialValue);
     }
 
     @Test
@@ -98,7 +110,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     public static int hashByteArrayCharElement(byte[] array, int fromIndex, int length, int initialValue) {
-        return ArraysSupport.vectorizedHashCode(array, fromIndex, length, initialValue, ArraysSupport.T_CHAR);
+        return ArraysSupport.hashCode(array, fromIndex, length, initialValue);
     }
 
     @Test
@@ -106,8 +118,8 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
         testHash("hashByteArrayCharElement", a -> a, a -> a.length / 2);
     }
 
-    public static int hashBooleanArray(Object array, int fromIndex, int length, int initialValue) {
-        return ArraysSupport.vectorizedHashCode(array, fromIndex, length, initialValue, ArraysSupport.T_BOOLEAN);
+    public static int hashBooleanArray(byte[] array, int fromIndex, int length, int initialValue) {
+        return ArraysSupport.hashCode(array, fromIndex, length, initialValue);
     }
 
     @Test
@@ -124,7 +136,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     public static int hashCharArray(char[] array, int fromIndex, int length, int initialValue) {
-        return ArraysSupport.vectorizedHashCode(array, fromIndex, length, initialValue, ArraysSupport.T_CHAR);
+        return ArraysSupport.hashCode(array, fromIndex, length, initialValue);
     }
 
     @Test
@@ -139,7 +151,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     public static int hashShortArray(short[] array, int fromIndex, int length, int initialValue) {
-        return ArraysSupport.vectorizedHashCode(array, fromIndex, length, initialValue, ArraysSupport.T_SHORT);
+        return ArraysSupport.hashCode(array, fromIndex, length, initialValue);
     }
 
     @Test
@@ -154,7 +166,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     public static int hashIntArray(int[] array, int fromIndex, int length, int initialValue) {
-        return ArraysSupport.vectorizedHashCode(array, fromIndex, length, initialValue, ArraysSupport.T_INT);
+        return ArraysSupport.hashCode(array, fromIndex, length, initialValue);
     }
 
     @Test
