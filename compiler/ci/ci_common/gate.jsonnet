@@ -396,7 +396,7 @@
   ],
 
   # Builds run on all platforms (platform = JDK + OS + ARCH)
-  local all_platforms_builds = [self.make_build(jdk, os_arch, task).build
+  local all_platforms_builds = [self.make_build(jdk, os_arch, task).build + galahad.exclude
     for task in [
       "test",
       "truffle_xcomp",
@@ -417,7 +417,7 @@
 
   # Coverage builds run on all platforms (platform = JDK + OS + ARCH)
   # that support JaCoCo (GR-46676)
-  local all_coverage_builds = [self.make_build(jdk, os_arch, task).build
+  local all_coverage_builds = [self.make_build(jdk, os_arch, task).build + galahad.exclude
     for task in [
       "coverage",
       "coverage_ctw",
@@ -433,7 +433,7 @@
 
     # Test ZGC on support platforms.  Windows requires version 1083 or later which will
     # probably require adding some capabilities.
-    local all_zgc_builds = [self.make_build(jdk, os_arch, task).build
+    local all_zgc_builds = [self.make_build(jdk, os_arch, task).build + galahad.exclude
       for jdk in [
         self.jdk_latest
       ]
@@ -453,7 +453,7 @@
     ],
 
   # Run unittests with SerialGC.
-  local all_serialgc_builds = [self.make_build(self.jdk_latest, os_arch, task).build
+  local all_serialgc_builds = [self.make_build(self.jdk_latest, os_arch, task).build + galahad.exclude
     for os_arch in [
       "linux-amd64",
       "linux-aarch64",
