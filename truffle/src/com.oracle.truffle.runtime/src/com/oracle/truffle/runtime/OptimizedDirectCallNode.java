@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
@@ -99,9 +98,9 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     }
 
     private RuntimeException handleException(Throwable t) {
-        Throwable profiledT = profileExceptionType(t);
-        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiledT, null);
-        throw OptimizedCallTarget.rethrow(profiledT);
+        Throwable profiled = profileExceptionType(t);
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiled, null);
+        throw OptimizedCallTarget.rethrow(profiled);
     }
 
     @SuppressWarnings("unchecked")
@@ -146,7 +145,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean isCallTargetCloningAllowed() {
-        return ((RootCallTarget) getCallTarget()).getRootNode().isCloningAllowed();
+        return getCallTarget().getRootNode().isCloningAllowed();
     }
 
     public int getCallCount() {
@@ -170,8 +169,9 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         return null;
     }
 
-    public OptimizedCallTarget getOptimizedCallTarget() {
-        return (OptimizedCallTarget) getCallTarget();
+    @Override
+    public OptimizedCallTarget getCallTarget() {
+        return (OptimizedCallTarget) super.getCallTarget();
     }
 
     /**
@@ -207,7 +207,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             }
 
             assert isCallTargetCloningAllowed();
-            OptimizedCallTarget currentTarget = (OptimizedCallTarget) getCallTarget();
+            OptimizedCallTarget currentTarget = getCallTarget();
 
             OptimizedCallTarget splitTarget = currentTarget.cloneUninitialized();
             currentTarget.removeDirectCallNode(this);

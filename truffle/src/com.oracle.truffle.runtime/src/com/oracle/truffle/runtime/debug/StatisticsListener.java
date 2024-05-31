@@ -607,7 +607,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
             if (node instanceof DirectCallNode) {
                 OptimizedDirectCallNode optimizedDirectCallNode = node instanceof OptimizedDirectCallNode ? ((OptimizedDirectCallNode) node) : null;
-                if (optimizedDirectCallNode != null && optimizedDirectCallNode.getOptimizedCallTarget().isSplit()) {
+                if (optimizedDirectCallNode != null && optimizedDirectCallNode.getCallTarget().isSplit()) {
                     callCountDirectCloned++;
                 } else {
                     callCountDirectNotCloned++;
@@ -713,7 +713,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
         @Override
         public void onCompilationSplit(OptimizedDirectCallNode callNode) {
-            StatisticsListener listener = callNode.getOptimizedCallTarget().engine.statisticsListener;
+            StatisticsListener listener = callNode.getCallTarget().engine.statisticsListener;
             if (listener != null) {
                 listener.onCompilationSplit(callNode);
             }
@@ -721,7 +721,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
         @Override
         public void onCompilationSplitFailed(OptimizedDirectCallNode callNode, CharSequence reason) {
-            StatisticsListener listener = callNode.getOptimizedCallTarget().engine.statisticsListener;
+            StatisticsListener listener = callNode.getCallTarget().engine.statisticsListener;
             if (listener != null) {
                 listener.onCompilationSplitFailed(callNode, reason);
             }

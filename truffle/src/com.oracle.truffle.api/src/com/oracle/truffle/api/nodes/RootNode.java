@@ -59,6 +59,7 @@ import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -186,7 +187,7 @@ public abstract class RootNode extends ExecutableNode {
      * default. A root node that represents a Java method could consist of the package name, the
      * class name and the method name. E.g. <code>mypackage.MyClass.myMethod</code>
      *
-     * @since 20.0.0 beta 1
+     * @since 20.0
      */
     public String getQualifiedName() {
         return getName();
@@ -259,6 +260,36 @@ public abstract class RootNode extends ExecutableNode {
         return !isInternal();
     }
 
+    /**
+     * Returns the current byte code index of the root node using a given node location and a frame.
+     * Depending on the strategy (see below) either the node or the frame may be used to find the
+     * bytecode index.
+     * <p>
+     * This method is called by Truffle to determine the bytecode index when constructing
+     * {@link TruffleStackTraceElement} objects. There are two common strategies to implement this
+     * method:
+     * <ul>
+     * <li>If the bytecode index is stored in the frame, then {@link #isCaptureFramesForTrace(Node)}
+     * should be overridden and return <code>true</code>. Next use the frame argument and read the
+     * bytecode index from the frame. Note that the provided frame may be <code>null</code> even if
+     * {@link #isCaptureFramesForTrace(Node)} returns <code>true</code>.
+     * <li>If the bytecode index is stored in the call node, then {@link Node#getParent() parent}
+     * nodes should be walked to find the node containing the bytecode index.
+     * </ul>
+     * <p>
+     * This method should return a negative bytecode index if it is unavailable or invalid. A
+     * language implementation may assign additional semantics for individual negative byte code
+     * indices, other languages will interpret any negative index as if the index is unavailable.
+     *
+     * @param node the top-most node of the activation or <code>null</code>
+     * @param frame the current frame of the activation or <code>null</code>
+     * @see FrameInstance#getBytecodeIndex() to access byte code indices
+     * @since 24.1
+     */
+    protected int findBytecodeIndex(Node node, Frame frame) {
+        return -1;
+    }
+
     @TruffleBoundary
     private SourceSection materializeSourceSection() {
         return getSourceSection();
@@ -270,8 +301,23 @@ public abstract class RootNode extends ExecutableNode {
      * <code>false</code> by default to avoid the attached overhead. The captured frames are then
      * accessible through {@link TruffleStackTraceElement#getFrame()}
      *
-     * @since 0.31
+     * @param currentNode
+     * @since 24.1
      */
+    protected boolean isCaptureFramesForTrace(Node currentNode) {
+        return isCaptureFramesForTrace();
+    }
+
+    /**
+     * Returns <code>true</code> if an AbstractTruffleException leaving this node should capture
+     * {@link Frame} objects in its stack trace in addition to the default information. This is
+     * <code>false</code> by default to avoid the attached overhead. The captured frames are then
+     * accessible through {@link TruffleStackTraceElement#getFrame()}
+     *
+     * @since 0.31
+     * @deprecated in 24.1, implement and use {@link #isCaptureFramesForTrace(Node)} instead
+     */
+    @Deprecated
     public boolean isCaptureFramesForTrace() {
         return false;
     }

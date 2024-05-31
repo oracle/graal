@@ -12,6 +12,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-38322 Added `--engine.TraceMissingSafepointPollInterval=N` to show Java stacktraces when there are [missing `TruffleSafepoint.poll()` calls](https://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md#find-missing-safepoint-polls).
 * GR-52644 Deprecated `TruffleLanguage.Registration.needsAllEncodings`, no longer needs to be declared. It is sufficient for a language module to require `org.graalvm.shadowed.jcodings` to enable all string encodings.
 * GR-51172 Add `CompilerDirectives.ensureAllocatedHere` to mark an allocation as non-movable. This allows language developers to mark special allocations as non-optimizable to allow better control for allocations potentially throwing OutOfMemoryErrors.
+* GR-49484 Added `TruffleStackFrameElement.getBytecodeIndex()` to access bytecode indices of a stack frame. Bytecode based languages should consider implementing `RootNode#findBytecodeIndex(Node, Frame)` to resolve the bytecode index.
+* GR-49484 Deprecated `RootNode.isCaptureFramesForTrace()`. Implementers should use `RootNode.isCaptureFramesForTrace(Node)` instead.
 
 ## Version 24.0.0
 
@@ -27,8 +29,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-48816 Added new interpreted performance warning to Truffle DSL.
 * GR-44706 Relaxed `InteropLibrary` invariant assertions for side-effecting members (i.e. `hasMemberReadSideEffects` or `hasMemberWriteSideEffects`) for `readMember`, `invokeMember`, `writeMember`, and `removeMember`, allowing them to succeed even if `isMemberReadable`, `isMemberInvocable`, `isMemberWritable`, and `isMemberRemovable`, respectively, returned `false` for that member. This avoids spurious assertion failures for accessor and proxy members.
 * GR-49386 Added `InteropLibrary#readBuffer(long, byte[], int, int)` to enable bulk reads of buffers into byte arrays.
-
 * [GR-50262] Added the system property `-Dtruffle.UseFallbackRuntime=true`. This property is preferred over the usage of `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime`.
+
 
 ## Version 23.1.0
 

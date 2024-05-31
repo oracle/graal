@@ -92,7 +92,7 @@ public abstract class DirectCallNode extends Node {
      * @return the {@link CallTarget} provided.
      * @since 0.8 or earlier
      */
-    public final CallTarget getCallTarget() {
+    public CallTarget getCallTarget() {
         return callTarget;
     }
 

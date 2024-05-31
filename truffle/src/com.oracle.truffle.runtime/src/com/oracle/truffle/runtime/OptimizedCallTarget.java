@@ -66,10 +66,12 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BlockNode;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -193,7 +195,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
      */
     @CompilationFinal private volatile ArgumentsProfile argumentsProfile;
     @CompilationFinal private volatile ReturnProfile returnProfile;
-    @CompilationFinal private Class<? extends Throwable> profiledExceptionType;
+    @CompilationFinal private byte exceptionProfile;
 
     /**
      * Was the target already dequeued due to inlining. We keep track of this to prevent
@@ -491,30 +493,48 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     @Override
-    @TruffleBoundary
     public final Object call(Object... args) {
         // Use the encapsulating node as call site and clear it inside as we cross the call boundary
         EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
-        Node prev = encapsulating.set(null);
+        Node location = encapsulating.set(null);
         try {
-            return callIndirect(prev, args);
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                return callDirect(location, args);
+            } else {
+                return callIndirect(location, args);
+            }
         } catch (Throwable t) {
-            OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(prev, null, t, null);
-            throw rethrow(t);
+            Throwable profiled = profileExceptionType(t);
+            OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(location, null, profiled, null);
+            throw OptimizedCallTarget.rethrow(profiled);
         } finally {
-            encapsulating.set(prev);
+            encapsulating.set(location);
+        }
+    }
+
+    @Override
+    public final Object call(Node location, Object... args) {
+        try {
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                return callDirect(location, args);
+            } else {
+                return callIndirect(location, args);
+            }
+        } catch (Throwable t) {
+            Throwable profiled = profileExceptionType(t);
+            OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(location, null, profiled, null);
+            throw OptimizedCallTarget.rethrow(profiled);
         }
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public Object callIndirect(Node location, Object... args) {
+    public final Object callIndirect(Node location, Object... args) {
         /*
          * Indirect calls should not invalidate existing compilations of the callee, and the callee
          * should still be able to use profiled arguments until an incompatible argument is passed.
          * So we profile arguments for indirect calls too, but behind a truffle boundary.
          */
         profileIndirectArguments(args);
-
         try {
             return doInvoke(args);
         } finally {
@@ -530,6 +550,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
      */
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callDirect(Node location, Object... args) {
+        CompilerAsserts.partialEvaluationConstant(this);
         try {
             profileArguments(args);
             Object result = doInvoke(args);
@@ -545,6 +566,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlined(Node location, Object... arguments) {
+        CompilerAsserts.partialEvaluationConstant(this);
         try {
             ensureInitialized();
             return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments), getTier());
@@ -663,9 +685,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         if (!CompilerDirectives.inInterpreter() && CompilerDirectives.hasNextTier()) {
             firstTierCall();
         }
-        if (CompilerDirectives.inCompiledCode()) {
-            args = injectArgumentsProfile(originalArguments);
-        }
+        args = injectArgumentsProfile(originalArguments);
         Object result = executeRootNode(createFrame(getRootNode().getFrameDescriptor(), args), getTier());
         profileReturnValue(result);
         return result;
@@ -1391,6 +1411,9 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     private Object[] injectArgumentsProfile(Object[] originalArguments) {
+        if (!CompilerDirectives.inCompiledCode()) {
+            return originalArguments;
+        }
         assert CompilerDirectives.inCompiledCode();
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
         Object[] args = originalArguments;
@@ -1514,27 +1537,44 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     // endregion
     // region Exception profiling
+    static final byte PROFILE_UNINITIALIZED = 0;
+    static final byte PROFILE_TRUFFLE_EXCEPTION = 1;
+    static final byte PROFILE_CONTROL_FLOW = 2;
+    static final byte PROFILE_GENERIC = 3;
 
-    @SuppressWarnings("unchecked")
-    private <T extends Throwable> T profileExceptionType(T value) {
-        Class<? extends Throwable> clazz = profiledExceptionType;
-        if (clazz != Throwable.class) {
-            if (clazz != null && value.getClass() == clazz) {
-                if (CompilerDirectives.inInterpreter()) {
-                    return value;
-                } else {
-                    return (T) CompilerDirectives.castExact(value, clazz);
-                }
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (clazz == null) {
-                    profiledExceptionType = value.getClass();
-                } else {
-                    profiledExceptionType = Throwable.class;
-                }
-            }
+    private Throwable profileExceptionType(Throwable value) {
+        if (!CompilerDirectives.isPartialEvaluationConstant(this)) {
+            return value;
         }
+        switch (exceptionProfile) {
+            case PROFILE_UNINITIALIZED:
+                break;
+            case PROFILE_TRUFFLE_EXCEPTION:
+                if (value instanceof AbstractTruffleException e) {
+                    return e;
+                }
+                break;
+            case PROFILE_CONTROL_FLOW:
+                if (value instanceof ControlFlowException e) {
+                    return e;
+                }
+                break;
+            case PROFILE_GENERIC:
+                return value;
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        specializeException(value);
         return value;
+    }
+
+    private void specializeException(Throwable value) {
+        if (value instanceof AbstractTruffleException) {
+            this.exceptionProfile = PROFILE_TRUFFLE_EXCEPTION;
+        } else if (value instanceof ControlFlowException) {
+            this.exceptionProfile = PROFILE_CONTROL_FLOW;
+        } else {
+            this.exceptionProfile = PROFILE_GENERIC;
+        }
     }
 
     // endregion

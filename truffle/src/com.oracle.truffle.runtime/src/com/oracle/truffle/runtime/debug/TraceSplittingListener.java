@@ -64,7 +64,7 @@ public final class TraceSplittingListener implements OptimizedTruffleRuntimeList
 
     @Override
     public void onCompilationSplit(OptimizedDirectCallNode callNode) {
-        OptimizedCallTarget callTarget = callNode.getOptimizedCallTarget();
+        OptimizedCallTarget callTarget = callNode.getCallTarget();
         if (callTarget.getOptionValue(OptimizedRuntimeOptions.TraceSplitting)) {
             String label = String.format("split %3s-%08x-%-4s ", splitCount++, 0xFFFF_FFFFL & callNode.getCurrentCallTarget().hashCode(), callNode.getCallCount());
             final Map<String, Object> debugProperties = callTarget.getDebugProperties();
@@ -75,7 +75,7 @@ public final class TraceSplittingListener implements OptimizedTruffleRuntimeList
 
     @Override
     public void onCompilationSplitFailed(OptimizedDirectCallNode callNode, CharSequence reason) {
-        OptimizedCallTarget callTarget = callNode.getOptimizedCallTarget();
+        OptimizedCallTarget callTarget = callNode.getCallTarget();
         if (callTarget.getOptionValue(OptimizedRuntimeOptions.TraceSplitting)) {
             String label = String.format("split failed " + reason);
             final Map<String, Object> debugProperties = callTarget.getDebugProperties();

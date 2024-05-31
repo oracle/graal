@@ -116,9 +116,11 @@ import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -212,6 +214,10 @@ public abstract class Accessor {
         public abstract EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread);
 
         public abstract boolean isSameFrame(RootNode root, Frame frame1, Frame frame2);
+
+        public abstract int findBytecodeIndex(RootNode rootNode, Node callNode, Frame frame);
+
+        public abstract boolean isCaptureFramesForTrace(RootNode rootNode, Node callNode);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -1122,6 +1128,10 @@ public abstract class Accessor {
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;
         }
+
+        public abstract IndirectCallNode createIndirectCallNode();
+
+        public abstract DirectCallNode createDirectCallNode(CallTarget target);
 
         /**
          * Reports the execution count of a loop.

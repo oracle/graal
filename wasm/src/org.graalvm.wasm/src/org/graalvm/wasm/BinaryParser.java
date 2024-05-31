@@ -715,7 +715,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     state.pushAll(function.type().resultTypes());
                     state.addCall(callNodes.size(), callFunctionIndex);
-                    callNodes.add(new CallNode(callFunctionIndex));
+                    callNodes.add(new CallNode(offset, callFunctionIndex));
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {

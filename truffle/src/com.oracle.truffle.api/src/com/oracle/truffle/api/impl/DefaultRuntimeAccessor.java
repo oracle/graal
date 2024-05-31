@@ -189,12 +189,12 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @Override
         public Object callInlined(Node callNode, CallTarget target, Object... arguments) {
-            return ((DefaultCallTarget) target).callDirectOrIndirect(callNode, arguments);
+            return ((DefaultCallTarget) target).call(callNode, arguments);
         }
 
         @Override
         public Object callProfiled(CallTarget target, Object... arguments) {
-            return ((DefaultCallTarget) target).call(arguments);
+            return ((DefaultCallTarget) target).call(null, arguments);
         }
 
         @Override

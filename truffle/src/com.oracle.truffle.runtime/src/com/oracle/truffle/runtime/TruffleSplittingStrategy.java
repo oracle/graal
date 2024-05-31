@@ -86,7 +86,7 @@ final class TruffleSplittingStrategy {
     }
 
     private static void doSplit(EngineData engineData, OptimizedDirectCallNode call) {
-        engineData.splitCount += call.getOptimizedCallTarget().getUninitializedNodeCount();
+        engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
         if (engineData.traceSplittingSummary) {
             traceSplittingPreSplit(engineData, call);
         }
@@ -106,7 +106,7 @@ final class TruffleSplittingStrategy {
         synchronized (engineData.splittingStatistics) {
             engineData.splittingStatistics.splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
             engineData.splittingStatistics.splitCount++;
-            engineData.splittingStatistics.splitTargets.put(call.getOptimizedCallTarget(), engineData.splittingStatistics.splitTargets.getOrDefault(call.getOptimizedCallTarget(), 0) + 1);
+            engineData.splittingStatistics.splitTargets.put(call.getCallTarget(), engineData.splittingStatistics.splitTargets.getOrDefault(call.getCallTarget(), 0) + 1);
         }
     }
 
@@ -123,7 +123,7 @@ final class TruffleSplittingStrategy {
             maybeTraceFail(engine, call, TruffleSplittingStrategy::recursiveSplitMessageFactory);
             return false;
         }
-        if (engine.splitCount + call.getOptimizedCallTarget().getUninitializedNodeCount() >= engine.splitLimit) {
+        if (engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engine.splitLimit) {
             maybeTraceFail(engine, call, TruffleSplittingStrategy::notEnoughBudgetMessageFactory);
             return false;
         }
@@ -135,11 +135,11 @@ final class TruffleSplittingStrategy {
     }
 
     private static String targetTooBigMessageFactory(OptimizedDirectCallNode call, EngineData engine) {
-        return "Target too big: " + call.getOptimizedCallTarget().getUninitializedNodeCount() + " > " + engine.splittingMaxCalleeSize;
+        return "Target too big: " + call.getCallTarget().getUninitializedNodeCount() + " > " + engine.splittingMaxCalleeSize;
     }
 
     private static String notEnoughBudgetMessageFactory(OptimizedDirectCallNode call, EngineData engine) {
-        return "Not enough budget. " + (engine.splitCount + call.getOptimizedCallTarget().getUninitializedNodeCount()) + " > " + engine.splitLimit;
+        return "Not enough budget. " + (engine.splitCount + call.getCallTarget().getUninitializedNodeCount()) + " > " + engine.splitLimit;
     }
 
     @SuppressWarnings("unused")
@@ -159,7 +159,7 @@ final class TruffleSplittingStrategy {
     }
 
     static void forceSplitting(OptimizedDirectCallNode call) {
-        final EngineData engineData = call.getOptimizedCallTarget().engine;
+        final EngineData engineData = call.getCallTarget().engine;
         if (engineData.splittingAllowForcedSplits) {
             if (!canSplit(engineData, call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
                 return;
@@ -192,7 +192,7 @@ final class TruffleSplittingStrategy {
     }
 
     private static boolean isRecursiveSplit(OptimizedDirectCallNode call, int allowedDepth) {
-        final OptimizedCallTarget splitCandidateTarget = call.getOptimizedCallTarget();
+        final OptimizedCallTarget splitCandidateTarget = call.getCallTarget();
         final RootNode rootNode = call.getRootNode();
         if (rootNode == null) {
             return false;
