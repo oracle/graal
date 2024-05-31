@@ -2011,15 +2011,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case TRY_CATCH:
                         name = "TryCatchData";
                         fields = List.of(//
-                                        field(context.getType(int.class), "tryStartBci").asFinal(),
+                                        field(context.getType(int.class), "tryStartBci"),
                                         field(context.getType(int.class), "startStackHeight").asFinal(),
                                         field(context.getType(int.class), "exceptionLocalIndex").asFinal(),
-                                        field(context.getType(int.class), "tryEndBci"),
-                                        field(context.getType(int.class), "catchStartBci"),
                                         field(context.getType(int.class), "endBranchFixupBci"),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
-                                        field(context.getType(boolean.class), "catchReachable"));
+                                        field(context.getType(boolean.class), "catchReachable"),
+                                        field(arrayOf(context.getType(int.class)), "exceptionTableEntries").withInitializer("null"),
+                                        field(context.getType(int.class), "exceptionTableEntryCount").withInitializer("0"));
+                        methods = List.of(createAddExceptionTableEntry());
                         break;
                     case FINALLY_TRY, FINALLY_TRY_CATCH:
                         name = "FinallyTryData";
@@ -4083,7 +4084,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                 }
                 case WHILE -> createOperationData(className, "bci", UNINIT, "this.reachable");
-                case TRY_CATCH -> createOperationData(className, "bci", "currentStackHeight", "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex", UNINIT, UNINIT,
+                case TRY_CATCH -> createOperationData(className, "bci", "currentStackHeight", "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex",
                                 UNINIT,
                                 "this.reachable", "this.reachable", "this.reachable");
                 case FINALLY_TRY, FINALLY_TRY_CATCH -> {
@@ -5720,14 +5721,25 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         emitCastOperationData(b, op, "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.startIf().string("operationData.operationReachable").end().startBlock();
-                        b.statement("operationData.tryEndBci = bci");
+                        b.declaration(type(int.class), "tryEndBci", "bci");
 
                         b.startIf().string("operationData.tryReachable").end().startBlock();
                         b.statement("operationData.endBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
                         buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         b.end(); // if tryReachable
-                        b.statement("operationData.catchStartBci = bci");
+
+                        /**
+                         * The handler can guard more than one bci range if the try block has an
+                         * early exit (return/branch), because we need to close the range before
+                         * emitting any outer finally handlers. We need to update the handler bci
+                         * for those exception table entries.
+                         */
+                        b.startFor().string("int i = 0; i < operationData.exceptionTableEntryCount; i++").end().startBlock();
+                        b.declaration(type(int.class), "tableEntryIndex", "operationData.exceptionTableEntries[i]");
+                        b.statement("exHandlers[tableEntryIndex + 2] = bci /* handler start */");
+                        b.end();
+                        b.statement("doCreateExceptionHandler(operationData.tryStartBci, tryEndBci, bci, operationData.startStackHeight, operationData.exceptionLocalIndex)");
 
                         b.end(); // if operationReachable
                         b.end();
@@ -5736,9 +5748,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
-                        b.end();
-                        b.startIf().string("operationData.operationReachable").end().startBlock();
-                        b.statement("doCreateExceptionHandler(operationData.tryStartBci, operationData.tryEndBci, operationData.catchStartBci, operationData.startStackHeight, operationData.exceptionLocalIndex)");
                         b.end();
                         b.end();
                         if (model.enableTracing) {
@@ -6716,7 +6725,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(type(int.class), "childBci", "parentBci");
-            b.declaration(type(boolean.class), "finallyTryHandlerEmitted", "false");
+            b.declaration(type(boolean.class), "handlerClosed", "false");
             b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
 
             b.startSwitch().string("operationStack[i].operation").end().startBlock();
@@ -6741,12 +6750,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(); // case epilog
             }
 
-            emitFinallyLeaveCases(b);
+            emitHandlerLeaveCases(b);
 
             b.end(); // switch
             b.end(); // for
 
-            emitFinallyLeaveSetNewGuardBci(b, model.returnInstruction);
+            emitHandlerLeaveSetNewGuardBci(b, model.returnInstruction);
 
             return ex;
         }
@@ -6817,48 +6826,60 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         /**
-         * beforeEmitReturn and beforeEmitBranch use this helper to generate common code.
+         * Generates code to emit finally handlers and close handler ranges when "leaving" handlers.
+         *
+         * beforeEmitReturn and beforeEmitBranch use this helper.
          */
-        private void emitFinallyLeaveCases(CodeTreeBuilder b) {
+        private void emitHandlerLeaveCases(CodeTreeBuilder b) {
             /**
-             * We must be careful when emitting finally handlers.
+             * An exception handler (try-catch or finally-try) should not guard any outer
+             * operations, so we have to close its guarded range before traversing parent
+             * operations. A finally-try handler should also not guard its own handler code.
              *
-             * The code of the finally handler should not itself be guarded by the exceptional
-             * finally handler, so we must close the range before emitting the handler. We will
-             * start a new range afterward.
-             *
-             * However, the other instructions emitted after a finally handler (other finally
-             * handlers, tag instructions, etc.) should *not* be guarded by the handler (they are
-             * from outer operations). So, we must wait until all operations have been walked and
-             * then walk them a second time to reopen the guarded ranges.
+             * Once the outer "leave" instructions have been emitted, we can open a new guarded
+             * range (in a second walk of the operation stack).
              */
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY))).end();
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY_CATCH))).end();
             b.startBlock();
             emitCastOperationData(b, model.finallyTryOperation, "i");
-
             b.statement("FinallyHandlerContext ctx = operationData.finallyHandlerContext");
             b.startIf().string("ctx.handlerIsSet() && reachable").end().startBlock();
             b.startStatement().startCall("operationData.addExceptionTableEntry");
             b.string("doCreateExceptionHandler(operationData.guardedStartBci, bci, " + UNINIT + " /* handler start */, " + UNINIT + " /* stack height */, operationData.exceptionLocal.frameIndex)");
             b.end(2);
-            b.statement("finallyTryHandlerEmitted = true");
+            b.statement("handlerClosed = true");
             b.statement("doEmitFinallyHandler(ctx)");
             b.end();
 
             b.statement("break");
             b.end(); // case finally
+
+            b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_CATCH))).end();
+            b.startBlock();
+            emitCastOperationData(b, model.tryCatchOperation, "i");
+            b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable").end().startBlock();
+            b.startStatement().startCall("operationData.addExceptionTableEntry");
+            b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, " + UNINIT + " /* handler start */, operationData.startStackHeight, operationData.exceptionLocalIndex)");
+            b.end(2);
+            b.statement("handlerClosed = true");
+            b.end();
+
+            b.statement("break");
+            b.end(); // case trycatch
         }
 
         /**
-         * beforeEmitReturn and beforeEmitBranch use this helper to generate common code.
+         * Generates code to reopen handler ranges after "leaving" the parent operations.
+         *
+         * beforeEmitReturn and beforeEmitBranch use this helper.
          */
-        private void emitFinallyLeaveSetNewGuardBci(CodeTreeBuilder b, InstructionModel instruction) {
+        private void emitHandlerLeaveSetNewGuardBci(CodeTreeBuilder b, InstructionModel instruction) {
             b.startJavadoc();
-            b.string("A finally handler should not guard any exit instructions (its own instructions, an outer handler, tag exits, etc.).").newLine();
+            b.string("A handler should not guard any exit instructions (its own handler instructions, an outer handler, tag exits, etc.).").newLine();
             b.string("As a result, we must wait until all exit instructions are emitted before reopening the guarded ranges in a separate walk of the operation stack.").newLine();
             b.end();
-            b.startIf().string("finallyTryHandlerEmitted").end().startBlock();
+            b.startIf().string("handlerClosed").end().startBlock();
             String friendlyName = switch (instruction.kind) {
                 case BRANCH_UNALIGNED -> "branch";
                 case RETURN -> "return";
@@ -6881,7 +6902,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("operationData.finallyHandlerContext.handlerIsSet()").end().startBlock();
             b.statement("operationData.guardedStartBci = newGuardedStartBci");
             b.end(); // if
+            b.statement("break");
             b.end(); // case finally
+
+            b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_CATCH))).end();
+            b.startIf().string("operationStack[i].childCount == 0 /* still in try */").end().startBlock();
+            emitCastOperationData(b, model.tryCatchOperation, "i");
+            b.statement("operationData.tryStartBci = newGuardedStartBci");
+            b.end(); // if
+            b.statement("break");
+            b.end(); // case trycatch
+
             b.end(); // switch
             b.end(); // for
             b.end(); // if
@@ -6903,7 +6934,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "targetSeq"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(type(boolean.class), "finallyTryHandlerEmitted", "false");
+            b.declaration(type(boolean.class), "handlerClosed", "false");
             b.startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
             b.startIf().string("operationStack[i].sequenceNumber == targetSeq").end().startBlock();
             b.statement("break");
@@ -6921,12 +6952,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            emitFinallyLeaveCases(b);
+            emitHandlerLeaveCases(b);
 
             b.end(); // switch
             b.end(); // for
 
-            emitFinallyLeaveSetNewGuardBci(b, model.branchUnalignedInstruction);
+            emitHandlerLeaveSetNewGuardBci(b, model.branchUnalignedInstruction);
 
             return ex;
         }

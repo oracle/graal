@@ -424,6 +424,132 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testTryCatchNestedInTry() {
+        // try {
+        //   try {
+        //     if (arg0 < 1) throw arg0
+        //   } catch ex2 {
+        //     if (arg0 < 0) throw arg0 - 100
+        //     return 42;
+        //   }
+        //   throw arg0;
+        // } catch ex1 {
+        //   return ex1.value
+        // }
+        RootCallTarget root = parse("tryCatch", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal ex1 = b.createLocal();
+            b.beginTryCatch(ex1);
+
+            b.beginBlock(); // begin outer try
+            BytecodeLocal ex2 = b.createLocal();
+            b.beginTryCatch(ex2);
+
+            b.beginIfThen(); // begin inner try
+            b.beginLessThanOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(1L);
+            b.endLessThanOperation();
+            b.beginThrowOperation();
+            b.emitLoadArgument(0);
+            b.endThrowOperation();
+            b.endIfThen(); // end inner try
+
+            b.beginBlock(); // begin inner catch
+
+            b.beginIfThen();
+            b.beginLessThanOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(0L);
+            b.endLessThanOperation();
+            b.beginThrowOperation();
+            b.beginAddOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(-100L);
+            b.endAddOperation();
+            b.endThrowOperation();
+            b.endIfThen();
+
+            emitReturn(b, 42L);
+            b.endBlock(); // end inner catch
+
+            b.endTryCatch();
+
+            b.beginThrowOperation();
+            b.emitLoadArgument(0);
+            b.endThrowOperation();
+
+            b.endBlock(); // end outer try
+
+            b.beginReturn(); // begin outer catch
+            b.beginReadExceptionOperation();
+            b.emitLoadLocal(ex1);
+            b.endReadExceptionOperation();
+            b.endReturn(); // end outer catch
+
+            b.endTryCatch();
+            b.endRoot();
+        });
+
+        assertEquals(-101L, root.call(-1L));
+        assertEquals(42L, root.call(0L));
+        assertEquals(123L, root.call(123L));
+    }
+
+    @Test
+    public void testTryCatchNestedInCatch() {
+        // try {
+        //   throw arg0
+        // } catch ex1 {
+        //   try {
+        //     if (arg0 < 0) throw -1
+        //     return 42;
+        //   } catch ex2 {
+        //     return 123;
+        //   }
+        // }
+        RootCallTarget root = parse("tryCatch", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginTryCatch(b.createLocal());
+
+            b.beginThrowOperation(); // begin outer try
+            b.emitLoadArgument(0);
+            b.endThrowOperation(); // end outer try
+
+            BytecodeLocal ex2 = b.createLocal();
+            b.beginTryCatch(ex2); // begin outer catch
+
+            b.beginBlock(); // begin inner try
+            b.beginIfThen();
+            b.beginLessThanOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(0L);
+            b.endLessThanOperation();
+            b.beginThrowOperation();
+            b.emitLoadConstant(-1L);
+            b.endThrowOperation();
+            b.endIfThen();
+            emitReturn(b, 42L);
+            b.endBlock(); // end inner try
+
+            b.beginBlock(); // begin inner catch
+            emitReturn(b, 123L);
+            b.endBlock(); // end inner catch
+
+            b.endTryCatch(); // end outer catch
+
+            b.endTryCatch();
+            b.endRoot();
+        });
+
+        assertEquals(123L, root.call(-100L));
+        assertEquals(42L, root.call(0L));
+        assertEquals(42L, root.call(1L));
+    }
+
+    @Test
     public void testVariableBoxingElim() {
         // local0 = 0;
         // local1 = 0;

@@ -1535,6 +1535,55 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testFinallyTryNestedTryCatchWithEarlyReturn() {
+        /**
+         * The try-catch handler should take precedence over the finally handler.
+         */
+
+        // try {
+        //   try {
+        //     arg0.append(1);
+        //     throw 0;
+        //     arg0.append(2);
+        //   } catch ex {
+        //     arg0.append(3);
+        //     return 0;
+        //     arg0.append(4);
+        //   }
+        // } finally {
+        //   arg0.append(5);
+        // }
+
+        BasicInterpreter root = parseNode("finallyTryNestedTryThrow", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry(b.createLocal());
+                b.beginBlock();
+                    emitAppend(b, 5);
+                b.endBlock();
+
+                b.beginTryCatch(b.createLocal());
+                    b.beginBlock();
+                        emitAppend(b, 1);
+                        emitThrow(b, 0);
+                        emitAppend(b, 2);
+                    b.endBlock();
+
+                    b.beginBlock();
+                        emitAppend(b, 3);
+                        emitReturn(b, 0);
+                        emitAppend(b, 4);
+                    b.endBlock();
+                b.endTryCatch();
+            b.endFinallyTry();
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root.getCallTarget(), 1L, 3L, 5L);
+    }
+
+    @Test
     public void testFinallyTryHandlerNotGuarded() {
         /**
          * A finally handler should not be guarded by itself. If it throws, the throw should go uncaught.
@@ -1644,9 +1693,74 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrderingWithArguments(true, root,  new Object[] {false, false}, 1L, 2L, 3L, 4L, 5L);
-        testOrderingWithArguments(true, root,  new Object[] {true, false}, 1L, 4L, 5L);
-        testOrderingWithArguments(true, root,  new Object[] {false, true}, 1L, 2L, 4L, 5L);
+        testOrderingWithArguments(true, root, new Object[] {false, false}, 1L, 2L, 3L, 4L, 5L);
+        testOrderingWithArguments(true, root, new Object[] {true, false}, 1L, 4L, 5L);
+        testOrderingWithArguments(true, root, new Object[] {false, true}, 1L, 2L, 4L, 5L);
+    }
+
+    @Test
+    public void testFinallyTryOuterHandlerNotGuardedByTryCatch() {
+        /**
+         * The try-catch should not guard the outer finally handler.
+         */
+        // try {
+        //   arg0.append(1);
+        //   try {
+        //      if (arg1) return 0;
+        //      arg0.append(2);
+        //      if (arg2) goto lbl;
+        //      arg0.append(3);
+        //   } catch ex {
+        //      arg0.append(4);
+        //   }
+        // } finally {
+        //   arg0.append(5);
+        //   throw MyException(123);
+        // }
+        // lbl:
+
+        RootCallTarget root = parse("finallyTryOuterHandlerNotGuardedByTryCatch", b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLabel lbl = b.createLabel();
+            b.beginFinallyTry(b.createLocal());
+
+                b.beginBlock(); // begin finally
+                    emitAppend(b, 5);
+                    emitThrow(b, 123);
+                b.endBlock(); // end finally
+
+                b.beginBlock(); // begin outer try
+                    emitAppend(b, 1);
+                    b.beginTryCatch(b.createLocal());
+                        b.beginBlock(); // begin inner try
+                            b.beginIfThen();
+                                b.emitLoadArgument(1);
+                                b.beginReturn();
+                                    b.emitLoadConstant(0L);
+                                b.endReturn();
+                            b.endIfThen();
+                            emitAppend(b, 2);
+                            b.beginIfThen();
+                                b.emitLoadArgument(2);
+                                b.emitBranch(lbl);
+                            b.endIfThen();
+                            emitAppend(b, 3);
+                        b.endBlock(); // end inner try
+
+                        emitAppend(b, 4); // inner catch
+                    b.endTryCatch();
+                b.endBlock(); // end outer try
+
+            b.endFinallyTry();
+
+            b.emitLabel(lbl);
+
+            b.endRoot();
+        });
+
+        testOrderingWithArguments(true, root, new Object[] {false, false}, 1L, 2L, 3L, 5L);
+        testOrderingWithArguments(true, root, new Object[] {true, false}, 1L, 5L);
+        testOrderingWithArguments(true, root, new Object[] {false, true}, 1L, 2L, 5L);
     }
 
     @Test
