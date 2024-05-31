@@ -510,6 +510,7 @@ class NativeImageVM(GraalVm):
         super().__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.vm_args = None
         self.pgo_instrumentation = False
+        self.pgo_exclude_conditional = False
         self.pgo_sampler_only = False
         self.pgo_context_sensitive = True
         self.is_gate = False
@@ -528,6 +529,7 @@ class NativeImageVM(GraalVm):
         self.async_sampler = False
         self.safepoint_sampler = False
         self.profile_inference_feature_extraction = False
+        self.force_profile_inference = False
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
         self.optimization_level = None
@@ -550,7 +552,7 @@ class NativeImageVM(GraalVm):
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
-               r'(?P<profile_inference>profile-inference-feature-extraction-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
         match_name = f"{config_name}-"  # adding trailing dash to simplify the regex
@@ -644,6 +646,18 @@ class NativeImageVM(GraalVm):
             if profile_inference_config == 'profile-inference-feature-extraction':
                 self.profile_inference_feature_extraction = True
                 self.pgo_instrumentation = True # extract code features
+            elif profile_inference_config == "profile-inference-pgo":
+                # We need to run instrumentation as the profile-inference-pgo JVM config requires dynamically collected
+                # profiles to combine with the ML-inferred branch probabilities.
+                self.pgo_instrumentation = True
+
+                # Due to the collision between flags, we must re-enable the ML inference:
+                # 1. To run the image build in the profile-inference-pgo mode, we must enable PGO to dynamically collect program profiles.
+                # 2. The PGO flag disables the ML Profile Inference.
+                # 3, Therefore, here we re-enable the ML Profile Inference from the command line.
+                self.force_profile_inference = True
+
+                self.pgo_exclude_conditional = True
             else:
                 mx.abort('Unknown profile inference configuration: {}.'.format(profile_inference_config))
 
@@ -1139,11 +1153,16 @@ class NativeImageVM(GraalVm):
             jdk_profiles_args = svm_experimental_options([f'-H:AdoptedPGOEnabled={adopted_profile}'])
         else:
             jdk_profiles_args = []
+        if self.pgo_exclude_conditional:
+            pgo_args += svm_experimental_options(['-H:PGOExcludeProfiles=CONDITIONAL'])
+
         if self.profile_inference_feature_extraction:
             ml_args = svm_experimental_options(['-H:+MLGraphFeaturesExtraction', '-H:+ProfileInferenceDumpFeatures'])
             dump_file_flag = 'ProfileInferenceDumpFile'
             if dump_file_flag not in ''.join(self.config.base_image_build_args):
                 mx.warn("To dump the profile inference features to a specific location, please set the '{}' flag.".format(dump_file_flag))
+        elif self.force_profile_inference:
+            ml_args = svm_experimental_options(['-H:+MLGraphFeaturesExtraction', '-H:+MLProfileInference'])
         else:
             ml_args = []
 
