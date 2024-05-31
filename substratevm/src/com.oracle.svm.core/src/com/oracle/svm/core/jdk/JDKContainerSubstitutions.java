@@ -36,9 +36,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "jdk.jfr.internal.instrument.JDKEvents")
+@TargetClass(className = "jdk.jfr.internal.JDKEvents")
 @Platforms(LINUX.class)
-final class Target_jdk_jfr_internal_instrument_JDKEvents {
+final class Target_jdk_jfr_internal_JDKEvents {
     @Alias //
     @RecomputeFieldValue(kind = Kind.Reset) //
     private static Target_jdk_internal_platform_Metrics containerMetrics;
