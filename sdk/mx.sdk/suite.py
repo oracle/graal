@@ -376,28 +376,10 @@ suite = {
       "requires" : [
         "java.logging",
       ],
-      "annotationProcessors" : [
-          "sdk:POLYGLOT_PROCESSOR"
-      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
       "graalCompilerSourceEdition": "ignore",
-    },
-    "org.graalvm.polyglot.processor" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-          "NATIVEBRIDGE_PROCESSOR"
-      ],
-      "requires" : [
-        "java.compiler"
-      ],
-      "annotationProcessors" : [
-      ],
-      "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "17+",
-      "workingSets" : "API,Graal",
     },
     "org.graalvm.sdk" : {
       "subDir" : "src",
@@ -818,15 +800,6 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
-    },
-
-    "POLYGLOT_PROCESSOR" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "org.graalvm.polyglot.processor"
-      ],
-      "distDependencies" : ["sdk:NATIVEBRIDGE_PROCESSOR"],
-      "maven": False,
     },
 
     "POLYGLOT_VERSION": {

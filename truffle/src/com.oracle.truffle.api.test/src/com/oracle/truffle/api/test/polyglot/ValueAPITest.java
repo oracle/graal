@@ -137,7 +137,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 public class ValueAPITest {
@@ -204,9 +203,7 @@ public class ValueAPITest {
     public void testString() {
         for (Object string : STRINGS) {
             assertValueInContexts(context.asValue(string), STRING);
-            if (!TruffleTestAssumptions.isClassLoaderEncapsulation()) {
-                assertValueInContexts(context.asValue(new StringWrapper(string.toString())), STRING);
-            }
+            assertValueInContexts(context.asValue(new StringWrapper(string.toString())), STRING);
         }
     }
 
@@ -253,9 +250,7 @@ public class ValueAPITest {
     public void testNumbers() {
         for (Number number : NUMBERS) {
             assertValueInContexts(context.asValue(number), NUMBER);
-            if (!TruffleTestAssumptions.isClassLoaderEncapsulation()) {
-                assertValueInContexts(context.asValue(new NumberWrapper(number)), NUMBER);
-            }
+            assertValueInContexts(context.asValue(new NumberWrapper(number)), NUMBER);
         }
     }
 
@@ -268,9 +263,7 @@ public class ValueAPITest {
     public void testBooleans() {
         for (boolean bool : BOOLEANS) {
             assertValueInContexts(context.asValue(bool), BOOLEAN);
-            if (!TruffleTestAssumptions.isClassLoaderEncapsulation()) {
-                assertValueInContexts(context.asValue(new BooleanWrapper(bool)), BOOLEAN);
-            }
+            assertValueInContexts(context.asValue(new BooleanWrapper(bool)), BOOLEAN);
         }
     }
 
@@ -907,73 +900,71 @@ public class ValueAPITest {
             assertFalse(value.hasArrayElements());
         });
 
-        if (!TruffleTestAssumptions.isClassLoaderEncapsulation()) {
-            MembersAndInvocable invocable = new MembersAndInvocable();
-            invocable.invokeMember = "foo";
-            invocable.invocableResult = "foobarbaz";
+        MembersAndInvocable invocable = new MembersAndInvocable();
+        invocable.invokeMember = "foo";
+        invocable.invocableResult = "foobarbaz";
 
-            objectCoercionTest(invocable, Map.class, (v) -> {
-                Value value = context.asValue(v);
-                assertTrue(value.canInvokeMember("foo"));
-                assertEquals("foobarbaz", value.invokeMember("foo").asString());
-            }, false);
+        objectCoercionTest(invocable, Map.class, (v) -> {
+            Value value = context.asValue(v);
+            assertTrue(value.canInvokeMember("foo"));
+            assertEquals("foobarbaz", value.invokeMember("foo").asString());
+        }, false);
 
-            HashEntries hashEntries = new HashEntries();
-            hashEntries.hashEntries.put("foo", "foobarbaz");
+        HashEntries hashEntries = new HashEntries();
+        hashEntries.hashEntries.put("foo", "foobarbaz");
 
-            objectCoercionTest(hashEntries, Map.class, (v) -> {
-                assertEquals(1, v.size());
-                assertEquals("foobarbaz", v.get("foo"));
-                Value value = context.asValue(v);
-                assertTrue(value.hasHashEntries());
-                assertFalse(value.hasMembers());
-            });
+        objectCoercionTest(hashEntries, Map.class, (v) -> {
+            assertEquals(1, v.size());
+            assertEquals("foobarbaz", v.get("foo"));
+            Value value = context.asValue(v);
+            assertTrue(value.hasHashEntries());
+            assertFalse(value.hasMembers());
+        });
 
-            HashEntriesAndArray hashEntriesAndArray = new HashEntriesAndArray();
-            hashEntries.hashEntries.put("foo", "foobarbaz");
-            hashEntriesAndArray.array.add(42);
-            hashEntriesAndArray.array.add(43);
+        HashEntriesAndArray hashEntriesAndArray = new HashEntriesAndArray();
+        hashEntries.hashEntries.put("foo", "foobarbaz");
+        hashEntriesAndArray.array.add(42);
+        hashEntriesAndArray.array.add(43);
 
-            objectCoercionTest(hashEntriesAndArray, List.class, (v) -> {
-                assertEquals(2, v.size());
-                assertEquals(42, v.get(0));
-                assertEquals(43, v.get(1));
-                Value value = context.asValue(v);
-                assertTrue(value.hasHashEntries());
-                assertTrue(value.hasArrayElements());
-                assertFalse(value.hasMembers());
-            });
+        objectCoercionTest(hashEntriesAndArray, List.class, (v) -> {
+            assertEquals(2, v.size());
+            assertEquals(42, v.get(0));
+            assertEquals(43, v.get(1));
+            Value value = context.asValue(v);
+            assertTrue(value.hasHashEntries());
+            assertTrue(value.hasArrayElements());
+            assertFalse(value.hasMembers());
+        });
 
-            HashEntriesAndMembers hashEntriesAndMembers = new HashEntriesAndMembers();
-            hashEntriesAndMembers.hashEntries.put("foo", "foobarbaz");
-            hashEntriesAndMembers.members.put("member1", "whatever");
-            hashEntriesAndMembers.members.put("member2", "whatever");
+        HashEntriesAndMembers hashEntriesAndMembers = new HashEntriesAndMembers();
+        hashEntriesAndMembers.hashEntries.put("foo", "foobarbaz");
+        hashEntriesAndMembers.members.put("member1", "whatever");
+        hashEntriesAndMembers.members.put("member2", "whatever");
 
-            objectCoercionTest(hashEntriesAndMembers, Map.class, (v) -> {
-                assertEquals(1, v.size());
-                assertEquals("foobarbaz", v.get("foo"));
-                Value value = context.asValue(v);
-                assertTrue(value.hasHashEntries());
-                assertTrue(value.hasMembers());
-            });
+        objectCoercionTest(hashEntriesAndMembers, Map.class, (v) -> {
+            assertEquals(1, v.size());
+            assertEquals("foobarbaz", v.get("foo"));
+            Value value = context.asValue(v);
+            assertTrue(value.hasHashEntries());
+            assertTrue(value.hasMembers());
+        });
 
-            HashEntriesAndArrayAndMembers hashEntriesAndArrayAndMembers = new HashEntriesAndArrayAndMembers();
-            hashEntriesAndArrayAndMembers.hashEntries.put("foo", "foobarbaz");
-            hashEntriesAndArrayAndMembers.members.put("member1", "whatever");
-            hashEntriesAndArrayAndMembers.members.put("member2", "whatever");
-            hashEntriesAndArrayAndMembers.array.addAll(Arrays.asList(42, 43, 44));
+        HashEntriesAndArrayAndMembers hashEntriesAndArrayAndMembers = new HashEntriesAndArrayAndMembers();
+        hashEntriesAndArrayAndMembers.hashEntries.put("foo", "foobarbaz");
+        hashEntriesAndArrayAndMembers.members.put("member1", "whatever");
+        hashEntriesAndArrayAndMembers.members.put("member2", "whatever");
+        hashEntriesAndArrayAndMembers.array.addAll(Arrays.asList(42, 43, 44));
 
-            objectCoercionTest(hashEntriesAndArrayAndMembers, List.class, (v) -> {
-                assertEquals(3, v.size());
-                assertEquals(42, v.get(0));
-                assertEquals(43, v.get(1));
-                assertEquals(44, v.get(2));
-                Value value = context.asValue(v);
-                assertTrue(value.hasHashEntries());
-                assertTrue(value.hasMembers());
-                assertTrue(value.hasArrayElements());
-            });
-        }
+        objectCoercionTest(hashEntriesAndArrayAndMembers, List.class, (v) -> {
+            assertEquals(3, v.size());
+            assertEquals(42, v.get(0));
+            assertEquals(43, v.get(1));
+            assertEquals(44, v.get(2));
+            Value value = context.asValue(v);
+            assertTrue(value.hasHashEntries());
+            assertTrue(value.hasMembers());
+            assertTrue(value.hasArrayElements());
+        });
     }
 
     private static <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator) {
@@ -2180,7 +2171,6 @@ public class ValueAPITest {
 
     @Test
     public void testGuestObjectSharable() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         Context context1 = context;
         Context context2 = Context.create();
         List<Object> nonSharables = new ArrayList<>();
@@ -2304,8 +2294,6 @@ public class ValueAPITest {
 
     @Test
     public void testGuestException() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
-
         Value exceptionValue = context.asValue(new ExceptionWrapper(new LanguageException("expected")));
         assertValueInContexts(exceptionValue, EXCEPTION);
         try {
@@ -2528,7 +2516,6 @@ public class ValueAPITest {
 
     @Test
     public void testPrimitiveAndObject() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         BooleanAndDelegate o = new BooleanAndDelegate(new TestArray(new String[0]));
         Value v = context.asValue(o);
         assertValueInContexts(v, ARRAY_ELEMENTS, ITERABLE, BOOLEAN);
