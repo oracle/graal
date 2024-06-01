@@ -1001,6 +1001,7 @@ meth public abstract !varargs void registerReachabilityHandler(java.util.functio
 meth public abstract void registerAsAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsInHeap(java.lang.Class<?>)
 meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
+meth public abstract void registerAsUnsafeAllocated(java.lang.Class<?>)
 meth public abstract void registerAsUsed(java.lang.Class<?>)
 meth public abstract void registerClassInitializerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Class<?>)
 meth public abstract void registerFieldValueTransformer(java.lang.reflect.Field,org.graalvm.nativeimage.hosted.FieldValueTransformer)

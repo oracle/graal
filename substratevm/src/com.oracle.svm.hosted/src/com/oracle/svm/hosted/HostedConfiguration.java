@@ -45,6 +45,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -222,8 +223,9 @@ public class HostedConfiguration {
         return HybridLayout.isHybridField(field) || DynamicHubLayout.singleton().isInlinedField(field);
     }
 
-    public SVMHost createHostVM(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions) {
-        return new SVMHost(options, loader, classInitializationSupport, annotationSubstitutions);
+    public SVMHost createHostVM(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
+                    MissingRegistrationSupport missingRegistrationSupport) {
+        return new SVMHost(options, loader, classInitializationSupport, annotationSubstitutions, missingRegistrationSupport);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll) {

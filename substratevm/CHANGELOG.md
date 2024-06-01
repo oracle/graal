@@ -20,6 +20,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-52534) Change the digest (used e.g. for symbol names) from SHA-1 encoded as a hex string (40 bytes) to 128-bit Murmur3 as a Base-62 string (22 bytes).
 * (GR-52578) Print information about embedded resources into `embedded-resources.json` using the `-H:+GenerateEmbeddedResourcesFile` option.
 * (GR-51172) Add support to catch OutOfMemoryError exceptions on native image if there is no memory left.
+* (GR-53803) In the strict reflection configuration mode (when `ThrowMissingRegistrationErrors` is enabled), only allow `Unsafe.allocateInstance` for types registered explicitly in the configuration.
 * (GR-43837) `--report-unsupported-elements-at-runtime` is now enabled by default and the option is deprecated.
 * (GR-53359) Provide the `.debug_gdb_scripts` section that triggers auto-loading of `svmhelpers.py` in GDB. Remove single and double quotes from `ClassLoader.nameAndId` in the debuginfo.
 * (GR-47365) Include dynamic proxy metadata in the reflection metadata with the syntax `"type": { "proxy": [<interface list>] }`. This allows members of proxy classes to be accessed reflectively. `proxy-config.json` is now deprecated but will still be honored.

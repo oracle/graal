@@ -1223,4 +1223,8 @@ public class SubstrateOptions {
     @Option(help = "Reduce the amount of metadata in the image for implicit exceptions by removing inlining information from the stack trace. " +
                     "This makes the image smaller, but also the stack trace of implicit exceptions less precise.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> ReduceImplicitExceptionStackTraceInformation = new HostedOptionKey<>(false);
+
+    @Option(help = "Allow all instantiated types to be allocated via Unsafe.allocateInstance().", type = OptionType.Expert, //
+                    deprecated = true, deprecationMessage = "ThrowMissingRegistrationErrors is the preferred way of configuring this on a per-type level.") //
+    public static final HostedOptionKey<Boolean> AllowUnsafeAllocationOfAllInstantiatedTypes = new HostedOptionKey<>(null);
 }

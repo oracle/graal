@@ -383,6 +383,11 @@ public class JNIAccessFeature implements Feature {
             if (targetMethod.isConstructor() && !targetMethod.getDeclaringClass().isAbstract()) {
                 var aFactoryMethod = FactoryMethodSupport.singleton().lookup(access.getMetaAccess(), aTargetMethod, false);
                 access.registerAsRoot(aFactoryMethod, true, "JNI constructor, registered in " + JNIAccessFeature.class);
+                /*
+                 * Constructors can be invoked on objects allocated separately via AllocObject,
+                 * which we implement via Unsafe.
+                 */
+                access.registerAsUnsafeAllocated(aTargetMethod.getDeclaringClass());
                 newObjectMethod = aFactoryMethod.getWrapped();
             }
 

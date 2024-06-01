@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.util.VMError;
@@ -187,6 +188,10 @@ public class FieldsOffsetsFeature implements Feature {
     private static void registerFields(FieldIntrospection<?> introspection, BeforeAnalysisAccessImpl config) {
         if (introspection instanceof NodeClass<?>) {
             NodeClass<?> nodeClass = (NodeClass<?>) introspection;
+
+            /* The partial evaluator allocates Node classes via Unsafe. */
+            AnalysisType nodeType = config.getMetaAccess().lookupJavaType(nodeClass.getJavaClass());
+            nodeType.registerInstantiatedCallback(unused -> nodeType.registerAsUnsafeAllocated("Graal node class"));
 
             Fields dataFields = nodeClass.getData();
             registerFields(dataFields, config, "Graal node data field");
