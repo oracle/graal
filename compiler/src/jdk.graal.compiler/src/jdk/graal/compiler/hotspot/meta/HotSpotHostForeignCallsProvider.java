@@ -39,6 +39,8 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCR
 import static jdk.graal.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
@@ -625,6 +627,12 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         if (c.chacha20Block != 0L) {
             registerForeignCall(CHACHA20Block, c.chacha20Block, NativeCall);
+        }
+        if (c.intpolyMontgomeryMultP256 != 0L) {
+            registerForeignCall(INTPOLY_MONTGOMERYMULT_P256, c.intpolyMontgomeryMultP256, NativeCall);
+        }
+        if (c.intpolyAssign != 0L) {
+            registerForeignCall(INTPOLY_ASSIGN, c.intpolyAssign, NativeCall);
         }
 
         registerSnippetStubs(providers, options);
