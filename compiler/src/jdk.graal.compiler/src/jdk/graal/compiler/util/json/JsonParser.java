@@ -33,29 +33,67 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-public class JSONParser {
+/**
+ * Parses JSON values from a character stream.
+ * <p>
+ * Example: Given the following JSON file:
+ *
+ * <pre>{@code
+ * // test.json
+ * {
+ *     "key1": 42,
+ *     "key2": [1,2,3],
+ * }
+ * }</pre>
+ * <p>
+ * This can be parsed as follows:
+ *
+ * <pre>{@code
+ * JsonParser parser = new JsonParser(new FileReader("test.json"));
+ * EconomicMap<String, Object> outer = (EconomicMap<String, Object>) parser.parse();
+ * assert outer.get("key1") instanceof Integer;
+ * assert (Integer) (outer.get("key1")) == 42;
+ * assert outer.get("key2") instanceof List;
+ * assert (List) (outer.get("key2")).equals(List.of(1, 2, 3));
+ * }</pre>
+ * <p>
+ * See the main entrypoints: {@link #parse()}, {@link #parseAllowedKeys}.
+ */
+public final class JsonParser {
 
     private final Reader source;
+
+    // Current reading position within source
     private int pos = 0;
+    // Current line number, used for error reporting.
     private int line = 0;
+    // Position of the start of the current line in source, used for error reporting.
     private int beginningOfLine = 0;
+    // Next character to be scanned, obtained from source
     private int next;
 
     private static final int EOF = -1;
-
-    private static final String TRUE = "true";
-    private static final String FALSE = "false";
-    private static final String NULL = "null";
 
     private static final int STATE_EMPTY = 0;
     private static final int STATE_ELEMENT_PARSED = 1;
     private static final int STATE_COMMA_PARSED = 2;
 
-    public JSONParser(String source) throws IOException {
+    /**
+     * Creates a new {@link JsonParser} to parse the given string.
+     *
+     * @param source JSON text to be parsed.
+     */
+    public JsonParser(String source) throws IOException {
         this(new StringReader(source));
     }
 
-    public JSONParser(Reader source) throws IOException {
+    /**
+     * Creates a new {@link JsonParser} that reads characters from {@code source}.
+     *
+     * @param source character stream containing JSON text. Will be adapted internally through a
+     *            {@link BufferedReader}.
+     */
+    public JsonParser(Reader source) throws IOException {
         this.source = new BufferedReader(source);
         next = source.read();
     }
@@ -79,7 +117,9 @@ public class JSONParser {
     }
 
     /**
-     * Public parse method. Parse a string into a JSON object.
+     * Parses the next value from the underlying reader as a JSON value, which depending on the text
+     * could be a literal ({@link Number}, {@link Boolean}, or {@code null}), an object (parsed as
+     * an {@link EconomicMap} with {@link String} keys), or an array (parsed as a {@link List}).
      *
      * @return the parsed JSON Object
      */
@@ -93,10 +133,11 @@ public class JSONParser {
     }
 
     /**
-     * Parses the source as a JSON map using a list of allowed keys. The returned map contains
-     * values for the allowed keys only but not necessarily all of them. The method returns as soon
-     * as all allowed keys are parsed, i.e., the rest of the JSON may be left unparsed and
-     * unchecked. This is useful to parse only few keys from the beginning of a large JSON object.
+     * Parses the next value from the underlying reader as a JSON object using a list of allowed
+     * keys. The returned map contains values for the allowed keys only but not necessarily all of
+     * them. The method returns as soon as all allowed keys are parsed, i.e., the rest of the JSON
+     * may be left unparsed and unchecked. This is useful to parse only few keys from the beginning
+     * of a large JSON object.
      *
      * @param allowedKeys the list of allowed keys
      * @return the parsed JSON map containing only values for (not necessarily all) allowed keys
@@ -160,15 +201,23 @@ public class JSONParser {
         throw expectedError(pos, ", or }", "eof");
     }
 
+    /**
+     * Utility method to parse a character stream containing a JSON object into an
+     * {@link EconomicMap} directly.
+     */
     @SuppressWarnings("unchecked")
     public static EconomicMap<String, Object> parseDict(Reader input) throws IOException {
-        JSONParser parser = new JSONParser(input);
+        JsonParser parser = new JsonParser(input);
         return (EconomicMap<String, Object>) parser.parse();
     }
 
+    /**
+     * Utility method to parse a string containing a JSON object into an {@link EconomicMap}
+     * directly.
+     */
     @SuppressWarnings("unchecked")
     public static EconomicMap<String, Object> parseDict(String input) throws IOException {
-        JSONParser parser = new JSONParser(input);
+        JsonParser parser = new JsonParser(input);
         return (EconomicMap<String, Object>) parser.parse();
     }
 
@@ -187,11 +236,11 @@ public class JSONParser {
             case '"':
                 return parseString();
             case 'f':
-                return parseKeyword(FALSE, Boolean.FALSE);
+                return parseKeyword("false", Boolean.FALSE);
             case 't':
-                return parseKeyword(TRUE, Boolean.TRUE);
+                return parseKeyword("true", Boolean.TRUE);
             case 'n':
-                return parseKeyword(NULL, null);
+                return parseKeyword("null", null);
             default:
                 if (isDigit(c) || c == '-') {
                     return parseNumber();
@@ -302,9 +351,8 @@ public class JSONParser {
         while (next != -1) {
             final int c = next();
             if (c <= 0x1f) {
-                // Characters < 0x1f are not allowed in JSON strings.
-                throw syntaxError(pos, "String contains control character");
-
+                // Characters <= 0x1f are not allowed in JSON strings.
+                throw syntaxError(pos, "String contains control character: " + c);
             } else if (c == '\\') {
                 sb.append(parseEscapeSequence());
             } else if (c == '"') {
@@ -481,10 +529,10 @@ public class JSONParser {
         return c == EOF ? "eof" : String.valueOf((char) c);
     }
 
-    private JSONParserException error(final String message, final int position) {
+    private JsonParserException error(final String message, final int position) {
         final int columnNum = position - beginningOfLine;
         final String formatted = format(message, line, columnNum);
-        return new JSONParserException(formatted);
+        return new JsonParserException(formatted);
     }
 
     /**
@@ -499,15 +547,15 @@ public class JSONParser {
         return "line " + line + " column " + column + " " + message;
     }
 
-    private JSONParserException numberError(final int start) {
+    private JsonParserException numberError(final int start) {
         return error("Invalid JSON number format", start);
     }
 
-    private JSONParserException expectedError(final int start, final String expected, final String found) {
+    private JsonParserException expectedError(final int start, final String expected, final String found) {
         return error("Expected " + expected + " but found " + found, start);
     }
 
-    private JSONParserException syntaxError(final int start, final String reason) {
+    private JsonParserException syntaxError(final int start, final String reason) {
         return error("Invalid JSON: " + reason, start);
     }
 }

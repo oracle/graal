@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util.json;
+package jdk.graal.compiler.util.json;
 
 import java.io.IOException;
 
+/**
+ * Abstract interface for types that can be converted to a JSON representation. This is currently
+ * not supported as an argument type for {@link JsonWriter#print}, you must instead call
+ * {@link #printJson} directly.
+ */
 public interface JsonPrintable {
+    /**
+     * Appends a JSON representation of the object to {@code writer}.
+     */
     void printJson(JsonWriter writer) throws IOException;
 }

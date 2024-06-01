@@ -133,11 +133,11 @@
       "SPECJVM2008": { name: "specjvm2008", version: "1.01" }
     },
     run+: [
-      self.benchmark_cmd + ["specjvm2008:*", "--"] + self.extra_vm_args + ["--", "-ikv", "-it", "240s", "-wt", "120s"]
+      self.benchmark_cmd + ["specjvm2008:*", "--"] + self.extra_vm_args + ["--", "-ikv", "-it", "30s", "-wt", "30s"]
     ],
-    timelimit: "3:00:00",
+    timelimit: "1:15:00",
     forks_batches:: 5,
-    forks_timelimit:: "06:00:00",
+    forks_timelimit:: "02:30:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },

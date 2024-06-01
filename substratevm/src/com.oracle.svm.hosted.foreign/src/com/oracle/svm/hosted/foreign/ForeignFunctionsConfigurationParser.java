@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
 
-import jdk.graal.compiler.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JsonParserException;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
@@ -122,7 +122,7 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
                 }
                 res.add(Linker.Option.critical(allowHeapAccess));
             } else {
-                throw new JSONParserException(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS + " should be a boolean or a map");
+                throw new JsonParserException(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS + " should be a boolean or a map");
             }
         }
 

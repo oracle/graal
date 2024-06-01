@@ -120,6 +120,7 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
+import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -299,14 +300,32 @@ public class SVMHost extends HostVM {
 
     @Override
     public void registerType(AnalysisType analysisType) {
-
         DynamicHub hub = createHub(analysisType);
-        /* Register the hub->type and type->hub mappings. */
+
+        registerType(analysisType, hub);
+    }
+
+    @Override
+    public void registerType(AnalysisType analysisType, int identityHashCode) {
+        DynamicHub hub = createHub(analysisType);
+
+        boolean result = IdentityHashCodeUtil.injectIdentityHashCode(hub, identityHashCode);
+
+        if (!result) {
+            throw VMError.shouldNotReachHere("The hashcode was already set when trying to inject the value from the base layer.");
+        }
+
+        registerType(analysisType, hub);
+    }
+
+    /**
+     * Register the hub->type and type->hub mappings.
+     */
+    private void registerType(AnalysisType analysisType, DynamicHub hub) {
         Object existing = typeToHub.put(analysisType, hub);
         assert existing == null;
         existing = hubToType.put(hub, analysisType);
         assert existing == null;
-
     }
 
     @Override

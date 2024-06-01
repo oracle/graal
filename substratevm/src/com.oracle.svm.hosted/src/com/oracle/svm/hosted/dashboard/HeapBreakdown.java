@@ -24,88 +24,39 @@
  */
 package com.oracle.svm.hosted.dashboard;
 
-import com.oracle.svm.hosted.dashboard.ToJson.JsonObject;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonString;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonNumber;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonValue;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonArray;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.image.NativeImageHeap;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import java.util.Arrays;
-import java.util.List;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-class HeapBreakdownJsonObject extends JsonObject {
+import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.image.NativeImageHeap;
+
+import jdk.graal.compiler.util.json.JsonBuilder;
+
+class HeapBreakdown {
     private Feature.AfterHeapLayoutAccess access;
     private boolean built = false;
-    private static final String INFO_NAME = "name";
-    private static final String INFO_SIZE = "size";
-    private static final String INFO_COUNT = "count";
-    private static final List<String> NAMES = Arrays.asList(INFO_NAME, INFO_SIZE, INFO_COUNT);
-
     private final HashMap<String, Statistics> sizes = new HashMap<>();
 
-    HeapBreakdownJsonObject(Feature.AfterHeapLayoutAccess access) {
+    HeapBreakdown(Feature.AfterHeapLayoutAccess access) {
         this.access = access;
     }
 
     Map<String, Long[]> getData() {
+        build();
         return sizes.entrySet().stream().collect(Collectors.toMap(Entry::getKey, (Entry<String, Statistics> e) -> new Long[]{e.getValue().size, e.getValue().count}));
     }
 
-    @Override
-    Stream<String> getNames() {
-        return Arrays.asList("heap-size").stream();
-    }
-
-    @Override
-    JsonValue getValue(String name) {
-        return JsonArray.get(sizes.entrySet().stream().map(ClassJsonObject::new));
-    }
-
-    private static class ClassJsonObject extends JsonObject {
-
-        private final Map.Entry<String, Statistics> entry;
-
-        ClassJsonObject(Map.Entry<String, Statistics> entry) {
-            this.entry = entry;
-        }
-
-        @Override
-        Stream<String> getNames() {
-            return NAMES.stream();
-        }
-
-        @Override
-        JsonValue getValue(String name) {
-            switch (name) {
-                case INFO_NAME:
-                    return JsonString.get(entry.getKey());
-                case INFO_SIZE:
-                    return JsonNumber.get(entry.getValue().size);
-                case INFO_COUNT:
-                    return JsonNumber.get(entry.getValue().count);
-                default:
-                    return null;
-            }
-        }
-    }
-
-    private class Statistics {
-
+    private static class Statistics {
         long size = 0;
         long count = 0;
     }
 
-    @Override
-    protected void build() {
+    private void build() {
         if (built) {
             return;
         }
@@ -123,5 +74,20 @@ class HeapBreakdownJsonObject extends JsonObject {
         }
         access = null;
         built = true;
+    }
+
+    public void toJson(JsonBuilder.ObjectBuilder builder) throws IOException {
+        build();
+        try (JsonBuilder.ArrayBuilder array = builder.append("heap-size").array()) {
+            for (Map.Entry<String, Statistics> entry : sizes.entrySet()) {
+                String name = entry.getKey();
+                Statistics stats = entry.getValue();
+                try (JsonBuilder.ObjectBuilder classBuilder = array.nextEntry().object()) {
+                    classBuilder.append("name", name)
+                                    .append("size", stats.size)
+                                    .append("count", stats.count);
+                }
+            }
+        }
     }
 }

@@ -29,11 +29,10 @@ import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.ProfileMet
 import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.SaveProfiles;
 import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.StrictProfiles;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,8 +68,8 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.util.json.JSONFormatter;
-import jdk.graal.compiler.util.json.JSONParser;
+import jdk.graal.compiler.util.json.JsonParser;
+import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -183,7 +182,7 @@ public final class ProfileReplaySupport {
                     String s = PathUtilities.sanitizeFileName(method.format("%h.%n(%p)%r"));
                     boolean foundOne = false;
                     for (Path path : files.filter(x -> x.toString().contains(s)).filter(x -> x.toString().endsWith(".glog")).collect(Collectors.toList())) {
-                        EconomicMap<String, Object> map = JSONParser.parseDict(new FileReader(path.toFile()));
+                        EconomicMap<String, Object> map = JsonParser.parseDict(new FileReader(path.toFile()));
                         if (entryBCI == (int) map.get("entryBCI")) {
                             foundOne = true;
                             expectedResult = (Boolean) map.get("result");
@@ -265,8 +264,8 @@ public final class ProfileReplaySupport {
                     } else {
                         path = debug.getDumpPath(".glog", false, false);
                     }
-                    try (PrintStream out = new PrintStream(new BufferedOutputStream(PathUtilities.openOutputStream(path)))) {
-                        out.println(JSONFormatter.formatJSON(map, true));
+                    try (JsonPrettyWriter writer = new JsonPrettyWriter(new PrintWriter(PathUtilities.openOutputStream(path)))) {
+                        writer.print(map);
                     }
                 } catch (Throwable t) {
                     throw debug.handle(t);

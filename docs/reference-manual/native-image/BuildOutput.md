@@ -91,7 +91,8 @@ Please report version and vendor when you [file issues](https://github.com/oracl
 The selected optimization level and targeted machine type used by the Graal compiler.
 The optimization level can be controlled with the `-O` option and defaults to `2`, which enables aggressive optimizations.
 Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#stage-compiling).
-This is useful during development, or when peak throughput is less important and you would like to optimize for size.
+This is useful during development to reduce image build time. 
+Use `-Os` to optimize for size.
 The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
 See [here](#recommendation-cpu) for recommendations on how to use this option.
 

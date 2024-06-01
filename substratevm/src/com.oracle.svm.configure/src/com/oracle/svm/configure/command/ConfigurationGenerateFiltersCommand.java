@@ -42,7 +42,8 @@ import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.filters.ModuleFilterTools;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class ConfigurationGenerateFiltersCommand extends ConfigurationCommand {
     @Override

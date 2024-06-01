@@ -32,10 +32,11 @@ import java.util.function.Function;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class ConfigurationSet {
     @FunctionalInterface

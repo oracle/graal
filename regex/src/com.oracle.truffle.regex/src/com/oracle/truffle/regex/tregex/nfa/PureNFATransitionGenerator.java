@@ -85,7 +85,7 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
         } else {
             targetState = nfaGen.getOrCreateState((Term) target);
         }
-        transitionBuffer.add(new PureNFATransition(nfaGen.getTransitionIdCounter().inc(), curState, targetState, getGroupBoundaries(), caretsOnPath(), dollarsOnPath(), getQuantifierGuardsOnPath()));
+        transitionBuffer.add(new PureNFATransition(nfaGen.getTransitionIdCounter().inc(), curState, targetState, getGroupBoundaries(), caretsOnPath(), dollarsOnPath(), getTransitionGuardsOnPath()));
     }
 
     @Override

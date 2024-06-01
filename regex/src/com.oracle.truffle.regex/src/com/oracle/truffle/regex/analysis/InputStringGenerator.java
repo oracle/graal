@@ -69,7 +69,7 @@ import com.oracle.truffle.regex.util.TruffleNull;
 
 public final class InputStringGenerator {
 
-    private static final CodePointSet ALLOWED_CHARACTERS = CodePointSet.createNoDedup(0x1, 0x7f);
+    private static final CodePointSet ALLOWED_CHARACTERS = CodePointSet.createNoDedup(0x1, 0x10ffff);
 
     private static final class LotteryBox implements Iterator<Integer> {
         private final Random rng;
@@ -594,8 +594,9 @@ public final class InputStringGenerator {
         } else if (term.isCharacterClass()) {
             CodePointSet cps = term.asCharacterClass().getCharSet();
 
-            // TODO: delete this
-            cps = ALLOWED_CHARACTERS.createIntersectionSingleRange(cps);
+            if (!cps.isEmpty()) {
+                cps = ALLOWED_CHARACTERS.createIntersectionSingleRange(cps);
+            }
 
             if (cps.isEmpty()) {
                 state = State.backtrack;

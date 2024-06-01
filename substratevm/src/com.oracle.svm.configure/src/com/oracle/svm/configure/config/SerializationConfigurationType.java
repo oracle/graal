@@ -31,8 +31,9 @@ import java.util.Objects;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class SerializationConfigurationType implements JsonPrintable, Comparable<SerializationConfigurationType> {
     private final UnresolvedConfigurationCondition condition;

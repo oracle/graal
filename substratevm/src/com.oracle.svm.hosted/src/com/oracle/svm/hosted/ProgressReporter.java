@@ -83,7 +83,6 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
@@ -104,6 +103,7 @@ import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
     private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
@@ -704,18 +704,21 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
                     Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
         executor.shutdown();
 
+        boolean singletonSupportAvailable = ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(BuildArtifacts.class) && ImageSingletons.contains(TimerCollection.class);
         if (optionalUnhandledThrowable.isPresent()) {
             Path errorReportPath = NativeImageOptions.getErrorFilePath(parsedHostedOptions);
             Optional<FeatureHandler> featureHandler = optionalGenerator.map(nativeImageGenerator -> nativeImageGenerator.featureHandler);
             ReportUtils.report("GraalVM Native Image Error Report", errorReportPath,
                             p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, optionalUnhandledThrowable.get()),
                             false);
-            if (ImageSingletonsSupport.isInstalled()) {
-                BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
+            if (!singletonSupportAvailable) {
+                printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
+                return;
             }
+            BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
         }
 
-        if (optionalImageName.isEmpty() || optionalGenerator.isEmpty()) {
+        if (!singletonSupportAvailable || optionalImageName.isEmpty() || optionalGenerator.isEmpty()) {
             printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
             return;
         }

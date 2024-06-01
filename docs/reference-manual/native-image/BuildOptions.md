@@ -76,7 +76,7 @@ Run `native-image --help` for help on build options.
 * `--target`: select the compilation target for `native-image` (in the `<OS>-<architecture>` format). It defaults to host's OS-architecture pair.
 * `--trace-class-initialization`: provide a comma-separated list of fully-qualified class names that a class initialization is traced for
 * `--trace-object-instantiation`: provide a comma-separated list of fully-qualified class names that an object instantiation is traced for
-* `-O<level>`: control code optimizations where available variants are: `b` - optimize for fastest build time, `0` - no optimizations, `1` - basic optimizations, `2` - aggressive optimizations, `3` - all optimizations for best performance (enabled automatically with the Profile-guided optimization) 
+* `-O<level>`: control code optimizations where available variants are: `b` - optimize for fastest build time, `s` - optimize for size, `0` - no optimizations, `1` - basic optimizations, `2` - aggressive optimizations, `3` - all optimizations for best performance (enabled automatically with Profile-Guided Optimizations)
 * `-da`, `-da[:[packagename]|:[classname]`, `disableassertions[:[packagename]|:[classname]`: disable assertions with specified granularity at run time
 * `-dsa`, `-disablesystemassertions`: disable assertions in all system classes at run time
 * `-ea`, `-ea[:[packagename]|:[classname]`, `enableassertions[:[packagename]|:[classname]`: enable assertions with specified granularity at run time

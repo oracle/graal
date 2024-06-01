@@ -87,7 +87,7 @@ public final class TRegexCompiler {
     private static RegexObject doCompile(RegexLanguage language, RegexSource source) throws RegexSyntaxException {
         TRegexCompilationRequest compReq = new TRegexCompilationRequest(language, source);
         RegexExecNode execNode = compReq.compile();
-        return new RegexObject(execNode, source, compReq.getFlags(), compReq.getAst().getNumberOfCaptureGroups(), compReq.getNamedCaptureGroups());
+        return new RegexObject(execNode, source, compReq.getAst().getFlavorSpecificFlags(), compReq.getAst().getNumberOfCaptureGroups(), compReq.getNamedCaptureGroups());
     }
 
     @TruffleBoundary

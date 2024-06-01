@@ -24,6 +24,20 @@
  */
 package org.graalvm.profdiff.test;
 
+import static org.graalvm.profdiff.parser.ExperimentParser.CODE;
+import static org.graalvm.profdiff.parser.ExperimentParser.COMPILATION_AOT;
+import static org.graalvm.profdiff.parser.ExperimentParser.COMPILATION_KIND;
+import static org.graalvm.profdiff.parser.ExperimentParser.COMPILE_ID;
+import static org.graalvm.profdiff.parser.ExperimentParser.EXECUTION_ID;
+import static org.graalvm.profdiff.parser.ExperimentParser.GRAAL_COMPILER_LEVEL;
+import static org.graalvm.profdiff.parser.ExperimentParser.LEVEL;
+import static org.graalvm.profdiff.parser.ExperimentParser.NAME;
+import static org.graalvm.profdiff.parser.ExperimentParser.NAME_SEPARATOR;
+import static org.graalvm.profdiff.parser.ExperimentParser.OSR_MARKER;
+import static org.graalvm.profdiff.parser.ExperimentParser.PERIOD;
+import static org.graalvm.profdiff.parser.ExperimentParser.TOTAL_PERIOD;
+import static org.junit.Assert.assertFalse;
+
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -41,25 +55,12 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.Profdiff;
-import jdk.graal.compiler.util.json.JSONFormatter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.graalvm.profdiff.parser.ExperimentParser.CODE;
-import static org.graalvm.profdiff.parser.ExperimentParser.COMPILATION_AOT;
-import static org.graalvm.profdiff.parser.ExperimentParser.COMPILATION_KIND;
-import static org.graalvm.profdiff.parser.ExperimentParser.COMPILE_ID;
-import static org.graalvm.profdiff.parser.ExperimentParser.EXECUTION_ID;
-import static org.graalvm.profdiff.parser.ExperimentParser.GRAAL_COMPILER_LEVEL;
-import static org.graalvm.profdiff.parser.ExperimentParser.LEVEL;
-import static org.graalvm.profdiff.parser.ExperimentParser.NAME;
-import static org.graalvm.profdiff.parser.ExperimentParser.NAME_SEPARATOR;
-import static org.graalvm.profdiff.parser.ExperimentParser.OSR_MARKER;
-import static org.graalvm.profdiff.parser.ExperimentParser.PERIOD;
-import static org.graalvm.profdiff.parser.ExperimentParser.TOTAL_PERIOD;
-import static org.junit.Assert.assertFalse;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class MainTest {
 
@@ -552,8 +553,8 @@ public class MainTest {
          */
         Path writeToTempFile() throws IOException {
             Path path = Files.createTempFile(Paths.get("."), fileNamePrefix, ".json");
-            try (FileWriter writer = new FileWriter(path.toFile())) {
-                writer.write(JSONFormatter.formatJSON(asJSONMap()));
+            try (JsonWriter writer = new JsonWriter(path)) {
+                writer.print(asJSONMap());
             }
             return path;
         }

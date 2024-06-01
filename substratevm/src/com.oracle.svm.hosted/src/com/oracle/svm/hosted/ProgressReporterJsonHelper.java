@@ -33,7 +33,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class ProgressReporterJsonHelper {
     protected static final long UNAVAILABLE_METRIC = -1;

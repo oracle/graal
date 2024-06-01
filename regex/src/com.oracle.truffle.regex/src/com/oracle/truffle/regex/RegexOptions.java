@@ -242,7 +242,7 @@ public final class RegexOptions {
     }
 
     public boolean isDumpAutomataWithSourceSections() {
-        return isDumpAutomata() && getFlavor() == ECMAScriptFlavor.INSTANCE;
+        return isDumpAutomata() && (getFlavor() == ECMAScriptFlavor.INSTANCE || getFlavor() == OracleDBFlavor.INSTANCE);
     }
 
     /**

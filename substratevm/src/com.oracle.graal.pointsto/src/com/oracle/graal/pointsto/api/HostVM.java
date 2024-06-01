@@ -135,6 +135,15 @@ public abstract class HostVM {
     }
 
     /**
+     * Register newly created type with a given identityHashCode.
+     *
+     * @param newValue the type to register
+     * @param identityHashCode the hash code of the hub
+     */
+    public void registerType(AnalysisType newValue, int identityHashCode) {
+    }
+
+    /**
      * Run additional checks on a type before the corresponding {@link AnalysisType} is created.
      * 
      * @param type the hosted type

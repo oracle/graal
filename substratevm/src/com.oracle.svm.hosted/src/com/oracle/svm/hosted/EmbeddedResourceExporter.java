@@ -40,9 +40,10 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonPrinter;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.util.json.JsonPrinter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class EmbeddedResourceExporter {

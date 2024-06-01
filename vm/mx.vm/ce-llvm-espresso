@@ -1,6 +1,6 @@
-# mx --dy /espresso,/substratevm,/sulong,/regex --components="Espresso libjvm,Espresso Standalone jvm.cfg,Java on Truffle LLVM Java libraries,Java on Truffle,LLVM Runtime Native,LLVM.org toolchain,Truffle Macro,GraalVM license files,TRegex" --disable-libpolyglot --non-rebuildable-images=lib:javavm --disable-installables=true graalvm-show --print-env
-DYNAMIC_IMPORTS=/espresso,/regex,/sdk,/substratevm,/sulong,/truffle,/vm
-COMPONENTS=antlr4,ejc,ejvm,ellvm,gvm,icu4j,java,llp,llrc,llrlf,llrn,nfi,nfi-libffi,rgx,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc,tflm
+# mx --dy /espresso,/substratevm,/sulong,/regex,/tools --components="Espresso libjvm,Espresso Standalone jvm.cfg,Java on Truffle LLVM Java libraries,Java on Truffle,LLVM Runtime Native,LLVM.org toolchain,Truffle Macro,GraalVM license files,TRegex,suite:tools" --disable-libpolyglot --non-rebuildable-images=lib:javavm --disable-installables=true graalvm-show --print-env
+DYNAMIC_IMPORTS=/espresso,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,/vm
+COMPONENTS=antlr4,cov,dap,ejc,ejvm,ellvm,gvm,icu4j,ins,insight,insightheap,java,llp,llrc,llrlf,llrn,lsp,nfi,nfi-libffi,pro,rgx,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc,tflm,truffle-json
 EXCLUDE_COMPONENTS=libpoly
 NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-clang-cl,graalvm-native-flang,graalvm-native-ld,lib:javavm
 DISABLE_INSTALLABLES=True

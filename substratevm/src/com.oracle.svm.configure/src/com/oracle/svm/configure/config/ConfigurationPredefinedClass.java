@@ -27,8 +27,8 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class ConfigurationPredefinedClass implements JsonPrintable {
 

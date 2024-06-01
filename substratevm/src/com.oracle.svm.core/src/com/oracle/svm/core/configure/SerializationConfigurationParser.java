@@ -35,7 +35,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import jdk.graal.compiler.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JsonParserException;
 
 public class SerializationConfigurationParser<C> extends ConfigurationParser {
 
@@ -64,7 +64,7 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
         } else if (json instanceof EconomicMap) {
             parseNewConfiguration(asMap(json, "First-level of document must be a map of serialization types"));
         } else {
-            throw new JSONParserException("First-level of document must either be an array of serialization lists or a map of serialization types");
+            throw new JsonParserException("First-level of document must either be an array of serialization lists or a map of serialization types");
         }
     }
 
@@ -74,7 +74,7 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
 
     private void parseNewConfiguration(EconomicMap<String, Object> listOfSerializationConfigurationObjects) {
         if (!listOfSerializationConfigurationObjects.containsKey(SERIALIZATION_TYPES_KEY) || !listOfSerializationConfigurationObjects.containsKey(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY)) {
-            throw new JSONParserException("Second-level of document must be arrays of serialization descriptor objects");
+            throw new JsonParserException("Second-level of document must be arrays of serialization descriptor objects");
         }
 
         parseSerializationTypes(asList(listOfSerializationConfigurationObjects.get(SERIALIZATION_TYPES_KEY), "The types property must be an array of serialization descriptor objects"), false);
@@ -124,7 +124,7 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
             } else if (targetSerializationClass.get() instanceof ProxyConfigurationTypeDescriptor proxyClass) {
                 serializationSupport.registerProxyClass(condition.get(), Arrays.asList(proxyClass.interfaceNames()));
             } else {
-                throw new JSONParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
+                throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
             }
         }
     }
