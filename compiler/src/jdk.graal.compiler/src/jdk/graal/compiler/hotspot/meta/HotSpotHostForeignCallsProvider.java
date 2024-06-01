@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,8 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCR
 import static jdk.graal.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
@@ -54,6 +56,7 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVM
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_SETMEMORY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_ADLER32;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
@@ -567,6 +570,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         registerForeignCall(createDescriptor(GENERIC_ARRAYCOPY, LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.any()), c.genericArraycopy, NativeCall);
         registerForeignCall(createDescriptor(UNSAFE_ARRAYCOPY, LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.any()), c.unsafeArraycopy, NativeCall);
+        if (c.unsafeSetMemory != 0L) {
+            registerForeignCall(UNSAFE_SETMEMORY, c.unsafeSetMemory, NativeCall);
+        }
 
         if (c.md5ImplCompressMultiBlock != 0L) {
             registerForeignCall(MD5_IMPL_COMPRESS_MB, c.md5ImplCompressMultiBlock, NativeCall);
@@ -625,6 +631,12 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         if (c.chacha20Block != 0L) {
             registerForeignCall(CHACHA20Block, c.chacha20Block, NativeCall);
+        }
+        if (c.intpolyMontgomeryMultP256 != 0L) {
+            registerForeignCall(INTPOLY_MONTGOMERYMULT_P256, c.intpolyMontgomeryMultP256, NativeCall);
+        }
+        if (c.intpolyAssign != 0L) {
+            registerForeignCall(INTPOLY_ASSIGN, c.intpolyAssign, NativeCall);
         }
 
         registerSnippetStubs(providers, options);

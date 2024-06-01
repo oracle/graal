@@ -31,6 +31,8 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.POLY1305_PROCESSBLOCKS;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT;
@@ -81,6 +83,7 @@ import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.hotspot.replacements.HubGetClassNode;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
+import jdk.graal.compiler.hotspot.replacements.UnsafeSetMemoryNode;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.lir.SyncPort;
@@ -264,6 +267,7 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 registerPoly1305Plugins(invocationPlugins, config, replacements);
                 registerChaCha20Plugins(invocationPlugins, config, replacements);
+                registerP256Plugins(invocationPlugins, config, replacements);
             }
 
         });
@@ -495,6 +499,13 @@ public class HotSpotGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase,
                             ValueNode destOffset, ValueNode bytes) {
                 b.add(new UnsafeCopyMemoryNode(receiver.get(true), srcBase, srcOffset, destBase, destOffset, bytes));
+                return true;
+            }
+        });
+        r.registerConditional(config.unsafeSetMemory != 0L, new InvocationPlugin("setMemory0", Receiver.class, Object.class, long.class, long.class, byte.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj, ValueNode offset, ValueNode bytes, ValueNode value) {
+                b.add(new UnsafeSetMemoryNode(receiver.get(true), obj, offset, bytes, value));
                 return true;
             }
         });
@@ -1215,6 +1226,47 @@ public class HotSpotGraphBuilderPlugins {
 
                     ForeignCallNode call = new ForeignCallNode(CHACHA20Block, stateStart, resultStart);
                     b.addPush(JavaKind.Int, call);
+                }
+                return true;
+            }
+        });
+    }
+
+    private static void registerP256Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "sun.security.util.math.intpoly.MontgomeryIntegerPolynomialP256", replacements);
+        r.registerConditional(config.intpolyMontgomeryMultP256 != 0L, new InvocationPlugin("mult", Receiver.class, long[].class, long[].class, long[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode aIn, ValueNode bIn, ValueNode rOut) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode aNotNull = b.nullCheckedValue(aIn);
+                    ValueNode bNotNull = b.nullCheckedValue(bIn);
+                    ValueNode rNotNull = b.nullCheckedValue(rOut);
+
+                    ValueNode aStart = helper.arrayStart(aNotNull, JavaKind.Long);
+                    ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
+                    ValueNode rStart = helper.arrayStart(rNotNull, JavaKind.Long);
+
+                    ForeignCallNode call = new ForeignCallNode(INTPOLY_MONTGOMERYMULT_P256, aStart, bStart, rStart);
+                    b.addPush(JavaKind.Int, call);
+                }
+                return true;
+            }
+        });
+
+        r = new Registration(plugins, "sun.security.util.math.intpoly.IntegerPolynomial", replacements);
+        r.registerConditional(config.intpolyAssign != 0L, new InvocationPlugin("conditionalAssign", int.class, long[].class, long[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode set, ValueNode aIn, ValueNode bIn) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode aNotNull = b.nullCheckedValue(aIn);
+                    ValueNode bNotNull = b.nullCheckedValue(bIn);
+
+                    ValueNode aStart = helper.arrayStart(aNotNull, JavaKind.Long);
+                    ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
+
+                    ValueNode aLength = helper.arraylength(aStart);
+
+                    b.add(new ForeignCallNode(INTPOLY_ASSIGN, set, aStart, bStart, aLength));
                 }
                 return true;
             }

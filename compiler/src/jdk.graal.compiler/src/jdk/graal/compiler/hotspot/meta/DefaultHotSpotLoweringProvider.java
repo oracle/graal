@@ -95,6 +95,7 @@ import jdk.graal.compiler.hotspot.replacements.ObjectSnippets;
 import jdk.graal.compiler.hotspot.replacements.RegisterFinalizerSnippets;
 import jdk.graal.compiler.hotspot.replacements.StringToBytesSnippets;
 import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
+import jdk.graal.compiler.hotspot.replacements.UnsafeSetMemoryNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeSnippets;
 import jdk.graal.compiler.hotspot.replacements.VirtualThreadUpdateJFRSnippets;
 import jdk.graal.compiler.hotspot.replacements.arraycopy.CheckcastArrayCopyCallNode;
@@ -556,6 +557,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof UnsafeCopyMemoryNode) {
             if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                 unsafeSnippets.lower((UnsafeCopyMemoryNode) n, tool);
+            }
+        } else if (n instanceof UnsafeSetMemoryNode) {
+            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                unsafeSnippets.lower((UnsafeSetMemoryNode) n, tool);
             }
         } else if (n instanceof RegisterFinalizerNode) {
             lowerRegisterFinalizer((RegisterFinalizerNode) n, tool);
