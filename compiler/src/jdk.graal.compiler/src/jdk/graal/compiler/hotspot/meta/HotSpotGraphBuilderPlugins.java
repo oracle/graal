@@ -536,9 +536,9 @@ public class HotSpotGraphBuilderPlugins {
                  * NewInstanceNode.
                  */
                 if (b.currentBlockCatchesOOM()) {
-                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazz);
+                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazz, true);
                 } else {
-                    DynamicNewInstanceNode.createAndPush(b, clazz);
+                    DynamicNewInstanceNode.createAndPush(b, clazz, true);
                 }
                 return true;
             }

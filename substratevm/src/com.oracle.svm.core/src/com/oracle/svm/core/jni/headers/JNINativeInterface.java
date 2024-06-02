@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.AllocObjectFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.CallBooleanMethodAFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.CallIntMethodAFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.CallLongMethodAFunctionPointer;
@@ -229,7 +230,7 @@ public interface JNINativeInterface extends PointerBase {
     void setEnsureLocalCapacity(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getAllocObject();
+    AllocObjectFunctionPointer getAllocObject();
 
     @CField
     void setAllocObject(CFunctionPointer p);

@@ -143,6 +143,22 @@ final class JniCallInterceptor {
         return result;
     }
 
+    @CEntryPoint(name = "AllocObject")
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
+    static JNIObjectHandle allocObject(JNIEnvironment env, JNIObjectHandle clazz) {
+        InterceptedState state = initInterceptedState();
+        JNIObjectHandle callerClass = getCallerClass(state, env);
+        JNIObjectHandle result = jniFunctions().getAllocObject().invoke(env, clazz);
+        if (nullHandle().equal(result) || clearException(env)) {
+            result = nullHandle();
+        }
+        if (shouldTrace()) {
+            traceCall(env, "AllocObject", clazz, nullHandle(), callerClass, result.notEqual(nullHandle()), state);
+        }
+        return result;
+
+    }
+
     @CEntryPoint(name = "GetMethodID")
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIMethodId getMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
@@ -316,6 +332,7 @@ final class JniCallInterceptor {
         JNINativeInterface functions = functionsPtr.read();
         functions.setDefineClass(defineClassLiteral.getFunctionPointer());
         functions.setFindClass(findClassLiteral.getFunctionPointer());
+        functions.setAllocObject(allocObjectLiteral.getFunctionPointer());
         functions.setGetMethodID(getMethodIDLiteral.getFunctionPointer());
         functions.setGetStaticMethodID(getStaticMethodIDLiteral.getFunctionPointer());
         functions.setGetFieldID(getFieldIDLiteral.getFunctionPointer());
@@ -341,6 +358,9 @@ final class JniCallInterceptor {
 
     private static final CEntryPointLiteral<FindClassFunctionPointer> findClassLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "findClass", JNIEnvironment.class, CCharPointer.class);
+
+    private static final CEntryPointLiteral<FindClassFunctionPointer> allocObjectLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+                    "allocObject", JNIEnvironment.class, JNIObjectHandle.class);
 
     private static final CEntryPointLiteral<GetMethodIDFunctionPointer> getMethodIDLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "getMethodID", JNIEnvironment.class, JNIObjectHandle.class, CCharPointer.class, CCharPointer.class);

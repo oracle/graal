@@ -187,6 +187,11 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         @Override
+        public void registerAsUnsafeAllocated(Class<?> type) {
+            getMetaAccess().lookupJavaType(type).registerAsUnsafeAllocated("registered from Feature API");
+        }
+
+        @Override
         public void registerAsAccessed(Field field) {
             registerAsAccessed(getMetaAccess().lookupJavaField(field), "registered from Feature API");
         }

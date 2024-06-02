@@ -90,7 +90,6 @@ import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.Word;
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -1042,11 +1041,7 @@ public final class Deoptimizer {
             if (!LayoutEncoding.isPureInstance(layoutEncoding)) {
                 throw fatalDeoptimizationError("Non-pure instance layout encoding: " + layoutEncoding, sourceFrame);
             }
-            try {
-                obj = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
-            } catch (InstantiationException ex) {
-                throw fatalDeoptimizationError("Instantiation exception: " + ex, sourceFrame);
-            }
+            obj = KnownIntrinsics.unvalidatedAllocateInstance(DynamicHub.toClass(hub));
             curOffset = WordFactory.unsigned(objectLayout.getFirstFieldOffset());
             curIdx = 1;
         }

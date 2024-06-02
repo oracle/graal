@@ -426,8 +426,7 @@ public class SubstrateGraphBuilderPlugins {
                 Runnable proxyRegistrationRunnable = interceptProxyInterfaces(b, targetMethod, annotationSubstitutions, args[1]);
                 if (proxyRegistrationRunnable != null) {
                     Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
-                    boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass.getModule().getName(), callerClass.getPackageName(),
-                                    callerClass.getName());
+                    boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass);
                     if (callerInScope && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
                         b.add(ReachabilityRegistrationNode.create(proxyRegistrationRunnable, reason));
                         return true;
@@ -809,9 +808,9 @@ public class SubstrateGraphBuilderPlugins {
                 ensureInitialized.setStateAfter(b.getInvocationPluginBeforeState());
 
                 if (b.currentBlockCatchesOOM()) {
-                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazzNonNull);
+                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazzNonNull, true);
                 } else {
-                    DynamicNewInstanceNode.createAndPush(b, clazzNonNull);
+                    DynamicNewInstanceNode.createAndPush(b, clazzNonNull, true);
                 }
                 return true;
             }
@@ -957,6 +956,18 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(MultiMethod.isDeoptTarget(b.getGraph().method())));
+                return true;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("unvalidatedAllocateInstance", Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode clazz) {
+                ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
+                if (b.currentBlockCatchesOOM()) {
+                    DynamicNewInstanceWithExceptionNode.createAndPush(b, clazzNonNull, false);
+                } else {
+                    DynamicNewInstanceNode.createAndPush(b, clazzNonNull, false);
+                }
                 return true;
             }
         });

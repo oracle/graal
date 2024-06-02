@@ -100,6 +100,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isInstantiatedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isInstantiated");
 
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isUnsafeAllocatedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isUnsafeAllocated");
+
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isReachableUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isReachable");
 
@@ -112,6 +115,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final String unqualifiedName;
 
     @SuppressWarnings("unused") private volatile Object isInstantiated;
+    /** Can be allocated via Unsafe or JNI, i.e., without executing a constructor. */
+    @SuppressWarnings("unused") private volatile Object isUnsafeAllocated;
     @SuppressWarnings("unused") private volatile Object isReachable;
     @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
@@ -526,6 +531,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         processMethodOverrides();
     }
 
+    public boolean registerAsUnsafeAllocated(Object reason) {
+        registerAsInstantiated(reason);
+        return AtomicUtils.atomicSet(this, reason, isUnsafeAllocatedUpdater);
+    }
+
     private void processMethodOverrides() {
         /*
          * Walk up the type hierarchy from this type keeping track of all processed types. For each
@@ -813,6 +823,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public Object getInstantiatedReason() {
         return isInstantiated;
+    }
+
+    public boolean isUnsafeAllocated() {
+        return AtomicUtils.isSet(this, isUnsafeAllocatedUpdater);
     }
 
     /** Returns true if this type or any of its subtypes was marked as instantiated. */

@@ -313,7 +313,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /** Indicates whether the type has been discovered as instantiated by the static analysis. */
     private static final int IS_INSTANTIATED_BIT = 0;
     /** Can this class be instantiated as an instance. */
-    private static final int CAN_INSTANTIATE_AS_INSTANCE_BIT = 1;
+    private static final int CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT = 1;
 
     private static final int IS_REGISTERED_FOR_SERIALIZATION = 2;
 
@@ -492,8 +492,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex,
-                    boolean isInstantiated, boolean canInstantiateAsInstance, boolean isRegisteredForSerialization) {
-        assert !(!isInstantiated && canInstantiateAsInstance);
+                    boolean isInstantiated, boolean canUnsafeInstantiateAsInstance, boolean isRegisteredForSerialization) {
+        assert !(!isInstantiated && canUnsafeInstantiateAsInstance);
         VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
         VMError.guarantee(identityHashOffset == (char) identityHashOffset, "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
 
@@ -506,7 +506,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         this.referenceMapIndex = (int) referenceMapIndex;
         this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) |
-                        makeFlag(CAN_INSTANTIATE_AS_INSTANCE_BIT, canInstantiateAsInstance) |
+                        makeFlag(CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT, canUnsafeInstantiateAsInstance) |
                         makeFlag(IS_REGISTERED_FOR_SERIALIZATION, isRegisteredForSerialization));
     }
 
@@ -748,8 +748,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return isFlagSet(additionalFlags, IS_INSTANTIATED_BIT);
     }
 
-    public boolean canInstantiateAsInstance() {
-        return isFlagSet(additionalFlags, CAN_INSTANTIATE_AS_INSTANCE_BIT);
+    public boolean canUnsafeInstantiateAsInstance() {
+        return isFlagSet(additionalFlags, CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT);
     }
 
     public boolean isProxyClass() {

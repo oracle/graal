@@ -248,7 +248,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         AnalysisType type = metaAccess.lookupJavaType(clazz);
         type.registerAsReachable("Is registered for reflection.");
         if (unsafeInstantiated) {
-            type.registerAsInstantiated("Is registered for reflection.");
+            type.registerAsUnsafeAllocated("Is registered for reflection.");
         }
 
         if (allowForName) {

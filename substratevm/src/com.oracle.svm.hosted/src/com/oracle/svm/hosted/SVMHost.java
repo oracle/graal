@@ -71,6 +71,7 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -185,14 +186,19 @@ public class SVMHost extends HostVM {
     private final InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy;
 
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
+    private final MissingRegistrationSupport missingRegistrationSupport;
 
     private final boolean useBaseLayer;
     private Set<Field> excludedFields;
 
+    private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
+
     @SuppressWarnings("this-escape")
-    public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions) {
+    public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
+                    MissingRegistrationSupport missingRegistrationSupport) {
         super(options, loader.getClassLoader());
         this.classInitializationSupport = classInitializationSupport;
+        this.missingRegistrationSupport = missingRegistrationSupport;
         this.stringTable = HostedStringDeduplication.singleton();
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticUnsafeTransformations = new AutomaticUnsafeTransformationSupport(options, annotationSubstitutions, loader);
@@ -348,6 +354,19 @@ public class SVMHost extends HostVM {
     @Override
     public void onTypeInstantiated(BigBang bb, AnalysisType type) {
         checkForbidden(type, UsageKind.Instantiated);
+
+        if (optionAllowUnsafeAllocationOfAllInstantiatedTypes != null) {
+            if (optionAllowUnsafeAllocationOfAllInstantiatedTypes) {
+                type.registerAsUnsafeAllocated("All types are registered as Unsafe allocated via option AllowUnsafeAllocationOfAllInstantiatedTypes");
+            } else {
+                /*
+                 * No default registration for unsafe allocation, setting the explicit option has
+                 * precedence over the generic ThrowMissingRegistrationError option.
+                 */
+            }
+        } else if (!missingRegistrationSupport.reportMissingRegistrationErrors(type.getJavaClass())) {
+            type.registerAsUnsafeAllocated("Type is not listed as ThrowMissingRegistrationError and therefore registered as Unsafe allocated automatically for compatibility reasons");
+        }
     }
 
     @Override

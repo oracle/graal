@@ -82,6 +82,14 @@ class JniProcessor extends AbstractProcessor {
         ConfigurationMemberDeclaration declaration = (declaringClass != null) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
         TypeConfiguration config = configurationSet.getJniConfiguration();
         switch (function) {
+            case "AllocObject":
+                expectSize(args, 0);
+                /*
+                 * AllocObject is implemented via Unsafe.allocateInstance, so we need to set the
+                 * "unsafe allocated" flag in the reflection configuration file.
+                 */
+                configurationSet.getReflectionConfiguration().getOrCreateType(condition, clazz).setUnsafeAllocated();
+                break;
             case "GetStaticMethodID":
             case "GetMethodID": {
                 expectSize(args, 2);

@@ -70,6 +70,7 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -372,6 +373,18 @@ public class FeatureImpl {
 
         public void registerAsInHeap(AnalysisType aType, Object reason) {
             aType.registerAsInstantiated(reason);
+        }
+
+        @Override
+        public void registerAsUnsafeAllocated(Class<?> clazz) {
+            registerAsUnsafeAllocated(getMetaAccess().lookupJavaType(clazz));
+        }
+
+        public void registerAsUnsafeAllocated(AnalysisType aType) {
+            if (aType.isAbstract()) {
+                throw UserError.abort("Cannot register an abstract class as instantiated: " + aType.toJavaName(true));
+            }
+            aType.registerAsUnsafeAllocated("From feature");
         }
 
         @Override
