@@ -680,6 +680,12 @@ public final class EspressoOptions {
                     usageSyntax = "safety|compact|graal") //
     public static final OptionKey<GuestFieldOffsetStrategyEnum> GuestFieldOffsetStrategy = new OptionKey<>(GuestFieldOffsetStrategyEnum.safety);
 
+    @Option(help = "Selects a specific runtime resource id (espresso-runtime-resource-<id>).", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "jdk21|openjdk21|...") //
+    public static final OptionKey<String> RuntimeResourceId = new OptionKey<>("");
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);
