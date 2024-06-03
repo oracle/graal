@@ -62,11 +62,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       'post-merge-deploy-vm-base-java-latest-windows-amd64',
       'post-merge-deploy-vm-standalones-java-latest-windows-amd64',
       'post-merge-deploy-vm-maven-linux-amd64',
-      'post-merge-deploy-vm-espresso-java21-linux-amd64',
-      'post-merge-deploy-vm-espresso-java21-linux-aarch64',
-      'post-merge-deploy-vm-espresso-java21-darwin-amd64',
-      'post-merge-deploy-vm-espresso-java21-darwin-aarch64',
-      'post-merge-deploy-vm-espresso-java21-windows-amd64',
     ],
     notify_groups:: ['deploy'],
   },
@@ -229,15 +224,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # - JDK21
     vm_common.deploy_vm_base_java21_windows_amd64,
     vm_common.deploy_vm_standalones_java21_windows_amd64,
-
-    #
-    # Deploy the GraalVM Espresso image (GraalVM Base + espresso)
-    #
-    vm_common.deploy_vm_espresso_java21_linux_amd64,
-    vm_common.deploy_vm_espresso_java21_linux_aarch64,
-    vm_common.deploy_vm_espresso_java21_darwin_amd64,
-    vm_common.deploy_vm_espresso_java21_darwin_aarch64,
-    vm_common.deploy_vm_espresso_java21_windows_amd64,
 
     # Trigger the releaser service
     self.notify_releaser_build,
