@@ -24,36 +24,17 @@
  */
 package com.oracle.svm.core.jni;
 
-import java.lang.reflect.Array;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.jni.access.JNIAccessibleField;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
-import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.internal.misc.Unsafe;
-import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Helper code that is used in generated JNI code via {@code JNIGraphKit}.
  */
-public class JNIGeneratedMethodSupport {
-    @Fold
-    public static JNIGeneratedMethodSupport singleton() {
-        return ImageSingletons.lookup(JNIGeneratedMethodSupport.class);
-    }
-
+public final class JNIGeneratedMethodSupport {
     // Careful around here -- these methods are invoked by generated methods.
 
     static PointerBase nativeCallAddress(JNINativeLinkage linkage) {
@@ -100,60 +81,6 @@ public class JNIGeneratedMethodSupport {
         Throwable t = getAndClearPendingException();
         if (t != null) {
             throw t;
-        }
-    }
-
-    public JNIObjectHandle getObjectField(JNIObjectHandle obj, JNIFieldId fieldId) {
-        Object o = JNIObjectHandles.getObject(obj);
-        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        Object result = getObjectField0(o, offset);
-        return JNIObjectHandles.createLocal(result);
-    }
-
-    protected Object getObjectField0(Object obj, long offset) {
-        return Unsafe.getUnsafe().getReference(obj, offset);
-    }
-
-    public static PointerBase pinArrayAndGetAddress(Object array, CCharPointer isCopy) throws Throwable {
-        Object obj = JNIObjectHandles.getObject(handle);
-        if (!obj.getClass().isArray()) {
-            throw new IllegalArgumentException("Argument is not an array");
-        }
-
-        if (isCopy.isNonNull()) {
-            isCopy.write((byte) 0);
-        }
-        return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(array);
-    }
-
-    public static boolean unpinArrayByAddress(PointerBase address) throws Throwable {
-        return JNIThreadLocalPinnedObjects.unpinArrayByAddress(address);
-    }
-
-    public void getPrimitiveArrayRegion(JavaKind elementKind, JNIObjectHandle handle, int start, int count, PointerBase buffer) {
-        Object obj = JNIObjectHandles.getObject(handle);
-        /* Check if we have a non-null array object and if start/count are valid. */
-        if (start < 0 || count < 0 || start > Array.getLength(obj) - count) {
-            throw new ArrayIndexOutOfBoundsException();
-        }
-        if (count > 0) {
-            long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
-            int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-            UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
-            JavaMemoryUtil.copyOnHeap(obj, WordFactory.unsigned(offset), null, WordFactory.unsigned(buffer.rawValue()), bytes);
-        }
-    }
-
-    public void setPrimitiveArrayRegion(JavaKind elementKind, JNIObjectHandle handle, int start, int count, PointerBase buffer) {
-        Object obj = JNIObjectHandles.getObject(handle);
-        if (start < 0 || count < 0 || start > Array.getLength(obj) - count) {
-            throw new ArrayIndexOutOfBoundsException();
-        }
-        if (count > 0) {
-            long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
-            int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-            UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
-            JavaMemoryUtil.copyOnHeap(null, WordFactory.unsigned(buffer.rawValue()), obj, WordFactory.unsigned(offset), bytes);
         }
     }
 }

@@ -27,7 +27,6 @@ package com.oracle.svm.core.windows;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 
 import java.io.FileDescriptor;
-import java.io.IOException;
 
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
@@ -83,10 +82,6 @@ public class WindowsUtils {
         SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle = handle;
     }
 
-    static boolean outOfBounds(int off, int len, byte[] array) {
-        return off < 0 || len < 0 || array.length - off < len;
-    }
-
     /** Return the error string for the last error, or a default message. */
     public static String lastErrorString(String defaultMsg) {
         int error = WinBase.GetLastError();
@@ -130,38 +125,6 @@ public class WindowsUtils {
         }
         int result = FileAPI.FlushFileBuffers(handle);
         return (result != 0);
-    }
-
-    @SuppressWarnings("unused")
-    static void writeBytes(FileDescriptor descriptor, byte[] bytes, int off, int len, boolean append) throws IOException {
-        if (bytes == null) {
-            throw new NullPointerException();
-        } else if (WindowsUtils.outOfBounds(off, len, bytes)) {
-            throw new IndexOutOfBoundsException();
-        }
-        if (len == 0) {
-            return;
-        }
-
-        try (PinnedObject bytesPin = PinnedObject.create(bytes)) {
-            CCharPointer curBuf = bytesPin.addressOfArrayElement(off);
-            UnsignedWord curLen = WordFactory.unsigned(len);
-            /** Temp fix until we complete FileDescriptor substitutions. */
-            int handle = FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE());
-
-            CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
-
-            int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, WordFactory.nullPointer());
-
-            if (ret == 0) {
-                throw new IOException(lastErrorString("Write error"));
-            }
-
-            int writtenCount = bytesWritten.read();
-            if (curLen.notEqual(writtenCount)) {
-                throw new IOException(lastErrorString("Write error"));
-            }
-        }
     }
 
     private static long performanceFrequency = 0L;
