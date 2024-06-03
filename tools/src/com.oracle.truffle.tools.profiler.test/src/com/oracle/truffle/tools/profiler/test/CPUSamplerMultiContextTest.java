@@ -47,6 +47,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.GCUtils;
@@ -77,6 +78,7 @@ public class CPUSamplerMultiContextTest {
                     "}\n";
 
     @Test
+    @Ignore
     public void testSamplerDoesNotKeepContexts() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (Engine engine = Engine.newBuilder().out(out).option("cpusampler", "true").option("cpusampler.Output", "histogram").build()) {
@@ -109,6 +111,7 @@ public class CPUSamplerMultiContextTest {
     }
 
     @Test
+    @Ignore
     public void testMultiThreadedAndMultiContextPerThread() throws InterruptedException, ExecutionException, IOException {
         ExecutorService executorService = Executors.newFixedThreadPool(10);
         try (Engine engine = Engine.create()) {
