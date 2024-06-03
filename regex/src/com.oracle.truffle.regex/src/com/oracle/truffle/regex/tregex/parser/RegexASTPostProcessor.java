@@ -48,7 +48,6 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CalcASTPropsVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -87,7 +86,7 @@ public class RegexASTPostProcessor {
         }
         OptimizeLookAroundsVisitor.optimizeLookArounds(ast, compilationBuffer);
         if (properties.hasQuantifiers()) {
-            UnrollQuantifiersVisitor.unrollQuantifiers(ast, compilationBuffer);
+            UnrollQuantifiersVisitor.unrollQuantifiers(ast);
         }
         CalcASTPropsVisitor.run(ast, compilationBuffer);
         ast.createPrefix();
@@ -135,32 +134,32 @@ public class RegexASTPostProcessor {
         private final ShouldUnrollQuantifierVisitor shouldUnrollVisitor = new ShouldUnrollQuantifierVisitor();
         private final QuantifierExpander quantifierExpander;
 
-        private UnrollQuantifiersVisitor(RegexAST ast, CompilationBuffer compilationBuffer) {
+        private UnrollQuantifiersVisitor(RegexAST ast) {
             this.ast = ast;
-            this.quantifierExpander = new QuantifierExpander(ast, compilationBuffer);
+            this.quantifierExpander = new QuantifierExpander(ast);
         }
 
-        public static void unrollQuantifiers(RegexAST ast, CompilationBuffer compilationBuffer) {
-            new UnrollQuantifiersVisitor(ast, compilationBuffer).run(ast.getRoot());
+        public static void unrollQuantifiers(RegexAST ast) {
+            new UnrollQuantifiersVisitor(ast).run(ast.getRoot());
         }
 
         @Override
         protected void visit(BackReference backReference) {
-            if (backReference.hasNotUnrolledQuantifier()) {
+            if (backReference.hasQuantifier()) {
                 quantifierExpander.expandQuantifier(backReference, shouldUnroll(backReference));
             }
         }
 
         @Override
         protected void visit(CharacterClass characterClass) {
-            if (characterClass.hasNotUnrolledQuantifier()) {
+            if (characterClass.hasQuantifier()) {
                 quantifierExpander.expandQuantifier(characterClass, shouldUnroll(characterClass));
             }
         }
 
         @Override
         protected void leave(Group group) {
-            if (group.hasNotUnrolledQuantifier() && !group.getFirstAlternative().isExpandedQuantifier() && !group.getLastAlternative().isExpandedQuantifier()) {
+            if (group.hasQuantifier()) {
                 quantifierExpander.expandQuantifier(group, shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
             }
         }
@@ -203,23 +202,26 @@ public class RegexASTPostProcessor {
         private static final class QuantifierExpander {
 
             private final RegexAST ast;
-            private final CompilationBuffer compilationBuffer;
-            private final CopyVisitor copyVisitor;
 
+            private final CopyVisitor copyVisitor;
             private Group curGroup;
             private Sequence curSequence;
             private Term curTerm;
 
-            QuantifierExpander(RegexAST ast, CompilationBuffer compilationBuffer) {
+            QuantifierExpander(RegexAST ast) {
                 this.ast = ast;
-                this.compilationBuffer = compilationBuffer;
                 this.copyVisitor = new CopyVisitor(ast);
             }
 
             private void pushGroup() {
-                Group group = ast.createGroup();
-                curSequence.add(group);
-                curGroup = group;
+                curGroup = ast.createGroup();
+                curSequence.add(curGroup);
+                nextSequence();
+            }
+
+            private void replaceCurTermWithNewGroup() {
+                curGroup = ast.createGroup();
+                curSequence.replace(curTerm.getSeqIndex(), curGroup);
                 nextSequence();
             }
 
@@ -239,73 +241,76 @@ public class RegexASTPostProcessor {
                 curTerm = term;
             }
 
-            private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean copy, boolean unroll, int recurse) {
-                addTerm(copy ? copyVisitor.copy(term) : term);
-                curTerm.setExpandedQuantifier(false);
-                ((QuantifiableTerm) curTerm).setQuantifier(null);
-                curTerm.setEmptyGuard(true);
-                createOptional(term, quantifier, true, unroll, recurse - 1);
+            private void addTermCopyAsGroup(Term term) {
+                if (term.isGroup()) {
+                    addTerm(copyVisitor.copy(term));
+                } else {
+                    pushGroup();
+                    addTerm(copyVisitor.copy(term));
+                    popGroup();
+                    if (term.isGroup()) {
+                        curTerm.asGroup().setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
+                        curTerm.asGroup().setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
+                    }
+                }
             }
 
-            private void createOptional(QuantifiableTerm term, Token.Quantifier quantifier, boolean copy, boolean unroll, int recurse) {
+            private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, int recurse) {
+                // We wrap the quantified term in a group, as NFATraversalRegexASTVisitor is set up
+                // to expect quantifier guards only on group boundaries.
+                addTermCopyAsGroup(term);
+                curTerm.asGroup().setQuantifier(quantifier);
+                curTerm.setExpandedQuantifier(unroll);
+                curTerm.setMandatoryUnrolledQuantifier(false);
+                curTerm.setEmptyGuard(true);
+                createOptional(term, quantifier, unroll, recurse - 1);
+            }
+
+            private void createOptional(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, int recurse) {
                 if (recurse < 0) {
                     return;
                 }
-                if (copy) {
-                    // the outermost group is already generated by expandQuantifier if copy == false
-                    pushGroup();
-                }
-                curGroup.setExpandedQuantifier(unroll);
-                curGroup.setQuantifier(quantifier);
+                pushGroup();
                 if (term.isGroup()) {
                     curGroup.setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
                     curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
                 }
                 if (quantifier.isGreedy()) {
-                    createOptionalBranch(term, quantifier, copy, unroll, recurse);
+                    createOptionalBranch(term, quantifier, unroll, recurse);
                     nextSequence();
-                    curSequence.setExpandedQuantifier(true);
+                    curSequence.setQuantifierPassThroughSequence(true);
                 } else {
-                    curSequence.setExpandedQuantifier(true);
+                    curSequence.setQuantifierPassThroughSequence(true);
                     nextSequence();
-                    createOptionalBranch(term, quantifier, copy, unroll, recurse);
+                    createOptionalBranch(term, quantifier, unroll, recurse);
                 }
                 popGroup();
             }
 
             private void expandQuantifier(QuantifiableTerm toExpand, boolean unroll) {
-                assert toExpand.hasNotUnrolledQuantifier();
-                Token.Quantifier quantifier = toExpand.getQuantifier();
+                assert toExpand.hasQuantifier();
                 assert !unroll || toExpand.isUnrollingCandidate();
+                Token.Quantifier quantifier = toExpand.getQuantifier();
+                toExpand.setQuantifier(null);
+
                 curTerm = toExpand;
                 curSequence = (Sequence) curTerm.getParent();
                 curGroup = curSequence.getParent();
 
-                ObjectArrayBuffer<Term> buf = compilationBuffer.getObjectBuffer1();
-                if (unroll && quantifier.getMin() > 0) {
-                    // stash successors of toExpand to buffer
-                    int size = curSequence.size();
-                    for (int i = toExpand.getSeqIndex() + 1; i < size; i++) {
-                        buf.add(curSequence.getLastTerm());
-                        curSequence.removeLastTerm();
-                    }
+                // replace the term to expand with a new wrapper group
+                replaceCurTermWithNewGroup();
+
+                // unroll mandatory part ( x{3} -> xxx )
+                if (unroll) {
                     // unroll non-optional part ( x{3} -> xxx )
-                    toExpand.setExpandedQuantifier(true);
-                    for (int i = 0; i < quantifier.getMin() - 1; i++) {
-                        Term term = copyVisitor.copy(toExpand);
-                        term.setExpandedQuantifier(true);
-                        curSequence.add(term);
-                        curTerm = term;
+                    for (int i = 0; i < quantifier.getMin(); i++) {
+                        addTermCopyAsGroup(toExpand);
+                        curTerm.asGroup().setQuantifier(quantifier);
+                        curTerm.setExpandedQuantifier(true);
+                        curTerm.setMandatoryUnrolledQuantifier(true);
                     }
-                } else {
-                    assert !unroll || quantifier.getMin() == 0;
-                    // replace the term to expand with a new wrapper group
-                    curGroup = ast.createGroup();
-                    curGroup.addSequence(ast);
-                    curSequence.replace(toExpand.getSeqIndex(), curGroup);
-                    curSequence = curGroup.getFirstAlternative();
-                    curTerm = null;
                 }
+
                 // unroll optional part ( x{0,3} -> (x(x(x|)|)|) )
                 // In flavors like Python or Ruby, loops can be repeated past the point where the
                 // position in the string keeps advancing (i.e. we are matching at least one
@@ -314,15 +319,9 @@ public class RegexASTPostProcessor {
                 // iteration is run because there is no backtracking after failing the empty check.
                 // We can emulate this behavior by dropping empty guards in small bounded loops,
                 // such as is the case for unrolled loops.
-                createOptional(toExpand, quantifier, unroll && quantifier.getMin() > 0, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
+                createOptional(toExpand, quantifier, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
                 if (!unroll || quantifier.isInfiniteLoop()) {
                     ((Group) curTerm).setLoop(true);
-                }
-                if (unroll && quantifier.getMin() > 0) {
-                    // restore the stashed successors
-                    for (int i = buf.length() - 1; i >= 0; i--) {
-                        curSequence.add(buf.get(i));
-                    }
                 }
             }
         }

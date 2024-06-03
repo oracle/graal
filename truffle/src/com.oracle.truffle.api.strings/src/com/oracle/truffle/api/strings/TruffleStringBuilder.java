@@ -490,7 +490,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     if (codepoint > 0x7f) {
                         sb.updateCodeRange(TSCodeRange.get8Bit());
                     }
-                    sb.ensureCapacityS0(node, repeat, bufferGrowProfile, errorProfile);
+                    sb.ensureCapacityWithStride(node, repeat, bufferGrowProfile, errorProfile);
                     for (int i = 0; i < repeat; i++) {
                         TStringOps.writeToByteArray(sb.buf, sb.stride, sb.length++, codepoint);
                     }

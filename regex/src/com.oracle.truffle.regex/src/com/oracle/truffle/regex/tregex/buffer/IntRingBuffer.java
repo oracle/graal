@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.charset;
 
-import org.graalvm.collections.EconomicMap;
+package com.oracle.truffle.regex.tregex.buffer;
 
-/**
- * This class hosts lookup tables for case insensitive Unicode properties. Those are used by the
- * Ruby flavor, which does case insensitive matching on property names. This class was created in
- * order to separate the data from {@link UnicodePropertyData}, which is machine generated, and from
- * {@link UnicodeProperties}, so that the tables are filled in only when needed (i.e. when this
- * class is accessed).
- */
-class UnicodePropertyDataRuby {
-    static final EconomicMap<String, String> PROPERTY_ALIASES_LOWERCASE = EconomicMap.create(UnicodePropertyData.PROPERTY_ALIASES.size());
-    static final EconomicMap<String, String> GENERAL_CATEGORY_ALIASES_LOWERCASE = EconomicMap.create(UnicodePropertyData.GENERAL_CATEGORY_ALIASES.size());
-    static final EconomicMap<String, String> SCRIPT_ALIASES_LOWERCASE = EconomicMap.create(UnicodePropertyData.SCRIPT_ALIASES.size());
+public final class IntRingBuffer {
 
-    static {
-        for (String propertyAlias : UnicodePropertyData.PROPERTY_ALIASES.getKeys()) {
-            PROPERTY_ALIASES_LOWERCASE.put(propertyAlias.toLowerCase(), propertyAlias);
+    private final int[] buf;
+    private int start = 0;
+    private int length = 0;
+
+    public IntRingBuffer(int sizePowerOf2) {
+        buf = new int[1 << sizePowerOf2];
+    }
+
+    public boolean isEmpty() {
+        return length == 0;
+    }
+
+    public void clear() {
+        start = 0;
+        length = 0;
+    }
+
+    private int index(int index) {
+        assert Integer.bitCount(buf.length) == 1;
+        return (start + index) & (buf.length - 1);
+    }
+
+    public int first() {
+        assert !isEmpty();
+        return buf[start];
+    }
+
+    public int last() {
+        assert !isEmpty();
+        return buf[index(length - 1)];
+    }
+
+    public void add(int i) {
+        assert length < buf.length;
+        buf[index(length++)] = i;
+    }
+
+    public void addAll(int[] o) {
+        assert buf.length >= length + o.length;
+        int copyStart = index(length);
+        int copyLength = o.length;
+        if (copyStart + copyLength > buf.length) {
+            copyLength -= (copyStart + copyLength) - buf.length;
+            System.arraycopy(o, copyLength, buf, 0, o.length - copyLength);
         }
-        for (String generalCategoryAlias : UnicodePropertyData.GENERAL_CATEGORY_ALIASES.getKeys()) {
-            GENERAL_CATEGORY_ALIASES_LOWERCASE.put(generalCategoryAlias.toLowerCase(), generalCategoryAlias);
-        }
-        for (String scriptAlias : UnicodePropertyData.SCRIPT_ALIASES.getKeys()) {
-            SCRIPT_ALIASES_LOWERCASE.put(scriptAlias.toLowerCase(), scriptAlias);
-        }
+        System.arraycopy(o, 0, buf, copyStart, copyLength);
+        length += o.length;
+    }
+
+    public int removeFirst() {
+        assert !isEmpty();
+        int first = first();
+        start = index(1);
+        length--;
+        return first;
     }
 }

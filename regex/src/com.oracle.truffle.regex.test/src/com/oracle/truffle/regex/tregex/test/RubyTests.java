@@ -638,4 +638,9 @@ public class RubyTests extends RegexTestBase {
                         "      ";
         test(pattern, "mx", "abc", 0, false);
     }
+
+    @Test
+    public void gr52472() {
+        test("(|a+?){0,4}b", "", "aaab", 0, true, 0, 4, 1, 3);
+    }
 }

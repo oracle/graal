@@ -52,7 +52,6 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.errors.OracleDBErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -63,7 +62,6 @@ public final class OracleDBRegexLexer extends RegexLexer {
     private static final CodePointSet EMPTY_POSIX_CHAR_CLASS = CodePointSet.create(':', ':', '[', '[', ']', ']');
     private static final TBitSet WHITESPACE = TBitSet.valueOf('\n', ' ');
     private final OracleDBFlags flags;
-    private final CodePointSetAccumulator caseFoldTmp = new CodePointSetAccumulator();
 
     public OracleDBRegexLexer(RegexSource source, OracleDBFlags flags, CompilationBuffer compilationBuffer) {
         super(source, compilationBuffer);
@@ -76,6 +74,9 @@ public final class OracleDBRegexLexer extends RegexLexer {
         boolean hasNext = super.hasNext();
         // trailing back-slashes are ignored
         if (position == pattern.length() - 1 && pattern.charAt(pattern.length() - 1) == '\\') {
+            if (inCharacterClass()) {
+                throw handleUnmatchedLeftBracket();
+            }
             return false;
         }
         return hasNext;
@@ -94,11 +95,6 @@ public final class OracleDBRegexLexer extends RegexLexer {
     @Override
     protected boolean featureEnabledZLowerCaseAssertion() {
         return true;
-    }
-
-    @Override
-    protected boolean featureEnabledWordBoundaries() {
-        return false;
     }
 
     @Override
@@ -203,7 +199,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
-        CaseFoldData.applyCaseFoldUnfold(charClass, caseFoldTmp, CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode);
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -276,7 +272,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected long boundedQuantifierMaxValue() {
-        return Integer.MAX_VALUE;
+        return 0xfffe;
     }
 
     @Override
@@ -285,10 +281,15 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected Token handleBoundedQuantifierSyntaxError() throws RegexSyntaxException {
+    protected Token handleBoundedQuantifierEmptyOrMissingMin() throws RegexSyntaxException {
         // invalid bounded quantifiers are treated as string literals
         position = getLastTokenPosition() + 1;
         return literalChar('{');
+    }
+
+    @Override
+    protected Token handleBoundedQuantifierInvalidCharacter() {
+        return handleBoundedQuantifierEmptyOrMissingMin();
     }
 
     @Override
@@ -322,11 +323,6 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected RegexSyntaxException handleEmptyGroupName() {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @Override
     protected void handleGroupRedefinition(String name, int newId, int oldId) {
         throw CompilerDirectives.shouldNotReachHere();
     }
@@ -337,13 +333,8 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void handleInvalidBackReference(int reference) {
+    protected Token handleInvalidBackReference(int reference) {
         throw syntaxError(OracleDBErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
-    }
-
-    @Override
-    protected void handleInvalidBackReference(String reference) {
-        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -451,4 +442,5 @@ public final class OracleDBRegexLexer extends RegexLexer {
     protected Token parseGroupLt() {
         throw CompilerDirectives.shouldNotReachHere();
     }
+
 }

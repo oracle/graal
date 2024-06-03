@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,14 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.charset.collation;
 
-import com.oracle.truffle.regex.charset.ClassSetContents;
-import com.oracle.truffle.regex.charset.ClassSetContentsAccumulator;
+package com.oracle.truffle.regex.charset;
 
-public interface Collator {
+public final class UnicodePropertyDataVersion {
 
-    void expand(ClassSetContentsAccumulator dst, ClassSetContents src);
+    /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+    public static final UnicodePropertyData UNICODE_15_0_0 = UnicodePropertyData.INSTANCE;
+    public static final UnicodePropertyData UNICODE_15_1_0 = UnicodePropertyData.populateUNICODE_15_1_0(UNICODE_15_0_0);
 
-    void expandRange(ClassSetContentsAccumulator dst, ClassSetContents rangeLo, ClassSetContents rangeHi);
+    /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 }

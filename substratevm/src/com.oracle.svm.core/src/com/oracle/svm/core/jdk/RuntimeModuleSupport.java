@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.function.Function;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.heap.UnknownObjectField;
+
+import java.util.function.Function;
 
 public final class RuntimeModuleSupport {
 
@@ -39,7 +38,7 @@ public final class RuntimeModuleSupport {
         return ImageSingletons.lookup(RuntimeModuleSupport.class);
     }
 
-    @UnknownObjectField(availability = AfterHostedUniverse.class) private ModuleLayer bootLayer;
+    @UnknownObjectField private ModuleLayer bootLayer;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private Function<Module, Module> hostedToRuntimeModuleMapper;

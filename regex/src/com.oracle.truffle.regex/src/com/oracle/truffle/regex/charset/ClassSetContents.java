@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.regex.charset;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-import org.graalvm.collections.EconomicSet;
 
 public final class ClassSetContents implements JsonConvertible {
 
@@ -112,6 +113,13 @@ public final class ClassSetContents implements JsonConvertible {
         return new ClassSetContents(Kind.POSIXCollationEquivalenceClass, CodePointSet.getEmpty(), strings, true);
     }
 
+    public ClassSetContents unionUnicodePropertyOfStrings(ClassSetContents other) {
+        EconomicSet<String> unionStrings = EconomicSet.create();
+        unionStrings.addAll(strings);
+        unionStrings.addAll(other.strings);
+        return new ClassSetContents(Kind.Class, codePointSet.union(other.codePointSet), unionStrings, mayContainStrings || other.mayContainStrings);
+    }
+
     public ClassSetContents caseFold(CodePointSetAccumulator tmp) {
         EconomicSet<String> foldedStrings = EconomicSet.create(strings.size());
         for (String string : strings) {
@@ -132,8 +140,16 @@ public final class ClassSetContents implements JsonConvertible {
         return kind == Kind.Character;
     }
 
+    public boolean isCharacterClass() {
+        return kind == Kind.Class;
+    }
+
     public boolean isRange() {
         return kind == Kind.Range;
+    }
+
+    public boolean isPosixCollationElement() {
+        return kind == Kind.POSIXCollationElement;
     }
 
     public boolean isPosixCollationEquivalenceClass() {

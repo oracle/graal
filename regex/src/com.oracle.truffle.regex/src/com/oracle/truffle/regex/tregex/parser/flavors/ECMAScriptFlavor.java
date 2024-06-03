@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.charset.UnicodePropertyDataVersion;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
@@ -50,11 +53,10 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
-import java.util.function.BiPredicate;
-
 public final class ECMAScriptFlavor extends RegexFlavor {
 
     public static final ECMAScriptFlavor INSTANCE = new ECMAScriptFlavor();
+    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_15_0_0, 0);
 
     private ECMAScriptFlavor() {
         super(0);
@@ -71,11 +73,16 @@ public final class ECMAScriptFlavor extends RegexFlavor {
     }
 
     @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
+    public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
         if (ast.getFlags().isEitherUnicode()) {
-            return CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode.getEqualsPredicate();
+            return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode.getEqualsPredicate().test(a, b);
         } else {
-            return CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate();
+            return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate().test(a, b);
         }
+    }
+
+    @Override
+    public CaseFoldData.CaseFoldAlgorithm getCaseFoldAlgorithm(RegexAST ast) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 }
