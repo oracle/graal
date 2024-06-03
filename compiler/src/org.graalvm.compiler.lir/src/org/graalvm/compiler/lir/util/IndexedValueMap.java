@@ -29,6 +29,7 @@ import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
 import org.graalvm.compiler.lir.InstructionValueProcedure;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -331,7 +332,7 @@ public final class IndexedValueMap {
             for (int i = 0; i < limit; i++) {
                 Value value = otherValues[i];
                 if (value != null) {
-                    values[i] = value;
+                    values[i] = mergeValues(value, values[i]);
                 }
             }
         } else if (values != null || otherValues == null) {
@@ -344,8 +345,9 @@ public final class IndexedValueMap {
             }
             MapCursor<Integer, Value> valueEntry = stack.fallbackMap.getEntries();
             while (valueEntry.advance()) {
-                if (valueEntry.getValue() != null) {
-                    fallbackMap.put(valueEntry.getKey(), valueEntry.getValue());
+                Value value = valueEntry.getValue();
+                if (value != null) {
+                    fallbackMap.put(valueEntry.getKey(), mergeValues(value, fallbackMap.get(valueEntry.getKey())));
                 }
             }
         } else { // values == null && otherValues != null
@@ -356,9 +358,26 @@ public final class IndexedValueMap {
             for (int i = 0; i < otherValues.length; i++) {
                 Value value = otherValues[i];
                 if (value != null) {
-                    fallbackMap.put(i, otherValues[i]);
+                    fallbackMap.put(i, mergeValues(value, fallbackMap.get(i)));
                 }
             }
+        }
+    }
+
+    /**
+     * Merge values for the same location. Either value may be null and if they are both non-null
+     * they should be exactly equal. Otherwise, the defs and uses disagree about the value which
+     * signals an error of some sort.
+     */
+    private static Value mergeValues(Value v1, Value v2) {
+        if (v1 == null) {
+            return v2;
+        } else if (v2 == null) {
+            return v1;
+        } else if (v1.equals(v2)) {
+            return v1;
+        } else {
+            throw GraalError.shouldNotReachHere("unable to merge %s and %s".formatted(v1, v2));
         }
     }
 
@@ -459,8 +478,9 @@ public final class IndexedValueMap {
             if (fallbackMap != null) {
                 MapCursor<Integer, Value> valueEntry = fallbackMap.getEntries();
                 while (valueEntry.advance()) {
-                    if (valueEntry.getValue() != null) {
-                        consumer.visitValue(inst, valueEntry.getValue(), mode, flags);
+                    Value v = valueEntry.getValue();
+                    if (v != null) {
+                        consumer.visitValue(inst, v, mode, flags);
                     }
                 }
             }
