@@ -27,9 +27,11 @@ import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
@@ -44,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -77,6 +80,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
+import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.JImageExtensions;
@@ -592,6 +596,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
     }
 
+    private static final String[] KNOWN_ESPRESSO_RUNTIMES = {"jdk21", "openjdk21"};
+    private static final Pattern VALID_RESOURCE_ID = Pattern.compile("[0-9a-z\\-]+");
+
     public static Path getEspressoRuntime(TruffleLanguage.Env env) {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
         // libraries bundled with GraalVM.
@@ -612,9 +619,46 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             }
         }
         try {
-            Path resources = Path.of(env.getInternalResource("espresso-runtime").getAbsoluteFile().toString());
-            assert Files.isDirectory(resources);
-            return resources;
+            if (env.getOptions().hasBeenSet(EspressoOptions.JavaHome)) {
+                // This option's value will be used, no need to guess
+                if (env.getOptions().hasBeenSet(EspressoOptions.RuntimeResourceId)) {
+                    env.getLogger(EspressoContext.class).warning("Both java.JavaHome and java.RuntimeResourceId are set. RuntimeResourceId will be ignored.");
+                }
+                return null;
+            }
+            if (env.getOptions().hasBeenSet(EspressoOptions.RuntimeResourceId)) {
+                String runtimeName = env.getOptions().get(EspressoOptions.RuntimeResourceId);
+                if (!VALID_RESOURCE_ID.matcher(runtimeName).matches()) {
+                    throw EspressoError.fatal("Invalid RuntimeResourceId: " + runtimeName);
+                }
+                TruffleFile resource = env.getInternalResource("espresso-runtime-" + runtimeName);
+                if (resource == null) {
+                    throw EspressoError.fatal("Couldn't find: espresso-runtime-" + runtimeName + " internal resource.\n" +
+                                    "Did you add the corresponding jar to the class or module path?");
+                }
+                Path resources = Path.of(resource.getAbsoluteFile().toString());
+                assert Files.isDirectory(resources);
+                return resources;
+            }
+            for (String runtimeName : KNOWN_ESPRESSO_RUNTIMES) {
+                TruffleFile resource = env.getInternalResource("espresso-runtime-" + runtimeName);
+                if (resource != null) {
+                    Path resources = Path.of(resource.getAbsoluteFile().toString());
+                    assert Files.isDirectory(resources);
+                    env.getLogger(EspressoContext.class).info(() -> "Selected " + runtimeName + " runtime");
+                    return resources;
+                }
+            }
+            if (OS.getCurrent() == OS.Linux && JavaVersion.HOST_VERSION.compareTo(JavaVersion.latestSupported()) <= 0) {
+                if (!EspressoOptions.RUNNING_ON_SVM || (boolean) env.getConfig().getOrDefault("preinit", false)) {
+                    // we might be able to use the host runtime libraries
+                    env.getLogger(EspressoContext.class).info("Trying to use the host's runtime libraries");
+                    return Paths.get(System.getProperty("java.home"));
+                }
+            }
+            throw EspressoError.fatal("Couldn't find suitable runtime libraries for espresso. You can try to\n" +
+                            "add a jar with the necessary resources such as org.graalvm.espresso:espresso-runtime-resources-*,\n" +
+                            "or set java.JavaHome explicitly.");
         } catch (IOException e) {
             throw EspressoError.shouldNotReachHere(e);
         }

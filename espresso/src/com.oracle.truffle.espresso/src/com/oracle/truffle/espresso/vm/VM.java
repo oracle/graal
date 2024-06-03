@@ -3732,13 +3732,13 @@ public final class VM extends NativeEnv {
     private static final long ONE_BILLION = 1_000_000_000;
     private static final long MAX_DIFF = 0x0100000000L;
 
-    @VmImpl(isJni = true)
-    @SuppressWarnings("unused")
-    @TruffleBoundary
     /**
      * Instant.now() uses System.currentTimeMillis() on a host Java 8. This might produce some loss
      * of precision.
      */
+    @VmImpl(isJni = true)
+    @SuppressWarnings("unused")
+    @TruffleBoundary
     public static long JVM_GetNanoTimeAdjustment(@JavaType(Class.class) StaticObject ignored, long offset) {
         // Instant.now() uses System.currentTimeMillis() on a host Java 8. This might produce some
         // loss of precision.
