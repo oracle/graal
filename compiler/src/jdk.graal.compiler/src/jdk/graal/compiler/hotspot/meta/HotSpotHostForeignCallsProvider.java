@@ -206,6 +206,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
      *
      * @see sun.misc.Unsafe#copyMemory
      */
+    @SuppressWarnings("javadoc") //
     public static final ForeignCallSignature UNSAFE_ARRAYCOPY = new ForeignCallSignature("unsafe_arraycopy", void.class, Word.class, Word.class, Word.class);
 
     /**
