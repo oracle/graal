@@ -1264,7 +1264,7 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode aStart = helper.arrayStart(aNotNull, JavaKind.Long);
                     ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
 
-                    ValueNode aLength = helper.arraylength(aStart);
+                    ValueNode aLength = helper.arraylength(aNotNull);
 
                     b.add(new ForeignCallNode(INTPOLY_ASSIGN, set, aStart, bStart, aLength));
                 }
