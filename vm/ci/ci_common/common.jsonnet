@@ -550,22 +550,6 @@ local devkits = graal_common.devkits;
     timelimit: "1:30:00"
   },
 
-  deploy_graalvm_espresso(os, arch, java_version): {
-    run: vm.collect_profiles() + (
-      if ((os == 'linux' || os == 'darwin') && arch == 'amd64') then [
-        ['set-export', 'VM_ENV', "${VM_ENV}-llvm-espresso"],
-      ] else [
-        ['set-export', 'VM_ENV', "${VM_ENV}-espresso"],
-      ]
-    ) + $.build_base_graalvm_image + $.deploy_sdk_base(os, 'espresso') + [
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
-      ['set-export', 'DACAPO_JAR', $.mx_vm_common + ['--quiet', '--no-warning', 'paths', '--download', 'DACAPO_MR1_2baec49']],
-      ['${GRAALVM_HOME}/bin/java', '-jar', '${DACAPO_JAR}', 'luindex'],
-    ],
-    notify_groups:: ['deploy'],
-    timelimit: '1:45:00',
-  },
-
   #
   # Deploy GraalVM Base and Standalones
   # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
