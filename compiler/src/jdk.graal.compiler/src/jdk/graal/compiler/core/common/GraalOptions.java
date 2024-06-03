@@ -323,6 +323,6 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> OptimizeLongJumps = new OptionKey<>(false);
 
     @Option(help = "Optimize integer division operation by using various mathematical foundations to "
-                    + " express it in faster, equivalent, arithmetic.", type = OptionType.Expert)
+                    + " express it in faster, equivalent, arithmetic.", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptimizeDiv = new OptionKey<>(true);
 }
