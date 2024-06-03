@@ -45,20 +45,26 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -97,22 +103,22 @@ public class RootNodeTest {
 
     @Test
     public void test() {
-        Object result = new TestRootNode().getCallTarget().call();
+        Object result = new TestCopyAndReplaceRootNode().getCallTarget().call();
         Assert.assertEquals(42, result);
     }
 
     @Test
     public void testCopy() {
-        TestRootNode originalRoot = new TestRootNode(new FrameDescriptor());
+        TestCopyAndReplaceRootNode originalRoot = new TestCopyAndReplaceRootNode(new FrameDescriptor());
         // Trigger the lazy initialization
         TestAPIAccessor.nodeAccess().getLock(originalRoot);
         originalRoot.getCallTarget();
         TestAPIAccessor.nodeAccess().setRootNodeBits(originalRoot, 1);
 
         Node copy = originalRoot.copy();
-        assertThat(copy, instanceOf(TestRootNode.class));
+        assertThat(copy, instanceOf(TestCopyAndReplaceRootNode.class));
 
-        TestRootNode rootCopy = (TestRootNode) copy;
+        TestCopyAndReplaceRootNode rootCopy = (TestCopyAndReplaceRootNode) copy;
         assertEquals(originalRoot.getFrameDescriptor(), rootCopy.getFrameDescriptor());
         assertNull(TestAPIAccessor.nodeAccess().getCallTargetWithoutInitialization(rootCopy));
         assertNotEquals(TestAPIAccessor.nodeAccess().getLock(originalRoot),
@@ -122,31 +128,43 @@ public class RootNodeTest {
 
     @Test(expected = IllegalStateException.class)
     public void testNotReplacable1() {
-        TestRootNode rootNode = new TestRootNode();
+        TestCopyAndReplaceRootNode rootNode = new TestCopyAndReplaceRootNode();
         rootNode.replace(rootNode);
     }
 
-    @Test(expected = IllegalStateException.class)
-    @Ignore
-    public void testNotReplacable2() {
-        TestRootNode2 rootNode = new TestRootNode2();
-        rootNode.rootNodeAsChild = new TestRootNode();
-        rootNode.adoptChildren();
+    class TestNonReplacableRootNode extends RootNode {
+
+        @Child Node rootNodeAsChild;
+
+        TestNonReplacableRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return 42;
+        }
     }
 
-    @Test(expected = IllegalStateException.class)
-    @Ignore
-    public void testNotReplacable3() {
-        TestRootNode2 rootNode = new TestRootNode2();
-        rootNode.rootNodeAsChild = new Node() {
-        };
-        rootNode.adoptChildren();
-        rootNode.rootNodeAsChild.replace(new TestRootNode());
+    class TestCopyAndReplaceRootNode extends RootNode {
+
+        TestCopyAndReplaceRootNode() {
+            super(null);
+        }
+
+        TestCopyAndReplaceRootNode(FrameDescriptor frameDescriptor) {
+            super(null, frameDescriptor);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return 42;
+        }
     }
 
     @Test
     public void testNotCapturingFrames() {
-        TestRootNode3 rootNode = new TestRootNode3(false);
+        TestStackTraceRootNode rootNode = new TestStackTraceRootNode(false);
         Object marker = new Object();
         try {
             rootNode.getCallTarget().call(marker);
@@ -162,7 +180,7 @@ public class RootNodeTest {
 
     @Test
     public void testCapturingFrames() {
-        TestRootNode3 rootNode = new TestRootNode3(true);
+        TestStackTraceRootNode rootNode = new TestStackTraceRootNode(true);
         Object marker = new Object();
         try {
             rootNode.getCallTarget().call(marker);
@@ -174,7 +192,7 @@ public class RootNodeTest {
 
     @Test
     public void testTranslateStackTraceElementNotEntered() {
-        RootNode rootNode = new TestRootNode3(true);
+        RootNode rootNode = new TestStackTraceRootNode(true);
         try {
             rootNode.getCallTarget().call();
             Assert.fail();
@@ -189,7 +207,7 @@ public class RootNodeTest {
     public void testTranslateStackTraceElementEntered() throws UnsupportedMessageException {
         try (Context ctx = Context.create()) {
             ctx.enter();
-            RootNode rootNode = new TestRootNode3(true);
+            RootNode rootNode = new TestStackTraceRootNode(true);
             try {
                 rootNode.getCallTarget().call();
                 Assert.fail();
@@ -199,6 +217,25 @@ public class RootNodeTest {
                 Object guestObject = stackTraceElement.getGuestObject();
                 verifyStackTraceElementGuestObject(guestObject);
             }
+        }
+    }
+
+    static final class TestStackTraceRootNode extends RootNode {
+        private boolean shouldCaptureFrames;
+
+        TestStackTraceRootNode(boolean shouldCaptureFrames) {
+            super(null);
+            this.shouldCaptureFrames = shouldCaptureFrames;
+        }
+
+        @Override
+        public boolean isCaptureFramesForTrace(Node node) {
+            return this.shouldCaptureFrames;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw new TestException(frame, null);
         }
     }
 
@@ -215,7 +252,7 @@ public class RootNodeTest {
 
     private static void testTranslateStackTraceElementCustomGuestObjectImpl(boolean hasExecutableName,
                     boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) throws UnsupportedMessageException {
-        RootNode rootNode = new TestRootNode5(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
+        RootNode rootNode = new TestTranslateStackTraceRootNode(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
         try {
             rootNode.getCallTarget().call();
             Assert.fail();
@@ -238,7 +275,7 @@ public class RootNodeTest {
 
     private static void testTranslateStackTraceElementInvalidCustomGuestObjectImpl(boolean hasExecutableName,
                     boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) {
-        RootNode rootNode = new TestRootNode5(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
+        RootNode rootNode = new TestTranslateStackTraceRootNode(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
         try {
             rootNode.getCallTarget().call();
             Assert.fail();
@@ -249,111 +286,18 @@ public class RootNodeTest {
         }
     }
 
-    private static TruffleStackTraceElement getStackTraceElementFor(Throwable t, RootNode rootNode) {
-        for (TruffleStackTraceElement stackTraceElement : TruffleStackTrace.getStackTrace(t)) {
-            if (rootNode == stackTraceElement.getTarget().getRootNode()) {
-                return stackTraceElement;
-            }
-        }
-        return null;
-    }
-
-    static void verifyStackTraceElementGuestObject(Object guestObject) throws UnsupportedMessageException {
-        Assert.assertNotNull(guestObject);
-        InteropLibrary interop = InteropLibrary.getUncached();
-        if (interop.hasExecutableName(guestObject)) {
-            Object executableName = interop.getExecutableName(guestObject);
-            Assert.assertTrue(interop.isString(executableName));
-        } else {
-            AbstractPolyglotTest.assertFails(() -> interop.getExecutableName(guestObject), UnsupportedMessageException.class);
-        }
-        if (interop.hasDeclaringMetaObject(guestObject)) {
-            Object metaObject = interop.getDeclaringMetaObject(guestObject);
-            Assert.assertTrue(interop.isMetaObject(metaObject));
-        }
-    }
-
-    private static void asserCapturedFrames(RootNode rootNode, Object arg, Throwable e, MaterializedFrame frame) {
-        List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
-        Assert.assertEquals(1, stackTrace.size());
-        assertNull(stackTrace.get(0).getLocation());
-        Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
-        Assert.assertNotNull(stackTrace.get(0).getFrame());
-        Assert.assertEquals(1, stackTrace.get(0).getFrame().getArguments().length);
-        Assert.assertEquals(arg, stackTrace.get(0).getFrame().getArguments()[0]);
-        Assert.assertEquals(arg, frame.getArguments()[0]);
-    }
-
-    class TestRootNode extends RootNode {
-
-        TestRootNode() {
-            super(null);
-        }
-
-        TestRootNode(FrameDescriptor frameDescriptor) {
-            super(null, frameDescriptor);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return 42;
-        }
-    }
-
-    class TestRootNode2 extends RootNode {
-
-        @Child Node rootNodeAsChild;
-
-        TestRootNode2() {
-            super(null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return 42;
-        }
-    }
-
-    @SuppressWarnings("serial")
-    static final class TestException extends AbstractTruffleException {
-        MaterializedFrame frame;
-
-        TestException(VirtualFrame frame) {
-            this.frame = frame.materialize();
-        }
-    }
-
-    static final class TestRootNode3 extends RootNode {
-        private boolean shouldCaptureFrames;
-
-        TestRootNode3(boolean shouldCaptureFrames) {
-            super(null);
-            this.shouldCaptureFrames = shouldCaptureFrames;
-        }
-
-        @Override
-        public boolean isCaptureFramesForTrace() {
-            return this.shouldCaptureFrames;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            throw new TestException(frame);
-        }
-    }
-
-    static final class TestRootNode5 extends RootNode {
+    static final class TestTranslateStackTraceRootNode extends RootNode {
 
         private final TruffleStackTraceElementGuestObject truffleStackTraceElementGuestObject;
 
-        TestRootNode5(boolean hasExecutableName, boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) {
+        TestTranslateStackTraceRootNode(boolean hasExecutableName, boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) {
             super(null);
             truffleStackTraceElementGuestObject = new TruffleStackTraceElementGuestObject(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            throw new TestException(frame);
+            throw new TestException(frame, null);
         }
 
         @Override
@@ -439,4 +383,243 @@ public class RootNodeTest {
             }
         }
     }
+
+    private static TruffleStackTraceElement getStackTraceElementFor(Throwable t, RootNode rootNode) {
+        for (TruffleStackTraceElement stackTraceElement : TruffleStackTrace.getStackTrace(t)) {
+            if (rootNode == stackTraceElement.getTarget().getRootNode()) {
+                return stackTraceElement;
+            }
+        }
+        return null;
+    }
+
+    static void verifyStackTraceElementGuestObject(Object guestObject) throws UnsupportedMessageException {
+        Assert.assertNotNull(guestObject);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        if (interop.hasExecutableName(guestObject)) {
+            Object executableName = interop.getExecutableName(guestObject);
+            Assert.assertTrue(interop.isString(executableName));
+        } else {
+            AbstractPolyglotTest.assertFails(() -> interop.getExecutableName(guestObject), UnsupportedMessageException.class);
+        }
+        if (interop.hasDeclaringMetaObject(guestObject)) {
+            Object metaObject = interop.getDeclaringMetaObject(guestObject);
+            Assert.assertTrue(interop.isMetaObject(metaObject));
+        }
+    }
+
+    private static void asserCapturedFrames(RootNode rootNode, Object arg, Throwable e, MaterializedFrame frame) {
+        List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
+        Assert.assertEquals(1, stackTrace.size());
+        assertNull(stackTrace.get(0).getLocation());
+        Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
+        Assert.assertNotNull(stackTrace.get(0).getFrame());
+        Assert.assertEquals(1, stackTrace.get(0).getFrame().getArguments().length);
+        Assert.assertEquals(arg, stackTrace.get(0).getFrame().getArguments()[0]);
+        Assert.assertEquals(arg, frame.getArguments()[0]);
+    }
+
+    @SuppressWarnings("serial")
+    static final class TestException extends AbstractTruffleException {
+        MaterializedFrame frame;
+
+        TestException(VirtualFrame frame, Node location) {
+            super(location);
+            this.frame = frame.materialize();
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testNodeBasedBytecodeIndex() {
+        var result = (List<TruffleStackTraceElement>) new NodeBasedBytecodeIndexRootNode().getCallTarget().call();
+
+        assertEquals(1, result.size());
+        assertEquals(42, result.get(0).getBytecodeIndex());
+        assertTrue(result.get(0).hasBytecodeIndex());
+    }
+
+    static class NodeWithBytecode extends Node {
+
+        int bytecodeIndex;
+
+        NodeWithBytecode(int bytecodeIndex) {
+            this.bytecodeIndex = bytecodeIndex;
+        }
+
+    }
+
+    static final class NodeBasedBytecodeIndexRootNode extends RootNode {
+
+        NodeBasedBytecodeIndexRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return boundary(frame.materialize());
+        }
+
+        @TruffleBoundary
+        private static Object boundary(MaterializedFrame frame) {
+            NodeWithBytecode node = new NodeWithBytecode(42);
+            var stackTrace = TruffleStackTrace.getStackTrace(new TestException(frame, node));
+
+            assertTrue(Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Boolean>() {
+                @Override
+                public Boolean visitFrame(FrameInstance frameInstance) {
+                    assertEquals(-3, frameInstance.getBytecodeIndex());
+                    return true;
+                }
+            }));
+
+            return stackTrace;
+        }
+
+        @Override
+        protected int findBytecodeIndex(Node node, Frame frame) {
+            assertNull(frame);
+            if (node instanceof NodeWithBytecode n) {
+                return n.bytecodeIndex;
+            }
+            return -3;
+        }
+
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testFrameBasedBytecodeIndex() {
+        var result = (List<TruffleStackTraceElement>) new FrameBasedBytecodeIndexRootNode().getCallTarget().call();
+
+        assertEquals(1, result.size());
+        assertEquals(42, result.get(0).getBytecodeIndex());
+        assertTrue(result.get(0).hasBytecodeIndex());
+
+    }
+
+    static final class FrameBasedBytecodeIndexRootNode extends RootNode {
+
+        FrameBasedBytecodeIndexRootNode() {
+            super(null, createFrameDescriptor());
+        }
+
+        static FrameDescriptor createFrameDescriptor() {
+            var builder = FrameDescriptor.newBuilder();
+            builder.addSlots(1, FrameSlotKind.Int);
+            return builder.build();
+        }
+
+        @Override
+        public boolean isCaptureFramesForTrace(Node node) {
+            return true;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return boundary(frame.materialize());
+        }
+
+        @TruffleBoundary
+        private static List<TruffleStackTraceElement> boundary(MaterializedFrame frame) {
+            frame.setInt(0, 42);
+            var stackTrace = TruffleStackTrace.getStackTrace(new TestException(frame, null));
+            assertTrue(Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Boolean>() {
+                @Override
+                public Boolean visitFrame(FrameInstance frameInstance) {
+                    assertEquals(42, frameInstance.getBytecodeIndex());
+                    return true;
+                }
+            }));
+
+            frame.setInt(0, 43);
+
+            assertTrue(Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Boolean>() {
+                @Override
+                public Boolean visitFrame(FrameInstance frameInstance) {
+                    assertEquals(43, frameInstance.getBytecodeIndex());
+                    return true;
+                }
+            }));
+            return stackTrace;
+        }
+
+        @Override
+        protected int findBytecodeIndex(Node node, Frame frame) {
+            assertNull(node);
+            return frame.getInt(0);
+        }
+
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testHybridBytecodeIndex() {
+        var result = (List<TruffleStackTraceElement>) new FrameHybridBytecodeIndexRootNode().getCallTarget().call();
+
+        assertEquals(1, result.size());
+        assertEquals(42, result.get(0).getBytecodeIndex());
+        assertTrue(result.get(0).hasBytecodeIndex());
+
+    }
+
+    static final class FrameHybridBytecodeIndexRootNode extends RootNode {
+
+        FrameHybridBytecodeIndexRootNode() {
+            super(null, createFrameDescriptor());
+        }
+
+        static FrameDescriptor createFrameDescriptor() {
+            var builder = FrameDescriptor.newBuilder();
+            builder.addSlots(1, FrameSlotKind.Int);
+            return builder.build();
+        }
+
+        @Override
+        public boolean isCaptureFramesForTrace(Node node) {
+            return !(node instanceof NodeWithBytecode);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return boundary(frame.materialize());
+        }
+
+        @TruffleBoundary
+        private static List<TruffleStackTraceElement> boundary(MaterializedFrame frame) {
+            frame.setInt(0, 42);
+            var stackTrace = TruffleStackTrace.getStackTrace(new TestException(frame, null));
+            assertTrue(Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Boolean>() {
+                @Override
+                public Boolean visitFrame(FrameInstance frameInstance) {
+                    assertEquals(42, frameInstance.getBytecodeIndex());
+                    return true;
+                }
+            }));
+
+            frame.setInt(0, 43);
+
+            assertTrue(Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Boolean>() {
+                @Override
+                public Boolean visitFrame(FrameInstance frameInstance) {
+                    assertEquals(43, frameInstance.getBytecodeIndex());
+                    return true;
+                }
+            }));
+            return stackTrace;
+        }
+
+        @Override
+        protected int findBytecodeIndex(Node node, Frame frame) {
+            if (node == null) {
+                return frame.getInt(0);
+            } else if (node instanceof NodeWithBytecode n) {
+                assertNull(frame);
+                return n.bytecodeIndex;
+            }
+            return -1;
+        }
+
+    }
+
 }

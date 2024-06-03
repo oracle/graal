@@ -111,9 +111,7 @@ import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -646,23 +644,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     public final EngineCacheSupport getEngineCacheSupport() {
         return engineCacheSupport;
-    }
-
-    @Override
-    public final DirectCallNode createDirectCallNode(CallTarget target) {
-        if (target instanceof OptimizedCallTarget) {
-            OptimizedCallTarget optimizedTarget = (OptimizedCallTarget) target;
-            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(optimizedTarget);
-            optimizedTarget.addDirectCallNode(directCallNode);
-            return directCallNode;
-        } else {
-            throw new IllegalStateException(String.format("Unexpected call target class %s!", target.getClass()));
-        }
-    }
-
-    @Override
-    public final IndirectCallNode createIndirectCallNode() {
-        return new OptimizedIndirectCallNode();
     }
 
     @Override

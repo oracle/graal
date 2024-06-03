@@ -100,17 +100,17 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
 
     @Override
     public int length() {
-        return (Integer) cache.length.call(languageContext, guestObject);
+        return (Integer) cache.length.call(null, languageContext, guestObject);
     }
 
     @Override
     public byte byteAt(int index) {
-        return (byte) cache.byteAt.call(languageContext, guestObject, index);
+        return (byte) cache.byteAt.call(null, languageContext, guestObject, index);
     }
 
     @Override
     public byte[] toByteArray() {
-        return (byte[]) cache.toByteArray.call(languageContext, guestObject);
+        return (byte[]) cache.toByteArray.call(null, languageContext, guestObject);
     }
 
     @Override

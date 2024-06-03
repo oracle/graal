@@ -377,8 +377,8 @@ public class Linker {
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveCallsite(WasmInstance instance, WasmFunctionNode functionNode, int controlTableOffset, WasmFunction function) {
-        final Runnable resolveAction = () -> functionNode.resolveCallNode(instance, controlTableOffset);
+    void resolveCallsite(WasmInstance instance, WasmFunctionNode functionNode, int controlTableOffset, int bytecodeOffset, WasmFunction function) {
+        final Runnable resolveAction = () -> functionNode.resolveCallNode(instance, controlTableOffset, bytecodeOffset);
         final Sym[] dependencies = new Sym[]{
                         function.isImported()
                                         ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index())

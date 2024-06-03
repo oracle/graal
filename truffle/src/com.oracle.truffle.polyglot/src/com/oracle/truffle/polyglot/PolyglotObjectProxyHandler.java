@@ -102,7 +102,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
         CompilerAsserts.neverPartOfCompilation();
         Object[] resolvedArguments = arguments == null ? EMPTY : arguments;
         try {
-            return invoke.call(languageContext, obj, method, resolvedArguments);
+            return invoke.call(null, languageContext, obj, method, resolvedArguments);
         } catch (UnsupportedOperationException e) {
             try {
                 return PolyglotFunctionProxyHandler.invokeDefault(this, proxy, method, resolvedArguments);

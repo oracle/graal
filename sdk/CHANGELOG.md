@@ -8,6 +8,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-51402 Improved Polyglot guest function to host interface proxies to infer the expected return type from the corresponding type argument (`R`) of the generic target type (e.g. `BiFunction<T,U,R>`).
 * GR-53699 `RuntimeOptions.listDescriptors` and `getDescriptor` also returns graal compiler options (if any) that could already be accessed through `RuntimeOptions.get` and `set`.
 * GR-54310 Removed disabled-by-default class-path isolation feature if polyglot is used from the class-path. The option `-Dpolyglotimpl.DisableClassPathIsolation` has no longer any effect.
+* GR-49484 Added `PolyglotException.StackFrame.getBytecodeIndex()` which allows to access the internal bytecode index that the language uses to identify an execution location. 
 
 ## Version 24.0.0
 * (GR-49334) Deprecated the `FileSystems#allowLanguageHomeAccess()` method and introduced `FileSystem#allowInternalResourceAccess()` as a replacement. To ensure compatibility, both methods now provide support for language homes and internal resources.

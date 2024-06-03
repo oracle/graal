@@ -148,7 +148,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         CompilerAsserts.neverPartOfCompilation();
         Object[] resolvedArguments = arguments == null ? PolyglotObjectProxyHandler.EMPTY : arguments;
         if (method.equals(functionMethod)) {
-            return target.call(languageContext, functionObj, spreadVarArgsArray(resolvedArguments));
+            return target.call(null, languageContext, functionObj, spreadVarArgsArray(resolvedArguments));
         } else {
             return invokeDefault(this, proxy, method, resolvedArguments);
         }
