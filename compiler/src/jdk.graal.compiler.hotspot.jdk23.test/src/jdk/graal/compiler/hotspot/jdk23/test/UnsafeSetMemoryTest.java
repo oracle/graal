@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.jdk21.test;
+package jdk.graal.compiler.hotspot.jdk23.test;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -50,10 +50,8 @@ public class UnsafeSetMemoryTest extends GraalCompilerTest {
         }
     }
 
-    @SuppressWarnings("preview")
     @Test
     public void testSetMemory() throws InvalidInstalledCodeException {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 23);
         InstalledCode code = getCode(getResolvedJavaMethod("snippet"), null, true);
 
         for (long size : new long[]{1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 63, 64, 255, 256}) {

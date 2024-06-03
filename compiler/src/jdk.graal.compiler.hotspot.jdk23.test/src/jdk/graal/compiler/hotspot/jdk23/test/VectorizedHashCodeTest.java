@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.replacements.test;
+package jdk.graal.compiler.hotspot.jdk23.test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
