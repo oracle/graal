@@ -273,6 +273,7 @@ suite = {
                     "sun.util.calendar",
                     "sun.util.locale.provider",
                     "sun.util.resources",
+                    "jdk.internal.access",
                     "jdk.internal.event",
                     "jdk.internal.loader",
                     "jdk.internal.logger",
