@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
+import com.oracle.svm.core.jni.JNIObjectFieldAccess;
 
 /**
  * Support for the Java Native Interface (JNI). Read more in JNI.md in the project's root directory.
@@ -57,12 +57,12 @@ public class JNIFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(JNIGeneratedMethodSupport.class)) {
-            ImageSingletons.add(JNIGeneratedMethodSupport.class, new JNIGeneratedMethodSupport());
-        }
-        if (!ImageSingletons.contains(JNIJavaCallWrapperMethod.Factory.class)) {
-            ImageSingletons.add(JNIJavaCallWrapperMethod.Factory.class, new JNIJavaCallWrapperMethod.Factory());
-        }
+    public void afterRegistration(AfterRegistrationAccess access) {
+        registerSingletons();
+    }
+
+    protected void registerSingletons() {
+        ImageSingletons.add(JNIObjectFieldAccess.class, new JNIObjectFieldAccess());
+        ImageSingletons.add(JNIJavaCallWrapperMethod.Factory.class, new JNIJavaCallWrapperMethod.Factory());
     }
 }

@@ -55,9 +55,11 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
@@ -71,13 +73,14 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
-import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
+import com.oracle.svm.core.jni.JNIObjectFieldAccess;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.core.jni.JNIThreadLocalPrimitiveArrayViews;
@@ -123,6 +126,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VirtualThreads;
+import com.oracle.svm.core.util.ArrayUtil;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 
@@ -1134,200 +1138,200 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static PointerBase GetBooleanArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
-        return JNIGeneratedMethodSupport.singleton().createArrayViewAndGetAddress(array, isCopy);
+        return Support.createArrayViewAndGetAddress(array, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static PointerBase GetByteArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
-        return JNIGeneratedMethodSupport.singleton().createArrayViewAndGetAddress(array, isCopy);
+        return Support.createArrayViewAndGetAddress(array, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static PointerBase GetShortArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
-        return JNIGeneratedMethodSupport.singleton().createArrayViewAndGetAddress(array, isCopy);
+        return Support.createArrayViewAndGetAddress(array, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static PointerBase GetCharArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
-        return JNIGeneratedMethodSupport.singleton().createArrayViewAndGetAddress(array, isCopy);
+        return Support.createArrayViewAndGetAddress(array, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static PointerBase GetIntArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
-        return JNIGeneratedMethodSupport.singleton().createArrayViewAndGetAddress(array, isCopy);
+        return Support.createArrayViewAndGetAddress(array, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static PointerBase GetLongArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
-        return JNIGeneratedMethodSupport.singleton().createArrayViewAndGetAddress(array, isCopy);
+        return Support.createArrayViewAndGetAddress(array, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static PointerBase GetFloatArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
-        return JNIGeneratedMethodSupport.singleton().createArrayViewAndGetAddress(array, isCopy);
+        return Support.createArrayViewAndGetAddress(array, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static PointerBase GetDoubleArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
-        return JNIGeneratedMethodSupport.singleton().createArrayViewAndGetAddress(array, isCopy);
+        return Support.createArrayViewAndGetAddress(array, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseBooleanArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
-        JNIGeneratedMethodSupport.singleton().destroyNewestArrayViewByAddress(elements, mode);
+        Support.destroyNewestArrayViewByAddress(elements, mode);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseByteArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
-        JNIGeneratedMethodSupport.singleton().destroyNewestArrayViewByAddress(elements, mode);
+        Support.destroyNewestArrayViewByAddress(elements, mode);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseShortArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
-        JNIGeneratedMethodSupport.singleton().destroyNewestArrayViewByAddress(elements, mode);
+        Support.destroyNewestArrayViewByAddress(elements, mode);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseCharArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
-        JNIGeneratedMethodSupport.singleton().destroyNewestArrayViewByAddress(elements, mode);
+        Support.destroyNewestArrayViewByAddress(elements, mode);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseIntArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
-        JNIGeneratedMethodSupport.singleton().destroyNewestArrayViewByAddress(elements, mode);
+        Support.destroyNewestArrayViewByAddress(elements, mode);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseLongArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
-        JNIGeneratedMethodSupport.singleton().destroyNewestArrayViewByAddress(elements, mode);
+        Support.destroyNewestArrayViewByAddress(elements, mode);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseFloatArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
-        JNIGeneratedMethodSupport.singleton().destroyNewestArrayViewByAddress(elements, mode);
+        Support.destroyNewestArrayViewByAddress(elements, mode);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseDoubleArrayElements(JNIEnvironment env, JNIObjectHandle array, PointerBase elements, int mode) {
-        JNIGeneratedMethodSupport.singleton().destroyNewestArrayViewByAddress(elements, mode);
+        Support.destroyNewestArrayViewByAddress(elements, mode);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetBooleanArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().getPrimitiveArrayRegion(JavaKind.Boolean, array, start, count, buffer);
+        Support.getPrimitiveArrayRegion(JavaKind.Boolean, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetByteArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().getPrimitiveArrayRegion(JavaKind.Byte, array, start, count, buffer);
+        Support.getPrimitiveArrayRegion(JavaKind.Byte, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetShortArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().getPrimitiveArrayRegion(JavaKind.Short, array, start, count, buffer);
+        Support.getPrimitiveArrayRegion(JavaKind.Short, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetCharArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().getPrimitiveArrayRegion(JavaKind.Char, array, start, count, buffer);
+        Support.getPrimitiveArrayRegion(JavaKind.Char, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetIntArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().getPrimitiveArrayRegion(JavaKind.Int, array, start, count, buffer);
+        Support.getPrimitiveArrayRegion(JavaKind.Int, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetLongArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().getPrimitiveArrayRegion(JavaKind.Long, array, start, count, buffer);
+        Support.getPrimitiveArrayRegion(JavaKind.Long, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetFloatArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().getPrimitiveArrayRegion(JavaKind.Float, array, start, count, buffer);
+        Support.getPrimitiveArrayRegion(JavaKind.Float, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetDoubleArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().getPrimitiveArrayRegion(JavaKind.Double, array, start, count, buffer);
+        Support.getPrimitiveArrayRegion(JavaKind.Double, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetBooleanArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().setPrimitiveArrayRegion(JavaKind.Boolean, array, start, count, buffer);
+        Support.setPrimitiveArrayRegion(JavaKind.Boolean, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetByteArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().setPrimitiveArrayRegion(JavaKind.Byte, array, start, count, buffer);
+        Support.setPrimitiveArrayRegion(JavaKind.Byte, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetShortArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().setPrimitiveArrayRegion(JavaKind.Short, array, start, count, buffer);
+        Support.setPrimitiveArrayRegion(JavaKind.Short, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetCharArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().setPrimitiveArrayRegion(JavaKind.Char, array, start, count, buffer);
+        Support.setPrimitiveArrayRegion(JavaKind.Char, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetIntArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().setPrimitiveArrayRegion(JavaKind.Int, array, start, count, buffer);
+        Support.setPrimitiveArrayRegion(JavaKind.Int, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetLongArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().setPrimitiveArrayRegion(JavaKind.Long, array, start, count, buffer);
+        Support.setPrimitiveArrayRegion(JavaKind.Long, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetFloatArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().setPrimitiveArrayRegion(JavaKind.Float, array, start, count, buffer);
+        Support.setPrimitiveArrayRegion(JavaKind.Float, array, start, count, buffer);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetDoubleArrayRegion(JNIEnvironment env, JNIObjectHandle array, int start, int count, @CConst PointerBase buffer) {
-        JNIGeneratedMethodSupport.singleton().setPrimitiveArrayRegion(JavaKind.Double, array, start, count, buffer);
+        Support.setPrimitiveArrayRegion(JavaKind.Double, array, start, count, buffer);
     }
 
     /* It is not correct to return null when an exception is thrown, see GR-54276. */
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle GetObjectField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
-        return JNIGeneratedMethodSupport.singleton().getObjectField(obj, fieldId);
+        return JNIObjectFieldAccess.singleton().getObjectField(obj, fieldId);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1932,6 +1936,51 @@ public final class JNIFunctions {
                 return (Target_java_nio_Buffer) obj;
             } else {
                 return null;
+            }
+        }
+
+        static PointerBase createArrayViewAndGetAddress(JNIObjectHandle handle, CCharPointer isCopy) {
+            Object obj = JNIObjectHandles.getObject(handle);
+            if (!obj.getClass().isArray()) {
+                throw new IllegalArgumentException("Argument is not an array");
+            }
+
+            /* Create a view for the non-null array object. */
+            PrimitiveArrayView ref = JNIThreadLocalPrimitiveArrayViews.createArrayView(obj);
+            if (isCopy.isNonNull()) {
+                isCopy.write(ref.isCopy() ? (byte) 1 : (byte) 0);
+            }
+            return ref.addressOfArrayElement(0);
+        }
+
+        static void destroyNewestArrayViewByAddress(PointerBase address, int mode) {
+            JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(address, mode);
+        }
+
+        static void getPrimitiveArrayRegion(JavaKind elementKind, JNIObjectHandle handle, int start, int count, PointerBase buffer) {
+            Object obj = JNIObjectHandles.getObject(handle);
+            /* Check if we have a non-null array object and if start/count are valid. */
+            if (ArrayUtil.isOutOfBounds(obj, start, count)) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+            if (count > 0) {
+                long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
+                int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
+                UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
+                JavaMemoryUtil.copyOnHeap(obj, WordFactory.unsigned(offset), null, WordFactory.unsigned(buffer.rawValue()), bytes);
+            }
+        }
+
+        static void setPrimitiveArrayRegion(JavaKind elementKind, JNIObjectHandle handle, int start, int count, PointerBase buffer) {
+            Object obj = JNIObjectHandles.getObject(handle);
+            if (ArrayUtil.isOutOfBounds(obj, start, count)) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+            if (count > 0) {
+                long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
+                int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
+                UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
+                JavaMemoryUtil.copyOnHeap(null, WordFactory.unsigned(buffer.rawValue()), obj, WordFactory.unsigned(offset), bytes);
             }
         }
     }

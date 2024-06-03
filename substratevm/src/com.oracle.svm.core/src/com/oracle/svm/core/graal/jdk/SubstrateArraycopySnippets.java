@@ -56,6 +56,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.util.ArrayUtil;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -87,25 +88,25 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
 
         if (LayoutEncoding.isPrimitiveArray(fromLayoutEncoding)) {
             if (fromArray == toArray && fromIndex < toIndex) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyPrimitiveArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (fromHub == toHub) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyPrimitiveArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 return;
             }
         } else if (LayoutEncoding.isObjectArray(fromLayoutEncoding)) {
             if (fromArray == toArray && fromIndex < toIndex) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyObjectArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (fromHub == toHub) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyObjectArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (LayoutEncoding.isObjectArray(toHub.getLayoutEncoding())) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 if (DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
                     JavaMemoryUtil.copyObjectArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 } else {
@@ -115,12 +116,6 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
             }
         }
         throw new ArrayStoreException();
-    }
-
-    private static void boundsCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
-        if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > ArrayLengthNode.arrayLength(fromArray) - length || toIndex > ArrayLengthNode.arrayLength(toArray) - length) {
-            throw new ArrayIndexOutOfBoundsException();
-        }
     }
 
     static final class SubstrateArrayCopyLowering implements NodeLoweringProvider<ArrayCopyNode> {
