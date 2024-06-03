@@ -1917,8 +1917,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         name = "BlockData";
                         fields = List.of(//
                                         field(context.getType(int.class), "startStackHeight").asFinal(),
-                                        field(context.getType(boolean.class), "producedValue"),
-                                        field(context.getType(int.class), "childBci"));
+                                        field(context.getType(boolean.class), "producedValue").withInitializer("false"),
+                                        field(context.getType(int.class), "childBci").withInitializer(UNINIT));
                         if (model.enableLocalScoping) {
                             superType = scopeDataType.asType();
                         }
@@ -1926,36 +1926,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case TAG:
                         name = "TagOperationData";
                         fields = List.of(//
-                                        field(context.getType(boolean.class), "producedValue"),
-                                        field(context.getType(int.class), "childBci"),
                                         field(context.getType(int.class), "nodeId").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(int.class), "startStackHeight").asFinal(),
-                                        field(generic(type(List.class), tagNode.asType()), "children").withInitializer("null"),
-                                        field(tagNode.asType(), "node").asFinal());
+                                        field(tagNode.asType(), "node").asFinal(),
+                                        field(context.getType(boolean.class), "producedValue").withInitializer("false"),
+                                        field(context.getType(int.class), "childBci").withInitializer(UNINIT),
+                                        field(generic(type(List.class), tagNode.asType()), "children").withInitializer("null"));
+
                         break;
                     case SOURCE_SECTION:
                         name = "SourceSectionData";
                         fields = List.of(//
-                                        field(context.getType(int.class), "sourceIndex").withInitializer(UNINIT),
-                                        field(context.getType(int.class), "beginBci").withInitializer(UNINIT),
-                                        field(context.getType(int.class), "start").withInitializer(UNINIT),
-                                        field(context.getType(int.class), "length").withInitializer(UNINIT),
-                                        field(context.getType(boolean.class), "producedValue"),
-                                        field(context.getType(int.class), "childBci"));
+                                        field(context.getType(int.class), "sourceIndex").asFinal(),
+                                        field(context.getType(int.class), "beginBci").asFinal(),
+                                        field(context.getType(int.class), "start").asFinal(),
+                                        field(context.getType(int.class), "length").asFinal(),
+                                        field(context.getType(boolean.class), "producedValue").withInitializer("false"),
+                                        field(context.getType(int.class), "childBci").withInitializer(UNINIT));
                         break;
                     case SOURCE:
                         name = "SourceData";
                         fields = List.of(//
-                                        field(context.getType(int.class), "sourceIndex").withInitializer(UNINIT),
-                                        field(context.getType(boolean.class), "producedValue"),
-                                        field(context.getType(int.class), "childBci"));
+                                        field(context.getType(int.class), "sourceIndex").asFinal(),
+                                        field(context.getType(boolean.class), "producedValue").withInitializer("false"),
+                                        field(context.getType(int.class), "childBci").withInitializer(UNINIT));
                         break;
                     case RETURN:
                         name = "ReturnOperationData";
                         fields = List.of(//
-                                        field(context.getType(boolean.class), "producedValue"),
-                                        field(context.getType(int.class), "childBci"));
+                                        field(context.getType(boolean.class), "producedValue").withInitializer("false"),
+                                        field(context.getType(int.class), "childBci").withInitializer(UNINIT));
                         break;
                     case STORE_LOCAL:
                     case STORE_LOCAL_MATERIALIZED:
@@ -1963,7 +1964,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             name = "StoreLocalData";
                             fields = List.of(//
                                             field(bytecodeLocalImpl.asType(), "local"),
-                                            field(type(int.class), "childBci"));
+                                            field(type(int.class), "childBci").withInitializer(UNINIT));
                         } else {
                             name = null;
                             fields = List.of();
@@ -1972,52 +1973,52 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case IF_THEN:
                         name = "IfThenData";
                         fields = List.of(//
-                                        field(context.getType(int.class), "falseBranchFixupBci"),
-                                        field(context.getType(boolean.class), "thenReachable"));
+                                        field(context.getType(boolean.class), "thenReachable"),
+                                        field(context.getType(int.class), "falseBranchFixupBci").withInitializer(UNINIT));
                         break;
                     case IF_THEN_ELSE:
                         name = "IfThenElseData";
                         fields = List.of(//
-                                        field(context.getType(int.class), "falseBranchFixupBci"),
-                                        field(context.getType(int.class), "endBranchFixupBci"),
                                         field(context.getType(boolean.class), "thenReachable"),
-                                        field(context.getType(boolean.class), "elseReachable"));
+                                        field(context.getType(boolean.class), "elseReachable"),
+                                        field(context.getType(int.class), "falseBranchFixupBci").withInitializer(UNINIT),
+                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT));
                         break;
                     case CONDITIONAL:
                         name = "ConditionalData";
                         if (model.usesBoxingElimination()) {
                             fields = List.of(//
-                                            field(context.getType(int.class), "falseBranchFixupBci"),
-                                            field(context.getType(int.class), "endBranchFixupBci"),
                                             field(context.getType(boolean.class), "thenReachable"),
                                             field(context.getType(boolean.class), "elseReachable"),
-                                            field(context.getType(int.class), "child0Bci"),
-                                            field(context.getType(int.class), "child1Bci"));
+                                            field(context.getType(int.class), "falseBranchFixupBci").withInitializer(UNINIT),
+                                            field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT),
+                                            field(context.getType(int.class), "child0Bci").withInitializer(UNINIT),
+                                            field(context.getType(int.class), "child1Bci").withInitializer(UNINIT));
                         } else {
                             fields = List.of(//
-                                            field(context.getType(int.class), "falseBranchFixupBci"),
-                                            field(context.getType(int.class), "endBranchFixupBci"),
                                             field(context.getType(boolean.class), "thenReachable"),
-                                            field(context.getType(boolean.class), "elseReachable"));
+                                            field(context.getType(boolean.class), "elseReachable"),
+                                            field(context.getType(int.class), "falseBranchFixupBci").withInitializer(UNINIT),
+                                            field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT));
                         }
                         break;
                     case WHILE:
                         name = "WhileData";
                         fields = List.of(//
                                         field(context.getType(int.class), "whileStartBci").asFinal(),
-                                        field(context.getType(int.class), "endBranchFixupBci"),
-                                        field(context.getType(boolean.class), "bodyReachable"));
+                                        field(context.getType(boolean.class), "bodyReachable"),
+                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT));
                         break;
                     case TRY_CATCH:
                         name = "TryCatchData";
                         fields = List.of(//
                                         field(context.getType(int.class), "tryStartBci"),
                                         field(context.getType(int.class), "startStackHeight").asFinal(),
-                                        field(context.getType(int.class), "exceptionLocalIndex").asFinal(),
-                                        field(context.getType(int.class), "endBranchFixupBci"),
+                                        field(context.getType(int.class), "exceptionLocalFrameIndex").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
+                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT),
                                         field(arrayOf(context.getType(int.class)), "exceptionTableEntries").withInitializer("null"),
                                         field(context.getType(int.class), "exceptionTableEntryCount").withInitializer("0"));
                         methods = List.of(createAddExceptionTableEntry());
@@ -2025,16 +2026,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case FINALLY_TRY, FINALLY_TRY_CATCH:
                         name = "FinallyTryData";
                         fields = List.of(//
-                                        field(bytecodeLocalImpl.asType(), "exceptionLocal").asFinal(),
                                         field(finallyHandlerContext.asType(), "finallyHandlerContext").asFinal(),
+                                        field(context.getType(int.class), "exceptionLocalFrameIndex").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "finallyReachable"),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
                                         field(context.getType(int.class), "guardedStartBci").withInitializer(UNINIT),
+                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT),
                                         field(arrayOf(context.getType(int.class)), "exceptionTableEntries").withInitializer("null"),
-                                        field(context.getType(int.class), "exceptionTableEntryCount").withInitializer("0"),
-                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT));
+                                        field(context.getType(int.class), "exceptionTableEntryCount").withInitializer("0"));
 
                         methods = List.of(createAddExceptionTableEntry());
 
@@ -2043,8 +2044,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         if (operation.isTransparent()) {
                             name = "TransparentData";
                             fields = List.of(//
-                                            field(context.getType(boolean.class), "producedValue"),
-                                            field(context.getType(int.class), "childBci"));
+                                            field(context.getType(boolean.class), "producedValue").withInitializer("false"),
+                                            field(context.getType(int.class), "childBci").withInitializer(UNINIT));
                         } else {
                             name = "CustomOperationData";
                             fields = List.of(//
@@ -2056,7 +2057,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case CUSTOM_SHORT_CIRCUIT:
                         name = "CustomShortCircuitOperationData";
                         fields = List.of(//
-                                        field(context.getType(int.class), "childBci"),
+                                        field(context.getType(int.class), "childBci").withInitializer(UNINIT),
                                         field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)"));
                         break;
                     default:
@@ -2177,16 +2178,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         class OperationStackEntryFactory {
             private CodeTypeElement create() {
-                List<CodeVariableElement> fields = List.of(
+                operationStackEntry.addAll(List.of(
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "operation"),
-                                new CodeVariableElement(Set.of(PRIVATE), context.getType(Object.class), "data"),
-                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "sequenceNumber"),
-                                new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "childCount"),
-                                new CodeVariableElement(Set.of(PRIVATE), generic(context.getDeclaredType(ArrayList.class), types.BytecodeLabel), "declaredLabels"));
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(Object.class), "data"),
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "sequenceNumber")));
 
-                operationStackEntry.addAll(fields);
+                CodeVariableElement childCount = new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "childCount");
+                childCount.createInitBuilder().string("0").end();
+                CodeVariableElement declaredLabels = new CodeVariableElement(Set.of(PRIVATE), generic(context.getDeclaredType(ArrayList.class), types.BytecodeLabel), "declaredLabels");
+                declaredLabels.createInitBuilder().string("null").end();
+                operationStackEntry.add(childCount);
+                operationStackEntry.add(declaredLabels);
 
-                operationStackEntry.add(createConstructorUsingFields(Set.of(), operationStackEntry, null));
+                operationStackEntry.add(createConstructorUsingFields(Set.of(), operationStackEntry, null, Set.of("childCount", "declaredLabels")));
                 operationStackEntry.add(createAddDeclaredLabel());
                 operationStackEntry.add(createToString0());
                 operationStackEntry.add(createToString1());
@@ -3521,8 +3525,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("id");
             b.string("data");
             b.string("operationSequenceNumber++");
-            b.string("0");
-            b.string("null");
             b.end(2);
 
             return ex;
@@ -3802,46 +3804,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("operationData.frameOffset = parentScope.frameOffset + parentScope.localsCount");
                     }
                     break;
-                case SOURCE:
-                    b.startIf().string(operation.getOperationBeginArgumentName(0) + ".hasBytes()").end().startBlock();
-                    b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Byte-based sources are not supported.").end(2);
-                    b.end();
-
-                    b.statement("int index = sources.indexOf(" + operation.getOperationBeginArgumentName(0) + ")");
-                    b.startIf().string("index == -1").end().startBlock();
-                    b.statement("index = sources.size()");
-                    b.statement("sources.add(" + operation.getOperationBeginArgumentName(0) + ")");
-                    b.end();
-                    b.statement("operationData.sourceIndex = index");
-                    break;
-                case SOURCE_SECTION:
-                    b.declaration(type(int.class), "foundSourceIndex", "-1");
-                    b.string("loop: ").startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
-                    b.startSwitch().string("operationStack[i].operation").end().startBlock();
-
-                    b.startCase().tree(createOperationConstant(model.sourceOperation)).end();
-                    b.startCaseBlock();
-                    emitCastOperationData(b, model.sourceOperation, "i", "sourceData");
-                    b.statement("foundSourceIndex = sourceData.sourceIndex");
-                    b.statement("break loop");
-                    b.end(); // case epilog
-                    b.end(); // switch
-                    b.end(); // for
-
-                    b.startIf().string("foundSourceIndex == -1").end().startBlock();
-                    emitThrowIllegalStateException(b, "\"No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.\"");
-                    b.end();
-
-                    b.statement("operationData.sourceIndex = foundSourceIndex");
-                    b.startIf().string("rootOperationSp == -1").end().startBlock();
-                    b.lineComment("not in a root yet");
-                    b.statement("operationData.beginBci = 0");
-                    b.end().startElseBlock();
-                    b.statement("operationData.beginBci = bci");
-                    b.end();
-                    b.statement("operationData.start = " + operation.getOperationBeginArgumentName(0));
-                    b.statement("operationData.length = " + operation.getOperationBeginArgumentName(1));
-                    break;
                 case WHILE:
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
@@ -4065,27 +4027,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             String className = getDataClassName(operation);
             return switch (operation.kind) {
                 case STORE_LOCAL, STORE_LOCAL_MATERIALIZED -> {
+                    String local = "(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0);
                     if (model.usesBoxingElimination()) {
-                        yield createOperationData(className, "(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0), UNINIT);
+                        yield createOperationData(className, local);
                     } else {
-                        yield CodeTreeBuilder.singleString("(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0));
+                        yield CodeTreeBuilder.singleString(local);
                     }
                 }
                 case LOAD_LOCAL_MATERIALIZED, LOAD_LOCAL -> {
                     yield CodeTreeBuilder.singleString("(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0));
                 }
-                case IF_THEN -> createOperationData(className, UNINIT, "this.reachable");
-                case IF_THEN_ELSE -> createOperationData(className, UNINIT, UNINIT, "this.reachable", "this.reachable");
-                case CONDITIONAL -> {
-                    if (model.usesBoxingElimination()) {
-                        yield createOperationData(className, UNINIT, UNINIT, "this.reachable", "this.reachable", UNINIT, UNINIT);
-                    } else {
-                        yield createOperationData(className, UNINIT, UNINIT, "this.reachable", "this.reachable");
-                    }
-                }
-                case WHILE -> createOperationData(className, "bci", UNINIT, "this.reachable");
+                case IF_THEN -> createOperationData(className, "this.reachable");
+                case IF_THEN_ELSE -> createOperationData(className, "this.reachable", "this.reachable");
+                case CONDITIONAL -> createOperationData(className, "this.reachable", "this.reachable");
+                case WHILE -> createOperationData(className, "bci", "this.reachable");
                 case TRY_CATCH -> createOperationData(className, "bci", "currentStackHeight", "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex",
-                                UNINIT,
                                 "this.reachable", "this.reachable", "this.reachable");
                 case FINALLY_TRY, FINALLY_TRY_CATCH -> {
                     // Push a new FinallyHandlerContext.
@@ -4098,14 +4054,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.string("finallyHandlerContext");
                     b.end(2);
 
-                    String exceptionLocal = CodeTreeBuilder.createBuilder().cast(bytecodeLocalImpl.asType()).string(operation.getOperationBeginArgumentName(0)).toString();
+                    String exceptionLocal = CodeTreeBuilder.createBuilder() //
+                                    .startParantheses() //
+                                    .cast(bytecodeLocalImpl.asType()).string(operation.getOperationBeginArgumentName(0)) //
+                                    .end() //
+                                    .string(".frameIndex").toString();
                     String catchReachable = (operation.kind == OperationKind.FINALLY_TRY_CATCH) ? "this.reachable" : "false";
 
-                    yield createOperationData(className, exceptionLocal, "finallyHandlerContext", "this.reachable", "this.reachable", "this.reachable", catchReachable);
+                    yield createOperationData(className, "finallyHandlerContext", exceptionLocal, "this.reachable", "this.reachable", "this.reachable", catchReachable);
                 }
                 case CUSTOM, CUSTOM_INSTRUMENTATION -> {
                     if (operation.isTransparent) {
-                        yield createOperationData(className, "false", UNINIT);
+                        yield createOperationData(className);
                     } else {
                         // [childBcis, constants, locals...]
                         String[] args = new String[2];
@@ -4138,21 +4098,53 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         yield createOperationData(className, args);
                     }
                 }
-                case CUSTOM_SHORT_CIRCUIT -> {
-                    yield createOperationData(className, UNINIT);
+                case CUSTOM_SHORT_CIRCUIT -> createOperationData(className);
+                case TAG -> createOperationData(className, "nodeId", "this.reachable", "this.currentStackHeight", "node");
+                case RETURN -> createOperationData(className);
+                case BLOCK -> createOperationData(className, "this.currentStackHeight");
+                case SOURCE -> {
+                    b.startIf().string(operation.getOperationBeginArgumentName(0) + ".hasBytes()").end().startBlock();
+                    b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Byte-based sources are not supported.").end(2);
+                    b.end();
+
+                    b.statement("int index = sources.indexOf(" + operation.getOperationBeginArgumentName(0) + ")");
+                    b.startIf().string("index == -1").end().startBlock();
+                    b.statement("index = sources.size()");
+                    b.statement("sources.add(" + operation.getOperationBeginArgumentName(0) + ")");
+                    b.end();
+                    yield createOperationData(className, "index");
                 }
-                case TAG -> {
-                    yield createOperationData(className, "false", UNINIT, "nodeId", "this.reachable", "this.currentStackHeight", "node");
-                }
-                case RETURN -> {
-                    yield createOperationData(className, "false", UNINIT);
-                }
-                case BLOCK -> {
-                    yield createOperationData(className, "this.currentStackHeight", "false", UNINIT);
+                case SOURCE_SECTION -> {
+                    b.declaration(type(int.class), "foundSourceIndex", "-1");
+                    b.string("loop: ").startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
+                    b.startSwitch().string("operationStack[i].operation").end().startBlock();
+
+                    b.startCase().tree(createOperationConstant(model.sourceOperation)).end();
+                    b.startCaseBlock();
+                    emitCastOperationData(b, model.sourceOperation, "i", "sourceData");
+                    b.statement("foundSourceIndex = sourceData.sourceIndex");
+                    b.statement("break loop");
+                    b.end(); // case epilog
+                    b.end(); // switch
+                    b.end(); // for
+
+                    b.startIf().string("foundSourceIndex == -1").end().startBlock();
+                    emitThrowIllegalStateException(b, "\"No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.\"");
+                    b.end();
+
+                    b.declaration(type(int.class), "beginBci");
+                    b.startIf().string("rootOperationSp == -1").end().startBlock();
+                    b.lineComment("not in a root yet");
+                    b.statement("beginBci = 0");
+                    b.end().startElseBlock();
+                    b.statement("beginBci = bci");
+                    b.end();
+
+                    yield createOperationData(className, "foundSourceIndex", "beginBci", operation.getOperationBeginArgumentName(0), operation.getOperationBeginArgumentName(1));
                 }
                 default -> {
                     if (operation.isTransparent) {
-                        yield createOperationData(className, "false", UNINIT);
+                        yield createOperationData(className);
                     } else {
                         yield null;
                     }
@@ -4877,7 +4869,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          * emits the regular handler.
          */
         private void emitFinallyHandlersAfterTry(CodeTreeBuilder b, OperationModel op) {
-            b.declaration(type(short.class), "exceptionIndex", "(short) operationData.exceptionLocal.frameIndex");
+            b.declaration(type(short.class), "exceptionIndex", "(short) operationData.exceptionLocalFrameIndex");
             b.declaration(type(int.class), "handlerSp", "currentStackHeight");
             b.declaration(type(int.class), "exHandlerIndex", UNINIT);
             b.statement("FinallyHandlerContext ctx = operationData.finallyHandlerContext");
@@ -5739,7 +5731,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.declaration(type(int.class), "tableEntryIndex", "operationData.exceptionTableEntries[i]");
                         b.statement("exHandlers[tableEntryIndex + 2] = bci /* handler start */");
                         b.end();
-                        b.statement("doCreateExceptionHandler(operationData.tryStartBci, tryEndBci, bci, operationData.startStackHeight, operationData.exceptionLocalIndex)");
+                        b.statement("doCreateExceptionHandler(operationData.tryStartBci, tryEndBci, bci, operationData.startStackHeight, operationData.exceptionLocalFrameIndex)");
 
                         b.end(); // if operationReachable
                         b.end();
@@ -6846,7 +6838,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("FinallyHandlerContext ctx = operationData.finallyHandlerContext");
             b.startIf().string("ctx.handlerIsSet() && reachable").end().startBlock();
             b.startStatement().startCall("operationData.addExceptionTableEntry");
-            b.string("doCreateExceptionHandler(operationData.guardedStartBci, bci, " + UNINIT + " /* handler start */, " + UNINIT + " /* stack height */, operationData.exceptionLocal.frameIndex)");
+            b.string("doCreateExceptionHandler(operationData.guardedStartBci, bci, " + UNINIT + " /* handler start */, " + UNINIT + " /* stack height */, operationData.exceptionLocalFrameIndex)");
             b.end(2);
             b.statement("handlerClosed = true");
             b.statement("doEmitFinallyHandler(ctx)");
@@ -6860,7 +6852,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             emitCastOperationData(b, model.tryCatchOperation, "i");
             b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable").end().startBlock();
             b.startStatement().startCall("operationData.addExceptionTableEntry");
-            b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, " + UNINIT + " /* handler start */, operationData.startStackHeight, operationData.exceptionLocalIndex)");
+            b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, " + UNINIT + " /* handler start */, operationData.startStackHeight, operationData.exceptionLocalFrameIndex)");
             b.end(2);
             b.statement("handlerClosed = true");
             b.end();

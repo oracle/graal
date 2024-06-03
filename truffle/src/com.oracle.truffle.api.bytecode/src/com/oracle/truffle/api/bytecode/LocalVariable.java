@@ -101,8 +101,7 @@ public abstract class LocalVariable {
         b.append("index=");
         b.append(getLocalIndex());
 
-        b.append(sep);
-        b.append("offset=");
+        b.append(", offset=");
         b.append(getLocalOffset());
 
         Object name = getName();
