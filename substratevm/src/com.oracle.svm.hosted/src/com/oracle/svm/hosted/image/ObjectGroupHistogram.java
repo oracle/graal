@@ -31,6 +31,7 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -122,6 +123,9 @@ public final class ObjectGroupHistogram {
 
         HeapHistogram totalHistogram = new HeapHistogram();
         for (ObjectInfo info : heap.getObjects()) {
+            if (info.getConstant().isInBaseLayer()) {
+                continue;
+            }
             totalHistogram.add(info, info.getSize());
             addToGroup(info, "Other");
         }
@@ -155,7 +159,7 @@ public final class ObjectGroupHistogram {
 
     public void processType(Class<?> clazz, String group, boolean addObject, ObjectFilter objectFilter, FieldFilter fieldFilter) {
         for (ObjectInfo info : heap.getObjects()) {
-            if (clazz.isInstance(info.getObject())) {
+            if (!info.getConstant().isInBaseLayer() && clazz.isInstance(info.getObject())) {
                 processObject(info, group, addObject, 1, objectFilter, fieldFilter);
             }
         }
@@ -163,15 +167,27 @@ public final class ObjectGroupHistogram {
 
     public void processObject(Object object, String group, boolean addObject, ObjectFilter objectFilter, FieldFilter fieldFilter) {
         if (object != null) {
-            processObject(heap.getObjectInfo(object), group, addObject, 1, objectFilter, fieldFilter);
+            ObjectInfo objectInfo = null;
+            try {
+                objectInfo = heap.getObjectInfo(object);
+            } catch (AnalysisError.SealedHeapError t) {
+                /* Ignore objects not found in current layer's heap. */
+            }
+            if (objectInfo != null) {
+                processObject(objectInfo, group, addObject, 1, objectFilter, fieldFilter);
+            }
         }
     }
 
     private void processObject(ObjectInfo info, String group, boolean addObject, int recursionLevel, ObjectFilter objectFilter, FieldFilter fieldFilter) {
+        assert info != null;
+        if (info.getConstant().isInBaseLayer()) {
+            /* Base layer objects don't count towards current layer's statistics. */
+            return;
+        }
         if (objectFilter != null && !objectFilter.test(info, recursionLevel)) {
             return;
         }
-        assert info != null;
         if (addObject) {
             if (!addToGroup(info, group)) {
                 return;
@@ -193,7 +209,9 @@ public final class ObjectGroupHistogram {
             for (Object element : (Object[]) info.getObject()) {
                 if (element != null) {
                     ObjectInfo elementInfo = heap.getObjectInfo(heap.aUniverse.replaceObject(element));
-                    processObject(elementInfo, group, true, recursionLevel + 1, objectFilter, fieldFilter);
+                    if (elementInfo != null) {
+                        processObject(elementInfo, group, true, recursionLevel + 1, objectFilter, fieldFilter);
+                    }
                 }
             }
         }
