@@ -58,7 +58,7 @@
   // JDKs
   local jdk_name_to_dict = {
     "jdk21"+: common.labsjdk21,
-    "jdk-latest"+: common.labsjdkLatest + galahad.include,
+    "jdk-latest"+: common.labsjdkLatest + galahad.exclude,
   },
 
   local default_os_arch(b) = {
