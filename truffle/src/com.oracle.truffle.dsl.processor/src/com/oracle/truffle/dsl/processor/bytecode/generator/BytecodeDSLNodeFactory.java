@@ -4994,63 +4994,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case RETURN -> new String[]{};
                 case LOAD_ARGUMENT -> new String[]{operation.getOperationBeginArgumentName(0)};
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationBeginArgumentName(0) + ")"};
-                case BRANCH -> {
-                    b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationBeginArgumentName(0)).end();
-
-                    b.declaration(operationStackEntry.asType(), "declaringOperation", "null");
-                    b.startFor().string("int i = 0; i < " + sp + "; i++").end().startBlock();
-                    b.startIf().string("operationStack[i].sequenceNumber == labelImpl.declaringOp").end().startBlock();
-                    b.startAssign("declaringOperation").string("operationStack[i]").end();
-                    b.statement("break");
-                    b.end();
-                    b.end();
-
-                    /**
-                     * To keep branches reasonable, require them to target a label defined in the
-                     * same operation or an enclosing one.
-                     */
-                    b.startIf().string("declaringOperation == null").end().startBlock();
-                    emitThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
-                    b.end();
-
-                    b.startIf().string("labelImpl.isDefined()").end().startBlock();
-                    emitThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
-                    b.end();
-
-                    b.statement("beforeEmitBranch(labelImpl.declaringOp)");
-
-                    b.declaration(type(int.class), "targetStackHeight");
-                    b.startIf().string("declaringOperation.data instanceof " + getDataClassName(model.blockOperation) + " blockData").end().startBlock();
-                    b.startAssign("targetStackHeight").string("blockData.startStackHeight").end();
-                    b.end().startElseBlock();
-                    b.startAssert().string("declaringOperation.data instanceof " + getDataClassName(model.rootOperation)).end();
-                    b.startAssign("targetStackHeight").string("0").end();
-                    b.end();
-
-                    b.startIf().string("this.reachable").end().startBlock();
-                    /**
-                     * Mark the branch target as uninitialized. Add this location to a work list to
-                     * be processed once the label is defined.
-                     */
-                    b.startStatement().startCall("registerUnresolvedLabel");
-                    b.string("labelImpl");
-                    b.string("bci + 1");
-                    b.end(2);
-                    b.newLine();
-
-                    /**
-                     * If the label was defined inside a finally handler, this branch instruction is
-                     * as well (because the label is defined in the same operation or an enclosing
-                     * one). Mark it as finally-relative.
-                     */
-                    b.startIf().string("labelImpl.finallyHandlerOp != " + UNINIT).end().startBlock();
-                    b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
-                    b.statement("finallyHandlerContext.finallyRelativeBranches.add(bci + 1)");
-                    b.end();
-
-                    b.end(); // if reachable
-                    yield new String[]{UNINIT, "targetStackHeight"};
-                }
                 case YIELD -> {
                     b.declaration(context.getType(int.class), "constantPoolIndex", "allocateContinuationConstant()");
                     b.startIf().string("reachable").end().startBlock();
@@ -5066,6 +5009,132 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 default -> throw new AssertionError("Reached an operation " + operation.name + " that cannot be initialized. This is a bug in the Bytecode DSL processor.");
             };
             buildEmitInstruction(b, operation.instruction, args);
+        }
+
+        private void buildEmitLabel(CodeTreeBuilder b, OperationModel operation) {
+            b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationBeginArgumentName(0)).end();
+
+            b.startIf().string("labelImpl.isDefined()").end().startBlock();
+            emitThrowIllegalStateException(b, "\"BytecodeLabel already emitted. Each label must be emitted exactly once.\"");
+            b.end();
+
+            b.startIf().string("labelImpl.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
+            emitThrowIllegalStateException(b, "\"BytecodeLabel must be emitted inside the same operation it was created in.\"");
+            b.end();
+
+            b.startIf().string("operationStack[operationSp - 1].data instanceof " + getDataClassName(model.blockOperation) + " blockData").end().startBlock();
+            b.startAssert().string("this.currentStackHeight == blockData.startStackHeight").end();
+            b.end().startElseBlock();
+            b.startAssert().string("operationStack[operationSp - 1].data instanceof " + getDataClassName(model.rootOperation)).end();
+            b.startAssert().string("this.currentStackHeight == 0").end();
+            b.end();
+
+            b.statement("labelImpl.bci = bci");
+            b.startStatement().startCall("resolveUnresolvedLabel");
+            b.string("labelImpl");
+            b.string("currentStackHeight");
+            b.end(2);
+        }
+
+        private void buildEmitBranch(CodeTreeBuilder b, OperationModel operation) {
+            b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationBeginArgumentName(0)).end();
+
+            b.declaration(operationStackEntry.asType(), "declaringOperation", "null");
+            b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+            b.startIf().string("operationStack[i].sequenceNumber == labelImpl.declaringOp").end().startBlock();
+            b.startAssign("declaringOperation").string("operationStack[i]").end();
+            b.statement("break");
+            b.end();
+            b.end();
+
+            /**
+             * To keep branches reasonable, require them to target a label defined in the same
+             * operation or an enclosing one.
+             */
+            b.startIf().string("declaringOperation == null").end().startBlock();
+            emitThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
+            b.end();
+
+            b.startIf().string("labelImpl.isDefined()").end().startBlock();
+            emitThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
+            b.end();
+
+            b.declaration(type(int.class), "targetStackHeight");
+            b.startIf().string("declaringOperation.data instanceof " + getDataClassName(model.blockOperation) + " blockData").end().startBlock();
+            b.startAssign("targetStackHeight").string("blockData.startStackHeight").end();
+            b.end().startElseBlock();
+            b.startAssert().string("declaringOperation.data instanceof " + getDataClassName(model.rootOperation)).end();
+            b.startAssign("targetStackHeight").string("0").end();
+            b.end();
+
+            /**
+             * We may emit a branch or branch.unaligned. Ensure both instructions expect their
+             * branch target at the same offset.
+             */
+            InstructionModel branchAligned = model.branchInstruction;
+            InstructionModel branchUnaligned = model.branchUnalignedInstruction;
+            int branchTargetOffset = branchAligned.getImmediate(ImmediateKind.BYTECODE_INDEX).offset();
+            assert branchUnaligned.getImmediate(ImmediateKind.BYTECODE_INDEX).offset() == branchTargetOffset : "branch and branch.unaligned should store their branch target at the same offset";
+
+            b.startDeclaration(type(boolean.class), "isUnaligned");
+            /**
+             * If the label sp doesn't match the current sp, the branch is unaligned (it needs to
+             * pop values before branching).
+             */
+            b.string("targetStackHeight != currentStackHeight || ");
+            /**
+             * The branch may also be unaligned if it belongs to a finally handler, since the
+             * handler can be relocated somewhere with a different sp (e.g., an early return). We
+             * conservatively emit an unaligned branch, unless the label and branch belong to the
+             * same finally handler (in such a case, they will be relocated together and have the
+             * same relocated sp).
+             */
+            b.string("finallyHandlerContext != null && labelImpl.finallyHandlerOp != finallyHandlerContext.finallyTrySequenceNumber");
+            b.end();
+
+            b.startIf().string("isUnaligned").end().startBlock();
+            b.startStatement().startCall("beforeEmitBranch").string("labelImpl.declaringOp").string(String.valueOf(branchUnaligned.getInstructionLength())).end(2);
+            b.end().startElseBlock();
+            b.startStatement().startCall("beforeEmitBranch").string("labelImpl.declaringOp").string(String.valueOf(branchAligned.getInstructionLength())).end(2);
+            b.end();
+
+            b.startIf().string("this.reachable").end().startBlock();
+            /**
+             * Mark the branch target as uninitialized. Add this location to a work list to be
+             * processed once the label is defined.
+             */
+            b.startStatement().startCall("registerUnresolvedLabel");
+            b.string("labelImpl");
+            b.string("bci + " + branchTargetOffset);
+            b.end(2);
+            b.newLine();
+
+            /**
+             * If the label was defined inside a finally handler, this branch instruction is as well
+             * (because the label is defined in the same operation or an enclosing one). Mark it as
+             * finally-relative.
+             */
+            b.startIf().string("labelImpl.finallyHandlerOp != " + UNINIT).end().startBlock();
+            b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
+            b.statement("finallyHandlerContext.finallyRelativeBranches.add(bci + " + branchTargetOffset + ")");
+            b.end();
+
+            b.end(); // if reachable
+
+            b.startIf().string("isUnaligned").end().startBlock();
+            b.startStatement().startCall("doEmitInstruction");
+            b.tree(createInstructionConstant(branchUnaligned));
+            b.string("0"); // stack effect
+            b.string(UNINIT); // branch target
+            b.string("targetStackHeight");
+            b.end(2);
+            b.end().startElseBlock();
+            b.startStatement().startCall("doEmitInstruction");
+            b.tree(createInstructionConstant(branchAligned));
+            b.string("0"); // stack effect
+            b.string(UNINIT); // branch target
+            b.end(2);
+            b.end();
         }
 
         private CodeExecutableElement createEmitOperationBegin() {
@@ -5134,28 +5203,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (operation.kind == OperationKind.LABEL) {
-                b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationBeginArgumentName(0)).end();
-
-                b.startIf().string("labelImpl.isDefined()").end().startBlock();
-                emitThrowIllegalStateException(b, "\"BytecodeLabel already emitted. Each label must be emitted exactly once.\"");
-                b.end();
-
-                b.startIf().string("labelImpl.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
-                emitThrowIllegalStateException(b, "\"BytecodeLabel must be emitted inside the same operation it was created in.\"");
-                b.end();
-
-                b.startIf().string("operationStack[operationSp - 1].data instanceof " + getDataClassName(model.blockOperation) + " blockData").end().startBlock();
-                b.startAssert().string("this.currentStackHeight == blockData.startStackHeight").end();
-                b.end().startElseBlock();
-                b.startAssert().string("operationStack[operationSp - 1].data instanceof " + getDataClassName(model.rootOperation)).end();
-                b.startAssert().string("this.currentStackHeight == 0").end();
-                b.end();
-
-                b.statement("labelImpl.bci = bci");
-                b.startStatement().startCall("resolveUnresolvedLabel");
-                b.string("labelImpl");
-                b.string("currentStackHeight");
-                b.end(2);
+                buildEmitLabel(b, operation);
+            } else if (operation.kind == OperationKind.BRANCH) {
+                buildEmitBranch(b, operation);
             } else {
                 assert operation.instruction != null;
                 buildEmitOperationInstruction(b, operation, constantOperandIndices);
@@ -6747,7 +6797,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // switch
             b.end(); // for
 
-            emitHandlerLeaveSetNewGuardBci(b, model.returnInstruction);
+            emitHandlerLeaveSetNewGuardBci(b, OperationKind.RETURN);
 
             return ex;
         }
@@ -6866,21 +6916,32 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          *
          * beforeEmitReturn and beforeEmitBranch use this helper.
          */
-        private void emitHandlerLeaveSetNewGuardBci(CodeTreeBuilder b, InstructionModel instruction) {
+        private void emitHandlerLeaveSetNewGuardBci(CodeTreeBuilder b, OperationKind operationKind) {
             b.startJavadoc();
             b.string("A handler should not guard any exit instructions (its own handler instructions, an outer handler, tag exits, etc.).").newLine();
             b.string("As a result, we must wait until all exit instructions are emitted before reopening the guarded ranges in a separate walk of the operation stack.").newLine();
             b.end();
             b.startIf().string("handlerClosed").end().startBlock();
-            String friendlyName = switch (instruction.kind) {
-                case BRANCH_UNALIGNED -> "branch";
-                case RETURN -> "return";
-                default -> throw new AssertionError("Unexpected instruction " + instruction);
-            };
-            b.declaration(type(int.class), "newGuardedStartBci", "bci + " + instruction.getInstructionLength() + " /* after the " + friendlyName + " */");
+            String friendlyName;
+            String instructionLength;
+            switch (operationKind) {
+                case BRANCH -> {
+                    friendlyName = "branch";
+                    instructionLength = "branchInstructionLength"; // param
+                }
+                case RETURN -> {
+                    friendlyName = "return";
+                    instructionLength = String.valueOf(model.returnInstruction.getInstructionLength());
+                }
+                default -> throw new AssertionError("Unexpected operation kind " + operationKind);
+            }
+
+            b.startDeclaration(type(int.class), "newGuardedStartBci");
+            b.string("bci + ", instructionLength, " /* after the ", friendlyName, " */");
+            b.end();
             b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
 
-            if (instruction.kind == InstructionKind.BRANCH_UNALIGNED) {
+            if (operationKind == OperationKind.BRANCH) {
                 b.startIf().string("operationStack[i].sequenceNumber == targetSeq").end().startBlock();
                 b.statement("break");
                 b.end();
@@ -6924,6 +6985,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createBeforeEmitBranch() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitBranch");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "targetSeq"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "branchInstructionLength"));
 
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(boolean.class), "handlerClosed", "false");
@@ -6949,7 +7011,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // switch
             b.end(); // for
 
-            emitHandlerLeaveSetNewGuardBci(b, model.branchUnalignedInstruction);
+            emitHandlerLeaveSetNewGuardBci(b, OperationKind.BRANCH);
 
             return ex;
         }

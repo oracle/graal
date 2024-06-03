@@ -1248,7 +1248,7 @@ public class TagTest extends AbstractInstructionTest {
         });
 
         assertInstructions(node,
-                        "branch.unaligned",
+                        "branch",
                         "load.constant",
                         "return");
 
@@ -1259,7 +1259,7 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.enter",
                         "tag.enter",
                         "tag.leaveVoid",
-                        "branch.unaligned",
+                        "branch",
                         "tag.leaveVoid",
                         "load.constant",
                         "tag.leave",
@@ -1271,10 +1271,10 @@ public class TagTest extends AbstractInstructionTest {
         // instrumentation events should be correct even if we hit a trap
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0013, null, RootTag.class),
-                        new Event(EventKind.ENTER, 0x0002, 0x0009, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0009, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0013, null, RootTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x0012, null, RootTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0012, null, RootTag.class));
 
     }
 
@@ -1363,7 +1363,7 @@ public class TagTest extends AbstractInstructionTest {
         });
 
         assertInstructions(node,
-                        "branch.unaligned",
+                        "branch",
                         "load.constant",
                         "return");
 
@@ -1376,7 +1376,7 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.enter",
                         "tag.enter",
                         "tag.leaveVoid",
-                        "branch.unaligned",
+                        "branch",
                         "tag.leaveVoid",
                         "load.constant",
                         "tag.leave",
@@ -1388,10 +1388,10 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0011, null, RootTag.class),
-                        new Event(EventKind.ENTER, 0x0002, 0x0009, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0009, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0011, 42, RootTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x0010, null, RootTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0010, 42, RootTag.class));
     }
 
     @Test

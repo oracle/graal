@@ -563,7 +563,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         }).getRootNode();
 
         assertInstructions(node,
-                        "branch.unaligned",
+                        "branch",
                         "load.constant",
                         "return");
 

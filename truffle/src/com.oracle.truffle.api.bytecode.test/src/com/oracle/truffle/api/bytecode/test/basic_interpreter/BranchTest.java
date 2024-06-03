@@ -48,6 +48,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 
 public class BranchTest extends AbstractBasicInterpreterTest {
     // @formatter:off
@@ -132,7 +133,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // lbl:
         // return 42;
 
-        RootCallTarget root = parse("branchOutwardBalanced", b -> {
+        BasicInterpreter root = parseNode("branchOutwardBalanced", b -> {
             b.beginRoot(LANGUAGE);
 
             BytecodeLabel lbl = b.createLabel();
@@ -159,8 +160,9 @@ public class BranchTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        assertEquals(123L, root.call(1L));
-        assertEquals(42L, root.call(-1L));
+        assertEquals(123L, root.getCallTarget().call(1L));
+        assertEquals(42L, root.getCallTarget().call(-1L));
+        AbstractInstructionTest.assertUnalignedBranch(root, false);
     }
 
     @Test
@@ -169,7 +171,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // lbl:
         // return 42;
 
-        RootCallTarget root = parse("branchOutwardUnbalanced", b -> {
+        BasicInterpreter root = parseNode("branchOutwardUnbalanced", b -> {
             b.beginRoot(LANGUAGE);
 
             BytecodeLabel lbl = b.createLabel();
@@ -191,7 +193,8 @@ public class BranchTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        assertEquals(42L, root.call());
+        assertEquals(42L, root.getCallTarget().call());
+        AbstractInstructionTest.assertUnalignedBranch(root, true);
     }
 
     @Test

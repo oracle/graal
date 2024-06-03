@@ -51,6 +51,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 
 public class FinallyTryTest extends AbstractBasicInterpreterTest {
@@ -325,7 +326,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // lbl:
         // arg0.append(4);
 
-        RootCallTarget root = parse("finallyTryBranchForwardOutOfHandler", b -> {
+        BasicInterpreter root = parseNode("finallyTryBranchForwardOutOfHandler", b -> {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
 
@@ -348,7 +349,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 2L, 4L);
+        testOrdering(false, root.getCallTarget(), 1L, 2L, 4L);
+        AbstractInstructionTest.assertUnalignedBranch(root, true);
     }
 
     @Test
@@ -369,7 +371,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // lbl:
         // arg0.append(4);
 
-        RootCallTarget root = parse("finallyTryBranchForwardOutOfHandler", b -> {
+        BasicInterpreter root = parseNode("finallyTryBranchForwardOutOfHandler", b -> {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
 
@@ -393,7 +395,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 2L, 4L);
+        testOrdering(false, root.getCallTarget(), 1L, 2L, 4L);
+        AbstractInstructionTest.assertUnalignedBranch(root, true);
     }
 
     @Test
@@ -483,7 +486,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
         // arg0.append(6);
 
-        RootCallTarget root = parse("finallyTryBranchWithinHandler", b -> {
+        BasicInterpreter root = parseNode("finallyTryBranchWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal());
@@ -508,7 +511,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 3L, 5L);
+        testOrdering(false, root.getCallTarget(), 1L, 3L, 5L);
+        AbstractInstructionTest.assertUnalignedBranch(root, false);
     }
 
     @Test
@@ -556,6 +560,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
         testOrderingWithArguments(false, root.getCallTarget(), new Object[] {false}, 1L, 3L, 5L);
         testOrderingWithArguments(false, root.getCallTarget(), new Object[] {true}, 1L, 3L, 4L, 5L);
+        AbstractInstructionTest.assertUnalignedBranch(root, false);
     }
 
     @Test
@@ -575,7 +580,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
         // arg0.append(7);
 
-        RootCallTarget root = parse("finallyTryIfThenElseWithinHandler", b -> {
+        BasicInterpreter root = parseNode("finallyTryIfThenElseWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal());
@@ -606,8 +611,9 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrderingWithArguments(false, root, new Object[] {false}, 1L, 3L, 5L, 6L);
-        testOrderingWithArguments(false, root, new Object[] {true}, 1L, 3L, 4L, 6L);
+        testOrderingWithArguments(false, root.getCallTarget(), new Object[] {false}, 1L, 3L, 5L, 6L);
+        testOrderingWithArguments(false, root.getCallTarget(), new Object[] {true}, 1L, 3L, 4L, 6L);
+        AbstractInstructionTest.assertUnalignedBranch(root, false);
     }
 
     @Test
@@ -1035,7 +1041,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   arg0.append(8);
         //   return 0;
         // }
-        RootCallTarget root = parse("finallyTryBranchIntoOuterFinally", b -> {
+        BasicInterpreter root = parseNode("finallyTryBranchIntoOuterFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal());
@@ -1068,7 +1074,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 3L, 5L, 8L);
+        testOrdering(false, root.getCallTarget(), 1L, 3L, 5L, 8L);
+        AbstractInstructionTest.assertUnalignedBranch(root, true);
     }
 
 
@@ -1098,7 +1105,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   arg0.append(8);
         //   return 0;
         // }
-        RootCallTarget root = parse("finallyTryBranchIntoOuterFinally", b -> {
+        BasicInterpreter root = parseNode("finallyTryBranchIntoOuterFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal());
@@ -1135,7 +1142,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 3L, 5L, 8L);
+        testOrdering(false, root.getCallTarget(), 1L, 3L, 5L, 8L);
+        AbstractInstructionTest.assertUnalignedBranch(root, true);
     }
 
     @Test
@@ -1163,7 +1171,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   arg0.append(12);
         //   return 0;
         // }
-        RootCallTarget root = parse("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
+        BasicInterpreter root = parseNode("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal()); // a
@@ -1209,7 +1217,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 3L, 5L, 6L, 8L, 11L, 12L);
+        testOrdering(false, root.getCallTarget(), 1L, 3L, 5L, 6L, 8L, 11L, 12L);
+        AbstractInstructionTest.assertUnalignedBranch(root, true);
     }
 
     @Test
@@ -1246,7 +1255,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   arg0.append(12);
         //   return 0;
         // }
-        RootCallTarget root = parse("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
+        BasicInterpreter root = parseNode("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal()); // a
@@ -1296,7 +1305,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 3L, 5L, 6L, 8L, 11L);
+        testOrdering(false, root.getCallTarget(), 1L, 3L, 5L, 6L, 8L, 11L);
+        AbstractInstructionTest.assertUnalignedBranch(root, true);
     }
 
     @Test
@@ -1320,7 +1330,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   arg0.append(8);
         // }
 
-        RootCallTarget root = parse("finallyTryBranchWhileInParentHandler", b -> {
+        BasicInterpreter root = parseNode("finallyTryBranchWhileInParentHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal());
@@ -1353,7 +1363,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 3L, 4L, 6L, 7L, 8L);
+        testOrdering(false, root.getCallTarget(), 1L, 3L, 4L, 6L, 7L, 8L);
+        AbstractInstructionTest.assertUnalignedBranch(root, false);
     }
 
     @Test
