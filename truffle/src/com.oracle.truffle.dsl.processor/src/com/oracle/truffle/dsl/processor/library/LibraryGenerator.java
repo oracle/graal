@@ -531,8 +531,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         }
         uncachedDispatch.addOptional(createGenericCastMethod(model));
 
-        CodeExecutableElement isAdoptable = uncachedDispatch.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
-        isAdoptable.createBuilder().returnFalse();
+        uncachedDispatch.getImplements().add(types.UnadoptableNode);
 
         genClass.add(uncachedDispatch);
 

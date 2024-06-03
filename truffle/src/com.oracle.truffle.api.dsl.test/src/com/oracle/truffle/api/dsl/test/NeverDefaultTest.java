@@ -792,7 +792,8 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
         SingleInstanceNodeCacheNode returnNull = adoptNode(SingleInstanceNodeCacheNodeGen.create()).get();
         GuardCacheNode.returnNull = true;
         assertFails(() -> returnNull.execute(null, 1), NullPointerException.class, (e) -> {
-            assertEquals("A specialization cache returned a default value. The cache initializer must never return a default value for this cache. Use @Cached(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns the default value.",
+            assertEquals("A specialization cache returned a default value. The cache initializer must never return a default value for this cache. " +
+                            "Use @Cached(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns the default value.",
                             e.getMessage());
         });
         GuardCacheNode.returnNull = false;

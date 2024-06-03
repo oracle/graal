@@ -219,13 +219,16 @@ public abstract class Node implements NodeInterface, Cloneable {
      * adoptable then then it is guaranteed that the {@link #getParent() parent} pointer remains
      * <code>null</code> at all times, even if the node is tried to be adopted by a parent.
      * <p>
+     * If the result of this method is statically known then it is recommended to make the node
+     * implement {@link UnadoptableNode} instead.
+     * <p>
      * Implementations of {@link #isAdoptable()} are required to fold to a constant result when
      * compiled with a constant receiver.
      *
      * @since 19.0
      */
     public boolean isAdoptable() {
-        return true;
+        return !(this instanceof UnadoptableNode);
     }
 
     /**

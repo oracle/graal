@@ -43,8 +43,6 @@ package com.oracle.truffle.api;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
-import com.oracle.truffle.api.nodes.NodeInfo;
-
 /**
  * Class containing general Truffle options.
  *
@@ -84,24 +82,12 @@ public final class TruffleOptions {
     public static final String TraceRewritesFilterClass;
 
     /**
-     * Filters rewrites which does not contain the {@link NodeCost} in its source {@link NodeInfo}.
-     * If no {@link NodeInfo} is defined the element is filtered if the filter value is set.
-     * <p>
-     * Can be set with
-     * {@code -Dtruffle.TraceRewritesFilterFromCost=NONE|MONOMORPHIC|POLYMORPHIC|MEGAMORPHIC}.
-     *
      * @since 0.8 or earlier
      * @deprecated in 24.1 without replacement
      */
     @SuppressWarnings("deprecation") @Deprecated public static final com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterFromCost;
 
     /**
-     * Filters rewrites which does not contain the {@link NodeCost} in its target {@link NodeInfo}.
-     * If no {@link NodeInfo} is defined the element is filtered if the filter value is set.
-     * <p>
-     * Can be set with
-     * {@code -Dtruffle.TraceRewritesFilterToKind=UNINITIALIZED|SPECIALIZED|POLYMORPHIC|GENERIC}.
-     *
      * @since 0.8 or earlier
      * @deprecated in 24.1 without replacement
      */

@@ -59,8 +59,7 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * The tracer counts how many times each of the elements of interest (e.g. functions, statements,
  * etc.) are executed.
  * <p>
- * Usage example:
- * {@snippet file = "com/oracle/truffle/tools/profiler/CPUTracer.java" region =
+ * Usage example: {@snippet file = "com/oracle/truffle/tools/profiler/CPUTracer.java" region =
  * "CPUTracerSnippets#example"}
  *
  * @since 0.30

@@ -17,6 +17,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-49484 Added `TruffleStackFrameElement.getBytecodeIndex()` to access bytecode indices of a stack frame. Bytecode based languages should consider implementing `RootNode#findBytecodeIndex(Node, Frame)` to resolve the bytecode index.
 * GR-49484 Deprecated `RootNode.isCaptureFramesForTrace()`. Implementers should use `RootNode.isCaptureFramesForTrace(Node)` instead.
 * GR-52843 Deprecated `Node.getCost()` and the associated `NodeCost` class without replacement. Truffle DSL no longer generates implementations of this method automatically and will therefore always return `NodeCost.MONOMORPHIC` by default. This is intended to reduce the binary footprint.
+* GR-52843 Added the `UnadoptableNode` interface. This is interface should be preferred to overriding `Node.isAdoptable()` if the result is statically known.
 
 ## Version 24.0.0
 

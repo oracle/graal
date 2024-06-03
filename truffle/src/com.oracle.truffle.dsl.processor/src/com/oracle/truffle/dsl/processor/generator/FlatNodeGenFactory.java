@@ -1149,9 +1149,7 @@ public class FlatNodeGenFactory {
 
             inlined.getEnclosedElements().addAll(removeThisMethods.values());
 
-            CodeExecutableElement isAdoptable = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findExecutableElement(types.Node, "isAdoptable"));
-            isAdoptable.createBuilder().returnFalse();
-            inlined.add(isAdoptable);
+            inlined.getImplements().add(types.UnadoptableNode);
 
             if (isGenerateIntrospection()) {
                 generateIntrospectionInfo(inlined, true);
@@ -1212,9 +1210,7 @@ public class FlatNodeGenFactory {
                 wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
-            CodeExecutableElement isAdoptable = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findExecutableElement(types.Node, "isAdoptable"));
-            isAdoptable.createBuilder().returnFalse();
-            uncached.add(isAdoptable);
+            uncached.getImplements().add(types.UnadoptableNode);
 
             clazz.add(uncached);
             GeneratedTypeMirror uncachedType = new GeneratedTypeMirror("", uncached.getSimpleName().toString());
