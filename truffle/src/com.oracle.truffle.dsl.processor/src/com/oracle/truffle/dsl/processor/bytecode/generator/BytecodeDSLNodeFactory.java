@@ -8263,7 +8263,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
                 b.startReturn();
-                b.string(readBc("bci"));
+                b.string("bc[bci]");
                 b.end();
                 return ex;
             }
@@ -8274,7 +8274,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
                 b.startReturn();
-                b.string(readBc("bci"));
+                b.string("bc[bci]");
                 b.end();
                 return ex;
             }
@@ -8285,7 +8285,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
                 b.startReturn();
-                b.string(readBc("bci")).string(" - USER_LOCALS_START_IDX");
+                b.string("bc[bci]").string(" - USER_LOCALS_START_IDX");
                 b.end();
                 return ex;
             }
@@ -8297,7 +8297,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
                 b.declaration(type(Object[].class), "constants", "this.bytecode.constants");
                 b.startReturn();
-                b.string(readConst(readBc("bci")));
+                b.string("constants[bc[bci]]");
                 b.end();
                 return ex;
             }
@@ -8312,7 +8312,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
                 b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
                 b.startReturn();
-                b.tree(readNodeProfile(types.Node, CodeTreeBuilder.singleString(readBc("bci"))));
+                b.tree(CodeTreeBuilder.singleString("cachedNodes[bc[bci]]"));
                 b.end();
                 return ex;
             }
@@ -8327,7 +8327,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("return null");
                 b.end();
                 b.startReturn();
-                b.tree(readTagNode(types.TagTreeNode, CodeTreeBuilder.singleString(readBc("bci"))));
+                b.tree(readTagNodeSafe(types.TagTreeNode, CodeTreeBuilder.singleString("bc[bci]")));
                 b.end();
                 return ex;
             }
@@ -8337,7 +8337,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
-                b.declaration(type(int.class), "index", readBc("bci"));
+                b.declaration(type(int.class), "index", "bc[bci]");
                 b.declaration(type(int[].class), "profiles", "this.bytecode.getBranchProfiles()");
                 b.startIf().string("profiles == null").end().startBlock();
 
@@ -9329,7 +9329,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 for (InstructionImmediate immediate : instr.getImmediates()) {
                     // argument data array
-                    String readImmediate = readBc("bci + " + immediate.offset());
+                    String readImmediate = "bc[bci + " + immediate.offset() + "]";
                     String localName = immediate.name();
                     b.declaration(type(int.class), localName, readImmediate);
 
@@ -9396,7 +9396,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             break;
                         case TAG_NODE:
                             b.startIf().string("tagNodes != null").end().startBlock();
-                            b.declaration(tagNode.asType(), "node", readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(immediate.name())));
+                            b.declaration(tagNode.asType(), "node", readTagNodeSafe(tagNode.asType(), CodeTreeBuilder.singleString(immediate.name())));
                             b.startIf().string("node == null").end().startBlock();
                             b.tree(createValidationError("tagNode is null"));
                             b.end();
@@ -9469,7 +9469,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startCase().string("HANDLER_TAG_EXCEPTIONAL").end().startCaseBlock();
 
                 b.startIf().string("tagNodes != null").end().startBlock();
-                b.declaration(tagNode.asType(), "node", readTagNode(tagNode.asType(), CodeTreeBuilder.singleString("handlerBci")));
+                b.declaration(tagNode.asType(), "node", readTagNodeSafe(tagNode.asType(), CodeTreeBuilder.singleString("handlerBci")));
                 b.startIf().string("node == null").end().startBlock();
                 b.tree(createValidationError("tagNode is null"));
                 b.end();
@@ -14123,6 +14123,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end();
 
         b.typeLiteral(expectedType);
+        b.end();
+        return b.build();
+    }
+
+    private static CodeTree readTagNodeSafe(TypeMirror expectedType, CodeTree index) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.cast(expectedType);
+        b.string("tagRoot.tagNodes[" + index + "]");
         b.end();
         return b.build();
     }
