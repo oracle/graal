@@ -724,7 +724,9 @@ fld public final static boolean AOT
 fld public final static boolean DetailedRewriteReasons
 fld public final static boolean TraceRewrites
 fld public final static com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterFromCost
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 fld public final static com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterToCost
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 fld public final static java.lang.String TraceRewritesFilterClass
 supr java.lang.Object
 
@@ -1065,7 +1067,6 @@ meth public abstract java.lang.Object executeGeneric(com.oracle.truffle.api.fram
 meth public abstract long executeLong(com.oracle.truffle.api.frame.VirtualFrame,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public abstract short executeShort(com.oracle.truffle.api.frame.VirtualFrame,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public abstract void executeVoid(com.oracle.truffle.api.frame.VirtualFrame,int)
-meth public final com.oracle.truffle.api.nodes.NodeCost getCost()
 meth public final {com.oracle.truffle.api.nodes.BlockNode%0}[] getElements()
 meth public static <%0 extends com.oracle.truffle.api.nodes.Node> com.oracle.truffle.api.nodes.BlockNode<{%%0}> create({%%0}[],com.oracle.truffle.api.nodes.BlockNode$ElementExecutor<{%%0}>)
 supr com.oracle.truffle.api.nodes.Node
@@ -1213,6 +1214,7 @@ meth public boolean isAdoptable()
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.Node deepCopy()
 meth public com.oracle.truffle.api.nodes.NodeCost getCost()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.source.SourceSection getEncapsulatingSourceSection()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 meth public final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
@@ -1272,6 +1274,7 @@ meth protected java.lang.Object clone()
 supr java.lang.Object
 
 CLSS public final !enum com.oracle.truffle.api.nodes.NodeCost
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 fld public final static com.oracle.truffle.api.nodes.NodeCost MEGAMORPHIC
 fld public final static com.oracle.truffle.api.nodes.NodeCost MONOMORPHIC
 fld public final static com.oracle.truffle.api.nodes.NodeCost NONE
@@ -1289,6 +1292,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault com.oracle.truffle.api.nodes.NodeCost cost()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public abstract !hasdefault java.lang.String description()
 meth public abstract !hasdefault java.lang.String language()
 meth public abstract !hasdefault java.lang.String shortName()
@@ -1389,6 +1393,8 @@ meth public final java.lang.Throwable fillInStackTrace()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 supr java.lang.Exception
 hfds serialVersionUID
+
+CLSS public abstract interface com.oracle.truffle.api.nodes.UnadoptableNode
 
 CLSS public final com.oracle.truffle.api.nodes.UnexpectedResultException
 cons public init(java.lang.Object)

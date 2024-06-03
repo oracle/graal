@@ -1176,7 +1176,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     @Override
     public final int getNonTrivialNodeCount() {
         if (cachedNonTrivialNodeCount == -1) {
-            cachedNonTrivialNodeCount = calculateNonTrivialNodes(getRootNode());
+            cachedNonTrivialNodeCount = NodeUtil.countNodes(getRootNode());
         }
         return cachedNonTrivialNodeCount;
     }
@@ -1192,12 +1192,6 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     public final long getInitializedTimestamp() {
         return initializedTimestamp;
-    }
-
-    public static int calculateNonTrivialNodes(Node node) {
-        NonTrivialNodeCountVisitor visitor = new NonTrivialNodeCountVisitor();
-        node.accept(visitor);
-        return visitor.nodeCount;
     }
 
     public final Map<String, Object> getDebugProperties() {
@@ -1618,18 +1612,6 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     final int getUninitializedNodeCount() {
         assert uninitializedNodeCount >= 0;
         return uninitializedNodeCount;
-    }
-
-    private static final class NonTrivialNodeCountVisitor implements NodeVisitor {
-        public int nodeCount;
-
-        @Override
-        public boolean visit(Node node) {
-            if (!node.getCost().isTrivial()) {
-                nodeCount++;
-            }
-            return true;
-        }
     }
 
     @Override

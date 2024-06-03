@@ -16,6 +16,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-54085 Added [`MathUtils`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/utilities/MathUtils.html) API providing additional mathematical functions useful for language implementations, namely: `asinh`, `acosh`, and `atanh`.
 * GR-49484 Added `TruffleStackFrameElement.getBytecodeIndex()` to access bytecode indices of a stack frame. Bytecode based languages should consider implementing `RootNode#findBytecodeIndex(Node, Frame)` to resolve the bytecode index.
 * GR-49484 Deprecated `RootNode.isCaptureFramesForTrace()`. Implementers should use `RootNode.isCaptureFramesForTrace(Node)` instead.
+* GR-52843 Deprecated `Node.getCost()` and the associated `NodeCost` class without replacement. Truffle DSL no longer generates implementations of this method automatically and will therefore always return `NodeCost.MONOMORPHIC` by default. This is intended to reduce the binary footprint.
 
 ## Version 24.0.0
 

@@ -18,7 +18,7 @@ meth public abstract !hasdefault boolean inlineByDefault()
 meth public abstract !hasdefault boolean value()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratePackagePrivate
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 
@@ -55,6 +55,7 @@ meth public boolean isAdoptable()
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.Node deepCopy()
 meth public com.oracle.truffle.api.nodes.NodeCost getCost()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.source.SourceSection getEncapsulatingSourceSection()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 meth public final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})

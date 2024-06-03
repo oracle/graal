@@ -1286,12 +1286,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             isAdoptable.createBuilder().returnFalse();
         }
 
-        if (!isExtendsExports) {
-            CodeExecutableElement getCost = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
-            ElementUtils.setFinal(getCost.getModifiers(), !isFinalExports);
-            getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(types.NodeCost, "MEGAMORPHIC")).end();
-        }
-
         boolean firstNode = true;
         NodeConstants nodeConstants = new NodeConstants();
 

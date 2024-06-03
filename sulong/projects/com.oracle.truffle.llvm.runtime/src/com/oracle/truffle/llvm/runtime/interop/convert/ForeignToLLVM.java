@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.UnadoptableNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
@@ -217,7 +217,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
         return SlowPathForeignToLLVM.INSTANCE;
     }
 
-    public static final class SlowPathForeignToLLVM extends ForeignToLLVM {
+    public static final class SlowPathForeignToLLVM extends ForeignToLLVM implements UnadoptableNode {
 
         private static final SlowPathForeignToLLVM INSTANCE = new SlowPathForeignToLLVM();
 
@@ -277,14 +277,5 @@ public abstract class ForeignToLLVM extends LLVMNode {
             }
         }
 
-        @Override
-        public boolean isAdoptable() {
-            return false;
-        }
-
-        @Override
-        public NodeCost getCost() {
-            return NodeCost.MEGAMORPHIC;
-        }
     }
 }

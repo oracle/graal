@@ -60,7 +60,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
@@ -68,9 +67,9 @@ import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import com.oracle.truffle.runtime.EngineData;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 public final class StatisticsListener extends AbstractGraalTruffleRuntimeListener {
 
@@ -98,11 +97,6 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     private final TargetLongStatistics timeInQueue = new TargetLongStatistics();
 
     private final TargetIntStatistics nodeCount = new TargetIntStatistics();
-    private final TargetIntStatistics nodeCountTrivial = new TargetIntStatistics();
-    private final TargetIntStatistics nodeCountNonTrivial = new TargetIntStatistics();
-    private final TargetIntStatistics nodeCountMonomorphic = new TargetIntStatistics();
-    private final TargetIntStatistics nodeCountPolymorphic = new TargetIntStatistics();
-    private final TargetIntStatistics nodeCountMegamorphic = new TargetIntStatistics();
     private final IdentityStatistics<Class<?>> nodeStatistics = new IdentityStatistics<>();
 
     private final TargetIntStatistics callCount = new TargetIntStatistics();
@@ -215,11 +209,6 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
         CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(task);
         nodeCount.accept(callTargetStat.getNodeCount(), target);
-        nodeCountTrivial.accept(callTargetStat.getNodeCountTrivial(), target);
-        nodeCountNonTrivial.accept(callTargetStat.getNodeCountNonTrivial(), target);
-        nodeCountMonomorphic.accept(callTargetStat.getNodeCountMonomorphic(), target);
-        nodeCountPolymorphic.accept(callTargetStat.getNodeCountPolymorphic(), target);
-        nodeCountMegamorphic.accept(callTargetStat.getNodeCountMegamorphic(), target);
 
         callCount.accept(callTargetStat.getCallCount(), target);
         callCountIndirect.accept(callTargetStat.getCallCountIndirect(), target);
@@ -365,11 +354,6 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             printStatistic(out, "---------------------------");
             printStatistic(out, "AST node statistics ");
             printStatistic(out, "  Truffle node count", nodeCount);
-            printStatistic(out, "    Trivial", nodeCountTrivial);
-            printStatistic(out, "    Non Trivial", nodeCountNonTrivial);
-            printStatistic(out, "      Monomorphic", nodeCountMonomorphic);
-            printStatistic(out, "      Polymorphic", nodeCountPolymorphic);
-            printStatistic(out, "      Megamorphic", nodeCountMegamorphic);
             printStatistic(out, "  Truffle call count", callCount);
             printStatistic(out, "    Indirect", callCountIndirect);
             printStatistic(out, "    Direct", callCountDirect);
@@ -564,11 +548,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     private static final class CallTargetNodeStatistics {
 
         // nodeCount = truffleNodeCountTrivial + truffleNodeCountNonTrivial
-        private int nodeCountTrivial;
-        private int nodeCountNonTrivial;
-        private int nodeCountMonomorphic;
-        private int nodeCountPolymorphic;
-        private int nodeCountMegamorphic;
+        private int nodeCount;
 
         // callCount = truffleCallCountDirect + truffleCallCountIndirect
         private int callCountIndirect;
@@ -592,19 +572,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
                 return true;
             }
 
-            NodeCost cost = node.getCost();
-            if (cost.isTrivial()) {
-                nodeCountTrivial++;
-            } else {
-                nodeCountNonTrivial++;
-                if (cost == NodeCost.MONOMORPHIC) {
-                    nodeCountMonomorphic++;
-                } else if (cost == NodeCost.POLYMORPHIC) {
-                    nodeCountPolymorphic++;
-                } else if (cost == NodeCost.MEGAMORPHIC) {
-                    nodeCountMegamorphic++;
-                }
-            }
+            nodeCount++;
 
             if (node instanceof DirectCallNode) {
                 OptimizedDirectCallNode optimizedDirectCallNode = node instanceof OptimizedDirectCallNode ? ((OptimizedDirectCallNode) node) : null;
@@ -631,7 +599,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         public int getNodeCount() {
-            return nodeCountTrivial + nodeCountNonTrivial;
+            return nodeCount;
         }
 
         public int getCallCount() {
@@ -640,26 +608,6 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
         public int getCallCountDirect() {
             return callCountDirectDispatched + callCountDirectInlined;
-        }
-
-        public int getNodeCountTrivial() {
-            return nodeCountTrivial;
-        }
-
-        public int getNodeCountNonTrivial() {
-            return nodeCountNonTrivial;
-        }
-
-        public int getNodeCountMonomorphic() {
-            return nodeCountMonomorphic;
-        }
-
-        public int getNodeCountPolymorphic() {
-            return nodeCountPolymorphic;
-        }
-
-        public int getNodeCountMegamorphic() {
-            return nodeCountMegamorphic;
         }
 
         public int getCallCountIndirect() {

@@ -901,12 +901,6 @@ public class FlatNodeGenFactory {
         List<ExecutableTypeData> genericExecutableTypes = new ArrayList<>();
         List<ExecutableTypeData> specializedExecutableTypes = new ArrayList<>();
         List<ExecutableTypeData> voidExecutableTypes = new ArrayList<>();
-        AnnotationMirror nodeInfo = null;
-        try {
-            nodeInfo = ElementUtils.findAnnotationMirror(node.getTemplateType(), types.NodeInfo);
-        } catch (UnsupportedOperationException e) {
-        }
-        final String cost = nodeInfo != null ? ElementUtils.getAnnotationValue(VariableElement.class, nodeInfo, "cost").getSimpleName().toString() : null;
 
         GeneratorUtils.mergeSuppressWarnings(clazz, "javadoc");
 
@@ -1022,12 +1016,6 @@ public class FlatNodeGenFactory {
                 clazz.addOptional(createCheckForPolymorphicSpecialize(reportPolymorphismAction, false));
                 if (requiresCacheCheck(reportPolymorphismAction)) {
                     clazz.addOptional(createCountCaches(false));
-                }
-            }
-
-            if ((cost == null || cost.equals("MONOMORPHIC") /* the default */) && isUndeclaredOrOverrideable(clazz, "getCost")) {
-                if (primaryNode) {
-                    clazz.add(createGetCostMethod(false));
                 }
             }
 
@@ -1224,9 +1212,6 @@ public class FlatNodeGenFactory {
                 wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
-            if ((cost == null || cost.equals("MONOMORPHIC") /* the default */) && isUndeclaredOrOverrideable(uncached, "getCost")) {
-                uncached.add(createGetCostMethod(true));
-            }
             CodeExecutableElement isAdoptable = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findExecutableElement(types.Node, "isAdoptable"));
             isAdoptable.createBuilder().returnFalse();
             uncached.add(isAdoptable);
@@ -2064,9 +2049,6 @@ public class FlatNodeGenFactory {
         DeclaredType annotationType;
         if (useNode) {
             annotationType = types.Node_Child;
-            CodeExecutableElement getNodeCost = new CodeExecutableElement(modifiers(PUBLIC), types.NodeCost, "getCost");
-            getNodeCost.createBuilder().startReturn().staticReference(types.NodeCost, "NONE").end();
-            specializationClass.add(getNodeCost);
         } else {
             annotationType = types.CompilerDirectives_CompilationFinal;
         }
@@ -3884,93 +3866,6 @@ public class FlatNodeGenFactory {
         }
         Collections.sort(filteredTypes);
         return filteredTypes;
-    }
-
-    private Element createGetCostMethod(boolean uncached) {
-        TypeMirror returnType = types.NodeCost;
-        CodeExecutableElement executable = new CodeExecutableElement(modifiers(PUBLIC), returnType, "getCost");
-        executable.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Override.class)));
-        CodeTreeBuilder builder = executable.createBuilder();
-
-        if (uncached) {
-            builder.startReturn().staticReference(types.NodeCost, "MEGAMORPHIC").end();
-        } else {
-            if (node.needsRewrites(context)) {
-                FrameState frameState = FrameState.load(this, NodeExecutionMode.UNCACHED, executable);
-                StateQuery allSpecializationQuery = StateQuery.create(SpecializationActive.class, node.getReachableSpecializations());
-                StateQuery noSpecializationQuery = StateQuery.create(SpecializationActive.class);
-                builder.tree(multiState.createLoad(frameState, allSpecializationQuery));
-
-                builder.startIf().tree(multiState.createIs(frameState, noSpecializationQuery, allSpecializationQuery)).end();
-                builder.startBlock();
-                builder.startReturn().staticReference(types.NodeCost, "UNINITIALIZED").end();
-                builder.end();
-                if (node.getReachableSpecializations().size() == 1 && !node.getReachableSpecializations().iterator().next().hasMultipleInstances()) {
-                    builder.startElseBlock();
-                    builder.startReturn().staticReference(types.NodeCost, "MONOMORPHIC").end();
-                    builder.end();
-                } else {
-                    builder.startElseBlock();
-
-                    if (multiState.getSets().size() == 1) {
-                        builder.startIf();
-                        builder.tree(multiState.getSets().get(0).createIsOneBitOf(frameState, allSpecializationQuery));
-                        builder.end().startBlock();
-                    } else {
-                        builder.declaration("int", "counter", "0");
-                        for (BitSet set : multiState.getSets()) {
-                            StateQuery filtered = set.filter(allSpecializationQuery);
-                            if (filtered.isEmpty()) {
-                                continue;
-                            }
-                            builder.startStatement();
-                            builder.string("counter += ");
-                            builder.startStaticCall(ElementUtils.findMethod(Integer.class, "bitCount"));
-                            builder.tree(set.createMaskedReference(frameState, filtered));
-                            builder.end();
-                            builder.end();
-                        }
-                        builder.startIf();
-                        builder.string("counter == 1");
-                        builder.end().startBlock();
-                    }
-
-                    List<CodeTree> additionalChecks = new ArrayList<>();
-                    for (SpecializationData specialization : node.getReachableSpecializations()) {
-                        if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
-                            String typeName = createSpecializationTypeName(specialization);
-                            String fieldName = createSpecializationFieldName(specialization);
-                            String localName = createSpecializationLocalName(specialization);
-                            builder.declaration(typeName, localName, "this." + fieldName);
-                            CodeTree check = builder.create().startParantheses().string(localName, " == null || ",
-                                            localName, ".next_ == null").end().build();
-                            additionalChecks.add(check);
-                        }
-                    }
-                    if (!additionalChecks.isEmpty()) {
-                        builder.startIf().tree(combineTrees(" && ", additionalChecks.toArray(new CodeTree[0]))).end().startBlock();
-                    }
-                    builder.startReturn().staticReference(types.NodeCost, "MONOMORPHIC").end();
-                    if (!additionalChecks.isEmpty()) {
-                        builder.end();
-                    }
-                    builder.end(); // if
-                    builder.end(); // else block
-
-                    builder.startReturn().staticReference(types.NodeCost, "POLYMORPHIC").end();
-                }
-            } else {
-                builder.startReturn().staticReference(types.NodeCost, "MONOMORPHIC").end();
-            }
-        }
-
-        return executable;
-
-    }
-
-    private static boolean isUndeclaredOrOverrideable(TypeElement sourceType, String methodName) {
-        List<ExecutableElement> elements = ElementUtils.getDeclaredMethodsInSuperTypes(sourceType, methodName);
-        return elements.isEmpty() || !elements.iterator().next().getModifiers().contains(Modifier.FINAL);
     }
 
     private ExecutableElement createAccessChildMethod(NodeChildData child, boolean uncached) {

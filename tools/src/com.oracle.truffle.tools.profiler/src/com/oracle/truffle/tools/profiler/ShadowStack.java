@@ -46,7 +46,6 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 
 /**
  * Custom more efficient stack representations for profilers.
@@ -224,11 +223,6 @@ final class ShadowStack {
                 }
             }
             return stack;
-        }
-
-        @Override
-        public NodeCost getCost() {
-            return NodeCost.NONE;
         }
 
     }
