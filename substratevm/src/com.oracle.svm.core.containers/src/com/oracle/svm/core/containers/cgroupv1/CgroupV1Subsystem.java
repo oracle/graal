@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,11 @@
 // @formatter:off
 package com.oracle.svm.core.containers.cgroupv1;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.Map;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.containers.CgroupInfo;
 import com.oracle.svm.core.containers.CgroupSubsystem;
 import com.oracle.svm.core.containers.CgroupSubsystemController;
-import com.oracle.svm.core.containers.CgroupUtil;
 import com.oracle.svm.core.containers.CgroupV1Metrics;
 
 public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
@@ -42,186 +39,127 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
     private CgroupV1SubsystemController cpuacct;
     private CgroupV1SubsystemController cpuset;
     private CgroupV1SubsystemController blkio;
-    private boolean activeSubSystems;
+    private CgroupV1SubsystemController pids;
 
-    private static final CgroupV1Subsystem INSTANCE = initSubSystem();
+    private static volatile CgroupV1Subsystem INSTANCE;
 
     private static final String PROVIDER_NAME = "cgroupv1";
 
-    private CgroupV1Subsystem() {
-        activeSubSystems = false;
-    }
+    private CgroupV1Subsystem() {}
 
-    public static CgroupV1Subsystem getInstance() {
+    /**
+     * Get a singleton instance of CgroupV1Subsystem. Initially, it creates a new
+     * object by retrieving the pre-parsed information from cgroup interface
+     * files from the provided 'infos' map.
+     *
+     * See CgroupSubsystemFactory.determineType() where the actual parsing of
+     * cgroup interface files happens.
+     *
+     * @return A singleton CgroupV1Subsystem instance, never null
+     */
+    public static CgroupV1Subsystem getInstance(Map<String, CgroupInfo> infos) {
+        if (INSTANCE == null) {
+            CgroupV1Subsystem tmpSubsystem = initSubSystem(infos);
+            synchronized (CgroupV1Subsystem.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = tmpSubsystem;
+                }
+            }
+        }
         return INSTANCE;
     }
 
-    private static CgroupV1Subsystem initSubSystem() {
+    private static CgroupV1Subsystem initSubSystem(Map<String, CgroupInfo> infos) {
         CgroupV1Subsystem subsystem = new CgroupV1Subsystem();
 
-        /**
-         * Find the cgroup mount points for subsystems
-         * by reading /proc/self/mountinfo
-         *
-         * Example for docker MemorySubSystem subsystem:
-         * 219 214 0:29 /docker/7208cebd00fa5f2e342b1094f7bed87fa25661471a4637118e65f1c995be8a34 /sys/fs/cgroup/MemorySubSystem ro,nosuid,nodev,noexec,relatime - cgroup cgroup rw,MemorySubSystem
-         *
-         * Example for host:
-         * 34 28 0:29 / /sys/fs/cgroup/MemorySubSystem rw,nosuid,nodev,noexec,relatime shared:16 - cgroup cgroup rw,MemorySubSystem
+        boolean anyActiveControllers = false;
+        /*
+         * Find the cgroup mount points for subsystem controllers
+         * by looking up relevant data in the infos map
          */
-        try {
-            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get("/proc/self/mountinfo"))) {
-                if (line.contains(" - cgroup ")) {
-                    String[] tokens = SubstrateUtil.split(line, " ");
-                    createSubSystemController(subsystem, tokens);
+        for (CgroupInfo info: infos.values()) {
+            switch (info.getName()) {
+            case "memory": {
+                if (info.getMountRoot() != null && info.getMountPoint() != null) {
+                    CgroupV1MemorySubSystemController controller = new CgroupV1MemorySubSystemController(info.getMountRoot(), info.getMountPoint());
+                    controller.setPath(info.getCgroupPath());
+                    boolean isHierarchial = getHierarchical(controller);
+                    controller.setHierarchical(isHierarchial);
+                    boolean isSwapEnabled = getSwapEnabled(controller);
+                    controller.setSwapEnabled(isSwapEnabled);
+                    subsystem.setMemorySubSystem(controller);
+                    anyActiveControllers = true;
                 }
+                break;
             }
-
-        } catch (IOException e) {
-            return null;
-        }
-
-        /**
-         * Read /proc/self/cgroup and map host mount point to
-         * local one via /proc/self/mountinfo content above
-         *
-         * Docker example:
-         * 5:memory:/docker/6558aed8fc662b194323ceab5b964f69cf36b3e8af877a14b80256e93aecb044
-         *
-         * Host example:
-         * 5:memory:/user.slice
-         *
-         * Construct a path to the process specific memory and cpuset
-         * cgroup directory.
-         *
-         * For a container running under Docker from memory example above
-         * the paths would be:
-         *
-         * /sys/fs/cgroup/memory
-         *
-         * For a Host from memory example above the path would be:
-         *
-         * /sys/fs/cgroup/memory/user.slice
-         *
-         */
-        try {
-            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get("/proc/self/cgroup"))) {
-                String[] tokens = SubstrateUtil.split(line, ":");
-                if (tokens.length >= 3) {
-                    setSubSystemControllerPath(subsystem, tokens);
+            case "cpuset": {
+                if (info.getMountRoot() != null && info.getMountPoint() != null) {
+                    CgroupV1SubsystemController controller = new CgroupV1SubsystemController(info.getMountRoot(), info.getMountPoint());
+                    controller.setPath(info.getCgroupPath());
+                    subsystem.setCpuSetController(controller);
+                    anyActiveControllers = true;
                 }
+                break;
             }
-
-        } catch (IOException e) {
-            return null;
+            case "cpuacct": {
+                if (info.getMountRoot() != null && info.getMountPoint() != null) {
+                    CgroupV1SubsystemController controller = new CgroupV1SubsystemController(info.getMountRoot(), info.getMountPoint());
+                    controller.setPath(info.getCgroupPath());
+                    subsystem.setCpuAcctController(controller);
+                    anyActiveControllers = true;
+                }
+                break;
+            }
+            case "cpu": {
+                if (info.getMountRoot() != null && info.getMountPoint() != null) {
+                    CgroupV1SubsystemController controller = new CgroupV1SubsystemController(info.getMountRoot(), info.getMountPoint());
+                    controller.setPath(info.getCgroupPath());
+                    subsystem.setCpuController(controller);
+                    anyActiveControllers = true;
+                }
+                break;
+            }
+            case "blkio": {
+                if (info.getMountRoot() != null && info.getMountPoint() != null) {
+                    CgroupV1SubsystemController controller = new CgroupV1SubsystemController(info.getMountRoot(), info.getMountPoint());
+                    controller.setPath(info.getCgroupPath());
+                    subsystem.setBlkIOController(controller);
+                    anyActiveControllers = true;
+                }
+                break;
+            }
+            case "pids": {
+                if (info.getMountRoot() != null && info.getMountPoint() != null) {
+                    CgroupV1SubsystemController controller = new CgroupV1SubsystemController(info.getMountRoot(), info.getMountPoint());
+                    controller.setPath(info.getCgroupPath());
+                    subsystem.setPidsController(controller);
+                    anyActiveControllers = true;
+                }
+                break;
+            }
+            default:
+                throw new AssertionError("Unrecognized controller in infos: " + info.getName());
+            }
         }
 
         // Return Metrics object if we found any subsystems.
-        if (subsystem.activeSubSystems()) {
+        if (anyActiveControllers) {
             return subsystem;
         }
 
         return null;
     }
 
-    /**
-     * createSubSystem objects and initialize mount points
-     */
-    private static void createSubSystemController(CgroupV1Subsystem subsystem, String[] mountentry) {
-        if (mountentry.length < 5) return;
-
-        Path p = Paths.get(mountentry[4]);
-        String[] subsystemNames = SubstrateUtil.split(p.getFileName().toString(), ",");
-
-        for (String subsystemName: subsystemNames) {
-            switch (subsystemName) {
-                case "memory":
-                    subsystem.setMemorySubSystem(new CgroupV1MemorySubSystemController(mountentry[3], mountentry[4]));
-                    break;
-                case "cpuset":
-                    subsystem.setCpuSetController(new CgroupV1SubsystemController(mountentry[3], mountentry[4]));
-                    break;
-                case "cpuacct":
-                    subsystem.setCpuAcctController(new CgroupV1SubsystemController(mountentry[3], mountentry[4]));
-                    break;
-                case "cpu":
-                    subsystem.setCpuController(new CgroupV1SubsystemController(mountentry[3], mountentry[4]));
-                    break;
-                case "blkio":
-                    subsystem.setBlkIOController(new CgroupV1SubsystemController(mountentry[3], mountentry[4]));
-                    break;
-                default:
-                    // Ignore subsystems that we don't support
-                    break;
-            }
-        }
-    }
-
-    /**
-     * setSubSystemPath based on the contents of /proc/self/cgroup
-     */
-    private static void setSubSystemControllerPath(CgroupV1Subsystem subsystem, String[] entry) {
-        String controllerName;
-        String base;
-        CgroupV1SubsystemController controller = null;
-        CgroupV1SubsystemController controller2 = null;
-
-        controllerName = entry[1];
-        base = entry[2];
-        if (controllerName != null && base != null) {
-            switch (controllerName) {
-                case "memory":
-                    controller = subsystem.memoryController();
-                    break;
-                case "cpuset":
-                    controller = subsystem.cpuSetController();
-                    break;
-                case "cpu,cpuacct":
-                case "cpuacct,cpu":
-                    controller = subsystem.cpuController();
-                    controller2 = subsystem.cpuAcctController();
-                    break;
-                case "cpuacct":
-                    controller = subsystem.cpuAcctController();
-                    break;
-                case "cpu":
-                    controller = subsystem.cpuController();
-                    break;
-                case "blkio":
-                    controller = subsystem.blkIOController();
-                    break;
-                // Ignore subsystems that we don't support
-                default:
-                    break;
-            }
-        }
-
-        if (controller != null) {
-            controller.setPath(base);
-            if (controller instanceof CgroupV1MemorySubSystemController) {
-                CgroupV1MemorySubSystemController memorySubSystem = (CgroupV1MemorySubSystemController)controller;
-                boolean isHierarchial = getHierarchical(memorySubSystem);
-                memorySubSystem.setHierarchical(isHierarchial);
-            }
-            subsystem.setActiveSubSystems();
-        }
-        if (controller2 != null) {
-            controller2.setPath(base);
-        }
-    }
+    private static boolean getSwapEnabled(CgroupV1MemorySubSystemController controller) {
+        long memswBytes = getLongValue(controller, "memory.memsw.limit_in_bytes");
+        long swappiness = getLongValue(controller, "memory.swappiness");
+        return (memswBytes > 0 && swappiness > 0);
+     }
 
 
     private static boolean getHierarchical(CgroupV1MemorySubSystemController controller) {
         long hierarchical = getLongValue(controller, "memory.use_hierarchy");
         return hierarchical > 0;
-    }
-
-    private void setActiveSubSystems() {
-        activeSubSystems = true;
-    }
-
-    private boolean activeSubSystems() {
-        return activeSubSystems;
     }
 
     private void setMemorySubSystem(CgroupV1MemorySubSystemController memory) {
@@ -244,24 +182,8 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
         this.blkio = blkio;
     }
 
-    private CgroupV1SubsystemController memoryController() {
-        return memory;
-    }
-
-    private CgroupV1SubsystemController cpuController() {
-        return cpu;
-    }
-
-    private CgroupV1SubsystemController cpuAcctController() {
-        return cpuacct;
-    }
-
-    private CgroupV1SubsystemController cpuSetController() {
-        return cpuset;
-    }
-
-    private CgroupV1SubsystemController blkIOController() {
-        return blkio;
+    private void setPidsController(CgroupV1SubsystemController pids) {
+        this.pids = pids;
     }
 
     private static long getLongValue(CgroupSubsystemController controller,
@@ -291,7 +213,7 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
             return null;
         }
 
-        String list[] = SubstrateUtil.split(usagelist, " ");
+        String list[] = usagelist.split(" ");
         long percpu[] = new long[list.length];
         for (int i = 0; i < list.length; i++) {
             percpu[i] = Long.parseLong(list[i]);
@@ -412,10 +334,6 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
         return getLongValue(memory, "memory.kmem.failcnt");
     }
 
-    public long getKernelMemoryLimit() {
-        return CgroupV1SubsystemController.longValOrUnlimited(getLongValue(memory, "memory.kmem.limit_in_bytes"));
-    }
-
     public long getKernelMemoryMaxUsage() {
         return getLongValue(memory, "memory.kmem.max_usage_in_bytes");
     }
@@ -428,10 +346,6 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
         return getLongValue(memory, "memory.kmem.tcp.failcnt");
     }
 
-    public long getTcpMemoryLimit() {
-        return CgroupV1SubsystemController.longValOrUnlimited(getLongValue(memory, "memory.kmem.tcp.limit_in_bytes"));
-    }
-
     public long getTcpMemoryMaxUsage() {
         return getLongValue(memory, "memory.kmem.tcp.max_usage_in_bytes");
     }
@@ -441,10 +355,16 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
     }
 
     public long getMemoryAndSwapFailCount() {
+        if (memory != null && !memory.isSwapEnabled()) {
+            return getMemoryFailCount();
+        }
         return getLongValue(memory, "memory.memsw.failcnt");
     }
 
     public long getMemoryAndSwapLimit() {
+        if (memory != null && !memory.isSwapEnabled()) {
+            return getMemoryLimit();
+        }
         long retval = getLongValue(memory, "memory.memsw.limit_in_bytes");
         if (retval > CgroupV1SubsystemController.UNLIMITED_MIN) {
             if (memory.isHierarchical()) {
@@ -460,10 +380,16 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
     }
 
     public long getMemoryAndSwapMaxUsage() {
+        if (memory != null && !memory.isSwapEnabled()) {
+            return getMemoryMaxUsage();
+        }
         return getLongValue(memory, "memory.memsw.max_usage_in_bytes");
     }
 
     public long getMemoryAndSwapUsage() {
+        if (memory != null && !memory.isSwapEnabled()) {
+            return getMemoryUsage();
+        }
         return getLongValue(memory, "memory.memsw.usage_in_bytes");
     }
 
@@ -476,6 +402,17 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
         return CgroupV1SubsystemController.longValOrUnlimited(getLongValue(memory, "memory.soft_limit_in_bytes"));
     }
 
+    /*****************************************************************
+     *  pids subsystem
+     ****************************************************************/
+    public long getPidsMax() {
+        String pidsMaxStr = CgroupSubsystemController.getStringValue(pids, "pids.max");
+        return CgroupSubsystem.limitFromString(pidsMaxStr);
+    }
+
+    public long getPidsCurrent() {
+        return getLongValue(pids, "pids.current");
+    }
 
     /*****************************************************************
      * BlKIO Subsystem

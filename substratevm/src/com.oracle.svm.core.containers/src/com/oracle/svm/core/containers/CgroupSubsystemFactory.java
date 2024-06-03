@@ -27,11 +27,15 @@
 package com.oracle.svm.core.containers;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 import com.oracle.svm.core.containers.cgroupv1.CgroupV1Subsystem;
 import com.oracle.svm.core.containers.cgroupv2.CgroupV2Subsystem;
@@ -43,16 +47,21 @@ public class CgroupSubsystemFactory {
     private static final String CPUSET_CTRL = "cpuset";
     private static final String BLKIO_CTRL = "blkio";
     private static final String MEMORY_CTRL = "memory";
+    private static final String PIDS_CTRL = "pids";
 
     static CgroupMetrics create() {
         Optional<CgroupTypeResult> optResult = null;
         try {
-            optResult = determineType("/proc/self/mountinfo", "/proc/cgroups");
+            optResult = determineType("/proc/self/mountinfo", "/proc/cgroups", "/proc/self/cgroup");
         } catch (IOException e) {
             return null;
         }
 
-        if (!optResult.isPresent()) {
+        return create(optResult);
+    }
+
+    public static CgroupMetrics create(Optional<CgroupTypeResult> optResult) {
+        if (optResult.isEmpty()) {
             return null;
         }
         CgroupTypeResult result = optResult.get();
@@ -66,22 +75,42 @@ public class CgroupSubsystemFactory {
         // not ready to deal with that on a per-controller basis. Return no metrics
         // in that case
         if (result.isAnyCgroupV1Controllers() && result.isAnyCgroupV2Controllers()) {
-            // java.lang.System.Logger logger = System.getLogger("jdk.internal.platform");
-            // logger.log(java.lang.System.Logger.Level.DEBUG, "Mixed cgroupv1 and cgroupv2 not supported. Metrics disabled.");
+            // Logger logger = System.getLogger("jdk.internal.platform");
+            // logger.log(Level.DEBUG, "Mixed cgroupv1 and cgroupv2 not supported. Metrics disabled.");
             return null;
         }
 
+        Map<String, CgroupInfo> infos = result.getInfos();
         if (result.isCgroupV2()) {
-            CgroupSubsystem subsystem = CgroupV2Subsystem.getInstance();
-            return subsystem != null ? new CgroupMetrics(subsystem) : null;
+            // For unified it doesn't matter which controller we pick.
+            CgroupInfo anyController = infos.values().iterator().next();
+            CgroupSubsystem subsystem = CgroupV2Subsystem.getInstance(Objects.requireNonNull(anyController));
+            return new CgroupMetrics(subsystem);
         } else {
-            CgroupV1Subsystem subsystem = CgroupV1Subsystem.getInstance();
+            CgroupV1Subsystem subsystem = CgroupV1Subsystem.getInstance(infos);
             return subsystem != null ? new CgroupV1MetricsImpl(subsystem) : null;
         }
     }
 
-    public static Optional<CgroupTypeResult> determineType(String mountInfo, String cgroups) throws IOException {
-        Map<String, CgroupInfo> infos = new HashMap<>();
+    /*
+     * Determine the type of the cgroup system (v1 - legacy or hybrid - or, v2 - unified)
+     * based on three files:
+     *
+     *  (1) mountInfo  (i.e. /proc/self/mountinfo)
+     *  (2) cgroups    (i.e. /proc/cgroups)
+     *  (3) selfCgroup (i.e. /proc/self/cgroup)
+     *
+     * File 'cgroups' is inspected for the hierarchy ID of the mounted cgroup pseudo
+     * filesystem. The hierarchy ID, in turn, helps us distinguish cgroups v2 and
+     * cgroup v1. For a system with zero hierarchy ID, but with >= 1 relevant cgroup
+     * controllers mounted in 'mountInfo' we can infer it's cgroups v2. Anything else
+     * will be cgroup v1 (hybrid or legacy). File 'selfCgroup' is being used for
+     * figuring out the mount path of the controller in the cgroup hierarchy.
+     */
+    public static Optional<CgroupTypeResult> determineType(String mountInfo,
+                                                           String cgroups,
+                                                           String selfCgroup) throws IOException {
+        final Map<String, CgroupInfo> infos = new HashMap<>();
         List<String> lines = CgroupUtil.readAllLinesPrivileged(Paths.get(cgroups));
         for (String line : lines) {
             if (line.startsWith("#")) {
@@ -89,11 +118,16 @@ public class CgroupSubsystemFactory {
             }
             CgroupInfo info = CgroupInfo.fromCgroupsLine(line);
             switch (info.getName()) {
+            // Only the following controllers are important to Java. All
+            // other controllers (such as freezer) are ignored and
+            // are not considered in the checks below for
+            // anyCgroupsV1Controller/anyCgroupsV2Controller.
             case CPU_CTRL:      infos.put(CPU_CTRL, info); break;
             case CPUACCT_CTRL:  infos.put(CPUACCT_CTRL, info); break;
             case CPUSET_CTRL:   infos.put(CPUSET_CTRL, info); break;
             case MEMORY_CTRL:   infos.put(MEMORY_CTRL, info); break;
             case BLKIO_CTRL:    infos.put(BLKIO_CTRL, info); break;
+            case PIDS_CTRL:     infos.put(PIDS_CTRL, info); break;
             }
         }
 
@@ -112,24 +146,252 @@ public class CgroupSubsystemFactory {
             anyControllersEnabled = anyControllersEnabled || info.isEnabled();
         }
 
-        // If there are no mounted controllers in mountinfo, but we've only
-        // seen 0 hierarchy IDs in /proc/cgroups, we are on a cgroups v1 system.
+        // If there are no mounted, relevant cgroup controllers in 'mountinfo' and only
+        // 0 hierarchy IDs in file 'cgroups' have been seen, we are on a cgroups v1 system.
         // However, continuing in that case does not make sense as we'd need
-        // information from mountinfo for the mounted controller paths anyway.
+        // information from mountinfo for the mounted controller paths which we wouldn't
+        // find anyway in that case.
+        lines = CgroupUtil.readAllLinesPrivileged(Paths.get(mountInfo));
+        boolean anyCgroupMounted = false;
+        for (String line: lines) {
+            boolean cgroupsControllerFound = amendCgroupInfos(line, infos, isCgroupsV2);
+            anyCgroupMounted = anyCgroupMounted || cgroupsControllerFound;
+        }
+        if (!anyCgroupMounted) {
+            return Optional.empty();
+        }
+
+        // Map a cgroup version specific 'action' to a line in 'selfCgroup' (i.e.
+        // /proc/self/cgroups) , split on the ':' token, so as to set the appropriate
+        // path to the cgroup controller in cgroup data structures 'infos'.
+        // See:
+        //   setCgroupV1Path() for the action run for cgroups v1 systems
+        //   setCgroupV2Path() for the action run for cgroups v2 systems
+        Consumer<String[]> action = (tokens -> setCgroupV1Path(infos, tokens));
         if (isCgroupsV2) {
-            boolean anyCgroupMounted = false;
-            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(mountInfo))) {
-                if (line.contains("cgroup")) {
-                    anyCgroupMounted = true;
-                    break;
+            action = (tokens -> setCgroupV2Path(infos, tokens));
+        }
+        for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(selfCgroup))) {
+            // The limit value of 3 is because /proc/self/cgroup contains three
+            // colon-separated tokens per line. The last token, cgroup path, might
+            // contain a ':'.
+            action.accept(line.split(":", 3));
+        }
+
+        CgroupTypeResult result = new CgroupTypeResult(isCgroupsV2,
+                                                       anyControllersEnabled,
+                                                       anyCgroupsV2Controller,
+                                                       anyCgroupsV1Controller,
+                                                       Collections.unmodifiableMap(infos));
+        return Optional.of(result);
+    }
+
+    /*
+     * Sets the path to the cgroup controller for cgroups v2 based on a line
+     * in /proc/self/cgroup file (represented as the 'tokens' array).
+     *
+     * Example:
+     *
+     * 0::/
+     *
+     * => tokens = [ "0", "", "/" ]
+     */
+    private static void setCgroupV2Path(Map<String, CgroupInfo> infos,
+                                        String[] tokens) {
+        String name = tokens[1];
+        if (!name.equals("")) {
+            // This must be a v1 controller that we have ignored (e.g., freezer)
+            assert infos.get(name) == null;
+            return;
+        }
+        int hierarchyId = Integer.parseInt(tokens[0]);
+        String cgroupPath = tokens[2];
+        for (CgroupInfo info: infos.values()) {
+            assert hierarchyId == info.getHierarchyId() && hierarchyId == 0;
+            info.setCgroupPath(cgroupPath);
+        }
+    }
+
+    /*
+     * Sets the path to the cgroup controller for cgroups v1 based on a line
+     * in /proc/self/cgroup file (represented as the 'tokens' array).
+     *
+     * Note that multiple controllers might be joined at a single path.
+     *
+     * Example:
+     *
+     * 7:cpu,cpuacct:/system.slice/docker-74ad896fb40bbefe0f181069e4417505fffa19052098f27edf7133f31423bc0b.scope
+     *
+     * => tokens = [ "7", "cpu,cpuacct", "/system.slice/docker-74ad896fb40bbefe0f181069e4417505fffa19052098f27edf7133f31423bc0b.scope" ]
+     */
+    private static void setCgroupV1Path(Map<String, CgroupInfo> infos,
+                                        String[] tokens) {
+        String controllerName = tokens[1];
+        String cgroupPath = tokens[2];
+        if (controllerName != null && cgroupPath != null) {
+            for (String cName: controllerName.split(",")) {
+                switch (cName) {
+                    case MEMORY_CTRL: // fall through
+                    case CPUSET_CTRL:
+                    case CPUACCT_CTRL:
+                    case CPU_CTRL:
+                    case BLKIO_CTRL:
+                    case PIDS_CTRL:
+                        CgroupInfo info = infos.get(cName);
+                        info.setCgroupPath(cgroupPath);
+                        break;
+                    // Ignore not recognized controllers
+                    default:
+                        break;
                 }
             }
-            if (!anyCgroupMounted) {
-                return Optional.empty();
+        }
+    }
+
+    /**
+     * Amends cgroup infos with mount path and mount root. The passed in
+     * 'mntInfoLine' represents a single line in, for example,
+     * /proc/self/mountinfo. Each line is parsed with {@link MountInfo#parse},
+     * so as to extract the relevant tokens from the line.
+     *
+     * Host example cgroups v1:
+     *
+     * 44 30 0:41 / /sys/fs/cgroup/devices rw,nosuid,nodev,noexec,relatime shared:16 - cgroup cgroup rw,seclabel,devices
+     *
+     * Container example cgroups v1:
+     *
+     * 1901 1894 0:37 /system.slice/docker-2291eeb92093f9d761aaf971782b575e9be56bd5930d4b5759b51017df3c1387.scope /sys/fs/cgroup/cpu,cpuacct ro,nosuid,nodev,noexec,relatime master:12 - cgroup cgroup rw,seclabel,cpu,cpuacct
+     *
+     * Container example cgroups v2:
+     *
+     * 1043 1034 0:27 / /sys/fs/cgroup ro,nosuid,nodev,noexec,relatime - cgroup2 cgroup2 rw,seclabel,nsdelegate
+     *
+     *
+     * @return {@code true} iff a relevant controller has been found at the
+     * given line
+     */
+    private static boolean amendCgroupInfos(String mntInfoLine,
+                                            Map<String, CgroupInfo> infos,
+                                            boolean isCgroupsV2) {
+        MountInfo mountInfo = MountInfo.parse(mntInfoLine);
+        boolean cgroupv1ControllerFound = false;
+        boolean cgroupv2ControllerFound = false;
+        if (mountInfo != null) {
+            String mountRoot = mountInfo.mountRoot;
+            String mountPath = mountInfo.mountPath;
+            String fsType = mountInfo.fsType;
+            if (fsType.equals("cgroup")) {
+                Path p = Paths.get(mountPath);
+                String[] controllerNames = p.getFileName().toString().split(",");
+                for (String controllerName: controllerNames) {
+                    switch (controllerName) {
+                        case MEMORY_CTRL: // fall-through
+                        case CPU_CTRL:
+                        case CPUACCT_CTRL:
+                        case CPUSET_CTRL:
+                        case PIDS_CTRL:
+                        case BLKIO_CTRL: {
+                            CgroupInfo info = infos.get(controllerName);
+                            setMountPoints(info, mountPath, mountRoot);
+                            cgroupv1ControllerFound = true;
+                            break;
+                        }
+                        default:
+                            // Ignore controllers which we don't recognize
+                            break;
+                    }
+                }
+            } else if (fsType.equals("cgroup2")) {
+                if (isCgroupsV2) { // will be false for hybrid
+                    // All controllers have the same mount point and root mount
+                    // for unified hierarchy.
+                    for (CgroupInfo info: infos.values()) {
+                        setMountPoints(info, mountPath, mountRoot);
+                    }
+                }
+                cgroupv2ControllerFound = true;
             }
         }
-        CgroupTypeResult result = new CgroupTypeResult(isCgroupsV2, anyControllersEnabled, anyCgroupsV2Controller, anyCgroupsV1Controller);
-        return Optional.of(result);
+        return cgroupv1ControllerFound || cgroupv2ControllerFound;
+    }
+
+    private static final class MountInfo {
+        final String mountRoot;
+        final String mountPath;
+        final String fsType;
+
+        private MountInfo(String mountRoot, String mountPath, String fsType) {
+            this.mountRoot = mountRoot;
+            this.mountPath = mountPath;
+            this.fsType = fsType;
+        }
+
+        /*
+         * From https://www.kernel.org/doc/Documentation/filesystems/proc.txt
+         *
+         *  36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=continue
+         *  (1)(2)(3)   (4)   (5)      (6)      (7)   (8) (9)   (10)         (11)
+         *
+         *  (1) mount ID:  unique identifier of the mount (may be reused after umount)
+         *  (2) parent ID:  ID of parent (or of self for the top of the mount tree)
+         *  (3) major:minor:  value of st_dev for files on filesystem
+         *  (4) root:  root of the mount within the filesystem
+         *  (5) mount point:  mount point relative to the process's root
+         *  (6) mount options:  per mount options
+         *  (7) optional fields:  zero or more fields of the form "tag[:value]"
+         *  (8) separator:  marks the end of the optional fields
+         *  (9) filesystem type:  name of filesystem of the form "type[.subtype]"
+         *  (10) mount source:  filesystem specific information or "none"
+         *  (11) super options:  per super block options
+         */
+        static MountInfo parse(String line) {
+            String mountRoot = null;
+            String mountPath = null;
+
+            int separatorOrdinal = -1;
+            // loop over space-separated tokens
+            for (int tOrdinal = 1, tStart = 0, tEnd = line.indexOf(' '); tEnd != -1; tOrdinal++, tStart = tEnd + 1, tEnd = line.indexOf(' ', tStart)) {
+                if (tStart == tEnd) {
+                    break; // unexpected empty token
+                }
+                switch (tOrdinal) {
+                    case 1, 2, 3, 6 -> {} // skip token
+                    case 4 -> mountRoot = line.substring(tStart, tEnd); // root token
+                    case 5 -> mountPath = line.substring(tStart, tEnd); // mount point token
+                    default -> {
+                        assert tOrdinal >= 7;
+                        if (separatorOrdinal == -1) {
+                            // check if we found a separator token
+                            if (tEnd - tStart == 1 && line.charAt(tStart) == '-') {
+                                separatorOrdinal = tOrdinal;
+                            }
+                            continue; // skip token
+                        }
+                        if (tOrdinal == separatorOrdinal + 1) { // filesystem type token
+                            String fsType = line.substring(tStart, tEnd);
+                            return new MountInfo(mountRoot, mountPath, fsType);
+                        }
+                    }
+                }
+            }
+            return null; // parsing failed
+        }
+    }
+
+    private static void setMountPoints(CgroupInfo info, String mountPath, String mountRoot) {
+        if (info.getMountPoint() != null) {
+            // On some systems duplicate controllers get mounted in addition to
+            // the main cgroup controllers (which are under /sys/fs/cgroup). In that
+            // case pick the main one and discard others as the limits
+            // are associated with the ones in /sys/fs/cgroup.
+            if (!info.getMountPoint().startsWith("/sys/fs/cgroup")) {
+                info.setMountPoint(mountPath);
+                info.setMountRoot(mountRoot);
+            }
+        } else {
+            info.setMountPoint(mountPath);
+            info.setMountRoot(mountRoot);
+        }
     }
 
     public static final class CgroupTypeResult {
@@ -137,15 +399,18 @@ public class CgroupSubsystemFactory {
         private final boolean anyControllersEnabled;
         private final boolean anyCgroupV2Controllers;
         private final boolean anyCgroupV1Controllers;
+        private final Map<String, CgroupInfo> infos;
 
         private CgroupTypeResult(boolean isCgroupV2,
                                  boolean anyControllersEnabled,
                                  boolean anyCgroupV2Controllers,
-                                 boolean anyCgroupV1Controllers) {
+                                 boolean anyCgroupV1Controllers,
+                                 Map<String, CgroupInfo> infos) {
             this.isCgroupV2 = isCgroupV2;
             this.anyControllersEnabled = anyControllersEnabled;
             this.anyCgroupV1Controllers = anyCgroupV1Controllers;
             this.anyCgroupV2Controllers = anyCgroupV2Controllers;
+            this.infos = infos;
         }
 
         public boolean isCgroupV2() {
@@ -162,6 +427,10 @@ public class CgroupSubsystemFactory {
 
         public boolean isAnyCgroupV1Controllers() {
             return anyCgroupV1Controllers;
+        }
+
+        public Map<String, CgroupInfo> getInfos() {
+            return infos;
         }
     }
 }

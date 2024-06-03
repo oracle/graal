@@ -55,16 +55,6 @@ public interface CgroupV1Metrics extends Metrics {
     public long getKernelMemoryFailCount();
 
     /**
-     * Returns the maximum amount of kernel physical memory, in bytes, that
-     * can be allocated in the Isolation Group.
-     *
-     * @return The maximum amount of memory in bytes or -1 if
-     *         there is no limit set.
-     *
-     */
-    public long getKernelMemoryLimit();
-
-    /**
      * Returns the largest amount of kernel physical memory, in bytes, that
      * have been allocated in the Isolation Group.
      *
@@ -93,16 +83,6 @@ public interface CgroupV1Metrics extends Metrics {
      *
      */
     public long getTcpMemoryFailCount();
-
-    /**
-     * Returns the maximum amount of networking physical memory, in bytes,
-     * that can be allocated in the Isolation Group.
-     *
-     * @return The maximum amount of memory in bytes or -1 if
-     *         there is no limit.
-     *
-     */
-    public long getTcpMemoryLimit();
 
     /**
      * Returns the largest amount of networking physical memory, in bytes,

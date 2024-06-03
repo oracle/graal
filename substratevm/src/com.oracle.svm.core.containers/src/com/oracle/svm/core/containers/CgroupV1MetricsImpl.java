@@ -50,11 +50,6 @@ public class CgroupV1MetricsImpl extends CgroupMetrics implements CgroupV1Metric
     }
 
     @Override
-    public long getKernelMemoryLimit() {
-        return metrics.getKernelMemoryLimit();
-    }
-
-    @Override
     public long getKernelMemoryMaxUsage() {
         return metrics.getKernelMemoryMaxUsage();
     }
@@ -67,11 +62,6 @@ public class CgroupV1MetricsImpl extends CgroupMetrics implements CgroupV1Metric
     @Override
     public long getTcpMemoryFailCount() {
         return metrics.getTcpMemoryFailCount();
-    }
-
-    @Override
-    public long getTcpMemoryLimit() {
-        return metrics.getTcpMemoryLimit();
     }
 
     @Override

@@ -24,12 +24,8 @@
  */
 package com.oracle.svm.test;
 
-import com.oracle.svm.core.containers.CgroupSubsystemFactory;
-import com.oracle.svm.core.containers.CgroupSubsystemFactory.CgroupTypeResult;
-import org.junit.Assert;
-import org.junit.Test;
-
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -39,6 +35,14 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Objects;
 import java.util.Optional;
+
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.containers.CgroupSubsystemFactory;
+import com.oracle.svm.core.containers.CgroupSubsystemFactory.CgroupTypeResult;
 
 public class CgroupSubsystemFactoryTest {
 
@@ -69,12 +73,17 @@ public class CgroupSubsystemFactoryTest {
 
     private static final String MOUNT_INFO_NO_CGFS = "23 60 0:22 / /sys rw,nosuid,nodev,noexec,relatime shared:2 - sysfs sysfs rw,seclabel\n";
 
+    @BeforeClass
+    public static void checkForLinux() {
+        assumeTrue("skipping cgroup tests", OS.LINUX.isCurrent());
+    }
+
     @Test
     public void determineTypeCgroupsV2() {
         try (CgroupMountInfoStub fixture = new CgroupMountInfoStub(MOUNT_INFO_CG2, CGROUPS_CG2)) {
             Path cgroups = fixture.createCgroups();
             Path mountinfo = fixture.createMountInfo();
-            Optional<CgroupTypeResult> result = CgroupSubsystemFactory.determineType(mountinfo.toString(), cgroups.toString());
+            Optional<CgroupTypeResult> result = CgroupSubsystemFactory.determineType(mountinfo.toString(), cgroups.toString(), "/dev/null");
             Assert.assertTrue("Expected a non-empty result", result.isPresent());
             CgroupTypeResult actual = result.get();
             Assert.assertNotNull(actual);
@@ -89,7 +98,7 @@ public class CgroupSubsystemFactoryTest {
         try (CgroupMountInfoStub fixture = new CgroupMountInfoStub(MOUNT_INFO_CG1, CGROUPS_CG1)) {
             Path cgroups = fixture.createCgroups();
             Path mountinfo = fixture.createMountInfo();
-            Optional<CgroupTypeResult> result = CgroupSubsystemFactory.determineType(mountinfo.toString(), cgroups.toString());
+            Optional<CgroupTypeResult> result = CgroupSubsystemFactory.determineType(mountinfo.toString(), cgroups.toString(), "/dev/null");
             Assert.assertTrue("Expected a non-empty result", result.isPresent());
             CgroupTypeResult actual = result.get();
             Assert.assertNotNull(actual);
@@ -104,7 +113,7 @@ public class CgroupSubsystemFactoryTest {
         try (CgroupMountInfoStub fixture = new CgroupMountInfoStub(MOUNT_INFO_NO_CGFS, CGROUPS_CG2)) {
             Path cgroups = fixture.createCgroups();
             Path mountinfo = fixture.createMountInfo();
-            Optional<CgroupTypeResult> result = CgroupSubsystemFactory.determineType(mountinfo.toString(), cgroups.toString());
+            Optional<CgroupTypeResult> result = CgroupSubsystemFactory.determineType(mountinfo.toString(), cgroups.toString(), "/dev/null");
             Assert.assertFalse("Expected a empty result", result.isPresent());
         } catch (IOException e) {
             fail("Unexpected failure " + e.getMessage());
