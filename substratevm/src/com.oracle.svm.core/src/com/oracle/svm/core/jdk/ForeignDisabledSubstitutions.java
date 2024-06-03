@@ -37,6 +37,7 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
@@ -148,6 +149,13 @@ final class Target_jdk_internal_foreign_layout_AbstractLayout {
     @AlwaysInline("Make remaining code in callers unreachable.")
     @SuppressWarnings({"unused", "static-method"})
     VarHandle varHandle(Target_java_lang_foreign_MemoryLayout_PathElement... elements) {
+        throw ForeignDisabledSubstitutions.fail();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    @SuppressWarnings({"unused", "static-method"})
+    VarHandle varHandleInternal(Target_java_lang_foreign_MemoryLayout_PathElement... elements) {
         throw ForeignDisabledSubstitutions.fail();
     }
 
