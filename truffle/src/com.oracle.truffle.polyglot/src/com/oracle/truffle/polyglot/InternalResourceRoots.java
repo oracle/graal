@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -58,28 +59,44 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 final class InternalResourceRoots {
 
     private static final String OVERRIDDEN_CACHE_ROOT = "polyglot.engine.resourcePath";
     private static final String OVERRIDDEN_COMPONENT_ROOT = "polyglot.engine.resourcePath.";
     private static final String OVERRIDDEN_RESOURCE_ROOT = "polyglot.engine.resourcePath.";
+    private static final Map<Collection<EngineAccessor.AbstractClassLoaderSupplier>, InternalResourceRoots> runtimeCaches = new ConcurrentHashMap<>();
 
     /**
      * This field is reset to {@code null} by the {@code TruffleBaseFeature} before writing the
-     * native image heap.
+     * native image heap. The value is recomputed when the pre-initialized engine is patched.
      */
-    private static volatile Set<Root> roots;
+    private volatile Set<Root> roots;
 
     private InternalResourceRoots() {
     }
 
-    /**
-     * Initializes the internal resource roots. This method is called from entry-points in the
-     * polyglot during engine construction to ensure that internal resource roots are initialized
-     * before the engine is used.
-     */
-    static synchronized void ensureInitialized() {
+    static InternalResourceRoots getInstance() {
+        List<EngineAccessor.AbstractClassLoaderSupplier> loaders = TruffleOptions.AOT ? List.of() : EngineAccessor.locatorOrDefaultLoaders();
+        InternalResourceRoots instance = runtimeCaches.computeIfAbsent(loaders, (k) -> new InternalResourceRoots());
+        /*
+         * Calling ensureInitialized in the InternalResourceRoots constructor alone is insufficient
+         * due to context pre-initialization. The roots are reset after context pre-initialization
+         * and must be recomputed during image execution time. Typically, this occurs during the
+         * patch process. However, if the pre-initialized engine is not used, we must reinitialize
+         * the roots field before returning InternalResourceRoots from the getInstance call to
+         * PolyglotEngineImpl.
+         */
+        instance.ensureInitialized();
+        return instance;
+    }
+
+    void patch() {
+        ensureInitialized();
+    }
+
+    private synchronized void ensureInitialized() {
         if (roots == null) {
             if (InternalResourceCache.usesInternalResources()) {
                 roots = computeRoots(findDefaultRoot());
@@ -89,7 +106,7 @@ final class InternalResourceRoots {
         }
     }
 
-    static Root findRoot(Path hostPath) {
+    Root findRoot(Path hostPath) {
         for (Root root : roots) {
             if (hostPath.startsWith(root.path)) {
                 return root;
@@ -98,7 +115,7 @@ final class InternalResourceRoots {
         return null;
     }
 
-    static InternalResourceCache findInternalResource(Path hostPath) {
+    InternalResourceCache findInternalResource(Path hostPath) {
         Root root = findRoot(hostPath);
         if (root != null) {
             for (InternalResourceCache cache : root.caches) {
@@ -138,21 +155,23 @@ final class InternalResourceRoots {
      *
      */
     @SuppressWarnings("unused")
-    private static synchronized void setTestCacheRoot(Path newRoot, boolean nativeImageRuntime) {
-        if (roots != null) {
-            for (Root root : roots) {
+    private static void setTestCacheRoot(Path newRoot, boolean nativeImageRuntime) {
+        List<EngineAccessor.AbstractClassLoaderSupplier> loaders = TruffleOptions.AOT ? List.of() : EngineAccessor.locatorOrDefaultLoaders();
+        InternalResourceRoots resourceRoots = runtimeCaches.computeIfAbsent(loaders, (k) -> new InternalResourceRoots());
+        if (resourceRoots.roots != null) {
+            for (Root root : resourceRoots.roots) {
                 for (InternalResourceCache cache : root.caches()) {
                     cache.clearCache();
                 }
             }
         }
         if (newRoot != null) {
-            roots = computeRoots(Pair.create(newRoot, nativeImageRuntime ? Root.Kind.UNVERSIONED : Root.Kind.VERSIONED));
+            resourceRoots.roots = computeRoots(Pair.create(newRoot, nativeImageRuntime ? Root.Kind.UNVERSIONED : Root.Kind.VERSIONED));
         } else if (nativeImageRuntime) {
             var defaultRoots = findDefaultRoot();
-            roots = computeRoots(Pair.create(defaultRoots.getLeft(), Root.Kind.UNVERSIONED));
+            resourceRoots.roots = computeRoots(Pair.create(defaultRoots.getLeft(), Root.Kind.UNVERSIONED));
         } else {
-            roots = null;
+            resourceRoots.roots = null;
         }
     }
 

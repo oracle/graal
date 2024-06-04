@@ -105,7 +105,7 @@ final class FileSystems {
     }
 
     static FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
-        return new ResourcesFileSystem(newDefaultFileSystem(null), fileSystem);
+        return ResourcesFileSystem.createForEmbedder(newDefaultFileSystem(null), fileSystem);
     }
 
     static FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
@@ -116,9 +116,9 @@ final class FileSystems {
         return new DeniedIOFileSystem();
     }
 
-    static FileSystem newResourcesFileSystem() {
+    static FileSystem newResourcesFileSystem(PolyglotEngineImpl engine) {
         FileSystem defaultFS = newDefaultFileSystem(null);
-        return new ResourcesFileSystem(new ReadOnlyFileSystem(defaultFS), new PathOperationsOnlyFileSystem(defaultFS));
+        return ResourcesFileSystem.createForEngine(engine, new ReadOnlyFileSystem(defaultFS), new PathOperationsOnlyFileSystem(defaultFS));
     }
 
     static boolean hasNoAccess(FileSystem fileSystem) {
@@ -143,7 +143,7 @@ final class FileSystems {
             Path path = EngineAccessor.LANGUAGE.getPath(file);
             if (InternalResourceCache.usesInternalResources()) {
                 Path hostPath = toHostPath(path);
-                InternalResourceCache cache = InternalResourceRoots.findInternalResource(hostPath);
+                InternalResourceCache cache = languageContext.context.engine.internalResourceRoots.findInternalResource(hostPath);
                 if (cache != null) {
                     return cache.getPathOrNull().relativize(hostPath).toString();
                 }
@@ -433,11 +433,11 @@ final class FileSystems {
             this.factory = new ImageBuildTimeFactory();
         }
 
-        void onPreInitializeContextEnd() {
+        void onPreInitializeContextEnd(InternalResourceRoots internalResourceRoots, Map<String, Path> languageHomes) {
             if (factory == null) {
                 throw new IllegalStateException("Context pre-initialization already finished.");
             }
-            ((ImageBuildTimeFactory) factory).onPreInitializeContextEnd();
+            ((ImageBuildTimeFactory) factory).onPreInitializeContextEnd(internalResourceRoots, languageHomes);
             factory = null;
             delegate = INVALID_FILESYSTEM;
         }
@@ -632,18 +632,11 @@ final class FileSystems {
                 }
             }
 
-            void onPreInitializeContextEnd() {
-                Map<String, Path> languageHomes = new HashMap<>();
-                for (LanguageCache cache : LanguageCache.languages().values()) {
-                    final String languageHome = cache.getLanguageHome();
-                    if (languageHome != null) {
-                        languageHomes.put(cache.getId(), delegate.parsePath(languageHome));
-                    }
-                }
+            void onPreInitializeContextEnd(InternalResourceRoots internalResourceRoots, Map<String, Path> languageHomes) {
                 for (Reference<PreInitializePath> pathRef : emittedPaths) {
                     PreInitializePath path = pathRef.get();
                     if (path != null) {
-                        path.onPreInitializeContextEnd(languageHomes);
+                        path.onPreInitializeContextEnd(internalResourceRoots, languageHomes);
                     }
                 }
             }
@@ -680,10 +673,10 @@ final class FileSystems {
                 }
             }
 
-            void onPreInitializeContextEnd(Map<String, Path> languageHomes) {
+            void onPreInitializeContextEnd(InternalResourceRoots resourceRoots, Map<String, Path> languageHomes) {
                 Path internalPath = (Path) delegatePath;
                 ImageHeapPath result = null;
-                InternalResourceCache owner = InternalResourceRoots.findInternalResource(internalPath);
+                InternalResourceCache owner = resourceRoots.findInternalResource(internalPath);
                 if (owner != null) {
                     String relativePath = owner.getPathOrNull().relativize(internalPath).toString();
                     result = new InternalResourceImageHeapPath(owner, relativePath);
@@ -1232,11 +1225,30 @@ final class FileSystems {
 
         private final FileSystem resourcesFileSystem;
         private final FileSystem delegateFileSystem;
-        private volatile Set<Path> languageHomes;
+        private final InternalResourceRoots resourceRoots;
+        private final Collection<Path> languageHomes;
 
-        ResourcesFileSystem(FileSystem resourcesFileSystem, FileSystem delegateFileSystem) {
-            this.resourcesFileSystem = resourcesFileSystem;
-            this.delegateFileSystem = delegateFileSystem;
+        static ResourcesFileSystem createForEngine(PolyglotEngineImpl engine, FileSystem resourcesFileSystem, FileSystem delegateFileSystem) {
+            return new ResourcesFileSystem(resourcesFileSystem, delegateFileSystem, engine.internalResourceRoots, List.copyOf(engine.languageHomes().values()));
+        }
+
+        static ResourcesFileSystem createForEmbedder(FileSystem resourcesFileSystem, FileSystem delegateFileSystem) {
+            Set<Path> languageHomes = new HashSet<>();
+            for (LanguageCache cache : LanguageCache.languages().values()) {
+                final String languageHome = cache.getLanguageHome();
+                if (languageHome != null) {
+                    languageHomes.add(Paths.get(languageHome));
+                }
+            }
+            return new ResourcesFileSystem(resourcesFileSystem, delegateFileSystem, InternalResourceRoots.getInstance(), languageHomes);
+        }
+
+        private ResourcesFileSystem(FileSystem resourcesFileSystem, FileSystem delegateFileSystem,
+                        InternalResourceRoots resourceRoots, Collection<Path> languageHomes) {
+            this.resourcesFileSystem = Objects.requireNonNull(resourcesFileSystem, "ResourcesFileSystem must be non-null");
+            this.delegateFileSystem = Objects.requireNonNull(delegateFileSystem, "DelegateFileSystem must be non-null");
+            this.resourceRoots = Objects.requireNonNull(resourceRoots, "ResourceRoots must be non-null");
+            this.languageHomes = Objects.requireNonNull(languageHomes, "LanguageHomes must be non-null");
             Class<? extends Path> resourcesFileSystemPathType = this.resourcesFileSystem.parsePath("").getClass();
             Class<? extends Path> customFileSystemPathType = delegateFileSystem.parsePath("").getClass();
             if (resourcesFileSystemPathType != customFileSystemPathType) {
@@ -1490,35 +1502,15 @@ final class FileSystems {
             if (!(path.isAbsolute() && isNormalized(path))) {
                 throw new IllegalArgumentException("The path must be normalized absolute path.");
             }
-            if (InternalResourceRoots.findRoot(path) != null) {
+            if (resourceRoots.findRoot(path) != null) {
                 return true;
             }
-            for (Path home : getLanguageHomes()) {
+            for (Path home : languageHomes) {
                 if (path.startsWith(home)) {
                     return true;
                 }
             }
             return false;
-        }
-
-        private Set<Path> getLanguageHomes() {
-            Set<Path> res = languageHomes;
-            if (res == null) {
-                synchronized (this) {
-                    res = languageHomes;
-                    if (res == null) {
-                        res = new HashSet<>();
-                        for (LanguageCache cache : LanguageCache.languages().values()) {
-                            final String languageHome = cache.getLanguageHome();
-                            if (languageHome != null) {
-                                res.add(Paths.get(languageHome));
-                            }
-                        }
-                        languageHomes = res;
-                    }
-                }
-            }
-            return res;
         }
     }
 

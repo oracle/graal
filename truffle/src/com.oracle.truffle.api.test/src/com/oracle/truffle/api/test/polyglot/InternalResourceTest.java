@@ -43,6 +43,8 @@ package com.oracle.truffle.api.test.polyglot;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -56,22 +58,22 @@ import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -211,7 +213,7 @@ public class InternalResourceTest {
 
     @Test
     public void testLanguageResourcesUnpackedOnce() {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestLanguageResourcesUnpackedOnce.class);
         }
@@ -264,7 +266,7 @@ public class InternalResourceTest {
 
     @Test
     public void testInstrumentResourcesUnpackedOnce() {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestInstrumentResourcesUnpackedOnce.class);
         }
@@ -387,7 +389,7 @@ public class InternalResourceTest {
 
     @Test
     public void testAccessFileOutsideOfResourceRoot() throws IOException {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         Path hostFolder = Files.createTempDirectory("test").toAbsolutePath();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestAccessFileOutsideOfResourceRoot.class, hostFolder.toString());
@@ -508,7 +510,7 @@ public class InternalResourceTest {
 
     @Test
     public void testAccessFileInResourceRoot() throws IOException {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         Path hostFolder = Files.createTempDirectory("test").toAbsolutePath();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestAccessFileInResourceRoot.class, hostFolder.toString());
@@ -542,7 +544,7 @@ public class InternalResourceTest {
 
     @Test
     public void testOverriddenResourceRoot() throws Exception {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         // Prepare standalone resources
         Path cacheRoot1 = Files.createTempDirectory(null);
         Engine.copyResources(cacheRoot1, TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class));
@@ -593,9 +595,9 @@ public class InternalResourceTest {
             System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)));
             System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), LibraryResource.ID));
             System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), SourcesResource.ID));
-            TemporaryResourceCacheRoot.delete(cacheRoot1);
-            TemporaryResourceCacheRoot.delete(cacheRoot2);
-            TemporaryResourceCacheRoot.delete(cacheRoot3);
+            delete(cacheRoot1);
+            delete(cacheRoot2);
+            delete(cacheRoot3);
         }
     }
 
@@ -618,7 +620,7 @@ public class InternalResourceTest {
 
     @Test
     public void testLanguageResourcesLookedUpById() {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestLanguageResourcesLookedUpById.class);
         }
@@ -663,7 +665,7 @@ public class InternalResourceTest {
 
     @Test
     public void testInstrumentResourcesLookedUpById() {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestInstrumentResourcesLookedUpById.class);
         }
@@ -686,7 +688,7 @@ public class InternalResourceTest {
 
     @Test
     public void testUnsupportedResource() {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestUnsupportedResource.class);
         }
@@ -749,7 +751,7 @@ public class InternalResourceTest {
 
     @Test
     public void testCopyResources() throws IOException {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         Path tmpDir = Files.createTempDirectory(null);
         try {
             assertTrue(Engine.copyResources(tmpDir, TestUtils.getDefaultLanguageId(TestCopyResourcesRoot.class)));
@@ -832,7 +834,7 @@ public class InternalResourceTest {
 
     @Test
     public void testOptionalResources() {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestOptionalResources.class);
         }
@@ -857,7 +859,7 @@ public class InternalResourceTest {
 
     @Test
     public void testGetInternalTruffleFile() {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestGetInternalTruffleFile.class);
         }
@@ -886,7 +888,7 @@ public class InternalResourceTest {
 
     @Test
     public void testGetPublicTruffleFile() {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestGetPublicTruffleFile.class);
         }
@@ -911,9 +913,102 @@ public class InternalResourceTest {
 
     @Test
     public void testGetTruffleFileInternal() {
-        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        TruffleTestAssumptions.assumeNotAOT();
         try (Context context = Context.create()) {
             AbstractExecutableTestLanguage.execute(context, TestGetTruffleFileInternal.class);
+        }
+    }
+
+    @Test
+    public void testContextClassLoader() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        TruffleTestAssumptions.assumeNotAOT();
+        ClassLoader originalContextLoader = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader contextClassLoader1 = new URLClassLoader(new URL[0], InternalResourceTest.class.getClassLoader());
+            Thread.currentThread().setContextClassLoader(contextClassLoader1);
+            Object cl1LanguageCache;
+            try (Context ctx = Context.create()) {
+                cl1LanguageCache = getLanguageCache(ContextClassLoaderTestLanguage.class);
+                AbstractExecutableTestLanguage.execute(ctx, ContextClassLoaderTestLanguage.class);
+            }
+
+            ClassLoader contextClassLoader2 = new URLClassLoader(new URL[0], InternalResourceTest.class.getClassLoader());
+            Thread.currentThread().setContextClassLoader(contextClassLoader2);
+            Object cl2LanguageCache;
+            try (Context ctx = Context.create()) {
+                cl2LanguageCache = getLanguageCache(ContextClassLoaderTestLanguage.class);
+                AbstractExecutableTestLanguage.execute(ctx, ContextClassLoaderTestLanguage.class);
+            }
+            Assert.assertNotSame("Different language cache expected for distinct context classloaders.", cl1LanguageCache, cl2LanguageCache);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalContextLoader);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object getLanguageCache(Class<? extends TruffleLanguage<?>> language) {
+        Class<?> languageCacheClass;
+        try {
+            languageCacheClass = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
+        } catch (ClassNotFoundException e) {
+            throw new AssertionError(e);
+        }
+        Map<String, ?> languages = (Map<String, ?>) ReflectionUtils.invokeStatic(languageCacheClass, "languages");
+        return languages.get(TestUtils.getDefaultLanguageId(language));
+    }
+
+    @Test
+    public void testContextClassLoaderExplicitLanguageRoot() throws Exception {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        TruffleTestAssumptions.assumeNotAOT();
+        String languageId = TestUtils.getDefaultLanguageId(ContextClassLoaderTestLanguage.class);
+        Path resourcesRoot = Files.createTempDirectory(null);
+        TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+        ClassLoader originalContextLoader = Thread.currentThread().getContextClassLoader();
+        try {
+            // Prepare ContextClassLoaderTestLanguage resources and set language cache root
+            Engine.copyResources(resourcesRoot, languageId);
+            String languageResourcesPath = resourcesRoot.resolve(languageId).toRealPath().toString();
+            System.setProperty(String.format("polyglot.engine.resourcePath.%s", languageId), languageResourcesPath);
+
+            ClassLoader contextClassLoader1 = new URLClassLoader(new URL[0], InternalResourceTest.class.getClassLoader());
+            Thread.currentThread().setContextClassLoader(contextClassLoader1);
+            Object cl1LanguageCache;
+            try (Context ctx = Context.create()) {
+                cl1LanguageCache = getLanguageCache(ContextClassLoaderTestLanguage.class);
+                AbstractExecutableTestLanguage.execute(ctx, ContextClassLoaderTestLanguage.class, languageResourcesPath);
+            }
+
+            ClassLoader contextClassLoader2 = new URLClassLoader(new URL[0], InternalResourceTest.class.getClassLoader());
+            Thread.currentThread().setContextClassLoader(contextClassLoader2);
+            Object cl2LanguageCache;
+            try (Context ctx = Context.create()) {
+                cl2LanguageCache = getLanguageCache(ContextClassLoaderTestLanguage.class);
+                AbstractExecutableTestLanguage.execute(ctx, ContextClassLoaderTestLanguage.class, languageResourcesPath);
+            }
+            Assert.assertNotSame("Different language cache expected for distinct context classloaders.", cl1LanguageCache, cl2LanguageCache);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalContextLoader);
+            // Clean explicit resource root
+            TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+            System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s", languageId));
+            delete(resourcesRoot);
+        }
+    }
+
+    @Registration(internalResources = SourcesResource.class)
+    public static final class ContextClassLoaderTestLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String expectedRoot = contextArguments.length == 0 ? null : (String) contextArguments[0];
+            TruffleFile root = env.getInternalResource(SourcesResource.ID);
+            if (expectedRoot != null) {
+                assertTrue(root.getCanonicalFile().getPath().startsWith(expectedRoot));
+            }
+            verifyResources(root, SourcesResource.RESOURCES);
+            return null;
         }
     }
 
