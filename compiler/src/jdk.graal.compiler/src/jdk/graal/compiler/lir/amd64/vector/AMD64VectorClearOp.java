@@ -24,9 +24,6 @@
  */
 package jdk.graal.compiler.lir.amd64.vector;
 
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPXOR;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVXORPD;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVXORPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPS;
@@ -37,6 +34,7 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVROp.KXORW;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVROp;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind;
@@ -53,22 +51,22 @@ public class AMD64VectorClearOp extends AMD64LIRInstruction {
 
     protected @Def({OperandFlag.REG}) AllocatableValue result;
 
-    private final boolean useEvex;
+    private final AMD64SIMDInstructionEncoding encoding;
 
-    public AMD64VectorClearOp(AllocatableValue result, boolean useEvex) {
-        this(TYPE, result, useEvex);
+    public AMD64VectorClearOp(AllocatableValue result, AMD64SIMDInstructionEncoding encoding) {
+        this(TYPE, result, encoding);
     }
 
-    protected AMD64VectorClearOp(LIRInstructionClass<? extends AMD64VectorClearOp> c, AllocatableValue result, boolean useEvex) {
+    protected AMD64VectorClearOp(LIRInstructionClass<? extends AMD64VectorClearOp> c, AllocatableValue result, AMD64SIMDInstructionEncoding encoding) {
         super(c);
         this.result = result;
-        this.useEvex = useEvex;
+        this.encoding = encoding;
     }
 
     public static AMD64VectorClearOp clearMask(AllocatableValue result) {
         assert ((AMD64Kind) result.getPlatformKind()).isMask() : "This method is only intended to be used to clear op mask values";
         // AVX512 op mask instructions are encoded using the VEX prefix
-        return new AMD64VectorClearOp(result, false);
+        return new AMD64VectorClearOp(result, AMD64SIMDInstructionEncoding.VEX);
     }
 
     private static final VexRVROp[] KXOR_OPS = new VexRVROp[]{KXORB, KXORW, KXORD, KXORQ};
@@ -85,18 +83,18 @@ public class AMD64VectorClearOp extends AMD64LIRInstruction {
 
         switch (kind.getScalar()) {
             case SINGLE:
-                (useEvex ? EVXORPS : VXORPS).emit(masm, AVXKind.getRegisterSize(kind), register, register, register);
+                VXORPS.encoding(encoding).emit(masm, AVXKind.getRegisterSize(kind), register, register, register);
                 break;
 
             case DOUBLE:
-                (useEvex ? EVXORPD : VXORPD).emit(masm, AVXKind.getRegisterSize(kind), register, register, register);
+                VXORPD.encoding(encoding).emit(masm, AVXKind.getRegisterSize(kind), register, register, register);
                 break;
 
             default:
                 // on AVX1, YMM VPXOR is not supported - still it is possible to clear the whole
                 // YMM/ZMM register as the upper 128/384-bit are implicitly cleared by the AVX1
                 // instruction.
-                (useEvex ? EVPXOR : VPXOR).emit(masm, XMM, register, register, register);
+                VPXOR.encoding(encoding).emit(masm, XMM, register, register, register);
         }
     }
 }

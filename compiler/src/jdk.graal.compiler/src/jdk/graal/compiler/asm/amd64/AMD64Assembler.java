@@ -1098,6 +1098,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         CPU_XMM_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, CPU, null, XMM, null),
         XMM_XMM_XMM_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, XMM, XMM, XMM, null),
         XMM_XMM_CPU_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, XMM, XMM, CPU, null),
+        XMM_CPU_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, CPUFeature.AVX512BW, EVEXFeatureAssertion.AVX512F_BW_VL, XMM, null, CPU, null),
+        XMM_CPU_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, CPUFeature.AVX512F, EVEXFeatureAssertion.AVX512F_VL, XMM, null, CPU, null),
         AVX1_AVX512F_128_ONLY(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_128ONLY),
         AVX1_AVX512F_ALL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_ALL),
         AVX1_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
@@ -1120,8 +1122,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AVX_AVX512F_VL_256_512(null, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
         AVX1_AVX512DQ_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_DQ_VL),
 
-        XMM_CPU_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, CPUFeature.AVX512BW, EVEXFeatureAssertion.AVX512F_BW_VL, XMM, null, CPU, null),
-        XMM_CPU_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, CPUFeature.AVX512F, EVEXFeatureAssertion.AVX512F_VL, XMM, null, CPU, null),
         AVX512F_CPU_OR_MASK(CPUFeature.AVX512F, null, null, EVEXFeatureAssertion.AVX512F_ALL, CPU_OR_MASK, null, CPU_OR_MASK, null),
         AVX512DQ_CPU_OR_MASK(CPUFeature.AVX512DQ, null, null, EVEXFeatureAssertion.AVX512F_DQ_ALL, CPU_OR_MASK, null, CPU_OR_MASK, null),
         AVX512BW_CPU_OR_MASK(CPUFeature.AVX512BW, null, null, EVEXFeatureAssertion.AVX512F_BW_ALL, CPU_OR_MASK, null, CPU_OR_MASK, null),
@@ -1211,6 +1211,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    public enum AMD64SIMDInstructionEncoding {
+        VEX,
+        EVEX;
+
+        public static AMD64SIMDInstructionEncoding forFeatures(EnumSet<CPUFeature> features) {
+            return AMD64BaseAssembler.supportsFullAVX512(features) ? EVEX : VEX;
+        }
+    }
+
     /**
      * Base class for VEX-encoded instructions.
      */
@@ -1227,6 +1236,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         protected final int wEvex;
         protected final boolean isEvex;
 
+        /**
+         * This field is used to link VEX and EVEX encoded instructions to allow for easy selection
+         * between them via the {@link VexOp#encoding} method.
+         */
+        protected VexOp variant;
+
         protected VexOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex, boolean isEvex) {
             this.pp = pp;
             this.mmmmm = mmmmm;
@@ -1238,6 +1253,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             this.wEvex = wEvex;
             this.isEvex = isEvex;
             assert isEvex == opcode.startsWith("E") : "EVEX instructions should start with the letter 'E'! (" + opcode + ")";
+            variant = null;
         }
 
         protected VexOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
@@ -1258,6 +1274,28 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public final boolean isSupported(AMD64 arch, AMD64Kind kind) {
             return assertion.supports(arch.getFeatures(), AVXKind.getRegisterSize(kind), false);
+        }
+
+        /**
+         * This method provides the logic to be implemented by {@link VexOp#encoding}. The
+         * 'encoding' method in each subclass simply needs to call this method and cast the result
+         * to its own type.
+         */
+        protected final VexOp encodingLogic(AMD64SIMDInstructionEncoding encoding) {
+            GraalError.guarantee(variant != null, "%s has no %s variant!", this, encoding);
+            GraalError.guarantee(this.isEvex ^ variant.isEvex, "Only pairs of VEX and EVEX instructions are allowed. (%s, %s)", this, variant);
+            return switch (encoding) {
+                case VEX -> isEvex ? variant : this;
+                case EVEX -> isEvex ? this : variant;
+            };
+        }
+
+        /**
+         * Returns the VEX or EVEX variant of this operation, selected by the encoding parameter.
+         * May be called on either variant, and returns that op itself or its opposite version.
+         */
+        public VexOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return encodingLogic(encoding);
         }
 
         @Override
@@ -1347,6 +1385,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         protected VexRROp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
             this(opcode, pp, mmmmm, w, op, assertion, EVEXTuple.INVALID, w);
+        }
+
+        @Override
+        public VexRROp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexRROp) encodingLogic(encoding);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
@@ -1479,12 +1522,23 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, isEvex);
         }
 
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
         protected VexRMOp(String opcode, VexRMOp vexOp) {
             super(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, vexOp.evexTuple, vexOp.wEvex, true);
+            variant = vexOp;
+            assert vexOp.variant == null : "found 2 EVEX variants for VEX instruction " + vexOp;
+            vexOp.variant = this;
         }
 
         protected VexRMOp(String opcode, VexRMOp vexOp, EVEXTuple evexTuple, int wEvex) {
             super(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, evexTuple, wEvex);
+        }
+
+        @Override
+        public VexRMOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexRMOp) encodingLogic(encoding);
         }
 
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src) {
@@ -1573,9 +1627,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             this.opReverse = opReverse;
         }
 
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
         private VexMoveOp(String opcode, VexMoveOp vexOp) {
             super(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, vexOp.evexTuple, vexOp.wEvex, true);
             this.opReverse = vexOp.opReverse;
+            variant = vexOp;
+            assert vexOp.variant == null : "found 2 EVEX variants for VEX instruction " + vexOp;
+            vexOp.variant = this;
+        }
+
+        @Override
+        public VexMoveOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexMoveOp) encodingLogic(encoding);
         }
 
         @Override
@@ -1651,8 +1716,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, isEvex);
         }
 
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
         protected VexRMIOp(String opcode, VexRMIOp vexOp) {
             this(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, vexOp.evexTuple, vexOp.wEvex, true);
+            variant = vexOp;
+            assert vexOp.variant == null : "found 2 EVEX variants for VEX instruction " + vexOp;
+            vexOp.variant = this;
+        }
+
+        @Override
+        public VexRMIOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexRMIOp) encodingLogic(encoding);
         }
 
         @Override
@@ -1703,6 +1779,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
+        public EvexRMIOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (EvexRMIOp) encodingLogic(encoding);
+        }
+
+        @Override
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, int imm8) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
             emit(asm, size, dst, src, imm8, Register.None, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
@@ -1732,6 +1813,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         private VexMROp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex, boolean isEvex) {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, isEvex);
+        }
+
+        @Override
+        public VexMROp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexMROp) encodingLogic(encoding);
         }
 
         @Override
@@ -1797,8 +1883,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, assertion);
         }
 
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
         private VexMRIOp(String opcode, VexMRIOp vexOp) {
             this(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, vexOp.evexTuple, vexOp.wEvex, true);
+            variant = vexOp;
+            assert vexOp.variant == null : "found 2 EVEX variants for VEX instruction " + vexOp;
+            vexOp.variant = this;
         }
 
         private VexMRIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
@@ -1807,6 +1899,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         private VexMRIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex, boolean isEvex) {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, isEvex);
+        }
+
+        @Override
+        public VexMRIOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexMRIOp) encodingLogic(encoding);
         }
 
         @Override
@@ -1857,6 +1954,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, assertion);
         }
 
+        @Override
+        public VexRVMROp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexRVMROp) encodingLogic(encoding);
+        }
+
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register mask, Register src1, Register src2) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, mask, src1, src2), "emitting invalid instruction");
             emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex, false);
@@ -1899,6 +2001,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         protected VexRVROp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion);
+        }
+
+        @Override
+        public VexRVROp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexRVROp) encodingLogic(encoding);
         }
 
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2) {
@@ -2107,12 +2214,23 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex);
         }
 
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
         private VexRVMOp(String opcode, VexRVMOp vexOp) {
             this(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, vexOp.evexTuple, vexOp.wEvex, true);
+            variant = vexOp;
+            assert vexOp.variant == null : "found 2 EVEX variants for VEX instruction " + vexOp;
+            vexOp.variant = this;
         }
 
         private VexRVMOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex, boolean isEvex) {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, isEvex);
+        }
+
+        @Override
+        public VexRVMOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexRVMOp) encodingLogic(encoding);
         }
 
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2) {
@@ -2184,8 +2302,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex);
         }
 
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
         private VexRVMConvertOp(String opcode, VexRVMConvertOp vexOp) {
             super(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, vexOp.evexTuple, vexOp.wEvex, true);
+            variant = vexOp;
+            assert vexOp.variant == null : "found 2 EVEX variants for VEX instruction " + vexOp;
+            vexOp.variant = this;
+        }
+
+        @Override
+        public VexRVMConvertOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexRVMConvertOp) encodingLogic(encoding);
         }
     }
 
@@ -2199,6 +2328,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         private VexGeneralPurposeRVMOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion);
+        }
+
+        @Override
+        public VexGeneralPurposeRVMOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexGeneralPurposeRVMOp) encodingLogic(encoding);
         }
 
         @Override
@@ -2251,6 +2385,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, assertion);
         }
 
+        @Override
+        public VexGeneralPurposeRMVOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexGeneralPurposeRMVOp) encodingLogic(encoding);
+        }
+
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), VEXPrefixConfig.LZ, dst, src2, src1, null), "emitting invalid instruction");
             assert size == AVXKind.AVXSize.DWORD || size == AVXKind.AVXSize.QWORD : size;
@@ -2281,6 +2420,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, op, assertion);
         }
 
+        @Override
+        public VexAESOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexAESOp) encodingLogic(encoding);
+        }
+
         public void emit(AMD64Assembler asm, Register result, Register state, Register key) {
             emit(asm, AVXKind.AVXSize.XMM, result, state, key);
         }
@@ -2307,6 +2451,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         protected VexGatherOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion, EVEXTuple.INVALID, VEXPrefixConfig.WIG);
+        }
+
+        @Override
+        public VexGatherOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexGatherOp) encodingLogic(encoding);
         }
 
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address address, Register mask) {
@@ -2337,6 +2486,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, wEvex, op, assertion, evexTuple, wEvex, isEvex);
         }
 
+        @Override
+        public EvexGatherOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (EvexGatherOp) encodingLogic(encoding);
+        }
+
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address address, Register mask) {
             emit(asm, size, dst, address, mask, Z0, B0);
         }
@@ -2361,6 +2515,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         private VexGeneralPurposeRMOp(String opcode, int pp, int mmmmm, int w, int op, int ext, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion);
             this.ext = ext;
+        }
+
+        @Override
+        public VexGeneralPurposeRMOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexGeneralPurposeRMOp) encodingLogic(encoding);
         }
 
         @Override
@@ -2437,10 +2596,21 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             this.r = r;
         }
 
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
         private VexShiftOp(String opcode, VexShiftOp vexOp) {
             super(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, vexOp.evexTuple, vexOp.wEvex, true);
             this.immOp = vexOp.immOp;
             this.r = vexOp.r;
+            variant = vexOp;
+            assert vexOp.variant == null : "found 2 EVEX variants for VEX instruction " + vexOp;
+            vexOp.variant = this;
+        }
+
+        @Override
+        public VexShiftOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexShiftOp) encodingLogic(encoding);
         }
 
         @Override
@@ -2470,9 +2640,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             this.r = r;
         }
 
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
         private VexShiftImmOp(String opcode, VexShiftImmOp vexOp) {
             super(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, vexOp.evexTuple, vexOp.wEvex, true);
             this.r = vexOp.r;
+            variant = vexOp;
+            assert vexOp.variant == null : "found 2 EVEX variants for VEX instruction " + vexOp;
+            vexOp.variant = this;
+        }
+
+        @Override
+        public VexShiftImmOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexShiftImmOp) encodingLogic(encoding);
         }
 
         @Override
@@ -2505,6 +2686,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         private VexMaskedMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion);
             this.opReverse = opReverse;
+        }
+
+        @Override
+        public VexMaskedMoveOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexMaskedMoveOp) encodingLogic(encoding);
         }
 
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register mask, AMD64Address src) {
@@ -2554,6 +2740,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, OP_K_FROM_K_MEM, assertion, EVEXTuple.INVALID, w);
             this.ppCPU = ppCPU;
             this.wCPU = wCPU;
+        }
+
+        @Override
+        public VexMoveMaskOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexMoveMaskOp) encodingLogic(encoding);
         }
 
         @Override
@@ -2694,8 +2885,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, isEvex);
         }
 
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
         private VexRVMIOp(String opcode, VexRVMIOp vexOp) {
             super(opcode, vexOp.pp, vexOp.mmmmm, vexOp.w, vexOp.op, vexOp.assertion, vexOp.evexTuple, vexOp.wEvex, true);
+            variant = vexOp;
+            assert vexOp.variant == null : "found 2 EVEX variants for VEX instruction " + vexOp;
+            vexOp.variant = this;
+        }
+
+        @Override
+        public VexRVMIOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexRVMIOp) encodingLogic(encoding);
         }
 
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2, int imm8) {
@@ -2729,10 +2931,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexFloatCompareOp VCMPSD  = new VexFloatCompareOp("VCMPSD",  VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0xC2);
 
         // EVEX encoded instructions
-        public static final VexFloatCompareOp EVCMPSS = new VexFloatCompareOp("EVCMPSS", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexFloatCompareOp EVCMPPD = new VexFloatCompareOp("EVCMPPD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexFloatCompareOp EVCMPPS = new VexFloatCompareOp("EVCMPPS", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       VEXPrefixConfig.W0);
-        public static final VexFloatCompareOp EVCMPSD = new VexFloatCompareOp("EVCMPSD", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexFloatCompareOp EVCMPPS = new VexFloatCompareOp("EVCMPPS", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       VEXPrefixConfig.W0, VCMPPS);
+        public static final VexFloatCompareOp EVCMPPD = new VexFloatCompareOp("EVCMPPD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       VEXPrefixConfig.W1, VCMPPD);
+        public static final VexFloatCompareOp EVCMPSS = new VexFloatCompareOp("EVCMPSS", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0, VCMPSS);
+        public static final VexFloatCompareOp EVCMPSD = new VexFloatCompareOp("EVCMPSD", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1, VCMPSD);
         // @formatter:on
 
         public enum Predicate {
@@ -2818,8 +3020,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, VEXOpAssertion.AVX1);
         }
 
-        private VexFloatCompareOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
+        /**
+         * Build the EVEX variant of a given vexOp.
+         */
+        private VexFloatCompareOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex, VexFloatCompareOp vexCounterPart) {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, true);
+            variant = vexCounterPart;
+            assert vexCounterPart.variant == null : "found 2 EVEX variants for VEX instruction " + vexCounterPart;
+            vexCounterPart.variant = this;
+        }
+
+        @Override
+        public VexFloatCompareOp encoding(AMD64SIMDInstructionEncoding encoding) {
+            return (VexFloatCompareOp) encodingLogic(encoding);
         }
 
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2, Predicate p) {

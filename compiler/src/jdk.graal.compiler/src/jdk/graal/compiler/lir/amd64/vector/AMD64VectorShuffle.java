@@ -32,19 +32,13 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.EVEXTRACTI32X
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.EVEXTRACTI32X8;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.EVEXTRACTI64X2;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.EVEXTRACTI64X4;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.EVPEXTRB;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.EVPEXTRD;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.EVPEXTRQ;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.EVPEXTRW;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTF128;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTI128;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRW;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.EVMOVD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.EVMOVDQU64;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.EVMOVQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVINSERTF32X4;
@@ -56,8 +50,6 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVINSERTI32X
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVINSERTI64X2;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVINSERTI64X4;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVSHUFI64X2;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVSHUFPD;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.EVSHUFPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTF128;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTI128;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPD;
@@ -73,6 +65,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp;
@@ -99,23 +92,23 @@ public class AMD64VectorShuffle {
 
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue value;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public IntToVectorOp(AllocatableValue result, AllocatableValue value, boolean useEvex) {
+        public IntToVectorOp(AllocatableValue result, AllocatableValue value, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             assert ((AMD64Kind) result.getPlatformKind()).getScalar().isInteger() : result.getPlatformKind();
             this.result = result;
             this.value = value;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(value)) {
-                (useEvex ? EVMOVD : VMOVD).emit(masm, XMM, asRegister(result), asRegister(value));
+                VMOVD.encoding(encoding).emit(masm, XMM, asRegister(result), asRegister(value));
             } else {
                 assert isStackSlot(value);
-                (useEvex ? EVMOVD : VMOVD).emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(value));
+                VMOVD.encoding(encoding).emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(value));
             }
         }
     }
@@ -124,23 +117,23 @@ public class AMD64VectorShuffle {
         public static final LIRInstructionClass<LongToVectorOp> TYPE = LIRInstructionClass.create(LongToVectorOp.class);
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue value;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public LongToVectorOp(AllocatableValue result, AllocatableValue value, boolean useEvex) {
+        public LongToVectorOp(AllocatableValue result, AllocatableValue value, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             assert result.getPlatformKind() == AMD64Kind.V128_QWORD || result.getPlatformKind() == AMD64Kind.V256_QWORD || result.getPlatformKind() == AMD64Kind.V512_QWORD : result;
             this.result = result;
             this.value = value;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(value)) {
-                (useEvex ? EVMOVQ : VMOVQ).emit(masm, XMM, asRegister(result), asRegister(value));
+                VMOVQ.encoding(encoding).emit(masm, XMM, asRegister(result), asRegister(value));
             } else {
                 assert isStackSlot(value);
-                (useEvex ? EVMOVQ : VMOVQ).emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(value));
+                VMOVQ.encoding(encoding).emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(value));
             }
         }
     }
@@ -150,24 +143,24 @@ public class AMD64VectorShuffle {
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG}) protected AllocatableValue source;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue selector;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public ShuffleBytesOp(AllocatableValue result, AllocatableValue source, AllocatableValue selector, boolean useEvex) {
+        public ShuffleBytesOp(AllocatableValue result, AllocatableValue source, AllocatableValue selector, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             this.result = result;
             this.source = source;
             this.selector = selector;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
             if (isRegister(selector)) {
-                (useEvex ? EVPSHUFB : VPSHUFB).emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(source), asRegister(selector));
+                VPSHUFB.encoding(encoding).emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(source), asRegister(selector));
             } else {
                 assert isStackSlot(selector);
-                (useEvex ? EVPSHUFB : VPSHUFB).emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(source), (AMD64Address) crb.asAddress(selector));
+                VPSHUFB.encoding(encoding).emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(source), (AMD64Address) crb.asAddress(selector));
             }
         }
     }
@@ -219,19 +212,19 @@ public class AMD64VectorShuffle {
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG}) protected AllocatableValue source;
         protected final byte[] selector;
-        protected final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public ConstShuffleBytesOp(AllocatableValue result, AllocatableValue source, boolean useEvex, byte... selector) {
-            this(TYPE, result, source, useEvex, selector);
+        public ConstShuffleBytesOp(AllocatableValue result, AllocatableValue source, AMD64SIMDInstructionEncoding encoding, byte... selector) {
+            this(TYPE, result, source, encoding, selector);
         }
 
-        public ConstShuffleBytesOp(LIRInstructionClass<? extends AMD64LIRInstruction> c, AllocatableValue result, AllocatableValue source, boolean useEvex, byte... selector) {
+        public ConstShuffleBytesOp(LIRInstructionClass<? extends AMD64LIRInstruction> c, AllocatableValue result, AllocatableValue source, AMD64SIMDInstructionEncoding encoding, byte... selector) {
             super(c);
             assert AVXKind.getRegisterSize(((AMD64Kind) source.getPlatformKind())).getBytes() == selector.length : " Register size=" +
                             AVXKind.getRegisterSize(((AMD64Kind) source.getPlatformKind())).getBytes() + " select length=" + selector.length;
             this.result = result;
             this.source = source;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
             this.selector = selector;
         }
 
@@ -240,7 +233,7 @@ public class AMD64VectorShuffle {
             AMD64Kind kind = (AMD64Kind) source.getPlatformKind();
             int alignment = crb.dataBuilder.ensureValidDataAlignment(selector.length);
             AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(selector, alignment);
-            (useEvex ? EVPSHUFB : VPSHUFB).emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(source), address);
+            VPSHUFB.encoding(encoding).emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(source), address);
         }
     }
 
@@ -249,7 +242,7 @@ public class AMD64VectorShuffle {
         @Use({OperandFlag.REG}) protected AllocatableValue mask;
 
         public ConstShuffleBytesOpWithMask(AllocatableValue result, AllocatableValue source, AllocatableValue mask, byte... selector) {
-            super(TYPE, result, source, true, selector);
+            super(TYPE, result, source, AMD64SIMDInstructionEncoding.EVEX, selector);
             this.mask = mask;
         }
 
@@ -331,15 +324,15 @@ public class AMD64VectorShuffle {
         @Use({OperandFlag.REG}) protected AllocatableValue source1;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue source2;
         private final int selector;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public ShuffleFloatOp(AllocatableValue result, AllocatableValue source1, AllocatableValue source2, int selector, boolean useEvex) {
+        public ShuffleFloatOp(AllocatableValue result, AllocatableValue source1, AllocatableValue source2, int selector, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             this.result = result;
             this.source1 = source1;
             this.source2 = source2;
             this.selector = selector;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
@@ -347,8 +340,8 @@ public class AMD64VectorShuffle {
             AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
 
             VexRVMIOp op = switch (kind.getScalar()) {
-                case SINGLE -> useEvex ? EVSHUFPS : VSHUFPS;
-                case DOUBLE -> useEvex ? EVSHUFPD : VSHUFPD;
+                case SINGLE -> VSHUFPS.encoding(encoding);
+                case DOUBLE -> VSHUFPD.encoding(encoding);
                 default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind.getScalar()); // ExcludeFromJacocoGeneratedReport
             };
 
@@ -366,14 +359,14 @@ public class AMD64VectorShuffle {
         @Def({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue result;
         @Use({OperandFlag.REG}) protected AllocatableValue source;
         private final int selector;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public Extract128Op(AllocatableValue result, AllocatableValue source, int selector, boolean useEvex) {
+        public Extract128Op(AllocatableValue result, AllocatableValue source, int selector, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             this.result = result;
             this.source = source;
             this.selector = selector;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
@@ -382,7 +375,7 @@ public class AMD64VectorShuffle {
             AVXSize size = AVXKind.getRegisterSize(kind);
 
             VexMRIOp op;
-            if (useEvex) {
+            if (encoding == AMD64SIMDInstructionEncoding.EVEX) {
                 GraalError.guarantee(size.getBytes() >= AVXSize.YMM.getBytes(), "Unexpected vector size %s for extract-128-bits op", size);
                 op = switch (kind.getScalar()) {
                     case DOUBLE -> masm.supports(CPUFeature.AVX512DQ) ? EVEXTRACTF64X2 : EVEXTRACTF32X4;
@@ -461,15 +454,15 @@ public class AMD64VectorShuffle {
         @Use({OperandFlag.REG}) protected AllocatableValue source1;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue source2;
         private final int selector;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public Insert128Op(AllocatableValue result, AllocatableValue source1, AllocatableValue source2, int selector, boolean useEvex) {
+        public Insert128Op(AllocatableValue result, AllocatableValue source1, AllocatableValue source2, int selector, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             this.result = result;
             this.source1 = source1;
             this.source2 = source2;
             this.selector = selector;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
@@ -479,7 +472,7 @@ public class AMD64VectorShuffle {
             AVXSize size = AVXKind.getRegisterSize(kind);
 
             VexRVMIOp op;
-            if (useEvex) {
+            if (encoding == AMD64SIMDInstructionEncoding.EVEX) {
                 GraalError.guarantee(size.getBytes() >= AVXSize.YMM.getBytes(), "Unexpected vector size %s for extract-128-bits op", size);
                 op = switch (kind.getScalar()) {
                     case DOUBLE -> masm.supports(CPUFeature.AVX512DQ) ? EVINSERTF64X2 : EVINSERTF32X4;
@@ -560,21 +553,21 @@ public class AMD64VectorShuffle {
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG}) protected AllocatableValue vector;
         private final int selector;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public ExtractByteOp(AllocatableValue result, AllocatableValue vector, int selector, boolean useEvex) {
+        public ExtractByteOp(AllocatableValue result, AllocatableValue vector, int selector, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             assert result.getPlatformKind() == AMD64Kind.DWORD : result;
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.BYTE : Assertions.errorMessage(vector);
             this.result = result;
             this.vector = vector;
             this.selector = selector;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            (useEvex ? EVPEXTRB : VPEXTRB).emit(masm, XMM, asRegister(result), asRegister(vector), selector);
+            VPEXTRB.encoding(encoding).emit(masm, XMM, asRegister(result), asRegister(vector), selector);
         }
     }
 
@@ -583,21 +576,21 @@ public class AMD64VectorShuffle {
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG}) protected AllocatableValue vector;
         private final int selector;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public ExtractShortOp(AllocatableValue result, AllocatableValue vector, int selector, boolean useEvex) {
+        public ExtractShortOp(AllocatableValue result, AllocatableValue vector, int selector, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             assert result.getPlatformKind() == AMD64Kind.DWORD : result;
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.WORD : vector;
             this.result = result;
             this.vector = vector;
             this.selector = selector;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            (useEvex ? EVPEXTRW : VPEXTRW).emit(masm, XMM, asRegister(result), asRegister(vector), selector);
+            VPEXTRW.encoding(encoding).emit(masm, XMM, asRegister(result), asRegister(vector), selector);
         }
     }
 
@@ -606,32 +599,32 @@ public class AMD64VectorShuffle {
         @Def({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue result;
         @Use({OperandFlag.REG}) protected AllocatableValue vector;
         private final int selector;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public ExtractIntOp(AllocatableValue result, AllocatableValue vector, int selector, boolean useEvex) {
+        public ExtractIntOp(AllocatableValue result, AllocatableValue vector, int selector, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             assert result.getPlatformKind() == AMD64Kind.DWORD : result;
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.DWORD : vector;
             this.result = result;
             this.vector = vector;
             this.selector = selector;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(result)) {
                 if (selector == 0) {
-                    (useEvex ? EVMOVD : VMOVD).emitReverse(masm, XMM, asRegister(result), asRegister(vector));
+                    VMOVD.encoding(encoding).emitReverse(masm, XMM, asRegister(result), asRegister(vector));
                 } else {
-                    (useEvex ? EVPEXTRD : VPEXTRD).emit(masm, XMM, asRegister(result), asRegister(vector), selector);
+                    VPEXTRD.encoding(encoding).emit(masm, XMM, asRegister(result), asRegister(vector), selector);
                 }
             } else {
                 assert isStackSlot(result);
                 if (selector == 0) {
-                    (useEvex ? EVMOVD : VMOVD).emit(masm, XMM, (AMD64Address) crb.asAddress(result), asRegister(vector));
+                    VMOVD.encoding(encoding).emit(masm, XMM, (AMD64Address) crb.asAddress(result), asRegister(vector));
                 } else {
-                    (useEvex ? EVPEXTRD : VPEXTRD).emit(masm, XMM, (AMD64Address) crb.asAddress(result), asRegister(vector), selector);
+                    VPEXTRD.encoding(encoding).emit(masm, XMM, (AMD64Address) crb.asAddress(result), asRegister(vector), selector);
                 }
             }
         }
@@ -642,32 +635,32 @@ public class AMD64VectorShuffle {
         @Def({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue result;
         @Use({OperandFlag.REG}) protected AllocatableValue vector;
         private final int selector;
-        private final boolean useEvex;
+        private final AMD64SIMDInstructionEncoding encoding;
 
-        public ExtractLongOp(AllocatableValue result, AllocatableValue vector, int selector, boolean useEvex) {
+        public ExtractLongOp(AllocatableValue result, AllocatableValue vector, int selector, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             assert result.getPlatformKind() == AMD64Kind.QWORD : result;
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.QWORD : vector;
             this.result = result;
             this.vector = vector;
             this.selector = selector;
-            this.useEvex = useEvex;
+            this.encoding = encoding;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(result)) {
                 if (selector == 0) {
-                    (useEvex ? EVMOVQ : VMOVQ).emitReverse(masm, XMM, asRegister(result), asRegister(vector));
+                    VMOVQ.encoding(encoding).emitReverse(masm, XMM, asRegister(result), asRegister(vector));
                 } else {
-                    (useEvex ? EVPEXTRQ : VPEXTRQ).emit(masm, XMM, asRegister(result), asRegister(vector), selector);
+                    VPEXTRQ.encoding(encoding).emit(masm, XMM, asRegister(result), asRegister(vector), selector);
                 }
             } else {
                 assert isStackSlot(result);
                 if (selector == 0) {
-                    (useEvex ? EVMOVQ : VMOVQ).emit(masm, XMM, (AMD64Address) crb.asAddress(result), asRegister(vector));
+                    VMOVQ.encoding(encoding).emit(masm, XMM, (AMD64Address) crb.asAddress(result), asRegister(vector));
                 } else {
-                    (useEvex ? EVPEXTRQ : VPEXTRQ).emit(masm, XMM, (AMD64Address) crb.asAddress(result), asRegister(vector), selector);
+                    VPEXTRQ.encoding(encoding).emit(masm, XMM, (AMD64Address) crb.asAddress(result), asRegister(vector), selector);
                 }
             }
         }

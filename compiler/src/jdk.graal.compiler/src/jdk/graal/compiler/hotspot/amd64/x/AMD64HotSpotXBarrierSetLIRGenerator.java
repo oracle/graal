@@ -29,7 +29,7 @@ import static jdk.vm.ci.amd64.AMD64.r15;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.core.amd64.AMD64LIRGenerator;
@@ -148,7 +148,7 @@ public class AMD64HotSpotXBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
             Variable result = tool.newVariable(tool.toRegisterKind(kind));
 
             AMD64Assembler.VexMoveOp op = AMD64VectorMove.getVectorMemMoveOp((AMD64Kind) kind.getPlatformKind(),
-                            AMD64BaseAssembler.supportsFullAVX512(((AMD64) tool.target().arch).getFeatures()));
+                            AMD64SIMDInstructionEncoding.forFeatures(((AMD64) tool.target().arch).getFeatures()));
             Variable temp = tool.newVariable(tool.toRegisterKind(kind));
             tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
             tool.append(new AMD64HotSpotXVectorReadBarrierOp(AVXKind.getRegisterSize((AMD64Kind) kind.getPlatformKind()), op, result, loadAddress, state, config, callTarget, temp));
