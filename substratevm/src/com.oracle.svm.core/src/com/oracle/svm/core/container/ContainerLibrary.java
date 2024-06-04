@@ -33,9 +33,53 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
+/**
+ * Provides Java-level access to the native {@code libsvm_container} implementation.
+ *
+ * The native code is base on the container implementation in the JDK. The {@link BasedOnJDKFile}
+ * annotations below allow us to track upstream changes. Note that the referenced revisions/tags do
+ * not necessarily denote the date when the file was last imported (although often that is the
+ * case), but rather the last time upstream changes where reviewed. If there are changes that are
+ * irrelevant for SVM, we might omit updating our copies. That said, full updates are done
+ * regularly. See also the README file in
+ * {@code substratevm/src/com.oracle.svm.native.libcontainer/README.md}.
+ */
 @CContext(ContainerLibraryDirectives.class)
 @CLibrary(value = "svm_container", requireStatic = true, dependsOn = "m")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/java.base/share/native/include/jni.h")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/java.base/unix/native/include/jni_md.h")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/cgroupSubsystem_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/cgroupSubsystem_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/cgroupV1Subsystem_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/cgroupV1Subsystem_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/cgroupV2Subsystem_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/cgroupV2Subsystem_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/osContainer_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/osContainer_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/os_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/os_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/linux/os_linux.inline.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/posix/include/jvm_md.h")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/posix/os_posix.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/posix/os_posix.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/os/posix/os_posix.inline.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/memory/allocation.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/memory/allocation.inline.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/memory/allStatic.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/runtime/os.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/runtime/os.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/runtime/os.inline.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/utilities/attributeNoreturn.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/utilities/checkedCast.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/utilities/compilerWarnings_gcc.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/utilities/compilerWarnings.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/utilities/globalDefinitions_gcc.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/utilities/globalDefinitions.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/utilities/macros.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/utilities/ostream.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot/share/utilities/ostream.hpp")
 class ContainerLibrary {
     static final int VERSION = 240100;
 
