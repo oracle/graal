@@ -56,6 +56,8 @@ public interface RuntimeResourceSupport<C> {
 
     void addResource(Module module, String resourcePath);
 
+    void addGlob(C condition, String module, String glob);
+
     void injectResource(Module module, String resourcePath, byte[] resourceContent);
 
     void ignoreResources(C condition, String pattern);

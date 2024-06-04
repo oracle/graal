@@ -25,7 +25,6 @@
 package com.oracle.svm.configure.config.conditional;
 
 import java.util.List;
-import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
@@ -62,7 +61,12 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
     }
 
     @Override
-    public boolean testIncludedResource(ConditionalElement<String> condition, Pattern pattern) {
+    public boolean testIncludedResource(ConditionalElement<String> condition) {
+        return !filter.includes(condition.condition().getTypeName());
+    }
+
+    @Override
+    public boolean testIncludedGlob(ConditionalElement<ResourceConfiguration.ResourceEntry> condition) {
         return !filter.includes(condition.condition().getTypeName());
     }
 

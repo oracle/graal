@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
@@ -70,22 +69,18 @@ class ReflectionProcessor extends AbstractProcessor {
         switch (function) {
             // These are called via java.lang.Class or via the class loader hierarchy, so we would
             // always filter based on the caller class.
-            case "findResource":
-            case "findResourceAsStream":
+            case "findResource", "findResourceAsStream" -> {
                 expectSize(args, 2);
                 String module = (String) args.get(0);
                 String resource = (String) args.get(1);
-                resourceConfiguration.addResourcePattern(condition, (module == null ? "" : module + ":") + Pattern.quote(resource));
+                resourceConfiguration.addGlobPattern(condition, resource, module);
                 return;
-            case "getResource":
-            case "getSystemResource":
-            case "getSystemResourceAsStream":
-            case "getResources":
-            case "getSystemResources":
+            }
+            case "getResource", "getSystemResource", "getSystemResourceAsStream", "getResources", "getSystemResources" -> {
                 String literal = singleElement(args);
-                String regex = Pattern.quote(literal);
-                resourceConfiguration.addResourcePattern(condition, regex);
+                resourceConfiguration.addGlobPattern(condition, literal, null);
                 return;
+            }
         }
         TypeConfiguration configuration = configurationSet.getReflectionConfiguration();
         String callerClass = (String) entry.get("caller_class");
