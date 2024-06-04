@@ -868,6 +868,8 @@ suite = {
                                    # e.g., '__cxa_pure_virtual'. -O1 or higher avoids the problem.
                                    # "-DASSERT", "-DPRINT_WARNINGS", "-g", "-O1", "-DLOG_LEVEL=6",
                                    # include dirs
+                                   "-I<path:com.oracle.svm.native.libcontainer>/src/java.base/share/native/include",
+                                   "-I<path:com.oracle.svm.native.libcontainer>/src/java.base/unix/native/include",
                                    "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot",
                                    "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot/share",
                                    "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot/os/linux",

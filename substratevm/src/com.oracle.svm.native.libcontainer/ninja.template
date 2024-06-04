@@ -25,8 +25,8 @@
 root = .
 builddir = build
 
-includes                  = -Isrc/hotspot -Isrc/hotspot/share -Isrc/svm -Isrc/svm/share
-includes_linux            = $includes -Isrc/hotspot/os/linux -Isrc/hotspot/os/posix -Isrc/hotspot/os/posix/include
+includes                  = -Isrc/hotspot -Isrc/hotspot/share -Isrc/svm -Isrc/svm/share -Isrc/java.base/share/native/include
+includes_linux            = $includes -Isrc/hotspot/os/linux -Isrc/hotspot/os/posix -Isrc/hotspot/os/posix/include -Isrc/java.base/unix/native/include
 defines_linux             = -DNATIVE_IMAGE -DLINUX -DINCLUDE_SUFFIX_COMPILER=_gcc -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
 
 cflags_linux              = $defines_linux -std=c++14 $includes_linux -fno-rtti -fno-exceptions -fvisibility=hidden -fPIC
