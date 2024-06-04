@@ -60,6 +60,9 @@ import com.oracle.svm.core.jdk.resources.ResourceExceptionEntry;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
+import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
+import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode;
+import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
@@ -331,6 +334,15 @@ public final class Resources {
                         return null;
                     }
                 }
+
+                String glob = GlobUtils.transformToTriePath(resourceName, moduleName);
+                String canonicalGlob = GlobUtils.transformToTriePath(canonicalResourceName, moduleName);
+                GlobTrieNode globsTrie = ImageSingletons.lookup(GlobTrieNode.class);
+                if (CompressedGlobTrie.match(globsTrie, glob) ||
+                                CompressedGlobTrie.match(globsTrie, canonicalGlob)) {
+                    return null;
+                }
+
                 return missingMetadata(resourceName, throwOnMissing);
             } else {
                 return null;

@@ -1,11 +1,45 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
-  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.1.0.json",
   "default": {
+    "globs": [],
     "resources": {},
     "bundles": []
   },
   "properties": {
+    "globs": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "properties": {
+              "typeReachable": {
+                "type": "string",
+                "title": "Fully qualified class name of the class that must be reachable in order to register glob pattern"
+              }
+            },
+            "required": [
+              "typeReachable"
+            ],
+            "additionalProperties": false,
+            "type": "object"
+          },
+          "glob": {
+            "type": "string",
+            "title": "Resource matching glob"
+          },
+          "module": {
+            "type": "string",
+            "title": "Module of resource described with glob"
+          }
+        },
+        "required": ["glob"],
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "type": "array",
+      "title": "List of glob patterns that are used to match resources for registration"
+    },
     "resources": {
       "properties": {
         "includes": {
@@ -114,10 +148,6 @@
       "title": "List of resource bundles that should be registered"
     }
   },
-  "required": [
-    "bundles",
-    "resources"
-  ],
   "additionalProperties": false,
   "type": "object",
   "title": "JSON schema for the resource-config that GraalVM Native Image uses",
