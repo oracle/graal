@@ -374,6 +374,8 @@ public abstract class Accessor {
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
+        public abstract Object getScope(Object polyglotLanguageContext, LanguageInfo languageInfo, boolean internal);
+
         public abstract boolean hasCurrentContext();
 
         public abstract boolean isDisposed(Object polyglotLanguageContext);
@@ -549,7 +551,7 @@ public abstract class Accessor {
 
         public abstract FileSystem getFileSystem(Object polyglotContext);
 
-        public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext);
+        public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext, LanguageInfo language);
 
         public abstract boolean isPolyglotBindingsAccessAllowed(Object polyglotLanguageContext);
 

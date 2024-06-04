@@ -241,20 +241,16 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return accessibleLanguages.contains(language.getId());
     }
 
-    boolean isPolyglotEvalAllowed(String targetLanguage) {
-        if (context.config.polyglotAccess == language.getAPIAccess().getPolyglotAccessAll()) {
-            return true;
-        } else if (targetLanguage != null && language.getId().equals(targetLanguage)) {
-            return true;
-        }
-        Set<String> accessibleLanguages = getAPIAccess().getEvalAccess(context.config.polyglotAccess,
-                        language.getId());
-        if (accessibleLanguages == null || accessibleLanguages.isEmpty()) {
+    boolean isPolyglotEvalAllowed(LanguageInfo info) {
+        Set<String> languageAccess = getAPIAccess().getEvalAccess(context.config.polyglotAccess, language.getId());
+        if (languageAccess != null && languageAccess.isEmpty()) {
             return false;
-        } else if (accessibleLanguages.size() > 1 || !accessibleLanguages.iterator().next().equals(language.getId())) {
-            return targetLanguage == null || accessibleLanguages.contains(targetLanguage);
         }
-        return false;
+        if (info == null) {
+            return true;
+        } else {
+            return getAccessibleLanguages(false).containsKey(info.getId());
+        }
     }
 
     Thread.UncaughtExceptionHandler getPolyglotExceptionHandler() {

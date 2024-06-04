@@ -231,9 +231,9 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isPolyglotEvalAllowed(Object polyglotLanguageContext) {
+        public boolean isPolyglotEvalAllowed(Object polyglotLanguageContext, LanguageInfo language) {
             PolyglotLanguageContext languageContext = ((PolyglotLanguageContext) polyglotLanguageContext);
-            return languageContext.isPolyglotEvalAllowed(null);
+            return languageContext.isPolyglotEvalAllowed(language);
         }
 
         @Override
@@ -495,6 +495,24 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
             PolyglotLanguage language = context.engine.findLanguage(info);
             return context.getContextInitialized(language, null).env;
+        }
+
+        @Override
+        public Object getScope(Object polyglotLanguageContext, LanguageInfo requiredLanguage, boolean internal) {
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
+            Map<String, LanguageInfo> allowedLanguages;
+            if (internal) {
+                allowedLanguages = getInternalLanguages(languageContext);
+            } else {
+                allowedLanguages = getPublicLanguages(languageContext);
+            }
+            if (!allowedLanguages.containsKey(requiredLanguage.getId())) {
+                throw new PolyglotEngineException(new SecurityException(String.format("Access to language '%s' is not permitted.", requiredLanguage.getId())));
+            }
+            PolyglotContextImpl context = languageContext.context;
+            PolyglotLanguage requiredPolyglotLanguage = context.engine.findLanguage(requiredLanguage);
+            PolyglotLanguageContext requestedPolyglotLanguageContext = context.getContextInitialized(requiredPolyglotLanguage, languageContext.language);
+            return LANGUAGE.getScope(requestedPolyglotLanguageContext.env);
         }
 
         static PolyglotLanguage findObjectLanguage(PolyglotEngineImpl engine, Object value) {

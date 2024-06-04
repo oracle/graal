@@ -887,8 +887,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
 
-        assert allowInternalAndDependent || foundLanguage == null || (!foundLanguage.isInternal() && accessingLanguage.isPolyglotEvalAllowed(languageId));
-
         if (foundLanguage != null) {
             return idToLanguage.get(foundLanguage.getId());
         }
