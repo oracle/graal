@@ -56,11 +56,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.internal.module.DefaultRoots;
-import jdk.internal.module.ModuleBootstrap;
-import jdk.internal.module.ModuleReferenceImpl;
-import jdk.internal.module.SystemModuleFinders;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -82,6 +77,11 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.module.DefaultRoots;
+import jdk.internal.module.ModuleBootstrap;
+import jdk.internal.module.ModuleReferenceImpl;
+import jdk.internal.module.SystemModuleFinders;
 
 /**
  * This feature:
@@ -203,7 +203,7 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         Set<Module> runtimeImageModules = accessImpl.getUniverse().getTypes()
                         .stream()
-                        .filter(ModuleLayerFeature::typeIsReachable)
+                        .filter(t1 -> !t1.isInBaseLayer() && typeIsReachable(t1))
                         .map(t -> t.getJavaClass().getModule())
                         .collect(Collectors.toSet());
 

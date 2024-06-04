@@ -45,6 +45,7 @@ import java.util.EnumSet;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -54,7 +55,6 @@ import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
-import com.oracle.svm.core.code.BaseLayerMethodAccessor;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -84,6 +84,7 @@ import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode.FieldLoad;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode.FieldLoadIfZero;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -673,14 +674,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
             if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
                 /*
-                 * Load the absolute address of the target method from the method entry stored in
-                 * the data section.
+                 * Load the address for the start of the text section and then add in the offset for
+                 * this specific method.
                  */
-                CGlobalDataInfo methodDataInfo = BaseLayerMethodAccessor.singleton().getMethodData(targetMethod);
-                AllocatableValue methodPointerAddress = newVariable(getLIRKindTool().getWordKind());
-                append(new AMD64CGlobalDataLoadAddressOp(methodDataInfo, methodPointerAddress));
-                AMD64AddressValue methodTableEntryAddress = new AMD64AddressValue(getLIRKindTool().getWordKind(), methodPointerAddress, Value.ILLEGAL, Stride.S1, 0);
-                return getArithmetic().emitLoad(getLIRKindTool().getWordKind(), methodTableEntryAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
+                Pair<CGlobalDataInfo, Integer> methodLocation = DynamicImageLayerInfo.singleton().getPriorLayerMethodLocation(targetMethod);
+                AllocatableValue basePointerAddress = newVariable(getLIRKindTool().getWordKind());
+                append(new AMD64CGlobalDataLoadAddressOp(methodLocation.getLeft(), basePointerAddress));
+                Value codeOffsetInSection = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(methodLocation.getRight()));
+                return getArithmetic().emitAdd(basePointerAddress, codeOffsetInSection, false);
             }
             if (!shouldEmitOnlyIndirectCalls()) {
                 return null;

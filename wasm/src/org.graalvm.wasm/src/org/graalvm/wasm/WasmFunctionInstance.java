@@ -58,6 +58,9 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 public final class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
+
+    static final int NO_BYTECODE_INDEX = -1;
+
     private final WasmContext context;
     private final WasmInstance moduleInstance;
     private final WasmFunction function;
@@ -132,7 +135,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     @ExportMessage
     Object execute(Object[] arguments,
                     @CachedLibrary("this") InteropLibrary self,
-                    @Cached WasmIndirectCallNode callNode) {
+                    @Cached("create(NO_BYTECODE_INDEX)") WasmIndirectCallNode callNode) {
         TruffleContext c = getTruffleContext();
         Object prev = c.enter(self);
         try {

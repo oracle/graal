@@ -136,6 +136,19 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     @Override
+    protected int findBytecodeIndex(Node node, Frame frame) {
+        if (frame == null) {
+            return -1;
+        }
+        return readBCI(frame);
+    }
+
+    @Override
+    protected boolean isCaptureFramesForTrace(Node currentNode) {
+        return true;
+    }
+
+    @Override
     protected Object translateStackTraceElement(TruffleStackTraceElement element) {
         Node location = element.getLocation();
         return new ForeignStackTraceElementObject(getMethod(), location != null ? location.getEncapsulatingSourceSection() : getEncapsulatingSourceSection());

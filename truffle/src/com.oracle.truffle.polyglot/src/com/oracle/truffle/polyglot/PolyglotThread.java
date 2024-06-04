@@ -99,7 +99,7 @@ final class PolyglotThread extends Thread {
         // always call through a HostToGuestRootNode so that stack/frame
         // walking can determine in which context the frame was executed
         try {
-            callTarget.call(languageContext, this, new PolyglotThreadRunnable() {
+            callTarget.call(null, languageContext, this, new PolyglotThreadRunnable() {
                 @Override
                 @TruffleBoundary
                 public void execute() {

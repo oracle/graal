@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package org.graalvm.wasm.nodes;
 
-import java.lang.reflect.Type;
-import java.util.function.Function;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
-final class PolyglotIteratorAndFunction<T> extends PolyglotIterator<T> implements Function<Object, Object> {
+public final class WasmDirectCallNode extends WasmCallNode {
 
-    PolyglotIteratorAndFunction(Class<T> elementClass, Type elementType, Object iterable, PolyglotLanguageContext languageContext) {
-        super(elementClass, elementType, iterable, languageContext);
+    private final int bytecodeOffset;
+    private final CallTarget target;
+
+    WasmDirectCallNode(CallTarget target, int bytecodeOffset) {
+        this.target = target;
+        this.bytecodeOffset = bytecodeOffset;
+    }
+
+    public CallTarget getTarget() {
+        return target;
+    }
+
+    public Object execute(Object[] args) {
+        return target.call(this, args);
     }
 
     @Override
-    public Object apply(Object t) {
-        return cache.apply.call(null, languageContext, guestObject, t);
+    public int getBytecodeOffset() {
+        return bytecodeOffset;
     }
+
+    @NeverDefault
+    public static WasmDirectCallNode create(CallTarget target, int bytecodeOffset) {
+        return new WasmDirectCallNode(target, bytecodeOffset);
+    }
+
 }

@@ -45,17 +45,24 @@ package org.graalvm.wasm.parser.ir;
  * Represents information about a wasm call instruction.
  */
 public class CallNode {
+    private final int bytecodeOffset;
     private final int functionIndex;
     private final boolean isIndirectCall;
 
-    public CallNode(int functionIndex) {
+    public CallNode(int bytecodeOffset, int functionIndex) {
+        this.bytecodeOffset = bytecodeOffset;
         this.functionIndex = functionIndex;
         this.isIndirectCall = false;
     }
 
-    public CallNode() {
+    public CallNode(int bytecodeOffset) {
+        this.bytecodeOffset = bytecodeOffset;
         this.functionIndex = -1;
         this.isIndirectCall = true;
+    }
+
+    public int getBytecodeOffset() {
+        return bytecodeOffset;
     }
 
     public int getFunctionIndex() {

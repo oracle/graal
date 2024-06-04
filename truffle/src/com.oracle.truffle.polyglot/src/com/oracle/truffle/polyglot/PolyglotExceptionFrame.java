@@ -58,12 +58,14 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final boolean host;
     private StackTraceElement stackTrace;
     private final String formattedSource;
+    private final int bytecodeIndex;
 
     private PolyglotExceptionFrame(PolyglotExceptionImpl source, PolyglotLanguage language,
-                    Object sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
+                    Object sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace, int bytecodeIndex) {
         super(source.polyglot);
         this.language = language;
         this.sourceLocation = sourceLocation;
+        this.bytecodeIndex = bytecodeIndex;
         this.rootName = rootName;
         this.host = isHost;
         this.stackTrace = stackTrace;
@@ -78,6 +80,11 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     @Override
     public Object getSourceLocation() {
         return this.sourceLocation;
+    }
+
+    @Override
+    public int getBytecodeIndex() {
+        return bytecodeIndex;
     }
 
     @Override
@@ -169,7 +176,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
                 location = first ? exception.getSourceLocation() : null;
             }
         }
-        return new PolyglotExceptionFrame(exception, language, location, rootName, false, null);
+        return new PolyglotExceptionFrame(exception, language, location, rootName, false, null, frame.getBytecodeIndex());
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
@@ -181,7 +188,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         SourceSection location = null;
 
         String rootname = hostStack.getClassName() + "." + hostStack.getMethodName();
-        return new PolyglotExceptionFrame(exception, language, location, rootname, true, hostStack);
+        return new PolyglotExceptionFrame(exception, language, location, rootname, true, hostStack, -1);
     }
 
     private static String spaces(int length) {

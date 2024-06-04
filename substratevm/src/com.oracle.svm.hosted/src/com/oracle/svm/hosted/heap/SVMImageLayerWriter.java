@@ -269,6 +269,11 @@ class ImageSingletonWriterImpl implements ImageSingletonWriter {
 
     @Override
     public void writeIntList(String keyName, List<Integer> value) {
-        keyValueStore.put(keyName, List.of("I[]", value));
+        keyValueStore.put(keyName, List.of("I(", value));
+    }
+
+    @Override
+    public void writeString(String keyName, String value) {
+        keyValueStore.put(keyName, List.of("S", value));
     }
 }

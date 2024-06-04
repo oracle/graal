@@ -1677,7 +1677,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             languageContext.checkAccess(null);
             languageContext.ensureInitialized(null);
             CallTarget target = languageContext.parseCached(null, truffleSource, null);
-            Object result = target.call(PolyglotImpl.EMPTY_ARGS);
+            Object result = target.call(null, PolyglotImpl.EMPTY_ARGS);
             Object hostValue;
             try {
                 hostValue = languageContext.asValue(result);

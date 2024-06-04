@@ -766,7 +766,7 @@ public class NativeImageGenerator {
                 AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
-            reporter.printCreationEnd(image.getImageFileSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize());
+            reporter.printCreationEnd(image.getImageFileSize(), heap.getLayerObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize());
         }
     }
 

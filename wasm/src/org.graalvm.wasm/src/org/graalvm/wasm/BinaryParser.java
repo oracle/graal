@@ -715,7 +715,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     state.pushAll(function.type().resultTypes());
                     state.addCall(callNodes.size(), callFunctionIndex);
-                    callNodes.add(new CallNode(callFunctionIndex));
+                    callNodes.add(new CallNode(bytecode.location(), callFunctionIndex));
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {
@@ -741,7 +741,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     state.pushAll(callResultTypes);
                     state.addIndirectCall(callNodes.size(), expectedFunctionTypeIndex, tableIndex);
-                    callNodes.add(new CallNode());
+                    callNodes.add(new CallNode(bytecode.location()));
                     break;
                 }
                 case Instructions.DROP:

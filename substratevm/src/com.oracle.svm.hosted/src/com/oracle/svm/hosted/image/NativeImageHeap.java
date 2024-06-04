@@ -175,6 +175,10 @@ public final class NativeImageHeap implements ImageHeap {
         return objects.size();
     }
 
+    public int getLayerObjectCount() {
+        return (int) objects.values().stream().filter(o -> !o.constant.isInBaseLayer()).count();
+    }
+
     public ObjectInfo getObjectInfo(Object obj) {
         JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
@@ -399,7 +403,7 @@ public final class NativeImageHeap implements ImageHeap {
     public int countDynamicHubs() {
         int count = 0;
         for (ObjectInfo o : getObjects()) {
-            if (hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+            if (!o.constant.isInBaseLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
                 count++;
             }
         }

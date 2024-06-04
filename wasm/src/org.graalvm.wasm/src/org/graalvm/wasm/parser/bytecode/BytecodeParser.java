@@ -41,7 +41,16 @@
 
 package org.graalvm.wasm.parser.bytecode;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.GlobalRegistry;
@@ -59,15 +68,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-
-import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * Allows to parse the runtime bytecode and reset modules.
@@ -435,27 +436,28 @@ public abstract class BytecodeParser {
         ArrayList<CallNode> callNodes = new ArrayList<>();
         while (offset < endOffset) {
             int opcode = BinaryStreamParser.rawPeekU8(bytecode, offset);
+            final int originalOffset = offset;
             offset++;
             switch (opcode) {
                 case Bytecode.CALL_U8: {
                     final int functionIndex = rawPeekU8(bytecode, offset + 1);
-                    callNodes.add(new CallNode(functionIndex));
+                    callNodes.add(new CallNode(originalOffset, functionIndex));
                     offset += 2;
                     break;
                 }
                 case Bytecode.CALL_I32: {
                     final int functionIndex = rawPeekI32(bytecode, offset + 4);
-                    callNodes.add(new CallNode(functionIndex));
+                    callNodes.add(new CallNode(originalOffset, functionIndex));
                     offset += 8;
                     break;
                 }
                 case Bytecode.CALL_INDIRECT_U8: {
-                    callNodes.add(new CallNode());
+                    callNodes.add(new CallNode(originalOffset));
                     offset += 5;
                     break;
                 }
                 case Bytecode.CALL_INDIRECT_I32: {
-                    callNodes.add(new CallNode());
+                    callNodes.add(new CallNode(originalOffset));
                     offset += 14;
                     break;
                 }

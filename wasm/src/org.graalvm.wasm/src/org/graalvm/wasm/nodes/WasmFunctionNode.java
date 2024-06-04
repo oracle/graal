@@ -48,8 +48,8 @@ import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
-import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
 import static org.graalvm.wasm.nodes.WasmFrame.dropObject;
+import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
 import static org.graalvm.wasm.nodes.WasmFrame.popBoolean;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
@@ -64,7 +64,8 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 
-import com.oracle.truffle.api.memory.ByteArraySupport;
+import java.util.Arrays;
+
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmArguments;
@@ -98,13 +99,11 @@ import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-
-import java.util.Arrays;
 
 /**
  * This node represents the function body of a WebAssembly function. It executes the instruction
@@ -1781,22 +1780,22 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 truffleContext.leave(this, prev);
             }
         } else {
-            DirectCallNode directCallNode = (DirectCallNode) callNode;
+            WasmDirectCallNode directCallNode = (WasmDirectCallNode) callNode;
             WasmArguments.setModuleInstance(args, instance);
-            assert assertDirectCall(instance, function, directCallNode);
-            Object result = directCallNode.call(args);
+            assert assertDirectCall(instance, function, directCallNode.getTarget());
+            Object result = directCallNode.execute(args);
             return pushDirectCallResult(frame, stackPointer, function, result, WasmLanguage.get(this));
         }
     }
 
-    private boolean assertDirectCall(WasmInstance instance, WasmFunction function, DirectCallNode callNode) {
+    private boolean assertDirectCall(WasmInstance instance, WasmFunction function, CallTarget target) {
         WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
         // functionInstance may be null for calls between functions of the same module.
         if (functionInstance == null) {
             assert !function.isImported();
             return true;
         }
-        assert functionInstance.target() == callNode.getCallTarget();
+        assert functionInstance.target() == target;
         assert function.isImported() || functionInstance.context() == WasmContext.get(this);
         return true;
     }
@@ -4564,12 +4563,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    public void resolveCallNode(WasmInstance instance, int callNodeIndex) {
+    public void resolveCallNode(WasmInstance instance, int callNodeIndex, int bytecodeOffset) {
         Node unresolvedCallNode = callNodes[callNodeIndex];
         if (unresolvedCallNode instanceof WasmCallStubNode) {
             final WasmFunction function = ((WasmCallStubNode) unresolvedCallNode).function();
             final CallTarget target = instance.target(function.index());
-            callNodes[callNodeIndex] = DirectCallNode.create(target);
+            callNodes[callNodeIndex] = WasmDirectCallNode.create(target, bytecodeOffset);
         } else {
             assert unresolvedCallNode instanceof WasmIndirectCallNode : unresolvedCallNode;
         }

@@ -17,6 +17,42 @@ The syntax of the `native-image` command is:
 The options passed to `native-image` are evaluated from left to right.
 For an overview of options that can be passed to `native-image`, see [here](BuildOptions.md).
 
+## Getting Notified When the Build Process Is Done
+
+Depending on the size of your application and the available resources of your build machine, it can take a few minutes to compile your Java application into a native executable.
+If you are building your application in the background, consider using a command that notifies you when the build process is completed.
+Below, example commands are listed per operating system:
+
+#### Linux
+```bash
+# Ring the terminal bell
+native-image -jar App.jar ... ; printf '\a'
+
+# Use libnotify to create a desktop notification
+native-image -jar App.jar ... ; notify-send "GraalVM Native Image build completed with exit code $?"
+
+# Use Zenity to open an info dialog box with text
+native-image -jar App.jar ... ; zenity --info --text="GraalVM Native Image build completed with exit code $?"
+```
+
+#### macOS
+```bash
+# Ring the terminal bell
+native-image -jar App.jar ... ; printf '\a'
+
+# Use Speech Synthesis
+native-image -jar App.jar ... ; say "GraalVM Native Image build completed"
+```
+
+#### Windows
+```bash
+# Ring the terminal bell (press Ctrl+G to enter ^G)
+native-image.exe -jar App.jar & echo ^G
+
+# Open an info dialog box with text
+native-image.exe -jar App.jar & msg "%username%" GraalVM Native Image build completed
+```
+
 ### Further Reading
 
 If you are new to GraalVM Native Image or have little experience using it, see the [Native Image Basics](NativeImageBasics.md) to better understand some key aspects before going further.

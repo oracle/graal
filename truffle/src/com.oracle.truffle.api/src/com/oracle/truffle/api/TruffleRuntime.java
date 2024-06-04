@@ -75,7 +75,9 @@ public interface TruffleRuntime {
      * @return the new call node
      * @since 0.8 or earlier
      */
-    DirectCallNode createDirectCallNode(CallTarget target);
+    default DirectCallNode createDirectCallNode(CallTarget target) {
+        return DirectCallNode.create(target);
+    }
 
     /**
      * Creates a new loop node with an implementation provided by a Truffle runtime implementation.
@@ -93,7 +95,9 @@ public interface TruffleRuntime {
      * @return the new call node
      * @since 0.8 or earlier
      */
-    IndirectCallNode createIndirectCallNode();
+    default IndirectCallNode createIndirectCallNode() {
+        return IndirectCallNode.create();
+    }
 
     /**
      * Creates a new assumption object that can be checked and invalidated.

@@ -344,7 +344,7 @@ public abstract class NativeImageCodeCache {
         Map<Class<?>, Set<Class<?>>> innerClasses = reflectionSupport.getReflectionInnerClasses();
         Set<?> heapDynamicHubs = reflectionSupport.getHeapDynamicHubs();
         for (HostedType type : hUniverse.getTypes()) {
-            if (type.getWrapped().isReachable() && heapDynamicHubs.contains(type.getHub())) {
+            if (type.getWrapped().isReachable() && !type.getWrapped().isInBaseLayer() && heapDynamicHubs.contains(type.getHub())) {
                 Class<?>[] typeInnerClasses = innerClasses.getOrDefault(type.getJavaClass(), Collections.emptySet()).toArray(new Class<?>[0]);
                 runtimeMetadataEncoder.addClassMetadata(hMetaAccess, type, typeInnerClasses);
             }
@@ -431,13 +431,13 @@ public abstract class NativeImageCodeCache {
 
         if (SubstrateOptions.IncludeMethodData.getValue()) {
             for (HostedField field : hUniverse.getFields()) {
-                if (field.isAccessed() && !includedFields.contains(field.getWrapped())) {
+                if (field.isAccessed() && !field.getWrapped().isInBaseLayer() && !includedFields.contains(field.getWrapped())) {
                     runtimeMetadataEncoder.addReachableFieldMetadata(field);
                 }
             }
 
             for (HostedMethod method : hUniverse.getMethods()) {
-                if (method.getWrapped().isReachable() && !method.getWrapped().isIntrinsicMethod() && !includedMethods.contains(method.getWrapped())) {
+                if (method.getWrapped().isReachable() && !method.getWrapped().isInBaseLayer() && !method.getWrapped().isIntrinsicMethod() && !includedMethods.contains(method.getWrapped())) {
                     runtimeMetadataEncoder.addReachableExecutableMetadata(method);
                 }
             }

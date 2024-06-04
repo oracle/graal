@@ -882,6 +882,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getSourceLocation();
 
+        public abstract int getBytecodeIndex();
+
         public abstract String getRootName();
 
         public abstract Object getLanguage();

@@ -30,4 +30,6 @@ public interface ImageSingletonWriter {
     void writeInt(String keyName, int value);
 
     void writeIntList(String keyName, List<Integer> value);
+
+    void writeString(String keyName, String value);
 }

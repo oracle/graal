@@ -494,8 +494,9 @@ public class WasmInstantiator {
         int childIndex = 0;
         for (CallNode callNode : childNodeList) {
             Node child;
+            final int bytecodeIndex = callNode.getBytecodeOffset();
             if (callNode.isIndirectCall()) {
-                child = WasmIndirectCallNode.create();
+                child = WasmIndirectCallNode.create(bytecodeIndex);
             } else {
                 // We deliberately do not create the call node during instantiation.
                 //
@@ -506,12 +507,12 @@ public class WasmInstantiator {
 
                 final WasmFunction resolvedFunction = module.function(callNode.getFunctionIndex());
                 if (resolvedFunction.isImported()) {
-                    child = WasmIndirectCallNode.create();
+                    child = WasmIndirectCallNode.create(bytecodeIndex);
                 } else {
                     child = new WasmCallStubNode(resolvedFunction);
                 }
                 final int stubIndex = childIndex;
-                instance.addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, resolvedFunction));
+                instance.addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, bytecodeIndex, resolvedFunction));
             }
             callNodes[childIndex++] = child;
         }

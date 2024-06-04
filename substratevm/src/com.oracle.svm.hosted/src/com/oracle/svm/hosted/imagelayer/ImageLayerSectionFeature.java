@@ -48,7 +48,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfoFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
@@ -104,7 +103,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(DynamicImageLayerInfoFeature.class);
+        return List.of(HostedDynamicLayerInfoFeature.class);
     }
 
     @Override

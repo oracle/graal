@@ -23,9 +23,6 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.NATIVE_BCI;
-import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.UNKNOWN_BCI;
-
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -38,7 +35,6 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
@@ -50,7 +46,6 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -591,33 +586,18 @@ public final class InterpreterToVM extends ContextAccessImpl {
             meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
             return throwable;
         }
-        int bci = -1;
-        Method m;
         frames = new VM.StackTrace();
         FrameFilter filter = new FillInStackTraceFramesFilter();
         for (TruffleStackTraceElement element : trace) {
-            Node location = element.getLocation();
-            while (location != null) {
-                if (location instanceof BciProvider) {
-                    bci = ((BciProvider) location).getBci(element.getFrame());
-                    break;
-                }
-                location = location.getParent();
-            }
             RootCallTarget target = element.getTarget();
             if (target != null) {
                 RootNode rootNode = target.getRootNode();
                 if (rootNode instanceof EspressoRootNode) {
-                    m = ((EspressoRootNode) rootNode).getMethod();
+                    Method m = ((EspressoRootNode) rootNode).getMethod();
                     if (!filter.include(m)) {
-                        bci = UNKNOWN_BCI;
                         continue;
                     }
-                    if (m.isNative()) {
-                        bci = NATIVE_BCI;
-                    }
-                    frames.add(new VM.EspressoStackElement(m, bci));
-                    bci = UNKNOWN_BCI;
+                    frames.add(new VM.EspressoStackElement(m, element.getBytecodeIndex()));
                 }
             }
         }

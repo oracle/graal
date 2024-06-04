@@ -46,6 +46,7 @@ import java.util.function.Supplier;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -77,7 +78,7 @@ public final class DebugContext {
         try {
             Debugger debugger = executionLifecycle.getDebugger();
             CallTarget target = debugger.getEnv().parse(Source.newBuilder(languageId, code, "eval").build());
-            Object result = target.call();
+            Object result = target.call((Node) null);
             LanguageInfo languageInfo = debugger.getEnv().getLanguages().get(languageId);
             return new DebugValue.HeapValue(executionLifecycle.getSession(), languageInfo, null, result);
         } catch (IOException ex) {

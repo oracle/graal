@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -452,6 +452,19 @@ public final class PolyglotException extends RuntimeException {
          */
         public SourceSection getSourceLocation() {
             return (SourceSection) impl.getSourceLocation();
+        }
+
+        /**
+         * Returns the bytecode index of this frame if available, or a negative number if no
+         * bytecode index is available. The bytecode index is an internal identifier of the current
+         * execution location. The bytecode index is typically only provided by languages that are
+         * internally implemented as bytecode interpreter. This information is exposed for debugging
+         * or testing purposes and should not be relied upon for anything else.
+         *
+         * @since 24.1
+         */
+        public int getBytecodeIndex() {
+            return impl.getBytecodeIndex();
         }
 
         /**
