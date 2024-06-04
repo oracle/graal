@@ -25,7 +25,7 @@
 root = .
 builddir = build
 
-includes                  = -Isrc/hotspot -Isrc/hotspot/share -Isrc/hotspot/svm -Isrc/hotspot/svm/share
+includes                  = -Isrc/hotspot -Isrc/hotspot/share -Isrc/svm -Isrc/svm/share
 includes_linux            = $includes -Isrc/hotspot/os/linux -Isrc/hotspot/os/posix -Isrc/hotspot/os/posix/include
 defines_linux             = -DNATIVE_IMAGE -DLINUX -DINCLUDE_SUFFIX_COMPILER=_gcc -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
 

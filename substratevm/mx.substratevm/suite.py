@@ -870,11 +870,11 @@ suite = {
                                    # include dirs
                                    "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot",
                                    "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot/share",
-                                   "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot/svm",
-                                   "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot/svm/share",
                                    "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot/os/linux",
                                    "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot/os/posix",
                                    "-I<path:com.oracle.svm.native.libcontainer>/src/hotspot/os/posix/include",
+                                   "-I<path:com.oracle.svm.native.libcontainer>/src/svm",
+                                   "-I<path:com.oracle.svm.native.libcontainer>/src/svm/share",
                                    # HotSpot standard flags
                                    # See https://github.com/openjdk/jdk/blob/master/make/autoconf/flags-cflags.m4
                                    # C++ standard
