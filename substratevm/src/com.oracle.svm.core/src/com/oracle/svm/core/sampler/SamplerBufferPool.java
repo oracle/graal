@@ -58,7 +58,7 @@ public class SamplerBufferPool {
 
     public void teardown() {
         clear(availableBuffers);
-        clear(fullBuffers);
+        /* There should not be any unprocessed buffers. */
         assert bufferCount == 0;
     }
 

@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -35,6 +36,8 @@ import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
 /**
  * A daemon thread that is created during JFR startup and torn down by
@@ -54,6 +57,7 @@ public class JfrRecorderThread extends Thread {
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
 
     private final VMSemaphore semaphore;
+    private final ReentrantLock lock;
     /* A volatile boolean field would not be enough to ensure synchronization. */
     private final UninterruptibleUtils.AtomicBoolean atomicNotify;
 
@@ -66,6 +70,7 @@ public class JfrRecorderThread extends Thread {
         this.globalMemory = globalMemory;
         this.unlockedChunkWriter = unlockedChunkWriter;
         this.semaphore = new VMSemaphore("jfrRecorder");
+        this.lock = new ReentrantLock();
         this.atomicNotify = new UninterruptibleUtils.AtomicBoolean(false);
         setDaemon(true);
     }
@@ -75,7 +80,12 @@ public class JfrRecorderThread extends Thread {
         try {
             while (!stopped) {
                 if (await()) {
-                    run0();
+                    lock.lock();
+                    try {
+                        work();
+                    } finally {
+                        lock.unlock();
+                    }
                 }
             }
         } catch (Throwable e) {
@@ -88,7 +98,7 @@ public class JfrRecorderThread extends Thread {
         return atomicNotify.compareAndSet(true, false);
     }
 
-    private void run0() {
+    private void work() {
         SamplerBuffersAccess.processFullBuffers(true);
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
@@ -97,6 +107,16 @@ public class JfrRecorderThread extends Thread {
             }
         } finally {
             chunkWriter.unlock();
+        }
+    }
+
+    void endRecording() {
+        lock.lock();
+        try {
+            SubstrateJVM.JfrEndRecordingOperation vmOp = new SubstrateJVM.JfrEndRecordingOperation();
+            vmOp.enqueue();
+        } finally {
+            lock.unlock();
         }
     }
 
