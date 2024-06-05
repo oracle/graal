@@ -1000,6 +1000,7 @@ public final class NodeUtil {
         return obj == null ? "null" : obj + "(" + obj.getClass().getName() + ")";
     }
 
+    @SuppressWarnings("deprecation")
     static void traceRewrite(Node oldNode, Node newNode, CharSequence reason) {
         if (TruffleOptions.TraceRewritesFilterFromCost != null) {
             if (filterByKind(oldNode, TruffleOptions.TraceRewritesFilterFromCost)) {
@@ -1043,6 +1044,7 @@ public final class NodeUtil {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static String formatNodeInfo(Node node) {
         String cost = "?";
         switch (node.getCost()) {
@@ -1065,7 +1067,8 @@ public final class NodeUtil {
         return cost + " " + nodeName(node);
     }
 
-    private static boolean filterByKind(Node node, NodeCost cost) {
+    @SuppressWarnings("deprecation")
+    private static boolean filterByKind(Node node, com.oracle.truffle.api.nodes.NodeCost cost) {
         return node.getCost() == cost;
     }
 

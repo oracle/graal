@@ -229,7 +229,6 @@ hfds anchorStart,column,line,theTags
 CLSS public final com.oracle.truffle.api.instrumentation.ProbeNode
 fld public final static java.lang.Object UNWIND_ACTION_REENTER
 meth public com.oracle.truffle.api.nodes.Node copy()
-meth public com.oracle.truffle.api.nodes.NodeCost getCost()
 meth public java.lang.Object onReturnExceptionalOrUnwind(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable,boolean)
 meth public void onEnter(com.oracle.truffle.api.frame.VirtualFrame)
 meth public void onResume(com.oracle.truffle.api.frame.VirtualFrame)
@@ -512,6 +511,7 @@ meth public boolean isAdoptable()
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.Node deepCopy()
 meth public com.oracle.truffle.api.nodes.NodeCost getCost()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.source.SourceSection getEncapsulatingSourceSection()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 meth public final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
@@ -532,16 +532,6 @@ meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
 hfds GIL_LOCK,PARENT_LIMIT,SAME_LANGUAGE_CHECK_VISITOR,parent
-
-CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
- anno 0 java.lang.annotation.Inherited()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-intf java.lang.annotation.Annotation
-meth public abstract !hasdefault com.oracle.truffle.api.nodes.NodeCost cost()
-meth public abstract !hasdefault java.lang.String description()
-meth public abstract !hasdefault java.lang.String language()
-meth public abstract !hasdefault java.lang.String shortName()
 
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
@@ -583,12 +573,6 @@ meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> 
 meth public abstract java.lang.String toString()
 
 CLSS public abstract interface !annotation java.lang.annotation.Documented
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
-intf java.lang.annotation.Annotation
-
-CLSS public abstract interface !annotation java.lang.annotation.Inherited
  anno 0 java.lang.annotation.Documented()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])

@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import static com.oracle.truffle.dsl.processor.LanguageRegistrationProcessor.resolveLanguageId;
-import static javax.lang.model.element.Modifier.ABSTRACT;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -197,7 +194,7 @@ public class OptionProcessor extends AbstractProcessor {
             if (context.getEnvironment().getTypeUtils().isAssignable(info.type.asType(), erasedTruffleType)) {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(info.type, types.TruffleLanguage_Registration);
                 if (registration != null) {
-                    String languageId = resolveLanguageId(info.type, registration);
+                    String languageId = LanguageRegistrationProcessor.resolveLanguageId(info.type, registration);
                     groupPrefixStrings = Arrays.asList(languageId);
                     if (groupPrefixStrings.get(0).isEmpty()) {
                         error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.",
@@ -380,7 +377,7 @@ public class OptionProcessor extends AbstractProcessor {
 
         ExecutableElement get = ElementUtils.findExecutableElement(types.OptionDescriptors, "get");
         CodeExecutableElement getMethod = CodeExecutableElement.clone(get);
-        getMethod.getModifiers().remove(ABSTRACT);
+        getMethod.getModifiers().remove(Modifier.ABSTRACT);
         CodeTreeBuilder builder = getMethod.createBuilder();
 
         String nameVariableName = getMethod.getParameters().get(0).getSimpleName().toString();
@@ -423,7 +420,7 @@ public class OptionProcessor extends AbstractProcessor {
         descriptors.add(getMethod);
 
         CodeExecutableElement sandboxPolicyMethod = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.TruffleOptionDescriptors, "getSandboxPolicy", 1));
-        sandboxPolicyMethod.getModifiers().remove(ABSTRACT);
+        sandboxPolicyMethod.getModifiers().remove(Modifier.ABSTRACT);
         sandboxPolicyMethod.renameArguments("optionName");
 
         Map<String, List<OptionInfo>> groupedOptions = new LinkedHashMap<>();
@@ -498,7 +495,7 @@ public class OptionProcessor extends AbstractProcessor {
         descriptors.add(sandboxPolicyMethod);
 
         CodeExecutableElement iteratorMethod = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.OptionDescriptors, "iterator"));
-        iteratorMethod.getModifiers().remove(ABSTRACT);
+        iteratorMethod.getModifiers().remove(Modifier.ABSTRACT);
         builder = iteratorMethod.createBuilder();
 
         builder.startReturn();

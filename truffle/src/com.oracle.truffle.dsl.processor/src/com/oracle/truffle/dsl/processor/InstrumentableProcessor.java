@@ -52,6 +52,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -78,7 +79,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
-import javax.lang.model.element.AnnotationValue;
 
 @SupportedAnnotationTypes({
                 TruffleTypes.GenerateWrapper_Name})
@@ -366,13 +366,6 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                             ElementUtils.firstLetterUpperCase(field.getSimpleName().toString()));
             getter.createBuilder().startReturn().string(field.getSimpleName().toString()).end();
             wrapperType.add(getter);
-        }
-
-        if (isOverrideableOrUndeclared(sourceType, METHOD_GET_NODE_COST)) {
-            TypeMirror returnType = types.NodeCost;
-            CodeExecutableElement getInstrumentationTags = new CodeExecutableElement(ElementUtils.modifiers(Modifier.PUBLIC), returnType, METHOD_GET_NODE_COST);
-            getInstrumentationTags.createBuilder().startReturn().staticReference(returnType, "NONE").end();
-            wrapperType.add(getInstrumentationTags);
         }
 
         boolean isResume = resumeMethodPrefix != null && !resumeMethodPrefix.isEmpty();
@@ -756,11 +749,6 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         } else {
             return type;
         }
-    }
-
-    private static boolean isOverrideableOrUndeclared(TypeElement sourceType, String methodName) {
-        List<ExecutableElement> elements = ElementUtils.getDeclaredMethodsInSuperTypes(sourceType, methodName);
-        return elements.isEmpty() || !elements.iterator().next().getModifiers().contains(Modifier.FINAL);
     }
 
     private static CodeVariableElement createNodeChild(ProcessorContext context, TypeMirror type, String name) {
