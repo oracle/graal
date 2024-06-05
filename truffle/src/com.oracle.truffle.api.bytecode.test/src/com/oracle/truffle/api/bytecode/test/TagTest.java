@@ -335,6 +335,46 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testTagsMismatchError() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginReturn();
+            b.beginTag(StatementTag.class, ExpressionTag.class);
+            b.emitLoadConstant(42);
+            b.endTag(StatementTag.class);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.constant",
+                        "return");
+        assertEquals(42, node.getCallTarget().call());
+
+        // When we include statement tags, they balance, so there should be no errors.
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build());
+        assertInstructions(node,
+                        "tag.enter",
+                        "load.constant",
+                        "tag.leave",
+                        "return");
+        assertEquals(42, node.getCallTarget().call());
+
+        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        int enter = instructions.get(0).getBytecodeIndex();
+        int leave = instructions.get(2).getBytecodeIndex();
+
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, enter, leave, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, enter, leave, 42, StatementTag.class));
+
+        // When we include expression tags, the mismatch should be detected.
+        assertFails(() -> attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class,
+                        StandardTags.ExpressionTag.class).build()), IllegalArgumentException.class);
+    }
+
+    @Test
     public void testStatementsUncached() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));

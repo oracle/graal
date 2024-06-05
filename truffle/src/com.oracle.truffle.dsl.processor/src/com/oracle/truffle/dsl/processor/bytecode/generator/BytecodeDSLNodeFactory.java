@@ -4371,32 +4371,38 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("markReachable(false)");
                     break;
                 case TAG:
+                    b.declaration(tagNode.asType(), "tagNode", "operationData.node");
+
+                    b.startIf().string("(encodedTags & this.tags) != tagNode.tags").end().startBlock();
+                    emitThrow(b, IllegalArgumentException.class, "\"The tags provided to endTag do not match the tags provided to the corresponding beginTag call.\"");
+                    b.end();
+
+                    // If this tag operation is nested in another, add it to the outer tag tree
                     b.declaration(type(int.class), "sp", "operationSp - 1");
                     b.startWhile().string("sp >= 0").end().startBlock();
                     b.startIf().string("operationStack[sp].data instanceof TagOperationData t").end().startBlock();
                     b.startIf().string("t.children == null").end().startBlock();
                     b.statement("t.children = new ArrayList<>(3)");
                     b.end();
-                    b.statement("t.children.add(operationData.node)");
+                    b.statement("t.children.add(tagNode)");
                     b.statement("break");
                     b.end(); // if
                     b.statement("sp--");
                     b.end(); // while
 
+                    // Otherwise, this tag is the root of a tag tree.
                     b.startIf().string("sp < 0").end().startBlock();
                     b.lineComment("not found");
                     b.startIf().string("tagRoots == null").end().startBlock();
                     b.statement("tagRoots = new ArrayList<>(3)");
                     b.end();
-                    b.statement("tagRoots.add(operationData.node)");
+                    b.statement("tagRoots.add(tagNode)");
+                    b.end(); // while
 
-                    b.end();
-                    b.end();
-
-                    b.declaration(tagNode.asType(), "tagNode", "operationData.node");
                     b.declaration(arrayOf(tagNode.asType()), "children");
                     b.declaration(generic(type(List.class), tagNode.asType()), "operationChildren", "operationData.children");
 
+                    // Set the children array and adopt children.
                     b.startIf().string("operationChildren == null").end().startBlock();
                     b.statement("children = TagNode.EMPTY_ARRAY");
                     b.end().startElseBlock();
