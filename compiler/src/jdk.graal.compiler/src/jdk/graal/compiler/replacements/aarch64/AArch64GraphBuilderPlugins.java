@@ -121,13 +121,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new InvocationPlugin("bitCount", type) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Int, b.append(new AArch64BitCountNode(value).canonical(null)));
-                return true;
-            }
-        });
     }
 
     private static void registerFloatPlugins(InvocationPlugins plugins, Replacements replacements) {

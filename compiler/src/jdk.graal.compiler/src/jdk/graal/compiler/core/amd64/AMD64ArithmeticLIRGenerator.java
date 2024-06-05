@@ -121,6 +121,7 @@ import jdk.graal.compiler.lir.amd64.AMD64Arithmetic.FPDivRemOp;
 import jdk.graal.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.lir.amd64.AMD64Binary;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
+import jdk.graal.compiler.lir.amd64.AMD64BitCountOp;
 import jdk.graal.compiler.lir.amd64.AMD64BitSwapOp;
 import jdk.graal.compiler.lir.amd64.AMD64ClearRegisterOp;
 import jdk.graal.compiler.lir.amd64.AMD64ConvertFloatToIntegerOp;
@@ -1059,11 +1060,15 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Variable emitBitCount(Value value) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(value).changeType(AMD64Kind.DWORD));
-        assert ((AMD64Kind) value.getPlatformKind()).isInteger();
-        if (value.getPlatformKind() == AMD64Kind.QWORD) {
-            getLIRGen().append(new AMD64Unary.RMOp(POPCNT, QWORD, result, asAllocatable(value)));
+        if (getLIRGen().target().arch.getFeatures().contains(CPUFeature.POPCNT)) {
+            assert ((AMD64Kind) value.getPlatformKind()).isInteger();
+            if (value.getPlatformKind() == AMD64Kind.QWORD) {
+                getLIRGen().append(new AMD64Unary.RMOp(POPCNT, QWORD, result, asAllocatable(value)));
+            } else {
+                getLIRGen().append(new AMD64Unary.RMOp(POPCNT, DWORD, result, asAllocatable(value)));
+            }
         } else {
-            getLIRGen().append(new AMD64Unary.RMOp(POPCNT, DWORD, result, asAllocatable(value)));
+            getLIRGen().append(new AMD64BitCountOp(getLIRGen(), result, asAllocatable(value)));
         }
         return result;
     }

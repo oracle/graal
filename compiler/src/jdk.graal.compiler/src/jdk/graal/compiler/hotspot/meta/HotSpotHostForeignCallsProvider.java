@@ -82,6 +82,7 @@ import static jdk.graal.compiler.hotspot.replacements.Log.LOG_PRINTF;
 import static jdk.graal.compiler.hotspot.replacements.MonitorSnippets.MONITORENTER;
 import static jdk.graal.compiler.hotspot.replacements.MonitorSnippets.MONITOREXIT;
 import static jdk.graal.compiler.hotspot.stubs.ExceptionHandlerStub.EXCEPTION_HANDLER_FOR_PC;
+import static jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub.LOOKUP_SECONDARY_SUPERS_TABLE_SLOW_PATH;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.VM_MESSAGE_C;
 import static jdk.graal.compiler.hotspot.stubs.UnwindExceptionToCallerStub.EXCEPTION_HANDLER_FOR_RETURN_ADDRESS;
 import static jdk.graal.compiler.nodes.java.ForeignCallDescriptors.REGISTER_FINALIZER;
@@ -120,6 +121,7 @@ import jdk.graal.compiler.hotspot.stubs.IllegalArgumentExceptionArgumentIsNotAnA
 import jdk.graal.compiler.hotspot.stubs.IntegerExactOverflowExceptionStub;
 import jdk.graal.compiler.hotspot.stubs.IntrinsicStubsGen;
 import jdk.graal.compiler.hotspot.stubs.LongExactOverflowExceptionStub;
+import jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub;
 import jdk.graal.compiler.hotspot.stubs.NegativeArraySizeExceptionStub;
 import jdk.graal.compiler.hotspot.stubs.NullPointerExceptionStub;
 import jdk.graal.compiler.hotspot.stubs.OutOfBoundsExceptionStub;
@@ -511,6 +513,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         link(new IllegalArgumentExceptionArgumentIsNotAnArrayStub(options, providers,
                         registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY),
                                         SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+
+        link(new LookUpSecondarySupersTableStub(options, providers,
+                        registerStubCall(LOOKUP_SECONDARY_SUPERS_TABLE_SLOW_PATH, DESTROYS_ALL_CALLER_SAVE_REGISTERS)));
 
         linkForeignCall(options, providers, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, createDescriptor(REGISTER_FINALIZER, SAFEPOINT, HAS_SIDE_EFFECT, any()), c.registerFinalizerAddress, PREPEND_THREAD);
