@@ -77,6 +77,8 @@ public class TraceProcessor extends AbstractProcessor {
                         setInLivePhase(entry.get("phase").equals("live"));
                     } else if (event.equals("initialization")) {
                         // not needed for now, but contains version for breaking changes
+                    } else if (event.equals("track_reflection_metadata")) {
+                        reflectionProcessor.setTrackReflectionMetadata((boolean) entry.get("track"));
                     } else {
                         LogUtils.warning("Unknown meta event, ignoring: " + event);
                     }

@@ -30,7 +30,7 @@ import com.oracle.svm.core.TypeResult;
 
 public interface ReflectionConfigurationParserDelegate<C, T> {
 
-    TypeResult<T> resolveType(C condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean includeAllElements);
+    TypeResult<T> resolveType(C condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives);
 
     void registerType(C condition, T type);
 
@@ -46,9 +46,9 @@ public interface ReflectionConfigurationParserDelegate<C, T> {
 
     void registerSigners(C condition, T type);
 
-    void registerPublicFields(C condition, T type);
+    void registerPublicFields(C condition, boolean queriedOnly, T type);
 
-    void registerDeclaredFields(C condition, T type);
+    void registerDeclaredFields(C condition, boolean queriedOnly, T type);
 
     void registerPublicMethods(C condition, boolean queriedOnly, T type);
 

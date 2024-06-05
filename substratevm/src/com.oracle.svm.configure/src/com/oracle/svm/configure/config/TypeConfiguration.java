@@ -124,7 +124,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     }
 
     public ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
-        return types.computeIfAbsent(new ConditionalElement<>(condition, typeDescriptor), p -> new ConfigurationType(p.condition(), p.element(), false));
+        return types.computeIfAbsent(new ConditionalElement<>(condition, typeDescriptor), p -> new ConfigurationType(p.condition(), p.element(), true));
     }
 
     @Override

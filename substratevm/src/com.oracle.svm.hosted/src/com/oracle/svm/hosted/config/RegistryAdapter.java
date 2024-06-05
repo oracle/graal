@@ -70,7 +70,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean includeAllElements) {
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
         switch (typeDescriptor.getDescriptorType()) {
             case NAMED -> {
                 return resolveNamedType(((NamedConfigurationTypeDescriptor) typeDescriptor), allowPrimitives);
@@ -134,13 +134,17 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public void registerPublicFields(ConfigurationCondition condition, Class<?> type) {
-        registry.register(condition, false, type.getFields());
+    public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        if (!queriedOnly) {
+            registry.register(condition, false, type.getFields());
+        }
     }
 
     @Override
-    public void registerDeclaredFields(ConfigurationCondition condition, Class<?> type) {
-        registry.register(condition, false, type.getDeclaredFields());
+    public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        if (!queriedOnly) {
+            registry.register(condition, false, type.getDeclaredFields());
+        }
     }
 
     @Override

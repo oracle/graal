@@ -266,7 +266,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
     }
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders(false));
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders(false, null));
         codeInfoEncoder.addMethod(method, compilation, 0, compilation.getTargetCodeSize());
         codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
 

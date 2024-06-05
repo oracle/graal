@@ -74,6 +74,14 @@ public abstract class Tracer {
         traceEntry(entry);
     }
 
+    public void traceTrackReflectionMetadata(boolean trackReflectionMetadata) {
+        EconomicMap<String, Object> entry = EconomicMap.create();
+        entry.put("tracer", "meta");
+        entry.put("event", "track_reflection_metadata");
+        entry.put("track", trackReflectionMetadata);
+        traceEntry(entry);
+    }
+
     /**
      * Trace a call to a function or method. {@link Object} arguments are represented as strings by
      * calling {@link Object#toString()} on them unless they are {@link #EXPLICIT_NULL},
