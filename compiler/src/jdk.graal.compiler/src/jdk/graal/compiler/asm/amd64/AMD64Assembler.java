@@ -4837,6 +4837,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AMD64RMOp.TEST.emit(this, OperandSize.QWORD, dst, src);
     }
 
+    public final void btq(Register src, int imm8) {
+        prefixq(src);
+        emitByte(0x0F);
+        emitByte(0xBA);
+        emitModRM(4, src);
+        emitByte(imm8);
+    }
+
     public final void btrq(Register src, int imm8) {
         prefixq(src);
         emitByte(0x0F);

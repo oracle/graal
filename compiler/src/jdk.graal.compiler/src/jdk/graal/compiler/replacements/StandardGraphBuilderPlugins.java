@@ -190,6 +190,7 @@ import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
+import jdk.graal.compiler.replacements.nodes.BitCountNode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
@@ -847,6 +848,13 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("bitCount", type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Int, b.append(new BitCountNode(value).canonical(null)));
                 return true;
             }
         });
