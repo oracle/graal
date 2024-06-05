@@ -4466,11 +4466,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 default:
                     if (operation.instruction != null) {
-                        if (operation.instruction.isEpilogReturn()) {
-                            // do not emit an instruction for epilog returns
-                            // it should only be emitted in beforeEmitReturn
-                            break;
-                        }
                         buildEmitOperationInstruction(b, operation, constantOperandIndices);
                     }
                     break;
@@ -5338,7 +5333,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             boolean inEmit = !operation.hasChildren();
 
-            if (!inEmit) {
+            if (!inEmit && !operation.isTransparent()) {
                 // make "operationData" available for endX methods.
                 if (sp.equals("operationSp")) {
                     emitCastCurrentOperationData(b, operation);

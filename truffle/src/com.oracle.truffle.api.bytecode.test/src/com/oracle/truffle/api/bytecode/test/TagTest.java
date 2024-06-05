@@ -121,9 +121,9 @@ public class TagTest extends AbstractInstructionTest {
         return root;
     }
 
-    private static TagInstrumentationTestWithPrologRootNode parseProlog(BytecodeParser<TagInstrumentationTestWithPrologRootNodeGen.Builder> parser) {
-        BytecodeRootNodes<TagInstrumentationTestWithPrologRootNode> nodes = TagInstrumentationTestWithPrologRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
-        TagInstrumentationTestWithPrologRootNode root = nodes.getNodes().get(nodes.getNodes().size() - 1);
+    private static TagInstrumentationTestWithPrologAndEpilogRootNode parseProlog(BytecodeParser<TagInstrumentationTestWithPrologAndEpilogRootNodeGen.Builder> parser) {
+        BytecodeRootNodes<TagInstrumentationTestWithPrologAndEpilogRootNode> nodes = TagInstrumentationTestWithPrologAndEpilogRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        TagInstrumentationTestWithPrologAndEpilogRootNode root = nodes.getNodes().get(nodes.getNodes().size() - 1);
         return root;
     }
 
@@ -691,7 +691,7 @@ public class TagTest extends AbstractInstructionTest {
 
     @Test
     public void testRootExceptionHandler() {
-        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+        TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
             b.emitThrow();
             b.endRoot();
@@ -703,6 +703,7 @@ public class TagTest extends AbstractInstructionTest {
                         "c.EnterMethod",
                         "c.Throw",
                         "load.constant",
+                        "c.LeaveValue",
                         "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build());
@@ -711,30 +712,33 @@ public class TagTest extends AbstractInstructionTest {
                         "c.EnterMethod",
                         "c.Throw",
                         "load.constant",
+                        "c.LeaveValue",
                         "tag.leave",
                         "return");
 
         assertFails(() -> node.getCallTarget().call(), TestException.class);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x0008, TestException.class, RootTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x000b, null, RootTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x000b, TestException.class, RootTag.class));
     }
 
     @Test
     public void testRootExceptionHandlerReturnValue() {
-        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+        TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
-            b.emitThrow();
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
             b.endRoot();
         });
 
-        assertFails(() -> node.getCallTarget().call(), TestException.class);
+        assertEquals(42, node.getCallTarget().call());
 
         assertInstructions(node,
                         "c.EnterMethod",
-                        "c.Throw",
                         "load.constant",
+                        "c.LeaveValue",
                         "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build());
@@ -742,22 +746,24 @@ public class TagTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "tag.enter",
                         "c.EnterMethod",
-                        "c.Throw",
                         "load.constant",
+                        "c.LeaveValue",
+                        "tag.leave",
+                        "return",
                         "tag.leave",
                         "return");
 
-        assertFails(() -> node.getCallTarget().call(), TestException.class);
+        assertEquals(42, node.getCallTarget().call());
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x0008, TestException.class, RootTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x000d, null, RootTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000d, Integer.class, RootTag.class));
 
     }
 
     @Test
     public void testRootBodyExceptionHandler() {
-        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+        TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
             b.emitThrow();
             b.endRoot();
@@ -769,6 +775,7 @@ public class TagTest extends AbstractInstructionTest {
                         "c.EnterMethod",
                         "c.Throw",
                         "load.constant",
+                        "c.LeaveValue",
                         "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).build());
@@ -778,6 +785,7 @@ public class TagTest extends AbstractInstructionTest {
                         "c.Throw",
                         "load.constant",
                         "tag.leave",
+                        "c.LeaveValue",
                         "return");
 
         assertFails(() -> node.getCallTarget().call(), TestException.class);
@@ -885,7 +893,7 @@ public class TagTest extends AbstractInstructionTest {
 
     @Test
     public void testUnwindInRootBody() {
-        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+        TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
             b.emitLoadConstant(40);
             b.emitLoadConstant(41);
@@ -897,6 +905,7 @@ public class TagTest extends AbstractInstructionTest {
                         "load.constant",
                         "pop",
                         "load.constant",
+                        "c.LeaveValue",
                         "return");
 
         instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).build(), (e) -> {
@@ -920,6 +929,7 @@ public class TagTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "tag.leave",
+                        "c.LeaveValue",
                         "return");
 
         assertEquals(42, node.getCallTarget().call());
@@ -1071,7 +1081,7 @@ public class TagTest extends AbstractInstructionTest {
 
     @Test
     public void testImplicitRootTagProlog() {
-        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+        TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
             b.beginReturn();
             b.emitLoadConstant(42);
@@ -1122,7 +1132,7 @@ public class TagTest extends AbstractInstructionTest {
 
     @Test
     public void testImplicitRootBodyTagProlog() {
-        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+        TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
             b.beginReturn();
             b.emitLoadConstant(42);
@@ -1155,6 +1165,7 @@ public class TagTest extends AbstractInstructionTest {
                         "c.LeaveValue",
                         "return",
                         "tag.leave",
+                        "c.LeaveValue",
                         "return");
 
         assertEquals(42, node.getCallTarget().call());
@@ -1171,7 +1182,7 @@ public class TagTest extends AbstractInstructionTest {
 
     @Test
     public void testImplicitRootTagsProlog() {
-        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+        TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
             b.beginReturn();
             b.emitLoadConstant(42);
@@ -1205,6 +1216,7 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.leave",
                         "return",
                         "tag.leave",
+                        "c.LeaveValue",
                         "tag.leave",
                         "return");
 
@@ -1217,10 +1229,10 @@ public class TagTest extends AbstractInstructionTest {
 
         assertEvents(node,
                         events,
-                        new Event(0, EventKind.ENTER, 0x0000, 0x0015, null, RootTag.class),
+                        new Event(0, EventKind.ENTER, 0x0000, 0x0018, null, RootTag.class),
                         new Event(2, EventKind.ENTER, 0x0004, 0x0012, null, RootBodyTag.class),
                         new Event(3, EventKind.RETURN_VALUE, 0x0004, 0x0012, 42, RootBodyTag.class),
-                        new Event(5, EventKind.RETURN_VALUE, 0x0000, 0x0015, 42, RootTag.class));
+                        new Event(5, EventKind.RETURN_VALUE, 0x0000, 0x0018, 42, RootTag.class));
 
     }
 
@@ -1896,9 +1908,9 @@ public class TagTest extends AbstractInstructionTest {
                     enableUncachedInterpreter = true,  //
                     enableTagInstrumentation = true, //
                     enableSerialization = true, boxingEliminationTypes = {int.class})
-    public abstract static class TagInstrumentationTestWithPrologRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+    public abstract static class TagInstrumentationTestWithPrologAndEpilogRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected TagInstrumentationTestWithPrologRootNode(TruffleLanguage<?> language,
+        protected TagInstrumentationTestWithPrologAndEpilogRootNode(TruffleLanguage<?> language,
                         FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }

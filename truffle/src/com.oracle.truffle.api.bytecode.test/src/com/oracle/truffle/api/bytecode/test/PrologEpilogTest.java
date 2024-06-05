@@ -159,7 +159,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
 
     @Test
     public void testEarlyReturn() {
-        // earlyReturn(42)
+        // if (arg0) return 42
         // return 123
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
@@ -190,6 +190,31 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         assertEquals(123, root.getCallTarget().call(false));
         assertEquals(false, root.argument);
         assertEquals(123, root.returnValue);
+        assertNull(root.thrownValue);
+    }
+
+    @Test
+    public void testImplicitReturn() {
+        // if (arg0) return 42
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+            b.endIfThen();
+            b.endRoot();
+        });
+
+        assertEquals(42, root.getCallTarget().call(true));
+        assertEquals(true, root.argument);
+        assertEquals(42, root.returnValue);
+        assertNull(root.thrownValue);
+
+        assertEquals(null, root.getCallTarget().call(false));
+        assertEquals(false, root.argument);
+        assertNull(root.returnValue);
         assertNull(root.thrownValue);
     }
 
