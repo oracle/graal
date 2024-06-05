@@ -148,7 +148,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       self.interpreter_bench_cmd(vmConfig='native-interpreter'),
       self.upload,
     ],
-    timelimit: '2:00:00',
+    timelimit: '2:30:00',
   },
 
   vm_bench_polybench_linux_compiler: self.vm_bench_polybench_linux_common() + vm.vm_java_21 + {
