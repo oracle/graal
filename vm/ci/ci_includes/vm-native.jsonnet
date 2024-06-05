@@ -35,14 +35,6 @@ local vm_common = import '../ci_common/common.jsonnet';
      timelimit: '35:00',
      name: 'gate-vm-svm-truffle-tck-linux-amd64',
     },
-    vm.vm_java_21 + vm_common.svm_common_linux_amd64 + vm_common.gate_vm_linux_amd64 + {
-     run+: [
-       ['export', 'SVM_SUITE=' + vm.svm_suite],
-       ['mx', '--env', 'ce', '--native-images=lib:jvmcicompiler', 'gate', '--no-warning-as-error', '--tags', 'build,truffle-unchained'],
-     ],
-     timelimit: '30:00',
-     name: 'gate-vm-ce-truffle-unchained-linux-amd64',
-    },
     vm.vm_java_21 + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm_common.gate_vm_linux_amd64 + {
      run+: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
