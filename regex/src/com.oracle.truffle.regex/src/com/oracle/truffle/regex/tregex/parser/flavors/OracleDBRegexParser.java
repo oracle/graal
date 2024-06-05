@@ -60,6 +60,7 @@ import com.oracle.truffle.regex.tregex.parser.MultiCharacterCaseFolding;
 import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
+import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -129,10 +130,11 @@ public final class OracleDBRegexParser implements RegexParser {
                     break;
                 case caret:
                     if (flags.isMultiline()) {
-                        // (?:^|(?<=\n))
+                        // (?:^|_MATCH_BEGIN_(?<=\n))
                         astBuilder.pushGroup();
                         astBuilder.addCaret();
                         astBuilder.nextSequence();
+                        astBuilder.addPositionAssertion(PositionAssertion.Type.MATCH_BEGIN);
                         astBuilder.pushLookBehindAssertion(false);
                         astBuilder.addCharClass(CodePointSet.create('\n'));
                         astBuilder.popGroup();
@@ -143,7 +145,7 @@ public final class OracleDBRegexParser implements RegexParser {
                     break;
                 case dollar, Z:
                     // multiline mode:
-                    // (?:$|(?=\n))
+                    // (?:$|(?=\n)_MATCH_END_)
                     // otherwise:
                     // (?:$|(?=\n$))
                     astBuilder.pushGroup();
@@ -155,6 +157,9 @@ public final class OracleDBRegexParser implements RegexParser {
                         astBuilder.addDollar();
                     }
                     astBuilder.popGroup();
+                    if (token.kind == Token.Kind.dollar && flags.isMultiline()) {
+                        astBuilder.addPositionAssertion(PositionAssertion.Type.MATCH_END);
+                    }
                     astBuilder.popGroup();
                     break;
                 case backReference:
