@@ -26,41 +26,11 @@ package com.oracle.svm.core.riscv64;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-
-import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton(FrameAccess.class)
 @Platforms(Platform.RISCV64.class)
 public class RISCV64FrameAccess extends FrameAccess {
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public CodePointer readReturnAddress(Pointer sourceSp) {
-        /* Read the return address, which is stored immediately below the stack pointer */
-        return sourceSp.readWord(-returnAddressSize());
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void writeReturnAddress(Pointer sourceSp, CodePointer newReturnAddress) {
-        sourceSp.writeWord(-returnAddressSize(), newReturnAddress);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer getReturnAddressLocation(Pointer sourceSp) {
-        return sourceSp.subtract(returnAddressSize());
-    }
-
-    @Override
-    @Fold
-    public int stackPointerAdjustmentOnCall() {
-        // A call on RISCV64 does not touch the SP.
-        return 0;
-    }
 }

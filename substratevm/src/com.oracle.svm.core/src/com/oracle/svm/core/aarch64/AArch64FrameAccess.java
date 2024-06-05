@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.aarch64;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -35,39 +37,28 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.nodes.aarch64.AArch64XPACNode;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
 @AutomaticallyRegisteredImageSingleton(FrameAccess.class)
 @Platforms(Platform.AARCH64.class)
 public class AArch64FrameAccess extends FrameAccess {
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public CodePointer readReturnAddress(Pointer sourceSp) {
-        /* Read the return address, which is stored immediately below the stack pointer. */
-        CodePointer returnAddress = sourceSp.readWord(-returnAddressSize());
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected int getReturnAddressSize() {
+        return wordSize();
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public CodePointer unsafeReadReturnAddress(Pointer sourceSp) {
+        CodePointer returnAddress = super.unsafeReadReturnAddress(sourceSp);
+        return stripAddress(returnAddress);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static CodePointer stripAddress(CodePointer returnAddress) {
         /* Remove the pointer authentication code (PAC), if present. */
         if (SubstrateControlFlowIntegrity.enabled()) {
             return AArch64XPACNode.stripAddress(returnAddress);
         }
         return returnAddress;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void writeReturnAddress(Pointer sourceSp, CodePointer newReturnAddress) {
-        sourceSp.writeWord(-returnAddressSize(), newReturnAddress);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer getReturnAddressLocation(Pointer sourceSp) {
-        return sourceSp.subtract(returnAddressSize());
-    }
-
-    @Override
-    @Fold
-    public int stackPointerAdjustmentOnCall() {
-        // A call on AArch64 does not touch the SP.
-        return 0;
     }
 }

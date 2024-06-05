@@ -221,10 +221,10 @@ public final class JavaThreads {
             return null;
         }
         if (carrier == PlatformThreads.currentThread.get()) {
-            return StackTraceUtils.getStackTrace(filterExceptions, callerSP, endSP);
+            return StackTraceUtils.getCurrentThreadStackTrace(filterExceptions, callerSP, endSP);
         }
         assert VMOperation.isInProgressAtSafepoint();
-        return StackTraceUtils.getThreadStackTraceAtSafepoint(PlatformThreads.getIsolateThread(carrier), endSP);
+        return StackTraceUtils.getStackTraceAtSafepoint(PlatformThreads.getIsolateThread(carrier), endSP);
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {

@@ -196,7 +196,7 @@ final class AlignedChunkRememberedSet {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     private static void walkObjects(AlignedHeader chunk, Pointer start, Pointer end, GreyToBlackObjectVisitor visitor) {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);

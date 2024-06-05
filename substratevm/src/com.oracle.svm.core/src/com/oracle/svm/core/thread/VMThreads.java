@@ -156,7 +156,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
     private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
     public static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadHandleTL");
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord("VMThreads.IsolateTL");
-    /** The highest stack address. */
+    /** The highest stack address. 0 if not available on this platform. */
     public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord("VMThreads.StackBase");
     /**
      * The lowest stack address. Note that this value does not necessarily match the value that is

@@ -38,7 +38,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -122,7 +121,7 @@ public class CodeInfoTable {
         }
         CodeInfoQueryResult result = new CodeInfoQueryResult();
         result.ip = absoluteIP;
-        CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, absoluteIP), result);
+        CodeInfoAccess.lookupCodeInfo(info, absoluteIP, result);
         return result;
     }
 
@@ -138,16 +137,9 @@ public class CodeInfoTable {
         return result;
     }
 
-    public static boolean visitObjectReferences(Pointer sp, CodePointer ip, CodeInfo info, DeoptimizedFrame deoptimizedFrame, ObjectReferenceVisitor visitor) {
+    /** Note that this method is only called for regular frames but not for deoptimized frames. */
+    public static boolean visitObjectReferences(Pointer sp, CodePointer ip, CodeInfo info, ObjectReferenceVisitor visitor) {
         counters().visitObjectReferencesCount.inc();
-
-        if (deoptimizedFrame != null) {
-            /*
-             * It is a deoptimized frame. The DeoptimizedFrame object is stored in the frame, but it
-             * is pinned so we do not have to do anything.
-             */
-            return true;
-        }
 
         /*
          * NOTE: if this code does not execute in a VM operation, it is possible for the visited
@@ -162,13 +154,13 @@ public class CodeInfoTable {
             referenceMapIndex = CodeInfoAccess.lookupStackReferenceMapIndex(info, CodeInfoAccess.relativeIP(info, ip));
         }
         if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
-            throw reportNoReferenceMap(sp, ip, info);
+            throw fatalErrorNoReferenceMap(sp, ip, info);
         }
         return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
     }
 
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fail.", calleeMustBe = false)
-    public static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, CodeInfo info) {
+    public static RuntimeException fatalErrorNoReferenceMap(Pointer sp, CodePointer ip, CodeInfo info) {
         Log.log().string("ip: ").hex(ip).string("  sp: ").hex(sp).string("  info:");
         CodeInfoAccess.log(info, Log.log()).newline();
         throw VMError.shouldNotReachHere("No reference map information found");

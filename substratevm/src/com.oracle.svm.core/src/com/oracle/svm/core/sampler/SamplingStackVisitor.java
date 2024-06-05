@@ -24,19 +24,21 @@
  */
 package com.oracle.svm.core.sampler;
 
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
+import com.oracle.svm.core.util.VMError;
 
 class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate within the safepoint sampler.")
     @Override
-    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate within the safepoint sampler.")
+    protected boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, Object data) {
         SamplingStackVisitor.StackTrace stackTrace = (SamplingStackVisitor.StackTrace) data;
         if (stackTrace.num < stackTrace.buffer.length) {
             stackTrace.buffer[stackTrace.num++] = ip.rawValue();
@@ -48,8 +50,14 @@ class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
     }
 
     @Override
-    protected boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
-        return false;
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate within the safepoint sampler.")
+    protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame, Object data) {
+        throw VMError.shouldNotReachHere("Sampling is not supported if JIT compilation is enabled.");
+    }
+
+    @Override
+    protected boolean unknownFrame(Pointer sp, CodePointer ip, Object data) {
+        throw JavaStackWalker.fatalErrorUnknownFrameEncountered(sp, ip);
     }
 
     static class StackTrace {

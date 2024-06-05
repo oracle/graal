@@ -52,6 +52,10 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * During a stack walk, this class holds information about a virtual Java frame. It is usually
+ * referenced by a physical Java frame, see {@link CodeInfoQueryResult}.
+ */
 public class FrameInfoQueryResult {
 
     public enum ValueType {

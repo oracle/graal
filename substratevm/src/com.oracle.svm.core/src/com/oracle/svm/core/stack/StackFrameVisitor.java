@@ -45,19 +45,24 @@ public abstract class StackFrameVisitor extends ParameterizedStackFrameVisitor {
      * @param sp The stack pointer of the frame being visited.
      * @param ip The instruction pointer of the frame being visited.
      * @param codeInfo Information on the code at the IP, for use with {@link CodeInfoAccess}.
-     * @param deoptimizedFrame The information about a deoptimized frame, or {@code null} if the
-     *            frame is not deoptimized.
      * @return true if visiting should continue, false otherwise.
      */
-    protected abstract boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame);
+    protected abstract boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo);
 
     @Override
-    protected final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
-        return visitFrame(sp, ip, codeInfo, deoptimizedFrame);
+    protected final boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, Object data) {
+        return visitRegularFrame(sp, ip, codeInfo);
+    }
+
+    protected abstract boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame);
+
+    @Override
+    protected final boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame, Object data) {
+        return visitDeoptimizedFrame(originalSP, deoptStubIP, deoptimizedFrame);
     }
 
     @Override
-    protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
-        throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptimizedFrame);
+    protected final boolean unknownFrame(Pointer sp, CodePointer ip, Object data) {
+        throw JavaStackWalker.fatalErrorUnknownFrameEncountered(sp, ip);
     }
 }

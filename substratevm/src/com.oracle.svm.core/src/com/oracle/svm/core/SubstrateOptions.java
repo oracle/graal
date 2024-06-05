@@ -1096,6 +1096,9 @@ public class SubstrateOptions {
     @Option(help = "Determines if frame anchors are verified at run-time.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyFrameAnchors = new HostedOptionKey<>(false);
 
+    @Option(help = "Determines if frame accesses are verified at run-time.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> VerifyFrameAccess = new HostedOptionKey<>(false);
+
     @SuppressWarnings("unused")//
     @APIOption(name = "configure-reflection-metadata")//
     @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert, deprecated = true)//
