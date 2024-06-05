@@ -36,19 +36,21 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 public abstract class JavaStackFrameVisitor extends StackFrameVisitor {
 
     @Override
-    public final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        if (deoptimizedFrame != null) {
-            for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
-                if (!visitFrame(frame.getFrameInfo())) {
-                    return false;
-                }
+    public final boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
+        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
+        for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
+            if (!visitFrame(frameInfo)) {
+                return false;
             }
-        } else {
-            CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
-            for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
-                if (!visitFrame(frameInfo)) {
-                    return false;
-                }
+        }
+        return true;
+    }
+
+    @Override
+    protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+        for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
+            if (!visitFrame(frame.getFrameInfo())) {
+                return false;
             }
         }
         return true;

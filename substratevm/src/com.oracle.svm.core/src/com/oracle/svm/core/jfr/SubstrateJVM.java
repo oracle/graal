@@ -235,8 +235,15 @@ public class SubstrateJVM {
         options.validateAndAdjustMemoryOptions();
 
         JfrTicks.initialize();
-        threadLocal.initialize(options.threadBufferSize.getValue());
-        globalMemory.initialize(options.globalBufferSize.getValue(), options.globalBufferCount.getValue());
+
+        long threadLocalBufferSize = options.threadBufferSize.getValue();
+        assert threadLocalBufferSize > 0;
+        threadLocal.initialize(WordFactory.unsigned(threadLocalBufferSize));
+
+        long globalBufferSize = options.globalBufferSize.getValue();
+        assert globalBufferSize > 0;
+        globalMemory.initialize(WordFactory.unsigned(globalBufferSize), options.globalBufferCount.getValue());
+
         unlockedChunkWriter.initialize(options.maxChunkSize.getValue());
         stackTraceRepo.setStackTraceDepth(NumUtil.safeToInt(options.stackDepth.getValue()));
 

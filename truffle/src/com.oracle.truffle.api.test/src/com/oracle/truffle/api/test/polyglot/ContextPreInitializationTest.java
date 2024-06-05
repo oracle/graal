@@ -1836,7 +1836,7 @@ public class ContextPreInitializationTest {
                     assertTrue(env.isCreateThreadAllowed());
                     assertFalse(env.isHostLookupAllowed());
                     assertTrue(env.isNativeAccessAllowed());
-                    assertTrue(env.isPolyglotEvalAllowed());
+                    assertTrue(env.isPolyglotEvalAllowed(null));
                     assertTrue(env.isPolyglotBindingsAccessAllowed());
                     assertEquals(testId, env.getTimeZone());
                     firstContextInitialized.set(true);
@@ -1846,7 +1846,7 @@ public class ContextPreInitializationTest {
                     assertFalse(env.isCreateThreadAllowed());
                     assertFalse(env.isHostLookupAllowed());
                     assertFalse(env.isNativeAccessAllowed());
-                    assertFalse(env.isPolyglotEvalAllowed());
+                    assertFalse(env.isPolyglotEvalAllowed(null));
                     assertFalse(env.isPolyglotBindingsAccessAllowed());
                     assertFalse(env.getOptions().get(ContextPreInitializationTestSharedLanguage.Option1));
                     assertEquals(systemDefault, env.getTimeZone());
@@ -1970,7 +1970,7 @@ public class ContextPreInitializationTest {
                 assertFalse(env.isHostLookupAllowed());
                 assertFalse(env.isNativeAccessAllowed());
                 // polyglot access currently defaults to true for preinit. See GR-14657.
-                assertTrue(env.isPolyglotEvalAllowed());
+                assertTrue(env.isPolyglotEvalAllowed(null));
                 assertTrue(env.isPolyglotBindingsAccessAllowed());
                 assertEquals(systemDefault, env.getTimeZone());
                 firstContextInitialized.set(true);

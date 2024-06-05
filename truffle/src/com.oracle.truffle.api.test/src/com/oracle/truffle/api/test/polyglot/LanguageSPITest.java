@@ -990,7 +990,7 @@ public class LanguageSPITest {
                 case CREATE_THREAD:
                     return env.isCreateThreadAllowed();
                 case POLYGLOT_ACCESS:
-                    return env.isPolyglotBindingsAccessAllowed() || env.isPolyglotEvalAllowed();
+                    return env.isPolyglotBindingsAccessAllowed() || env.isPolyglotEvalAllowed(null);
                 case ENVIRONMENT_ACCESS:
                     // environment access can only be observed with properties
                     String value = env.getEnvironment().get(OUTER_CONTEXT_TEST_KEY);

@@ -34,14 +34,14 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -50,17 +50,18 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.JavaFrame;
+import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -139,26 +140,26 @@ final class Target_java_lang_StackWalker {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private <T> T walk(Function<? super Stream<StackFrame>, ? extends T> function) {
-        JavaStackWalk walk = UnsafeStackValue.get(JavaStackWalk.class);
+        JavaStackWalk walk = UnsafeStackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         AbstractStackFrameSpliterator spliterator;
         if (ContinuationSupport.isSupported() && continuation != null) {
-            // walking a yielded continuation
+            /* Walk a yielded continuation. */
             spliterator = new ContinuationSpliterator(walk, contScope, continuation);
         } else {
-            // walking a platform thread or mounted continuation
+            /* Walk the stack of the current thread. */
+            IsolateThread isolateThread = CurrentIsolate.getCurrentThread();
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
+            Pointer endSP = WordFactory.nullPointer();
             if (ContinuationSupport.isSupported() && (contScope != null || JavaThreads.isCurrentThreadVirtual())) {
                 var scope = (contScope != null) ? contScope : Target_java_lang_VirtualThread.continuationScope();
                 var top = Target_jdk_internal_vm_Continuation.getCurrentContinuation(scope);
-                if (top != null) { // has a delimitation scope
-                    JavaStackWalker.initWalk(walk, sp, ContinuationInternals.getBaseSP(top));
-                } else { // scope is not present in current continuation chain or null
-                    JavaStackWalker.initWalk(walk, sp);
+                if (top != null) {
+                    /* Has a delimitation scope, so we need to stop the stack walk correctly. */
+                    endSP = ContinuationInternals.getBaseSP(top);
                 }
-            } else { // walking a platform thread
-                JavaStackWalker.initWalk(walk, sp);
             }
-            spliterator = new StackFrameSpliterator(walk, Thread.currentThread());
+
+            spliterator = new StackFrameSpliterator(walk, isolateThread, sp, endSP);
         }
 
         try {
@@ -185,12 +186,12 @@ final class Target_java_lang_StackWalker {
         }
 
         @Uninterruptible(reason = "Wraps the now safe call to query frame information.", calleeMustBe = false)
-        protected FrameInfoQueryResult queryFrameInfo(CodeInfo info, CodePointer ip) {
-            return CodeInfoTable.lookupCodeInfoQueryResult(info, ip).getFrameInfo();
+        protected static CodeInfoQueryResult queryCodeInfoInterruptibly(CodeInfo info, CodePointer ip) {
+            return CodeInfoTable.lookupCodeInfoQueryResult(info, ip);
         }
 
-        protected DeoptimizedFrame.VirtualFrame curDeoptimizedFrame;
-        protected FrameInfoQueryResult curRegularFrame;
+        protected DeoptimizedFrame.VirtualFrame deoptimizedVFrame;
+        protected FrameInfoQueryResult regularVFrame;
 
         @Override
         public boolean tryAdvance(Consumer<? super StackFrame> action) {
@@ -201,152 +202,130 @@ final class Target_java_lang_StackWalker {
 
             while (true) {
                 /* Check if we have pending virtual frames to process. */
-                if (curDeoptimizedFrame != null) {
-                    FrameInfoQueryResult frameInfo = curDeoptimizedFrame.getFrameInfo();
-                    curDeoptimizedFrame = curDeoptimizedFrame.getCaller();
+                if (deoptimizedVFrame != null) {
+                    FrameInfoQueryResult frameInfo = deoptimizedVFrame.getFrameInfo();
+                    deoptimizedVFrame = deoptimizedVFrame.getCaller();
 
                     if (shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
                         action.accept(new StackFrameImpl(frameInfo));
                         return true;
                     }
 
-                } else if (curRegularFrame != null) {
-                    FrameInfoQueryResult frameInfo = curRegularFrame;
-                    curRegularFrame = curRegularFrame.getCaller();
+                } else if (regularVFrame != null) {
+                    FrameInfoQueryResult frameInfo = regularVFrame;
+                    regularVFrame = frameInfo.getCaller();
 
                     if (shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
                         action.accept(new StackFrameImpl(frameInfo));
                         return true;
                     }
 
-                } else if (haveMoreFrames()) {
-                    /* No more virtual frames, but we have more physical frames. */
-                    advancePhysically();
-                } else {
+                } else if (!advancePhysically()) {
                     /* No more physical frames, we are done. */
+                    invalidate();
                     return false;
                 }
             }
         }
 
-        protected boolean shouldShowFrame(FrameInfoQueryResult frameInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
+        private static boolean shouldShowFrame(FrameInfoQueryResult frameInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
             return StackTraceUtils.shouldShowFrame(frameInfo, showLambdaFrames, showReflectFrames, showHiddenFrames);
         }
 
-        protected void invalidate() {
-        }
+        protected abstract void invalidate();
 
-        protected void checkState() {
-        }
+        protected abstract void checkState();
 
-        protected abstract boolean haveMoreFrames();
-
-        protected abstract void advancePhysically();
+        protected abstract boolean advancePhysically();
     }
 
     final class ContinuationSpliterator extends AbstractStackFrameSpliterator {
         private final Target_jdk_internal_vm_ContinuationScope contScope;
-        private JavaStackWalk walk;
 
+        private boolean initialized;
+        private JavaStackWalk walk;
         private Target_jdk_internal_vm_Continuation continuation;
         private StoredContinuation stored;
 
-        /**
-         * Because we are interruptible in between walking frames, pointers into the stack become
-         * invalid if a garbage collection happens and moves the continuation object, so we store
-         * stack pointers as an offset relative to {@link StoredContinuationAccess#getFramesStart}.
-         */
-        private UnsignedWord spOffset;
-        private UnsignedWord endSpOffset;
-
         ContinuationSpliterator(JavaStackWalk walk, Target_jdk_internal_vm_ContinuationScope contScope, Target_jdk_internal_vm_Continuation continuation) {
-            walk.setPossiblyStaleIP(WordFactory.nullPointer());
+            assert walk.isNonNull();
             this.walk = walk;
             this.contScope = contScope;
             this.continuation = continuation;
         }
 
-        @Uninterruptible(reason = "Prevent GC while in this method.")
-        private boolean initWalk() {
-            assert stored == null;
-            if (continuation == null || ContinuationInternals.getStoredContinuation(continuation) == null) {
-                walk.setPossiblyStaleIP(WordFactory.nullPointer());
-                return false;
-            }
-            if (!StoredContinuationAccess.initWalk(ContinuationInternals.getStoredContinuation(continuation), walk)) {
-                return false;
-            }
-            stored = ContinuationInternals.getStoredContinuation(continuation);
-            walk.setStartSP(WordFactory.nullPointer()); // not needed, would turn stale
-            return true;
-        }
-
         @Override
-        protected boolean haveMoreFrames() {
-            return continuation != null;
-        }
-
-        @Override
-        protected void advancePhysically() {
+        protected boolean advancePhysically() {
             assert continuation != null;
-            assert curDeoptimizedFrame == null;
-            curRegularFrame = null;
 
-            while (contScope != null && continuation.getScope() != contScope) {
-                assert stored == null;
-                continuation = continuation.getParent();
-                if (continuation == null) {
-                    return;
+            do {
+                if (contScope != null) {
+                    /* Navigate to the continuation that matches the scope. */
+                    while (continuation != null && continuation.getScope() != contScope) {
+                        continuation = continuation.getParent();
+                    }
                 }
-            }
-            if (!advancePhysically0()) {
-                continuation = null;
-                return;
-            }
-            if (stored == null) {
-                continuation = continuation.getParent();
-            }
+
+                if (continuation == null) {
+                    return false;
+                }
+
+                /*
+                 * Store the StoredContinuation object in a field to avoid problems in case that the
+                 * continuation continues execution in another thread in the meanwhile.
+                 */
+                stored = ContinuationInternals.getStoredContinuation(continuation);
+                if (stored == null) {
+                    return false;
+                }
+
+                if (advancePhysically0()) {
+                    return true;
+                } else {
+                    /*
+                     * We reached the end of the current continuation. Try to continue in the
+                     * parent.
+                     */
+                    continuation = continuation.getParent();
+                    initialized = false;
+                }
+            } while (continuation != null);
+
+            return false;
         }
 
         @Uninterruptible(reason = "Prevent GC while in this method.")
         private boolean advancePhysically0() {
-            if (walk.getPossiblyStaleIP().isNonNull()) {
-                UnsignedWord framesStart = StoredContinuationAccess.getFramesStart(stored);
-                walk.setSP((Pointer) framesStart.add(spOffset));
-                walk.setEndSP((Pointer) framesStart.add(endSpOffset));
-            } else if (!initWalk()) {
+            if (initialized) {
+                /*
+                 * Because we are interruptible in between walking frames, pointers into the stored
+                 * continuation become invalid if a garbage collection moves the object. So, we need
+                 * to update all cached stack pointer values before we can continue the walk.
+                 */
+                JavaStackWalker.updateStackPointerForContinuation(walk, stored);
+            } else {
+                initialized = true;
+                JavaStackWalker.initializeForContinuation(walk, stored);
+            }
+
+            if (!JavaStackWalker.advanceForContinuation(walk, stored)) {
                 return false;
             }
 
-            VMError.guarantee(Deoptimizer.checkDeoptimized(walk.getSP()) == null);
+            JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
+            VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
+            VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
+            VMError.guarantee(Deoptimizer.checkDeoptimized(frame) == null, "Deoptimized frames are not supported");
 
-            CodePointer ip = walk.getPossiblyStaleIP();
-            UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+            UntetheredCodeInfo untetheredInfo = frame.getIPCodeInfo();
+            VMError.guarantee(UntetheredCodeInfoAccess.isAOTImageCode(untetheredInfo));
+
             Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-            SimpleCodeInfoQueryResult queryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
             try {
                 CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-                VMError.guarantee(UntetheredCodeInfoAccess.isAOTImageCode(walk.getIPCodeInfo()));
-                CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, ip), queryResult);
-
-                JavaStackWalker.continueWalk(walk, queryResult, null);
-                if (walk.getSP().belowThan(walk.getEndSP())) {
-                    UnsignedWord framesStart = StoredContinuationAccess.getFramesStart(stored);
-                    spOffset = walk.getSP().subtract(framesStart);
-                    endSpOffset = walk.getEndSP().subtract(framesStart);
-                } else {
-                    walk.setPossiblyStaleIP(WordFactory.nullPointer());
-                    spOffset = WordFactory.zero();
-                    endSpOffset = WordFactory.zero();
-
-                    stored = null;
-                }
-                // SPs turn stale when interruptible, null them to be safe
-                walk.setSP(WordFactory.nullPointer());
-                walk.setEndSP(WordFactory.nullPointer());
-
-                // Interruptible call, so we must finish walking this frame before
-                curRegularFrame = queryFrameInfo(info, ip);
+                /* This interruptible call might trigger a GC that moves continuation objects. */
+                CodeInfoQueryResult physicalFrame = queryCodeInfoInterruptibly(info, frame.getIP());
+                regularVFrame = physicalFrame.getFrameInfo();
             } finally {
                 CodeInfoAccess.releaseTether(untetheredInfo, tether);
             }
@@ -355,9 +334,9 @@ final class Target_java_lang_StackWalker {
 
         @Override
         protected void invalidate() {
+            walk = WordFactory.nullPointer();
             continuation = null;
             stored = null;
-            walk = WordFactory.nullPointer();
         }
 
         @Override
@@ -369,12 +348,19 @@ final class Target_java_lang_StackWalker {
     }
 
     final class StackFrameSpliterator extends AbstractStackFrameSpliterator {
-        private final Thread thread;
+        private final IsolateThread thread;
+        private final Pointer startSP;
+        private final Pointer endSP;
+
+        private boolean initialized;
         private JavaStackWalk walk;
 
-        StackFrameSpliterator(JavaStackWalk walk, Thread curThread) {
+        StackFrameSpliterator(JavaStackWalk walk, IsolateThread thread, Pointer startSP, Pointer endSP) {
+            this.initialized = false;
             this.walk = walk;
-            this.thread = curThread;
+            this.thread = thread;
+            this.startSP = startSP;
+            this.endSP = endSP;
         }
 
         @Override
@@ -384,50 +370,44 @@ final class Target_java_lang_StackWalker {
 
         @Override
         protected void checkState() {
-            if (thread != Thread.currentThread()) {
-                throw new IllegalStateException("Invalid thread");
-            }
             if (walk.isNull()) {
                 throw new IllegalStateException("Stack traversal no longer valid");
+            } else if (thread != CurrentIsolate.getCurrentThread()) {
+                throw new IllegalStateException("Invalid thread");
             }
         }
 
         @Override
-        protected boolean haveMoreFrames() {
-            Pointer endSP = walk.getEndSP();
-            Pointer curSP = walk.getSP();
-            return curSP.isNonNull() && (endSP.isNull() || curSP.belowThan(endSP));
-        }
-
-        /**
-         * Get virtual frames to process in the next loop iteration, then update the physical stack
-         * walker to the next physical frame to be ready when all virtual frames are processed.
-         */
-        @Override
         @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-        protected void advancePhysically() {
-            CodePointer ip = FrameAccess.singleton().readReturnAddress(walk.getSP());
-            walk.setPossiblyStaleIP(ip);
+        protected boolean advancePhysically() {
+            if (!initialized) {
+                initialized = true;
+                JavaStackWalker.initialize(walk, thread, startSP, endSP);
+            }
 
-            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(walk.getSP());
+            if (!JavaStackWalker.advance(walk, thread)) {
+                return false;
+            }
+
+            JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
+            VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
+
+            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(frame);
             if (deoptimizedFrame != null) {
-                curDeoptimizedFrame = deoptimizedFrame.getTopFrame();
-                walk.setIPCodeInfo(WordFactory.nullPointer());
-                JavaStackWalker.continueWalk(walk, WordFactory.nullPointer());
-
+                this.deoptimizedVFrame = deoptimizedFrame.getTopFrame();
             } else {
-                UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
-                walk.setIPCodeInfo(untetheredInfo);
-
+                UntetheredCodeInfo untetheredInfo = frame.getIPCodeInfo();
                 Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
                 try {
                     CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-                    curRegularFrame = queryFrameInfo(info, ip);
-                    JavaStackWalker.continueWalk(walk, info);
+                    CodeInfoQueryResult physicalFrame = queryCodeInfoInterruptibly(info, frame.getIP());
+                    regularVFrame = physicalFrame.getFrameInfo();
                 } finally {
                     CodeInfoAccess.releaseTether(untetheredInfo, tether);
                 }
             }
+
+            return true;
         }
     }
 

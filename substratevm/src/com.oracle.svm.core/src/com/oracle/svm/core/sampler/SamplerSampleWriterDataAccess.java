@@ -63,7 +63,7 @@ public final class SamplerSampleWriterDataAccess {
      * Initialize the {@link SamplerSampleWriterData data} so that it uses the given buffer.
      */
     @Uninterruptible(reason = "Accesses a sampler buffer", callerMustBe = true)
-    private static void initialize0(SamplerSampleWriterData data, SamplerBuffer buffer, int skipCount, int maxDepth, boolean allowBufferAllocation) {
+    public static void initialize0(SamplerSampleWriterData data, SamplerBuffer buffer, int skipCount, int maxDepth, boolean allowBufferAllocation) {
         assert SamplerBufferAccess.verify(buffer);
 
         data.setSamplerBuffer(buffer);
@@ -74,7 +74,7 @@ public final class SamplerSampleWriterDataAccess {
         data.setMaxDepth(maxDepth);
         data.setTruncated(false);
         data.setSkipCount(skipCount);
-        data.setNumFrames(0);
+        data.setSeenFrames(0);
         data.setAllowBufferAllocation(allowBufferAllocation);
     }
 

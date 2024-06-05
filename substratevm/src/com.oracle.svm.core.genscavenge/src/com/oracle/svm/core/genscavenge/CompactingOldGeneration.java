@@ -25,12 +25,10 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -365,8 +363,7 @@ final class CompactingOldGeneration extends OldGeneration {
     @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.")
     private void fixupStackReferences() {
         Pointer sp = readCallerStackPointer();
-        CodePointer ip = readReturnAddress();
-        GCImpl.walkStackRoots(refFixupVisitor, sp, ip, false);
+        GCImpl.walkStackRoots(refFixupVisitor, sp, false);
     }
 
     private void compact(Timers timers) {

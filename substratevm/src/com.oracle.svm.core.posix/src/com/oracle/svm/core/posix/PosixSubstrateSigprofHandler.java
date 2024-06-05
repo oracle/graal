@@ -97,7 +97,7 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
         if (tryEnterIsolate()) {
             CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(uContext);
             Pointer sp = (Pointer) RegisterDumper.singleton().getSP(uContext);
-            tryUninterruptibleStackWalk(ip, sp);
+            tryUninterruptibleStackWalk(ip, sp, true);
         }
     }
 

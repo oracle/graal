@@ -117,7 +117,7 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Should be called from the same method as acquireTether.", callerMustBe = true)
     public static CodeInfo convert(UntetheredCodeInfo untetheredInfo, Object tether) {
         assert UntetheredCodeInfoAccess.getTetherUnsafe(untetheredInfo) == null || UntetheredCodeInfoAccess.getTetherUnsafe(untetheredInfo) == tether;
-        return convert(untetheredInfo);
+        return unsafeConvert(untetheredInfo);
     }
 
     /**
@@ -125,7 +125,7 @@ public final class CodeInfoAccess {
      * but with less verification.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static CodeInfo convert(UntetheredCodeInfo untetheredInfo) {
+    public static CodeInfo unsafeConvert(UntetheredCodeInfo untetheredInfo) {
         assert isValid(untetheredInfo);
         return (CodeInfo) untetheredInfo;
     }
@@ -267,10 +267,13 @@ public final class CodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long lookupTotalFrameSize(CodeInfo info, long ip) {
-        SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
-        lookupCodeInfo(info, ip, codeInfoQueryResult);
-        return CodeInfoQueryResult.getTotalFrameSize(codeInfoQueryResult.getEncodedFrameSize());
+    public static long lookupTotalFrameSize(CodeInfo info, long relativeIP) {
+        return CodeInfoQueryResult.getTotalFrameSize(lookupEncodedFrameSize(info, relativeIP));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long lookupTotalFrameSize(CodeInfo info, CodePointer ip) {
+        return CodeInfoQueryResult.getTotalFrameSize(lookupEncodedFrameSize(info, ip));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -279,21 +282,40 @@ public final class CodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long lookupStackReferenceMapIndex(CodeInfo info, long ip) {
-        return CodeInfoDecoder.lookupStackReferenceMapIndex(info, ip);
+    public static long lookupStackReferenceMapIndex(CodeInfo info, long relativeIP) {
+        return CodeInfoDecoder.lookupStackReferenceMapIndex(info, relativeIP);
     }
 
-    public static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfoQueryResult) {
+    public static void lookupCodeInfo(CodeInfo info, CodePointer ip, CodeInfoQueryResult codeInfoQueryResult) {
         lookupCodeInfo(info, ip, codeInfoQueryResult, FrameInfoDecoder.SubstrateConstantAccess);
     }
 
-    public static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfoQueryResult, ConstantAccess constantAccess) {
-        CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult, constantAccess);
+    public static void lookupCodeInfo(CodeInfo info, CodePointer ip, CodeInfoQueryResult codeInfoQueryResult, ConstantAccess constantAccess) {
+        long relativeIP = CodeInfoAccess.relativeIP(info, ip);
+        CodeInfoDecoder.lookupCodeInfo(info, relativeIP, codeInfoQueryResult, constantAccess);
+    }
+
+    public static void lookupCodeInfo(CodeInfo info, long relativeIP, CodeInfoQueryResult codeInfoQueryResult, ConstantAccess constantAccess) {
+        CodeInfoDecoder.lookupCodeInfo(info, relativeIP, codeInfoQueryResult, constantAccess);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void lookupCodeInfo(CodeInfo info, long ip, SimpleCodeInfoQueryResult codeInfoQueryResult) {
-        CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult);
+    public static void lookupCodeInfo(CodeInfo info, CodePointer ip, SimpleCodeInfoQueryResult codeInfoQueryResult) {
+        long relativeIP = CodeInfoAccess.relativeIP(info, ip);
+        CodeInfoDecoder.lookupCodeInfo(info, relativeIP, codeInfoQueryResult);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long lookupEncodedFrameSize(CodeInfo info, CodePointer ip) {
+        long relativeIP = CodeInfoAccess.relativeIP(info, ip);
+        return lookupEncodedFrameSize(info, relativeIP);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static long lookupEncodedFrameSize(CodeInfo info, long relativeIP) {
+        SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
+        CodeInfoDecoder.lookupCodeInfo(info, relativeIP, codeInfoQueryResult);
+        return codeInfoQueryResult.getEncodedFrameSize();
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")

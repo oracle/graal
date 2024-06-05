@@ -16,6 +16,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-54085 Added [`MathUtils`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/utilities/MathUtils.html) API providing additional mathematical functions useful for language implementations, namely: `asinh`, `acosh`, and `atanh`.
 * GR-49484 Added `TruffleStackFrameElement.getBytecodeIndex()` to access bytecode indices of a stack frame. Bytecode based languages should consider implementing `RootNode#findBytecodeIndex(Node, Frame)` to resolve the bytecode index.
 * GR-49484 Deprecated `RootNode.isCaptureFramesForTrace()`. Implementers should use `RootNode.isCaptureFramesForTrace(Node)` instead.
+* GR-28866 Added `TruffleLanguage.Env.getScopePublic(LanguageInfo)` and `TruffleLanguage.Env.getScopeInternal(LanguageInfo)` to allow languages direct access to other language scopes to implement new polyglot builtins.
+* GR-28866 Deprecated `TruffleLanguage.Env.isPolyglotEvalAllowed()`. Replace usages with `TruffleLanguage.Env.isPolyglotEvalAllowed(LanguageInfo)`. Please see javadoc for the updated usage.
 
 ## Version 24.0.0
 
