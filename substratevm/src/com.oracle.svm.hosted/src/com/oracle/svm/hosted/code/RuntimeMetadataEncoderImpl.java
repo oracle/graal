@@ -73,8 +73,10 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
@@ -100,6 +102,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -365,13 +368,16 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         if (classes == null) {
             return null;
         }
+        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) ((HostedMetaAccess) metaAccess).getWrapped();
         Set<Class<?>> reachableClasses = new HashSet<>();
         for (Class<?> clazz : classes) {
             try {
-                metaAccess.lookupJavaType(clazz);
-                reachableClasses.add(clazz);
-            } catch (DeletedElementException dee) {
-                // class has been deleted -> ignore
+                if (!SubstitutionReflectivityFilter.shouldExclude(clazz, aMetaAccess, aMetaAccess.getUniverse())) {
+                    metaAccess.lookupJavaType(clazz);
+                    reachableClasses.add(clazz);
+                }
+            } catch (DeletedElementException | AnalysisError.TypeNotFoundError e) {
+                // class has been deleted or otherwise deemed unreachable by the analysis -> ignore
             }
         }
         return reachableClasses.toArray(new Class<?>[0]);

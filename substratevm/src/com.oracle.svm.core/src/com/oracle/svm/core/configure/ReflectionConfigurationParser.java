@@ -86,6 +86,11 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         if (type.isEmpty()) {
             return;
         }
+        /*
+         * Classes registered using the old ("name") syntax requires elements (fields, methods,
+         * constructors, ...) to be registered for runtime queries, whereas the new ("type") syntax
+         * automatically registers all elements as queried.
+         */
         boolean isType = type.get().definedAsType();
 
         UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, isType);
@@ -99,7 +104,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
         C condition = conditionResult.get();
-        TypeResult<T> result = delegate.resolveType(condition, type.get(), true, false);
+        TypeResult<T> result = delegate.resolveType(condition, type.get(), true);
         if (!result.isPresent()) {
             handleMissingElement("Could not resolve " + type.get() + " for reflection configuration.", result.getException());
             return;
@@ -109,97 +114,33 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         T clazz = result.get();
         delegate.registerType(conditionResult.get(), clazz);
 
+        registerIfNecessary(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, clazz));
+        registerIfNecessary(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, clazz));
+        registerIfNecessary(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, clazz));
+        registerIfNecessary(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, clazz));
+        registerIfNecessary(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, clazz));
+        registerIfNecessary(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, clazz));
+        registerIfNecessary(data, isType, clazz, "allDeclaredClasses", () -> delegate.registerDeclaredClasses(queryCondition, clazz));
+        registerIfNecessary(data, isType, clazz, "allRecordComponents", () -> delegate.registerRecordComponents(queryCondition, clazz));
+        registerIfNecessary(data, isType, clazz, "allPermittedSubclasses", () -> delegate.registerPermittedSubclasses(queryCondition, clazz));
+        registerIfNecessary(data, isType, clazz, "allNestMembers", () -> delegate.registerNestMembers(queryCondition, clazz));
+        registerIfNecessary(data, isType, clazz, "allSigners", () -> delegate.registerSigners(queryCondition, clazz));
+        registerIfNecessary(data, isType, clazz, "allPublicClasses", () -> delegate.registerPublicClasses(queryCondition, clazz));
+        registerIfNecessary(data, isType, clazz, "queryAllDeclaredConstructors", () -> delegate.registerDeclaredConstructors(queryCondition, true, clazz));
+        registerIfNecessary(data, isType, clazz, "queryAllPublicConstructors", () -> delegate.registerPublicConstructors(queryCondition, true, clazz));
+        registerIfNecessary(data, isType, clazz, "queryAllDeclaredMethods", () -> delegate.registerDeclaredMethods(queryCondition, true, clazz));
+        registerIfNecessary(data, isType, clazz, "queryAllPublicMethods", () -> delegate.registerPublicMethods(queryCondition, true, clazz));
+        if (isType) {
+            delegate.registerDeclaredFields(queryCondition, true, clazz);
+            delegate.registerPublicFields(queryCondition, true, clazz);
+        }
+        registerIfNecessary(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
         MapCursor<String, Object> cursor = data.getEntries();
         while (cursor.advance()) {
             String name = cursor.getKey();
             Object value = cursor.getValue();
             try {
                 switch (name) {
-                    case "allDeclaredConstructors":
-                        if (asBoolean(value, "allDeclaredConstructors")) {
-                            delegate.registerDeclaredConstructors(condition, false, clazz);
-                        }
-                        break;
-                    case "allPublicConstructors":
-                        if (asBoolean(value, "allPublicConstructors")) {
-                            delegate.registerPublicConstructors(condition, false, clazz);
-                        }
-                        break;
-                    case "allDeclaredMethods":
-                        if (asBoolean(value, "allDeclaredMethods")) {
-                            delegate.registerDeclaredMethods(condition, false, clazz);
-                        }
-                        break;
-                    case "allPublicMethods":
-                        if (asBoolean(value, "allPublicMethods")) {
-                            delegate.registerPublicMethods(condition, false, clazz);
-                        }
-                        break;
-                    case "allDeclaredFields":
-                        if (asBoolean(value, "allDeclaredFields")) {
-                            delegate.registerDeclaredFields(condition, clazz);
-                        }
-                        break;
-                    case "allPublicFields":
-                        if (asBoolean(value, "allPublicFields")) {
-                            delegate.registerPublicFields(condition, clazz);
-                        }
-                        break;
-                    case "allDeclaredClasses":
-                        if (asBoolean(value, "allDeclaredClasses")) {
-                            delegate.registerDeclaredClasses(queryCondition, clazz);
-                        }
-                        break;
-                    case "allRecordComponents":
-                        if (asBoolean(value, "allRecordComponents")) {
-                            delegate.registerRecordComponents(queryCondition, clazz);
-                        }
-                        break;
-                    case "allPermittedSubclasses":
-                        if (asBoolean(value, "allPermittedSubclasses")) {
-                            delegate.registerPermittedSubclasses(queryCondition, clazz);
-                        }
-                        break;
-                    case "allNestMembers":
-                        if (asBoolean(value, "allNestMembers")) {
-                            delegate.registerNestMembers(queryCondition, clazz);
-                        }
-                        break;
-                    case "allSigners":
-                        if (asBoolean(value, "allSigners")) {
-                            delegate.registerSigners(queryCondition, clazz);
-                        }
-                        break;
-                    case "allPublicClasses":
-                        if (asBoolean(value, "allPublicClasses")) {
-                            delegate.registerPublicClasses(queryCondition, clazz);
-                        }
-                        break;
-                    case "queryAllDeclaredConstructors":
-                        if (asBoolean(value, "queryAllDeclaredConstructors")) {
-                            delegate.registerDeclaredConstructors(queryCondition, true, clazz);
-                        }
-                        break;
-                    case "queryAllPublicConstructors":
-                        if (asBoolean(value, "queryAllPublicConstructors")) {
-                            delegate.registerPublicConstructors(queryCondition, true, clazz);
-                        }
-                        break;
-                    case "queryAllDeclaredMethods":
-                        if (asBoolean(value, "queryAllDeclaredMethods")) {
-                            delegate.registerDeclaredMethods(queryCondition, true, clazz);
-                        }
-                        break;
-                    case "queryAllPublicMethods":
-                        if (asBoolean(value, "queryAllPublicMethods")) {
-                            delegate.registerPublicMethods(queryCondition, true, clazz);
-                        }
-                        break;
-                    case "unsafeAllocated":
-                        if (asBoolean(value, "unsafeAllocated")) {
-                            delegate.registerUnsafeAllocated(condition, clazz);
-                        }
-                        break;
                     case "methods":
                         parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
                         break;
@@ -212,6 +153,16 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
                 }
             } catch (LinkageError e) {
                 handleMissingElement("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection.", e);
+            }
+        }
+    }
+
+    private void registerIfNecessary(EconomicMap<String, Object> data, boolean defaultValue, T clazz, String propertyName, Runnable register) {
+        if (data.containsKey(propertyName) ? asBoolean(data.get(propertyName), propertyName) : defaultValue) {
+            try {
+                register.run();
+            } catch (LinkageError e) {
+                handleMissingElement("Could not register " + delegate.getTypeName(clazz) + ": " + propertyName + " for reflection.", e);
             }
         }
     }
@@ -288,7 +239,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), new NamedConfigurationTypeDescriptor(typeName), true, false);
+            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), new NamedConfigurationTypeDescriptor(typeName), true);
             if (!typeResult.isPresent()) {
                 handleMissingElement("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;

@@ -150,11 +150,13 @@ public class OmitPreviousConfigTests {
 
     private static void doTestTypeFlags(TypeConfiguration typeConfig) {
         ConfigurationType flagTestHasDeclaredType = getConfigTypeOrFail(typeConfig, "FlagTestC");
-        Assert.assertTrue(ConfigurationType.TestBackdoor.haveAllDeclaredClasses(flagTestHasDeclaredType) || ConfigurationType.TestBackdoor.haveAllDeclaredFields(flagTestHasDeclaredType) ||
+        Assert.assertTrue(ConfigurationType.TestBackdoor.haveAllDeclaredClasses(flagTestHasDeclaredType) ||
+                        ConfigurationType.TestBackdoor.getAllDeclaredFields(flagTestHasDeclaredType) == ConfigurationMemberAccessibility.ACCESSED ||
                         ConfigurationType.TestBackdoor.getAllDeclaredConstructors(flagTestHasDeclaredType) == ConfigurationMemberAccessibility.ACCESSED);
 
         ConfigurationType flagTestHasPublicType = getConfigTypeOrFail(typeConfig, "FlagTestD");
-        Assert.assertTrue(ConfigurationType.TestBackdoor.haveAllPublicClasses(flagTestHasPublicType) || ConfigurationType.TestBackdoor.haveAllPublicFields(flagTestHasPublicType) ||
+        Assert.assertTrue(ConfigurationType.TestBackdoor.haveAllPublicClasses(flagTestHasPublicType) ||
+                        ConfigurationType.TestBackdoor.getAllPublicFields(flagTestHasPublicType) == ConfigurationMemberAccessibility.ACCESSED ||
                         ConfigurationType.TestBackdoor.getAllPublicConstructors(flagTestHasPublicType) == ConfigurationMemberAccessibility.ACCESSED);
     }
 
@@ -281,13 +283,13 @@ class TypeMethodsWithFlagsTest {
             config.setAllDeclaredClasses();
             config.setAllDeclaredConstructors(ConfigurationMemberAccessibility.ACCESSED);
             config.setAllDeclaredMethods(ConfigurationMemberAccessibility.ACCESSED);
-            config.setAllDeclaredFields();
+            config.setAllDeclaredFields(ConfigurationMemberAccessibility.ACCESSED);
         }
         if (methodKind.equals(ConfigurationMemberDeclaration.PUBLIC) || methodKind.equals(ConfigurationMemberDeclaration.DECLARED_AND_PUBLIC)) {
             config.setAllPublicClasses();
             config.setAllPublicConstructors(ConfigurationMemberAccessibility.ACCESSED);
             config.setAllPublicMethods(ConfigurationMemberAccessibility.ACCESSED);
-            config.setAllPublicFields();
+            config.setAllPublicFields(ConfigurationMemberAccessibility.ACCESSED);
         }
     }
 

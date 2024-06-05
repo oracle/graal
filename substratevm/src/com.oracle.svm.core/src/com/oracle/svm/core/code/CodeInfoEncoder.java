@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput
 import java.util.BitSet;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
@@ -146,7 +147,7 @@ public class CodeInfoEncoder {
         private final FrequencyEncoder<Member> methods;
         private Member[] encodedMethods;
 
-        public Encoders(boolean imageCode) {
+        public Encoders(boolean imageCode, Consumer<Class<?>> classVerifier) {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
 
             /*
@@ -154,7 +155,7 @@ public class CodeInfoEncoder {
              * reference only image methods via method ids.
              */
             assert imageCode == SubstrateUtil.HOSTED;
-            this.classes = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;
+            this.classes = imageCode ? FrequencyEncoder.createVerifyingEqualityEncoder(classVerifier) : null;
             this.memberNames = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;
             this.methods = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;
             this.otherStrings = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;

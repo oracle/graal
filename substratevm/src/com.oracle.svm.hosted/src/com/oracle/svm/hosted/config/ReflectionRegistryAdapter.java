@@ -30,6 +30,7 @@ import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
@@ -58,8 +59,8 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean includeAllElements) {
-        TypeResult<Class<?>> result = super.resolveType(condition, typeDescriptor, allowPrimitives, includeAllElements);
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+        TypeResult<Class<?>> result = super.resolveType(condition, typeDescriptor, allowPrimitives);
         if (!result.isPresent() && typeDescriptor instanceof NamedConfigurationTypeDescriptor namedDescriptor) {
             Throwable classLookupException = result.getException();
             if (classLookupException instanceof LinkageError) {
@@ -102,13 +103,13 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public void registerPublicFields(ConfigurationCondition condition, Class<?> type) {
-        reflectionSupport.registerAllFieldsQuery(condition, type);
+    public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        ((ReflectionDataBuilder) reflectionSupport).registerAllFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerDeclaredFields(ConfigurationCondition condition, Class<?> type) {
-        reflectionSupport.registerAllDeclaredFieldsQuery(condition, type);
+    public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        ((ReflectionDataBuilder) reflectionSupport).registerAllDeclaredFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
