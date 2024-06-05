@@ -52,6 +52,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -324,7 +325,12 @@ public class CodeInfoEncoder {
 
     @Fold
     public static boolean shouldEncodeAllMethodMetadata() {
-        return HasJfrSupport.get();
+        /*
+         * We don't support JFR stack traces if JIT compilation is enabled, so there's no need to
+         * include extra method metadata. Additionally, including extra metadata would increase the
+         * binary size.
+         */
+        return HasJfrSupport.get() && !RuntimeCompilation.isEnabled();
     }
 
     public static int getEntryOffset(Infopoint infopoint) {
