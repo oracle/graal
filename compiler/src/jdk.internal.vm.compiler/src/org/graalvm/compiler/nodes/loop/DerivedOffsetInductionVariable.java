@@ -86,6 +86,16 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public boolean isConstantStride() {
+        if (isMaskedNegateStride()) {
+            if (base.isConstantStride()) {
+                try {
+                    LoopUtility.multiplyExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), base.constantStride(), -1);
+                    return true;
+                } catch (ArithmeticException e) {
+                    return false;
+                }
+            }
+        }
         return base.isConstantStride();
     }
 
@@ -104,10 +114,29 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantStrideSafe() throws ArithmeticException {
-        if (value instanceof SubNode && base.valueNode() == value.getY()) {
+        if (isMaskedNegateStride()) {
             return LoopUtility.multiplyExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), base.constantStride(), -1);
         }
         return base.constantStride();
+    }
+
+    /**
+     * Determine if the current induction variable's stride is actually one that represents a
+     * negation instead of a normal offset calculation. For example
+     *
+     * <pre>
+     * int i = 0;
+     * while (i < limit) {
+     *     int reversIv = off - i;
+     *     i++;
+     * }
+     * </pre>
+     *
+     * here {@code reverseIv} stride node is actually {@code i} negated since the IV is not
+     * {@code i op off} but {@code off op i} where {@code op} is a subtraction.
+     */
+    private boolean isMaskedNegateStride() {
+        return value instanceof SubNode && base.valueNode() == value.getY();
     }
 
     @Override
