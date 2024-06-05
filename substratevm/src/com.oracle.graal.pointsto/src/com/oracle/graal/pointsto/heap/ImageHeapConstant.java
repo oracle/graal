@@ -167,6 +167,14 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return isReachableHandle.get(constantData) != null;
     }
 
+    public boolean allowConstantFolding() {
+        /*
+         * An object whose type is initialized at run time does not have hosted field values. Only
+         * simulated objects can be used for constant folding.
+         */
+        return constantData.type.isInitialized() || constantData.hostedObject == null;
+    }
+
     public Object getReachableReason() {
         return constantData.isReachable;
     }

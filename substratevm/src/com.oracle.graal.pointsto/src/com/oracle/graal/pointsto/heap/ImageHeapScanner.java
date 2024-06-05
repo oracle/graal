@@ -374,11 +374,21 @@ public abstract class ImageHeapScanner {
             for (ResolvedJavaField javaField : instanceFields) {
                 AnalysisField field = (AnalysisField) javaField;
                 ValueSupplier<JavaConstant> rawFieldValue;
-                try {
-                    rawFieldValue = readHostedFieldValue(field, constant);
-                } catch (InternalError | TypeNotPresentException | LinkageError e) {
-                    /* Ignore missing type errors. */
-                    continue;
+                if (!type.isInitialized()) {
+                    /*
+                     * We cannot read the hosted value of an object whose type is initialized at run
+                     * time. If the object is marked as reachable later on, it will be reported as
+                     * an unsupported feature. But we must not fail here earlier with an internal
+                     * error.
+                     */
+                    rawFieldValue = ValueSupplier.lazyValue(() -> null, () -> false);
+                } else {
+                    try {
+                        rawFieldValue = readHostedFieldValue(field, constant);
+                    } catch (InternalError | TypeNotPresentException | LinkageError e) {
+                        /* Ignore missing type errors. */
+                        continue;
+                    }
                 }
                 hostedFieldValues[field.getPosition()] = new AnalysisFuture<>(() -> {
                     ScanReason fieldReason = new FieldScan(field, instance, reason);
@@ -578,7 +588,7 @@ public abstract class ImageHeapScanner {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
                 StringBuilder backtrace = new StringBuilder();
                 ObjectScanner.buildObjectBacktrace(bb, reason, backtrace);
-                throw new UnsupportedFeatureException(e.getMessage() + System.lineSeparator() + backtrace);
+                throw new UnsupportedFeatureException(e.getMessage() + System.lineSeparator() + backtrace, e);
             }
         }
 
