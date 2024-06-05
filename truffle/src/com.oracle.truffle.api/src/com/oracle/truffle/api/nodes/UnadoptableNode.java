@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.dsl;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package com.oracle.truffle.api.nodes;
 
 /**
- * Use to suppress Truffle DSL warnings in whole packages using a package-info.java class. For
- * regular Java elements use {@link SuppressWarnings}.
+ * Marks a node unadoptable, this means that the parent pointer will never be written by the Truffle
+ * framework. If nodes need to be statically shared then they must not be adoptable, because
+ * otherwise the parent reference might cause a memory leak. If a node is not adoptable then then it
+ * is guaranteed that the {@link Node#getParent() parent} pointer remains <code>null</code> at all
+ * times, even if the node is tried to be adopted by a parent.
+ * <p>
+ * Node that unadoptable nodes should usually also be annotated with {@link DenyReplace}.
  *
- * https://github.com/oracle/graal/blob/master/truffle/docs/DSLWarnings.md
- *
- * @since 23.0
+ * @see Node#isAdoptable()
+ * @see DenyReplace
+ * @since 24.1
  */
-@Retention(RetentionPolicy.CLASS)
-@Target({ElementType.PACKAGE})
-public @interface SuppressPackageWarnings {
-
-    /**
-     * @since 23.0
-     */
-    String[] value();
+public interface UnadoptableNode {
 
 }

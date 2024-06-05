@@ -56,13 +56,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -725,12 +725,6 @@ public final class ProbeNode extends Node {
         logger.log(Level.SEVERE, message, t);
     }
 
-    /** @since 0.12 */
-    @Override
-    public NodeCost getCost() {
-        return NodeCost.NONE;
-    }
-
     private static boolean checkInteropType(Object value, EventBinding.Source<?> binding) {
         if (value != null && value != UNWIND_ACTION_REENTER && value != UNWIND_ACTION_IGNORED && !InstrumentAccessor.ACCESSOR.isTruffleObject(value)) {
             Class<?> clazz = value.getClass();
@@ -916,11 +910,6 @@ public final class ProbeNode extends Node {
 
         ProbeNode.EventChainNode getNext() {
             return next;
-        }
-
-        @Override
-        public final NodeCost getCost() {
-            return NodeCost.NONE;
         }
 
         final void profileBranch(int flag) {

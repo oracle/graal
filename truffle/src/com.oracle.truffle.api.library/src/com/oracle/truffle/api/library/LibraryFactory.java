@@ -59,13 +59,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.library.LibraryExport.DelegateExport;
-import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.api.library.provider.EagerExportProvider;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.FinalBitSet;
 
 /**
@@ -88,15 +86,12 @@ import com.oracle.truffle.api.utilities.FinalBitSet;
  * instances designed to be used in ASTs. Cached instances are typically {@link Node#isAdoptable()
  * adoptable} and store additional profiling information for the cached export. This allows to
  * generate call-site specific profiling information for libray calls. Before a cached instance can
- * be used it must be {@link Node#insert(Node) adopted} by a parent node. Cached instances of
- * libraries have a {@link Node#getCost() cost} of {@link NodeCost#MONOMORPHIC} for each manually
- * cached library.
+ * be used it must be {@link Node#insert(Node) adopted} by a parent node.
  * <p>
  * Uncached versions are designed to be used from slow-path runtime methods or whenever call-site
  * specific profiling is not desired. All uncached versions of a library are annotated with
  * {@linkplain TruffleBoundary @TruffleBoundary}. Uncached instances always return
- * <code>false</code> for {@link Node#isAdoptable()}. Uncached instances of libraries have a
- * {@link Node#getCost() cost} of {@link NodeCost#MEGAMORPHIC}.
+ * <code>false</code> for {@link Node#isAdoptable()}.
  * <p>
  * This class is intended to be sub-classed by generated code only. Do not sub-class
  * {@link LibraryFactory} manually.
@@ -189,8 +184,6 @@ public abstract class LibraryFactory<T extends Library> {
     @SuppressWarnings("unchecked")
     protected LibraryFactory(Class<T> libraryClass, List<Message> messages) {
         assert this.getClass().getName().endsWith(LibraryExport.GENERATED_CLASS_SUFFIX);
-        assert this.getClass().getAnnotation(GeneratedBy.class) != null;
-        assert this.getClass().getAnnotation(GeneratedBy.class).value() == libraryClass;
         this.libraryClass = libraryClass;
         this.messages = Collections.unmodifiableList(messages);
         Map<String, Message> messagesMap = new LinkedHashMap<>();

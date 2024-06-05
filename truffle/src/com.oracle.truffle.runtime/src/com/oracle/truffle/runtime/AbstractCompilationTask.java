@@ -55,7 +55,6 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -171,10 +170,6 @@ public abstract class AbstractCompilationTask implements TruffleCompilationTask 
     }
 
     private static void computeNodeProperties(Map<String, ? super Object> properties, com.oracle.truffle.api.nodes.Node node) {
-        NodeCost nodeCost = node.getCost();
-        if (nodeCost != null) {
-            properties.put("cost", node.getCost());
-        }
         var nodeInfo = node.getClass().getAnnotation(com.oracle.truffle.api.nodes.NodeInfo.class);
         if (nodeInfo != null) {
             if (!nodeInfo.shortName().isEmpty()) {

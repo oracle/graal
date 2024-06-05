@@ -47,7 +47,6 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Idempotent;
@@ -62,7 +61,6 @@ import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces4Factory;
 import com.oracle.truffle.api.dsl.test.TestHelper.TestExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.nodes.NodeCost;
 
 @SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
 public class ReplacesTest {
@@ -114,8 +112,6 @@ public class ReplacesTest {
                         array(-2, 2, -2, -3, -4), //
                         new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
-                                // assert that we are always monomorphic
-                                Assert.assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
                             }
                         });
     }
@@ -166,7 +162,6 @@ public class ReplacesTest {
                         array(1, 0, 1, 2), //
                         new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
-                                Assert.assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
                             }
                         });
     }
@@ -692,7 +687,6 @@ public class ReplacesTest {
         assertThat((int) executeWith(root, 1), is(1));
         assertThat((int) executeWith(root, 2), is(2));
         assertThat((int) executeWith(root, 3), is(3));
-        assertThat(root.getNode().getCost(), is(NodeCost.MONOMORPHIC));
     }
 
     @NodeChild("a")
