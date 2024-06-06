@@ -16,6 +16,9 @@
     c.weekly + hw.a12c + jdk + cc.c2 + suite
   for jdk in cc.product_jdks
   for suite in bench.groups.main_suites
+  ] + [
+    c.monthly + hw.a12c + jdk + cc.c2 + bench.specjbb2015,
+  for jdk in cc.product_jdks
   ],
 
   local hotspot_profiling_builds = std.flattenArrays([
