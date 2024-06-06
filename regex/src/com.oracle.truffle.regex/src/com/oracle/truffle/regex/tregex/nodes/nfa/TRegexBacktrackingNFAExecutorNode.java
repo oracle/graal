@@ -283,7 +283,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     @Override
     public Object execute(VirtualFrame frame, TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
-        CompilerDirectives.ensureVirtualized(locals);
         if (innerLiteral != null) {
             locals.setIndex(locals.getFromIndex());
             int innerLiteralIndex = findInnerLiteral(locals);
