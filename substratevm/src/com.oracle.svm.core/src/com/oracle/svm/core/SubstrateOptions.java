@@ -523,8 +523,9 @@ public class SubstrateOptions {
     @Option(help = "Trace VMOperation execution.")//
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
-    @APIOption(name = "trace-class-initialization")//
-    @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.")//
+    private static final String DEPRECATION_MESSAGE_TCI = "This option is not required anymore with the strict image heap enabled by default.";
+    @APIOption(name = "trace-class-initialization", deprecated = DEPRECATION_MESSAGE_TCI)//
+    @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.", deprecated = true, deprecationMessage = DEPRECATION_MESSAGE_TCI)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "trace-object-instantiation")//
@@ -1100,7 +1101,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> VerifyFrameAccess = new HostedOptionKey<>(false);
 
     @SuppressWarnings("unused")//
-    @APIOption(name = "configure-reflection-metadata")//
+    @APIOption(name = "configure-reflection-metadata", deprecated = "This option has no function anymore.")//
     @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert, deprecated = true)//
     public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
 
@@ -1136,10 +1137,12 @@ public class SubstrateOptions {
                     deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
-    @Option(help = "file:doc-files/MissingRegistrationHelp.txt")//
+    @APIOption(name = "exact-reachability-metadata", defaultValue = "")//
+    @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
-    @Option(help = "file:doc-files/MissingRegistrationPathsHelp.txt")//
+    @APIOption(name = "exact-reachability-metadata-path")//
+    @Option(help = "file:doc-files/ExactReachabilityMetadataPathHelp.txt")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     public enum ReportingMode {
