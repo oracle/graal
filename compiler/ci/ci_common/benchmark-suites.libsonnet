@@ -112,7 +112,7 @@
 
   renaissance: self.renaissance_template(),
 
-  specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + bc.bench_max_threads + {
+  specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + bc.bench_no_thread_cap + {
     suite:: "specjbb2015",
     downloads+: {
       "SPECJBB2015": { name: "specjbb2015", version: "1.04" }
