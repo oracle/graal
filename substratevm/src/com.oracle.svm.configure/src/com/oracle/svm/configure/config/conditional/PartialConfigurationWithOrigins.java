@@ -170,7 +170,7 @@ public class PartialConfigurationWithOrigins extends ConfigurationParser impleme
             if (configType == null) {
                 throw new JsonParserException("Invalid configuration type: " + configName);
             }
-            configurationSet.getConfiguration(configType).createParser().parseAndRegister(cursor.getValue(), origin);
+            configurationSet.getConfiguration(configType).createParser(false).parseAndRegister(cursor.getValue(), origin);
         }
     }
 }

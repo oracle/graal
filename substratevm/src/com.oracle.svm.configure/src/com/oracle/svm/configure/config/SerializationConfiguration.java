@@ -110,14 +110,23 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
+        List<SerializationConfigurationType> listOfCapturedClasses = new ArrayList<>(serializations);
+        Collections.sort(listOfCapturedClasses);
+        printSerializationClasses(writer, listOfCapturedClasses);
+    }
+
+    @Override
+    public void printLegacyJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
         List<SerializationConfigurationType> listOfCapturedClasses = new ArrayList<>(serializations);
         Collections.sort(listOfCapturedClasses);
-        printSerializationClasses(writer, "types", listOfCapturedClasses);
+        writer.quote("types").append(":");
+        printSerializationClasses(writer, listOfCapturedClasses);
         writer.append(",").newline();
         List<SerializationConfigurationLambdaCapturingType> listOfCapturingClasses = new ArrayList<>(lambdaSerializationCapturingTypes);
         listOfCapturingClasses.sort(new SerializationConfigurationLambdaCapturingType.SerializationConfigurationLambdaCapturingTypesComparator());
-        printSerializationClasses(writer, "lambdaCapturingTypes", listOfCapturingClasses);
+        writer.quote("lambdaCapturingTypes").append(":");
+        printSerializationClasses(writer, listOfCapturingClasses);
         writer.append(",").newline().quote("proxies").append(":");
         printProxies(writer);
         writer.unindent().newline();
@@ -125,8 +134,13 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     }
 
     @Override
-    public ConfigurationParser createParser() {
-        return new SerializationConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), this, true);
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        return SerializationConfigurationParser.create(strictMetadata, ConfigurationConditionResolver.identityResolver(), this, true);
+    }
+
+    @Override
+    public boolean supportsCombinedFile() {
+        return lambdaSerializationCapturingTypes.isEmpty() && interfaceListsSerializableProxies.isEmpty();
     }
 
     private void printProxies(JsonWriter writer) throws IOException {
@@ -134,8 +148,7 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
         ProxyConfiguration.printProxyInterfaces(writer, lists);
     }
 
-    private static void printSerializationClasses(JsonWriter writer, String types, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {
-        writer.quote(types).append(":");
+    private static void printSerializationClasses(JsonWriter writer, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {
         writer.append('[');
         writer.indent();
 

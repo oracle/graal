@@ -80,7 +80,7 @@ public class ResourceConfigurationTest {
 
             Thread writerThread = new Thread(() -> {
                 try (JsonWriter w = jw) {
-                    rc.printJson(w);
+                    rc.printLegacyJson(w);
                 } catch (IOException e) {
                     Assert.fail(e.getMessage());
                 }
@@ -130,7 +130,7 @@ public class ResourceConfigurationTest {
                 }
             };
 
-            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = new ResourceConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), registry, true);
+            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = ResourceConfigurationParser.create(false, ConfigurationConditionResolver.identityResolver(), registry, true);
             writerThread.start();
             rcp.parseAndRegister(pr);
 
