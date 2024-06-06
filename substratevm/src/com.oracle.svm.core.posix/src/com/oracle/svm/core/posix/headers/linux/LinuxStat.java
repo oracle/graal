@@ -47,7 +47,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 public class LinuxStat {
 
     @CStruct(addStructKeyword = true)
-    public interface stat64 extends PointerBase {
+    public interface stat extends PointerBase {
         @CField
         long st_ino();
 
@@ -68,9 +68,9 @@ public class LinuxStat {
 
     public static class NoTransitions {
         @CFunction(transition = NO_TRANSITION)
-        public static native int fstat64(int fd, stat64 buf);
+        public static native int fstat(int fd, stat buf);
 
         @CFunction(transition = NO_TRANSITION)
-        public static native int lstat64(@CConst CCharPointer path, stat64 buf);
+        public static native int lstat(@CConst CCharPointer path, stat buf);
     }
 }

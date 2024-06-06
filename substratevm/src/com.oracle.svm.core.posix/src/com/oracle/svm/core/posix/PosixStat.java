@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix;
 
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -44,6 +43,8 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.darwin.DarwinStat;
 import com.oracle.svm.core.posix.headers.linux.LinuxStat;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 // Checkstyle: stop
 @CContext(PosixDirectives.class)
@@ -85,8 +86,8 @@ public final class PosixStat {
     public static long getSize(int fd) {
         long size = -1;
         if (Platform.includedIn(Platform.LINUX.class)) {
-            LinuxStat.stat64 stat = UnsafeStackValue.get(LinuxStat.stat64.class);
-            if (LinuxStat.NoTransitions.fstat64(fd, stat) == 0) {
+            LinuxStat.stat stat = UnsafeStackValue.get(LinuxStat.stat.class);
+            if (LinuxStat.NoTransitions.fstat(fd, stat) == 0) {
                 size = stat.st_size();
             }
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
@@ -103,7 +104,7 @@ public final class PosixStat {
     @Fold
     public static int sizeOfStatStruct() {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            return SizeOf.get(LinuxStat.stat64.class);
+            return SizeOf.get(LinuxStat.stat.class);
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
             return SizeOf.get(DarwinStat.stat.class);
         } else {
@@ -114,7 +115,7 @@ public final class PosixStat {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int st_uid(stat buf) {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            return ((LinuxStat.stat64) buf).st_uid();
+            return ((LinuxStat.stat) buf).st_uid();
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
             return ((DarwinStat.stat) buf).st_uid();
         } else {
@@ -135,7 +136,7 @@ public final class PosixStat {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord st_mode(stat buf) {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            return ((LinuxStat.stat64) buf).st_mode();
+            return ((LinuxStat.stat) buf).st_mode();
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
             return ((DarwinStat.stat) buf).st_mode();
         } else {
@@ -145,7 +146,7 @@ public final class PosixStat {
 
     public static UnsignedWord st_nlink(stat buf) {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            return ((LinuxStat.stat64) buf).st_nlink();
+            return ((LinuxStat.stat) buf).st_nlink();
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
             return ((DarwinStat.stat) buf).st_nlink();
         } else {
@@ -170,7 +171,7 @@ public final class PosixStat {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int fstat(int fd, stat buf) {
             if (Platform.includedIn(Platform.LINUX.class)) {
-                return LinuxStat.NoTransitions.fstat64(fd, (LinuxStat.stat64) buf);
+                return LinuxStat.NoTransitions.fstat(fd, (LinuxStat.stat) buf);
             } else if (Platform.includedIn(Platform.DARWIN.class)) {
                 return DarwinStat.NoTransitions.fstat(fd, (DarwinStat.stat) buf);
             } else {
@@ -181,7 +182,7 @@ public final class PosixStat {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int lstat(CCharPointer path, stat buf) {
             if (Platform.includedIn(Platform.LINUX.class)) {
-                return LinuxStat.NoTransitions.lstat64(path, (LinuxStat.stat64) buf);
+                return LinuxStat.NoTransitions.lstat(path, (LinuxStat.stat) buf);
             } else if (Platform.includedIn(Platform.DARWIN.class)) {
                 return DarwinStat.NoTransitions.lstat(path, (DarwinStat.stat) buf);
             } else {
