@@ -105,7 +105,7 @@ public final class CPUSampler implements Closeable {
     private int nextContextIndex;
     private final Map<TruffleContext, Integer> activeContexts = new WeakHashMap<>();
     private final List<MutableSamplerData> samplerData = new ArrayList<>();
-    private volatile boolean closed;
+    volatile boolean closed;
     private volatile boolean collecting;
     private long period = 10;
     private long delay = 0;
@@ -513,7 +513,7 @@ public final class CPUSampler implements Closeable {
             }
             if (!contexts.isEmpty()) {
                 Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
-                List<StackSample> sample = safepointStackSampler.sample(env, contexts, !sampleContextInitialization, timeout, timeoutUnit);
+                List<StackSample> sample = safepointStackSampler.sample(this, env, contexts, !sampleContextInitialization, timeout, timeoutUnit);
                 for (StackSample stackSample : sample) {
                     stacks.put(stackSample.thread, stackSample.stack);
                 }
@@ -801,7 +801,7 @@ public final class CPUSampler implements Closeable {
                 synchronized (CPUSampler.this) {
                     data = samplerData.get(activeContexts.get(context));
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, Collections.singletonMap(context, data), !sampleContextInitialization, period,
+                List<StackSample> samples = safepointStackSampler.sample(CPUSampler.this, env, Collections.singletonMap(context, data), !sampleContextInitialization, period,
                                 TimeUnit.MILLISECONDS);
                 resultsToProcess.add(new SamplingResult(samples, context, taskStartTime));
             }
