@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.move;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
@@ -46,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMNoOpNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux.LLVMLinuxAarch64VaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.VAListPointerWrapperFactoryDelegateNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -201,7 +204,7 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
             this.memMoveNode = memMoveNode;
         }
 
-        public abstract Object executeWithTarget(LLVMPointer sourcePtr, LLVMPointer destPtr);
+        public abstract Object executeWithTarget(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr);
 
         boolean doCustomVaListCopy(LLVMPointer sourcePtr, LLVMPointer destPtr) {
             Object src;
@@ -232,7 +235,7 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
          * and "native->object" ({@code LLVMLinuxAarch64VaListStorage.NativeVAListWrapper.copy}
          * message).
          */
-        private static Object getReceiver(LLVMPointer receiverPtr) {
+        static Object getReceiver(LLVMPointer receiverPtr) {
             Object recv;
             if (LLVMManagedPointer.isInstance(receiverPtr)) {
                 if (LLVMManagedPointer.cast(receiverPtr).getOffset() != 0) {
@@ -296,15 +299,22 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
             return 1;
         }
 
-        @Specialization(guards = "doCustomVaListCopy(sourcePtr, destPtr)")
-        Object customCopy(LLVMPointer sourcePtr, LLVMPointer destPtr,
-                        @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                        @CachedLibrary(limit = "2") LLVMVaListLibrary vaListLibrary) {
+        @Specialization(guards = "doCustomVaListCopy(sourcePtr, destPtr)", limit = "2")
+        Object customCopy(VirtualFrame frame, @SuppressWarnings("unused") LLVMPointer sourcePtr, LLVMPointer destPtr,
+                        @Cached @SuppressWarnings("unused") VAListPointerWrapperFactoryDelegate wrapperFactory,
+                        @Bind("wrapperFactory.execute(getReceiver(sourcePtr))") Object sourceWrapper,
+                        @CachedLibrary("sourceWrapper") LLVMVaListLibrary vaListLibrary) {
             LLVMLinuxAarch64VaListStorage.checkMemmoveLength(destPtr, length);
+            vaListLibrary.copy(sourceWrapper, getReceiver(destPtr), frame);
 
-            Object dest = getReceiver(destPtr);
-            Object source = getReceiver(sourcePtr);
-            vaListLibrary.copyWithoutFrame(wrapperFactory.execute(source), dest);
+            return null;
+        }
+
+        @Specialization(guards = "doCustomVaListCopy(sourcePtr, destPtr)", replaces = "customCopy")
+        Object customCopyUncached(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr) {
+            LLVMLinuxAarch64VaListStorage.checkMemmoveLength(destPtr, length);
+            Object sourceWrapper = VAListPointerWrapperFactoryDelegateNodeGen.getUncached().execute(getReceiver(sourcePtr));
+            LLVMVaListLibrary.getFactory().getUncached(sourceWrapper).copy(sourceWrapper, getReceiver(destPtr), frame.materialize());
 
             return null;
         }
