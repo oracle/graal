@@ -394,6 +394,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
     // region Monitor enter/exit
 
     public static void monitorEnter(@JavaType(Object.class) StaticObject obj, Meta meta) {
+        meta.getContext().getLanguage().getThreadLocalState().blockContinuationSuspension();
         final EspressoLock lock = obj.getLock(meta.getContext());
         EspressoContext context = meta.getContext();
         if (!monitorTryLock(lock)) {
@@ -433,6 +434,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
             // Espresso has its own monitor handling.
             throw meta.throwException(meta.java_lang_IllegalMonitorStateException);
         }
+        meta.getContext().getLanguage().getThreadLocalState().unblockContinuationSuspension();
         monitorUnsafeExit(lock);
     }
 

@@ -43,7 +43,7 @@ public final class QuickenedGetFieldNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         BytecodeNode root = getBytecodeNode();
         StaticObject receiver = nullCheck(EspressoFrame.popObject(frame, top - 1));
         return getFieldNode.getField(frame, root, receiver, top - 1, statementIndex) - 1; // -receiver

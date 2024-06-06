@@ -505,5 +505,9 @@ public interface JDWPContext {
      */
     boolean isVirtualThread(Object thread);
 
+    /**
+     * Tests if the current thread is blocked for debugging (suspends should not occur i.e. not
+     * being reported via stepping).
+     */
     boolean isSingleSteppingDisabled();
 }

@@ -37,6 +37,10 @@ public class EspressoThreadLocalState {
     private StaticObject currentPlatformThread;
     private StaticObject currentVirtualThread;
 
+    // A refcount, when >0 the serializable continuation mechanism will refuse to suspend.
+    private int suspensionBlocks;
+    private boolean inContinuation;
+
     private int singleSteppingDisabledCounter;
 
     @SuppressWarnings("unused")
@@ -131,5 +135,50 @@ public class EspressoThreadLocalState {
 
     public boolean isSteppingDisabled() {
         return singleSteppingDisabledCounter > 0;
+    }
+
+    /**
+     * Prevents {@code Continuation.SuspendCapability.suspend()} being called, typically because
+     * there is something on the stack that we can't unwind through.
+     */
+    public void blockContinuationSuspension() {
+        assert suspensionBlocks < Integer.MAX_VALUE;
+        suspensionBlocks++;
+    }
+
+    public void unblockContinuationSuspension() {
+        assert suspensionBlocks > 0;
+        suspensionBlocks--;
+    }
+
+    public ContinuationScope continuationScope() {
+        return new ContinuationScope();
+    }
+
+    public boolean isInContinuation() {
+        return inContinuation;
+    }
+
+    public final class ContinuationScope implements AutoCloseable {
+        private final int startBlocks;
+
+        private ContinuationScope() {
+            startBlocks = suspensionBlocks;
+            suspensionBlocks = 0;
+            assert !inContinuation;
+            inContinuation = true;
+        }
+
+        @Override
+        public void close() {
+            suspensionBlocks = startBlocks;
+            inContinuation = false;
+        }
+    }
+
+    public boolean isContinuationSuspensionBlocked() {
+        // Why one and not zero here? Because the fact we reached here means we're inside the
+        // suspend intrinsic, and we don't want to consider that as blocking the suspend.
+        return suspensionBlocks > 1;
     }
 }
