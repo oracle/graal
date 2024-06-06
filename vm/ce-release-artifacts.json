@@ -358,38 +358,5 @@
                 "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
             }
         ]
-    },
-    {
-        "name": "graalvm-espresso-community-java21",
-        "core": true,
-        "jdk": "jdk_21",
-        "override_name":"espresso",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-{os}-{arch}"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64",
-                "name_template": "{name}-community-{version}-{os}-{arch}"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-{os}-{arch}"
-            }
-        ]
     }
 ]
