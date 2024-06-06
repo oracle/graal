@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -184,7 +184,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen.LLVMI64OffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen.LLVMI8OffsetStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode.LLVMPrimitiveOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen.LLVMPointerOffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAbstractCompareNode;
@@ -367,7 +367,7 @@ public class CommonNodeFactory {
         }
     }
 
-    public static LLVMOffsetStoreNode createOffsetStoreNode(LLVMInteropType.ValueKind kind) {
+    public static LLVMPrimitiveOffsetStoreNode createOffsetStoreNode(LLVMInteropType.ValueKind kind) {
         switch (kind) {
             case I1:
                 return LLVMI1OffsetStoreNode.create();
@@ -390,7 +390,7 @@ public class CommonNodeFactory {
         }
     }
 
-    public static LLVMOffsetStoreNode getUncachedOffsetStoreNode(LLVMInteropType.ValueKind kind) {
+    public static LLVMPrimitiveOffsetStoreNode getUncachedOffsetStoreNode(LLVMInteropType.ValueKind kind) {
         switch (kind) {
             case I1:
                 return LLVMI1OffsetStoreNodeGen.getUncached();
