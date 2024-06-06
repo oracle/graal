@@ -27,11 +27,9 @@ package jdk.graal.compiler.hotspot.jdk23.test;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 
-import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.test.AddExports;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
