@@ -2,7 +2,7 @@
 suite = {
     "mxversion": "7.13.2",
     "name": "substratevm",
-    "version" : "24.1.0",
+    "version" : "24.2.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 

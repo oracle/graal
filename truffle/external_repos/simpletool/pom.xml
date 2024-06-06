@@ -48,7 +48,7 @@
     <version>${graalvm.version}</version>
     <name>simpletool</name>
     <properties>
-        <graalvm.version>24.1.0-dev</graalvm.version>
+        <graalvm.version>24.2.0-dev</graalvm.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
