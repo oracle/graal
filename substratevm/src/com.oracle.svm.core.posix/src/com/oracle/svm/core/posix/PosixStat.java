@@ -31,11 +31,14 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.AllowWideningCast;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CConst;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -86,12 +89,12 @@ public final class PosixStat {
     public static long getSize(int fd) {
         long size = -1;
         if (Platform.includedIn(Platform.LINUX.class)) {
-            LinuxStat.stat stat = UnsafeStackValue.get(LinuxStat.stat.class);
+            stat stat = UnsafeStackValue.get(stat.class);
             if (LinuxStat.NoTransitions.fstat(fd, stat) == 0) {
                 size = stat.st_size();
             }
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            DarwinStat.stat stat = UnsafeStackValue.get(DarwinStat.stat.class);
+            stat stat = UnsafeStackValue.get(stat.class);
             if (DarwinStat.NoTransitions.fstat(fd, stat) == 0) {
                 size = stat.st_size();
             }
@@ -104,9 +107,9 @@ public final class PosixStat {
     @Fold
     public static int sizeOfStatStruct() {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            return SizeOf.get(LinuxStat.stat.class);
+            return SizeOf.get(stat.class);
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            return SizeOf.get(DarwinStat.stat.class);
+            return SizeOf.get(stat.class);
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }
@@ -115,9 +118,9 @@ public final class PosixStat {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int st_uid(stat buf) {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            return ((LinuxStat.stat) buf).st_uid();
+            return buf.st_uid();
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            return ((DarwinStat.stat) buf).st_uid();
+            return buf.st_uid();
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }
@@ -136,9 +139,9 @@ public final class PosixStat {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord st_mode(stat buf) {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            return ((LinuxStat.stat) buf).st_mode();
+            return buf.st_mode();
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            return ((DarwinStat.stat) buf).st_mode();
+            return buf.st_mode();
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }
@@ -146,18 +149,32 @@ public final class PosixStat {
 
     public static UnsignedWord st_nlink(stat buf) {
         if (Platform.includedIn(Platform.LINUX.class)) {
-            return ((LinuxStat.stat) buf).st_nlink();
+            return buf.st_nlink();
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            return ((DarwinStat.stat) buf).st_nlink();
+            return buf.st_nlink();
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }
     }
 
-    /**
-     * Pointer to the OS-specific stat struct.
-     */
-    public interface stat extends WordBase {
+    @CStruct(addStructKeyword = true)
+    public interface stat extends PointerBase {
+        @CField
+        long st_ino();
+
+        @CField
+        @AllowWideningCast
+        UnsignedWord st_mode();
+
+        @CField
+        int st_uid();
+
+        @CField
+        long st_size();
+
+        @CField
+        @AllowWideningCast
+        UnsignedWord st_nlink();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -171,9 +188,9 @@ public final class PosixStat {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int fstat(int fd, stat buf) {
             if (Platform.includedIn(Platform.LINUX.class)) {
-                return LinuxStat.NoTransitions.fstat(fd, (LinuxStat.stat) buf);
+                return LinuxStat.NoTransitions.fstat(fd, buf);
             } else if (Platform.includedIn(Platform.DARWIN.class)) {
-                return DarwinStat.NoTransitions.fstat(fd, (DarwinStat.stat) buf);
+                return DarwinStat.NoTransitions.fstat(fd, buf);
             } else {
                 throw VMError.shouldNotReachHere("Unsupported platform");
             }
@@ -182,9 +199,9 @@ public final class PosixStat {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int lstat(CCharPointer path, stat buf) {
             if (Platform.includedIn(Platform.LINUX.class)) {
-                return LinuxStat.NoTransitions.lstat(path, (LinuxStat.stat) buf);
+                return LinuxStat.NoTransitions.lstat(path, buf);
             } else if (Platform.includedIn(Platform.DARWIN.class)) {
-                return DarwinStat.NoTransitions.lstat(path, (DarwinStat.stat) buf);
+                return DarwinStat.NoTransitions.lstat(path, buf);
             } else {
                 throw VMError.shouldNotReachHere("Unsupported platform");
             }
