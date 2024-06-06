@@ -1379,10 +1379,24 @@ LDFLAGS=
               "toolchain.cmake" : {
                 "source_type": "string",
                 "value": '''
-set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/gcc)
 set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/g++)
 set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/x86_64-linux-musl-native/bin/ar)
+'''
+              },
+            },
+            "dependencies": [
+              "MUSL_GCC_TOOLCHAIN",
+            ],
+          },
+          "aarch64": {
+            "layout" : {
+              "toolchain.cmake" : {
+                "source_type": "string",
+                "value": '''
+set(CMAKE_C_COMPILER   <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/gcc)
+set(CMAKE_CXX_COMPILER <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/g++)
+set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar)
 '''
               },
             },

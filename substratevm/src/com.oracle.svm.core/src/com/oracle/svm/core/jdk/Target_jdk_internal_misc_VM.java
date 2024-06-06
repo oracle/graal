@@ -35,7 +35,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.internal.misc.Unsafe;
@@ -73,8 +72,6 @@ public final class Target_jdk_internal_misc_VM {
 }
 
 final class DirectMemoryAccessors {
-    private static final long DIRECT_MEMORY_DURING_INITIALIZATION = 25 * 1024 * 1024;
-
     /*
      * Not volatile to avoid a memory barrier when reading the values. Instead, an explicit barrier
      * is inserted when writing the values.
@@ -102,15 +99,6 @@ final class DirectMemoryAccessors {
              * No value explicitly specified. The default in the JDK in this case is the maximum
              * heap size.
              */
-            if (PhysicalMemory.isInitializationInProgress()) {
-                /*
-                 * When initializing PhysicalMemory, we use NIO/cgroups code that calls
-                 * VM.getDirectMemory(). When this initialization is in progress, we need to prevent
-                 * that Runtime.maxMemory() is called below because it would trigger a recursive
-                 * initialization of PhysicalMemory. So, we return a temporary value.
-                 */
-                return DIRECT_MEMORY_DURING_INITIALIZATION;
-            }
             newDirectMemory = Runtime.getRuntime().maxMemory();
         }
 

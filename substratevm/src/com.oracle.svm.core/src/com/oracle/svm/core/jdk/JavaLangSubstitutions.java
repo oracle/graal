@@ -50,7 +50,7 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Processor;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -62,6 +62,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.container.Container;
+import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -339,7 +341,15 @@ final class Target_java_lang_Runtime {
     @Substitute
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     private int availableProcessors() {
-        return Processor.singleton().getActiveProcessorCount();
+        int optionValue = SubstrateOptions.ActiveProcessorCount.getValue();
+        if (optionValue > 0) {
+            return optionValue;
+        }
+
+        if (Container.singleton().isContainerized()) {
+            return Container.singleton().getActiveProcessorCount();
+        }
+        return OperatingSystem.singleton().getActiveProcessorCount();
     }
 }
 

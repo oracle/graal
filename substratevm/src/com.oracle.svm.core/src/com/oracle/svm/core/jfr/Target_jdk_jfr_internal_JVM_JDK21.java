@@ -30,12 +30,12 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 
-import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 
@@ -358,7 +358,7 @@ final class Target_jdk_jfr_internal_JVM_JDK21 {
 
     @Substitute
     public boolean isContainerized() {
-        return Containers.isContainerized();
+        return Container.singleton().isContainerized();
     }
 
     @Substitute

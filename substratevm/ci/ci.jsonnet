@@ -16,7 +16,7 @@
   local t(limit) = task_spec({timelimit: limit}),
 
   // mx gate build config
-  local mxgate(tags) = os_arch_jdk_mixin + sg.mxgate(tags, suite="substratevm", suite_short="svm"),
+  local mxgate(tags) = os_arch_jdk_mixin + sg.mxgate(tags, suite="substratevm", suite_short="svm") + task_spec(common.deps.svm),
 
   local eclipse = task_spec(common.deps.eclipse),
   local jdt = task_spec(common.deps.jdt),

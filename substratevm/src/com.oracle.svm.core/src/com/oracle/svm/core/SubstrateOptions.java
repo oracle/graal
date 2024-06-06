@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
@@ -478,6 +477,9 @@ public class SubstrateOptions {
     };
     @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, Immutable);
+
+    @Option(help = "Enable detection and runtime container configuration support.")//
+    public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
