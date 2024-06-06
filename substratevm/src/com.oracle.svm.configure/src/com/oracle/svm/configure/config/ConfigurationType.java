@@ -46,6 +46,8 @@ import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
 
+import jdk.graal.compiler.util.SignatureUtil;
+
 /**
  * Type usage information, part of a {@link TypeConfiguration}. Unlike other configuration classes
  * like {@link ConfigurationMethod}, this class is not immutable and uses locking to synchronize
@@ -336,6 +338,17 @@ public class ConfigurationType implements JsonPrintable {
     public synchronized void addMethod(String name, String internalSignature, ConfigurationMemberDeclaration declaration, ConfigurationMemberAccessibility accessibility) {
         ConfigurationMemberInfo kind = ConfigurationMemberInfo.get(declaration, accessibility);
         boolean matchesAllSignatures = (internalSignature == null);
+        if (!matchesAllSignatures) {
+            /*
+             * A method with an invalid signature will not match any existing method. The signature
+             * is also checked during run-time queries (in this case, JNI's `Get(Static)MethodID`)
+             * and the missing registration error check does not happen if the signature is invalid,
+             * so there is no need to register a negative query for the method either.
+             */
+            if (!SignatureUtil.isSignatureValid(internalSignature, true)) {
+                return;
+            }
+        }
         if (ConfigurationMethod.isConstructorName(name) ? hasAllConstructors(declaration, accessibility) : hasAllMethods(declaration, accessibility)) {
             if (!matchesAllSignatures) {
                 if (accessibility == ConfigurationMemberAccessibility.ACCESSED) {
