@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: optimizations-and-performance
+toc_group: pgo
 link_title: Profile-Guided Optimization
 permalink: /reference-manual/native-image/optimizations-and-performance/PGO/
 ---
