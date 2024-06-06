@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,7 +53,6 @@ import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMCopyTargetLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -85,7 +84,6 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 4)
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 3)
 @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 2)
-@ExportLibrary(value = LLVMCopyTargetLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(InteropLibrary.class)
 public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
@@ -150,31 +148,15 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
         return usedGpArea;
     }
 
-    // LLVMCopyTargetLibrary
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    public boolean canCopyFrom(Object source, @SuppressWarnings("unused") long length) {
-        /*
-         * I do not test if the length is the size of va_list as I need that the execution proceed
-         * to copyFrom. I think that an exception should not be thrown here in this idempotent
-         * method, but in the actual attempt to make a copy.
-         */
-        return source instanceof LLVMLinuxAarch64VaListStorage || LLVMNativePointer.isInstance(source);
-    }
-
-    @ExportMessage
-    public void copyFrom(Object source, @SuppressWarnings("unused") long length,
-                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                    @CachedLibrary(limit = "2") LLVMVaListLibrary vaListLibrary,
-                    @Cached BranchProfile invalidLengthProfile) {
+    /**
+     * Sanity check for special cased memmove between va_list objects.
+     */
+    public static void checkMemmoveLength(LLVMPointer destPtr, long length) {
+        assert LLVMManagedPointer.cast(destPtr).getObject() instanceof LLVMLinuxAarch64VaListStorage;
         if (length != Aarch64BitVarArgs.SIZE_OF_VALIST) {
-            invalidLengthProfile.enter();
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere("Invalid length " + length + ". Expected length " + Aarch64BitVarArgs.SIZE_OF_VALIST);
         }
-
-        vaListLibrary.copyWithoutFrame(wrapperFactory.execute(source), this);
     }
 
     // NativeTypeLibrary library
