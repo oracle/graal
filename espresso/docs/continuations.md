@@ -15,14 +15,14 @@ Currently, only the Espresso VM supports the continuations feature.
 ### High level
 
 If you can model your use case as code that emits (or _yields_) a stream of objects, you can use the `Generator<T>`
-class. This provides something similar to Python's generators with a convenient API. Just subclass it,
-implement `generate` and call `emit` from inside it.
+class. This provides something similar to Python's generators with a convenient API compatible with Java's 
+`Enumerator` type. Just subclass it, implement `generate` and call `emit` from inside it.
 
 ### Low level
 
 You create a new `Continuation` by passing the constructor an object that implements the functional
 interface `Continuation.EntryPoint` (which can be a lambda). That object's `start` method receives
-a `Continuation.SuspendCapability` that lets you trigger a suspend. You can do that from _any_ depth in the stack as
+a `Continuation.SuspendCapability` that lets you trigger suspension. You can do that from _any_ depth in the stack as
 long as the code was invoked via the entry point, and all the frames between the call to `suspend` and `start` will be
 unwound and stored inside the `Continuation` object. You can then call `resume()` on it to kick it off for the first
 time or to restart from the last suspend point.
@@ -31,19 +31,16 @@ Continuations are single-threaded constructs. There are no second threads involv
 until the continuation either finishes successfully, throws an exception or calls suspend. The difference can be seen in
 the result of the `getState()` method.
 
-`Continuation` implements `Externalizable` and can serialize to a backwards compatible format (not guaranteed until
-final release). Because frames can point to anything in their parameters and local variables, it must be persisted by a
-serialization engine that can handle arbitrary objects like [Kryo](https://github.com/EsotericSoftware/kryo/)
-or `ObjectOutputStream`.
+`Continuation` implements `Externalizable` and can serialize to a backwards compatible format. Because frames can point
+to anything in their parameters and local variables, it must be persisted by a serialization engine that can handle
+arbitrary objects like [Kryo](https://github.com/EsotericSoftware/kryo/) or `ObjectOutputStream`.
 
 ## Security
 
 Continuations that have **not** been _materialized_ are safe, as the frame record is kept internal to the VM.
 
 Materializing a continuation refers to making the record visible to Java code, through the
-private `Continuation.stackFrameHead` field.
-
-Currently, the only path for materialization is through serialization.
+private `Continuation.stackFrameHead` field. Currently, the only path for materialization is through serialization.
 
 When restoring from a materialized frame (_dematerialization_), only minimal checks are performed by the VM, and only to
 prevent a VM crash. Examples of these checks are:
@@ -54,6 +51,260 @@ prevent a VM crash. Examples of these checks are:
 
 Deserializing a continuation supplied by an attacker will allow complete takeover of the JVM. Only resume continuations
 you persisted yourself!
+
+## Sample code
+
+### Generators
+
+An example of how to use the `Generator<E>` class. It's a `Serializable` `Enumerator` that prints out the numbers 2 and 4. 
+This sample doesn't use serialization, see below for samples that do.
+
+```java
+import org.graalvm.continuations.Generator;
+
+import java.io.*;
+
+public class GeneratorTest {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        var generator = new Generator<Integer>() {
+            @Override
+            protected void generate() {
+                for (int i = 1; i <= 5; i++) {
+                    doWork(i);
+                }
+            }
+
+            private void doWork(int i) {
+                if (i % 2 == 0) {
+                    emit(i);
+                }
+            }
+        };
+
+        while (generator.hasMoreElements()) {
+            System.out.println(generator.nextElement());
+        }
+    }
+}
+```
+
+### Persistent continuations using Kryo
+
+A program that persists its state to a file. Each time the program is run it increments the counter and prints out the 
+new value before quitting. It uses the popular and fast [Kryo](https://github.com/EsotericSoftware/kryo) library. The
+main advantage of Kryo is that it can serialize anything, even if the object doesn't implement `Serializable` or
+`Externalizable`.
+
+```java
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.Serializer;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.serializers.ExternalizableSerializer;
+import com.esotericsoftware.kryo.util.DefaultInstantiatorStrategy;
+import com.graalvm.continuations.Continuation;
+import org.objenesis.strategy.StdInstantiatorStrategy;
+
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+
+import static java.nio.file.StandardOpenOption.*;
+
+/**
+ * A persistent program that uses the Kryo serialization library.
+ */
+public class PersistentAppKryo implements Continuation.EntryPoint {
+    int counter = 0;
+
+    /**
+     * Anything reachable from the stack in this method is persistent,
+     * including 'this'.
+     */
+    @Override
+    public void start(Continuation.SuspendCapability suspendCapability) {
+        while (true) {
+            counter++;
+            System.out.println("The counter value is now " + counter);
+
+            doWork(suspendCapability);
+        }
+    }
+
+    private static void doWork(Continuation.SuspendCapability suspendCapability) {
+        // Do something ...
+        suspendCapability.suspend();
+        // Do something else ...
+    }
+
+    //////////////////////////////////////////////////////////////////////
+    // Code to load, save and resume the state of the program.
+    //
+
+    private static final Kryo kryo = setupKryo();
+
+    public static void main(String[] args) throws IOException {
+        checkSupported();
+
+        Path storagePath = getStoragePath(args);
+        Continuation continuation = loadOrInit(storagePath);
+        continuation.resume();
+        saveTo(continuation, storagePath);
+        System.out.println(continuation);
+    }
+
+    private static void checkSupported() {
+        try {
+            if (!Continuation.isSupported()) {
+                System.err.println("Try running this program with the -truffle JVM flag.");
+                System.exit(1);
+            }
+        } catch (NoClassDefFoundError e) {
+            System.err.println("Please make sure you are using the Espresso VM");
+            System.exit(1);
+        }
+    }
+
+    private static Path getStoragePath(String[] args) {
+        if (args.length != 1) {
+            return Paths.get("state.kryo.bin");
+        } else {
+            return Paths.get(args[0]);
+        }
+    }
+
+    private static Continuation loadOrInit(Path storagePath) throws IOException {
+        Continuation continuation;
+        if (Files.exists(storagePath)) {
+            try (var in = new Input(Files.newInputStream(storagePath, READ))) {
+                continuation = kryo.readObject(in, Continuation.class);
+            }
+        } else {
+            continuation = new Continuation(new PersistentAppKryo());
+        }
+        return continuation;
+    }
+
+    private static void saveTo(Continuation continuation, Path storagePath) throws IOException {
+        try (var out = new Output(Files.newOutputStream(storagePath, CREATE, TRUNCATE_EXISTING, WRITE))) {
+            kryo.writeObject(out, continuation);
+        }
+    }
+
+    private static Kryo setupKryo() {
+        var kryo = new Kryo();
+        kryo.setReferences(true);
+        kryo.setRegistrationRequired(false);
+        kryo.setInstantiatorStrategy(
+                new DefaultInstantiatorStrategy(new StdInstantiatorStrategy())
+        );
+        kryo.addDefaultSerializer(Continuation.class, ExternalizableSerializer.class);
+        return kryo;
+    }
+}
+```
+
+### Persistent app continuations using Java serialization
+
+This is the same sample as above but using the built-in Java serialization mechanism. This has the advantage of not
+having dependencies, but means that everything on or reachable from the stack must be serializable. 
+
+```java
+import com.graalvm.continuations.Continuation;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import static java.nio.file.StandardOpenOption.*;
+
+/**
+ * A persistent program that uses Java object serialization.
+ */
+public class PersistentApp implements Continuation.EntryPoint, Serializable {
+    int counter = 0;
+
+    /**
+     * Anything reachable from the stack in this method is persistent,
+     * including 'this'.
+     */
+    @Override
+    public void start(Continuation.SuspendCapability suspendCapability/* (3)! */) {
+        while (true) {
+            counter++;
+            System.out.println("The counter value is now " + counter);
+
+            doWork(suspendCapability);
+        }
+    }
+
+    private static void doWork(Continuation.SuspendCapability suspendCapability) {
+        // Do something ...
+        suspendCapability.suspend(); // (4)!
+        // Do something else ...
+    }
+
+    //////////////////////////////////////////////////////////////////////
+    // Code to load, save and resume the state of the program.
+    //
+
+    public static void main(String[] args) throws Exception {
+        checkSupported();
+
+        Path storagePath = getStoragePath(args);
+        Continuation continuation = loadOrInit(storagePath);
+        continuation.resume();
+        saveTo(continuation, storagePath);
+        System.out.println(continuation);
+    }
+
+    private static void checkSupported() {
+        try {
+            if (!Continuation.isSupported()) {
+                System.err.println("Try running this program with the -truffle JVM flag.");
+                System.exit(1);
+            }
+        } catch (NoClassDefFoundError e) {
+            System.err.println("Please make sure you are using the Espresso VM");
+            System.exit(1);
+        }
+    }
+
+    private static Path getStoragePath(String[] args) {
+        if (args.length != 1) {
+            return Paths.get("state.ser.bin");
+        } else {
+            return Paths.get(args[0]);
+        }
+    }
+
+    private static Continuation loadOrInit(Path storagePath) throws Exception {
+        Continuation continuation;
+        if (Files.exists(storagePath)) {
+            try (var in = new ObjectInputStream(Files.newInputStream(storagePath, READ))) {
+                continuation = (Continuation) in.readObject();
+            }
+        } else {
+            continuation = new Continuation(new PersistentAppSer());
+        }
+        return continuation;
+    }
+
+    private static void saveTo(Continuation continuation, Path storagePath) throws IOException {
+        try (var out = new ObjectOutputStream(Files.newOutputStream(storagePath, CREATE, TRUNCATE_EXISTING, WRITE))) {
+            out.writeObject(continuation);
+        }
+    }
+}
+```
 
 ## Use cases
 
@@ -149,7 +400,7 @@ we pass the rest of the records to the next method. This is all done in a specia
 The separation of the call targets has two advantages:
 
 - It does not interfere with regular calls.
-- Resuming and suspending can be PE'd, leading to fast suspend/resume cycles.
+- Resuming and suspending can be partially evaluated, leading to fast suspend/resume cycles.
 
 Serialization is done entirely in guest-side code, by having the `Continuation` class implement `Externalizable`. The
 format is designed to enable backwards-compatible evolution of the format.
