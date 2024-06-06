@@ -78,25 +78,25 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
         this.step = step;
     }
 
-    public abstract void executeWithTarget(LLVMPointer srcPtr, LLVMPointer destPtr, boolean forwardCopy);
+    public abstract void executeWithTarget(VirtualFrame frame, LLVMPointer srcPtr, LLVMPointer destPtr, boolean forwardCopy);
 
     @Specialization(guards = "forwardCopy")
-    void moveNormalDir(LLVMPointer srcPtr, LLVMPointer destPtr, @SuppressWarnings("unused") boolean forwardCopy) {
+    void moveNormalDir(VirtualFrame frame, LLVMPointer srcPtr, LLVMPointer destPtr, @SuppressWarnings("unused") boolean forwardCopy) {
         Object val = loadNode.executeWithTargetGeneric(srcPtr);
-        storeNode.executeWithTarget(destPtr, val);
+        storeNode.executeWithTarget(frame, destPtr, val);
         if (nextPrimitiveMoveNode != null) {
-            nextPrimitiveMoveNode.executeWithTarget(srcPtr.increment(step), destPtr.increment(step), forwardCopy);
+            nextPrimitiveMoveNode.executeWithTarget(frame, srcPtr.increment(step), destPtr.increment(step), forwardCopy);
         }
     }
 
     @Specialization(guards = "!forwardCopy")
-    void moveReverseDir(LLVMPointer src, LLVMPointer dest, @SuppressWarnings("unused") boolean forwardCopy) {
+    void moveReverseDir(VirtualFrame frame, LLVMPointer src, LLVMPointer dest, @SuppressWarnings("unused") boolean forwardCopy) {
         LLVMPointer srcPtr = src.increment(-step);
         Object val = loadNode.executeWithTargetGeneric(srcPtr);
         LLVMPointer destPtr = dest.increment(-step);
-        storeNode.executeWithTarget(destPtr, val);
+        storeNode.executeWithTarget(frame, destPtr, val);
         if (nextPrimitiveMoveNode != null) {
-            nextPrimitiveMoveNode.executeWithTarget(srcPtr, destPtr, forwardCopy);
+            nextPrimitiveMoveNode.executeWithTarget(frame, srcPtr, destPtr, forwardCopy);
         }
     }
 
@@ -327,16 +327,16 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
         }
 
         @Specialization(guards = {"!doCustomVaListCopy(sourcePtr, destPtr)", "!useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)", "copyDirection(sourcePtr, destPtr) > 0"})
-        Object primitiveMoveInForwardDir(LLVMPointer sourcePtr, LLVMPointer destPtr,
+        Object primitiveMoveInForwardDir(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary asForeignLib) {
-            primitiveMoveNode.executeWithTarget(sourcePtr, destPtr, true);
+            primitiveMoveNode.executeWithTarget(frame, sourcePtr, destPtr, true);
             return null;
         }
 
         @Specialization(guards = {"!doCustomVaListCopy(sourcePtr, destPtr)", "!useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)", "copyDirection(sourcePtr, destPtr) < 0"})
-        Object primitiveMoveInBackwardDir(LLVMPointer sourcePtr, LLVMPointer destPtr,
+        Object primitiveMoveInBackwardDir(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary asForeignLib) {
-            primitiveMoveNode.executeWithTarget(sourcePtr.increment(length), destPtr.increment(length), false);
+            primitiveMoveNode.executeWithTarget(frame, sourcePtr.increment(length), destPtr.increment(length), false);
             return null;
         }
 

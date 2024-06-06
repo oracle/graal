@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -77,7 +78,7 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     /**
      * @param address
      * @param value
-     * @see #executeWithTarget(Object, Object)
+     * @see #executeWithTarget(VirtualFrame, Object, Object)
      */
     @Specialization(guards = "getStructSize() == 0")
     protected void noCopy(Object address, Object value) {
@@ -107,9 +108,9 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = "!isRecursive")
-    protected void doVarArgCompoundValue(LLVMNativePointer address, LLVMVarArgCompoundValue value,
+    protected void doVarArgCompoundValue(VirtualFrame frame, LLVMNativePointer address, LLVMVarArgCompoundValue value,
                     @Cached("createRecursive()") LLVMStructStoreNode recursionNode) {
-        recursionNode.executeWithTarget(address, value.getAddr());
+        recursionNode.executeWithTarget(frame, address, value.getAddr());
     }
 
 }

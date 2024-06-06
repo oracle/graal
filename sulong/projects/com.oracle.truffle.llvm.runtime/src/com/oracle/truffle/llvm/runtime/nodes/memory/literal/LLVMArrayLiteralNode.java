@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,7 +59,7 @@ public abstract class LLVMArrayLiteralNode extends LLVMExpressionNode {
     protected LLVMPointer foreignWrite(VirtualFrame frame, LLVMPointer addr) {
         LLVMPointer currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
-            write.executeWithTarget(currentPtr, values[i].executeGeneric(frame));
+            write.executeWithTarget(frame, currentPtr, values[i].executeGeneric(frame));
             currentPtr = currentPtr.increment(stride);
         }
         return addr;

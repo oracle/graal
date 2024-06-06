@@ -71,8 +71,8 @@ public abstract class LLVMOffsetStoreNode extends LLVMNode {
         }
 
         @Specialization
-        protected void doOp(LLVMPointer addr, long offset, Object value) {
-            store.executeWithTarget(addr.increment(offset), value);
+        protected void doOp(VirtualFrame frame, LLVMPointer addr, long offset, Object value) {
+            store.executeWithTarget(frame, addr.increment(offset), value);
         }
     }
 }
