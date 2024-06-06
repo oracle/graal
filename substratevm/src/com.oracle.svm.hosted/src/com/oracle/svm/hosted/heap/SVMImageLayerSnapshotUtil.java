@@ -36,15 +36,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
@@ -121,7 +118,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
      */
     private static String getGeneratedSerializationName(AnalysisType type) {
         Class<?> constructorAccessor = type.getJavaClass();
-        SerializationSupport serializationRegistry = (SerializationSupport) ImageSingletons.lookup(SerializationRegistry.class);
+        SerializationSupport serializationRegistry = SerializationSupport.singleton();
         SerializationSupport.SerializationLookupKey serializationLookupKey = serializationRegistry.getKeyFromConstructorAccessorClass(constructorAccessor);
         return generatedSerializationClassName(serializationLookupKey);
     }

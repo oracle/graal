@@ -495,11 +495,13 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
 
     public void addForTypeReachedTracking(Class<?> clazz) {
         if (TrackTypeReachedOnInterfaces.getValue() && clazz.isInterface() && !metaAccess.lookupJavaType(clazz).declaresDefaultMethods()) {
-            LogUtils.info("Detected 'typeReached' on interface type without default methods: " + clazz);
+            LogUtils.info("Detected 'typeReached' on interface type without default methods: %s", clazz.getName());
         }
 
         if (!isAlwaysReached(clazz)) {
-            UserError.guarantee(!configurationSealed, "It is not possible to register types for reachability tracking after the analysis has started.");
+            UserError.guarantee(!configurationSealed || typesRequiringReachability.contains(clazz),
+                            "It is not possible to register types for reachability tracking after the analysis has started if they were not registered before analysis started. Trying to register: %s",
+                            clazz.getName());
             typesRequiringReachability.add(clazz);
         }
     }

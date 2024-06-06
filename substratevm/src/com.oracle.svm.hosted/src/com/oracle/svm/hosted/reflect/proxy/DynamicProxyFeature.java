@@ -76,14 +76,13 @@ public final class DynamicProxyFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        proxyRegistry().flushConditionalConfiguration(access);
+        proxyRegistry().setAnalysisAccess(access);
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         access.rescanField(ImageSingletons.lookup(DynamicProxyRegistry.class), proxyCacheField);
-        proxyRegistry().flushConditionalConfiguration(a);
     }
 
     @Override

@@ -47,10 +47,13 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError;
@@ -90,8 +93,8 @@ public final class Resources {
      * ends up in the image heap is computed after the runtime module instances have been computed
      * {see com.oracle.svm.hosted.ModuleLayerFeature}.
      */
-    private final EconomicMap<ModuleResourceKey, ResourceStorageEntryBase> resources = ImageHeapMap.create();
-    private final EconomicMap<RequestedPattern, Boolean> requestedPatterns = ImageHeapMap.create();
+    private final EconomicMap<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> resources = ImageHeapMap.create();
+    private final EconomicMap<RequestedPattern, RuntimeConditionSet> requestedPatterns = ImageHeapMap.create();
 
     public record RequestedPattern(String module, String resource) {
     }
@@ -108,9 +111,9 @@ public final class Resources {
 
     /**
      * The object used to detect that the resource is not reachable according to the metadata. It
-     * can be returned by the {@link Resources#get} method if the resource was not correctly
-     * specified in the configuration, but we do not want to throw directly (for example when we try
-     * to check all the modules for a resource).
+     * can be returned by the {@link Resources#getAtRuntime} method if the resource was not
+     * correctly specified in the configuration, but we do not want to throw directly (for example
+     * when we try to check all the modules for a resource).
      */
     private static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
 
@@ -124,11 +127,11 @@ public final class Resources {
     Resources() {
     }
 
-    public EconomicMap<ModuleResourceKey, ResourceStorageEntryBase> getResourceStorage() {
+    public EconomicMap<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> getResourceStorage() {
         return resources;
     }
 
-    public Iterable<ResourceStorageEntryBase> resources() {
+    public Iterable<ConditionalRuntimeValue<ResourceStorageEntryBase>> resources() {
         return resources.getValues();
     }
 
@@ -182,17 +185,18 @@ public final class Resources {
         Module m = module != null && module.isNamed() ? module : null;
         synchronized (resources) {
             ModuleResourceKey key = createStorageKey(m, resourceName);
-            ResourceStorageEntryBase entry = resources.get(key);
+            RuntimeConditionSet conditionSet = RuntimeConditionSet.emptySet();
+            ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(key);
             if (isNegativeQuery) {
                 if (entry == null) {
-                    resources.put(key, NEGATIVE_QUERY_MARKER);
+                    resources.put(key, new ConditionalRuntimeValue<>(conditionSet, NEGATIVE_QUERY_MARKER));
                 }
                 return;
             }
 
-            if (entry == null || entry == NEGATIVE_QUERY_MARKER) {
+            if (entry == null || entry.getValueUnconditionally() == NEGATIVE_QUERY_MARKER) {
                 updateTimeStamp();
-                entry = new ResourceStorageEntry(isDirectory, fromJar);
+                entry = new ConditionalRuntimeValue<>(conditionSet, new ResourceStorageEntry(isDirectory, fromJar));
                 resources.put(key, entry);
             } else {
                 if (key.module() != null) {
@@ -201,8 +205,7 @@ public final class Resources {
                     return;
                 }
             }
-
-            entry.addData(data);
+            entry.getValueUnconditionally().addData(data);
         }
     }
 
@@ -243,7 +246,7 @@ public final class Resources {
         ModuleResourceKey key = createStorageKey(module, resourceName);
         synchronized (resources) {
             updateTimeStamp();
-            resources.put(key, new ResourceExceptionEntry(e));
+            resources.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), new ResourceExceptionEntry(e)));
         }
     }
 
@@ -258,16 +261,11 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerIncludePattern(String pattern) {
-        registerIncludePattern(null, pattern);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerIncludePattern(String module, String pattern) {
+    public void registerIncludePattern(ConfigurationCondition condition, String module, String pattern) {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (requestedPatterns) {
             updateTimeStamp();
-            requestedPatterns.put(new RequestedPattern(module, handleEscapedCharacters(pattern)), Boolean.TRUE);
+            requestedPatterns.put(new RequestedPattern(module, handleEscapedCharacters(pattern)), RuntimeConditionSet.createHosted(condition));
         }
     }
 
@@ -310,8 +308,8 @@ public final class Resources {
         return resourceName.equals(canonicalResourceName) || removeTrailingSlash(resourceName).equals(canonicalResourceName);
     }
 
-    public ResourceStorageEntryBase get(String name, boolean throwOnMissing) {
-        return get(null, name, throwOnMissing);
+    public ResourceStorageEntryBase getAtRuntime(String name, boolean throwOnMissing) {
+        return getAtRuntime(null, name, throwOnMissing);
     }
 
     /**
@@ -320,17 +318,19 @@ public final class Resources {
      * {@link MissingResourceRegistrationError}. This is needed because different modules can be
      * tried on the same resource name, causing an unexpected exception if we throw directly.
      */
-    public ResourceStorageEntryBase get(Module module, String resourceName, boolean throwOnMissing) {
+    public ResourceStorageEntryBase getAtRuntime(Module module, String resourceName, boolean throwOnMissing) {
+        VMError.guarantee(ImageInfo.inImageRuntimeCode(), "This function should be used only at runtime.");
         String canonicalResourceName = toCanonicalForm(resourceName);
         String moduleName = moduleName(module);
-        ResourceStorageEntryBase entry = resources.get(createStorageKey(module, canonicalResourceName));
+        ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                MapCursor<RequestedPattern, Boolean> cursor = requestedPatterns.getEntries();
+                MapCursor<RequestedPattern, RuntimeConditionSet> cursor = requestedPatterns.getEntries();
                 while (cursor.advance()) {
                     RequestedPattern moduleResourcePair = cursor.getKey();
                     if (Objects.equals(moduleName, moduleResourcePair.module) &&
-                                    (matchResource(moduleResourcePair.resource, resourceName) || matchResource(moduleResourcePair.resource, canonicalResourceName))) {
+                                    ((matchResource(moduleResourcePair.resource, resourceName) || matchResource(moduleResourcePair.resource, canonicalResourceName)) &&
+                                                    cursor.getValue().satisfied())) {
                         return null;
                     }
                 }
@@ -348,27 +348,33 @@ public final class Resources {
                 return null;
             }
         }
-        if (entry.isException()) {
-            throw new RuntimeException(entry.getException());
+        if (!entry.getConditions().satisfied()) {
+            return missingMetadata(resourceName, throwOnMissing);
         }
-        if (entry == NEGATIVE_QUERY_MARKER) {
+
+        ResourceStorageEntryBase unconditionalEntry = entry.getValue();
+        assert unconditionalEntry != null : "Already checked above that the condition is satisfied";
+        if (unconditionalEntry.isException()) {
+            throw new RuntimeException(unconditionalEntry.getException());
+        }
+        if (unconditionalEntry == NEGATIVE_QUERY_MARKER) {
             return null;
         }
-        if (entry.isFromJar() && !wasAlreadyInCanonicalForm(resourceName, canonicalResourceName)) {
+        if (unconditionalEntry.isFromJar() && !wasAlreadyInCanonicalForm(resourceName, canonicalResourceName)) {
             /*
              * The resource originally came from a jar file, thus behave like ZipFileSystem behaves
              * for non-canonical paths.
              */
             return null;
         }
-        if (!entry.isDirectory() && hasTrailingSlash(resourceName)) {
+        if (!unconditionalEntry.isDirectory() && hasTrailingSlash(resourceName)) {
             /*
              * If this is an actual resource file (not a directory) we do not tolerate a trailing
              * slash.
              */
             return null;
         }
-        return entry;
+        return unconditionalEntry;
     }
 
     private static ResourceStorageEntryBase missingMetadata(String resourceName, boolean throwOnMissing) {
@@ -412,7 +418,7 @@ public final class Resources {
             return null;
         }
 
-        ResourceStorageEntryBase entry = get(module, resourceName, false);
+        ResourceStorageEntryBase entry = getAtRuntime(module, resourceName, false);
         boolean isInMetadata = entry != MISSING_METADATA_MARKER;
         if (moduleName(module) == null && (entry == MISSING_METADATA_MARKER || entry == null)) {
             /*
@@ -420,7 +426,7 @@ public final class Resources {
              * classpath-resource we have to search for the resource in all modules in the image.
              */
             for (Module m : RuntimeModuleSupport.instance().getBootLayer().modules()) {
-                entry = get(m, resourceName, false);
+                entry = getAtRuntime(m, resourceName, false);
                 if (entry != MISSING_METADATA_MARKER) {
                     isInMetadata = true;
                 }
@@ -458,7 +464,7 @@ public final class Resources {
         /* If moduleName was unspecified we have to consider all modules in the image */
         if (moduleName(module) == null) {
             for (Module m : RuntimeModuleSupport.instance().getBootLayer().modules()) {
-                ResourceStorageEntryBase entry = get(m, resourceName, false);
+                ResourceStorageEntryBase entry = getAtRuntime(m, resourceName, false);
                 if (entry == MISSING_METADATA_MARKER) {
                     continue;
                 }
@@ -466,7 +472,7 @@ public final class Resources {
                 addURLEntries(resourcesURLs, (ResourceStorageEntry) entry, m, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
             }
         }
-        ResourceStorageEntryBase explicitEntry = get(module, resourceName, false);
+        ResourceStorageEntryBase explicitEntry = getAtRuntime(module, resourceName, false);
         if (explicitEntry != MISSING_METADATA_MARKER) {
             missingMetadata = false;
             addURLEntries(resourcesURLs, (ResourceStorageEntry) explicitEntry, module, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
@@ -540,9 +546,10 @@ final class ResourcesFeature implements InternalFeature {
          * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
          * read-only.
          */
-        for (ResourceStorageEntryBase entry : Resources.singleton().resources()) {
-            if (entry.hasData()) {
-                for (byte[] resource : entry.getData()) {
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.singleton().resources()) {
+            var unconditionalEntry = entry.getValueUnconditionally();
+            if (unconditionalEntry.hasData()) {
+                for (byte[] resource : unconditionalEntry.getData()) {
                     access.registerAsImmutable(resource);
                 }
             }

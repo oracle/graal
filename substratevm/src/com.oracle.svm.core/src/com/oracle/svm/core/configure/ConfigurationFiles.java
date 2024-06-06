@@ -125,16 +125,16 @@ public final class ConfigurationFiles {
         @Option(help = "When configuration files do not match their schema, abort the image build instead of emitting a warning.")//
         public static final HostedOptionKey<Boolean> StrictConfiguration = new HostedOptionKey<>(false);
 
-        @Option(help = "Testing flag: the typeReachable condition is treated as typeReached so the semantics of programs can change.")//
+        @Option(help = "Testing flag: the 'typeReachable' condition is treated as typeReached so the semantics of programs can change.")//
         public static final HostedOptionKey<Boolean> TreatAllTypeReachableConditionsAsTypeReached = new HostedOptionKey<>(false);
 
-        @Option(help = "Testing flag: the 'name' is treated as 'type' reflection configuration.")//
+        @Option(help = "Testing flag: the 'name' is treated as 'type' in reflection configuration.")//
         public static final HostedOptionKey<Boolean> TreatAllNameEntriesAsType = new HostedOptionKey<>(false);
 
         @Option(help = "Testing flag: the 'typeReached' condition is always satisfied however it prints the stack trace where it would not be satisfied.")//
         public static final HostedOptionKey<Boolean> TrackUnsatisfiedTypeReachedConditions = new HostedOptionKey<>(false);
 
-        @Option(help = "Testing flag: print 'typeReached' conditions that are used on interfaces at build time.")//
+        @Option(help = "Testing flag: print 'typeReached' conditions that are used on interfaces without default methods at build time.")//
         public static final HostedOptionKey<Boolean> TrackTypeReachedOnInterfaces = new HostedOptionKey<>(false);
 
         @Option(help = "Testing flag: every type is considered as it participates in a typeReachable condition.")//

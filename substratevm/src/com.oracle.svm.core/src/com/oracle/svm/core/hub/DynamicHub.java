@@ -82,12 +82,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.RuntimeAssertionsSupport;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -114,6 +114,7 @@ import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.ConstructorDescriptor;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.FieldDescriptor;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MethodDescriptor;
 import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
+import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
@@ -492,7 +493,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex,
-                    boolean isInstantiated, boolean canUnsafeInstantiateAsInstance, boolean isRegisteredForSerialization) {
+                    boolean isInstantiated, boolean canUnsafeInstantiateAsInstance) {
         assert !(!isInstantiated && canUnsafeInstantiateAsInstance);
         VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
         VMError.guarantee(identityHashOffset == (char) identityHashOffset, "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
@@ -506,8 +507,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         this.referenceMapIndex = (int) referenceMapIndex;
         this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) |
-                        makeFlag(CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT, canUnsafeInstantiateAsInstance) |
-                        makeFlag(IS_REGISTERED_FOR_SERIALIZATION, isRegisteredForSerialization));
+                        makeFlag(CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT, canUnsafeInstantiateAsInstance));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -983,7 +983,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean isRegisteredForSerialization() {
-        return isFlagSet(additionalFlags, IS_REGISTERED_FOR_SERIALIZATION);
+        return ImageSingletons.lookup(SerializationRegistry.class).isRegisteredForSerialization(DynamicHub.toClass(this));
     }
 
     @KeepOriginal
@@ -1951,7 +1951,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean isReached() {
-        return classInitializationInfo.isTypeReached();
+        return classInitializationInfo.isTypeReached(this);
     }
 
     private static class ReflectionDataAccessors {

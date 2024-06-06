@@ -45,7 +45,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -56,6 +56,7 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -87,7 +88,7 @@ public class LocalizationSupport {
 
     public final Charset defaultCharset;
 
-    private final EconomicSet<String> registeredBundles = EconomicSet.create();
+    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = EconomicMap.create();
 
     public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
         this.defaultLocale = defaultLocale;
@@ -321,8 +322,10 @@ public class LocalizationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerBundleLookup(String baseName) {
-        registeredBundles.add(baseName);
+    public void registerBundleLookup(ConfigurationCondition condition, String baseName) {
+        RuntimeConditionSet conditionSet = RuntimeConditionSet.emptySet();
+        var registered = registeredBundles.putIfAbsent(baseName, conditionSet);
+        (registered == null ? conditionSet : registered).addCondition(condition);
     }
 
     public boolean isRegisteredBundleLookup(String baseName, Locale locale, Object controlOrStrategy) {
@@ -330,6 +333,6 @@ public class LocalizationSupport {
             /* Those cases will throw a NullPointerException before any lookup */
             return true;
         }
-        return registeredBundles.contains(baseName);
+        return registeredBundles.containsKey(baseName) && registeredBundles.get(baseName).satisfied();
     }
 }

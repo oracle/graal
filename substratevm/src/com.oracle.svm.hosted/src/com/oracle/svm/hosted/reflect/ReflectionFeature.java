@@ -327,7 +327,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         metaAccess = analysisAccess.getMetaAccess();
         reflectionData.beforeAnalysis(analysisAccess);
         /* duplicated to reduce the number of analysis iterations */
-        reflectionData.flushConditionalConfiguration(access);
+        reflectionData.setAnalysisAccess(access);
 
         /*
          * This has to be registered before registering methods below since this causes the analysis
@@ -340,11 +340,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
         /* Make sure array classes don't need to be registered for reflection. */
         RuntimeReflection.register(Object.class.getDeclaredMethods());
-    }
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        reflectionData.flushConditionalConfiguration(access);
     }
 
     @Override
