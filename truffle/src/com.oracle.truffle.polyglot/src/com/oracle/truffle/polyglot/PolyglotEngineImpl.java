@@ -87,6 +87,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
@@ -2355,29 +2356,32 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     private final AtomicBoolean warnedVirtualThreadSupport = new AtomicBoolean(false);
 
+    @SuppressWarnings("try")
     void validateVirtualThreadCreation() {
         if (!warnedVirtualThreadSupport.compareAndExchange(false, true)) {
-            var options = getEngineOptionValues();
-            boolean warnVirtualThreadSupport = options.get(PolyglotEngineOptions.WarnVirtualThreadSupport);
+            try (AbstractPolyglotImpl.ThreadScope scope = impl.getRootImpl().createThreadScope()) {
+                var options = getEngineOptionValues();
+                boolean warnVirtualThreadSupport = options.get(PolyglotEngineOptions.WarnVirtualThreadSupport);
 
-            if (warnVirtualThreadSupport && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) {
-                if (!TruffleOptions.AOT) {
-                    getEngineLogger().warning("""
-                                    Using polyglot contexts on Java virtual threads on HotSpot is experimental in this release,
-                                    because access to caller frames in write or materialize mode is not yet supported on virtual threads (some tools and languages depend on that),
-                                    and there is a limit of maximum 65535 virtual threads concurrently accessing the context at the same time.
-                                    To disable this warning use the '--engine.WarnVirtualThreadSupport=false' option or the '-Dpolyglot.engine.WarnVirtualThreadSupport=false' system property.
-                                    """);
-                } else {
-                    getEngineLogger().warning(
-                                    """
-                                                    Using polyglot contexts on Java virtual threads on Native Image currently uses one platform thread per VirtualThread.
-                                                    This will prevent creating many virtual threads and have different performance characteristics.
-                                                    You can either suppress this warning with the '--engine.WarnVirtualThreadSupport=false' option or the '-Dpolyglot.engine.WarnVirtualThreadSupport=false' system property,
-                                                    or use the default runtime (no JIT compilation of polyglot code) by passing -Dtruffle.UseFallbackRuntime=true when building the native image.
-                                                    Full VirtualThread support for Native Image together with polyglot contexts will be added in a future release.
-                                                    VirtualThread is fully supported with polyglot contexts in JVM mode.
-                                                    """);
+                if (warnVirtualThreadSupport && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) {
+                    if (!TruffleOptions.AOT) {
+                        getEngineLogger().warning("""
+                                        Using polyglot contexts on Java virtual threads on HotSpot is experimental in this release,
+                                        because access to caller frames in write or materialize mode is not yet supported on virtual threads (some tools and languages depend on that),
+                                        and there is a limit of maximum 65535 virtual threads concurrently accessing the context at the same time.
+                                        To disable this warning use the '--engine.WarnVirtualThreadSupport=false' option or the '-Dpolyglot.engine.WarnVirtualThreadSupport=false' system property.
+                                        """);
+                    } else {
+                        getEngineLogger().warning(
+                                        """
+                                                        Using polyglot contexts on Java virtual threads on Native Image currently uses one platform thread per VirtualThread.
+                                                        This will prevent creating many virtual threads and have different performance characteristics.
+                                                        You can either suppress this warning with the '--engine.WarnVirtualThreadSupport=false' option or the '-Dpolyglot.engine.WarnVirtualThreadSupport=false' system property,
+                                                        or use the default runtime (no JIT compilation of polyglot code) by passing -Dtruffle.UseFallbackRuntime=true when building the native image.
+                                                        Full VirtualThread support for Native Image together with polyglot contexts will be added in a future release.
+                                                        VirtualThread is fully supported with polyglot contexts in JVM mode.
+                                                        """);
+                    }
                 }
             }
         }
