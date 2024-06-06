@@ -35,7 +35,13 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 
 public class SignatureUtil {
+
+    public static final int MIN_SIGNATURE_LENGTH = "()".length();
+
     public static String[] toParameterTypes(String signature) {
+        if (signature.length() < MIN_SIGNATURE_LENGTH) {
+            throw new IllegalArgumentException("Signature too short: " + signature);
+        }
         List<String> list = new ArrayList<>();
         int position = 1;
         int arrayDimensions = 0;
