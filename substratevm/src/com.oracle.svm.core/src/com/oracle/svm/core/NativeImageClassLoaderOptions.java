@@ -32,7 +32,6 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 
 public class NativeImageClassLoaderOptions {
     public static final String AddExportsAndOpensFormat = "<module>/<package>=<target-module>(,<target-module>)*";
-
     public static final String AddReadsFormat = "<module>=<target-module>(,<target-module>)*";
 
     @APIOption(name = "add-exports", extra = true, launcherOption = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//

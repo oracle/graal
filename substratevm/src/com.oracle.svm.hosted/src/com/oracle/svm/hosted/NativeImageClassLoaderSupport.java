@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.io.File;
 import java.io.IOException;
 import java.lang.module.Configuration;
+import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
@@ -343,21 +344,29 @@ public class NativeImageClassLoaderSupport {
         }
 
         processOption(NativeImageClassLoaderOptions.AddExports).forEach(val -> {
-            if (val.targetModules.isEmpty()) {
-                Modules.addExportsToAllUnnamed(val.module, val.packageName);
-            } else {
-                for (Module targetModule : val.targetModules) {
-                    Modules.addExports(val.module, val.packageName, targetModule);
+            if (val.module.getPackages().contains(val.packageName)) {
+                if (val.targetModules.isEmpty()) {
+                    Modules.addExportsToAllUnnamed(val.module, val.packageName);
+                } else {
+                    for (Module targetModule : val.targetModules) {
+                        Modules.addExports(val.module, val.packageName, targetModule);
+                    }
                 }
+            } else {
+                warn("package " + val.packageName + " not in " + val.module.getName());
             }
         });
         processOption(NativeImageClassLoaderOptions.AddOpens).forEach(val -> {
-            if (val.targetModules.isEmpty()) {
-                Modules.addOpensToAllUnnamed(val.module, val.packageName);
-            } else {
-                for (Module targetModule : val.targetModules) {
-                    Modules.addOpens(val.module, val.packageName, targetModule);
+            if (val.module.getPackages().contains(val.packageName)) {
+                if (val.targetModules.isEmpty()) {
+                    Modules.addOpensToAllUnnamed(val.module, val.packageName);
+                } else {
+                    for (Module targetModule : val.targetModules) {
+                        Modules.addOpens(val.module, val.packageName, targetModule);
+                    }
                 }
+            } else {
+                warn("package " + val.packageName + " not in " + val.module.getName());
             }
         });
         processOption(NativeImageClassLoaderOptions.AddReads).forEach(val -> {
@@ -369,6 +378,10 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         });
+    }
+
+    private static void warn(String m) {
+        LogUtils.warning("WARNING", m, true);
     }
 
     private static void processListModulesOption(ModuleLayer layer) {
@@ -453,33 +466,20 @@ public class NativeImageClassLoaderSupport {
         Stream<AddExportsAndOpensAndReadsFormatValue> parsedOptions = valuesWithOrigins.flatMap(valWithOrig -> {
             try {
                 return Stream.of(asAddExportsAndOpensAndReadsFormatValue(specificOption, valWithOrig));
-            } catch (UserError.UserException e) {
-                if (ModuleSupport.modulePathBuild && classpath().isEmpty()) {
-                    throw e;
-                } else {
-                    /*
-                     * Until we switch to always running the image-builder on module-path we have to
-                     * be tolerant if invalid --add-exports -add-opens or --add-reads options are
-                     * used. GR-30433
-                     */
-                    LogUtils.warning(e.getMessage());
-                    return Stream.empty();
-                }
+            } catch (FindException e) {
+                /*
+                 * Print a specially-formatted warning to be 100% compatible with the output of
+                 * `java` in this case.
+                 */
+                LogUtils.warning("WARNING", e.getMessage(), true);
+                return Stream.empty();
             }
         });
         return parsedOptions;
     }
 
-    private static final class AddExportsAndOpensAndReadsFormatValue {
-        private final Module module;
-        private final String packageName;
-        private final List<Module> targetModules;
-
-        private AddExportsAndOpensAndReadsFormatValue(Module module, String packageName, List<Module> targetModules) {
-            this.module = module;
-            this.packageName = packageName;
-            this.targetModules = targetModules;
-        }
+    private record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
+                    List<Module> targetModules) {
     }
 
     private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, Pair<String, OptionOrigin> valueOrigin) {
@@ -535,7 +535,7 @@ public class NativeImageClassLoaderSupport {
         }
 
         Module module = findModule(moduleName).orElseThrow(() -> {
-            return userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, " Specified module '" + moduleName + "' is unknown.");
+            throw userWarningModuleNotFound(option, moduleName);
         });
         List<Module> targetModules;
         if (targetModuleNamesList.contains("ALL-UNNAMED")) {
@@ -543,7 +543,7 @@ public class NativeImageClassLoaderSupport {
         } else {
             targetModules = targetModuleNamesList.stream().map(mn -> {
                 return findModule(mn).orElseThrow(() -> {
-                    throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, " Specified target-module '" + mn + "' is unknown.");
+                    throw userWarningModuleNotFound(option, mn);
                 });
             }).collect(Collectors.toList());
         }
@@ -553,6 +553,11 @@ public class NativeImageClassLoaderSupport {
     private static UserError.UserException userErrorAddExportsAndOpensAndReads(OptionKey<?> option, OptionOrigin origin, String value, String detailMessage) {
         Objects.requireNonNull(detailMessage, "missing detailMessage");
         return UserError.abort("Invalid option %s provided by %s.%s", SubstrateOptionsParser.commandArgument(option, value), origin, detailMessage);
+    }
+
+    private static FindException userWarningModuleNotFound(OptionKey<?> option, String moduleName) {
+        String optionName = SubstrateOptionsParser.commandArgument(option, "");
+        return new FindException("Unknown module: " + moduleName + " specified to " + optionName);
     }
 
     Class<?> loadClassFromModule(Module module, String className) {
