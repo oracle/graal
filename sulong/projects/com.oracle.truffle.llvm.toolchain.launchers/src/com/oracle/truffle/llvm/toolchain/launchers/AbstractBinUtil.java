@@ -54,7 +54,10 @@ public abstract class AbstractBinUtil {
         }
 
         final Path toolPath = getTargetPath(toolName);
+        runTool(toolPath, args);
+    }
 
+    public static void runTool(Path toolPath, String[] args) {
         ArrayList<String> utilArgs = new ArrayList<>(args.length + 1);
         utilArgs.add(toolPath.toString());
         if (args.length > 0) {
@@ -83,7 +86,7 @@ public abstract class AbstractBinUtil {
         return System.getProperty("os.name").startsWith("Windows");
     }
 
-    private static String getProcessName() {
+    public static String getProcessName() {
         String binPathName = System.getProperty("org.graalvm.launcher.executablename");
 
         if (binPathName == null) {
