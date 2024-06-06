@@ -68,14 +68,44 @@ import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.TriState;
 
+/**
+ * A data structure that represents parts {@code ="fragments"} of a loop. Used for the optimizer to
+ * have well defined sets for an entire loop, the body, the header only etc.
+ *
+ * There are 2 main implementations: {@link LoopFragmentWhole} which defines the entirety of a loop
+ * including all loop control nodes. The second one is {@link LoopFragmentInside} which includes all
+ * loop nodes of the body and no control variables.
+ */
 public abstract class LoopFragment {
 
+    /**
+     * The original loop this fragment is defined over.
+     */
     private final LoopEx loop;
+    /**
+     * In case this fragment was duplicated a link to the original one.
+     */
     private final LoopFragment original;
+    /**
+     * All the nodes considered to be part of this fragment.
+     */
     protected NodeBitMap nodes;
+    /**
+     * A flag indicating if the {@link #nodes} map is ready, i.e., if this fragment is a duplicate
+     * we have to recompute the nodes.
+     */
     protected boolean nodesReady;
+    /**
+     * A mapping of old to new nodes after duplication.
+     */
     private EconomicMap<Node, Node> duplicationMap;
+    /**
+     * Phi nodes introduced when merging early loop ends for loop optimizations.
+     */
     protected List<PhiNode> introducedPhis;
+    /**
+     * Merge nodes introduced when merging early loop ends for loop optimizations.
+     */
     protected List<MergeNode> introducedMerges;
 
     public LoopFragment(LoopEx loop) {

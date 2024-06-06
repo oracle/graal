@@ -31,6 +31,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * An abstract representation of a loop inside the {@link AbstractControlFlowGraph}. Such a loop is
+ * defined as a Block that represents the loop header as well as as blocks that cover all basic
+ * blocks of the loop and the blocks that exit it. Implementations provide additional data
+ * structures.
+ */
 public abstract class Loop<T extends BasicBlock<T>> {
 
     private final Loop<T> parent;

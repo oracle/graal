@@ -80,13 +80,40 @@ import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
+/**
+ * Extra loop data for the given loop. This includes data on which nodes belong to a loop, counted
+ * loop information if the compiler detects it as a counted loop. Data about induction variables,
+ * parent loops and much more.
+ */
 public class LoopEx {
+    /**
+     * The corresponding {@link ControlFlowGraph} loop data structure.
+     */
     protected final Loop<HIRBlock> loop;
+    /**
+     * The corresponding fragment that describes the body nodes of this loop.
+     */
     protected LoopFragmentInside inside;
+    /**
+     * The corresponding fragment that describes the entire nodes in this loop.
+     */
     protected LoopFragmentWhole whole;
+    /**
+     * If this loop is counted a link to the counted loop info.
+     */
     protected CountedLoopInfo counted;
+    /**
+     * A link to the enclosing loops data structure that contains information about all loops in the
+     * given graph.
+     */
     protected LoopsData data;
+    /**
+     * All {@code InductionVariable} of this loop, indexed by their operation node.
+     */
     protected EconomicMap<Node, InductionVariable> ivs;
+    /**
+     * A flag indicating if we already ran counted loop detection on this loop.
+     */
     protected boolean countedLoopChecked;
     protected int size = -1;
 
@@ -121,11 +148,19 @@ public class LoopEx {
         return whole;
     }
 
+    /**
+     * Delete all the loop fragments of this loop. This can be necessary when floating nodes in the
+     * loop have changed and thus require a recomputation of the fragments.
+     */
     public void invalidateFragments() {
         inside = null;
         whole = null;
     }
 
+    /**
+     * Not only invalidate fragments but also the induction variables. This can be necessary when
+     * IVs have changed since this LoopEx was computed.
+     */
     public void invalidateFragmentsAndIVs() {
         inside = null;
         whole = null;
@@ -137,18 +172,6 @@ public class LoopEx {
          * form.
          */
         ivs = null;
-    }
-
-    @SuppressWarnings("unused")
-    public LoopFragmentInsideFrom insideFrom(FixedNode point) {
-        GraalError.unimplemented("intentional"); // ExcludeFromJacocoGeneratedReport
-        return null;
-    }
-
-    @SuppressWarnings("unused")
-    public LoopFragmentInsideBefore insideBefore(FixedNode point) {
-        GraalError.unimplemented("intentional"); // ExcludeFromJacocoGeneratedReport
-        return null;
     }
 
     public boolean isOutsideLoop(Node n) {

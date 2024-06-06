@@ -39,15 +39,37 @@ import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.util.ReversedList;
 import jdk.graal.compiler.debug.DebugContext;
 
+/**
+ * A data structure representing all the information about all loops in the given graph. Data about
+ * loops is tied to a given {@link ControlFlowGraph cfg}. If the cfg changes the loops data should
+ * be considered invalid.
+ */
 public class LoopsData {
+    /**
+     * A mapping of all loop begin nodes to the respective {@link LoopEx}.
+     */
     private final EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx;
     private final ControlFlowGraph cfg;
+    /**
+     * Additional loop data for all loops in this graph.
+     */
     private final List<LoopEx> loops;
 
+    /**
+     * Compute the loops data for this graph. Not that this will compute the control flow graph
+     * first and then collect data about all loops in it.
+     */
     static LoopsData compute(final StructuredGraph graph) {
         return new LoopsData(graph, null);
     }
 
+    /**
+     * Take the given control flow graph and compute all loop data from it.
+     *
+     * Note: assumes that the control flow graph reflects the current shape of tha graph. If the CFG
+     * was computed and aftwards the fixed nodes in the graph have been altered it must not be used
+     * to compute loops data.
+     */
     static LoopsData compute(final ControlFlowGraph cfg) {
         return new LoopsData(cfg.graph, cfg);
     }
