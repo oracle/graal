@@ -996,8 +996,6 @@ public class TruffleGraphBuilderPlugins {
         if (memorySegmentImplType != null) {
             Registration r = new Registration(plugins, new ResolvedJavaSymbol(memorySegmentImplType));
             r.register(new OptionalInvocationPlugin("sessionImpl", Receiver.class) {
-                private final SpeculationLog.SpeculationReason bufferSegmentNullSpeculationReason = BUFFER_SEGMENT_NULL_SPECULATION.createSpeculationReason();
-
                 /**
                  * ByteBuffer methods and VarHandles use the following code pattern to get any
                  * memory session that needs to be checked:
@@ -1029,6 +1027,7 @@ public class TruffleGraphBuilderPlugins {
                         Stamp stamp = segment.stamp(NodeView.DEFAULT);
                         if (stamp instanceof ObjectStamp && !((ObjectStamp) stamp).nonNull() && !((ObjectStamp) stamp).alwaysNull()) {
                             ValueNode load = GraphUtil.unproxify(segment);
+                            SpeculationLog.SpeculationReason bufferSegmentNullSpeculationReason = BUFFER_SEGMENT_NULL_SPECULATION.createSpeculationReason();
                             if (load instanceof LoadFieldNode && types.Buffer_segment.equals(((LoadFieldNode) load).field()) &&
                                             speculationLog.maySpeculate(bufferSegmentNullSpeculationReason)) {
                                 Speculation speculation = speculationLog.speculate(bufferSegmentNullSpeculationReason);
