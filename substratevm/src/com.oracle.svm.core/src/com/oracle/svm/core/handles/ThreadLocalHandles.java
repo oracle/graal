@@ -129,6 +129,7 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
         popFramesIncluding(frameCount);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void popFramesIncluding(int frame) {
         assert frame > 0 && frame <= frameCount;
         int previousTop = top;
