@@ -227,13 +227,14 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     #
     # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
     #
-    "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
+    "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_os_arch_jdk_mixin + platform_spec(no_jobs) + (
+    if vm.deploy_espress_standalone then platform_spec({
       "linux:amd64:jdk21": weekly,
       "linux:aarch64:jdk21": weekly,
       "darwin:amd64:jdk21": weekly,
       "darwin:aarch64:jdk21": weekly,
       "windows:amd64:jdk21": weekly,
-    }),
+    }) else {}),
   },
 
   builds: utils.add_defined_in(std.flattenArrays([run_spec.process(task_dict).list for task_dict in [

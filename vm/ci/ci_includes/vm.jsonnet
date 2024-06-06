@@ -13,6 +13,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     local jdk = graal_common.labsjdkLatest;
     jdk + vm_common.vm_env_mixin(std.toString(jdk.jdk_version)),
 
+  deploy_espress_standalone: false,
   vm_java_21_llvm:: self.vm_java_21 + graal_common['labsjdk-ce-21-llvm'],
   vm_java_Latest_llvm:: self.vm_java_Latest + graal_common['labsjdk-ce-latest-llvm'],
 
