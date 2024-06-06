@@ -322,6 +322,7 @@ public final class JVMCIVersionCheck {
             // A "labsjdk" or a known OpenJDK
             if (minVersion == null) {
                 failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
+                return;
             }
             Version v = Version.parse(vmVersion);
             if (v != null) {
