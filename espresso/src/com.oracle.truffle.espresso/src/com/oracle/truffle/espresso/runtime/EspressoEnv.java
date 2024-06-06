@@ -92,6 +92,7 @@ public final class EspressoEnv {
     public final boolean SoftExit;
     public final boolean AllowHostExit;
     public final boolean Polyglot;
+    public final boolean Continuum;
     public final boolean BuiltInPolyglotCollections;
     public final boolean HotSwapAPI;
     public final boolean UseBindingsLoader;
@@ -169,6 +170,7 @@ public final class EspressoEnv {
         this.multiThreadingDisabled = multiThreadingDisabledReason;
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
+        this.Continuum = env.getOptions().get(EspressoOptions.Continuum);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
         this.BuiltInPolyglotCollections = env.getOptions().get(EspressoOptions.BuiltInPolyglotCollections);
         this.polyglotTypeMappings = new PolyglotTypeMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings), env.getOptions().get(EspressoOptions.PolyglotTypeConverters),

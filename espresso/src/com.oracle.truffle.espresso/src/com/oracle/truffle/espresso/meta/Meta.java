@@ -1046,6 +1046,10 @@ public final class Meta extends ContextAccessImpl {
             java_util_regex_IntHashSet = null;
         }
 
+        java_util_concurrent_locks_abstractOwnableSynchronizer = knownKlass(Type.java_util_concurrent_locks_AbstractOwnableSynchronizer);
+        java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread = java_util_concurrent_locks_abstractOwnableSynchronizer.requireDeclaredField(Name.exclusiveOwnerThread,
+                        Type.java_lang_Thread);
+
         java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
         java_math_BigInteger_init = java_math_BigInteger.requireDeclaredMethod(Name._init_, Signature._void_byte_array);
         java_math_BigInteger_toByteArray = java_math_BigInteger.requireDeclaredMethod(Name.toByteArray, Signature._byte_array);
@@ -1211,7 +1215,7 @@ public final class Meta extends ContextAccessImpl {
         }
 
         // Load Espresso's Polyglot API.
-        boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+        boolean polyglotSupport = getContext().getEspressoEnv().Polyglot;
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
 
         JImageExtensions jImageExtensions = getLanguage().getJImageExtensions();
@@ -1227,6 +1231,10 @@ public final class Meta extends ContextAccessImpl {
                 }
             }
         }
+
+        // Continuations
+        boolean continuumSupport = getContext().getEspressoEnv().Continuum;
+        this.continuum = continuumSupport ? new ContinuumSupport() : null;
     }
 
     private void extendModulePackages(ModuleTable.ModuleEntry moduleEntry, Set<String> extraPackages) {
@@ -1868,6 +1876,9 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_util_regex_Matcher_requireEnd;
     public final Method java_util_regex_Matcher_groupCount;
 
+    public final ObjectKlass java_util_concurrent_locks_abstractOwnableSynchronizer;
+    public final Field java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread;
+
     public final ObjectKlass java_math_BigInteger;
     public final Method java_math_BigInteger_init;
     public final Method java_math_BigInteger_toByteArray;
@@ -1915,6 +1926,48 @@ public final class Meta extends ContextAccessImpl {
     @CompilationFinal public Method java_beans_ThreadGroupContext_removeBeanInfo;
     @CompilationFinal public ObjectKlass java_beans_Introspector;
     @CompilationFinal public Method java_beans_Introspector_flushFromCaches;
+
+    public final class ContinuumSupport {
+        public final Method org_graalvm_continuations_Continuation_run;
+        public final Method org_graalvm_continuations_Continuation_suspend;
+        public final Field org_graalvm_continuations_Continuation_stackFrameHead;
+        public final Field HIDDEN_CONTINUATION_FRAME_RECORD;
+        public final ObjectKlass org_graalvm_continuations_Continuation_FrameRecord;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_pointers;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_primitives;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_method;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_next;
+        public final Field org_graalvm_continuations_Continuation_FrameRecord_bci;
+        public final ObjectKlass org_graalvm_continuations_IllegalMaterializedRecordException;
+        public final ObjectKlass org_graalvm_continuations_IllegalContinuationStateException;
+
+        private ContinuumSupport() {
+            ObjectKlass org_graalvm_continuations_Continuation = knownKlass(Type.org_graalvm_continuations_Continuation);
+            org_graalvm_continuations_Continuation_run = org_graalvm_continuations_Continuation.requireDeclaredMethod(Name.run, Signature._void);
+            org_graalvm_continuations_Continuation_suspend = org_graalvm_continuations_Continuation.requireDeclaredMethod(Name.suspend, Signature._void);
+            org_graalvm_continuations_Continuation_stackFrameHead = org_graalvm_continuations_Continuation.requireDeclaredField(Name.stackFrameHead,
+                            Type.org_graalvm_continuations_Continuation_FrameRecord);
+            HIDDEN_CONTINUATION_FRAME_RECORD = org_graalvm_continuations_Continuation.requireHiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD);
+            org_graalvm_continuations_Continuation_FrameRecord = knownKlass(Type.org_graalvm_continuations_Continuation_FrameRecord);
+            org_graalvm_continuations_Continuation_FrameRecord_pointers = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+                            Name.pointers, Type.java_lang_Object_array);
+            org_graalvm_continuations_Continuation_FrameRecord_primitives = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+                            Name.primitives, Type._long_array);
+            org_graalvm_continuations_Continuation_FrameRecord_method = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+                            Name.method, Type.java_lang_reflect_Method);
+            org_graalvm_continuations_Continuation_FrameRecord_next = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+                            Name.next, Type.org_graalvm_continuations_Continuation_FrameRecord);
+            org_graalvm_continuations_Continuation_FrameRecord_bci = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+                            Name.bci, Type._int);
+            org_graalvm_continuations_IllegalMaterializedRecordException = knownKlass(
+                            Type.org_graalvm_continuations_IllegalMaterializedRecordException);
+            org_graalvm_continuations_IllegalContinuationStateException = knownKlass(
+                            Type.org_graalvm_continuations_IllegalContinuationStateException);
+        }
+    }
+
+    @CompilationFinal //
+    public ContinuumSupport continuum;
 
     public final class PolyglotSupport {
         public final ObjectKlass UnknownIdentifierException;

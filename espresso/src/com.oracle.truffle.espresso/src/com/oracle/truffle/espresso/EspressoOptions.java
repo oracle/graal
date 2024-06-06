@@ -686,6 +686,12 @@ public final class EspressoOptions {
                     usageSyntax = "jdk21|openjdk21|...") //
     public static final OptionKey<String> RuntimeResourceId = new OptionKey<>("");
 
+    @Option(help = "Enables the Continuum API.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> Continuum = new OptionKey<>(false);
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);

@@ -204,6 +204,10 @@ public final class RuntimeConstantPool extends ConstantPool {
         }
     }
 
+    public InvokeDynamicConstant.Resolved peekResolvedInvokeDynamic(int index) {
+        return (InvokeDynamicConstant.Resolved) constants[index];
+    }
+
     public DynamicConstant.Resolved resolvedDynamicConstantAt(ObjectKlass accessingKlass, int index) {
         DynamicConstant.Resolved dynamicConstant = (DynamicConstant.Resolved) outOfLockResolvedAt(accessingKlass, index, "dynamic constant");
         dynamicConstant.checkFail();

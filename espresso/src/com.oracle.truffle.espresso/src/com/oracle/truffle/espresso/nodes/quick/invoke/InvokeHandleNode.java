@@ -50,7 +50,7 @@ public final class InvokeHandleNode extends InvokeQuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         Object[] args = getArguments(frame);
         if (hasReceiver) {
             nullCheck((StaticObject) args[0]);

@@ -229,9 +229,6 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.CLASS;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTERFACE_METHOD_REF;
-import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Bogus;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Double;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Float;
@@ -241,14 +238,12 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
 
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
+import com.oracle.truffle.espresso.analysis.frame.FrameType;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeSwitch;
@@ -293,7 +288,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  * Note that stack map tables are used only for classfile version >= 50, and even if stack maps are
  * given for lesser versions, they are ignored. No fallback for classfile v.50
  */
-public final class MethodVerifier implements ContextAccess {
+public final class MethodVerifier implements ContextAccess, StackMapFrameParser.FrameBuilder<StackFrame> {
     public static final DebugTimer VERIFIER_TIMER = DebugTimer.create("verifier");
 
     // Class info
@@ -649,12 +644,12 @@ public final class MethodVerifier implements ContextAccess {
      *             to why verification failed.
      */
     @SuppressWarnings("try")
-    public static void verify(Method m) {
+    public static MethodVerifier verify(Method m) {
         CodeAttribute codeAttribute = m.getCodeAttribute();
         assert !((m.isAbstract() || m.isNative()) && codeAttribute != null) : "Abstract method has code: " + m;
         if (codeAttribute == null) {
             if (m.isAbstract() || m.isNative()) {
-                return;
+                return null;
             }
             throw failFormat("Concrete method has no code attribute: " + m);
         }
@@ -670,7 +665,78 @@ public final class MethodVerifier implements ContextAccess {
                     throw e;
                 }
             }
+            return verifier;
         }
+    }
+
+    private int targetBci = -1;
+
+    public EspressoFrameDescriptor getForBci(int target) {
+        // Look for the closest available frame
+        StackFrame frame = stackFrames[target];
+        int closest = target;
+        while (frame == null) {
+            closest--;
+            frame = stackFrames[closest];
+        }
+        // Guaranteed to have at least a frame at bci == 0.
+        if (closest == target) {
+            return toDescriptor(frame);
+        }
+        // start verification process from closest available stack frame
+        assert frame != null;
+        targetBci = target;
+        // Makes sure verification does not stop early
+        Arrays.fill(bciStates, UNENCOUNTERED);
+        // Start verification from closest known frame
+        startVerify(closest, frame.extractStack(maxStack), frame.extractLocals());
+        // Frame should be initialized now.
+        frame = stackFrames[target];
+        assert frame != null;
+        targetBci = -1;
+
+        // Return frame description for the target bci.
+        return toDescriptor(frame);
+    }
+
+    private EspressoFrameDescriptor toDescriptor(StackFrame frame) {
+        FrameType[] stackKinds = new FrameType[getMaxStack()];
+        FrameType[] localKinds = new FrameType[getMaxLocals()];
+        Arrays.fill(stackKinds, FrameType.ILLEGAL);
+        Arrays.fill(localKinds, FrameType.ILLEGAL);
+        // Special quirk of the verifier stack, a long or double is not followed by an illegal, so
+        // we add it here.
+        int builderPos = 0;
+        int stackPos = 0;
+        while (stackPos < frame.top) {
+            Operand op = frame.stack[stackPos];
+            stackKinds[builderPos] = opToFrameType(op);
+            if (isType2(op)) {
+                builderPos++;
+                stackKinds[builderPos] = FrameType.ILLEGAL;
+            }
+            stackPos++;
+            builderPos++;
+        }
+        for (int i = 0; i < frame.locals.length; i++) {
+            Operand op = frame.locals[i];
+            localKinds[i] = opToFrameType(op);
+        }
+        return new EspressoFrameDescriptor(stackKinds, localKinds, frame.top);
+    }
+
+    private FrameType opToFrameType(Operand op) {
+        FrameType ft;
+        if (op == null) {
+            ft = FrameType.ILLEGAL;
+        } else if (op.isPrimitive()) {
+            ft = FrameType.forPrimitive(op.getKind());
+        } else if (op.isArrayType()) {
+            ft = FrameType.forType(getTypes().arrayOf(op.getElemental().getType(), op.getDimensions()));
+        } else {
+            ft = FrameType.forType(op.getType());
+        }
+        return ft;
     }
 
     private boolean shouldFallBack(VerifierError e) {
@@ -810,106 +876,56 @@ public final class MethodVerifier implements ContextAccess {
         if (stackMapTableAttribute == StackMapTableAttribute.EMPTY) {
             throw EspressoError.shouldNotReachHere("Class " + thisKlass.getExternalName() + " was determined to not need verification, but verification was invoked.");
         }
-        StackMapFrameParser.parse(this, stackMapTableAttribute, previous);
+        StackMapFrameParser.parse(this, stackMapTableAttribute, previous, computeLastLocal(previous));
+    }
+
+    private int computeLastLocal(StackFrame previous) {
+        int last = isStatic() ? 0 : 1;
+        for (int i = 0; i < getSig().length - 1; i++) {
+            if (isType2(previous.locals[last++])) {
+                last++;
+            }
+        }
+        return last - 1;
     }
 
     /**
      * Registers a stack frame from the stack map frame parser to the given BCI.
      */
-    void registerStackMapFrame(int bci, StackFrame frame) {
+    public void registerStackMapFrame(int bci, StackFrame frame) {
         validateFrameBCI(bci);
         stackFrames[bci] = frame;
     }
 
-    /**
-     * Constructs a StackFrame object for the verifier from a StackMapFrame obtained from the
-     * parser.
-     */
-    StackFrame getStackFrame(StackMapFrame smf, StackFrame previous) {
-        int frameType = smf.getFrameType();
-        if (frameType < SAME_FRAME_BOUND || frameType == SAME_FRAME_EXTENDED) {
-            if (previous.top == 0) {
-                return previous;
-            }
-            StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, previous.locals);
-            res.lastLocal = previous.lastLocal;
-            return res;
+    @Override
+    public StackMapFrameParser.FrameAndLocalEffect newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal) {
+        OperandStack fullStack = new OperandStack(maxStack);
+        int stackPos = 0;
+        for (VerificationTypeInfo vti : stack) {
+            Operand op = getOperandFromVerificationType(vti);
+            stackPos += op.slots();
+            formatGuarantee(stackPos <= maxStack, "Full frame entry has a bigger stack than maxStack.");
+            fullStack.push(op);
         }
-        if (frameType < SAME_LOCALS_1_STACK_ITEM_BOUND || frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
-            Operand op = getOperandFromVerificationType(smf.getStackItem());
-            formatGuarantee(op.slots() <= maxStack, "Stack map entry requires more stack than allowed by maxStack.");
-            OperandStack stack = new OperandStack(2);
-            stack.push(op);
-            StackFrame res = new StackFrame(stack, previous.locals);
-            res.lastLocal = previous.lastLocal;
-            return res;
-        }
-        formatGuarantee(frameType >= SAME_LOCALS_1_STACK_ITEM_EXTENDED, "Encountered reserved StackMapFrame tag: " + frameType);
-        if (frameType < CHOP_BOUND) {
-            Operand[] newLocals = previous.locals.clone();
-            int pos = previous.lastLocal;
-            for (int i = 0; i < smf.getChopped(); i++) {
-                formatGuarantee(pos >= 0, "Chop frame entry chops more locals than existing.");
-                Operand op = newLocals[pos];
-                if (op.isTopOperand() && (pos > 0)) {
-                    if (isType2(newLocals[pos - 1])) {
-                        pos--;
-                    }
-                }
-                newLocals[pos] = Invalid;
-                pos--;
+        Operand[] newLocals = new Operand[maxLocals];
+        Arrays.fill(newLocals, Invalid);
+        int pos = -1;
+        for (VerificationTypeInfo vti : locals) {
+            Operand op = getOperandFromVerificationType(vti);
+            setLocal(newLocals, op, ++pos, "Full frame entry in stack map has more locals than allowed.");
+            if (isType2(op)) {
+                setLocal(newLocals, Invalid, ++pos, "Full frame entry in stack map has more locals than allowed.");
             }
-            StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals);
-            res.lastLocal = pos;
-            return res;
         }
-        if (frameType < APPEND_FRAME_BOUND) {
-            verifyGuarantee(smf.getLocals().length > 0, "Empty Append Frame in the StackmapTable");
-            Operand[] newLocals = previous.locals.clone();
-            int pos = previous.lastLocal;
-            for (VerificationTypeInfo vti : smf.getLocals()) {
-                Operand op = getOperandFromVerificationType(vti);
-                setLocal(newLocals, op, ++pos, "Append frame entry in stack map appends more locals than allowed.");
-                if (isType2(op)) {
-                    setLocal(newLocals, Invalid, ++pos, "Append frame entry in stack map appends more locals than allowed.");
-                }
-            }
-            StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals);
-            res.lastLocal = pos;
-            return res;
-        }
-        if (frameType == FULL_FRAME) {
-            OperandStack fullStack = new OperandStack(maxStack);
-            int stackPos = 0;
-            for (VerificationTypeInfo vti : smf.getStack()) {
-                Operand op = getOperandFromVerificationType(vti);
-                stackPos += op.slots();
-                formatGuarantee(stackPos <= maxStack, "Full frame entry has a bigger stack than maxStack.");
-                fullStack.push(op);
-            }
-            Operand[] locals = new Operand[maxLocals];
-            Arrays.fill(locals, Invalid);
-            int pos = -1;
-            for (VerificationTypeInfo vti : smf.getLocals()) {
-                Operand op = getOperandFromVerificationType(vti);
-                setLocal(locals, op, ++pos, "Full frame entry in stack map has more locals than allowed.");
-                if (isType2(op)) {
-                    setLocal(locals, Invalid, ++pos, "Full frame entry in stack map has more locals than allowed.");
-                }
-            }
-            StackFrame res = new StackFrame(fullStack, locals);
-            res.lastLocal = pos;
-            return res;
-        }
-        throw EspressoError.shouldNotReachHere();
+        return new StackMapFrameParser.FrameAndLocalEffect(new StackFrame(fullStack, newLocals), pos - lastLocal);
     }
 
-    private static void setLocal(Operand[] locals, Operand op, int pos, String message) {
+    static void setLocal(Operand[] locals, Operand op, int pos, String message) {
         formatGuarantee(pos >= 0 && pos < locals.length, message);
         locals[pos] = op;
     }
 
-    private Operand getOperandFromVerificationType(VerificationTypeInfo vti) {
+    Operand getOperandFromVerificationType(VerificationTypeInfo vti) {
         // Note: JSR/RET is mutually exclusive with stack maps.
         switch (vti.getTag()) {
             case ITEM_Bogus:
@@ -927,12 +943,12 @@ public final class MethodVerifier implements ContextAccess {
             case ITEM_InitObject:
                 return new UninitReferenceOperand(thisKlass, thisKlass);
             case ITEM_Object:
-                return spawnFromType(getTypes().fromName(pool.classAt(vti.getConstantPoolOffset()).getName(pool)));
+                return spawnFromType(vti.getType(pool, thisKlass, code));
             case ITEM_NewObject:
                 int newOffset = vti.getNewOffset();
                 validateFormatBCI(newOffset);
                 formatGuarantee(code.currentBC(newOffset) == NEW, "NewObject in stack map not referencing a NEW instruction! " + Bytecodes.nameOf(code.currentBC(newOffset)));
-                return new UninitReferenceOperand(getTypes().fromName(pool.classAt(code.readCPI(newOffset)).getName(pool)), thisKlass, newOffset);
+                return new UninitReferenceOperand(vti.getType(pool, thisKlass, code), thisKlass, newOffset);
             default:
                 throw EspressoError.shouldNotReachHere("Unrecognized VerificationTypeInfo: " + vti);
         }
@@ -1179,7 +1195,8 @@ public final class MethodVerifier implements ContextAccess {
             Arrays.fill(registers, Invalid);
             locals = new Locals(registers);
             stack = new OperandStack(maxStack);
-            stack.push(new ReferenceOperand(handler.getCatchType(), thisKlass));
+            Symbol<Type> catchType = handler.getCatchType();
+            stack.push(catchType == null ? jlThrowable : new ReferenceOperand(catchType, thisKlass));
         } else {
             stack = frame.extractStack(maxStack);
             locals = frame.extractLocals();
@@ -1266,6 +1283,10 @@ public final class MethodVerifier implements ContextAccess {
                 return;
             }
             checkExceptionHandlers(nextBCI, locals);
+            if (nextBCI == targetBci) {
+                stackFrames[nextBCI] = spawnStackFrame(stack, locals);
+                return;
+            }
             nextBCI = verifySafe(nextBCI, stack, locals);
             validateBCI(nextBCI);
         } while (previousBCI != nextBCI);
@@ -1279,7 +1300,7 @@ public final class MethodVerifier implements ContextAccess {
     private void checkExceptionHandlers(int nextBCI, Locals locals) {
         for (int i = 0; i < exceptionHandlers.length; i++) {
             ExceptionHandler handler = exceptionHandlers[i];
-            if (nextBCI >= handler.getStartBCI() && nextBCI < handler.getEndBCI()) {
+            if (handler.covers(nextBCI)) {
                 OperandStack stack = new OperandStack(1);
                 Symbol<Type> catchType = handler.getCatchType();
                 stack.push(catchType == null ? jlThrowable : new ReferenceOperand(catchType, thisKlass));
@@ -2488,5 +2509,10 @@ public final class MethodVerifier implements ContextAccess {
 
     private static StackFrame spawnStackFrame(OperandStack stack, Locals locals) {
         return new StackFrame(stack, locals);
+    }
+
+    @Override
+    public String toExternalString() {
+        return getThisKlass().getExternalName() + "." + getMethodName();
     }
 }

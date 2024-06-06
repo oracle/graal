@@ -358,6 +358,7 @@ import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayLoadQuickNo
 import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayStoreQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayLoadQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayStoreQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeContinuableNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceQuickNode;
@@ -373,6 +374,8 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
+import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
 /**
  * Bytecode interpreter loop.
@@ -404,9 +407,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
     }
 
-    // must not be of type QuickNode as it might be wrapped by instrumentation
+    // Nodes for bytecodes that were replaced with QUICK, indexed by the constant pool index
+    // referenced by the bytecode.
+    // Must not be of type QuickNode as it might be wrapped by instrumentation
     @Children private BaseQuickNode[] nodes = QuickNode.EMPTY_ARRAY;
     @Children private BaseQuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
+
     /**
      * Ideally, we would want one such node per AASTORE bytecode. Unfortunately, the AASTORE
      * bytecode is a single byte long, so we cannot quicken it, and it is far too common to pay for
@@ -436,7 +442,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // All implicit exception paths in the method will be compiled if at least one implicit
     // exception is thrown.
     @CompilationFinal private boolean implicitExceptionProfile;
-
     @CompilationFinal private boolean linkageExceptionProfile;
 
     private final LivenessAnalysis livenessAnalysis;
@@ -449,17 +454,20 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private final MethodVersion methodVersion;
 
+    @CompilationFinal(dimensions = 1) private final byte[] code;
+
     public BytecodeNode(MethodVersion methodVersion) {
         CompilerAsserts.neverPartOfCompilation();
         Method method = methodVersion.getMethod();
         assert method.hasBytecodes();
         this.methodVersion = methodVersion;
-        this.bs = new BytecodeStream(methodVersion.getCode());
+        this.code = method.getOriginalCode().clone();
+        this.bs = new BytecodeStream(code);
         this.stackOverflowErrorInfo = method.getSOEHandlerInfo();
         this.frameDescriptor = createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
-        this.livenessAnalysis = LivenessAnalysis.analyze(methodVersion);
+        this.livenessAnalysis = methodVersion.getLivenessAnalysis();
         /*
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
@@ -539,6 +547,58 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
     }
 
+    // region continuation
+
+    public void createContinuableNode(int bci, int top) {
+        int opcode = bs.opcode(bci);
+        if (opcode == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeContinuableNode) {
+            return;
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        for (;;) { // At most 2 iterations
+            opcode = bs.volatileOpcode(bci);
+            if (opcode == QUICK) {
+                assert nodes[bs.readCPI2(bci)] instanceof InvokeQuickNode;
+                InvokeQuickNode quick = (InvokeQuickNode) nodes[bs.readCPI2(bci)];
+                // Atomically place a continuable node.
+                while (!(quick instanceof InvokeContinuableNode)) {
+                    InvokeContinuableNode icn = new InvokeContinuableNode(top, bci, quick);
+                    quick = (InvokeQuickNode) replaceQuickAt(opcode, bci, quick, icn);
+                }
+                return;
+            } else {
+                InstrumentationSupport instrument = instrumentation;
+                int statementIndex = instrument == null ? 0 : instrument.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI());
+                quickenInvoke(top, bci, opcode, statementIndex);
+                // continue loop, will execute at most once more.
+            }
+        }
+    }
+
+    /**
+     * Entry point for rewinding continuations.
+     * <p>
+     * The first executed {@code bci} goes to a special {@link InvokeContinuableNode}, which handles
+     * frame restoration and re-winding of further frames. Further executions of this node delegates
+     * to a regular invoke node.
+     */
+    public Object resumeContinuation(VirtualFrame frame, int bci, int top) {
+        CompilerAsserts.partialEvaluationConstant(bci);
+        CompilerAsserts.partialEvaluationConstant(top);
+
+        // Ensure the InvokeContinuableNode for this BCI is spawned.
+        createContinuableNode(bci, top);
+
+        // set up local state.
+        InstrumentationSupport instrument = instrumentation;
+        int statementIndex = instrument == null ? 0 : instrument.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI());
+        assert bs.opcode(bci) == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeContinuableNode;
+
+        return executeBodyFromBCI(frame, bci, top, statementIndex, true, true);
+    }
+
+    // endregion continuation
+
     public void checkNoForeignObjectAssumption(StaticObject object) {
         if (noForeignObjects.isValid() && object.isForeignObject()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -573,7 +633,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @SuppressWarnings("serial")
-    private static final class EspressoOSRReturnException extends ControlFlowException {
+    public static final class EspressoOSRReturnException extends ControlFlowException {
         private final Object result;
         private final Throwable throwable;
 
@@ -582,7 +642,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             this.throwable = null;
         }
 
-        EspressoOSRReturnException(Throwable throwable) {
+        public EspressoOSRReturnException(Throwable throwable) {
             this.result = null;
             this.throwable = throwable;
         }
@@ -603,7 +663,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     @Override
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         EspressoOSRInterpreterState state = (EspressoOSRInterpreterState) interpreterState;
-        return executeBodyFromBCI(osrFrame, target, state.top, state.nextStatementIndex, true);
+        return executeBodyFromBCI(osrFrame, target, state.top, state.nextStatementIndex, true, false);
     }
 
     @Override
@@ -645,29 +705,46 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     @Override
     public Object execute(VirtualFrame frame) {
         int startTop = startingStackOffset(getMethodVersion().getMaxLocals());
-        return executeBodyFromBCI(frame, 0, startTop, 0, false);
+        if (methodVersion.hasJsr()) {
+            getLanguage().getThreadLocalState().blockContinuationSuspension();
+        }
+        try {
+            return executeBodyFromBCI(frame, 0, startTop, 0, false, false);
+        } finally {
+            if (methodVersion.hasJsr()) {
+                getLanguage().getThreadLocalState().unblockContinuationSuspension();
+            }
+        }
     }
 
+    @SuppressWarnings("DataFlowIssue")   // Too complex for IntelliJ to analyze.
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @BytecodeInterpreterSwitch
-    Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex, boolean isOSR) {
+    private Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex,
+                    boolean isOSR, boolean resumeContinuation) {
         CompilerAsserts.partialEvaluationConstant(startBCI);
-        int curBCI = startBCI;
-        int top = startTop;
         final InstrumentationSupport instrument = this.instrumentation;
         int statementIndex = InstrumentationSupport.NO_STATEMENT;
         int nextStatementIndex = startStatementIndex;
         boolean skipEntryInstrumentation = isOSR;
         boolean skipLivenessActions = false;
+        boolean shouldResumeContinuation = resumeContinuation;
 
         final Counter loopCount = new Counter();
 
-        setBCI(frame, curBCI);
+        // The canonical program counter (bci) is in the first slot of the stack frame, but we
+        // prefer to work with a shadow copy in a local variable and only update the frame when
+        // needed, because that's faster.
+        setBCI(frame, startBCI);
+        int curBCI = startBCI;
+        int top = startTop;
 
         if (instrument != null && !skipEntryInstrumentation) {
             instrument.notifyEntry(frame, this);
         }
-        // During OSR, the method is not executed from the beginning hence onStart is not applicable
+
+        // During OSR or continuation resume, the method is not executed from the beginning hence
+        // onStart is not applicable.
         if (!isOSR) {
             livenessAnalysis.onStart(frame, skipLivenessActions);
         }
@@ -1399,17 +1476,26 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             quickNode = getBaseQuickNode(curBCI, top, statementIndex, quickNode);
                         }
-                        top += quickNode.execute(frame);
+                        top += quickNode.execute(frame, shouldResumeContinuation);
+                        shouldResumeContinuation = false;
                         break;
                     }
                     case SLIM_QUICK:
-                        top += sparseNodes[curBCI].execute(frame);
+                        top += sparseNodes[curBCI].execute(frame, false);
                         break;
 
                     default:
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
+            } catch (UnwindContinuationException unwindContinuationExceptionRequest) {
+                /*
+                 * Note: The absence of a continuum record for the bci in the method acts as a
+                 * per-bci profile.
+                 */
+                // Get the frame from the stack into the VM heap.
+                copyFrameToUnwindRequest(frame, unwindContinuationExceptionRequest, curBCI, top);
+                throw unwindContinuationExceptionRequest;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 // Handle both guest and host StackOverflowError.
@@ -1476,7 +1562,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     ExceptionHandler handler = null;
                     for (ExceptionHandler toCheck : handlers) {
                         CompilerAsserts.partialEvaluationConstant(toCheck);
-                        if (curBCI >= toCheck.getStartBCI() && curBCI < toCheck.getEndBCI()) {
+                        if (toCheck.covers(curBCI)) {
                             Klass catchType = null;
                             if (!toCheck.isCatchAll()) {
                                 // exception handlers are similar to instanceof bytecodes, so we
@@ -1531,6 +1617,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = targetBCI;
         }
+    }
+
+    private void copyFrameToUnwindRequest(VirtualFrame frame, UnwindContinuationException unwindContinuationExceptionRequest, int bci, int top) {
+        // Extend the linked list of frame records as we unwind.
+        unwindContinuationExceptionRequest.head = HostFrameRecord.recordFrame(frame, getMethodVersion(), bci, top, unwindContinuationExceptionRequest.head);
     }
 
     @Override
@@ -1878,7 +1969,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         ExceptionHandler[] handlers = getMethodVersion().getExceptionHandlers();
         ExceptionHandler resolved = null;
         for (ExceptionHandler toCheck : handlers) {
-            if (bci >= toCheck.getStartBCI() && bci < toCheck.getEndBCI()) {
+            if (toCheck.covers(bci)) {
                 Klass catchType = null;
                 if (!toCheck.isCatchAll()) {
                     // exception handlers are similar to instanceof bytecodes, so we pass instanceof
@@ -1969,7 +2060,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(node);
         if (sparseNodes == QuickNode.EMPTY_ARRAY) {
-            sparseNodes = new QuickNode[getMethodVersion().getCode().length];
+            sparseNodes = new QuickNode[code.length];
         }
         sparseNodes[curBCI] = insert(node);
     }
@@ -1977,7 +2068,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private void patchBci(int bci, byte opcode, char nodeIndex) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isQuickened(opcode);
-        byte[] code = getMethodVersion().getCode();
 
         int oldBC = code[bci];
         if (opcode == (byte) QUICK) {
@@ -2020,7 +2110,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.neverPartOfCompilation();
         assert opcode == CHECKCAST;
         BaseQuickNode quick = tryPatchQuick(curBCI, () -> new CheckCastQuickNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
-        quick.execute(frame);
+        quick.execute(frame, false);
         assert Bytecodes.stackEffectOf(opcode) == 0;
         return 0; // Bytecodes.stackEffectOf(opcode);
     }
@@ -2029,30 +2119,39 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.neverPartOfCompilation();
         assert opcode == INSTANCEOF;
         BaseQuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfQuickNode(resolveType(INSTANCEOF, readCPI(curBCI)), top, curBCI));
-        quick.execute(frame);
+        quick.execute(frame, false);
         assert Bytecodes.stackEffectOf(opcode) == 0;
         return 0; // Bytecodes.stackEffectOf(opcode);
     }
 
     @SuppressWarnings("try")
     private int quickenInvoke(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex) {
-        QUICKENED_INVOKES.inc();
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        assert Bytecodes.isInvoke(opcode);
-        BaseQuickNode quick = tryPatchQuick(curBCI, () -> {
-            // During resolution of the symbolic reference to the method, any of the exceptions
-            // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
-            char cpi = readCPI(curBCI);
-            Method resolutionSeed = resolveMethod(opcode, cpi);
-            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
-        });
+        InvokeQuickNode quick = quickenInvoke(top, curBCI, opcode, statementIndex);
         if (opcode == INVOKESTATIC && quick instanceof InvokeStaticQuickNode invokeStaticQuickNode) {
             try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
                 invokeStaticQuickNode.initializeResolvedKlass();
             }
         }
         // Perform the call outside of the lock.
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        // We _subtract_ the stack effect here to undo its effect, as the stack effect of the
+        // replaced opcode will be computed by quick.execute(frame), and then re-applied at
+        // the bottom of the interpreter loop. So we have to subtract the stack effect to
+        // prevent double counting.
+        return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
+    }
+
+    private InvokeQuickNode quickenInvoke(int top, int curBCI, int opcode, int statementIndex) {
+        QUICKENED_INVOKES.inc();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert Bytecodes.isInvoke(opcode);
+        InvokeQuickNode quick = (InvokeQuickNode) tryPatchQuick(curBCI, () -> {
+            // During resolution of the symbolic reference to the method, any of the exceptions
+            // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
+            char cpi = readCPI(curBCI);
+            Method resolutionSeed = resolveMethod(opcode, cpi);
+            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
+        });
+        return quick;
     }
 
     /**
@@ -2064,15 +2163,21 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert Bytecodes.isInvoke(opcode);
         BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex, resolutionSeed);
         // Perform the call outside of the lock.
-        return invoke.execute(frame);
+        return invoke.execute(frame, false);
     }
 
     /**
      * Atomically replaces a quick node with another one.
      */
     public int replaceQuickAt(VirtualFrame frame, int opcode, int curBCI, BaseQuickNode old, BaseQuickNode replacement) {
+        BaseQuickNode invoke = replaceQuickAt(opcode, curBCI, old, replacement);
+        // Perform the call outside of the lock.
+        return invoke.execute(frame, false);
+    }
+
+    private BaseQuickNode replaceQuickAt(int opcode, int curBCI, BaseQuickNode old, BaseQuickNode replacement) {
         CompilerAsserts.neverPartOfCompilation();
-        assert Bytecodes.isInvoke(opcode);
+        assert Bytecodes.isInvoke(opcode) || opcode == QUICK;
         BaseQuickNode invoke = atomic(() -> {
             assert bs.currentBC(curBCI) == QUICK;
             char nodeIndex = readCPI(curBCI);
@@ -2084,8 +2189,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             nodes[nodeIndex] = currentQuick.replace(replacement);
             return replacement;
         });
-        // Perform the call outside of the lock.
-        return invoke.execute(frame);
+        return invoke;
     }
 
     /**
@@ -2127,14 +2231,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == GETFIELD;
         BaseQuickNode getField = tryPatchQuick(curBCI, () -> new QuickenedGetFieldNode(top, curBCI, statementIndex, field));
-        return getField.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        return getField.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
     }
 
     public int quickenPutField(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field field) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == PUTFIELD;
         BaseQuickNode putField = tryPatchQuick(curBCI, () -> new QuickenedPutFieldNode(top, curBCI, field, statementIndex));
-        return putField.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        return putField.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
     }
 
     private int quickenArrayLength(VirtualFrame frame, int top, int curBCI) {
@@ -2146,7 +2250,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 return injectQuick(curBCI, new ArrayLengthQuickNode(top, curBCI), SLIM_QUICK);
             }
         });
-        return arrayLengthNode.execute(frame) - Bytecodes.stackEffectOf(ARRAYLENGTH);
+        return arrayLengthNode.execute(frame, false) - Bytecodes.stackEffectOf(ARRAYLENGTH);
     }
 
     private int quickenArrayLoad(VirtualFrame frame, int top, int curBCI, int loadOpcode) {
@@ -2175,7 +2279,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 return injectQuick(curBCI, quickNode, SLIM_QUICK);
             }
         });
-        return arrayLoadNode.execute(frame) - Bytecodes.stackEffectOf(loadOpcode);
+        return arrayLoadNode.execute(frame, false) - Bytecodes.stackEffectOf(loadOpcode);
     }
 
     private int quickenArrayStore(final VirtualFrame frame, int top, int curBCI, int storeOpcode) {
@@ -2204,13 +2308,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 return injectQuick(curBCI, quickNode, SLIM_QUICK);
             }
         });
-        return arrayStoreNode.execute(frame) - Bytecodes.stackEffectOf(storeOpcode);
+        return arrayStoreNode.execute(frame, false) - Bytecodes.stackEffectOf(storeOpcode);
     }
 
     // endregion quickenForeign
 
-    private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
-        InvokeQuickNode invoke;
+    private InvokeQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
         Method resolved = resolutionSeed;
         int resolvedOpCode = opcode;
         switch (opcode) {
@@ -2300,17 +2403,19 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
         }
+
         // Skip inlined nodes if instrumentation is live.
         // Lock must be owned for correctness.
         assert lockIsHeld();
         boolean tryBytecodeLevelInlining = this.instrumentation == null && allowBytecodeInlining;
         if (tryBytecodeLevelInlining) {
-            invoke = InlinedMethodNode.createFor(resolved, top, resolvedOpCode, curBCI, statementIndex);
-            if (invoke != null) {
-                return invoke;
+            var node = InlinedMethodNode.createFor(resolved, top, resolvedOpCode, curBCI, statementIndex);
+            if (node != null) {
+                return node;
             }
         }
 
+        InvokeQuickNode invoke;
         if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
         } else {
@@ -2365,7 +2470,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
         if (quick != null) {
             // Do invocation outside of the lock.
-            return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
+            return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
         }
         // Resolution should happen outside of the bytecode patching lock.
         InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex, curBCI, getMethod());
@@ -2379,7 +2484,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMeta(), top, curBCI), QUICK);
             }
         });
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
+        return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
     }
 
     // endregion Bytecode quickening
@@ -2650,15 +2755,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (opcode == PUTSTATIC) {
             receiver = initializeAndGetStatics(field);
         } else {
-            // Do not release the object, it might be read again in PutFieldNode
-            receiver = nullCheck(popObject(frame, slot));
-        }
-        if (!noForeignObjects.isValid() && opcode == PUTFIELD) {
-            if (receiver.isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                // Restore the receiver for quickening.
-                putObject(frame, slot, receiver);
-                return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
+            if (!noForeignObjects.isValid()) {
+                // Do not release the object, it might be read again in PutFieldNode
+                receiver = nullCheck(peekObject(frame, slot));
+                if (receiver.isForeignObject()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    // Restore the receiver for quickening.
+                    putObject(frame, slot, receiver);
+                    return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
+                }
+                popObject(frame, slot); // clear the slot
+            } else {
+                receiver = nullCheck(popObject(frame, slot));
             }
         }
 
@@ -2772,15 +2880,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (opcode == GETSTATIC) {
             receiver = initializeAndGetStatics(field);
         } else {
-            // Do not release the object, it might be read again in GetFieldNode
-            receiver = nullCheck(peekObject(frame, slot));
-        }
-        if (!noForeignObjects.isValid() && opcode == GETFIELD) {
-            if (receiver.isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                // Restore the receiver for quickening.
-                putObject(frame, slot, receiver);
-                return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
+            if (!noForeignObjects.isValid()) {
+                // Do not release the object yet, it might be read again in GetFieldNode
+                receiver = nullCheck(peekObject(frame, slot));
+                if (receiver.isForeignObject()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    // Restore the receiver for quickening.
+                    putObject(frame, slot, receiver);
+                    return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
+                }
+                popObject(frame, slot); // clear the slot
+            } else {
+                receiver = nullCheck(popObject(frame, slot));
             }
         }
 

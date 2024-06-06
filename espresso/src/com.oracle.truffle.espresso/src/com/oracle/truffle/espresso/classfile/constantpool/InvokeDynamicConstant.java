@@ -56,6 +56,10 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
     Symbol<Signature> getSignature(ConstantPool pool);
 
+    default Symbol<Type>[] getParsedSignature() {
+        throw EspressoError.shouldNotReachHere("Not resolved yet");
+    }
+
     default boolean isResolved() {
         return false;
     }
@@ -279,6 +283,11 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         public NameAndTypeConstant getNameAndType(ConstantPool pool) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("String already resolved");
+        }
+
+        @Override
+        public Symbol<Type>[] getParsedSignature() {
+            return parsedInvokeSignature;
         }
     }
 

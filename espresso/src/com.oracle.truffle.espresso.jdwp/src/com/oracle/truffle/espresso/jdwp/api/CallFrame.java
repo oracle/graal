@@ -160,7 +160,7 @@ public final class CallFrame {
         }
         // look for instrumentable node that should have scope
         Node node = InstrumentableNode.findInstrumentableParent(currentNode);
-        if (NodeLibrary.getUncached().hasScope(node, frame)) {
+        if (node != null && NodeLibrary.getUncached().hasScope(node, frame)) {
             try {
                 scope = NodeLibrary.getUncached().getScope(node, frame, true);
             } catch (UnsupportedMessageException e) {

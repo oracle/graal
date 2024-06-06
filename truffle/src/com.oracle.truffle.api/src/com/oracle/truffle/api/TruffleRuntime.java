@@ -151,7 +151,7 @@ public interface TruffleRuntime {
      * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
      * frame iteration should stop.
      * <p>
-     * Instances of {@link FrameInstance} must note escape the invocation of
+     * Instances of {@link FrameInstance} must not escape the invocation of
      * {@link FrameInstanceVisitor#visitFrame(FrameInstance)}. This rule is currently not enforced,
      * but will be in future versions of Truffle.
      *
