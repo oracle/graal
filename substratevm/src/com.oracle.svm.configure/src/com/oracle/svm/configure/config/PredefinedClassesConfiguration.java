@@ -40,6 +40,7 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.Digest;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -165,13 +166,19 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
     }
 
     @Override
-    public ConfigurationParser createParser() {
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        VMError.guarantee(!strictMetadata, "Predefined classes configuration is not supported with strict metadata");
         return new PredefinedClassesConfigurationParser(this::add, true);
     }
 
     @Override
     public boolean isEmpty() {
         return classes.isEmpty();
+    }
+
+    @Override
+    public boolean supportsCombinedFile() {
+        return false;
     }
 
     public boolean containsClassWithName(String className) {

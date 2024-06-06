@@ -29,6 +29,7 @@ import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE
 import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -69,6 +70,12 @@ public abstract class ConfigurationParser {
     public static final String NAME_KEY = "name";
     public static final String TYPE_KEY = "type";
     public static final String PROXY_KEY = "proxy";
+    public static final String REFLECTION_KEY = "reflection";
+    public static final String JNI_KEY = "jni";
+    public static final String SERIALIZATION_KEY = "serialization";
+    public static final String RESOURCES_KEY = "resources";
+    public static final String BUNDLES_KEY = "bundles";
+    public static final String GLOBS_KEY = "globs";
     public static final String MODULE_KEY = "module";
     public static final String GLOB_KEY = "glob";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
@@ -81,6 +88,11 @@ public abstract class ConfigurationParser {
     public void parseAndRegister(URI uri) throws IOException {
         try (Reader reader = openReader(uri)) {
             parseAndRegister(new JsonParser(reader).parse(), uri);
+        } catch (FileNotFoundException e) {
+            /*
+             * Ignore: *-config.json files can be missing when reachability-metadata.json is
+             * present, and vice-versa
+             */
         }
     }
 
@@ -93,6 +105,12 @@ public abstract class ConfigurationParser {
     }
 
     public abstract void parseAndRegister(Object json, URI origin) throws IOException;
+
+    public Object getFromGlobalFile(Object json, String key) {
+        EconomicMap<String, Object> map = asMap(json, "top level of reachability metadata file must be an object");
+        checkAttributes(map, "reachability metadata", Collections.emptyList(), List.of(REFLECTION_KEY, JNI_KEY, SERIALIZATION_KEY, RESOURCES_KEY, BUNDLES_KEY, "reason", "comment"));
+        return map.get(key);
+    }
 
     @SuppressWarnings("unchecked")
     public static List<Object> asList(Object data, String errorMessage) {
@@ -269,6 +287,7 @@ public abstract class ConfigurationParser {
              * We return if we find a future version of a type descriptor (as a JSON object) instead
              * of failing parsing.
              */
+            // TODO warn
             return Optional.empty();
         }
     }

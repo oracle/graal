@@ -459,16 +459,6 @@ public class ConfigurationType implements JsonPrintable {
         printJsonBooleanIfSet(writer, allPublicMethodsAccess == ConfigurationMemberAccessibility.ACCESSED, "allPublicMethods");
         printJsonBooleanIfSet(writer, allDeclaredConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allDeclaredConstructors");
         printJsonBooleanIfSet(writer, allPublicConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allPublicConstructors");
-        printJsonBooleanIfNotSet(writer, allDeclaredClasses, "allDeclaredClasses");
-        printJsonBooleanIfNotSet(writer, allRecordComponents, "allRecordComponents");
-        printJsonBooleanIfNotSet(writer, allPermittedSubclasses, "allPermittedSubclasses");
-        printJsonBooleanIfNotSet(writer, allNestMembers, "allNestMembers");
-        printJsonBooleanIfNotSet(writer, allSigners, "allSigners");
-        printJsonBooleanIfNotSet(writer, allPublicClasses, "allPublicClasses");
-        printJsonBooleanIfNotSet(writer, allDeclaredMethodsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllDeclaredMethods");
-        printJsonBooleanIfNotSet(writer, allPublicMethodsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllPublicMethods");
-        printJsonBooleanIfNotSet(writer, allDeclaredConstructorsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllDeclaredConstructors");
-        printJsonBooleanIfNotSet(writer, allPublicConstructorsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllPublicConstructors");
         printJsonBooleanIfSet(writer, unsafeAllocated, "unsafeAllocated");
 
         if (fields != null) {
@@ -481,14 +471,6 @@ public class ConfigurationType implements JsonPrintable {
                 writer.append(',').newline().quote("methods").append(':');
                 JsonPrinter.printCollection(writer,
                                 accessedMethods,
-                                Comparator.comparing(ConfigurationMethod::getName).thenComparing(Comparator.nullsFirst(Comparator.comparing(ConfigurationMethod::getInternalSignature))),
-                                JsonPrintable::printJson);
-            }
-            Set<ConfigurationMethod> queriedMethods = getMethodsByAccessibility(ConfigurationMemberAccessibility.QUERIED);
-            if (!queriedMethods.isEmpty()) {
-                writer.append(',').newline().quote("queriedMethods").append(':');
-                JsonPrinter.printCollection(writer,
-                                queriedMethods,
                                 Comparator.comparing(ConfigurationMethod::getName).thenComparing(Comparator.nullsFirst(Comparator.comparing(ConfigurationMethod::getInternalSignature))),
                                 JsonPrintable::printJson);
             }
@@ -507,12 +489,6 @@ public class ConfigurationType implements JsonPrintable {
             w.append(", ").quote("allowWrite").append(':').append("true");
         }
         w.append('}');
-    }
-
-    private static void printJsonBooleanIfNotSet(JsonWriter writer, boolean predicate, String attribute) throws IOException {
-        if (!predicate) {
-            printJsonBoolean(writer, predicate, attribute);
-        }
     }
 
     private static void printJsonBooleanIfSet(JsonWriter writer, boolean predicate, String attribute) throws IOException {
