@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,13 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
+import static jdk.graal.compiler.hotspot.meta.HotSpotExceptionDispatchPlugin.Options.HotSpotPostOnExceptions;
 import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
-import static jdk.graal.compiler.hotspot.meta.HotSpotExceptionDispatchPlugin.Options.HotSpotPostOnExceptions;
 
 import java.util.function.Supplier;
+
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -53,12 +55,9 @@ import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.meta.JavaKind;
-import sun.misc.Unsafe;
 
 /**
  * This plugin does HotSpot-specific instrumentation of exception dispatch to check the
@@ -71,7 +70,7 @@ public final class HotSpotExceptionDispatchPlugin implements NodePlugin {
         public static final OptionKey<Boolean> HotSpotPostOnExceptions = new OptionKey<>(false);
     }
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private final GraalHotSpotVMConfig config;
     private final JavaKind wordKind;
 

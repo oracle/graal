@@ -70,8 +70,7 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -83,7 +82,7 @@ import sun.misc.Unsafe;
  */
 public final class NodeClass<T> extends FieldIntrospection<T> {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     // Timers for creation of a NodeClass instance
     private static final TimerKey Init_FieldScanning = DebugContext.timer("NodeClass.Init.FieldScanning");
     private static final TimerKey Init_FieldScanningInner = DebugContext.timer("NodeClass.Init.FieldScanning.Inner");

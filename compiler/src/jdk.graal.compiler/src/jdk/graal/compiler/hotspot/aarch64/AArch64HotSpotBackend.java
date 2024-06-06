@@ -75,7 +75,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CompilationRequest;
@@ -89,7 +89,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 /**
  * HotSpot AArch64 specific backend.
@@ -158,7 +157,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 break;
             }
         }
-        Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+        Unsafe unsafe = Unsafe.getUnsafe();
         int instruction = unsafe.getIntVolatile(targetCode, unsafe.arrayBaseOffset(byte[].class) + verifiedEntryOffset);
         AArch64MacroAssembler masm = new AArch64MacroAssembler(getTarget());
         masm.nop();

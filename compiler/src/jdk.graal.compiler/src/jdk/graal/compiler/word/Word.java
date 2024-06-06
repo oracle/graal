@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,15 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.word.ComparableWord;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.SignedWord;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
+import org.graalvm.word.impl.WordBoxFactory;
+
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -48,21 +57,11 @@ import jdk.graal.compiler.nodes.calc.UnsignedRemNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.word.ComparableWord;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
-import org.graalvm.word.impl.WordBoxFactory;
-
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 public abstract class Word implements SignedWord, UnsignedWord, Pointer {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     static {
         BoxFactoryImpl.initialize();
@@ -1073,13 +1072,13 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.CAS_POINTER)
     public boolean logicCompareAndSwapInt(WordBase offset, int expectedValue, int newValue, LocationIdentity locationIdentity) {
-        return UNSAFE.compareAndSwapInt(this.toObject(), ((Word) offset).unbox(), expectedValue, newValue);
+        return UNSAFE.compareAndSetInt(this.toObject(), ((Word) offset).unbox(), expectedValue, newValue);
     }
 
     @Override
     @Operation(opcode = Opcode.CAS_POINTER)
     public boolean logicCompareAndSwapLong(WordBase offset, long expectedValue, long newValue, LocationIdentity locationIdentity) {
-        return UNSAFE.compareAndSwapLong(this.toObject(), ((Word) offset).unbox(), expectedValue, newValue);
+        return UNSAFE.compareAndSetLong(this.toObject(), ((Word) offset).unbox(), expectedValue, newValue);
     }
 
     @Override
@@ -1089,7 +1088,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.CAS_POINTER)
     public boolean logicCompareAndSwapObject(WordBase offset, Object expectedValue, Object newValue, LocationIdentity locationIdentity) {
-        return UNSAFE.compareAndSwapObject(this.toObject(), ((Word) offset).unbox(), expectedValue, newValue);
+        return UNSAFE.compareAndSetReference(this.toObject(), ((Word) offset).unbox(), expectedValue, newValue);
     }
 
     @Override

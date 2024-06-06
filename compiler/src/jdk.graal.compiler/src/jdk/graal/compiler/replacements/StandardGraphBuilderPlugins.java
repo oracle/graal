@@ -646,12 +646,14 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
-        Registration sunMiscUnsafe = new Registration(plugins, "sun.misc.Unsafe");
-        registerUnsafePlugins0(sunMiscUnsafe, true, explicitUnsafeNullChecks);
-
         JavaKind[] supportedJavaKinds = {JavaKind.Int, JavaKind.Long, JavaKind.Object};
-        registerUnsafeGetAndOpPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, supportedJavaKinds);
-        registerUnsafeAtomicsPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, "compareAndSwap", supportedJavaKinds, VOLATILE);
+
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            Registration sunMiscUnsafe = new Registration(plugins, "sun.misc.Unsafe");
+            registerUnsafePlugins0(sunMiscUnsafe, true, explicitUnsafeNullChecks);
+            registerUnsafeGetAndOpPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, supportedJavaKinds);
+            registerUnsafeAtomicsPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, "compareAndSwap", supportedJavaKinds, VOLATILE);
+        }
 
         Registration jdkInternalMiscUnsafe = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
 
