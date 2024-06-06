@@ -87,28 +87,24 @@ public final class PosixStat {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getSize(int fd) {
-        long size = -1;
+        int status;
+        stat stat = UnsafeStackValue.get(stat.class);
         if (Platform.includedIn(Platform.LINUX.class)) {
-            stat stat = UnsafeStackValue.get(stat.class);
-            if (LinuxStat.NoTransitions.fstat(fd, stat) == 0) {
-                size = stat.st_size();
-            }
+            status = LinuxStat.NoTransitions.fstat(fd, stat);
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            stat stat = UnsafeStackValue.get(stat.class);
-            if (DarwinStat.NoTransitions.fstat(fd, stat) == 0) {
-                size = stat.st_size();
-            }
+            status = DarwinStat.NoTransitions.fstat(fd, stat);
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }
-        return size;
+        if (status == 0) {
+            return stat.st_size();
+        }
+        return -1;
     }
 
     @Fold
     public static int sizeOfStatStruct() {
-        if (Platform.includedIn(Platform.LINUX.class)) {
-            return SizeOf.get(stat.class);
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+        if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
             return SizeOf.get(stat.class);
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
@@ -117,9 +113,7 @@ public final class PosixStat {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int st_uid(stat buf) {
-        if (Platform.includedIn(Platform.LINUX.class)) {
-            return buf.st_uid();
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+        if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
             return buf.st_uid();
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
@@ -138,9 +132,7 @@ public final class PosixStat {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord st_mode(stat buf) {
-        if (Platform.includedIn(Platform.LINUX.class)) {
-            return buf.st_mode();
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+        if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
             return buf.st_mode();
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
@@ -148,9 +140,7 @@ public final class PosixStat {
     }
 
     public static UnsignedWord st_nlink(stat buf) {
-        if (Platform.includedIn(Platform.LINUX.class)) {
-            return buf.st_nlink();
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+        if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
             return buf.st_nlink();
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
