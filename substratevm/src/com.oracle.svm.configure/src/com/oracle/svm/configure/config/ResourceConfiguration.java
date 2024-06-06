@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
@@ -73,7 +74,12 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void addResource(Module module, String resourcePath) {
+        public void addResourceEntry(Module module, String resourcePath) {
+            throw VMError.shouldNotReachHere("Unused function.");
+        }
+
+        @Override
+        public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
             throw VMError.shouldNotReachHere("Unused function.");
         }
 

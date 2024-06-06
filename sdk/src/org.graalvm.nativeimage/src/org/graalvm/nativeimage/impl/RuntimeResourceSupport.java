@@ -54,15 +54,27 @@ public interface RuntimeResourceSupport<C> {
 
     void addResources(C condition, String pattern);
 
-    void addResource(Module module, String resourcePath);
-
     void addGlob(C condition, String module, String glob);
-
-    void injectResource(Module module, String resourcePath, byte[] resourceContent);
 
     void ignoreResources(C condition, String pattern);
 
     void addResourceBundles(C condition, String name);
 
     void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+
+    /* Following functions are used only from features */
+    void addCondition(ConfigurationCondition configurationCondition, Module module, String resourcePath);
+
+    void addResourceEntry(Module module, String resourcePath);
+
+    default void addResource(Module module, String resourcePath) {
+        addResource(ConfigurationCondition.alwaysTrue(), module, resourcePath);
+    }
+
+    default void addResource(ConfigurationCondition condition, Module module, String resourcePath) {
+        addResourceEntry(module, resourcePath);
+        addCondition(condition, module, resourcePath);
+    }
+
+    void injectResource(Module module, String resourcePath, byte[] resourceContent);
 }

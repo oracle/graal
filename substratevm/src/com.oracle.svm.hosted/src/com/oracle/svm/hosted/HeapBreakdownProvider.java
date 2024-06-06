@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
@@ -149,9 +150,9 @@ public class HeapBreakdownProvider {
         /* Extract byte[] for resources. */
         long resourcesByteArraySize = 0;
         int resourcesByteArrayCount = 0;
-        for (ResourceStorageEntryBase resourceList : Resources.singleton().resources()) {
-            if (resourceList.hasData()) {
-                for (byte[] resource : resourceList.getData()) {
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.singleton().resources()) {
+            if (resourceList.getValueUnconditionally().hasData()) {
+                for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
                     resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
                     resourcesByteArrayCount++;
                 }
