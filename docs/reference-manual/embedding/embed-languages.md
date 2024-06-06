@@ -44,13 +44,13 @@ Here is an example Maven dependency setup that you can put into your project:
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<artifactId>polyglot</artifactId> 
-	<version>24.0.0</version> 
+	<version>${graalvm.polyglot.version}</version>
 </dependency>
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select language: js, ruby, python, java, llvm, wasm, languages-->
 	<artifactId>js</artifactId> 
-	<version>24.0.0</version> 
+	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
 <!-- add additional languages if needed -->
@@ -58,7 +58,7 @@ Here is an example Maven dependency setup that you can put into your project:
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select tools: profiler, inspect, coverage, dap, tools -->
 	<artifactId>tools</artifactId> 
-	<version>24.0.0</version> 
+	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
 <!-- add specific tools if needed -->
