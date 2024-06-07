@@ -320,9 +320,9 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
         }
 
         @Specialization(guards = {"!doCustomVaListCopy(sourcePtr, destPtr)", "useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)"})
-        Object delegateToMemMove(LLVMPointer sourcePtr, LLVMPointer destPtr,
+        Object delegateToMemMove(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary asForeignLib) {
-            memMoveNode.executeWithTarget(destPtr, sourcePtr, length);
+            memMoveNode.executeWithTarget(frame, destPtr, sourcePtr, length);
             return null;
         }
 

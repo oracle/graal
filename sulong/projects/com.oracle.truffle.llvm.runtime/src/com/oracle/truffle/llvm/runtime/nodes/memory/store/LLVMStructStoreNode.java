@@ -86,25 +86,25 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     }
 
     @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(address)", "!isAutoDerefHandle(value)"})
-    protected void doOp(LLVMNativePointer address, LLVMNativePointer value) {
-        memMove.executeWithTarget(address, value, getStructSize());
+    protected void doOp(VirtualFrame frame, LLVMNativePointer address, LLVMNativePointer value) {
+        memMove.executeWithTarget(frame, address, value, getStructSize());
     }
 
     @Specialization(guards = {"getStructSize() > 0", "isAutoDerefHandle(addr)", "isAutoDerefHandle(value)"})
-    protected void doOpDerefHandle(LLVMNativePointer addr, LLVMNativePointer value,
+    protected void doOpDerefHandle(VirtualFrame frame, LLVMNativePointer addr, LLVMNativePointer value,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
-        doManaged(getReceiver.execute(addr), getReceiver.execute(value));
+        doManaged(frame, getReceiver.execute(addr), getReceiver.execute(value));
     }
 
     @Specialization(guards = "getStructSize() > 0")
-    protected void doManaged(LLVMManagedPointer address, LLVMPointer value) {
-        memMove.executeWithTarget(address, value, getStructSize());
+    protected void doManaged(VirtualFrame frame, LLVMManagedPointer address, LLVMPointer value) {
+        memMove.executeWithTarget(frame, address, value, getStructSize());
     }
 
     @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(address)"}, replaces = "doOp")
-    protected void doConvert(LLVMNativePointer address, LLVMPointer value,
+    protected void doConvert(VirtualFrame frame, LLVMNativePointer address, LLVMPointer value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        memMove.executeWithTarget(address, toNative.executeWithTarget(value), getStructSize());
+        memMove.executeWithTarget(frame, address, toNative.executeWithTarget(value), getStructSize());
     }
 
     @Specialization(guards = "!isRecursive")

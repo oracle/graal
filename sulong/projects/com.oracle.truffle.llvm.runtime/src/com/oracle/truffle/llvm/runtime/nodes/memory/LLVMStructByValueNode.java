@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,7 +60,7 @@ public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
 
     private Object byValueImp(VirtualFrame frame, Object source) {
         Object dest = stackAllocationNode.executeGeneric(frame);
-        memMove.executeWithTarget(dest, source, getLength());
+        memMove.executeWithTarget(frame, dest, source, getLength());
         return dest;
     }
 

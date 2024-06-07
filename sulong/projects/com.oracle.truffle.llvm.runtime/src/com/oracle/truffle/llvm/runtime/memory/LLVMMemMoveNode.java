@@ -29,9 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInterface;
 
 public interface LLVMMemMoveNode extends NodeInterface {
 
-    void executeWithTarget(Object target, Object source, long length);
+    void executeWithTarget(VirtualFrame frame, Object target, Object source, long length);
 }
