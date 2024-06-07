@@ -30,9 +30,12 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -79,12 +82,20 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         return target.getOffset() == 0 && target.getObject() instanceof LLVMLinuxAarch64VaListStorage;
     }
 
-    @Specialization(guards = {"target.getObject() != source.getObject()", "doCustomVaListCopy(target, source)"})
-    protected void doManagedCustomCopy(LLVMManagedPointer target, LLVMManagedPointer source, long length,
-                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                    @CachedLibrary(limit = "2") LLVMVaListLibrary vaListLibrary) {
+    @Specialization(limit = "2", guards = {"target.getObject() != source.getObject()", "doCustomVaListCopy(target, source)"})
+    protected void doManagedCustomCopy(VirtualFrame frame, LLVMManagedPointer target, @SuppressWarnings("unused") LLVMManagedPointer source, long length,
+                    @Cached @SuppressWarnings("unused") VAListPointerWrapperFactoryDelegate wrapperFactory,
+                    @Bind("wrapperFactory.execute(source.getObject())") Object sourceWrapper,
+                    @CachedLibrary("sourceWrapper") LLVMVaListLibrary vaListLibrary) {
         LLVMLinuxAarch64VaListStorage.checkMemmoveLength(target, length);
-        vaListLibrary.copyWithoutFrame(wrapperFactory.execute(source.getObject()), target.getObject());
+        vaListLibrary.copy(sourceWrapper, target.getObject(), frame);
+    }
+
+    @Specialization(guards = {"target.getObject() != source.getObject()", "doCustomVaListCopy(target, source)"}, replaces = "doManagedCustomCopy")
+    protected void doManagedCustomCopyUncached(VirtualFrame frame, LLVMManagedPointer target, LLVMManagedPointer source, long length) {
+        LLVMLinuxAarch64VaListStorage.checkMemmoveLength(target, length);
+        Object sourceWrapper = VAListPointerWrapperFactoryDelegateNodeGen.getUncached().execute(source.getObject());
+        LLVMVaListLibrary.getFactory().getUncached(sourceWrapper).copy(sourceWrapper, target.getObject(), frame.materialize());
     }
 
     @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() != source.getObject()", "!doCustomVaListCopy(target, source)"})
@@ -113,12 +124,20 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         copyForward(target, source, length, helper, unitSizeNode);
     }
 
-    @Specialization(guards = {"doCustomNativeToVaListCopy(target)"})
-    protected void doManagedNativeCustomCopy(LLVMManagedPointer target, LLVMNativePointer source, long length,
-                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                    @CachedLibrary(limit = "2") LLVMVaListLibrary vaListLibrary) {
+    @Specialization(limit = "2", guards = {"doCustomNativeToVaListCopy(target)"})
+    protected void doManagedNativeCustomCopy(VirtualFrame frame, LLVMManagedPointer target, @SuppressWarnings("unused") LLVMNativePointer source, long length,
+                    @Cached @SuppressWarnings("unused") VAListPointerWrapperFactoryDelegate wrapperFactory,
+                    @Bind("wrapperFactory.execute(source)") Object sourceWrapper,
+                    @CachedLibrary("sourceWrapper") LLVMVaListLibrary vaListLibrary) {
         LLVMLinuxAarch64VaListStorage.checkMemmoveLength(target, length);
-        vaListLibrary.copyWithoutFrame(wrapperFactory.execute(source), target.getObject());
+        vaListLibrary.copy(sourceWrapper, target.getObject(), frame);
+    }
+
+    @Specialization(guards = {"doCustomNativeToVaListCopy(target)"}, replaces = "doManagedNativeCustomCopy")
+    protected void doManagedNativeCustomCopyUncached(VirtualFrame frame, LLVMManagedPointer target, LLVMNativePointer source, long length) {
+        LLVMLinuxAarch64VaListStorage.checkMemmoveLength(target, length);
+        Object sourceWrapper = VAListPointerWrapperFactoryDelegateNodeGen.getUncached().execute(source);
+        LLVMVaListLibrary.getFactory().getUncached(sourceWrapper).copy(sourceWrapper, target.getObject(), frame.materialize());
     }
 
     @Specialization
@@ -131,10 +150,14 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         return LLVMManagedPointer.isInstance(ptr);
     }
 
-    @Specialization(guards = "isManaged(target) || isManaged(source)", replaces = {"doManagedNonAliasing", "doManagedCustomCopy", "doManagedAliasing", "doManagedNative", "doManagedNativeCustomCopy",
-                    "doNativeManaged"})
+    @Specialization(guards = "isManaged(target) || isManaged(source)", replaces = {"doManagedNonAliasing", "doManagedCustomCopyUncached", "doManagedAliasing", "doManagedNative",
+                    "doManagedNativeCustomCopyUncached", "doNativeManaged"})
+    protected void doManagedSlowPath(VirtualFrame frame, LLVMPointer target, LLVMPointer source, long length) {
+        doManagedSlowPathBoundary(frame.materialize(), target, source, length);
+    }
+
     @TruffleBoundary
-    protected void doManagedSlowPath(LLVMPointer target, LLVMPointer source, long length) {
+    protected void doManagedSlowPathBoundary(MaterializedFrame frame, LLVMPointer target, LLVMPointer source, long length) {
         ManagedMemMoveHelperNode helper = ManagedMemMoveHelperNode.createSlowPath(target, source);
         UnitSizeNode unitSizeNode = UnitSizeNodeGen.create();
         LLVMVaListLibrary vaListLibrary = LLVMVaListLibrary.getFactory().getUncached();
@@ -145,11 +168,11 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         } else if (LLVMManagedPointer.isInstance(target) && LLVMManagedPointer.isInstance(source) &&
                         doCustomVaListCopy(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source))) {
             LLVMLinuxAarch64VaListStorage.checkMemmoveLength(target, length);
-            vaListLibrary.copyWithoutFrame(wrapperFactory.execute(LLVMManagedPointer.cast(source).getObject()), LLVMManagedPointer.cast(target).getObject());
+            vaListLibrary.copy(wrapperFactory.execute(LLVMManagedPointer.cast(source).getObject()), LLVMManagedPointer.cast(target).getObject(), frame);
         } else if (LLVMManagedPointer.isInstance(target) && LLVMNativePointer.isInstance(source) &&
                         doCustomNativeToVaListCopy(LLVMManagedPointer.cast(target))) {
             LLVMLinuxAarch64VaListStorage.checkMemmoveLength(target, length);
-            vaListLibrary.copyWithoutFrame(wrapperFactory.execute(source), LLVMManagedPointer.cast(target).getObject());
+            vaListLibrary.copy(wrapperFactory.execute(source), LLVMManagedPointer.cast(target).getObject(), frame);
         } else {
             copyForward(target, source, length, helper, unitSizeNode);
         }
