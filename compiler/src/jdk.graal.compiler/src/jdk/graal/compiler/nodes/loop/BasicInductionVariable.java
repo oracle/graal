@@ -172,8 +172,8 @@ public class BasicInductionVariable extends InductionVariable {
         if (!effectiveTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
             effectiveTripCount = IntegerConvertNode.convert(effectiveTripCount, stamp, graph(), NodeView.DEFAULT);
         }
-        ValueNode tripCountM1 = MathUtil.sub(graph, effectiveTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph));
-        ValueNode stripTimesTripCount = MathUtil.mul(graph, stride, tripCountM1);
+        ValueNode tripCountMinus1 = MathUtil.sub(graph, effectiveTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph));
+        ValueNode stripTimesTripCount = MathUtil.mul(graph, stride, tripCountMinus1);
         ValueNode extremum = MathUtil.add(graph, stripTimesTripCount, initNode);
         return extremum;
     }
