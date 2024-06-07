@@ -29,9 +29,10 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
-import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Signal;
@@ -47,11 +48,6 @@ public class LinuxTime extends Time {
 
     @CStruct
     public interface timer_t extends PointerBase {
-    }
-
-    @CPointerTo(timer_t.class)
-    public interface timer_tPointer extends PointerBase {
-        timer_t read();
     }
 
     @CStruct(addStructKeyword = true)
@@ -76,12 +72,12 @@ public class LinuxTime extends Time {
         public static native int clock_gettime(int clock_id, timespec tp);
 
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int timer_create(int clockid, Signal.sigevent sevp, timer_tPointer timerid);
+        public static native int timer_create(int clockid, Signal.sigevent sevp, WordPointer timerid);
 
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int timer_settime(timer_t timerid, int flags, itimerspec newValue, itimerspec oldValue);
+        public static native int timer_settime(UnsignedWord timerid, int flags, itimerspec newValue, itimerspec oldValue);
 
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int timer_delete(timer_t timerid);
+        public static native int timer_delete(UnsignedWord timerid);
     }
 }
