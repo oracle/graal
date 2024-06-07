@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -37,7 +36,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux.LLVMLinuxAarch64VaListStorage;
@@ -52,7 +50,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
 public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemMoveNode {
-    private static void copyForward(LLVMPointer target, LLVMPointer source, long length,
+    static void copyForward(LLVMPointer target, LLVMPointer source, long length,
                     ManagedMemMoveHelperNode helper,
                     UnitSizeNode unitSizeNode) {
         int unitSize = unitSizeNode.execute(helper, length);
@@ -123,11 +121,10 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         vaListLibrary.copyWithoutFrame(wrapperFactory.execute(source), target.getObject());
     }
 
-    @Specialization(limit = "4", guards = "helper.guard(target, source)")
+    @Specialization
     protected void doNativeManaged(LLVMNativePointer target, LLVMManagedPointer source, long length,
-                    @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
-                    @Cached UnitSizeNode unitSizeNode) {
-        copyForward(target, source, length, helper, unitSizeNode);
+                    @Cached NativeProfiledMemMoveToNative nativeMemmove) {
+        nativeMemmove.executeNative(target, source, length);
     }
 
     static boolean isManaged(LLVMPointer ptr) {
@@ -158,74 +155,10 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         }
     }
 
-    protected static final long MAX_JAVA_LEN = 256;
-
-    @Specialization(guards = "length <= MAX_JAVA_LEN")
-    protected void doInJava(Object target, Object source, long length,
+    @Specialization(replaces = {"doNativeManaged", "doManagedSlowPath"})
+    protected void doNative(LLVMPointer target, LLVMPointer source, long length,
                     @Cached LLVMToNativeNode convertTarget,
-                    @Cached LLVMToNativeNode convertSource) {
-        LLVMMemory memory = getLanguage().getLLVMMemory();
-        LLVMNativePointer t = convertTarget.executeWithTarget(target);
-        LLVMNativePointer s = convertSource.executeWithTarget(source);
-        long targetPointer = t.asNative();
-        long sourcePointer = s.asNative();
-
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, length > 0 && sourcePointer != targetPointer)) {
-            // the unsigned comparison replaces
-            // sourcePointer + length <= targetPointer || targetPointer < sourcePointer
-            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, Long.compareUnsigned(targetPointer - sourcePointer, length) >= 0)) {
-                copyForward(memory, targetPointer, sourcePointer, length);
-            } else {
-                copyBackward(memory, targetPointer, sourcePointer, length);
-            }
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    @Specialization(replaces = "doInJava")
-    protected void doNative(Object target, Object source, long length,
-                    @Cached LLVMToNativeNode convertTarget,
-                    @Cached LLVMToNativeNode convertSource) {
-        getLanguage().getLLVMMemory().copyMemory(this, convertSource.executeWithTarget(source).asNative(), convertTarget.executeWithTarget(target).asNative(), length);
-    }
-
-    private void copyForward(LLVMMemory memory, long target, long source, long length) {
-        long targetPointer = target;
-        long sourcePointer = source;
-        long i64ValuesToWrite = length >> 3;
-        for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
-            long v64 = memory.getI64(this, sourcePointer);
-            memory.putI64(this, targetPointer, v64);
-            targetPointer += 8;
-            sourcePointer += 8;
-        }
-
-        long i8ValuesToWrite = length & 0x07;
-        for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
-            byte value = memory.getI8(this, sourcePointer);
-            memory.putI8(this, targetPointer, value);
-            targetPointer++;
-            sourcePointer++;
-        }
-    }
-
-    private void copyBackward(LLVMMemory memory, long target, long source, long length) {
-        long targetPointer = target + length;
-        long sourcePointer = source + length;
-        long i64ValuesToWrite = length >> 3;
-        for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
-            targetPointer -= 8;
-            sourcePointer -= 8;
-            long v64 = memory.getI64(this, sourcePointer);
-            memory.putI64(this, targetPointer, v64);
-        }
-
-        long i8ValuesToWrite = length & 0x07;
-        for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
-            targetPointer--;
-            sourcePointer--;
-            byte value = memory.getI8(this, sourcePointer);
-            memory.putI8(this, targetPointer, value);
-        }
+                    @Cached NativeProfiledMemMoveToNative nativeMemmove) {
+        nativeMemmove.executeNative(convertTarget.executeWithTarget(target), source, length);
     }
 }
