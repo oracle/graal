@@ -52,8 +52,8 @@ import jdk.vm.ci.meta.Value;
  * {@link AMD64G1BarrierSetLIRTool}.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/5404b4eafc2eb3291cecf99f98728946388f5d16/src/hotspot/cpu/x86/gc/g1/g1BarrierSetAssembler_x86.cpp#L266-L342",
-          sha1 = "9f503800059a06192e005b505f290bc0dc754c9f")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/43a2f17342af8f5bf1f5823df9fa0bf0bdfdfce2/src/hotspot/cpu/x86/gc/g1/g1BarrierSetAssembler_x86.cpp#L266-L342",
+          sha1 = "5691006914119b2a6047c6935a3d4fe656dc663f")
 // @formatter:on
 public class AMD64G1PostWriteBarrierOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64G1PostWriteBarrierOp> TYPE = LIRInstructionClass.create(AMD64G1PostWriteBarrierOp.class);

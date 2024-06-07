@@ -63,7 +63,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/ce8399fd6071766114f5f201b6e44a7abdba9f5a/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L3372-L3606",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/8032d640c0d34fe507392a1d4faa4ff2005c771d/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L3369-L3603",
           sha1 = "cfd2b9fcbbb67a138b8e28e7362ba1fff6a99aec")
 // @formatter:on
 public final class AArch64MD5Op extends AArch64LIRInstruction {
