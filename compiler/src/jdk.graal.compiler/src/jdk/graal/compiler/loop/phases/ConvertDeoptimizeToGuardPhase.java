@@ -65,7 +65,7 @@ import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.OSRMonitorEnterNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
@@ -312,7 +312,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
         LoopsData loopsData = lazyLoops.get();
         CFGLoop<HIRBlock> loop = loopsData.getCFG().getNodeToBlock().get(ifNode).getLoop();
         if (loop != null) {
-            LoopEx loopEx = loopsData.loop(loop);
+            Loop loopEx = loopsData.loop(loop);
             if (loopEx.detectCounted()) {
                 return ifNode == loopEx.counted().getLimitTest();
             }

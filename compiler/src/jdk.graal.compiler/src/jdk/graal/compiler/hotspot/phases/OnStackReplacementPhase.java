@@ -69,7 +69,7 @@ import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -166,7 +166,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
 
             l = l.getOutmostLoop();
 
-            LoopEx loop = loops.loop(l);
+            Loop loop = loops.loop(l);
             loop.loopBegin().markOsrLoop();
             LoopTransformations.peel(loop);
 

@@ -60,7 +60,7 @@ import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.MultiGuardNode;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.loop.MathUtil;
 import jdk.graal.compiler.phases.Speculative;
@@ -96,7 +96,7 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
             LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
             final ControlFlowGraph cfg = data.getCFG();
             try (DebugContext.Scope s = debug.scope("predication", cfg)) {
-                for (LoopEx loop : data.loops()) {
+                for (Loop loop : data.loops()) {
                     // Only inner most loops.
                     if (!loop.loop().getChildren().isEmpty()) {
                         continue;
@@ -113,7 +113,7 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
                         final Condition condition = ((CompareNode) counted.getLimitTest().condition()).condition().asCondition();
                         final boolean inverted = loop.counted().isInverted();
                         if ((((IntegerStamp) counter.valueNode().stamp(NodeView.DEFAULT)).getBits() == 32) && !counted.isUnsignedCheck() &&
-                                        ((condition != NE && condition != EQ) || (counter.isConstantStride() && LoopEx.absStrideIsOne(counter))) &&
+                                        ((condition != NE && condition != EQ) || (counter.isConstantStride() && Loop.absStrideIsOne(counter))) &&
                                         (loop.loopBegin().isMainLoop() || loop.loopBegin().isSimpleLoop())) {
                             NodeIterable<GuardNode> guards = loop.whole().nodes().filter(GuardNode.class);
                             if (LoopPredicationMainPath.getValue(graph.getOptions())) {
@@ -156,7 +156,7 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
     // for (i = init; i < limit; i += stride) {
     // a[scale*i+offset]
     // }
-    private static void processGuard(LoopEx loop, GuardNode guard) {
+    private static void processGuard(Loop loop, GuardNode guard) {
         final LogicNode condition = guard.getCondition();
         if (!(condition instanceof IntegerBelowNode) || guard.isNegated()) {
             return;
@@ -203,7 +203,7 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
         replaceGuardNode(loop, guard, range, graph, scaleCon, offset);
     }
 
-    private static void replaceGuardNode(LoopEx loop, GuardNode guard, ValueNode range, StructuredGraph graph, long scaleCon, ValueNode offset) {
+    private static void replaceGuardNode(Loop loop, GuardNode guard, ValueNode range, StructuredGraph graph, long scaleCon, ValueNode offset) {
         final InductionVariable counter = loop.counted().getLimitCheckedIV();
         ValueNode rangeLong = IntegerConvertNode.convert(range, IntegerStamp.create(64), graph, NodeView.DEFAULT);
 

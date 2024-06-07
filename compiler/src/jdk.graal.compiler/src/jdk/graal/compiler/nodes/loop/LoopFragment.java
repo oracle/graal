@@ -81,7 +81,7 @@ public abstract class LoopFragment {
     /**
      * The original loop this fragment is defined over.
      */
-    private final LoopEx loop;
+    private final Loop loop;
     /**
      * In case this fragment was duplicated a link to the original one.
      */
@@ -108,12 +108,12 @@ public abstract class LoopFragment {
      */
     protected List<MergeNode> introducedMerges;
 
-    public LoopFragment(LoopEx loop) {
+    public LoopFragment(Loop loop) {
         this(loop, null);
         this.nodesReady = true;
     }
 
-    public LoopFragment(LoopEx loop, LoopFragment original) {
+    public LoopFragment(Loop loop, LoopFragment original) {
         this.loop = loop;
         this.original = original;
         this.nodesReady = false;
@@ -122,13 +122,13 @@ public abstract class LoopFragment {
     /**
      * Return the original LoopEx for this fragment. For duplicated fragments this returns null.
      */
-    public LoopEx loop() {
+    public Loop loop() {
         return loop;
     }
 
     public abstract LoopFragment duplicate();
 
-    public abstract void insertBefore(LoopEx l);
+    public abstract void insertBefore(Loop l);
 
     public boolean contains(Node n) {
         return nodes().isMarkedAndGrow(n);
@@ -185,7 +185,7 @@ public abstract class LoopFragment {
     public abstract NodeBitMap nodes();
 
     public StructuredGraph graph() {
-        LoopEx l;
+        Loop l;
         if (isDuplicate()) {
             l = original().loop();
         } else {
@@ -199,7 +199,7 @@ public abstract class LoopFragment {
     protected abstract void beforeDuplication();
 
     protected void finishDuplication() {
-        LoopEx originalLoopEx = original().loop();
+        Loop originalLoopEx = original().loop();
         ControlFlowGraph cfg = originalLoopEx.loopsData().getCFG();
         for (LoopExitNode exit : originalLoopEx.loopBegin().loopExits().snapshot()) {
             if (!originalLoopEx.loop().isLoopExit(cfg.blockFor(exit))) {
@@ -252,7 +252,7 @@ public abstract class LoopFragment {
         }
     }
 
-    protected static void computeNodes(NodeBitMap nodes, Graph graph, LoopEx loop, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {
+    protected static void computeNodes(NodeBitMap nodes, Graph graph, Loop loop, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {
         for (AbstractBeginNode b : blocks) {
             if (b.isDeleted()) {
                 continue;
@@ -424,7 +424,7 @@ public abstract class LoopFragment {
         workList.push(entry);
     }
 
-    private static void markFloating(WorkQueue workList, LoopEx loop, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
+    private static void markFloating(WorkQueue workList, Loop loop, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
         if (isLoopNode(start, loopNodes, nonLoopNodes).isKnown()) {
             return;
         }

@@ -37,7 +37,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 public class LoopFragmentWhole extends LoopFragment {
 
-    public LoopFragmentWhole(LoopEx loop) {
+    public LoopFragmentWhole(Loop loop) {
         super(loop);
     }
 
@@ -111,7 +111,7 @@ public class LoopFragmentWhole extends LoopFragment {
     }
 
     @Override
-    public void insertBefore(LoopEx loop) {
+    public void insertBefore(Loop loop) {
         // nothing to do
     }
 }

@@ -85,7 +85,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
  * loop information if the compiler detects it as a counted loop. Data about induction variables,
  * parent loops and much more.
  */
-public class LoopEx {
+public class Loop {
     /**
      * The corresponding {@link ControlFlowGraph} loop data structure.
      */
@@ -117,7 +117,7 @@ public class LoopEx {
     protected boolean countedLoopChecked;
     protected int size = -1;
 
-    protected LoopEx(CFGLoop<HIRBlock> loop, LoopsData data) {
+    protected Loop(CFGLoop<HIRBlock> loop, LoopsData data) {
         this.loop = loop;
         this.data = data;
     }
@@ -200,7 +200,7 @@ public class LoopEx {
         return counted;
     }
 
-    public LoopEx parent() {
+    public Loop parent() {
         if (loop.getParent() == null) {
             return null;
         }
@@ -276,7 +276,7 @@ public class LoopEx {
                     }
                 }
                 binary.replaceAtUsages(result);
-                graph.getOptimizationLog().report(LoopEx.class, "InvariantReassociation", binary);
+                graph.getOptimizationLog().report(Loop.class, "InvariantReassociation", binary);
                 GraphUtil.killWithUnusedFloatingInputs(binary);
                 count++;
             }
@@ -702,7 +702,7 @@ public class LoopEx {
      * increases/decreases its value by a fixed amount every iteration (that amount being the stride
      * of base IV).
      */
-    private static ValueNode calcOffsetTo(LoopEx loop, ValueNode opNode, ValueNode base, boolean forDerivedIV) {
+    private static ValueNode calcOffsetTo(Loop loop, ValueNode opNode, ValueNode base, boolean forDerivedIV) {
         if (isNumericInteger(opNode) && (opNode instanceof AddNode || opNode instanceof SubNode)) {
             BinaryArithmeticNode<?> arithOp = (BinaryArithmeticNode<?>) opNode;
             BinaryOp<?> op = arithOp.getArithmeticOp();
@@ -719,10 +719,10 @@ public class LoopEx {
      * Determine if the given {@code op} represents a {@code DerivedScaledInductionVariable}
      * variable with respect to {@code base}.
      *
-     * See {@link LoopEx#calcOffsetTo(LoopEx, ValueNode, ValueNode, boolean)}. Multiplication is
+     * See {@link Loop#calcOffsetTo(Loop, ValueNode, ValueNode, boolean)}. Multiplication is
      * commutative so the logic of addition applies here.
      */
-    private static ValueNode calcScaleTo(LoopEx loop, ValueNode op, ValueNode base) {
+    private static ValueNode calcScaleTo(Loop loop, ValueNode op, ValueNode base) {
         if (op instanceof MulNode) {
             MulNode mul = (MulNode) op;
             if (mul.getX() == base && loop.isOutsideLoop(mul.getY())) {

@@ -72,7 +72,7 @@ import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.phases.FloatingGuardPhase;
 import jdk.graal.compiler.phases.Speculative;
@@ -551,7 +551,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 return null;
             }
 
-            LoopEx loopEx = iv.getLoop();
+            Loop loopEx = iv.getLoop();
             CFGLoop<HIRBlock> ivLoop = loopEx.loop();
             HIRBlock guardAnchorBlock = earliestBlock(guard.getAnchor().asNode());
             if (isInverted(iv.getLoop())) {
@@ -689,7 +689,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                  */
                 if (iv.getLoop().loop().getDepth() > 1 && iv.getLoop().loopBegin().loopExits().count() > 1) {
                     InductionVariable currentIv = iv;
-                    LoopEx currentLoop = iv.getLoop();
+                    Loop currentLoop = iv.getLoop();
                     /*
                      * Since we are calculating the inner loops max trip count based on the outer
                      * loop IV we also have to compute a different max trip count node for this
@@ -969,7 +969,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         return GUARD_MOVEMENT_LOOP_SPECULATIONS.createSpeculationReason(method, bci, reason);
     }
 
-    private static boolean isInverted(LoopEx loop) {
+    private static boolean isInverted(Loop loop) {
         return loop.isCounted() && loop.counted().isInverted();
     }
 }

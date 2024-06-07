@@ -102,7 +102,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  */
 public class CountedLoopInfo {
 
-    protected final LoopEx loop;
+    protected final Loop loop;
     /**
      * @see CountedLoopInfo#getLimitCheckedIV()
      */
@@ -135,7 +135,7 @@ public class CountedLoopInfo {
      */
     protected final boolean unsigned;
 
-    protected CountedLoopInfo(LoopEx loop, InductionVariable limitCheckedIV, IfNode ifNode, ValueNode limit, boolean isLimitIncluded, AbstractBeginNode body, boolean unsigned) {
+    protected CountedLoopInfo(Loop loop, InductionVariable limitCheckedIV, IfNode ifNode, ValueNode limit, boolean isLimitIncluded, AbstractBeginNode body, boolean unsigned) {
         assert limitCheckedIV.direction() != null;
         this.loop = loop;
         this.limitCheckedIV = limitCheckedIV;

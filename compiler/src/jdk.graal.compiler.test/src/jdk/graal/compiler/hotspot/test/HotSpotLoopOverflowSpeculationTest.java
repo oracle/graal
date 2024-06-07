@@ -39,7 +39,7 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
@@ -128,7 +128,7 @@ public class HotSpotLoopOverflowSpeculationTest extends GraalCompilerTest {
             static CountedLoopInfo queryOverflowGuardCounted(StructuredGraph graph, HighTierContext context) {
                 LoopsData ld = context.getLoopsDataProvider().getLoopsData(graph);
                 ld.detectCountedLoops();
-                List<LoopEx> countedLoops = ld.countedLoops();
+                List<Loop> countedLoops = ld.countedLoops();
                 GraalError.guarantee(countedLoops.size() == 1, "Must have one counted loop " + countedLoops);
                 return countedLoops.get(0).counted();
             }
