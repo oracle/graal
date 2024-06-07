@@ -160,6 +160,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             for (int i = 0; i < limit; i++) {
                 T[] s = new T[Ts.length * 2];
                 Ts = s;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -241,6 +242,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 Node newHead = new Node();
                 newHead.next = head;
                 head = newHead;
+                GraalDirectives.controlFlowAnchor();
             }
             head = new Node();
             return 1;
@@ -304,6 +306,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 INode newHead = (INode) UNSAFE.allocateInstance(c);
                 newHead.setNext(ihead);
                 ihead = newHead;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -345,6 +348,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 INode newHead = (INode) UNSAFE.allocateInstance(foldInHighTier(IINode.class));
                 newHead.setNext(ihead);
                 ihead = newHead;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -399,6 +403,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             for (int i = 0; i < limit; i++) {
                 Object[] s = (Object[]) Array.newInstance(arrayClass, Os.length * 2);
                 Os = s;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -439,6 +444,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             for (int i = 0; i < limit; i++) {
                 Object[] s = (Object[]) Array.newInstance(foldInHighTier(IINode.class), Os.length * 2);
                 Os = s;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -492,6 +498,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             for (int i = 0; i < limit; i++) {
                 T[][] s = new T[TsMult.length * 8][TsMult.length * 8];
                 TsMult = s;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {

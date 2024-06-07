@@ -124,9 +124,9 @@ public final class SignatureUtil {
     }
 
     /**
-     * Checks if the given signature can be succesfully parsed by
+     * Checks if the given signature can be successfully parsed by
      * {@link #parseSignature(String, List)}.
-     * 
+     *
      * @param signature the signature to check
      * @param acceptMissingReturnType whether a signature without a return type is considered to be
      *            valid
