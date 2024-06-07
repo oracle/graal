@@ -40,7 +40,7 @@ public final class GraalOptions {
 
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> ReduceCodeSize = new OptionKey<>(true);
+    public static final OptionKey<Boolean> ReduceCodeSize = new OptionKey<>(false);
 
     @Option(help = "Rewrite signed comparisons to unsigned ones if the result is equal.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PreferUnsignedComparison = new OptionKey<>(true);
