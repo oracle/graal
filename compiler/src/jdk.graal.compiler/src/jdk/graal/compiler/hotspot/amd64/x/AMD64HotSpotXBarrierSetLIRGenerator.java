@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.amd64;
+package jdk.graal.compiler.hotspot.amd64.x;
 
 import static jdk.vm.ci.amd64.AMD64.r15;
 
@@ -41,6 +41,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.amd64.AMD64HotSpotBackend;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -62,9 +63,9 @@ import jdk.vm.ci.meta.Value;
 /**
  * HotSpot specific code generation for ZGC read barriers.
  */
-public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64ReadBarrierSetLIRGenerator {
+public class AMD64HotSpotXBarrierSetLIRGenerator implements AMD64ReadBarrierSetLIRGenerator {
 
-    public AMD64HotSpotZBarrierSetLIRGenerator(GraalHotSpotVMConfig config, Providers providers) {
+    public AMD64HotSpotXBarrierSetLIRGenerator(GraalHotSpotVMConfig config, Providers providers) {
         this.config = config;
         this.providers = providers;
     }
@@ -134,20 +135,20 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64ReadBarrierSetLIRG
             AMD64AddressValue loadAddress = ((AMD64LIRGenerator) tool).asAddressValue(address);
             Variable result = tool.newVariable(tool.toRegisterKind(kind));
             tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-            tool.append(new AMD64HotSpotZReadBarrierOp(result, loadAddress, state, config, callTarget));
+            tool.append(new AMD64HotSpotXReadBarrierOp(result, loadAddress, state, config, callTarget));
             return result;
         }
         if (kind.getPlatformKind().getVectorLength() > 1) {
             // Emit a vector barrier
             assert barrierType == BarrierType.READ : Assertions.errorMessage(barrierType);
-            ForeignCallLinkage callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_ARRAY_BARRIER);
+            ForeignCallLinkage callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.X_ARRAY_BARRIER);
             AMD64AddressValue loadAddress = ((AMD64LIRGenerator) tool).asAddressValue(address);
             Variable result = tool.newVariable(tool.toRegisterKind(kind));
 
             AMD64Assembler.VexMoveOp op = AMD64VectorMove.getVectorMemMoveOp((AMD64Kind) kind.getPlatformKind());
             Variable temp = tool.newVariable(tool.toRegisterKind(kind));
             tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-            tool.append(new AMD64HotSpotZVectorReadBarrierOp(AVXKind.getRegisterSize((AMD64Kind) kind.getPlatformKind()), op, result, loadAddress, state, config, callTarget, temp));
+            tool.append(new AMD64HotSpotXVectorReadBarrierOp(AVXKind.getRegisterSize((AMD64Kind) kind.getPlatformKind()), op, result, loadAddress, state, config, callTarget, temp));
             return result;
         }
         throw GraalError.shouldNotReachHere("unhandled barrier");
@@ -157,16 +158,16 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64ReadBarrierSetLIRG
         ForeignCallLinkage callTarget;
         switch (barrierType) {
             case READ:
-                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_FIELD_BARRIER);
+                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.X_FIELD_BARRIER);
                 break;
             case REFERENCE_GET:
-                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_REFERENCE_GET_BARRIER);
+                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.X_REFERENCE_GET_BARRIER);
                 break;
             case WEAK_REFERS_TO:
-                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_WEAK_REFERS_TO_BARRIER);
+                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.X_WEAK_REFERS_TO_BARRIER);
                 break;
             case PHANTOM_REFERS_TO:
-                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_PHANTOM_REFERS_TO_BARRIER);
+                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.X_PHANTOM_REFERS_TO_BARRIER);
                 break;
             default:
                 throw GraalError.shouldNotReachHere("Unexpected barrier type: " + barrierType);
@@ -175,13 +176,13 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64ReadBarrierSetLIRG
     }
 
     @Override
-    public void emitCompareAndSwapOp(LIRGeneratorTool tool, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue,
+    public void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue,
                     BarrierType barrierType) {
         ForeignCallLinkage callTarget = getBarrierStub(barrierType);
         assert memKind == accessKind.getPlatformKind() : Assertions.errorMessage(memKind, accessKind, raxValue, address, newValue);
         AllocatableValue temp = tool.newVariable(tool.toRegisterKind(accessKind));
         tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        tool.append(new AMD64HotSpotZCompareAndSwapOp(memKind, raxValue, address, raxValue, tool.asAllocatable(newValue), temp, config, callTarget));
+        tool.append(new AMD64HotSpotXCompareAndSwapOp(memKind, raxValue, address, raxValue, tool.asAllocatable(newValue), temp, config, callTarget));
     }
 
     @Override
@@ -193,7 +194,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64ReadBarrierSetLIRG
         GraalError.guarantee(kind == AMD64Kind.QWORD, "unexpected kind for ZGC");
         ForeignCallLinkage callTarget = getBarrierStub(barrierType);
         tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        tool.append(new AMD64HotSpotZAtomicReadAndWriteOp(result, addressValue, tool.asAllocatable(newValue), config, callTarget));
+        tool.append(new AMD64HotSpotXAtomicReadAndWriteOp(result, addressValue, tool.asAllocatable(newValue), config, callTarget));
         return result;
     }
 }

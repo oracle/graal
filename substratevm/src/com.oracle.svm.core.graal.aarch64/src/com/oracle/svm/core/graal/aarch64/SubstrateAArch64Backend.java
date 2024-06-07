@@ -1327,8 +1327,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             // A branch estimation was wrong, now retry with conservative label ranges, this
             // should always work
             resetForEmittingCode(crb);
-            crb.setConservativeLabelRanges();
             crb.resetForEmittingCode();
+            crb.setConservativeLabelRanges();
             crb.emitLIR();
             finalizeCode(crb);
         }

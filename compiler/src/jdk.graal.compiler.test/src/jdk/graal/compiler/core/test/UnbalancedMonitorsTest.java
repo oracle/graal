@@ -62,9 +62,11 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest {
 
     @Test
     public void runWrongOrder() throws Exception {
-        ResolvedJavaMethod method = getResolvedJavaMethod(LOADER.findClass(INNER_CLASS_NAME), "wrongOrder");
+        Class<?> clazz = LOADER.findClass(INNER_CLASS_NAME);
+        ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "wrongOrder");
+        Object instance = clazz.getName();
         InstalledCode code = getCode(method);
-        code.executeVarargs(null, new Object(), new Object());
+        code.executeVarargs(instance, new Object(), new Object());
         assertTrue("Deopt expected due to unlocked object not matching top of monitor stack.", !code.isValid());
     }
 

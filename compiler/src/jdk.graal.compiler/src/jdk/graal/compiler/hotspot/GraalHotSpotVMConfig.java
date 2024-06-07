@@ -552,53 +552,92 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // This flag indicates that support for loom is enabled.
     public final boolean continuationsEnabled = getFieldValue("CompilerToVM::Data::continuations_enabled", Boolean.class, "bool");
 
-    private long getZGCAddressField(String name) {
-        long address = getFieldValue(name, Long.class, "address");
-        GraalError.guarantee(!(gc == HotSpotGraalRuntime.HotSpotGC.Z) || address != 0, "Unexpected null value for %s", name);
-        return address;
-    }
-
     // If the nmethod_entry_barrier field is non-null then an entry barrier must be emitted
     public final int threadDisarmedOffset = getFieldValue("CompilerToVM::Data::thread_disarmed_guard_value_offset", Integer.class, "int");
     public final long nmethodEntryBarrier = getFieldValue("CompilerToVM::Data::nmethod_entry_barrier", Long.class, "address");
 
-    // ZGC support
+    // Check whether generational ZGC support is available
+    public final boolean zgcSupport = getStore().getFields().containsKey("CompilerToVM::Data::sizeof_ZStoreBarrierEntry");
+
+    private long getZGCAddressField(String name) {
+        // Some of these names are aliased between generational ZGC and non-generational so we avoid
+        // the lookup if we don't expect generational ZGC support.
+        long address = zgcSupport ? getAddress(name, 0L, zgcSupport) : 0;
+        GraalError.guarantee(gc != HotSpotGraalRuntime.HotSpotGC.Z || address != 0, "Unexpected null value for %s", name);
+        return address;
+    }
+
+    public final int sizeofZStoreBarrierEntry = getFieldValue("CompilerToVM::Data::sizeof_ZStoreBarrierEntry", Integer.class, "int", -1, zgcSupport);
+    public final int ZThreadLocalData_store_good_mask_offset = getConstant("ZThreadLocalData::store_good_mask_offset", Integer.class, -1, zgcSupport);
+    public final int ZThreadLocalData_store_barrier_buffer_offset = getConstant("ZThreadLocalData::store_barrier_buffer_offset", Integer.class, -1, zgcSupport);
+    public final int ZStoreBarrierBuffer_current_offset = getConstant("ZStoreBarrierBuffer::current_offset", Integer.class, -1, zgcSupport);
+    public final int ZStoreBarrierBuffer_buffer_offset = getConstant("ZStoreBarrierBuffer::buffer_offset", Integer.class, -1, zgcSupport);
+    public final int ZStoreBarrierEntry_p_offset = getConstant("ZStoreBarrierEntry::p_offset", Integer.class, -1, zgcSupport);
+    public final int ZStoreBarrierEntry_prev_offset = getConstant("ZStoreBarrierEntry::prev_offset", Integer.class, -1, zgcSupport);
+
+    /*
+     * Generational ZGC support
+     */
+    public final long zBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded = getZGCAddressField("ZBarrierSetRuntime::load_barrier_on_oop_field_preloaded");
+    public final long zBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded = getZGCAddressField("ZBarrierSetRuntime::load_barrier_on_weak_oop_field_preloaded");
+    public final long zBarrierSetRuntimeNoKeepaliveLoadBarrierOnWeakOopFieldPreloaded = getZGCAddressField(
+                    "ZBarrierSetRuntime::no_keepalive_load_barrier_on_weak_oop_field_preloaded");
+    public final long zBarrierSetRuntimeNoKeepaliveLoadBarrierOnPhantomOopFieldPreloaded = getZGCAddressField(
+                    "ZBarrierSetRuntime::no_keepalive_load_barrier_on_phantom_oop_field_preloaded");
+    public final long zBarrierSetRuntimeStoreBarrierOnNativeOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_native_oop_field_without_healing");
+    public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_with_healing");
+    public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_without_healing");
+    public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("ZBarrierSetRuntime::load_barrier_on_oop_array");
+    public final int ZPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64") && zgcSupport);
+
+    private long getXGCAddressField(String name) {
+        String realName = name;
+        long address = 0;
+        if (zgcSupport) {
+            /*
+             * Generational ZGC support exports the required functions as address using the new
+             * XBarrierSetRuntime names.
+             */
+            address = getAddress(name);
+        } else {
+            /*
+             * Use the old names which are exported as fields in CompilerToVM::Data. This logic can
+             * be deleted once the transition is complete.
+             */
+            realName = name.replace("XBarrierSetRuntime::", "CompilerToVM::Data::ZBarrierSetRuntime_");
+            address = getFieldValue(realName, Long.class, "address");
+        }
+        GraalError.guarantee(gc != HotSpotGraalRuntime.HotSpotGC.X || address != 0, "Unexpected null value for %s", realName);
+        return address;
+    }
+
+    /*
+     * Single generation ZGC support
+     */
     public final int threadAddressBadMaskOffset = getFieldValue("CompilerToVM::Data::thread_address_bad_mask_offset", Integer.class, "int");
-    public final long zBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_oop_field_preloaded");
-    public final long zBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_weak_oop_field_preloaded");
-    public final long zBarrierSetRuntimeWeakLoadBarrierOnWeakOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_weak_load_barrier_on_weak_oop_field_preloaded");
-    public final long zBarrierSetRuntimeWeakLoadBarrierOnPhantomOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_weak_load_barrier_on_phantom_oop_field_preloaded");
-    public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_oop_array");
-    // There are 3 other entry points which we don't seem to need.
-    // CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_phantom_oop_field_preloaded and
-    // CompilerToVM::Data::ZBarrierSetRuntime_weak_load_barrier_on_oop_field_preloaded don't seem
-    // to correspond to any pattern we actually emit. CompilerToVM::Data::ZBarrierSetRuntime_clone
-    // heals all fields of the passed in object. C2 uses this when cloning because it emit bulk copy
-    // of the object. We always represent cloning as a field by field copy because this is more PEA
-    // friendly.
+    public final long xBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded = getXGCAddressField("XBarrierSetRuntime::load_barrier_on_oop_field_preloaded");
+    public final long xBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded = getXGCAddressField("XBarrierSetRuntime::load_barrier_on_weak_oop_field_preloaded");
+    public final long xBarrierSetRuntimeWeakLoadBarrierOnWeakOopFieldPreloaded = getXGCAddressField("XBarrierSetRuntime::weak_load_barrier_on_weak_oop_field_preloaded");
+    public final long xBarrierSetRuntimeWeakLoadBarrierOnPhantomOopFieldPreloaded = getXGCAddressField("XBarrierSetRuntime::weak_load_barrier_on_phantom_oop_field_preloaded");
+    public final long xBarrierSetRuntimeLoadBarrierOnOopArray = getXGCAddressField("XBarrierSetRuntime::load_barrier_on_oop_array");
+
+    // aarch64 specific nmethod entry barrier support
+    public final int BarrierSetAssembler_nmethod_patching_type = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_nmethod_patching_type", Integer.class, "int", -1, osArch.equals("aarch64"));
+    public final long BarrierSetAssembler_patching_epoch_addr = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_patching_epoch_addr", Long.class, "address", -1L,
+                    osArch.equals("aarch64") && zgcSupport);
+    public final int NMethodPatchingType_stw_instruction_and_data_patch = getConstant("NMethodPatchingType::stw_instruction_and_data_patch", Integer.class, -1, osArch.equals("aarch64"));
+    public final int NMethodPatchingType_conc_instruction_and_data_patch = getConstant("NMethodPatchingType::conc_instruction_and_data_patch", Integer.class, -1, osArch.equals("aarch64"));
+    public final int NMethodPatchingType_conc_data_patch = getConstant("NMethodPatchingType::conc_data_patch", Integer.class, -1, osArch.equals("aarch64"));
+
     {
-        // aarch64 code generation for the entry barrier is complicated and varies by release so
-        // check for the acceptable patterns here.
-        Boolean patchConcurrent = null;
-        if (osArch.equals("aarch64") && nmethodEntryBarrier != 0) {
-            Integer patchingType = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_nmethod_patching_type", Integer.class, "int");
-            if (patchingType != null) {
-                // There currently only 2 variants in use that differ only by the presence of a
-                // dmb instruction
-                int stw = getConstant("NMethodPatchingType::stw_instruction_and_data_patch", Integer.class);
-                int conc = getConstant("NMethodPatchingType::conc_data_patch", Integer.class);
-                if (patchingType == stw) {
-                    patchConcurrent = false;
-                } else if (patchingType == conc) {
-                    patchConcurrent = true;
-                } else {
-                    throw new IllegalArgumentException("unsupported barrier sequence " + patchingType);
-                }
+        if (osArch.equals("aarch64")) {
+            if (BarrierSetAssembler_nmethod_patching_type != NMethodPatchingType_stw_instruction_and_data_patch &&
+                            BarrierSetAssembler_nmethod_patching_type != NMethodPatchingType_conc_instruction_and_data_patch &&
+                            BarrierSetAssembler_nmethod_patching_type != NMethodPatchingType_conc_data_patch) {
+                throw new IllegalArgumentException("unsupported barrier sequence " + BarrierSetAssembler_nmethod_patching_type);
             }
         }
-        nmethodEntryBarrierConcurrentPatch = patchConcurrent;
     }
-    public final Boolean nmethodEntryBarrierConcurrentPatch;
 
     // Tracking of the number of monitors held by the current thread. This is used by loom but in
     // JDK 20 was enabled by default to ensure it was correctly implemented.
@@ -674,10 +713,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
             String key = "CodeInstaller::" + markId.name();
             Long result = constants.get(key);
             if (result == null) {
-                if (markId == HotSpotMarkId.ENTRY_BARRIER_PATCH) {
+                if (markId.getArch() != null && !osArch.equals(markId.getArch())) {
                     continue;
                 }
-                GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
+                if (zgcSupport) {
+                    GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
+                }
+                continue;
             }
             markId.setValue(result.intValue());
         }

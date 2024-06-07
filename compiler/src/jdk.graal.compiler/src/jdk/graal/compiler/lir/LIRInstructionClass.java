@@ -322,10 +322,10 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
     String toString(LIRInstruction obj) {
         StringBuilder result = new StringBuilder();
 
-        appendValues(result, obj, "", " = ", "(", ")", new String[]{""}, defs);
+        appendValues(result, obj, "", " = ", "(", ")", true, new String[]{""}, defs);
         result.append(String.valueOf(getOpcode(obj)).toUpperCase(Locale.ROOT));
-        appendValues(result, obj, " ", "", "(", ")", new String[]{"", "~"}, uses, alives);
-        appendValues(result, obj, " ", "", "{", "}", new String[]{""}, temps);
+        appendValues(result, obj, " ", "", "(", ")", false, new String[]{"", "~"}, uses, alives);
+        appendValues(result, obj, " ", "", "{", "}", false, new String[]{""}, temps);
 
         for (int i = 0; i < data.getCount(); i++) {
             if (i == opcodeIndex) {

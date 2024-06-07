@@ -37,16 +37,16 @@ import jdk.vm.ci.meta.Value;
 /**
  * AMD64 specific LIR generation for GC barriers.
  */
-public abstract class AMD64ReadBarrierSetLIRGenerator implements ReadBarrierSetLIRGeneratorTool {
+public interface AMD64ReadBarrierSetLIRGenerator extends ReadBarrierSetLIRGeneratorTool {
 
     /**
      * Emit an atomic read-and-write instruction with any required GC barriers.
      */
-    public abstract Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
+    Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
 
     /**
      * Emit an atomic compare and swap with any required GC barriers.
      */
-    public abstract void emitCompareAndSwapOp(LIRGeneratorTool tool, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue,
+    void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue,
                     BarrierType barrierType);
 }

@@ -428,7 +428,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 Value expectedValue = operand(cas.getExpectedValue());
                 Value newValue = operand(cas.getNewValue());
                 AMD64AddressValue address = (AMD64AddressValue) operand(cas.getAddress());
-                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, Condition.EQ, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
+                getLIRGeneratorTool().emitCompareAndSwapBranch(false, kind, address, expectedValue, newValue, Condition.EQ, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
                 return null;
             };
         }
@@ -461,7 +461,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 Value newValue = operand(cas.getNewValue());
                 AMD64AddressValue address = (AMD64AddressValue) operand(cas.getAddress());
                 Condition condition = successIsTrue ? Condition.EQ : Condition.NE;
-                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, condition, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
+                getLIRGeneratorTool().emitCompareAndSwapBranch(true, kind, address, expectedValue, newValue, condition, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
                 return null;
             };
         }

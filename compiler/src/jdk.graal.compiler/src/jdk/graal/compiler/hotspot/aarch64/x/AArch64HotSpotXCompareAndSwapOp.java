@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.aarch64;
+package jdk.graal.compiler.hotspot.aarch64.x;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
@@ -36,20 +36,19 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.aarch64.AArch64AtomicMove;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 @Opcode("CAS_Z")
-public final class AArch64HotSpotZCompareAndSwapOp extends AArch64AtomicMove.CompareAndSwapOp {
-    public static final LIRInstructionClass<AArch64HotSpotZCompareAndSwapOp> TYPE = LIRInstructionClass.create(AArch64HotSpotZCompareAndSwapOp.class);
+public final class AArch64HotSpotXCompareAndSwapOp extends AArch64AtomicMove.CompareAndSwapOp {
+    public static final LIRInstructionClass<AArch64HotSpotXCompareAndSwapOp> TYPE = LIRInstructionClass.create(AArch64HotSpotXCompareAndSwapOp.class);
 
     private final GraalHotSpotVMConfig config;
     private final ForeignCallLinkage callTarget;
     @Temp protected AllocatableValue temp;
 
-    public AArch64HotSpotZCompareAndSwapOp(AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean setConditionFlags, AllocatableValue result, Value expectedValue, AllocatableValue newValue,
+    public AArch64HotSpotXCompareAndSwapOp(AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean setConditionFlags, AllocatableValue result, Value expectedValue, AllocatableValue newValue,
                     AllocatableValue addressValue, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget, AllocatableValue temp) {
         super(TYPE, accessKind, memoryOrder, setConditionFlags, result, expectedValue, newValue, addressValue);
         this.config = config;
@@ -62,7 +61,7 @@ public final class AArch64HotSpotZCompareAndSwapOp extends AArch64AtomicMove.Com
         super.emitCode(crb, masm);
         AArch64Address location = AArch64Address.createBaseRegisterOnlyAddress(64, asRegister(addressValue));
         Label good = new Label();
-        AArch64HotSpotZBarrierSetLIRGenerator.emitBarrier(crb, masm, good, asRegister(resultValue), config, callTarget, location, this, null);
+        AArch64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, good, asRegister(resultValue), config, callTarget, location, this, null);
         super.emitCode(crb, masm);
         masm.bind(good);
     }

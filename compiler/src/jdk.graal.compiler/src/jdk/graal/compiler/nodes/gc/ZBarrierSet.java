@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,18 +26,20 @@ package jdk.graal.compiler.nodes.gc;
 
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.extended.RawStoreNode;
-import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
-import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
+import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
@@ -45,22 +47,30 @@ import jdk.graal.compiler.nodes.memory.LIRLowerableAccess;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Base class for the barrier set for ZGC. This provides the basica requirement that ever reads of
- * an object from the heap should have an associated read barrier. Read barriers for non-heap
- * locations like handles can be handled by subclasses.
+ * Base class for the barrier set for generational ZGC. This provides the basic every that every
+ * read or write of an object from the heap should have an associated read barrier. Barriers for
+ * non-heap locations like handles can be handled by subclasses.
  */
 public class ZBarrierSet implements BarrierSet {
 
+    private final ResolvedJavaType objectArrayType;
     private final ResolvedJavaField referentField;
 
-    public ZBarrierSet(ResolvedJavaField referentField) {
+    public ZBarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
         this.referentField = referentField;
+        this.objectArrayType = objectArrayType;
+    }
+
+    @Override
+    public BarrierType postAllocationInitBarrier(BarrierType original) {
+        assert original == BarrierType.FIELD || original == BarrierType.ARRAY : "only for write barriers: " + original;
+        return BarrierType.POST_INIT_WRITE;
     }
 
     @Override
@@ -99,7 +109,7 @@ public class ZBarrierSet implements BarrierSet {
 
     @Override
     public BarrierType writeBarrierType(RawStoreNode store) {
-        return BarrierType.NONE;
+        return store.needsBarrier() ? readWriteBarrier(store.object(), store.value()) : BarrierType.NONE;
     }
 
     @Override
@@ -115,25 +125,33 @@ public class ZBarrierSet implements BarrierSet {
 
     @Override
     public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        return BarrierType.NONE;
+        return storageKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
     }
 
     @Override
     public BarrierType arrayWriteBarrierType(JavaKind storageKind) {
-        return BarrierType.NONE;
+        return storageKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
     }
 
     @Override
-    public BarrierType guessReadWriteBarrier(ValueNode object, ValueNode value) {
+    public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
         if (value.stamp(NodeView.DEFAULT).isObjectStamp()) {
-            return BarrierType.READ;
+            ResolvedJavaType type = StampTool.typeOrNull(object);
+            if (type != null && type.isArray()) {
+                return BarrierType.ARRAY;
+            } else if (type == null || type.isAssignableFrom(objectArrayType)) {
+                // Treat as an array
+                return BarrierType.ARRAY;
+            } else {
+                return BarrierType.FIELD;
+            }
         }
         return BarrierType.NONE;
     }
 
     @Override
     public boolean hasWriteBarrier() {
-        return false;
+        return true;
     }
 
     @Override
@@ -155,9 +173,14 @@ public class ZBarrierSet implements BarrierSet {
         for (Node node : graph.getNodes()) {
             if (node instanceof WriteNode) {
                 WriteNode write = (WriteNode) node;
-                GraalError.guarantee(write.getBarrierType() == BarrierType.NONE, "There are no write barriers with ZGC: %s", node);
-            } else if (node instanceof ReadNode || node instanceof FloatingReadNode ||
-                            node instanceof AbstractCompareAndSwapNode || node instanceof LoweredAtomicReadAndWriteNode) {
+                Stamp stamp = write.getAccessStamp(NodeView.DEFAULT);
+                if (!stamp.isObjectStamp()) {
+                    GraalError.guarantee(write.getBarrierType() == BarrierType.NONE, "no barriers for primitive writes: %s", write);
+                }
+            } else if (node instanceof ReadNode ||
+                            node instanceof FloatingReadNode ||
+                            node instanceof AbstractCompareAndSwapNode ||
+                            node instanceof LoweredAtomicReadAndWriteNode) {
                 LIRLowerableAccess read = (LIRLowerableAccess) node;
                 Stamp stamp = read.getAccessStamp(NodeView.DEFAULT);
                 if (!stamp.isObjectStamp()) {

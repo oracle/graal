@@ -2676,6 +2676,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         CMP.byteImmOp.emit(this, OperandSize.BYTE, dst, imm);
     }
 
+    public final void cmpw(AMD64Address dst, int imm16) {
+        CMP.getMIOpcode(OperandSize.WORD, isByte(imm16)).emit(this, OperandSize.WORD, dst, imm16);
+    }
+
+    /**
+     * Emit a cmpw with an imm16 operand regardless of the input value.
+     */
+    public final void cmpwImm16(AMD64Address dst, int imm16) {
+        CMP.getMIOpcode(OperandSize.WORD, false).emit(this, OperandSize.WORD, dst, imm16);
+    }
+
     public final void cmpw(Register dst, Register src) {
         CMP.rmOp.emit(this, OperandSize.WORD, dst, src);
     }
@@ -4338,6 +4349,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AMD64RMOp.TEST.emit(this, OperandSize.DWORD, dst, src);
     }
 
+    public final void testl(AMD64Address dst, int imm32) {
+        AMD64MIOp.TEST.emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
     public final void unpckhpd(Register dst, Register src) {
         assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
         simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
@@ -4549,6 +4564,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         CMP.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
     }
 
+    public final void cmpq(AMD64Address dst, int imm32) {
+        CMP.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
     public final void cmpq(Register dst, Register src) {
         CMP.rmOp.emit(this, OperandSize.QWORD, dst, src);
     }
@@ -4742,6 +4761,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void orq(Register dst, int imm32) {
         OR.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void orqImm32(Register dst, int imm32) {
+        OR.getMIOpcode(OperandSize.QWORD, false).emit(this, OperandSize.QWORD, dst, imm32);
     }
 
     public final void shlq(Register dst, int imm8) {
@@ -5888,8 +5911,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      * the algorithm / the heuristics.
      */
     public void disableOptimizeLongJumpsAfterException() {
-        assert optimizeLongJumpsBailouts.incrementAndGet() < MAX_OPTIMIZE_LONG_JUMPS_BAILOUTS : "Replacing 4byte-displacement jumps with 1byte-displacement jumps has resulted in too many BranchTargetOutOfBoundsExceptions. " +
-                        "Please check the algorithm or disable the optimization by setting OptimizeLongJumps=false!";
+        assert optimizeLongJumpsBailouts
+                        .incrementAndGet() < MAX_OPTIMIZE_LONG_JUMPS_BAILOUTS : "Replacing 4byte-displacement jumps with 1byte-displacement jumps has resulted in too many BranchTargetOutOfBoundsExceptions. " +
+                                        "Please check the algorithm or disable the optimization by setting OptimizeLongJumps=false!";
         optimizeLongJumps = false;
     }
 

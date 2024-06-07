@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.aarch64;
+package jdk.graal.compiler.hotspot.aarch64.x;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
@@ -38,6 +38,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotBackend;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -48,7 +49,6 @@ import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.aarch64.AArch64FrameMap;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.ReadBarrierSetLIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -59,9 +59,9 @@ import jdk.vm.ci.meta.Value;
 /**
  * HotSpot specific code generation for ZGC read barriers.
  */
-public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64ReadBarrierSetLIRGenerator implements ReadBarrierSetLIRGeneratorTool {
+public class AArch64HotSpotXBarrierSetLIRGenerator implements AArch64ReadBarrierSetLIRGenerator {
 
-    public AArch64HotSpotZBarrierSetLIRGenerator(GraalHotSpotVMConfig config, HotSpotProviders providers) {
+    public AArch64HotSpotXBarrierSetLIRGenerator(GraalHotSpotVMConfig config, HotSpotProviders providers) {
         this.config = config;
         this.providers = providers;
     }
@@ -149,7 +149,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64ReadBarrierSet
             AArch64AddressValue loadAddress = ((AArch64LIRGenerator) tool).asAddressValue(address, 64);
             Variable result = tool.newVariable(tool.toRegisterKind(kind));
             tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-            tool.append(new AArch64HotSpotZReadBarrierOp(result, loadAddress, memoryOrder, state, config, callTarget));
+            tool.append(new AArch64HotSpotXReadBarrierOp(result, loadAddress, memoryOrder, state, config, callTarget));
             return result;
         }
         throw GraalError.shouldNotReachHere("unhandled");
@@ -159,16 +159,16 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64ReadBarrierSet
         ForeignCallLinkage callTarget;
         switch (barrierType) {
             case READ:
-                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_FIELD_BARRIER);
+                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.X_FIELD_BARRIER);
                 break;
             case REFERENCE_GET:
-                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_REFERENCE_GET_BARRIER);
+                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.X_REFERENCE_GET_BARRIER);
                 break;
             case WEAK_REFERS_TO:
-                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_WEAK_REFERS_TO_BARRIER);
+                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.X_WEAK_REFERS_TO_BARRIER);
                 break;
             case PHANTOM_REFERS_TO:
-                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_PHANTOM_REFERS_TO_BARRIER);
+                callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.X_PHANTOM_REFERS_TO_BARRIER);
                 break;
             default:
                 throw GraalError.shouldNotReachHere("Unexpected barrier type: " + barrierType);
@@ -183,7 +183,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64ReadBarrierSet
         ForeignCallLinkage callTarget = getBarrierStub(barrierType);
         AllocatableValue temp = tool.newVariable(tool.toRegisterKind(LIRKind.value(memKind)));
         tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        tool.append(new AArch64HotSpotZCompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result,
+        tool.append(new AArch64HotSpotXCompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result,
                         allocatableExpectedValue, allocatableNewValue, tool.asAllocatable(address), config, callTarget, temp));
     }
 
@@ -194,7 +194,8 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64ReadBarrierSet
         GraalError.guarantee(accessKind.getPlatformKind() == AArch64Kind.QWORD, "unexpected kind for ZGC");
         ForeignCallLinkage callTarget = getBarrierStub(barrierType);
         tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        tool.append(new AArch64HotSpotZAtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, tool.asAllocatable(address), tool.asAllocatable(newValue), config, callTarget));
+        tool.append(new AArch64HotSpotXAtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, tool.asAllocatable(address),
+                        tool.asAllocatable(newValue), config, callTarget));
         return result;
     }
 }

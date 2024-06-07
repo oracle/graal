@@ -66,6 +66,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:-UseJVMCINativeLibrary",
                         "-XX:JVMCIThreads=1",
                         "-Djdk.graal.CompilationFailureAction=ExitVM",
                         "-Djdk.graal.CrashAt=TestProgram.*",
@@ -183,6 +184,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         };
         testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:-UseJVMCINativeLibrary",
                         "-XX:JVMCIThreads=1",
                         "-Djdk.graal.SystemicCompilationFailureRate=0",
                         "-Djdk.graal.CompilationFailureAction=Diagnose",

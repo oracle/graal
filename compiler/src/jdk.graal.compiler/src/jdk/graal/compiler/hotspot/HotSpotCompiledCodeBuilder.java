@@ -52,7 +52,6 @@ import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
@@ -137,13 +136,21 @@ public class HotSpotCompiledCodeBuilder {
             boolean hasUnsafeAccess = compResult.hasUnsafeAccess();
 
             int id;
-            long jvmciCompileState;
+            long jvmciCompileState = 0;
             if (compRequest != null) {
                 id = compRequest.getId();
                 jvmciCompileState = compRequest.getJvmciEnv();
             } else {
-                id = hsMethod.allocateCompileId(entryBCI);
-                jvmciCompileState = 0L;
+                if (compResult.getCompilationId() instanceof HotSpotCompilationIdentifier identifier) {
+                    /*
+                     * Unit test compiles create a HotSpotCompilationRequest to hold the compile id
+                     * so make sure to use that but it won't have a valid JVMCIEnv*
+                     */
+                    id = identifier.getRequest().getId();
+                    assert identifier.getRequest().getJvmciEnv() == 0 : identifier;
+                } else {
+                    id = hsMethod.allocateCompileId(entryBCI);
+                }
             }
             return new HotSpotCompiledNmethod(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, isImmutablePIC,
                             totalFrameSize, customStackArea, hsMethod, entryBCI, id, jvmciCompileState, hasUnsafeAccess);
