@@ -171,8 +171,8 @@ public class WindowsUtils {
 
     /** Retrieve a nanosecond counter for elapsed time measurement. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-22+22/src/hotspot/os/windows/os_windows.cpp#L976-L983")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-22+22/src/hotspot/os/windows/os_windows.cpp#L1081-L1087")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L1089-L1096")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L1194-L1200")
     public static long getNanoCounter() {
         if (performanceFrequency == 0L) {
             CLongPointer count = StackValue.get(CLongPointer.class);
