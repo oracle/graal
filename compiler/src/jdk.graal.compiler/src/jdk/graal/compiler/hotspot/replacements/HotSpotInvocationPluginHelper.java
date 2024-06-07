@@ -40,7 +40,8 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KL
 
 import java.util.function.Function;
 
-import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -63,8 +64,6 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.replacements.InvocationPluginHelper;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -240,7 +239,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(getWordKind()));
         ValueNode threadObjectHandle = readLocation(javaThread, HotSpotVMConfigField.JAVA_THREAD_THREAD_OBJECT, StampFactory.forKind(getWordKind()));
         AddressNode handleAddress = b.add(OffsetAddressNode.create(threadObjectHandle));
-        b.add(new WriteNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, thread, BarrierType.NONE, MemoryOrderMode.PLAIN));
+        b.add(new WriteNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, thread, barrierSet.writeBarrierType(HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION), MemoryOrderMode.PLAIN));
         if (HotSpotReplacementsUtil.supportsVirtualThreadUpdateJFR(config)) {
             b.add(new VirtualThreadUpdateJFRNode(thread));
         }
@@ -267,7 +266,9 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
      */
     public void setThreadScopedValueCache(ValueNode cache) {
         AddressNode handleAddress = scopedValueCacheHelper();
-        b.add(new WriteNode(handleAddress, HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, cache, BarrierType.NONE, MemoryOrderMode.PLAIN));
+        b.add(new WriteNode(handleAddress, HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, cache,
+                        barrierSet.writeBarrierType(HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION),
+                        MemoryOrderMode.PLAIN));
     }
 
     /**

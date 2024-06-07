@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,46 +22,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.aarch64;
+package jdk.graal.compiler.hotspot.aarch64.z;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.ZWriteBarrierSetLIRGeneratorTool;
+import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
- * Base class for LIR ops that require a read barrier. This ensures the Def/Alive restrictions for
- * safe register allocation are met by any subclass.
+ * Base class for ops that require a store barrier. It ensures that the main values used in the
+ * store barrier are available and have the correct lifetimes.
  */
-public abstract class AArch64HotSpotZBarrieredOp extends AArch64LIRInstruction {
-    public static final LIRInstructionClass<AArch64HotSpotZBarrieredOp> TYPE = LIRInstructionClass.create(AArch64HotSpotZBarrieredOp.class);
+public abstract class AArch64HotSpotZStoreBarrieredOp extends AArch64LIRInstruction {
+    public static final LIRInstructionClass<AArch64HotSpotZStoreBarrieredOp> TYPE = LIRInstructionClass.create(AArch64HotSpotZStoreBarrieredOp.class);
 
-    @Def({REG}) protected AllocatableValue result;
-    @Alive({COMPOSITE}) protected AArch64AddressValue loadAddress;
+    @LIRInstruction.Def({REG}) protected AllocatableValue result;
+    @LIRInstruction.Alive({COMPOSITE}) protected AArch64AddressValue storeAddress;
+    @LIRInstruction.Temp protected AllocatableValue tmp;
+    @LIRInstruction.Temp protected AllocatableValue tmp2;
 
     protected final GraalHotSpotVMConfig config;
     protected final ForeignCallLinkage callTarget;
 
-    protected AArch64HotSpotZBarrieredOp(LIRInstructionClass<? extends AArch64HotSpotZBarrieredOp> type, AllocatableValue result, AArch64AddressValue loadAddress, GraalHotSpotVMConfig config,
-                    ForeignCallLinkage callTarget) {
+    protected final ZWriteBarrierSetLIRGeneratorTool.StoreKind storeKind;
+
+    protected AArch64HotSpotZStoreBarrieredOp(LIRInstructionClass<? extends AArch64HotSpotZStoreBarrieredOp> type,
+                    AllocatableValue result,
+                    AArch64AddressValue storeAddress,
+                    AllocatableValue tmp,
+                    AllocatableValue tmp2,
+                    GraalHotSpotVMConfig config,
+                    ForeignCallLinkage callTarget,
+                    ZWriteBarrierSetLIRGeneratorTool.StoreKind storeKind) {
         super(type);
         this.result = result;
-        this.loadAddress = loadAddress;
+        this.storeAddress = storeAddress;
+        this.tmp = tmp;
+        this.tmp2 = tmp2;
         this.config = config;
         this.callTarget = callTarget;
+        this.storeKind = storeKind;
     }
-
-    protected void emitBarrier(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        AArch64HotSpotZBarrierSetLIRGenerator.emitBarrier(crb, masm, null, asRegister(result), config, callTarget, loadAddress.toAddress(), this, null);
-    }
-
 }

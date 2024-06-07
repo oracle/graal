@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.aarch64;
+package jdk.graal.compiler.hotspot.aarch64.z;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
@@ -37,20 +37,24 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.code.Register;
 
+/**
+ * Emit the load barrier for a read.
+ */
 public class AArch64HotSpotZReadBarrierOp extends AArch64HotSpotZBarrieredOp {
     public static final LIRInstructionClass<AArch64HotSpotZReadBarrierOp> TYPE = LIRInstructionClass.create(AArch64HotSpotZReadBarrierOp.class);
 
     private final MemoryOrderMode memoryOrder;
     @State protected LIRFrameState state;
+    private final boolean isNotStrong;
 
     public AArch64HotSpotZReadBarrierOp(Variable result, AArch64AddressValue loadAddress, MemoryOrderMode memoryOrder, LIRFrameState state, GraalHotSpotVMConfig config,
-                    ForeignCallLinkage callTarget) {
+                    ForeignCallLinkage callTarget, boolean isNotStrong) {
         super(TYPE, result, loadAddress, config, callTarget);
         this.memoryOrder = memoryOrder;
         this.state = state;
+        this.isNotStrong = isNotStrong;
     }
 
     @Override
@@ -86,6 +90,6 @@ public class AArch64HotSpotZReadBarrierOp extends AArch64HotSpotZBarrieredOp {
         if (state != null) {
             crb.recordImplicitException(loadPosition, state);
         }
-        emitBarrier(crb, masm);
+        emitBarrier(crb, masm, isNotStrong);
     }
 }

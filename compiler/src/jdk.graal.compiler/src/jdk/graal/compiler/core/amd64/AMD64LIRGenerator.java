@@ -268,7 +268,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         RegisterValue aRes = AMD64.rax.asValue(integerAccessKind);
         AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue, integerAccessKind);
         emitMove(aRes, reinterpretedExpectedValue);
-        emitCompareAndSwapOp(integerAccessKind, memKind, aRes, addressValue, allocatableNewValue, barrierType);
+        emitCompareAndSwapOp(isLogic, integerAccessKind, memKind, aRes, addressValue, allocatableNewValue, barrierType);
 
         if (isLogic) {
             assert trueValue.getValueKind().equals(falseValue.getValueKind());
@@ -295,7 +295,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, null, null, barrierType);
     }
 
-    public void emitCompareAndSwapBranch(LIRKind kind, AMD64AddressValue address, Value expectedValue, Value newValue, Condition condition, LabelRef trueLabel, LabelRef falseLabel,
+    public void emitCompareAndSwapBranch(boolean isLogic, LIRKind kind, AMD64AddressValue address, Value expectedValue, Value newValue, Condition condition, LabelRef trueLabel, LabelRef falseLabel,
                     double trueLabelProbability, BarrierType barrierType) {
         assert kind.getPlatformKind().getSizeInBytes() <= expectedValue.getValueKind().getPlatformKind().getSizeInBytes() : kind + " " + expectedValue;
         assert kind.getPlatformKind().getSizeInBytes() <= newValue.getValueKind().getPlatformKind().getSizeInBytes() : kind + " " + newValue;
@@ -303,13 +303,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         AMD64Kind memKind = (AMD64Kind) kind.getPlatformKind();
         RegisterValue raxValue = AMD64.rax.asValue(kind);
         emitMove(raxValue, expectedValue);
-        emitCompareAndSwapOp(kind, memKind, raxValue, address, asAllocatable(newValue), barrierType);
+        emitCompareAndSwapOp(isLogic, kind, memKind, raxValue, address, asAllocatable(newValue), barrierType);
         append(new BranchOp(condition, trueLabel, falseLabel, trueLabelProbability));
     }
 
-    protected void emitCompareAndSwapOp(LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue, BarrierType barrierType) {
+    protected void emitCompareAndSwapOp(boolean isLogic, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue, BarrierType barrierType) {
         if (barrierType != BarrierType.NONE && getBarrierSet() instanceof AMD64ReadBarrierSetLIRGenerator readBarrierSet) {
-            readBarrierSet.emitCompareAndSwapOp(this, accessKind, memKind, raxValue, address, newValue, barrierType);
+            readBarrierSet.emitCompareAndSwapOp(this, isLogic, accessKind, memKind, raxValue, address, newValue, barrierType);
         } else {
             append(new CompareAndSwapOp(memKind, raxValue, address, raxValue, newValue));
         }

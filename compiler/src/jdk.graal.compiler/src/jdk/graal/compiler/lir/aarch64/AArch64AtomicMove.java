@@ -83,8 +83,8 @@ public class AArch64AtomicMove {
     public static class CompareAndSwapOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
-        private final AArch64Kind accessKind;
-        private final MemoryOrderMode memoryOrder;
+        protected final AArch64Kind accessKind;
+        protected final MemoryOrderMode memoryOrder;
         protected final boolean setConditionFlags;
 
         @Def({REG}) protected AllocatableValue resultValue;
@@ -133,12 +133,16 @@ public class AArch64AtomicMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            assert accessKind.isInteger();
-            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
-
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
             Register expected = asRegister(expectedValue);
+            emitCompareAndSwap(masm, accessKind, address, result, expected, asRegister(newValue), memoryOrder, setConditionFlags);
+        }
+
+        protected static void emitCompareAndSwap(AArch64MacroAssembler masm, AArch64Kind accessKind, Register address, Register result, Register expected, Register newValue,
+                        MemoryOrderMode memoryOrder, boolean setConditionFlags) {
+            assert accessKind.isInteger();
+            final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             /*
              * Determining whether acquire and/or release semantics are needed.
@@ -171,7 +175,7 @@ public class AArch64AtomicMove {
             int moveSize = Math.max(memAccessSize, 32);
             if (AArch64LIRFlags.useLSE(masm)) {
                 masm.mov(moveSize, result, expected);
-                moveSPAndEmitCode(masm, asRegister(newValue), newVal -> {
+                moveSPAndEmitCode(masm, newValue, newVal -> {
                     masm.cas(memAccessSize, result, newVal, address, acquire, release);
                 });
                 if (setConditionFlags) {
@@ -183,7 +187,7 @@ public class AArch64AtomicMove {
                     Label retry = new Label();
                     masm.bind(retry);
                     Register scratch2 = scratchRegister2.getRegister();
-                    Register newValueReg = asRegister(newValue);
+                    Register newValueReg = newValue;
                     if (newValueReg.equals(sp)) {
                         /*
                          * SP cannot be used in csel or stl(x)r.
@@ -373,7 +377,7 @@ public class AArch64AtomicMove {
     public static class AtomicReadAndWriteOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<AtomicReadAndWriteOp> TYPE = LIRInstructionClass.create(AtomicReadAndWriteOp.class);
 
-        private final AArch64Kind accessKind;
+        protected final AArch64Kind accessKind;
 
         @Def({REG}) protected AllocatableValue resultValue;
         @Alive({REG}) protected AllocatableValue addressValue;
@@ -394,12 +398,12 @@ public class AArch64AtomicMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            emitSwap(masm, accessKind, asRegister(addressValue), asRegister(resultValue), asRegister(newValue));
+        }
+
+        protected static void emitSwap(AArch64MacroAssembler masm, AArch64Kind accessKind, Register address, Register result, Register newValue) {
             final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
-
-            Register address = asRegister(addressValue);
-            Register result = asRegister(resultValue);
-
-            moveSPAndEmitCode(masm, asRegister(newValue), value -> {
+            moveSPAndEmitCode(masm, newValue, value -> {
                 if (AArch64LIRFlags.useLSE(masm)) {
                     masm.swp(memAccessSize, value, result, address, true, true);
                 } else {

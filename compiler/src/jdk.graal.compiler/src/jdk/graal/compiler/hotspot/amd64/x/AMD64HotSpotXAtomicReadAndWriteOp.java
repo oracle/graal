@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.amd64;
+package jdk.graal.compiler.hotspot.amd64.x;
 
 import static jdk.vm.ci.amd64.AMD64Kind.QWORD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
@@ -41,12 +41,12 @@ import jdk.vm.ci.meta.AllocatableValue;
 /**
  * Code generation for atomic read and write with read barrier.
  */
-public class AMD64HotSpotZAtomicReadAndWriteOp extends AMD64HotSpotZBarrieredOp {
-    public static final LIRInstructionClass<AMD64HotSpotZAtomicReadAndWriteOp> TYPE = LIRInstructionClass.create(AMD64HotSpotZAtomicReadAndWriteOp.class);
+public class AMD64HotSpotXAtomicReadAndWriteOp extends AMD64HotSpotXBarrieredOp {
+    public static final LIRInstructionClass<AMD64HotSpotXAtomicReadAndWriteOp> TYPE = LIRInstructionClass.create(AMD64HotSpotXAtomicReadAndWriteOp.class);
 
     @Use protected AllocatableValue newValue;
 
-    public AMD64HotSpotZAtomicReadAndWriteOp(Variable result, AMD64AddressValue loadAddress, AllocatableValue newValue, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget) {
+    public AMD64HotSpotXAtomicReadAndWriteOp(Variable result, AMD64AddressValue loadAddress, AllocatableValue newValue, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget) {
         super(TYPE, result, loadAddress, config, callTarget);
         this.newValue = newValue;
     }

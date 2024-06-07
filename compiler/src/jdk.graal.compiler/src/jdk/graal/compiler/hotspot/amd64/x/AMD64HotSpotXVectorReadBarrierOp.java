@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.amd64;
+package jdk.graal.compiler.hotspot.amd64.x;
 
 import static jdk.vm.ci.amd64.AMD64.r15;
 import static jdk.vm.ci.amd64.AMD64.rax;
@@ -45,14 +45,13 @@ import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
-public class AMD64HotSpotZVectorReadBarrierOp extends AMD64HotSpotZBarrieredOp {
-    public static final LIRInstructionClass<AMD64HotSpotZVectorReadBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotZVectorReadBarrierOp.class);
+public class AMD64HotSpotXVectorReadBarrierOp extends AMD64HotSpotXBarrieredOp {
+    public static final LIRInstructionClass<AMD64HotSpotXVectorReadBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotXVectorReadBarrierOp.class);
 
     private final AVXSize size;
     private final AMD64Assembler.VexMoveOp op;
@@ -60,7 +59,7 @@ public class AMD64HotSpotZVectorReadBarrierOp extends AMD64HotSpotZBarrieredOp {
     @Temp({OperandFlag.REG}) protected AllocatableValue temp;
     @State protected LIRFrameState state;
 
-    public AMD64HotSpotZVectorReadBarrierOp(AVXSize size, AMD64Assembler.VexMoveOp op, Variable result, AMD64AddressValue loadAddress, LIRFrameState state, GraalHotSpotVMConfig config,
+    public AMD64HotSpotXVectorReadBarrierOp(AVXSize size, AMD64Assembler.VexMoveOp op, Variable result, AMD64AddressValue loadAddress, LIRFrameState state, GraalHotSpotVMConfig config,
                     ForeignCallLinkage callTarget, Variable temp) {
         super(TYPE, result, loadAddress, config, callTarget);
         this.size = size;

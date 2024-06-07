@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.G1WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -61,7 +62,7 @@ public final class G1ReferentFieldReadBarrierNode extends ObjectWriteBarrierNode
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         LIRGeneratorTool lirGen = generator.getLIRGeneratorTool();
-        lirGen.getWriteBarrierSet().emitPreWriteBarrier(lirGen,
-                        generator.operand(address), lirGen.asAllocatable(generator.operand(getExpectedObject())), false);
+        G1WriteBarrierSetLIRGeneratorTool g1BarrierSet = (G1WriteBarrierSetLIRGeneratorTool) generator.getLIRGeneratorTool().getWriteBarrierSet();
+        g1BarrierSet.emitPreWriteBarrier(lirGen, generator.operand(address), lirGen.asAllocatable(generator.operand(getExpectedObject())), false);
     }
 }

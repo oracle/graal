@@ -26,8 +26,8 @@ package jdk.graal.compiler.lir.aarch64.g1;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.lir.gen.G1WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.WriteBarrierSetLIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
@@ -35,7 +35,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Architecture specific G1 barrier set generator.
  */
-public class AArch64G1BarrierSetLIRGenerator implements WriteBarrierSetLIRGeneratorTool {
+public class AArch64G1BarrierSetLIRGenerator implements G1WriteBarrierSetLIRGeneratorTool {
     private final AArch64G1BarrierSetLIRTool barrierSetLIRTool;
 
     public AArch64G1BarrierSetLIRGenerator(AArch64G1BarrierSetLIRTool barrierSetLIRTool) {

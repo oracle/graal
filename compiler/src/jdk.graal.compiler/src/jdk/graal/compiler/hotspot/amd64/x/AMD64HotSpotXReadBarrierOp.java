@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.amd64;
+package jdk.graal.compiler.hotspot.amd64.x;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOV;
@@ -39,12 +39,12 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
 
-public class AMD64HotSpotZReadBarrierOp extends AMD64HotSpotZBarrieredOp {
-    public static final LIRInstructionClass<AMD64HotSpotZReadBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotZReadBarrierOp.class);
+public class AMD64HotSpotXReadBarrierOp extends AMD64HotSpotXBarrieredOp {
+    public static final LIRInstructionClass<AMD64HotSpotXReadBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotXReadBarrierOp.class);
 
     @State protected LIRFrameState state;
 
-    public AMD64HotSpotZReadBarrierOp(Variable result, AMD64AddressValue loadAddress, LIRFrameState state, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget) {
+    public AMD64HotSpotXReadBarrierOp(Variable result, AMD64AddressValue loadAddress, LIRFrameState state, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget) {
         super(TYPE, result, loadAddress, config, callTarget);
         this.state = state;
     }
