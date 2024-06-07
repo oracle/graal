@@ -70,43 +70,31 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Override
     protected boolean isSupported() {
-        return handshakeSupported();
-    }
-
-    static boolean handshakeSupported() {
-        return PENDING_OFFSET != -1;
+        return true;
     }
 
     @Override
     public void ensureThreadInitialized() {
-        if (handshakeSupported()) {
-            STATE.set(getThreadState(Thread.currentThread()));
-        }
+        STATE.set(getThreadState(Thread.currentThread()));
     }
 
     // This is only used in interpreter, PE uses HotSpotTruffleSafepointLoweringSnippet.pollSnippet
     @Override
     public void poll(Node enclosingNode) {
-        if (handshakeSupported()) {
-            Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
-            long eetop = UNSAFE.getLong(carrierThread, THREAD_EETOP_OFFSET);
-            if (UNSAFE.getInt(null, eetop + PENDING_OFFSET) != 0) {
-                processHandshake(enclosingNode);
-            }
+        Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+        long eetop = UNSAFE.getLong(carrierThread, THREAD_EETOP_OFFSET);
+        if (UNSAFE.getInt(null, eetop + PENDING_OFFSET) != 0) {
+            processHandshake(enclosingNode);
         }
     }
 
     static void doHandshake(Object node) {
-        assert handshakeSupported() : "must not call doHandshake if handshake is not supported.";
         SINGLETON.processHandshake((Node) node);
     }
 
     @Override
     protected void setFastPending(Thread t) {
-        assert handshakeSupported() : "must not call setFastPending if handshake is not supported.";
-        if (handshakeSupported()) {
-            setVolatile(t, 1);
-        }
+        setVolatile(t, 1);
     }
 
     @Override
@@ -122,10 +110,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Override
     protected void clearFastPending() {
-        assert handshakeSupported() : "must not call clearFastPending if handshake is not supported.";
-        if (handshakeSupported()) {
-            setVolatile(Thread.currentThread(), 0);
-        }
+        setVolatile(Thread.currentThread(), 0);
     }
 
     private static void setVolatile(Thread thread, int value) {
@@ -163,19 +148,17 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     static void setPendingFlagForVirtualThread() {
-        if (handshakeSupported()) {
-            TruffleSafepointImpl safepoint = STATE.get();
-            if (safepoint != null) {
-                boolean pending = safepoint.isFastPendingSet();
+        TruffleSafepointImpl safepoint = STATE.get();
+        if (safepoint != null) {
+            boolean pending = safepoint.isFastPendingSet();
 
-                // VirtualThread#carrierThread is not set yet, it set after this hook is called.
-                // However, Thread.currentCarrierThread() is already set so we can use that.
-                // We could also get the carrier thread from the hook arguments but that seems more
-                // expensive.
-                Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
-                long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
-                UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, pending ? 1 : 0);
-            }
+            // VirtualThread#carrierThread is not set yet, it set after this hook is called.
+            // However, Thread.currentCarrierThread() is already set so we can use that.
+            // We could also get the carrier thread from the hook arguments but that seems more
+            // expensive.
+            Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+            long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
+            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, pending ? 1 : 0);
         }
     }
 
