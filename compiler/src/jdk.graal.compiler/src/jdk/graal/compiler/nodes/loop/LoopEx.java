@@ -35,7 +35,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.core.common.calc.Condition;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.GraalError;
@@ -89,7 +89,7 @@ public class LoopEx {
     /**
      * The corresponding {@link ControlFlowGraph} loop data structure.
      */
-    protected final Loop<HIRBlock> loop;
+    protected final CFGLoop<HIRBlock> loop;
     /**
      * The corresponding fragment that describes the body nodes of this loop.
      */
@@ -117,7 +117,7 @@ public class LoopEx {
     protected boolean countedLoopChecked;
     protected int size = -1;
 
-    protected LoopEx(Loop<HIRBlock> loop, LoopsData data) {
+    protected LoopEx(CFGLoop<HIRBlock> loop, LoopsData data) {
         this.loop = loop;
         this.data = data;
     }
@@ -130,7 +130,7 @@ public class LoopEx {
         return data.getCFG().localLoopFrequencySource(loopBegin());
     }
 
-    public Loop<HIRBlock> loop() {
+    public CFGLoop<HIRBlock> loop() {
         return loop;
     }
 

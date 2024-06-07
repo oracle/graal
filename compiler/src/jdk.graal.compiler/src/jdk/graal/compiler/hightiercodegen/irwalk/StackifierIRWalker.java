@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.SortedSet;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -354,7 +354,7 @@ public class StackifierIRWalker extends IRWalker {
      */
     private void generateForwardJump(HIRBlock currentBlock, HIRBlock successor) {
         if (LabeledBlockGeneration.isNormalLoopExit(currentBlock, successor, stackifierData)) {
-            Loop<HIRBlock> loop = currentBlock.getLoop();
+            CFGLoop<HIRBlock> loop = currentBlock.getLoop();
             Scope loopScope = ((LoopScopeContainer) stackifierData.getScopeEntry(loop.getHeader().getBeginNode())).getLoopScope();
             Scope innerScope = stackifierData.getEnclosingScope().get(currentBlock);
             /*

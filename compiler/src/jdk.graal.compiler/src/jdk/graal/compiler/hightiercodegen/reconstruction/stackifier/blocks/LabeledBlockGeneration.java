@@ -33,7 +33,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hightiercodegen.irwalk.StackifierIRWalker;
@@ -364,7 +364,7 @@ public class LabeledBlockGeneration {
      *         i.e. jump to the end of the loop.
      */
     public static boolean isNormalLoopExit(HIRBlock block, HIRBlock successor, StackifierData stackifierData) {
-        Loop<HIRBlock> l1 = block.getLoop();
+        CFGLoop<HIRBlock> l1 = block.getLoop();
         if (l1 != null) {
             HIRBlock lastLoopBlock = ((LoopScopeContainer) stackifierData.getScopeEntry(l1.getHeader().getBeginNode())).getLoopScope().getLastBlock();
             return lastLoopBlock.getId() + 1 == successor.getId();

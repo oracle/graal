@@ -51,7 +51,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.util.UnsignedLong;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -378,7 +378,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         for (ControlSplitNode node : controlSplits) {
             HIRBlock b = cfg.blockFor(node);
             double f = b.getRelativeFrequency();
-            for (Loop<HIRBlock> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
+            for (CFGLoop<HIRBlock> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
                 f /= loop.loopsData().loop(l).localLoopFrequency();
             }
 

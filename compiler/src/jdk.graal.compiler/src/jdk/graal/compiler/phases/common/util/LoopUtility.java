@@ -26,7 +26,7 @@ package jdk.graal.compiler.phases.common.util;
 
 import java.util.EnumSet;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
@@ -153,8 +153,8 @@ public class LoopUtility {
         }
         HIRBlock useBlock = cfg.blockFor(use);
         HIRBlock defBlock = cfg.blockFor(def);
-        Loop<HIRBlock> defLoop = defBlock.getLoop();
-        Loop<HIRBlock> useLoop = useBlock.getLoop();
+        CFGLoop<HIRBlock> defLoop = defBlock.getLoop();
+        CFGLoop<HIRBlock> useLoop = useBlock.getLoop();
         if (defLoop != null) {
             // the def is inside a loop, either a parent or a disjunct loop
             if (useLoop != null) {

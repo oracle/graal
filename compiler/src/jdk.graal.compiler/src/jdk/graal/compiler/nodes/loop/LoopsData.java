@@ -35,7 +35,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.util.ReversedList;
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -95,7 +95,7 @@ public class LoopsData {
         }
         assert checkLoopOrder(cfg.getLoops());
         loops = new ArrayList<>(cfg.getLoops().size());
-        for (Loop<HIRBlock> loop : cfg.getLoops()) {
+        for (CFGLoop<HIRBlock> loop : cfg.getLoops()) {
             LoopEx ex = new LoopEx(loop, this);
             loops.add(ex);
             loopBeginToEx.put(ex.loopBegin(), ex);
@@ -105,9 +105,9 @@ public class LoopsData {
     /**
      * Checks that loops are ordered such that outer loops appear first.
      */
-    protected static boolean checkLoopOrder(Iterable<Loop<HIRBlock>> loops) {
-        EconomicSet<Loop<HIRBlock>> seen = EconomicSet.create(Equivalence.IDENTITY);
-        for (Loop<HIRBlock> loop : loops) {
+    protected static boolean checkLoopOrder(Iterable<CFGLoop<HIRBlock>> loops) {
+        EconomicSet<CFGLoop<HIRBlock>> seen = EconomicSet.create(Equivalence.IDENTITY);
+        for (CFGLoop<HIRBlock> loop : loops) {
             if (loop.getParent() != null && !seen.contains(loop.getParent())) {
                 return false;
             }
@@ -119,7 +119,7 @@ public class LoopsData {
     /**
      * Get the {@link LoopEx} corresponding to {@code loop}.
      */
-    public LoopEx loop(Loop<HIRBlock> loop) {
+    public LoopEx loop(CFGLoop<HIRBlock> loop) {
         return loopBeginToEx.get((LoopBeginNode) loop.getHeader().getBeginNode());
     }
 
