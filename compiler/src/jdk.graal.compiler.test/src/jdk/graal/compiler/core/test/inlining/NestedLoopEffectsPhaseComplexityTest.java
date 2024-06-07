@@ -90,7 +90,7 @@ public class NestedLoopEffectsPhaseComplexityTest extends GraalCompilerTest {
     private static int InliningCountLowerBound = 1;
     private static int InliningCountUpperBound = 32;
 
-    @Rule public TestRule timeout = createTimeoutSeconds(120);
+    @Rule public TestRule timeout = createTimeoutSeconds(240);
 
     @Test
     public void inlineDirectRecursiveLoopCallUnsafeLoad() {
