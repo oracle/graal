@@ -3457,7 +3457,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.statement("BytecodeLabelImpl impl = (BytecodeLabelImpl) label");
-            b.statement("assert impl.isDefined()");
+            b.statement("assert !impl.isDefined()");
+            b.statement("impl.bci = bci");
             b.declaration(generic(List.class, context.getDeclaredType(Integer.class)), "sites", "unresolvedLabels.remove(impl)");
             b.startIf().string("sites != null").end().startBlock();
             b.startFor().startGroup().type(context.getDeclaredType(Integer.class)).string(" site : sites").end(2).startBlock();
@@ -4116,7 +4117,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
                 case SOURCE_SECTION -> {
                     b.declaration(type(int.class), "foundSourceIndex", "-1");
-                    b.string("loop: ").startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
+                    b.string("loop: ").startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
                     b.startSwitch().string("operationStack[i].operation").end().startBlock();
 
                     b.startCase().tree(createOperationConstant(model.sourceOperation)).end();
@@ -5030,7 +5031,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssert().string("this.currentStackHeight == 0").end();
             b.end();
 
-            b.statement("labelImpl.bci = bci");
             b.startStatement().startCall("resolveUnresolvedLabel");
             b.string("labelImpl");
             b.string("currentStackHeight");
@@ -6732,7 +6732,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return");
             b.end();
 
-            b.startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
+            b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
             b.startSwitch().string("operationStack[i].operation").end().startBlock();
 
             b.startCase().tree(createOperationConstant(model.sourceSectionOperation)).end();
@@ -6757,49 +6757,28 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         /**
+         * Before emitting a branch, we may need to emit additional instructions to "resolve"
+         * pending operations. In particular, we emit finally handlers and tag leave instructions.
+         * If any instructions are emitted, we also need to close and reopen exception handlers.
+         */
+        private CodeExecutableElement createBeforeEmitBranch() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitBranch");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "targetSeq"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "branchInstructionLength"));
+            emitLeavesBeforeEarlyExit(ex, OperationKind.BRANCH);
+            return ex;
+        }
+
+        /**
          * Before emitting a return, we may need to emit additional instructions to "resolve"
          * pending operations. In particular, we emit finally handlers, tag leave, and epilog
-         * instructions.
+         * instructions. If any instructions are emitted, we also need to close and reopen exception
+         * handlers.
          */
         private CodeExecutableElement createBeforeEmitReturn() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitReturn");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "parentBci"));
-
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.declaration(type(int.class), "childBci", "parentBci");
-            b.declaration(type(boolean.class), "handlerClosed", "false");
-            b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
-
-            b.startSwitch().string("operationStack[i].operation").end().startBlock();
-
-            if (model.enableTagInstrumentation) {
-                OperationModel op = model.findOperation(OperationKind.TAG);
-                b.startCase().tree(createOperationConstant(op)).end();
-                b.startBlock();
-                emitCastOperationData(b, op, "i");
-                buildEmitInstruction(b, op.instruction, buildTagLeaveArguments(op.instruction));
-                b.statement("childBci = bci - " + op.instruction.getInstructionLength());
-                b.statement("break");
-                b.end(); // case tag
-            }
-
-            if (model.epilogReturn != null) {
-                b.startCase().tree(createOperationConstant(model.epilogReturn.operation)).end();
-                b.startBlock();
-                buildEmitOperationInstruction(b, model.epilogReturn.operation, "childBci", "i", null);
-                b.statement("childBci = bci - " + model.epilogReturn.operation.instruction.getInstructionLength());
-                b.statement("break");
-                b.end(); // case epilog
-            }
-
-            emitHandlerLeaveCases(b);
-
-            b.end(); // switch
-            b.end(); // for
-
-            emitHandlerLeaveSetNewGuardBci(b, OperationKind.RETURN);
-
+            emitLeavesBeforeEarlyExit(ex, OperationKind.RETURN);
             return ex;
         }
 
@@ -6869,19 +6848,146 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         /**
-         * Generates code to emit finally handlers and close handler ranges when "leaving" handlers.
-         *
-         * beforeEmitReturn and beforeEmitBranch use this helper.
+         * Generates code to walk the operation stack and emit any "leave" instructions before a
+         * branch/return.
          */
-        private void emitHandlerLeaveCases(CodeTreeBuilder b) {
-            /**
-             * An exception handler (try-catch or finally-try) should not guard any outer
-             * operations, so we have to close its guarded range before traversing parent
-             * operations. A finally-try handler should also not guard its own handler code.
-             *
-             * Once the outer "leave" instructions have been emitted, we can open a new guarded
-             * range (in a second walk of the operation stack).
-             */
+        private void emitLeavesBeforeEarlyExit(CodeExecutableElement ex, OperationKind operationKind) {
+            String friendlyName;
+            String instructionLength;
+            switch (operationKind) {
+                case RETURN:
+                    friendlyName = "return";
+                    instructionLength = String.valueOf(model.returnInstruction.getInstructionLength());
+                    break;
+                case BRANCH:
+                    friendlyName = "branch";
+                    instructionLength = "branchInstructionLength"; // parameter to beforeEmitBranch
+                    break;
+                default:
+                    throw new AssertionError("unexpected operation kind " + operationKind);
+            }
+            addJavadoc(ex, "Walks the operation stack, emitting instructions for any operations that need to complete before the " + friendlyName + ".");
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            // Step 1: For branches, find the enclosing operation of the branch target.
+            String lowestOperationIndex;
+            if (operationKind == OperationKind.BRANCH) {
+                // Find the operation the branch is defined in. Our "lowest emitting operation"
+                // search should start from that operation.
+                lowestOperationIndex = "targetOperationIndex";
+                b.declaration(type(int.class), lowestOperationIndex, UNINIT);
+                b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+                b.startIf().string("operationStack[i].sequenceNumber == targetSeq").end().startBlock();
+                b.startAssign(lowestOperationIndex).string("i").end();
+                b.statement("break");
+                b.end();
+                b.end();
+                b.startAssert().string(lowestOperationIndex, " != ", UNINIT).end();
+            } else {
+                lowestOperationIndex = "0";
+            }
+
+            // Step 2: Find the lowest operation on the stack that we'll emit instructions for.
+            String lowestEmittingOperationIndex = emitFindLowestEmittingOperationStackWalk(b, operationKind, lowestOperationIndex);
+
+            // Step 3: Actually loop through and emit the instructions.
+            emitLeavesStackWalk(b, operationKind, lowestOperationIndex, lowestEmittingOperationIndex);
+
+            // Step 4: Reopen handlers now that all "leave" instructions are emitted.
+            emitReopenHandlersStackWalk(b, lowestOperationIndex, lowestEmittingOperationIndex, friendlyName, instructionLength);
+        }
+
+        /**
+         * Generates code to compute the lowest operation that will emit instructions. Any try-catch
+         * operation above this operation needs to emit multiple guarded ranges so that the emitted
+         * instructions are excluded (finally-try operations always emit multiple ranges).
+         */
+        private String emitFindLowestEmittingOperationStackWalk(CodeTreeBuilder b, OperationKind operationKind, String lowestOperationIndex) {
+            if (operationKind == OperationKind.RETURN && model.epilogReturn != null) {
+                // Optimization: if there's a return epilog, every try-catch block will need
+                // to emit multiple ranges, so we can skip the stack walk.
+                return null;
+            }
+            String lowestOperationVariable = "lowestOperationWithLeaveInstructions";
+
+            b.startJavadoc();
+            b.string("Exception handlers should not guard \"leave\" instructions for operations lower on the stack, so they may need multiple guarded ranges to exclude the emitted code.").newLine();
+            b.string("For a finally-try operation, we always use multiple ranges, since the handler code will be emitted and should not guard itself.").newLine();
+            b.string("For a try-catch operation, we only need multiple ranges if we emit instructions for some operation lower on the stack.").newLine();
+            b.end();
+            b.declaration(type(int.class), lowestOperationVariable, "Integer.MAX_VALUE");
+
+            b.string("loop: ").startFor().string("int i = ", lowestOperationIndex, "; i < operationSp; i++").end().startBlock();
+            b.startSwitch().string("operationStack[i].operation").end().startBlock();
+
+            b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY))).end();
+            b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY_CATCH))).end();
+            b.startBlock();
+            emitCastOperationData(b, model.finallyTryOperation, "i");
+            b.startIf().string("operationData.finallyHandlerContext.handlerIsSet()").end().startBlock();
+            b.startAssign(lowestOperationVariable).string("i").end();
+            b.statement("break loop");
+            b.end(); // if
+            b.statement("break");
+            b.end(); // case finally
+
+            if (model.enableTagInstrumentation) {
+                OperationModel op = model.findOperation(OperationKind.TAG);
+                b.startCase().tree(createOperationConstant(op)).end();
+                b.startBlock();
+                b.startAssign(lowestOperationVariable).string("i").end();
+                b.statement("break loop");
+                b.end();
+            }
+
+            b.end(); // switch
+            b.end(); // for
+
+            return lowestOperationVariable;
+        }
+
+        /**
+         * Generates code to walk the operation stack and emit leave instructions. Also closes
+         * exception ranges for exception handlers where necessary.
+         */
+        private void emitLeavesStackWalk(CodeTreeBuilder b, OperationKind operationKind, String lowestOperationIndex, String lowestEmittingOperationIndex) {
+            b.startJavadoc();
+            b.string("Emit the \"leave\" instructions, closing exception ranges where necessary.").newLine();
+            b.end();
+            if (operationKind == OperationKind.RETURN) {
+                // Remember the bytecode index for boxing elimination.
+                b.declaration(type(int.class), "childBci", "parentBci");
+            }
+
+            b.declaration(type(boolean.class), "handlerClosed", "false");
+            b.startFor().string("int i = operationSp - 1; i >= ", lowestOperationIndex, "; i--").end().startBlock();
+            b.startSwitch().string("operationStack[i].operation").end().startBlock();
+
+            if (model.enableTagInstrumentation) {
+                b.startCase().tree(createOperationConstant(model.tagOperation)).end();
+                b.startBlock();
+                emitCastOperationData(b, model.tagOperation, "i");
+                if (operationKind == OperationKind.RETURN) {
+                    buildEmitInstruction(b, model.tagLeaveValueInstruction, buildTagLeaveArguments(model.tagLeaveValueInstruction));
+                    b.statement("childBci = bci - " + model.tagLeaveValueInstruction.getInstructionLength());
+                } else {
+                    assert operationKind == OperationKind.BRANCH;
+                    buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
+                }
+                b.statement("break");
+                b.end(); // case tag
+            }
+
+            if (operationKind == OperationKind.RETURN && model.epilogReturn != null) {
+                b.startCase().tree(createOperationConstant(model.epilogReturn.operation)).end();
+                b.startBlock();
+                buildEmitOperationInstruction(b, model.epilogReturn.operation, "childBci", "i", null);
+                b.statement("childBci = bci - " + model.epilogReturn.operation.instruction.getInstructionLength());
+                b.statement("break");
+                b.end(); // case epilog
+            }
+
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY))).end();
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY_CATCH))).end();
             b.startBlock();
@@ -6894,61 +7000,44 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("handlerClosed = true");
             b.statement("doEmitFinallyHandler(ctx)");
             b.end();
-
             b.statement("break");
             b.end(); // case finally
 
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_CATCH))).end();
             b.startBlock();
             emitCastOperationData(b, model.tryCatchOperation, "i");
-            b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable").end().startBlock();
+            b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable");
+            if (lowestEmittingOperationIndex != null) {
+                b.string(" && ", lowestEmittingOperationIndex, " < i");
+            }
+            b.end().startBlock();
             b.startStatement().startCall("operationData.addExceptionTableEntry");
             b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, " + UNINIT + " /* handler start */, operationData.startStackHeight, operationData.exceptionLocalFrameIndex)");
             b.end(2);
             b.statement("handlerClosed = true");
             b.end();
-
             b.statement("break");
             b.end(); // case trycatch
+
+            b.end(); // switch
+            b.end(); // for
         }
 
         /**
          * Generates code to reopen handler ranges after "leaving" the parent operations.
-         *
-         * beforeEmitReturn and beforeEmitBranch use this helper.
          */
-        private void emitHandlerLeaveSetNewGuardBci(CodeTreeBuilder b, OperationKind operationKind) {
+        private void emitReopenHandlersStackWalk(CodeTreeBuilder b, String lowestOperationIndex, String lowestEmittingOperationIndex, String friendlyName, String instructionLength) {
             b.startJavadoc();
-            b.string("A handler should not guard any exit instructions (its own handler instructions, an outer handler, tag exits, etc.).").newLine();
-            b.string("As a result, we must wait until all exit instructions are emitted before reopening the guarded ranges in a separate walk of the operation stack.").newLine();
+            b.string("Now that all \"leave\" instructions have been emitted, reopen exception handlers.").newLine();
             b.end();
             b.startIf().string("handlerClosed").end().startBlock();
-            String friendlyName;
-            String instructionLength;
-            switch (operationKind) {
-                case BRANCH -> {
-                    friendlyName = "branch";
-                    instructionLength = "branchInstructionLength"; // param
-                }
-                case RETURN -> {
-                    friendlyName = "return";
-                    instructionLength = String.valueOf(model.returnInstruction.getInstructionLength());
-                }
-                default -> throw new AssertionError("Unexpected operation kind " + operationKind);
-            }
 
             b.startDeclaration(type(int.class), "newGuardedStartBci");
             b.string("bci + ", instructionLength, " /* after the ", friendlyName, " */");
             b.end();
-            b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
-
-            if (operationKind == OperationKind.BRANCH) {
-                b.startIf().string("operationStack[i].sequenceNumber == targetSeq").end().startBlock();
-                b.statement("break");
-                b.end();
-            }
-
+            b.startFor().string("int i = operationSp - 1; i >= ", lowestOperationIndex, "; i--").end().startBlock();
             b.startSwitch().string("operationStack[i].operation").end().startBlock();
+
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY))).end();
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY_CATCH))).end();
             b.startBlock();
@@ -6960,7 +7049,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // case finally
 
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_CATCH))).end();
-            b.startIf().string("operationStack[i].childCount == 0 /* still in try */").end().startBlock();
+            b.startIf().string("operationStack[i].childCount == 0 /* still in try */");
+            if (lowestEmittingOperationIndex != null) {
+                b.string(" && ", lowestEmittingOperationIndex, " < i");
+            }
+            b.end().startBlock();
             emitCastOperationData(b, model.tryCatchOperation, "i");
             b.statement("operationData.tryStartBci = newGuardedStartBci");
             b.end(); // if
@@ -6981,40 +7074,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 args = new String[]{"operationData.nodeId", "childBci"};
             }
             return args;
-        }
-
-        private CodeExecutableElement createBeforeEmitBranch() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitBranch");
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "targetSeq"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "branchInstructionLength"));
-
-            CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(type(boolean.class), "handlerClosed", "false");
-            b.startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
-            b.startIf().string("operationStack[i].sequenceNumber == targetSeq").end().startBlock();
-            b.statement("break");
-            b.end();
-
-            b.startSwitch().string("operationStack[i].operation").end().startBlock();
-
-            if (model.enableTagInstrumentation) {
-                OperationModel op = model.findOperation(OperationKind.TAG);
-                b.startCase().tree(createOperationConstant(op)).end();
-                b.startBlock();
-                emitCastOperationData(b, model.tagOperation, "i");
-                buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
-                b.statement("break");
-                b.end();
-            }
-
-            emitHandlerLeaveCases(b);
-
-            b.end(); // switch
-            b.end(); // for
-
-            emitHandlerLeaveSetNewGuardBci(b, OperationKind.BRANCH);
-
-            return ex;
         }
 
         private CodeExecutableElement createAllocateNode() {
@@ -13740,9 +13799,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             bytecodeLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "id"));
             bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "bci"));
-            bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "declaringOp"));
+            bytecodeLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "declaringOp"));
 
-            CodeVariableElement finallyHandlerOp = new CodeVariableElement(context.getType(int.class), "finallyHandlerOp");
+            CodeVariableElement finallyHandlerOp = new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "finallyHandlerOp");
             addJavadoc(finallyHandlerOp, "The operation id for the handler in which this label is declared, or " + BuilderFactory.UNINIT + " if no handler.");
             bytecodeLabelImpl.add(finallyHandlerOp);
 
