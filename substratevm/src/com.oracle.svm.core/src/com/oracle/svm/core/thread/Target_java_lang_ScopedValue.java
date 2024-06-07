@@ -25,20 +25,14 @@
 package com.oracle.svm.core.thread;
 
 import java.util.concurrent.Callable;
-import java.util.function.BooleanSupplier;
-
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDK23OrLater;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.ModuleNative;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 
 @TargetClass(className = "java.lang.ScopedValue")
 final class Target_java_lang_ScopedValue {
