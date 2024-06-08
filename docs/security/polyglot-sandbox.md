@@ -123,8 +123,7 @@ The attack surface of GraalVM when running untrusted code consists of the entire
 In addition to the restrictions of the ISOLATED policy, the UNTRUSTED policy:
 * Requires redirection of the standard [input](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#in-java.io.InputStream-) stream.
 * Requires setting the maximum memory consumption of the guest code. This is a limit in addition to the maximum isolate heap size backed by a mechanism that keeps track of the size of objects allocated by the guest code on the guest VM heap. This limit can be thought of as a "soft" memory limit, whereas the isolate heap size is the "hard" limit.
-* Requires setting the maximum number of stack frames that can be pushed on the stack by guest code. This limit can protect against unbounded recursion to exhaust the stack.
-* Requires setting the maximum AST depth of the guest code. Together with the stack frame limit, this puts a bound on the stack space consumed by guest code.
+* Requires setting the maximum AST depth of the guest code. This puts a bound on the stack space consumed by a single guest method.
 * Requires setting the maximum output and error stream sizes. As output and error streams have to be redirected, the receiving ends are on the host side. Limiting the output and error stream sizes protects against availability issues on the host.
 * Requires untrusted code mitigations to be enabled. Untrusted code mitigations address risks from JIT spraying and speculative execution attacks. They include constant blinding as well as comprehensive use of speculative execution barriers.
 * Further restricts host access to ensure there are no implicit entry points to host code. This means that guest-code access to host arrays, lists, maps, buffers, iterables and iterators is disallowed. The reason is that there may be various implementations of these APIs on the host side, resulting in implicit entry points. In addition, direct mappings of guest implementations to host interfaces via [HostAccess.Builder#allowImplementationsAnnotatedBy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html) are disallowed. The [HostAccess.UNTRUSTED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html#UNTRUSTED) host access policy is preconfigured to fulfill the requirements for the UNTRUSTED sandboxing policy.
@@ -141,7 +140,6 @@ try (Context context = Context.newBuilder("js")
                               .option("sandbox.MaxHeapMemory", "128MB")
                               .option("sandbox.MaxCPUTime","2s")
                               .option("sandbox.MaxStatements","50000")
-                              .option("sandbox.MaxStackFrames","2")
                               .option("sandbox.MaxThreads","1")
                               .option("sandbox.MaxASTDepth","10")
                               .option("sandbox.MaxOutputStreamSize","32B")
@@ -388,6 +386,8 @@ That way the low memory trigger can be used together with libraries that also se
 The described low memory trigger can be disabled by the `sandbox.UseLowMemoryTrigger` option.
 By default it is enabled ("true"). If disabled ("false"), retained size checking for the execution context can be triggered only by the allocated bytes checker.
 All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.UseLowMemoryTrigger`.
+
+The `sandbox.UseLowMemoryTrigger` option is not supported for the ISOLATED and UNTRUSTED sandbox policies. The option defaults to disabled (`false`) wherever it is not supported.
 
 ### Limiting the amount of data written to standard output and error streams
 
