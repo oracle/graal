@@ -86,6 +86,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 
+/** The data corresponding to a specific context of a {@link TruffleLanguage}. */
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     private static final TruffleLogger LOG = TruffleLogger.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, PolyglotLanguageContext.class);
@@ -95,7 +96,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
      */
     final class Lazy {
 
-        final Set<PolyglotThread> ownedAlivePolyglotThreads;
+        final Set<Thread> ownedAlivePolyglotThreads;
         final Object polyglotGuestBindings;
         final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
         @CompilationFinal PolyglotLanguageInstance languageInstance;
@@ -476,7 +477,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         if (thread == null) {
                             continue;
                         }
-                        assert !threadInfo.isPolyglotThread(context) : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
+                        assert !threadInfo.isPolyglotThread() : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
                                         " is still active.";
                         if (!threadInfo.isCurrent() && threadInfo.isActive() && !context.state.isInvalidOrClosed()) {
                             /*
@@ -521,9 +522,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    Object[] enterThread(PolyglotThread thread) {
+    Object[] enterThread(PolyglotThreadTask polyglotThreadTask) {
         assert isInitialized();
-        assert Thread.currentThread() == thread;
+        Thread currentThread = Thread.currentThread();
         synchronized (context) {
             /*
              * Don't add the thread to alive threads if the context is invalid. If the context
@@ -536,42 +537,43 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             if (context.finalizingEmbedderThreads) {
                 throw PolyglotEngineException.closedException("The Context is already closed.");
             }
-            lazy.ownedAlivePolyglotThreads.add(thread);
+            lazy.ownedAlivePolyglotThreads.add(currentThread);
         }
         try {
-            if (thread.beforeEnter != null) {
-                thread.setEnterAllowed(false);
+            if (polyglotThreadTask.beforeEnter != null) {
+                context.enterDisallowedForPolyglotThread.add(currentThread);
                 try {
-                    thread.beforeEnter.run();
+                    polyglotThreadTask.beforeEnter.run();
                 } finally {
-                    thread.setEnterAllowed(true);
+                    context.enterDisallowedForPolyglotThread.remove(currentThread);
                 }
             }
-            return context.enterThreadChanged(false, true, false, true, false);
+            return context.enterThreadChanged(false, true, false, polyglotThreadTask, false);
         } catch (Throwable t) {
             synchronized (context) {
-                lazy.ownedAlivePolyglotThreads.remove(thread);
+                lazy.ownedAlivePolyglotThreads.remove(currentThread);
                 context.notifyAll();
             }
             throw t;
         }
     }
 
-    void leaveAndDisposePolyglotThread(Object[] prev, PolyglotThread thread) {
+    void leaveAndDisposePolyglotThread(Object[] prev, PolyglotThreadTask polyglotThreadTask) {
         assert isInitialized();
+        Thread currentThread = Thread.currentThread();
         try {
             context.leaveThreadChanged(prev, true, true);
-            if (thread.afterLeave != null) {
-                thread.setEnterAllowed(false);
+            if (polyglotThreadTask.afterLeave != null) {
+                context.enterDisallowedForPolyglotThread.add(currentThread);
                 try {
-                    thread.afterLeave.run();
+                    polyglotThreadTask.afterLeave.run();
                 } finally {
-                    thread.setEnterAllowed(true);
+                    context.enterDisallowedForPolyglotThread.remove(currentThread);
                 }
             }
         } finally {
             synchronized (context) {
-                boolean removed = lazy.ownedAlivePolyglotThreads.remove(thread);
+                boolean removed = lazy.ownedAlivePolyglotThreads.remove(Thread.currentThread());
                 context.notifyAll();
                 assert removed : "thread was not removed from language context";
             }
@@ -1211,7 +1213,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    Set<PolyglotThread> getOwnedAlivePolyglotThreads() {
+    Set<Thread> getOwnedAlivePolyglotThreads() {
         assert Thread.holdsLock(context);
         Lazy l = lazy;
         if (l != null) {

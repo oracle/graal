@@ -306,6 +306,7 @@ suite = {
         ],
         "java.base" : [
           "jdk.internal.module",
+          "jdk.internal.access",
         ],
       },
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "TRUFFLE_LIBGRAAL_PROCESSOR"],

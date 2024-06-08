@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,58 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.impl;
-
-import java.util.concurrent.atomic.AtomicInteger;
+package com.oracle.truffle.runtime.hotspot;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.Node;
 
-final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
+final class HotSpotVirtualThreadHooks {
 
-    static final DefaultThreadLocalHandshake SINGLETON = new DefaultThreadLocalHandshake();
-    private static final ThreadLocal<TruffleSafepointImpl> STATE = new ThreadLocal<>();
-
-    /*
-     * Number of active pending threads. Allows to check the active threads more efficiently.
-     */
-    private static final AtomicInteger PENDING_COUNT = new AtomicInteger();
-
-    private DefaultThreadLocalHandshake() {
+    static {
+        // We pass both classes here to ensure they are loaded before the hooks are called
+        registerJVMTIHook(HotSpotThreadLocalHandshake.class, HotSpotFastThreadLocal.class);
     }
 
-    @Override
-    public void ensureThreadInitialized() {
-        STATE.set(getThreadState(Thread.currentThread()));
+    private static native void registerJVMTIHook(Class<?> hotSpotThreadLocalHandshakeClass, Class<?> hotSpotFastThreadLocalClass);
+
+    static void ensureLoaded() {
     }
 
-    @Override
-    public void poll(Node enclosingNode) {
-        int count = PENDING_COUNT.get();
-        assert count >= 0 : "inconsistent pending state";
-        if (count > 0) {
-            SINGLETON.processHandshake(enclosingNode);
+    /** Called from a JVMTI VirtualThreadUnmount hook. */
+    @SuppressWarnings("unused")
+    private static void unmountHook(Thread currentThread) {
+        if (Thread.currentThread() != currentThread) {
+            throw CompilerDirectives.shouldNotReachHere("Thread.currentThread() not matching");
         }
+        HotSpotFastThreadLocal.unmount();
     }
 
-    @Override
-    public TruffleSafepointImpl getCurrent() {
-        TruffleSafepointImpl state = STATE.get();
-        if (state == null) {
-            throw CompilerDirectives.shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
-                            "Did you call getCurrent() outside while a polyglot context not entered?");
+    /** Called from a JVMTI VirtualThreadMount hook. */
+    @SuppressWarnings("unused")
+    private static void mountHook(Thread currentThread) {
+        if (Thread.currentThread() != currentThread) {
+            throw CompilerDirectives.shouldNotReachHere("Thread.currentThread() not matching");
         }
-        return state;
-    }
-
-    @Override
-    protected void setFastPending(Thread t) {
-        PENDING_COUNT.incrementAndGet();
-    }
-
-    @Override
-    protected void clearFastPending() {
-        PENDING_COUNT.decrementAndGet();
+        HotSpotFastThreadLocal.mount();
+        HotSpotThreadLocalHandshake.setPendingFlagForVirtualThread();
     }
 
 }

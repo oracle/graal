@@ -388,27 +388,6 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    # ------------- GraalTruffle -------------
-
-    "jdk.graal.compiler.truffle.test.jdk21" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies": [
-        "jdk.graal.compiler.test",
-      ],
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-      ],
-      "overlayTarget" : "jdk.graal.compiler.test",
-      "multiReleaseJarVersion" : "21",
-      "checkstyle" : "jdk.graal.compiler",
-      "javaCompliance" : "21+",
-      "checkPackagePrefix" : "false",
-      "jacoco": "exclude",
-      "testProject" : True,
-      "graalCompilerSourceEdition": "ignore",
-    },
-
     # ------------- blackbox micro benchmarks -------------
 
     "org.graalvm.micro.benchmarks" : {

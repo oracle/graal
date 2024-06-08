@@ -69,6 +69,7 @@ public final class TruffleThreadBuilder {
     private long stackSize;
     private Runnable beforeEnter;
     private Runnable afterLeave;
+    private boolean virtual;
 
     TruffleThreadBuilder(Object polyglotLanguageContext, Runnable runnable) {
         Objects.requireNonNull(runnable);
@@ -163,6 +164,19 @@ public final class TruffleThreadBuilder {
     }
 
     /**
+     * Specifies whether to create a virtual thread (Thread#ofVirtual()) or a regular platform
+     * thread (the default) for the threads created by this builder.
+     *
+     * @param v whether to create a virtual thread.
+     *
+     * @since 24.1
+     */
+    public TruffleThreadBuilder virtual(boolean v) {
+        this.virtual = v;
+        return this;
+    }
+
+    /**
      * Creates a new thread based on the parameters specified by this builder. The thread is
      * {@link TruffleLanguage#initializeThread(Object, Thread) initialized} when it is
      * {@link Thread#start() started}, and {@link TruffleLanguage#finalizeThread(Object, Thread)
@@ -189,7 +203,7 @@ public final class TruffleThreadBuilder {
     public Thread build() {
         try {
             return LanguageAccessor.engineAccess().createThread(polyglotLanguageContext, runnable, truffleContext != null ? truffleContext.polyglotContext : null, threadGroup, stackSize, beforeEnter,
-                            afterLeave);
+                            afterLeave, virtual);
         } catch (Throwable t) {
             throw engineToLanguageException(t);
         }
