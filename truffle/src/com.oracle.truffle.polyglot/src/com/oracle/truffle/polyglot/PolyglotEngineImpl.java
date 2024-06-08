@@ -72,12 +72,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.home.HomeFinder;
@@ -85,6 +87,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
@@ -131,6 +134,7 @@ import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 import com.oracle.truffle.polyglot.PolyglotLoggers.LoggerCache;
 import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
 
+/** The implementation of {@link org.graalvm.polyglot.Engine}, stored in the receiver field. */
 final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     /**
@@ -2105,7 +2109,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
          * thread. The slow path acquires context lock to ensure ordering for context operations
          * like close.
          */
-        prev = context.enterThreadChanged(enterReverted, pollSafepoint, false, false, false);
+        prev = context.enterThreadChanged(enterReverted, pollSafepoint, false, null, false);
         assert verifyContext(context);
         return prev;
     }
@@ -2348,6 +2352,41 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         return languageHomes;
+    }
+
+    private final AtomicBoolean warnedVirtualThreadSupport = new AtomicBoolean(false);
+
+    @SuppressWarnings("try")
+    void validateVirtualThreadCreation() {
+        if (!warnedVirtualThreadSupport.compareAndExchange(false, true)) {
+            try (AbstractPolyglotImpl.ThreadScope scope = impl.getRootImpl().createThreadScope()) {
+                var options = getEngineOptionValues();
+                boolean warnVirtualThreadSupport = options.get(PolyglotEngineOptions.WarnVirtualThreadSupport);
+
+                if (warnVirtualThreadSupport && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) {
+                    if (!TruffleOptions.AOT) {
+                        getEngineLogger().warning("""
+                                        Using polyglot contexts on Java virtual threads on HotSpot is experimental in this release,
+                                        because access to caller frames in write or materialize mode is not yet supported on virtual threads (some tools and languages depend on that),
+                                        and there is a limit of maximum 65535 virtual threads concurrently accessing the context at the same time.
+                                        To disable this warning use the '--engine.WarnVirtualThreadSupport=false' option or the '-Dpolyglot.engine.WarnVirtualThreadSupport=false' system property.
+                                        """);
+                    } else {
+                        getEngineLogger().warning(
+                                        """
+                                                        Using polyglot contexts on Java virtual threads on Native Image currently uses one platform thread per VirtualThread.
+                                                        This will prevent creating many virtual threads and have different performance characteristics.
+                                                        You can either suppress this warning with the '--engine.WarnVirtualThreadSupport=false' option or the '-Dpolyglot.engine.WarnVirtualThreadSupport=false' system property,
+                                                        or use the default runtime (no JIT compilation of polyglot code) by passing -Dtruffle.UseFallbackRuntime=true when building the native image.
+                                                        Full VirtualThread support for Native Image together with polyglot contexts will be added in a future release.
+                                                        VirtualThread is fully supported with polyglot contexts in JVM mode.
+                                                        """);
+                    }
+                }
+            }
+        }
+
+        impl.getRootImpl().validateVirtualThreadCreation(getEngineOptionValues());
     }
 
 }
