@@ -158,8 +158,8 @@ class NativeImageBenchmarkConfig:
         if vm.jdk_profiles_collect:
             # forbid image build/run in the profile collection execution mode
             removed_stages.update([Stage.IMAGE, Stage.RUN])
-        if vm.profile_inference_feature_extraction:
-            # do not run the image in the profile inference feature extraction mode
+        if vm.profile_inference_feature_extraction or vm.profile_inference_debug:
+            # do not run the image in the profile inference feature extraction or debug mode
             removed_stages.add(Stage.RUN)
         self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
         root_dir = Path(benchmark_output_dir if benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)).absolute()
@@ -171,6 +171,7 @@ class NativeImageBenchmarkConfig:
         self.profile_path: Path = self.output_dir / f"{self.executable_name}.iprof"
         self.config_dir: Path = self.output_dir / "config"
         self.log_dir: Path = self.output_dir
+        self.ml_log_dump_path: Path = self.output_dir / f"{self.executable_name}.ml.log.csv"
         base_image_build_args = ['--no-fallback', '-g']
         base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
         base_image_build_args += ['-H:+ReportExceptionStackTraces']
@@ -530,6 +531,7 @@ class NativeImageVM(GraalVm):
         self.safepoint_sampler = False
         self.profile_inference_feature_extraction = False
         self.force_profile_inference = False
+        self.profile_inference_debug = False
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
         self.optimization_level = None
@@ -552,7 +554,7 @@ class NativeImageVM(GraalVm):
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
-               r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
         match_name = f"{config_name}-"  # adding trailing dash to simplify the regex
@@ -658,6 +660,17 @@ class NativeImageVM(GraalVm):
                 self.force_profile_inference = True
 
                 self.pgo_exclude_conditional = True
+            elif profile_inference_config == 'profile-inference-debug':
+                # We need to run instrumentation as the profile-inference-debug config compares inferred profiles to profiles collected via instrumentation.
+                self.pgo_instrumentation = True
+
+                # Due to the collision between flags, we must re-enable the ML inference:
+                # 1. To run the image build in the debug mode, we must enable PGO to dynamically collect program profiles.
+                # 2. The PGO flag disables the ML Profile Inference.
+                # 3. Therefore, here we re-enable the ML Profile Inference from the command line.
+                self.force_profile_inference = True
+
+                self.profile_inference_debug = True
             else:
                 mx.abort('Unknown profile inference configuration: {}.'.format(profile_inference_config))
 
@@ -1165,9 +1178,13 @@ class NativeImageVM(GraalVm):
             ml_args = svm_experimental_options(['-H:+MLGraphFeaturesExtraction', '-H:+MLProfileInference'])
         else:
             ml_args = []
+        if self.profile_inference_debug:
+            ml_debug_args = svm_experimental_options(['-H:LogMLInference={}'.format(self.config.ml_log_dump_path)])
+        else:
+            ml_debug_args = []
 
         collection_args = svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(Stage.IMAGE)}"])
-        final_image_command = self.config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + collection_args
+        final_image_command = self.config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + ml_debug_args + collection_args
         with self.get_stage_runner() as s:
             exit_code = s.execute_command(self, final_image_command)
             NativeImageVM.move_bundle_output(self.config, self.config.image_path)
