@@ -136,7 +136,7 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
             if (bytecodeIndex < 0) {
                 throw new IllegalArgumentException(
                                 "A non-null location node was provided but a negative bytecodeIndex was provided. " +
-                                                "Provide a null location node and a negative bytecodeIndex for no bytecode location or return a positive bytecodeIndex in addition to the non-null locatio node to resolve this.");
+                                                "Provide a null location node and a negative bytecodeIndex for no bytecode location or return a positive bytecodeIndex in addition to the non-null location node to resolve this.");
             }
             boolean valid = false;
             for (Instruction i : bytecode.getInstructions()) {

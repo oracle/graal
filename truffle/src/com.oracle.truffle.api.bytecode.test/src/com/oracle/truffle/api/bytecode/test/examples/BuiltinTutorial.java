@@ -61,6 +61,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
@@ -93,10 +94,10 @@ import com.oracle.truffle.api.nodes.RootNode;
  * interpreter. Builtins typically refer to functions that are shipped as part of the language to
  * access functionality not directly reachable with language syntax.
  *
- * This tutorial explains three different ways on how to implement builtins. One by specifying a
- * Truffle node (JavaBultin), one using direct specification of builder calls (BuilderBuiltin) and
- * another one using guest language source code that is lazily parsed on first use or at
- * native-image build time.
+ * This tutorial explains three different ways to implement builtins. One by specifying a Truffle
+ * node (JavaBuiltin), one using direct specification of builder calls (BuilderBuiltin) and another
+ * one using guest language source code that is lazily parsed on first use or at native-image build
+ * time (SerializedBuiltin).
  *
  * We recommend completing the {@link GettingStarted}, {@link ParsingTutorial} and the
  * {@link SerializationTutorial} before reading this tutorial.
@@ -111,7 +112,7 @@ public class BuiltinTutorial {
      * language you may specify different or more meta-data here, for example type information for
      * the arguments.
      */
-    sealed static abstract class AbstractBuiltin permits JavaBuiltin, BuilderBuiltin, SerializedBuiltin {
+    abstract static sealed class AbstractBuiltin permits JavaBuiltin, BuilderBuiltin, SerializedBuiltin {
 
         final String name;
         final int args;
@@ -129,7 +130,7 @@ public class BuiltinTutorial {
     }
 
     /**
-     * Next, we specify a new bytecode DSL root node. We explicitly enable uncached interpretation
+     * Next, we specify a new Bytecode DSL root node. We explicitly enable uncached interpretation
      * to show how uncached Java nodes can be integrated for builtins. We also enable serialization
      * as we will need that for the third category of builtins {@link SerializedBuiltin}.
      */
@@ -142,8 +143,8 @@ public class BuiltinTutorial {
         }
 
         /**
-         * As the first operation we add the ability to call builtins the call target returned by
-         * {@link AbstractBuiltin#getOrCreateCallTarget()}. Our case we model the builtin as
+         * As the first operation we add the ability to call builtins using the call target returned
+         * by {@link AbstractBuiltin#getOrCreateCallTarget()}. In our case we model the builtin as a
          * constant operand, but in case the builtin is not known at parse time, the builtin could
          * also be looked up dynamically.
          */
@@ -154,9 +155,9 @@ public class BuiltinTutorial {
             @Specialization
             public static Object doDefault(AbstractBuiltin b, @Variadic Object[] args) {
                 /**
-                 * We just map the variadic arguments of the operation to the call target. The first
-                 * time a builtin is called the call target will be created, and for consecutive
-                 * calls we will reuse the already created call target.
+                 * We just forward the variadic arguments of the operation to the call target. The
+                 * first time a builtin is called the call target will be created, and for
+                 * consecutive calls we will reuse the already created call target.
                  *
                  * Instead of calling the CallTarget directly, like we do here, we could also use a
                  * DirectCallNode instead. Then CallTarget cloning/splitting would also be
@@ -167,10 +168,10 @@ public class BuiltinTutorial {
         }
 
         /**
-         * In order to later implement the {@link JavaBuiltin#getOrCreateCallTarget()} method we
-         * need an operation that allows to inline a Java based builtin into the interpreter. This
-         * instruction delegates the cached and uncached node creation to the {@link JavaBuiltin}
-         * implementation.
+         * The implementation of a {@link JavaBuiltin} will execute a plain Truffle node. This
+         * operation is used by {@link JavaBuiltin#getOrCreateCallTarget()} to inline the Truffle
+         * node into the interpreter and directly execute it, delegating the cached and uncached
+         * node creation to the {@link JavaBuiltin} implementation.
          */
         @Operation
         @ConstantOperand(type = JavaBuiltin.class)
@@ -185,16 +186,15 @@ public class BuiltinTutorial {
                              * the builtin. The concrete number of arguments is contained in
                              * {@link AbstractBuiltin#args}. We do not statically know them for the
                              * builtin. In order to avoid the Object[] allocation one could create
-                             * individual operation for a specific number of arguments.
+                             * individual operations for a specific number of arguments.
                              */
                             @Variadic Object[] args,
 
                             /**
                              * This instructs the DSL to create a new node for any cached usage of
-                             * the Cached annotation. For the uncached initializer
-                             * builtin.getUncached() is used. An uncached version of a node is
-                             * useful to avoid repeated allocations of a cached node if the cached
-                             * profile is not persisted.
+                             * the builtin. For the uncached initializer builtin.getUncached() is
+                             * used. An uncached version of a node is useful to avoid repeated
+                             * allocations of a cached node if a cached profile is not required.
                              */
                             @Cached(value = "builtin.createNode()", uncached = "builtin.getUncached()", neverDefault = true)//
                             BuiltinNode node) {
@@ -225,7 +225,7 @@ public class BuiltinTutorial {
     /**
      * Next, we create a base class for all Java based builtins.
      */
-    static abstract class BuiltinNode extends Node {
+    abstract static class BuiltinNode extends Node {
 
         /**
          * Truffle automatically interprets execute methods with varargs as a variable number of
@@ -238,7 +238,7 @@ public class BuiltinTutorial {
     }
 
     /**
-     * Now lets declare a sample builtin node. This builtin just tries to parse an int from a
+     * Now let's declare a sample builtin node. This builtin just tries to parse an int from a
      * string. If the operand is already an int there is nothing to do. If it is a string we call to
      * {@link Integer#parseInt(String)} to parse the number.
      *
@@ -248,14 +248,14 @@ public class BuiltinTutorial {
      * here: {@link ParseIntBuiltinNodeGen#execute(Object...)}. As you can see the DSL automatically
      * maps the varargs arguments of the execute method as a dynamic operand to the node.
      *
-     * We are also specifying {@link GenerateUncached such that
-     * {@link ParseIntBuiltinNodeGen#getUncached()} methods is generated. We will need that later in
+     * We are also specifying {@link GenerateUncached} such that a
+     * {@link ParseIntBuiltinNodeGen#getUncached()} method is generated. We will need that later in
      * the {@link JavaBuiltin} instantiation (see {@link #createParseIntBuiltin()}).
      */
     @GenerateUncached
     @GenerateCached
     @GenerateInline(false) // make inlining warning go away
-    static abstract class ParseIntBuiltinNode extends BuiltinNode {
+    abstract static class ParseIntBuiltinNode extends BuiltinNode {
 
         @Specialization
         int doInt(int a) {
@@ -269,18 +269,18 @@ public class BuiltinTutorial {
             try {
                 return Integer.parseInt(a);
             } catch (NumberFormatException e) {
-                // a real language would translate this error to a AbstractTruffleException here.
-                // we are lazy skip this step for now.
+                // a real language would translate this error to an AbstractTruffleException here.
+                // we are lazy, so skip this step for now.
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
 
     /**
-     * Its time to implement our first builtin variant the one that is backed by a Truffle node.
-     * There are many different ways to represent such a builtin, but we decide to take the uncached
-     * node directly as parameter and we use {@link Supplier} for a factory method to create the
-     * cached node. Alternatively one could use the {@link GenerateNodeFactory} feature of the DSL.
+     * It's time to implement our first builtin variant: one that is backed by a Truffle node. There
+     * are many different ways to represent such a builtin, but we decide to take the uncached node
+     * directly as parameter and we use {@link Supplier} for a factory method to create the cached
+     * node. Alternatively one could use the {@link GenerateNodeFactory} feature of the Truffle DSL.
      */
     static final class JavaBuiltin extends AbstractBuiltin {
 
@@ -295,20 +295,26 @@ public class BuiltinTutorial {
         }
 
         /**
-         * Now we have all the parts togetehr to create a bytecode DSL builtin root node. In order
+         * Now we have all the parts together to create a Bytecode DSL builtin root node. In order
          * to minimize memory footprint we lazily create the call target on first access.
+         *
+         * This root node is a simple bytecode node that executes the {@link JavaBuiltin} using the
+         * {@link LanguageWithBuiltins#InlineBuiltin} operation. It will automatically transition
+         * the interpreter (and hence, the builtin node) from uncached to cached.
          *
          * One advantage of using the Bytecode DSL to implement the builtin root node is that we
          * automatically get the method {@link Prolog} and {@link EpilogReturn} executed. In
          * addition a bytecode root node supports bytecode and tag instrumentation and also offers
-         * support for continuations. If none of that is needed some languages decide to create
-         * dedicated {@link RootNode} subclass for builtins.
+         * support for continuations. If none of that is needed, some languages may instead opt to
+         * create a dedicated {@link RootNode} subclass for builtins.
          *
          * Another advantage of using bytecode to inline builtins is that they can also be used
-         * directly in the code without call semantics.
+         * directly in the code without call semantics (i.e., instead of a builtin being a call
+         * target, as it is here, the parser could use {@link LanguageWithBuiltins#InlineBuiltin} to
+         * directly inline a builtin node into a guest bytecode method).
          */
         @Override
-        final CallTarget getOrCreateCallTarget() {
+        CallTarget getOrCreateCallTarget() {
             if (cachedTarget == null) {
                 cachedTarget = parse((b) -> {
                     b.beginRoot(LanguageWithBuiltins.get());
@@ -324,26 +330,26 @@ public class BuiltinTutorial {
         }
 
         /**
-         * When the bytecode dsl interpreter switches from uncached to cached we call this supplier
-         * to create the the cached node. This, by default, happens after 16 calls or loop
-         * iterations.
-         */
-        BuiltinNode createNode() {
-            return createCached.get();
-        }
-
-        /**
-         * Since we also enable {@link GenerateBytecode#enableUncachedInterpreter()} we first pass
-         * an uncached version of the node in addition to a factory lambda that allows to create the
-         * Java a cached version of the node.
+         * Since we enable {@link GenerateBytecode#enableUncachedInterpreter()}, the builtin root
+         * node will first use the uncached version of the node. It can transition to cached and
+         * uses the cached version supplied by {@link #createNode} below.
          */
         BuiltinNode getUncached() {
             return uncached;
         }
+
+        /**
+         * When the Bytecode DSL interpreter transitions from uncached to cached we call this
+         * supplier to create the the cached node. This, by default, happens after 16 calls or loop
+         * iterations (controlled by {@link BytecodeNode#setUncachedThreshold}).
+         */
+        BuiltinNode createNode() {
+            return createCached.get();
+        }
     }
 
     /**
-     * Now lets put everything together and create our first {@link JavaBuiltin}. A real language
+     * Now let's put everything together and create our first {@link JavaBuiltin}. A real language
      * would definitely need more than one, but we keep it simple for this example.
      */
     static JavaBuiltin createParseIntBuiltin() {
@@ -353,7 +359,7 @@ public class BuiltinTutorial {
     /**
      * Another way of specifying builtins is to use a builder lambda directly. This way you can
      * minimize binary footprint by expressing a builtin with regular bytecodes. As languages
-     * mature, they often grow in size and binary footprint becomes more prevalent. Using builder
+     * mature, they often grow in size and binary footprint becomes more pronounced. Using builder
      * builtins it is possible to reduce the number of methods reachable for partial evaluation, as
      * we are reusing existing bytecodes to implement them. This may reduce the binary footprint of
      * the interpreter.
@@ -363,7 +369,7 @@ public class BuiltinTutorial {
         private final BytecodeParser<BuiltinLanguageRootNodeGen.Builder> parser;
         @CompilationFinal private CallTarget cachedTarget;
 
-        public BuilderBuiltin(String name, int args, BytecodeParser<BuiltinLanguageRootNodeGen.Builder> parser) {
+        BuilderBuiltin(String name, int args, BytecodeParser<BuiltinLanguageRootNodeGen.Builder> parser) {
             super(name, args);
             this.parser = parser;
         }
@@ -397,7 +403,7 @@ public class BuiltinTutorial {
 
     /**
      * The third and last kind of builtin in this tutorial is the {@link SerializedBuiltin}. It can
-     * be useful to use the serialized form of the bytecode dsl builder calls and load them from a
+     * be useful to use the serialized form of the Bytecode DSL builder calls and load them from a
      * file if they are needed. This may further decrease binary footprint of the interpreter.
      */
     static final class SerializedBuiltin extends AbstractBuiltin {
@@ -405,7 +411,7 @@ public class BuiltinTutorial {
         private final Supplier<byte[]> getBytes;
         @CompilationFinal CallTarget cachedTarget;
 
-        public SerializedBuiltin(String name, int args, Supplier<byte[]> getBytes) {
+        SerializedBuiltin(String name, int args, Supplier<byte[]> getBytes) {
             super(name, args);
             this.getBytes = getBytes;
         }
