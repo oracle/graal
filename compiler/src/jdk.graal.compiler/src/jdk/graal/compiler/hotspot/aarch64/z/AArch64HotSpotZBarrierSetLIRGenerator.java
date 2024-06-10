@@ -97,7 +97,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
         Assembler.guaranteeDifferentRegisters(src, dst);
         crb.recordMark(HotSpotMarkId.Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_BEFORE_MOV);
         masm.movzPatchable(32, dst, UNPATCHED);
-        masm.orr(64, dst, dst, src, LSL, config.ZPointerLoadShift);
+        masm.orr(64, dst, dst, src, LSL, config.zPointerLoadShift);
     }
 
     /**
@@ -105,7 +105,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
      */
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/aarch64/gc/z/z_aarch64.ad#L43-L45", sha1 = "3c53528425bc5609e9c5fc3588bbed0c01cd63a6")
     static void zUncolor(AArch64MacroAssembler masm, GraalHotSpotVMConfig config, Register ref) {
-        masm.lsr(64, ref, ref, config.ZPointerLoadShift);
+        masm.lsr(64, ref, ref, config.zPointerLoadShift);
     }
 
     /**
@@ -281,14 +281,14 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/aarch64/gc/z/zBarrierSetAssembler_aarch64.cpp#L227-L257", sha1 = "b52bb540cf136f455dfac53fece3cc029a240bf2")
     static void storeBarrierBufferAdd(AArch64MacroAssembler masm,
                     GraalHotSpotVMConfig config,
-                    AArch64Address ref_addr,
+                    AArch64Address refAddr,
                     Register tmp1,
                     Register tmp2,
                     Label slowPath) {
         Register rthread = AArch64HotSpotRegisterConfig.threadRegister;
         int offset4 = config.ZThreadLocalData_store_barrier_buffer_offset;
         AArch64Address buffer = masm.makeAddress(64, rthread, offset4);
-        Assembler.guaranteeDifferentRegisters(ref_addr.getBase(), ref_addr.getOffset(), tmp1, tmp2);
+        Assembler.guaranteeDifferentRegisters(refAddr.getBase(), refAddr.getOffset(), tmp1, tmp2);
 
         masm.ldr(64, tmp1, buffer);
 
@@ -308,7 +308,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
         masm.add(64, tmp2, tmp2, tmp1);
 
         // Compute and log the store address
-        masm.loadAddress(tmp1, ref_addr);
+        masm.loadAddress(tmp1, refAddr);
         int offset1 = config.ZStoreBarrierEntry_p_offset;
         masm.str(64, tmp1, masm.makeAddress(64, tmp2, offset1));
 

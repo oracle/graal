@@ -80,7 +80,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     private static final long objectArrayBaseOffset;
 
-    static class TestObject {
+    static final class TestObject {
         private TestObject() {
             this(0);
         }
