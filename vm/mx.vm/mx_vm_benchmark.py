@@ -1519,7 +1519,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                    '--vm.DCompileTheWorld.Classpath=' + mx.library('DACAPO_MR1_BACH').get_path(resolve=True),
                    '--vm.DCompileTheWorld.Verbose=false',
                    '--vm.DCompileTheWorld.MultiThreaded=false',
-                   '--vm.Djdk.libgraal.ShowConfiguration=info',
+                   '--vm.Djdk.graal.ShowConfiguration=info',
                    '--metric=instructions',
                    '-w', '1',
                    '-i', '5'] + vmArgs

@@ -1492,7 +1492,7 @@ libgraal_build_args = [
     '-H:+PreserveFramePointer',
     '-H:-DeleteLocalSymbols',
 
-    # Configure -Djdk.libgraal.internal.HeapDumpOnOutOfMemoryError=true
+    # Configure -Djdk.graal.vm.HeapDumpOnOutOfMemoryError=true
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 
