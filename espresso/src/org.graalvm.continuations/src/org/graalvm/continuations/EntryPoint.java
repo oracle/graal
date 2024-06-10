@@ -41,8 +41,6 @@
 
 package org.graalvm.continuations;
 
-import org.graalvm.continuations.Continuation.SuspendCapability;
-
 /**
  * A functional interface to delimit the starting point of the continuation. A Continuation can only
  * be suspended if {@link #start(SuspendCapability)} is on the calling stack.
