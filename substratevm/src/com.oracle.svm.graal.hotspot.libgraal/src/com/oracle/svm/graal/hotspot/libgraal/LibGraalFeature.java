@@ -53,6 +53,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.options.OptionGroup;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
@@ -563,7 +564,14 @@ public class LibGraalFeature implements InternalFeature {
         for (OptionKey<?> option : optionCollector.options.keySet()) {
             VMError.guarantee(access.isReachable(option.getClass()));
             String optionKey = getPrefixedOptionName(option);
-            options.put(optionKey, option.getDescriptor());
+            OptionDescriptor descriptor = option.getDescriptor();
+            OptionGroup group = descriptor.getDeclaringClass().getAnnotation(OptionGroup.class);
+            if (group != null && !group.registerAsService()) {
+                // Ignore options (such as TruffleCompilerOptions) that should not
+                // be service loaded.
+                continue;
+            }
+            options.put(optionKey, descriptor);
         }
 
         OptionsParserAccessors.optionDescriptors = options;
