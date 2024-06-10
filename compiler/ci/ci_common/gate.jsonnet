@@ -201,13 +201,16 @@
 
   jdk_latest:: "Latest",
 
-  # Filters out the nominal gate jobs if in CE
-  as_gates(gate_jobs):: if config.graalvm_edition == "ce" then {} else gate_jobs,
+  # Filters out the non-style gate jobs if in CE
+  as_gates(gate_jobs):: if config.graalvm_edition == "ce" then {
+    [name]: gate_jobs[name]
+    for name in std.objectFields(gate_jobs) if utils.contains(name, "style")
+  } else gate_jobs,
 
-  # Converts the nominal gate jobs to dailies if in CE
+  # Converts the non-style gate jobs to dailies if in CE
   as_dailies(gate_jobs):: if config.graalvm_edition == "ce" then {
     [std.strReplace(name, "gate", "daily")]: gate_jobs[name]
-    for name in std.objectFields(gate_jobs)
+    for name in std.objectFields(gate_jobs) if !utils.contains(name, "style")
   } else {},
 
   # Candidates for gate jobs. In CE, these will be dailies instead of gates.
