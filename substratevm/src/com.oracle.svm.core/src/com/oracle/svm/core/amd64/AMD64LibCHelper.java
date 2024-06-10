@@ -302,6 +302,10 @@ public class AMD64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fAVX_IFMA();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAPX_F();
     }
     // Checkstyle: resume
 }
