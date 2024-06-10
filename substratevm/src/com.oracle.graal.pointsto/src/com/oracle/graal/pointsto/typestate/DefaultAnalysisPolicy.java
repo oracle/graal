@@ -259,9 +259,6 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public TypeState forContextInsensitiveTypeState(PointsToAnalysis bb, TypeState state) {
-        if (state instanceof ConstantTypeState) {
-            return TypeState.forExactType(bb, state.exactType(), state.canBeNull());
-        }
         return state;
     }
 

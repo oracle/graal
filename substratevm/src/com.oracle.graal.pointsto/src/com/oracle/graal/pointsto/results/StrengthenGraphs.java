@@ -347,23 +347,35 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 Object newStampOrConstant = strengthenStampFromTypeFlow(node, parameterFlows[node.index()], anchorPoint, tool);
                 updateStampUsingPiNode(node, newStampOrConstant, anchorPoint, tool);
 
-            } else if (n instanceof LoadFieldNode || n instanceof LoadIndexedNode) {
-                FixedWithNextNode node = (FixedWithNextNode) n;
-                Object newStampOrConstant = strengthenStampFromTypeFlow(node, getNodeFlow(node), node, tool);
+            } else if (n instanceof LoadFieldNode node) {
                 /*
-                 * Even though the memory load will be a floating node later, we can update the
-                 * stamp directly because the type information maintained by the static analysis
-                 * about memory is not flow-sensitive and not context-sensitive. If we ever revive a
-                 * context-sensitive analysis, we will need to change this. But for now, we are
-                 * fine.
+                 * First step: it is beneficial to strengthen the stamp of the LoadFieldNode because
+                 * then there is no artificial anchor after which the more precise type is
+                 * available. However, the memory load will be a floating node later, so we can only
+                 * update the stamp directly to the stamp that is correct for the whole method and
+                 * all inlined methods.
                  */
-                if (newStampOrConstant instanceof JavaConstant) {
-                    ConstantNode replacement = ConstantNode.forConstant((JavaConstant) newStampOrConstant, bb.getMetaAccess(), graph);
+                var field = (AnalysisField) node.field();
+                var fieldTypeFlow = field.isStatic() ? field.getStaticFieldFlow() : field.getInstanceFieldFlow();
+                Object fieldNewStampOrConstant = strengthenStampFromTypeFlow(node, fieldTypeFlow, node, tool);
+                if (fieldNewStampOrConstant instanceof JavaConstant) {
+                    ConstantNode replacement = ConstantNode.forConstant((JavaConstant) fieldNewStampOrConstant, bb.getMetaAccess(), graph);
                     graph.replaceFixedWithFloating(node, replacement);
                     tool.addToWorkList(replacement);
                 } else {
-                    updateStampInPlace(node, (Stamp) newStampOrConstant, tool);
+                    updateStampInPlace(node, (Stamp) fieldNewStampOrConstant, tool);
+
+                    /*
+                     * Second step: strengthen using context-sensitive analysis results, which
+                     * requires an anchored PiNode.
+                     */
+                    Object nodeNewStampOrConstant = strengthenStampFromTypeFlow(node, getNodeFlow(node), node, tool);
+                    updateStampUsingPiNode(node, nodeNewStampOrConstant, node, tool);
                 }
+
+            } else if (n instanceof LoadIndexedNode node) {
+                Object newStampOrConstant = strengthenStampFromTypeFlow(node, getNodeFlow(node), node, tool);
+                updateStampUsingPiNode(node, newStampOrConstant, node, tool);
 
             } else if (n instanceof Invoke) {
                 Invoke invoke = (Invoke) n;
