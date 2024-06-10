@@ -41,7 +41,7 @@ import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * A data structure representing all the information about all loops in the given graph. Data about
- * loops is tied to a given {@link ControlFlowGraph cfg}. If the cfg changes the loops data should
+ * loops is tied to a given {@link ControlFlowGraph cfg}. If the CFG changes, the loops data should
  * be considered invalid.
  */
 public class LoopsData {

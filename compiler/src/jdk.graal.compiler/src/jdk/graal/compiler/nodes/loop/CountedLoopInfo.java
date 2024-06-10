@@ -103,22 +103,26 @@ import jdk.vm.ci.meta.SpeculationLog;
 public class CountedLoopInfo {
 
     protected final Loop loop;
+
     /**
      * @see CountedLoopInfo#getLimitCheckedIV()
      */
     protected InductionVariable limitCheckedIV;
+
     /**
      * @see #getLimit()
      */
     protected ValueNode limit;
+
     /**
      * {@code true} iff the limit is included in the limit test, e.g., the limit test is
      * {@code i <= n} rather than {@code i < n}.
      */
     protected boolean isLimitIncluded;
+
     /**
      * The first node inside the loop that is not considered to be part of the loop control nodes
-     * (terminating conditions). Depending on the shape of the loop this can be different kind of
+     * (terminating conditions). Depending on the shape of the loop, this can be different kind of
      * nodes.
      */
     protected AbstractBeginNode body;
@@ -126,7 +130,7 @@ public class CountedLoopInfo {
     /**
      * The condition node that determines if this loop is exited or not. Can be in head or tail
      * position depending on the shape of the loop. There can be an arbitrary number of if nodes in
-     * a loop, this one is special in that it either dominates or post dominates all others.
+     * a loop. This one is special in that it either dominates or post dominates all others.
      */
     protected IfNode ifNode;
 
@@ -529,11 +533,10 @@ public class CountedLoopInfo {
     }
 
     /**
-     * Determine if the counter of the loop, {@link #getLimitCheckedIV()} can ever overflow. Use
-     * static analysis to determine the answer. If this method returns {@code true} it is statically
-     * known the limit checked induction variable never overflows. If this method returns
-     * {@code false} it is still possible that the limit checked IV never overflows but we have not
-     * been able to prove it statically.
+     * Determines with static analysis if the counter {@link #getLimitCheckedIV()} can ever
+     * overflow. If this method returns {@code true} it is statically known the limit checked
+     * induction variable never overflows. If this method returns {@code false} it is still possible
+     * that the limit checked IV never overflows but we have not been able to prove it statically.
      */
     public boolean counterNeverOverflows() {
         if (loop.loopBegin().canNeverOverflow()) {

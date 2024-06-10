@@ -99,7 +99,7 @@ public class Loop {
      */
     protected LoopFragmentWhole whole;
     /**
-     * If this loop is counted a link to the counted loop info.
+     * If this loop is counted, a link to the counted loop info.
      */
     protected CountedLoopInfo counted;
     /**
@@ -112,7 +112,7 @@ public class Loop {
      */
     protected EconomicMap<Node, InductionVariable> ivs;
     /**
-     * A flag indicating if we already ran counted loop detection on this loop.
+     * Indicates if we already ran counted loop detection on this loop.
      */
     protected boolean countedLoopChecked;
     protected int size = -1;
