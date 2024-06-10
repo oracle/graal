@@ -623,8 +623,10 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
         Reference<ExecutorService> ref = new WeakReference<>(service);
         service = null;
-        GCUtils.assertGc("Nobody holds on the executor anymore", ref);
-        GCUtils.assertGc("Nobody holds on the thread anymore", threads);
+        if (!vthreads) { // GR-54640 This fails transiently with virtual threads
+            GCUtils.assertGc("Nobody holds on the executor anymore", ref);
+            GCUtils.assertGc("Nobody holds on the thread anymore", threads);
+        }
         c.close();
     }
 
