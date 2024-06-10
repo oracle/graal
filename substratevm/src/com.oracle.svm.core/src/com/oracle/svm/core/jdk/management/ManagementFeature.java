@@ -51,6 +51,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -84,6 +85,12 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
+
+        if (ManagementSupport.getSingleton().gcRelatedMXBeans == null) {
+            // No GC-specific GCRelatedMXBeans was created. So create a default one.
+            ManagementSupport.getSingleton().gcRelatedMXBeans = new GCRelatedMXBeans();
+        }
+
         platformManagedObjectReplacements = new IdentityHashMap<>();
         for (Class<? extends PlatformManagedObject> clazz : Arrays.asList(ClassLoadingMXBean.class, CompilationMXBean.class, RuntimeMXBean.class,
                         ThreadMXBean.class, OperatingSystemMXBean.class, MemoryMXBean.class)) {

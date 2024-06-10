@@ -30,6 +30,7 @@ import java.lang.management.PlatformManagedObject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,13 +47,13 @@ import javax.management.ObjectName;
 import javax.management.StandardEmitterMBean;
 import javax.management.StandardMBean;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -62,6 +63,8 @@ import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * This class provides the SVM support implementation for the MXBean that provide VM introspection,
@@ -150,6 +153,9 @@ public final class ManagementSupport implements ThreadListener {
     /** The singleton MBean server for the platform, initialized lazily at run time. */
     MBeanServer platformMBeanServer;
 
+    /** All {@link PlatformManagedObject}, that are related to the GC, are stored in this object. */
+    GCRelatedMXBeans gcRelatedMXBeans;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     ManagementSupport(SubstrateRuntimeMXBean runtimeMXBean, SubstrateThreadMXBean threadMXBean) {
         platformManagedObjectsMap = new HashMap<>();
@@ -222,6 +228,11 @@ public final class ManagementSupport implements ThreadListener {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public <T extends PlatformManagedObject> void addPlatformManagedObjectSingleton(Class<T> clazz, T object) {
+        if (GCRelatedMXBeans.isGCRelatedMXBean(clazz)) {
+            gcRelatedMXBeans.addPlatformMXBeanSingleton(clazz, object);
+            return;
+        }
+
         if (!clazz.isInterface()) {
             throw UserError.abort("Key for registration of a PlatformManagedObject must be an interface");
         }
@@ -229,9 +240,15 @@ public final class ManagementSupport implements ThreadListener {
     }
 
     private void doAddPlatformManagedObjectSingleton(Class<?> clazz, PlatformManagedObject object) {
+        doAddPlatformManagedObjectSingleton(platformManagedObjectsMap, platformManagedObjectsSet, clazz, object);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void doAddPlatformManagedObjectSingleton(Map<Class<?>, Object> platformManagedObjectsMap, Set<PlatformManagedObject> platformManagedObjectsSet, Class<?> clazz,
+                    PlatformManagedObject object) {
         for (Class<?> superinterface : clazz.getInterfaces()) {
             if (superinterface != PlatformManagedObject.class && PlatformManagedObject.class.isAssignableFrom(superinterface)) {
-                doAddPlatformManagedObjectSingleton(superinterface, object);
+                doAddPlatformManagedObjectSingleton(platformManagedObjectsMap, platformManagedObjectsSet, superinterface, object);
             }
         }
 
@@ -249,6 +266,11 @@ public final class ManagementSupport implements ThreadListener {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public <T extends PlatformManagedObject> void addPlatformManagedObjectList(Class<T> clazz, List<T> objects) {
+        if (GCRelatedMXBeans.isGCRelatedMXBean(clazz)) {
+            gcRelatedMXBeans.addPlatformMXBeanList(clazz, objects);
+            return;
+        }
+
         if (!clazz.isInterface()) {
             throw UserError.abort("Key for registration of a PlatformManagedObject must be an interface");
         }
@@ -256,9 +278,15 @@ public final class ManagementSupport implements ThreadListener {
     }
 
     private void doAddPlatformManagedObjectList(Class<?> clazz, List<? extends PlatformManagedObject> objects) {
+        doAddPlatformManagedObjectList(platformManagedObjectsMap, platformManagedObjectsSet, clazz, objects);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void doAddPlatformManagedObjectList(Map<Class<?>, Object> platformManagedObjectsMap, Set<PlatformManagedObject> platformManagedObjectsSet, Class<?> clazz,
+                    List<? extends PlatformManagedObject> objects) {
         for (Class<?> superinterface : clazz.getInterfaces()) {
             if (superinterface != PlatformManagedObject.class && PlatformManagedObject.class.isAssignableFrom(superinterface)) {
-                doAddPlatformManagedObjectList(superinterface, objects);
+                doAddPlatformManagedObjectList(platformManagedObjectsMap, platformManagedObjectsSet, superinterface, objects);
             }
         }
 
@@ -279,7 +307,7 @@ public final class ManagementSupport implements ThreadListener {
     }
 
     public boolean isAllowedPlatformManagedObject(PlatformManagedObject object) {
-        if (platformManagedObjectsSet.contains(object)) {
+        if (platformManagedObjectsSet.contains(object) || gcRelatedMXBeans.contains(object)) {
             /* Fast path check: object provided by our registry. */
             return true;
         }
@@ -322,6 +350,9 @@ public final class ManagementSupport implements ThreadListener {
             for (PlatformManagedObject platformManagedObject : platformManagedObjectsSet) {
                 addMXBean(platformMBeanServer, handleLazyPlatformManagedObjectSingleton(platformManagedObject));
             }
+            for (PlatformManagedObject platformManagedObject : gcRelatedMXBeans.getPlatformManagedObjectsSet()) {
+                addMXBean(platformMBeanServer, handleLazyPlatformManagedObjectSingleton(platformManagedObject));
+            }
         }
         return platformMBeanServer;
     }
@@ -349,16 +380,27 @@ public final class ManagementSupport implements ThreadListener {
     }
 
     Set<Class<?>> getPlatformManagementInterfaces() {
-        return Collections.unmodifiableSet(platformManagedObjectsMap.keySet());
+        Set<Class<?>> result = new HashSet<>(platformManagedObjectsMap.keySet());
+        result.addAll(gcRelatedMXBeans.getUsedInterfaces());
+        return Collections.unmodifiableSet(result);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public Set<PlatformManagedObject> getPlatformManagedObjects() {
-        return platformManagedObjectsSet;
+        Set<PlatformManagedObject> result = Collections.newSetFromMap(new IdentityHashMap<>());
+        result.addAll(platformManagedObjectsSet);
+        result.addAll(gcRelatedMXBeans.getPlatformManagedObjectsSet());
+        return result;
     }
 
     <T extends PlatformManagedObject> T getPlatformMXBean(Class<T> mxbeanInterface) {
-        Object result = platformManagedObjectsMap.get(mxbeanInterface);
+        Object result;
+        if (GCRelatedMXBeans.isGCRelatedMXBean(mxbeanInterface)) {
+            result = gcRelatedMXBeans.getPlatformMXBeanObject(mxbeanInterface);
+        } else {
+            result = platformManagedObjectsMap.get(mxbeanInterface);
+        }
+
         if (result == null) {
             throw new IllegalArgumentException(mxbeanInterface.getName() + " is not a platform management interface");
         } else if (result instanceof List) {
@@ -369,7 +411,13 @@ public final class ManagementSupport implements ThreadListener {
 
     @SuppressWarnings("unchecked")
     <T extends PlatformManagedObject> List<T> getPlatformMXBeans(Class<T> mxbeanInterface) {
-        Object result = platformManagedObjectsMap.get(mxbeanInterface);
+        Object result;
+        if (GCRelatedMXBeans.isGCRelatedMXBean(mxbeanInterface)) {
+            result = gcRelatedMXBeans.getPlatformMXBeanObject(mxbeanInterface);
+        } else {
+            result = platformManagedObjectsMap.get(mxbeanInterface);
+        }
+
         if (result == null) {
             throw new IllegalArgumentException(mxbeanInterface.getName() + " is not a platform management interface");
         }
@@ -378,6 +426,10 @@ public final class ManagementSupport implements ThreadListener {
         } else {
             return Collections.singletonList(mxbeanInterface.cast(handleLazyPlatformManagedObjectSingleton(result)));
         }
+    }
+
+    public void setGCRelatedMXBeans(GCRelatedMXBeans gcRelatedMXBeans) {
+        this.gcRelatedMXBeans = gcRelatedMXBeans;
     }
 
     /**
