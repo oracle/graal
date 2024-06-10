@@ -115,15 +115,15 @@ public abstract class BytecodeNode extends Node {
      * valid if {@code bci} was obtained from this bytecode node (using a bind variable or
      * {@link #getBytecodeIndex}).
      *
-     * @param bci the bytecode index
+     * @param bytecodeIndex the bytecode index
      * @return the bytecode location, or null if the bytecode index is invalid
      * @since 24.1
      */
-    public final BytecodeLocation getBytecodeLocation(int bci) {
-        if (bci < 0) {
+    public final BytecodeLocation getBytecodeLocation(int bytecodeIndex) {
+        if (bytecodeIndex < 0) {
             return null;
         }
-        return findLocation(bci);
+        return findLocation(bytecodeIndex);
     }
 
     /**

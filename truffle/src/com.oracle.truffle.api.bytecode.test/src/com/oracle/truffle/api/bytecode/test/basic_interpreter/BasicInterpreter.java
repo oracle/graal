@@ -48,7 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
+import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -128,7 +128,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         return (BasicInterpreter) cloneUninitialized();
     }
 
-    protected static class TestException extends AbstractBytecodeTruffleException {
+    protected static class TestException extends AbstractBytecodeException {
         private static final long serialVersionUID = -9143719084054578413L;
 
         public final long value;

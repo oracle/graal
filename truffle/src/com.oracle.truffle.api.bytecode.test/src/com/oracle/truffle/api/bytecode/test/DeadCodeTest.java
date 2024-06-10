@@ -46,7 +46,7 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
+import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
@@ -968,7 +968,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @SuppressWarnings("serial")
-    static class TestException extends AbstractBytecodeTruffleException {
+    static class TestException extends AbstractBytecodeException {
 
     }
 

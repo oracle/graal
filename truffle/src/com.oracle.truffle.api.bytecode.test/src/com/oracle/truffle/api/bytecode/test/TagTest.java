@@ -61,7 +61,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
+import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -1858,7 +1858,7 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @SuppressWarnings("serial")
-    static class TestException extends AbstractBytecodeTruffleException {
+    static class TestException extends AbstractBytecodeException {
 
         TestException(Node location, int bci) {
             super(location, bci);

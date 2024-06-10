@@ -58,6 +58,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -91,22 +92,18 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
                 b.emitTraceFun();
                 b.emitTraceFun();
 
-                b.beginSetTraceFun();
-                b.emitLoadConstant((Runnable) () -> {
+                b.emitSetTraceFun(() -> {
                     firstCounter.incrementAndGet();
                 });
-                b.endSetTraceFun();
 
                 // already in the first execution these two
                 // trace fun calls should increment the first counter
                 b.emitTraceFun();
                 b.emitTraceFun();
 
-                b.beginSetTraceFun();
-                b.emitLoadConstant((Runnable) () -> {
+                b.emitSetTraceFun((Runnable) () -> {
                     secondCounter.incrementAndGet();
                 });
-                b.endSetTraceFun();
 
                 b.emitTraceFun();
                 b.emitTraceFun();
@@ -159,14 +156,15 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
         }
 
         @Operation
+        @ConstantOperand(type = Runnable.class)
         static final class SetTraceFun {
 
             @Specialization
             @TruffleBoundary
-            public static void doDefault(Runnable fun,
+            public static void doDefault(Runnable run,
                             @Bind("$root") SetTraceFuncRootNode root) {
                 TraceFunLanguage language = root.getLanguage(TraceFunLanguage.class);
-                language.threadLocal.get().traceFun = fun;
+                language.threadLocal.get().traceFun = run;
                 language.noTraceFun.invalidate();
                 Truffle.getRuntime().iterateFrames((frameInstance) -> {
                     if (frameInstance.getCallTarget() instanceof RootCallTarget c && c.getRootNode() instanceof SetTraceFuncRootNode r) {

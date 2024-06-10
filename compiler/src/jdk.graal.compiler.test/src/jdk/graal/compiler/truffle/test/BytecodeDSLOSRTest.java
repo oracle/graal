@@ -37,7 +37,7 @@ import org.junit.rules.TestRule;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
+import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -302,7 +302,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class)
     public abstract static class BytecodeDSLOSRTestRootNode extends DebugBytecodeRootNode {
 
-        static class InCompiledCodeException extends AbstractBytecodeTruffleException {
+        static class InCompiledCodeException extends AbstractBytecodeException {
             private static final long serialVersionUID = 1L;
         }
 
