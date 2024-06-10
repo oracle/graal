@@ -1018,10 +1018,10 @@ public final class Symbol<T> extends ByteSequence {
                         "Lcom/oracle/truffle/espresso/polyglot/impl/EspressoForeignNumber;");
 
         // Continuations
-        public static final Symbol<Type> org_graalvm_continuations_Continuation = StaticSymbols.putType(
-                        "Lorg/graalvm/continuations/Continuation;");
-        public static final Symbol<Type> org_graalvm_continuations_Continuation_FrameRecord = StaticSymbols.putType(
-                        "Lorg/graalvm/continuations/Continuation$FrameRecord;");
+        public static final Symbol<Type> org_graalvm_continuations_ContinuationImpl = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/ContinuationImpl;");
+        public static final Symbol<Type> org_graalvm_continuations_ContinuationImpl_FrameRecord = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/ContinuationImpl$FrameRecord;");
         public static final Symbol<Type> org_graalvm_continuations_IllegalMaterializedRecordException = StaticSymbols.putType(
                         "Lorg/graalvm/continuations/IllegalMaterializedRecordException;");
         public static final Symbol<Type> org_graalvm_continuations_IllegalContinuationStateException = StaticSymbols.putType(

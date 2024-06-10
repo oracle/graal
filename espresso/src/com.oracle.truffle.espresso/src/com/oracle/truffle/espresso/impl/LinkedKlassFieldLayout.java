@@ -240,7 +240,7 @@ final class LinkedKlassFieldLayout {
                                         new HiddenField(Name.HIDDEN_TREGEX_SEARCH_FROM_BACKUP),
                                         new HiddenField(Name.HIDDEN_TREGEX_MATCHING_MODE_BACKUP)
                         }),
-                        entry(Type.org_graalvm_continuations_Continuation, new HiddenField[]{
+                        entry(Type.org_graalvm_continuations_ContinuationImpl, new HiddenField[]{
                                         new HiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD)
                         }));
 

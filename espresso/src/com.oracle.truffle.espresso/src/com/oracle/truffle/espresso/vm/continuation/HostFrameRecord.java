@@ -126,7 +126,7 @@ public final class HostFrameRecord {
                                 next.methodVersion.getDeclaringKlass().getDefiningClassLoader());
             } else {
                 // Last method on the stack must be the call to suspend.
-                guarantee(methodVersion.getMethod() == meta.continuum.org_graalvm_continuations_Continuation_suspend, "Last method on the record is not 'Continuation.suspend'", meta);
+                guarantee(methodVersion.getMethod() == meta.continuum.org_graalvm_continuations_ContinuationImpl_suspend, "Last method on the record is not 'Continuation.suspend'", meta);
             }
             if (single) {
                 return true;
@@ -150,7 +150,7 @@ public final class HostFrameRecord {
                 guestHead = guestNext;
             }
             if (guestCursor != null) {
-                meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_next.setObject(guestCursor, guestNext);
+                meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_next.setObject(guestCursor, guestNext);
             }
             guestCursor = guestNext;
             cursor = cursor.next;
@@ -164,11 +164,11 @@ public final class HostFrameRecord {
      */
     public @JavaType(internalName = "Lorg/graalvm/continuations/Continuation$FrameRecord;") StaticObject copyToGuestSingle(Meta meta) {
         // Manually build the guest record.
-        var guestRecord = meta.getAllocator().createNew(meta.continuum.org_graalvm_continuations_Continuation_FrameRecord);
-        meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_pointers.setObject(guestRecord, StaticObject.wrap(objects, meta));
-        meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_primitives.setObject(guestRecord, StaticObject.wrap(primitives, meta));
-        meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_method.setObject(guestRecord, methodVersion.getMethod().makeMirror(meta));
-        meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_bci.setInt(guestRecord, bci());
+        var guestRecord = meta.getAllocator().createNew(meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord);
+        meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_pointers.setObject(guestRecord, StaticObject.wrap(objects, meta));
+        meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_primitives.setObject(guestRecord, StaticObject.wrap(primitives, meta));
+        meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_method.setObject(guestRecord, methodVersion.getMethod().makeMirror(meta));
+        meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_bci.setInt(guestRecord, bci());
         return guestRecord;
     }
 
@@ -183,15 +183,15 @@ public final class HostFrameRecord {
                     EspressoContext context) {
         HostFrameRecord hostCursor = null;
         HostFrameRecord hostHead = null;
-        StaticObject /* FrameRecord */ cursor = meta.continuum.org_graalvm_continuations_Continuation_stackFrameHead.getObject(self);
+        StaticObject /* FrameRecord */ cursor = meta.continuum.org_graalvm_continuations_ContinuationImpl_stackFrameHead.getObject(self);
         while (StaticObject.notNull(cursor)) {
             /* Object[] */
-            StaticObject pointersGuest = meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_pointers.getObject(cursor);
+            StaticObject pointersGuest = meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_pointers.getObject(cursor);
             /* long[] */
-            StaticObject primitivesGuest = meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_primitives.getObject(cursor);
+            StaticObject primitivesGuest = meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_primitives.getObject(cursor);
             /* java.lang.reflect.Method */
-            StaticObject methodGuest = meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_method.getObject(cursor);
-            int bci = meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_bci.getInt(cursor);
+            StaticObject methodGuest = meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_method.getObject(cursor);
+            int bci = meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_bci.getInt(cursor);
 
             EspressoLanguage language = context.getLanguage();
 
@@ -215,7 +215,7 @@ public final class HostFrameRecord {
             }
 
             hostCursor = next;
-            cursor = meta.continuum.org_graalvm_continuations_Continuation_FrameRecord_next.getObject(cursor);
+            cursor = meta.continuum.org_graalvm_continuations_ContinuationImpl_FrameRecord_next.getObject(cursor);
         }
 
         // Make sure the stack is valid. Will force class initialization of the entire record stack.

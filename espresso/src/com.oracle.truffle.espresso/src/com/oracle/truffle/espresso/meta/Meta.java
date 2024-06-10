@@ -1928,36 +1928,36 @@ public final class Meta extends ContextAccessImpl {
     @CompilationFinal public Method java_beans_Introspector_flushFromCaches;
 
     public final class ContinuumSupport {
-        public final Method org_graalvm_continuations_Continuation_run;
-        public final Method org_graalvm_continuations_Continuation_suspend;
-        public final Field org_graalvm_continuations_Continuation_stackFrameHead;
+        public final Method org_graalvm_continuations_ContinuationImpl_run;
+        public final Method org_graalvm_continuations_ContinuationImpl_suspend;
+        public final Field org_graalvm_continuations_ContinuationImpl_stackFrameHead;
         public final Field HIDDEN_CONTINUATION_FRAME_RECORD;
-        public final ObjectKlass org_graalvm_continuations_Continuation_FrameRecord;
-        public final Field org_graalvm_continuations_Continuation_FrameRecord_pointers;
-        public final Field org_graalvm_continuations_Continuation_FrameRecord_primitives;
-        public final Field org_graalvm_continuations_Continuation_FrameRecord_method;
-        public final Field org_graalvm_continuations_Continuation_FrameRecord_next;
-        public final Field org_graalvm_continuations_Continuation_FrameRecord_bci;
+        public final ObjectKlass org_graalvm_continuations_ContinuationImpl_FrameRecord;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_pointers;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_primitives;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_method;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_next;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_bci;
         public final ObjectKlass org_graalvm_continuations_IllegalMaterializedRecordException;
         public final ObjectKlass org_graalvm_continuations_IllegalContinuationStateException;
 
         private ContinuumSupport() {
-            ObjectKlass org_graalvm_continuations_Continuation = knownKlass(Type.org_graalvm_continuations_Continuation);
-            org_graalvm_continuations_Continuation_run = org_graalvm_continuations_Continuation.requireDeclaredMethod(Name.run, Signature._void);
-            org_graalvm_continuations_Continuation_suspend = org_graalvm_continuations_Continuation.requireDeclaredMethod(Name.suspend, Signature._void);
-            org_graalvm_continuations_Continuation_stackFrameHead = org_graalvm_continuations_Continuation.requireDeclaredField(Name.stackFrameHead,
-                            Type.org_graalvm_continuations_Continuation_FrameRecord);
-            HIDDEN_CONTINUATION_FRAME_RECORD = org_graalvm_continuations_Continuation.requireHiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD);
-            org_graalvm_continuations_Continuation_FrameRecord = knownKlass(Type.org_graalvm_continuations_Continuation_FrameRecord);
-            org_graalvm_continuations_Continuation_FrameRecord_pointers = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+            ObjectKlass org_graalvm_continuations_ContinuationImpl = knownKlass(Type.org_graalvm_continuations_ContinuationImpl);
+            org_graalvm_continuations_ContinuationImpl_run = org_graalvm_continuations_ContinuationImpl.requireDeclaredMethod(Name.run, Signature._void);
+            org_graalvm_continuations_ContinuationImpl_suspend = org_graalvm_continuations_ContinuationImpl.requireDeclaredMethod(Name.suspend, Signature._void);
+            org_graalvm_continuations_ContinuationImpl_stackFrameHead = org_graalvm_continuations_ContinuationImpl.requireDeclaredField(Name.stackFrameHead,
+                            Type.org_graalvm_continuations_ContinuationImpl_FrameRecord);
+            HIDDEN_CONTINUATION_FRAME_RECORD = org_graalvm_continuations_ContinuationImpl.requireHiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD);
+            org_graalvm_continuations_ContinuationImpl_FrameRecord = knownKlass(Type.org_graalvm_continuations_ContinuationImpl_FrameRecord);
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_pointers = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
                             Name.pointers, Type.java_lang_Object_array);
-            org_graalvm_continuations_Continuation_FrameRecord_primitives = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_primitives = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
                             Name.primitives, Type._long_array);
-            org_graalvm_continuations_Continuation_FrameRecord_method = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_method = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
                             Name.method, Type.java_lang_reflect_Method);
-            org_graalvm_continuations_Continuation_FrameRecord_next = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
-                            Name.next, Type.org_graalvm_continuations_Continuation_FrameRecord);
-            org_graalvm_continuations_Continuation_FrameRecord_bci = org_graalvm_continuations_Continuation_FrameRecord.requireDeclaredField(
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_next = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
+                            Name.next, Type.org_graalvm_continuations_ContinuationImpl_FrameRecord);
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_bci = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
                             Name.bci, Type._int);
             org_graalvm_continuations_IllegalMaterializedRecordException = knownKlass(
                             Type.org_graalvm_continuations_IllegalMaterializedRecordException);
