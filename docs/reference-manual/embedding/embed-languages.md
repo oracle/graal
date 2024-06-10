@@ -682,7 +682,7 @@ To summarize, the code cache can be controlled by keeping and maintaining strong
 
 ## Polyglot Isolates
 
-On Oracle GraalVM, a Polyglot engine can be configured to run in a dedicated Native Image isolate.
+On Oracle GraalVM, a polyglot engine can be configured to run in a dedicated Native Image isolate.
 A polyglot engine in this mode executes within a VM-level fault domain with a dedicated garbage collector and JIT compiler.
 Polyglot isolates are useful for [polyglot sandboxing](../../security/polyglot-sandbox.md).
 Running languages in an isolate works with HotSpot and Native Image host virtual machines.
@@ -694,22 +694,50 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>polyglot</artifactId>
-    <version>24.0.0</version>
+    <version>${graalvm.polyglot.version}</version>
     <type>jar</type>
 </dependency>
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>js-isolate</artifactId>
-    <version>24.0.0</version>
+    <version>${graalvm.polyglot.version}</version>
     <type>pom</type>
 </dependency>
 ```
 
-The downloaded dependency is platform-independent, which contains a native-image for each platform.
-We plan to support downloading polyglot isolate native images for individual platforms in a future release.
+Starting from the Polyglot API version 24.1.0, the polyglot engine supports polyglot isolates for individual platforms.
+To download a polyglot isolate for a specific platform, append the operating system and
+CPU architecture classifiers to the polyglot isolate Maven `artifactId`. For example,
+to configure a dependency on isolated Python for Linux amd64, add the following Maven dependencies:
+
+```xml
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
+	<artifactId>polyglot</artifactId>
+	<version>${graalvm.polyglot.version}</version>
+	<type>jar</type>
+</dependency>
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
+	<artifactId>python-isolate-linux-amd64</artifactId>
+	<version>${graalvm.polyglot.version}</version>
+	<type>pom</type>
+</dependency>
+```
+
+Supported platform classifiers are:
+* `linux-amd64`
+* `linux-aarch64`
+* `darwin-amd64`
+* `darwin-aarch64`
+* `windows-amd64`
+
+For a complete Maven POM file that adds the polyglot isolate Native Image dependency for the current platform,
+refer to the [Polyglot Embedding Demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub.
+
 
 To enable isolate usage with the Polyglot API, the `--engine.SpawnIsolate=true` option must be passed to `Engine` or `Context` when constructed.
-The option `engine.SpawnIsolate` may not be available if used on any other JDK than Oracle GraalVM.
+The option `engine.SpawnIsolate` may not be available if used on any JDK other than Oracle GraalVM.
 
 ```java
 import org.graalvm.polyglot.*;
@@ -734,6 +762,7 @@ Currently, the following languages are available as polyglot isolates:
 | Language                      | Available from |
 |-------------------------------|----------------|
 | JavaScript (`js-isolate`)     | 23.1           |
+| Python (`python-isolate`)     | 24.1           |
 
 We plan to add support for more languages in future versions.
 
