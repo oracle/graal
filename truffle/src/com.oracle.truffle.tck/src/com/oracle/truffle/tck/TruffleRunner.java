@@ -335,6 +335,7 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
          * @since 0.27
          */
         @Override
+        @SuppressWarnings("deprecation")
         protected TestClass createTestClass(Class<?> testClass) {
             return new TruffleTestClass(testClass);
         }
@@ -382,6 +383,7 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
      * @since 0.27
      */
     @Override
+    @SuppressWarnings("deprecation")
     protected final TestClass createTestClass(Class<?> testClass) {
         return new TruffleTestClass(testClass);
     }
