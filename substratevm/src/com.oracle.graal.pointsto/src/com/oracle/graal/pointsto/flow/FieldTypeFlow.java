@@ -55,17 +55,17 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     /** The holder of the field flow (null for static fields). */
-    private AnalysisObject object;
+    private final AnalysisObject object;
 
     /** A filter flow used for unsafe writes. */
     private volatile FieldFilterTypeFlow filterFlow;
 
     public FieldTypeFlow(AnalysisField field, AnalysisType type) {
-        super(field, filterUncheckedInterface(type), initialFieldState(field));
+        this(field, type, null);
     }
 
     public FieldTypeFlow(AnalysisField field, AnalysisType type, AnalysisObject object) {
-        this(field, type);
+        super(field, filterUncheckedInterface(type), initialFieldState(field));
         this.object = object;
     }
 
