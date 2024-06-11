@@ -567,6 +567,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return address;
     }
 
+    // @formatter:off
     public final int sizeofZStoreBarrierEntry = getFieldValue("CompilerToVM::Data::sizeof_ZStoreBarrierEntry", Integer.class, "int", -1, zgcSupport);
     public final int ZThreadLocalData_store_good_mask_offset = getConstant("ZThreadLocalData::store_good_mask_offset", Integer.class, -1, zgcSupport);
     public final int ZThreadLocalData_store_barrier_buffer_offset = getConstant("ZThreadLocalData::store_barrier_buffer_offset", Integer.class, -1, zgcSupport);
@@ -574,6 +575,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int ZStoreBarrierBuffer_buffer_offset = getConstant("ZStoreBarrierBuffer::buffer_offset", Integer.class, -1, zgcSupport);
     public final int ZStoreBarrierEntry_p_offset = getConstant("ZStoreBarrierEntry::p_offset", Integer.class, -1, zgcSupport);
     public final int ZStoreBarrierEntry_prev_offset = getConstant("ZStoreBarrierEntry::prev_offset", Integer.class, -1, zgcSupport);
+    // @formatter:on
 
     /*
      * Generational ZGC support
@@ -588,7 +590,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_with_healing");
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_without_healing");
     public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("ZBarrierSetRuntime::load_barrier_on_oop_array");
-    public final int ZPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64") && zgcSupport);
+    public final int zPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64") && zgcSupport);
 
     private long getXGCAddressField(String name) {
         String realName = name;
@@ -622,12 +624,14 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long xBarrierSetRuntimeLoadBarrierOnOopArray = getXGCAddressField("XBarrierSetRuntime::load_barrier_on_oop_array");
 
     // aarch64 specific nmethod entry barrier support
+    // @formatter:off
     public final int BarrierSetAssembler_nmethod_patching_type = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_nmethod_patching_type", Integer.class, "int", -1, osArch.equals("aarch64"));
     public final long BarrierSetAssembler_patching_epoch_addr = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_patching_epoch_addr", Long.class, "address", -1L,
                     osArch.equals("aarch64") && zgcSupport);
     public final int NMethodPatchingType_stw_instruction_and_data_patch = getConstant("NMethodPatchingType::stw_instruction_and_data_patch", Integer.class, -1, osArch.equals("aarch64"));
     public final int NMethodPatchingType_conc_instruction_and_data_patch = getConstant("NMethodPatchingType::conc_instruction_and_data_patch", Integer.class, -1, osArch.equals("aarch64"));
     public final int NMethodPatchingType_conc_data_patch = getConstant("NMethodPatchingType::conc_data_patch", Integer.class, -1, osArch.equals("aarch64"));
+    // @formatter:on
 
     {
         if (osArch.equals("aarch64")) {

@@ -304,8 +304,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                     // Combine the guard value (low order) with the epoch value (high order).
                     masm.orr(64, scratch1, scratch1, scratch2, LSL, 32);
                     // Compare the global values with the thread-local values.
-                    AArch64Address thread_disarmed_and_epoch_addr = masm.makeAddress(64, thread, config.threadDisarmedOffset, scratch2);
-                    masm.ldr(64, scratch2, thread_disarmed_and_epoch_addr);
+                    AArch64Address threadDisarmedAndEpochAddr = masm.makeAddress(64, thread, config.threadDisarmedOffset, scratch2);
+                    masm.ldr(64, scratch2, threadDisarmedAndEpochAddr);
                     masm.cmp(64, scratch1, scratch2);
 
                 } else {
