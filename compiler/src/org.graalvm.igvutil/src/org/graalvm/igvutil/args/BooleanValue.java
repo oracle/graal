@@ -25,7 +25,7 @@
 package org.graalvm.igvutil.args;
 
 /**
- * A program argument that holds a boolean.
+ * Parses a literal boolean ("true" or "false", ignoring case) from command line arguments.
  */
 public class BooleanValue extends OptionValue<Boolean> {
 

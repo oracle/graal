@@ -25,7 +25,7 @@
 package org.graalvm.igvutil.args;
 
 /**
- * A program argument that holds a string.
+ * "Parses" (effectively returns unaltered) a {@link String} from command line arguments.
  */
 public class StringValue extends OptionValue<String> {
     public StringValue(String name, String help) {

@@ -25,7 +25,7 @@
 package org.graalvm.igvutil.args;
 
 /**
- * A program argument that holds a double.
+ * Parses a {@link Double} from command line arguments.
  */
 public class DoubleValue extends OptionValue<Double> {
     public DoubleValue(String name, String help) {

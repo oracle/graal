@@ -25,7 +25,7 @@
 package org.graalvm.igvutil.args;
 
 /**
- * Indicates that a value was not provided for a required program argument.
+ * Indicates that a value was not provided for a required program option.
  */
 @SuppressWarnings("serial")
 public class MissingArgumentException extends Exception {

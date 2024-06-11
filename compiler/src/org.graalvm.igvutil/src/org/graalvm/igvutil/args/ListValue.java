@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A positional argument that can be parsed multiple times, and collected into a list.
+ * Repeated option value which parses an underlying option multiple times, and collects the results into a list.
  * When parsing, this will try to consume all subsequent positional arguments.
  * To avoid ambiguities when using a list argument followed by another positional argument of the same type,
  * you can use an argument separator (`--`) as a terminator, marking the end of a list.

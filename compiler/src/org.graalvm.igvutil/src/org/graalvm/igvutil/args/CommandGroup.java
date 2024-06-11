@@ -29,20 +29,23 @@ import java.io.PrintWriter;
 import org.graalvm.collections.EconomicMap;
 
 /**
- * Encapsulates a group of option and positional arguments.
+ * Encapsulates a set of sub-{@link Command}s of which the user can select one explicitly by name.
+ * @param <C> Common type of all subcommands in the group.
+ *           Useful when subcommands share common functionality by inheriting from the same subclass of {@link Command}.
  */
 public class CommandGroup<C extends Command> {
-    /**
-     * The map of argument names to option arguments. Option argument names start with the "--"
-     * prefix. They may be required or optional.
-     */
     private final EconomicMap<String, C> subCommands = EconomicMap.create();
 
     /**
-     * Parsed subcommand.
+     * Subcommand specified by the arguments, or null if none was selected.
      */
     private C selectedCommand = null;
 
+    /**
+     * Parses and updates the selected subcommand based on {@code args[offset]}.
+     *
+     * @see Command#parse(String[], int)
+     */
     public int parse(String[] args, int offset) throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
         String arg = args[offset];
         selectedCommand = subCommands.get(arg);
@@ -52,10 +55,16 @@ public class CommandGroup<C extends Command> {
         return selectedCommand.parse(args, offset + 1);
     }
 
+    /**
+     * Adds a command to the set of subcommands.
+     */
     public void addCommand(C command) {
         subCommands.put(command.getName(), command);
     }
 
+    /**
+     * @return The subcommand that was specified by the program arguments, or null if none was selected (yet).
+     */
     public C getSelectedCommand() {
         return selectedCommand;
     }

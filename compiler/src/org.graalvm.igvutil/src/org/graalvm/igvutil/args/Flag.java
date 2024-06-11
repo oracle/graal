@@ -25,7 +25,7 @@
 package org.graalvm.igvutil.args;
 
 /**
- * A boolean flag argument that is {@code false} when not present in the program arguments and
+ * A boolean flag option value that is {@code false} when not present in the program arguments and
  * {@code true} when it is present.
  */
 public class Flag extends OptionValue<Boolean> {

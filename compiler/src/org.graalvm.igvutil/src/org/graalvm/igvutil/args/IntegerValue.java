@@ -25,7 +25,7 @@
 package org.graalvm.igvutil.args;
 
 /**
- * A program argument that holds an integer.
+ * Parses a {@link Integer} from command line arguments.
  */
 public class IntegerValue extends OptionValue<Integer> {
     public IntegerValue(String name, String help) {

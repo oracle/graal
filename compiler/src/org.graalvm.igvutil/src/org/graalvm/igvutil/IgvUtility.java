@@ -157,9 +157,9 @@ public class IgvUtility {
             super("flatten", """
                     Reorders graphs in the given input files so that they are grouped according
                     to a specified property, such as their name.""");
-            outputFile = addOption("--output-file", new StringValue("PATH",
+            outputFile = addNamed("--output-file", new StringValue("PATH",
                     "Path that the flattened BGV file will be saved under"));
-            flattenKey = addOption("--by", new StringValue("PROPERTY",
+            flattenKey = addNamed("--by", new StringValue("PROPERTY",
                     "graph", "Graph property that graphs will be grouped by"));
         }
 
@@ -204,8 +204,8 @@ public class IgvUtility {
 
         public Filter() {
             super("filter", "filter nodes and graphs according to properties and export to JSON");
-            nodePropertyFilter = addOption("--node-properties", new StringValue("PROPERTIES", "", "comma-separated list of node properties"));
-            graphPropertyFilter = addOption("--graph-properties", new StringValue("PROPERTIES", "", "comma-separated list of graph properties"));
+            nodePropertyFilter = addNamed("--node-properties", new StringValue("PROPERTIES", "", "comma-separated list of node properties"));
+            graphPropertyFilter = addNamed("--graph-properties", new StringValue("PROPERTIES", "", "comma-separated list of graph properties"));
             writer = new JsonPrettyWriter(new PrintWriter(System.out));
         }
 

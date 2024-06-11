@@ -31,30 +31,44 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 
 /**
- * Encapsulates a group of option and positional arguments.
+ * Contains utilities to parse a set of named from command-line arguments.
+ * A command is made up of positional and named named, as well as a single optional {@link CommandGroup}.
+ * Named named can appear at any index in the arguments, and must be prefixed by their name.
+ * Positional named must appear in the same order as they were added to the command, and they don't require being prefixed by a name.
+ *
+ * @see #addNamed(String, OptionValue)
+ * @see #addPositional(OptionValue)
  */
 public class Command {
-    public static final String SEPARATOR = "--";
     /**
-     * The value of a valued option argument may be specified as the successive program argument
+     * Used to disambiguate where one (sub-)command ends.
+     */
+    public static final String SEPARATOR = "--";
+
+    /**
+     * The value of a named option argument may be specified as a successive program argument
      * (e.g. --arg value) or with an equal sign (e.g. --arg=value).
      */
     public static final char EQUAL_SIGN = '=';
 
+    /**
+     * Help flag as specified on the command-line.
+     */
     public static final String HELP = "--help";
 
     /**
-     * The map of argument names to option arguments. Option argument names start with the "--"
-     * prefix.
+     * Map of argument names to named arguments.
      */
-    private final EconomicMap<String, OptionValue<?>> options = EconomicMap.create();
+    private final EconomicMap<String, OptionValue<?>> named = EconomicMap.create();
 
     /**
-     * The list of positional arguments. The argument names do not start with a prefix and are
-     * always required.
+     * List of positional arguments.
      */
     private final List<OptionValue<?>> positional = new ArrayList<>();
 
+    /**
+     * Set of subcommands. May be null.
+     */
     private CommandGroup<? extends Command> commandGroup = null;
 
     private final String name;
@@ -66,9 +80,9 @@ public class Command {
     }
 
     /**
-     * Adds an argument to the list of program arguments.
+     * Appends an option to the list of positional options.
      *
-     * @param argument the program argument to be added
+     * @return the value of {@code argument}. New instantiations of {@link OptionValue} should always be wrapped by a call to this function or {@link #addNamed(String, OptionValue)}.
      */
     public <T> OptionValue<T> addPositional(OptionValue<T> argument) {
         positional.add(argument);
@@ -76,15 +90,20 @@ public class Command {
     }
 
     /**
-     * Adds an argument to the list of program arguments.
+     * Adds an option to the set of named options.
      *
-     * @param argument the program argument to be added
+     * @return the value of {@code argument}. New instantiations of {@link OptionValue} should always be wrapped by a call to this function or {@link #addPositional(OptionValue)}}.
      */
-    public <T> OptionValue<T> addOption(String optionName, OptionValue<T> argument) {
-        options.put(optionName, argument);
+    public <T> OptionValue<T> addNamed(String optionName, OptionValue<T> argument) {
+        named.put(optionName, argument);
         return argument;
     }
 
+    /**
+     * Sets the command's subcommand group.
+     *
+     * @return the value of {@code commandGroup}. New instantiations of {@link CommandGroup} should always be wrapped by a call to this function.
+     */
     public <C extends Command> CommandGroup<C> addCommandGroup(CommandGroup<C> commandGroup) {
         if (this.commandGroup != null) {
             throw new RuntimeException("Only one subcommand per command is supported");
@@ -101,10 +120,17 @@ public class Command {
         return description;
     }
 
+    /**
+     * Parses an argument of the form "--option=value".
+     *
+     * @param arg            the argument in question.
+     * @param equalSignIndex index of the equals sign in {@code arg}.
+     * @return true iff the argument was parsed successfully.
+     */
     private boolean parseEqualsValue(String arg, int equalSignIndex) throws InvalidArgumentException {
         String optionName = arg.substring(0, equalSignIndex);
         String valueString = arg.substring(equalSignIndex + 1);
-        OptionValue<?> value = options.get(optionName);
+        OptionValue<?> value = named.get(optionName);
         if (value == null) {
             return false;
         }
@@ -112,6 +138,16 @@ public class Command {
         return index > 0;
     }
 
+    /**
+     * Parses the full command (including subcommands, named and positional options) from command line arguments.
+     *
+     * @param args   the full array of program arguments as received in {@code main}.
+     * @param offset starting index from which arguments in {@code args} should be parsed.
+     * @return the index of the first argument in {@code args} that was not consumed during parsing of the command.
+     * @throws InvalidArgumentException if an option could not be parsed successfully.
+     * @throws MissingArgumentException if a required argument was not present among {@code args}
+     * @throws HelpRequestedException   if the --help flag was present among {@code args}.
+     */
     public int parse(String[] args, int offset) throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
         int nextPositionalArg = 0;
         int index = offset;
@@ -133,7 +169,7 @@ public class Command {
                 index++;
                 continue;
             }
-            OptionValue<?> value = options.get(args[index]);
+            OptionValue<?> value = named.get(args[index]);
             if (value == null) {
                 if (nextPositionalArg >= positional.size()) {
                     break;
@@ -145,7 +181,7 @@ public class Command {
         if (commandGroup != null && commandGroup.getSelectedCommand() == null) {
             throw new MissingArgumentException("SUBCOMMAND");
         }
-        var cursor = options.getEntries();
+        var cursor = named.getEntries();
         while (cursor.advance()) {
             String name = cursor.getKey();
             OptionValue<?> value = cursor.getValue();
@@ -159,7 +195,6 @@ public class Command {
         return index;
     }
 
-
     static final String INDENT = "  ";
 
     static final String HELP_ITEM_FMT = "  %s%n    %s%n";
@@ -169,7 +204,7 @@ public class Command {
         if (commandGroup != null) {
             writer.append(' ');
             commandGroup.printUsage(writer);
-            if (!options.isEmpty() || !positional.isEmpty()) {
+            if (!named.isEmpty() || !positional.isEmpty()) {
                 writer.append(" --");
             }
         }
@@ -177,7 +212,7 @@ public class Command {
             writer.append(' ');
             writer.append(option.getUsage());
         }
-        if (!options.isEmpty()) {
+        if (!named.isEmpty()) {
             writer.append(" [OPTIONS]");
         }
     }
@@ -199,13 +234,13 @@ public class Command {
                 separate = true;
             }
         }
-        if (!options.isEmpty()) {
+        if (!named.isEmpty()) {
             if (separate) {
                 writer.println();
                 separate = false;
             }
             writer.println("OPTIONS:");
-            var cursor = options.getEntries();
+            var cursor = named.getEntries();
             while (cursor.advance()) {
                 if (separate) {
                     writer.println();

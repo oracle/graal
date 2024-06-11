@@ -27,33 +27,42 @@ package org.graalvm.igvutil.args;
 import java.util.List;
 
 /**
- * An argument that represents a value.
+ * Holds the value of a program option, parsed from command line arguments.
+ * Value parsing should be implemented by subclasses by overriding the {@link #parseValue(String[], int)} method.
  *
  * @param <T> the type of the parsed value.
  */
 public abstract class OptionValue<T> {
     /**
-     * The parsed value of the argument.
+     * The parsed value of the option. A null value indicates the option has not been parsed (yet).
      */
     protected T value = null;
 
     /**
-     * Default value to return if no value was parsed.
-     * Null if there is no default.
+     * Default value to return if no value was parsed. Can be null.
      */
     private final T defaultValue;
 
-    private boolean set = false;
-
+    /**
+     * Explanatory name for the option.
+     */
     private final String name;
+
+    /**
+     * If true, parsing will throw an exception if this option is missing from the command-line arguments.
+     */
     private final boolean required;
+
+    /**
+     * Help text explaining what the option does.
+     */
     private final String description;
 
     /**
-     * Constructs a required value argument with no default.
+     * Constructs a required option with no default.
      *
-     * @param name the name of the argument
-     * @param help the help message
+     * @param name the name of the argument.
+     * @param help the help message.
      */
     public OptionValue(String name, String help) {
         this.name = name;
@@ -63,10 +72,11 @@ public abstract class OptionValue<T> {
     }
 
     /**
-     * Constructs an optional argument with a default value (which can be null).
+     * Constructs a not required option with a default value.
      *
-     * @param name the name of the argument
-     * @param help the help message
+     * @param name the name of the argument.
+     * @param defaultValue the option's default value. Can be null.
+     * @param help the help message.
      */
     public OptionValue(String name, T defaultValue, String help) {
         this.name = name;
@@ -76,18 +86,26 @@ public abstract class OptionValue<T> {
     }
 
     /**
-     * Gets the value of the argument.
+     * Gets the value of the option.
      *
-     * @return the parsed argument value, or a default if the argument wasn't parsed (yet).
+     * @return the parsed option value, or a default if the argument wasn't parsed (yet).
      */
     public T getValue() {
-        return value == null ? defaultValue : value;
+        return isSet() ? defaultValue : value;
     }
 
+    /**
+     * @return true iff the option was successfully parsed from the program arguments.
+     */
     public boolean isSet() {
-        return set;
+        return value != null;
     }
 
+    /**
+     * If true, parsing will throw an exception if this option is missing from the command-line arguments.
+     *
+     * @return true iff the option was constructed with no default value.
+     */
     public boolean isRequired() {
         return required;
     }
@@ -101,22 +119,37 @@ public abstract class OptionValue<T> {
     }
 
     /**
-     * Parses the value from one or more arguments
-     * and updates {@link #value} if parsing succeeded.
+     * Parses one or more arguments and updates {@link #value} to a non-null value if parsing succeeded.
      *
-     * @return the index of the next argument to consume.
+     * @param args the full array of program arguments as received in {@code main}.
+     * @param offset starting index from which arguments in {@code args} should be parsed.
+     * @return the index of the first argument in {@code args} that was not consumed during parsing of the option.
      */
     abstract int parseValue(String[] args, int offset);
 
-    public int parse(String[] args, int offsetBase) throws InvalidArgumentException {
-        int index = parseValue(args, offsetBase);
+    /**
+     * Parses one or more command-line arguments, throwing an {@link InvalidArgumentException} if parsing failed.
+     *
+     * @param args   the full array of program arguments as received in {@code main}.
+     * @param offset starting index from which arguments in {@code args} should be parsed.
+     * @return the index of the first argument in {@code args} that was not consumed during parsing of the option.
+     * @throws InvalidArgumentException if the option could not be parsed successfully.
+     */
+    public int parse(String[] args, int offset) throws InvalidArgumentException {
+        int index = parseValue(args, offset);
         if (value == null) {
             throw new InvalidArgumentException(name, "couldn't parse value");
         }
-        set = true;
         return index;
     }
 
+    /**
+     * Converts an option that will parse a single argument into
+     * one that will parse successive occurrences of the same option into a list.
+     * The underlying option should not be used alongside the returned one.
+     *
+     * @see ListValue
+     */
     public OptionValue<List<T>> repeated() {
         if (defaultValue != null) {
             return new ListValue<>(name, List.of(defaultValue), description, this);

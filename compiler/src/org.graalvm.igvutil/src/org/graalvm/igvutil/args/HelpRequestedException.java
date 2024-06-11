@@ -24,8 +24,14 @@
  */
 package org.graalvm.igvutil.args;
 
+/**
+ * Thrown when a {@code --help} flag is encountered when parsing command-line arguments.
+ */
 @SuppressWarnings("serial")
 public class HelpRequestedException extends Exception {
+    /**
+     * The command that the user requested help for.
+     */
     public final Command command;
 
     HelpRequestedException(Command command) {
