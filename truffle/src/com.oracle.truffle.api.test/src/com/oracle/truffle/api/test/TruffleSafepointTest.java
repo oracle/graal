@@ -126,9 +126,8 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     private static final Method SUBMIT_INTERNAL = ReflectionUtils.requireDeclaredMethod(TruffleLanguage.Env.class, "submitThreadLocalInternal", null);
 
     private static final int[] THREAD_CONFIGS = new int[]{1, 4, 16};
-    private static final int[] VTHREAD_CONFIGS = new int[]{1, 4, 16, 256};
     private static final int[] ITERATION_CONFIGS = new int[]{1, 8, 32};
-    private static final int MAX_THREAD_ITERATIONS_PRODUCT = 256 * 8;
+    private static final int MAX_THREAD_ITERATIONS_PRODUCT = 16 * 32; // = 512
     private static ExecutorService cachedThreadPool;
     private static final Set<Thread> runningThreads = ConcurrentHashMap.newKeySet();
     private ExecutorService service;
@@ -1668,12 +1667,23 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     void forEachConfig(TestRunner run) {
-        var threadConfigs = vthreads && !TruffleOptions.AOT ? VTHREAD_CONFIGS : THREAD_CONFIGS;
+        /*
+         * It would be good to test with a number of virtual threads higher than carrier threads
+         * (e.g. 256), but unfortunately as detailed in GR-54643 that does not work for this test
+         * because calls to HotSpotThreadLocalHandshake.doHandshake for Truffle safepoints are
+         * considered native upcalls by virtual threads and pin the carrier threads. And when
+         * virtual threads pin all carrier threads, it seems Loom just hangs and does not try to
+         * compensate by adding more carrier threads. So we check we do not use more virtual threads
+         * than there are carrier threads (= availableProcessors() unless overridden by system
+         * property).
+         */
+        var threadConfigs = THREAD_CONFIGS;
+        int processors = Runtime.getRuntime().availableProcessors();
 
         // synchronous execution of all configs
         for (int threads : threadConfigs) {
             for (int events : ITERATION_CONFIGS) {
-                if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT) {
+                if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT && !(vthreads && threads > processors)) {
                     if (VERBOSE) {
                         System.out.println("[" + threads + ", " + events + "]");
                     }
@@ -1691,7 +1701,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             List<Future<?>> futures = new ArrayList<>();
             for (int threads : threadConfigs) {
                 for (int events : ITERATION_CONFIGS) {
-                    if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT) {
+                    if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT && !(vthreads && threads > processors)) {
                         futures.add(service.submit(() -> run.run(threads, events)));
                     }
                 }
