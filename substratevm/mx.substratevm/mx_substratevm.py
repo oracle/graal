@@ -26,6 +26,7 @@
 import os
 import pathlib
 import re
+import shutil
 import tempfile
 from glob import glob
 from contextlib import contextmanager
@@ -53,8 +54,6 @@ from mx_sdk_vm_impl import svm_experimental_options
 from mx_unittest import _run_tests, _VMLauncher
 
 import sys
-
-
 
 suite = mx.suite('substratevm')
 svmSuites = [suite]
@@ -2220,14 +2219,9 @@ if is_musl_supported():
         final_args = ['--static', '--libc=musl'] + args
         run_helloworld_command(final_args, config, 'muslhelloworld')
 
-@mx.command(suite, 'check-libcontainer-annotations')
-def check_libcontainer_annotations(args):
-    """Verifies that files from libcontainer that are copied from hotspot have a @BasedOnJDKFile annotation in ContainerLibrary."""
 
-    # collect paths to check
-
+def _get_libcontainer_files():
     paths = []
-
     libcontainer_project = mx.project("com.oracle.svm.native.libcontainer")
     libcontainer_dir = libcontainer_project.dir
     for src_dir in libcontainer_project.source_dirs():
@@ -2244,7 +2238,16 @@ def check_libcontainer_annotations(args):
                         paths.append(hotspot_path.as_posix())
                 else:
                     paths.append(rel_path.as_posix())
+    return libcontainer_dir, paths
 
+
+@mx.command(suite, 'check-libcontainer-annotations')
+def check_libcontainer_annotations(args):
+    """Verifies that files from libcontainer that are copied from hotspot have a @BasedOnJDKFile annotation in ContainerLibrary."""
+
+    # collect paths to check
+
+    libcontainer_dir, paths = _get_libcontainer_files()
 
     java_project = mx.project("com.oracle.svm.core")
     container_library = pathlib.Path(java_project.dir, "src/com/oracle/svm/core/container/ContainerLibrary.java")
@@ -2260,3 +2263,32 @@ def check_libcontainer_annotations(args):
     for a in annotation_lines:
         if not any((f for f in paths if f in a)):
             mx.abort(f"annotation {a} does not match any files in {libcontainer_dir}")
+
+
+reimport_libcontainer_files_cmd = "reimport-libcontainer-files"
+
+
+@mx.command(suite, reimport_libcontainer_files_cmd)
+def reimport_libcontainer_files(args):
+    parser = ArgumentParser(prog=f"mx {reimport_libcontainer_files_cmd}")
+    parser.add_argument("--jdk-repo", required=True, help="Path to the OpenJDK repo to import the files from.")
+    parsed_args = parser.parse_args(args)
+
+    libcontainer_dir, paths = _get_libcontainer_files()
+
+    libcontainer_path = pathlib.Path(libcontainer_dir)
+    jdk_path = pathlib.Path(parsed_args.jdk_repo)
+
+    missing = []
+
+    for path in paths:
+        jdk_file = jdk_path / path
+        svm_file = libcontainer_path / path
+        if jdk_file.is_file():
+            if mx.ask_yes_no(f"Should I update {path}"):
+                shutil.copyfile(jdk_file, svm_file)
+        else:
+            missing.append(jdk_file)
+            mx.warn(f"File not found: {jdk_file}")
+            if mx.ask_yes_no(f"Should I delete {path}"):
+                svm_file.unlink()
