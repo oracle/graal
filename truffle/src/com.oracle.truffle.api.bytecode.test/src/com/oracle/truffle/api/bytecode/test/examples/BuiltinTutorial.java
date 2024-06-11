@@ -65,6 +65,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -317,7 +318,7 @@ public class BuiltinTutorial {
         CallTarget getOrCreateCallTarget() {
             if (cachedTarget == null) {
                 cachedTarget = parse((b) -> {
-                    b.beginRoot(LanguageWithBuiltins.get());
+                    b.beginRoot(null); // normally you would pass a language here
                     b.beginInlineBuiltin(this);
                     for (int i = 0; i < args; i++) {
                         b.emitLoadArgument(i);
@@ -354,6 +355,56 @@ public class BuiltinTutorial {
      */
     static JavaBuiltin createParseIntBuiltin() {
         return new JavaBuiltin("parseInt", 1, ParseIntBuiltinNodeGen.getUncached(), ParseIntBuiltinNodeGen::create);
+    }
+
+    /**
+     * Lets verify that calling a builtin works as expected. Note that this test recreate the
+     * ParseInt builtin for every call, which is not ideal. Will will fix this later with
+     * {@link LanguageWithBuiltins}.
+     */
+    @Test
+    public void testCallJavaBuiltin() {
+        BuiltinLanguageRootNode root = parse(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.beginCallBuiltin(createParseIntBuiltin());
+            b.emitLoadArgument(0);
+            b.endCallBuiltin();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(42, root.getCallTarget().call(42));
+        assertEquals(42, root.getCallTarget().call("42"));
+    }
+
+    /**
+     * We can also inline the builtin directly into the bytecodes like in the test below. This is
+     * only allowed if the language semantics allow for builtins not being on the stack trace. For
+     * calls to be visible in the stack trace they need to go through a {@link CallTarget}.
+     */
+    @Test
+    public void testInlineJavaBuiltin() {
+        BuiltinLanguageRootNode root = parse(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.beginInlineBuiltin(createParseIntBuiltin());
+            b.emitLoadArgument(0);
+            b.endInlineBuiltin();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        root.getBytecodeNode().setUncachedThreshold(2);
+        assertEquals(42, root.getCallTarget().call(42));
+        assertEquals(BytecodeTier.UNCACHED, root.getBytecodeNode().getTier());
+        assertEquals(42, root.getCallTarget().call("42"));
+        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
+
+        // transitions to cached once the threshold is exceeded
+        assertEquals(42, root.getCallTarget().call(42));
+        assertEquals(42, root.getCallTarget().call("42"));
+        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
     }
 
     /**
@@ -585,7 +636,7 @@ public class BuiltinTutorial {
      * it.
      */
     @Test
-    public void test() {
+    public void testLanguageWithBuiltins() {
         try (Context c = Context.create("language-with-builtins")) {
             assertEquals(42, c.eval("language-with-builtins", "parseInt").execute(42).asInt());
             assertEquals(42, c.eval("language-with-builtins", "parseInt").execute("42").asInt());
