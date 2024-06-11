@@ -233,10 +233,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         return loadGraalRuntimeServiceProvider(EngineCacheSupport.class, options, false);
     }
 
-    public boolean isLatestJVMCI() {
-        return true;
-    }
-
     public abstract ThreadLocalHandshake getThreadLocalHandshake();
 
     @Override
