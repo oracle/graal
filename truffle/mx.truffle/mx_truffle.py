@@ -370,10 +370,10 @@ def _sl_command(jdk, vm_args, sl_args, use_optimized_runtime=True, use_enterpris
 
 def slnative(args):
     """build a native image of an SL program"""
-    parser = ArgumentParser(prog='mx slnative', description='Builds and executes native SL image.', usage='mx slnative [--target-folder <folder>|SL args|@VM options]')
+    parser = ArgumentParser(prog='mx slnative', description='Builds and executes native SL image.', usage='mx slnative [--target-folder <folder>|@VM options|--|SL args]')
     parser.add_argument('--target-folder', help='Folder where the SL executable will be generated.', default=None)
     parsed_args, args = parser.parse_known_args(args)
-    vm_args, sl_args = mx.extract_VM_args(args)
+    vm_args, sl_args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
     target_dir = parsed_args.target_folder if parsed_args.target_folder else tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
     image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=False, hosted_assertions=False)
