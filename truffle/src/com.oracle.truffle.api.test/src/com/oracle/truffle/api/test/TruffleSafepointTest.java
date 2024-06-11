@@ -1693,19 +1693,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                 for (int iterationConfig = 0; iterationConfig < ITERATION_CONFIGS.length; iterationConfig++) {
                     int events = ITERATION_CONFIGS[iterationConfig];
                     if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT) {
-                        try {
-                            if (futures.size() >= 64) {
-                                for (Future<?> future : futures) {
-                                    waitOrFail(future);
-                                }
-                                futures.clear();
-                            }
-                            futures.add(service.submit(() -> run.run(threads, events)));
-                        } catch (AssertionError e) {
-                            throw e;
-                        } catch (Throwable e) {
-                            throw new RuntimeException(e);
-                        }
+                        futures.add(service.submit(() -> run.run(threads, events)));
                     }
                 }
             }
