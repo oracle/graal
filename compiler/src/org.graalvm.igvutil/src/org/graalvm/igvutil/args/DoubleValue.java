@@ -27,13 +27,13 @@ package org.graalvm.igvutil.args;
 /**
  * A program argument that holds a double.
  */
-public class DoubleValue extends Value<Double> {
-    public DoubleValue(String name, boolean required, String help) {
-        super(name, required, help);
+public class DoubleValue extends OptionValue<Double> {
+    public DoubleValue(String name, String help) {
+        super(name, help);
     }
 
-    public DoubleValue(String name) {
-        super(name);
+    public DoubleValue(String name, Double defaultValue, String help) {
+        super(name, defaultValue, help);
     }
 
     @Override

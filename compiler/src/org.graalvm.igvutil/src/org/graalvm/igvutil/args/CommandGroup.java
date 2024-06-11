@@ -30,7 +30,7 @@ import org.graalvm.collections.EconomicMap;
 /**
  * Encapsulates a group of option and positional arguments.
  */
-public class CommandGroup<C extends Command> extends Argument {
+public class CommandGroup<C extends Command> {
     /**
      * The map of argument names to option arguments. Option argument names start with the "--"
      * prefix. They may be required or optional.
@@ -42,48 +42,39 @@ public class CommandGroup<C extends Command> extends Argument {
      */
     private C selectedCommand = null;
 
-    public CommandGroup(String name, boolean required, String description) {
-        super(name, required, description);
-    }
-
-    @Override
     public int parse(String[] args, int offset) throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
         String arg = args[offset];
         selectedCommand = subCommands.get(arg);
         if (selectedCommand == null) {
-            throw new InvalidArgumentException(this, String.format("no subcommand corresponding to argument '%s'", arg));
+            throw new InvalidArgumentException("SUBCOMMAND", String.format("no subcommand named '%s'", arg));
         }
-        set = true;
         return selectedCommand.parse(args, offset + 1);
     }
 
-    public C addCommand(C command) {
+    public void addCommand(C command) {
         subCommands.put(command.getName(), command);
-        return command;
     }
 
     public C getSelectedCommand() {
         return selectedCommand;
     }
 
-    @Override
     public void printUsage(HelpPrinter help) {
         if (selectedCommand == null) {
-            help.print("<%s>", getName());
+            help.print("<SUBCOMMAND>");
         } else {
             selectedCommand.printUsage(help);
         }
     }
 
-    @Override
     public void printHelp(HelpPrinter help) {
         if (selectedCommand != null) {
             selectedCommand.printHelp(help);
             return;
         }
         help.println("SUBCOMMANDS:");
-        for (Argument arg : subCommands.getValues()) {
-            help.printArg(arg).newline();
+        for (C command : subCommands.getValues()) {
+            help.printHelp(command.getName(), command.getDescription()).newline();
         }
         help.newline();
     }

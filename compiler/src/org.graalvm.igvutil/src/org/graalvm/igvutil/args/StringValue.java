@@ -27,13 +27,13 @@ package org.graalvm.igvutil.args;
 /**
  * A program argument that holds a string.
  */
-public class StringValue extends Value<String> {
-    public StringValue(String name, boolean required, String help) {
-        super(name, required, help);
+public class StringValue extends OptionValue<String> {
+    public StringValue(String name, String help) {
+        super(name, help);
     }
 
-    public StringValue(String name) {
-        super(name);
+    public StringValue(String name, String defaultValue, String help) {
+        super(name, defaultValue, help);
     }
 
     @Override

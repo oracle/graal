@@ -16,8 +16,7 @@ import java.util.zip.GZIPInputStream;
 
 import org.graalvm.igvutil.args.Command;
 import org.graalvm.igvutil.args.CommandGroup;
-import org.graalvm.igvutil.args.ListValue;
-import org.graalvm.igvutil.args.Option;
+import org.graalvm.igvutil.args.OptionValue;
 import org.graalvm.igvutil.args.Program;
 import org.graalvm.igvutil.args.StringValue;
 
@@ -37,11 +36,11 @@ import jdk.graal.compiler.util.json.JsonWriter;
 
 public class IgvUtility {
     abstract static class GraphCommand extends Command {
-        protected final ListValue<String> inputFiles;
+        protected final OptionValue<List<String>> inputFiles;
 
         public GraphCommand(String name, String description) {
             super(name, description);
-            inputFiles = addArgument(new StringValue("FILES", true, "List of input BGV files").repeated());
+            inputFiles = addPositional(new StringValue("FILES", "List of input BGV files").repeated());
         }
 
         public void apply() throws IOException {
@@ -124,8 +123,8 @@ public class IgvUtility {
     }
 
     static final class Flatten extends GraphCommand {
-        private final Option<String> outputFile;
-        private final Option<String> flattenKey;
+        private final OptionValue<String> outputFile;
+        private final OptionValue<String> flattenKey;
 
         private final GraphDocument newDoc = new GraphDocument();
         private final Map<String, Group> groups = new HashMap<>();
@@ -134,12 +133,10 @@ public class IgvUtility {
             super("flatten", """
                     Reorders graphs in the given input files so that they are grouped according
                     to a specified property, such as their name.""");
-            outputFile = addArgument(new Option<String>("--output-file", true,
-                    "Path that the flattened BGV file will be saved under")
-                    .withValue(new StringValue("PATH", true, "")));
-            flattenKey = addArgument(new Option<String>("--by", false,
-                    "Graph property that graphs will be grouped by")
-                    .withValue(new StringValue("PROPERTY", true, "").withDefault("graph")));
+            outputFile = addOption("--output-file", new StringValue("PATH",
+                    "Path that the flattened BGV file will be saved under"));
+            flattenKey = addOption("--by", new StringValue("PROPERTY",
+                    "graph", "Graph property that graphs will be grouped by"));
         }
 
         void save(String filename) {
@@ -175,20 +172,16 @@ public class IgvUtility {
     }
 
     static final class Filter extends GraphCommand {
-        private final Option<String> nodePropertyFilter;
-        private final Option<String> graphPropertyFilter;
+        private final OptionValue<String> nodePropertyFilter;
+        private final OptionValue<String> graphPropertyFilter;
 
         private JsonExporter exporter = null;
         private final JsonWriter writer;
 
         public Filter() {
             super("filter", "filter nodes and graphs according to properties and export to JSON");
-            nodePropertyFilter = addArgument(new Option<String>("--node-properties", false, "comma-separated list of node properties")
-                    .withValue(new StringValue("PROPERTIES")));
-            graphPropertyFilter = addArgument(new Option<String>(
-                    "--graph-properties", false,
-                    "comma-separated list of graph properties")
-                    .withValue(new StringValue("PROPERTIES")));
+            nodePropertyFilter = addOption("--node-properties", new StringValue("PROPERTIES", "", "comma-separated list of node properties"));
+            graphPropertyFilter = addOption("--graph-properties", new StringValue("PROPERTIES", "", "comma-separated list of graph properties"));
             writer = new JsonPrettyWriter(new PrintWriter(System.out));
         }
 
@@ -245,7 +238,7 @@ public class IgvUtility {
 
     public static void main(String[] args) throws IOException {
         Program program = new Program("mx igvutil", "Various utilities to inspect and manipulate IGV dump files");
-        CommandGroup<GraphCommand> subcommand = program.addArgument(new CommandGroup<>("SUBCOMMAND", true, "selects a subcommand"));
+        CommandGroup<GraphCommand> subcommand = program.addCommandGroup(new CommandGroup<>());
         subcommand.addCommand(new Flatten());
         subcommand.addCommand(new Filter());
         subcommand.addCommand(new Printer());

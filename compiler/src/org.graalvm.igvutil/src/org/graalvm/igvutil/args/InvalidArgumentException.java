@@ -29,7 +29,7 @@ package org.graalvm.igvutil.args;
  */
 @SuppressWarnings("serial")
 public class InvalidArgumentException extends Exception {
-    InvalidArgumentException(Argument argument, String reason) {
-        super("The argument '" + argument.getName() + "' could not be parsed: " + reason);
+    InvalidArgumentException(String name, String reason) {
+        super("The argument '" + name + "' could not be parsed: " + reason);
     }
 }

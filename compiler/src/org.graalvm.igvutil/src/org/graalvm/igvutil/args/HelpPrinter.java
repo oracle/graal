@@ -20,11 +20,9 @@ public class HelpPrinter implements AutoCloseable {
         return newline();
     }
 
-    public HelpPrinter printArg(Argument argument) {
-        fmt.format("  ");
-        argument.printUsage(this);
-        newline();
-        fmt.format("    %s%n", argument.getDescription());
+    public HelpPrinter printHelp(String usage, String description) {
+        fmt.format("  %s%n", usage);
+        fmt.format("    %s%n", description);
         return this;
     }
 

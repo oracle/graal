@@ -28,13 +28,14 @@ package org.graalvm.igvutil.args;
  * A boolean flag argument that is {@code false} when not present in the program arguments and
  * {@code true} when it is present.
  */
-public class Flag extends Option<Void> {
+public class Flag extends OptionValue<Boolean> {
     public Flag(String name, String help) {
         super(name, false, help);
     }
 
     @Override
-    public Option<Void> withValue(Value<Void> value) {
-        throw new java.lang.RuntimeException("Flags cannot have values associated to them. Use Option instead.");
+    int parseValue(String[] args, int offset) {
+        value = true;
+        return offset;
     }
 }

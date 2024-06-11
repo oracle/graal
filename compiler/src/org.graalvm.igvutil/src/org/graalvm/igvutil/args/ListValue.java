@@ -9,12 +9,16 @@ import java.util.List;
  * To avoid ambiguities when using a list argument followed by another positional argument of the same type,
  * you can use an argument separator (`--`) as a terminator, marking the end of a list.
  */
-public class ListValue<T> extends Value<List<T>> {
-    private final Value<T> inner;
+public class ListValue<T> extends OptionValue<List<T>> {
+    private final OptionValue<T> inner;
 
-    public ListValue(String name, boolean required, String description,
-                     Value<T> inner) {
-        super(name, required, description);
+    public ListValue(String name, String help, OptionValue<T> inner) {
+        super(name, help);
+        this.inner = inner;
+    }
+
+    public ListValue(String name, List<T> defaultValue, String help, OptionValue<T> inner) {
+        super(name, defaultValue, help);
         this.inner = inner;
     }
 
@@ -22,17 +26,14 @@ public class ListValue<T> extends Value<List<T>> {
     public int parseValue(String[] args, int offset) {
         int index;
         for (index = offset; index < args.length; ) {
-            if (args[index].startsWith(Argument.OPTION_PREFIX)) {
-                if (args[index].contentEquals(Argument.OPTION_PREFIX)) {
-                    index++;
-                }
+            if (args[index].contentEquals(Command.SEPARATOR)) {
+                index++;
                 break;
             }
             index = inner.parseValue(args, index);
             if (inner.value == null) {
                 break;
             }
-            set = true;
             if (value == null) {
                 value = new ArrayList<>();
             }

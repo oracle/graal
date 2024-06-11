@@ -27,13 +27,14 @@ package org.graalvm.igvutil.args;
 /**
  * A program argument that holds a boolean.
  */
-public class BooleanValue extends Value<Boolean> {
-    public BooleanValue(String name, boolean required, String help) {
-        super(name, required, help);
+public class BooleanValue extends OptionValue<Boolean> {
+
+    public BooleanValue(String name, String help) {
+        super(name, help);
     }
 
-    public BooleanValue(String name) {
-        super(name);
+    public BooleanValue(String name, boolean defaultValue, String help) {
+        super(name, defaultValue, help);
     }
 
     @Override

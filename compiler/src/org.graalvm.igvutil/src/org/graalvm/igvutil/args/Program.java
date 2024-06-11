@@ -31,10 +31,17 @@ public class Program extends Command {
     }
 
     @Override
+    public void printUsage(HelpPrinter help) {
+        help.print("  ");
+        super.printUsage(help);
+    }
+
+    @Override
     public void printHelp(HelpPrinter help) {
-        help.println("USAGE:");
-        help.printArg(this);
-        help.newline();
+        help.newline().println("USAGE:");
+        printUsage(help);
+        help.newline().newline();
+
         super.printHelp(help);
     }
 }

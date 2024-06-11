@@ -27,9 +27,13 @@ package org.graalvm.igvutil.args;
 /**
  * A program argument that holds an integer.
  */
-public class IntegerValue extends Value<Integer> {
-    public IntegerValue(String name, boolean required, String help) {
-        super(name, required, help);
+public class IntegerValue extends OptionValue<Integer> {
+    public IntegerValue(String name, String help) {
+        super(name, help);
+    }
+
+    public IntegerValue(String name, Integer defaultValue, String help) {
+        super(name, defaultValue, help);
     }
 
     @Override
