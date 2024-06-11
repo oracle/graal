@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -129,6 +130,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     private static final int[] ITERATION_CONFIGS = new int[]{1, 8, 32};
     private static final int MAX_THREAD_ITERATIONS_PRODUCT = 256 * 8;
     private static ExecutorService cachedThreadPool;
+    private static final Set<Thread> runningThreads = ConcurrentHashMap.newKeySet();
     private ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
 
@@ -1720,9 +1722,10 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     private static void printAllThreads() {
-        for (Entry<Thread, StackTraceElement[]> elements : Thread.getAllStackTraces().entrySet()) {
-            Exception ex = new Exception(elements.getKey().toString());
-            ex.setStackTrace(elements.setValue(elements.getValue()));
+        for (Thread thread : runningThreads) {
+            StackTraceElement[] stackTrace = thread.getStackTrace();
+            Exception ex = new Exception(thread.toString());
+            ex.setStackTrace(stackTrace);
             ex.printStackTrace();
         }
     }
@@ -1802,6 +1805,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             setup.futures = new ArrayList<>();
             for (int i = 0; i < threads; i++) {
                 setup.futures.add(service.submit(() -> {
+                    runningThreads.add(Thread.currentThread());
                     Object prev = env.getContext().enter(finalSetup.target.getRootNode());
                     try {
                         do {
@@ -1820,6 +1824,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                         return true;
                     } finally {
                         env.getContext().leave(finalSetup.target.getRootNode(), prev);
+                        runningThreads.remove(Thread.currentThread());
                     }
                 }));
             }
