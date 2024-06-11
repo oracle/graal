@@ -337,7 +337,10 @@ meth public abstract void onSuspend(com.oracle.truffle.api.debug.SuspendedEvent)
 
 CLSS public final com.oracle.truffle.api.debug.SuspendedEvent
 meth public boolean hasSourceElement(com.oracle.truffle.api.debug.SourceElement)
+meth public boolean isBreakpointHit()
 meth public boolean isLanguageContextInitialized()
+meth public boolean isStep()
+meth public boolean isUnwind()
 meth public com.oracle.truffle.api.debug.DebugException getException()
 meth public com.oracle.truffle.api.debug.DebugStackFrame getTopStackFrame()
 meth public com.oracle.truffle.api.debug.DebugValue getReturnValue()
