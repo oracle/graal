@@ -26,15 +26,14 @@
 #ifndef SHARE_UTILITIES_DEBUG_HPP
 #define SHARE_UTILITIES_DEBUG_HPP
 
-#include "utilities/attributeNoreturn.hpp"
 #include "utilities/compilerWarnings.hpp"
 
 #ifdef ASSERT
 // error reporting helper functions
-ATTRIBUTE_NORETURN
+[[noreturn]]
 void report_vm_error(const char* file, int line, const char* error_msg);
 
-ATTRIBUTE_NORETURN
+[[noreturn]]
 ATTRIBUTE_PRINTF(4, 5)
 void report_vm_error(const char* file, int line, const char* error_msg,
                      const char* detail_fmt, ...);
