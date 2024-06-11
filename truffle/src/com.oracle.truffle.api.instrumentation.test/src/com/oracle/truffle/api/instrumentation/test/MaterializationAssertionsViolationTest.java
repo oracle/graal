@@ -76,7 +76,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 public class MaterializationAssertionsViolationTest extends AbstractPolyglotTest {
     private static final Pattern NODE_PATTERN = Pattern.compile("^S(\\d+)E(\\d+)\\((.*)\\)$");
 
-    @Rule public ExpectedException expectedException = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException expectedException = ExpectedException.none();
 
     @GenerateWrapper
     static class CustomMaterializeNode extends Node implements InstrumentableNode {

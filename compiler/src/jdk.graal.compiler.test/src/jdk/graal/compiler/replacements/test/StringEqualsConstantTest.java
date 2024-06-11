@@ -24,6 +24,12 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+
+import org.hamcrest.MatcherAssert;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -31,11 +37,7 @@ import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.JavaConstant;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import org.junit.Assert;
 
 /**
  * Tests constant folding of string equality.
@@ -56,7 +58,7 @@ public class StringEqualsConstantTest extends GraalCompilerTest {
         compile(method, graph);
 
         FixedNode firstFixed = graph.start().next();
-        Assert.assertThat(firstFixed, instanceOf(ReturnNode.class));
+        MatcherAssert.assertThat(firstFixed, instanceOf(ReturnNode.class));
 
         ReturnNode ret = (ReturnNode) firstFixed;
         JavaConstant result = ret.result().asJavaConstant();

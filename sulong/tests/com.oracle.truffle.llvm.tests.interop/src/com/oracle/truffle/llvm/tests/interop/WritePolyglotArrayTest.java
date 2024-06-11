@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -64,7 +64,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNode;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -75,6 +74,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.DoubleArrayObject;
@@ -985,7 +985,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
         return pointerTypeId;
     }
 
-    @Rule public ExpectedException thrown = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void test() {

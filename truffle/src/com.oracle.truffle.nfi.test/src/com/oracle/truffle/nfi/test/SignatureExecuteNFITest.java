@@ -42,6 +42,8 @@ package com.oracle.truffle.nfi.test;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -104,7 +106,7 @@ public class SignatureExecuteNFITest extends NFITest {
 
         Object ret = callTarget.call(increment, signature, 41);
 
-        Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
+        MatcherAssert.assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);
     }
 }

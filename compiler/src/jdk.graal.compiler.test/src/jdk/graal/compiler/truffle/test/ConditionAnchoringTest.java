@@ -27,8 +27,8 @@ package jdk.graal.compiler.truffle.test;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableCount.hasCount;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
-import static org.junit.Assert.assertThat;
 
 import java.lang.reflect.Field;
 

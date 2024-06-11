@@ -24,18 +24,20 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+
+import org.hamcrest.MatcherAssert;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import org.junit.Test;
-
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import org.junit.Assert;
 
 /**
  * Tests constant folding of {@link String#intern()}.
@@ -50,7 +52,7 @@ public class StringInternConstantTest extends GraalCompilerTest {
         StructuredGraph graph = parseForCompile(method);
 
         FixedNode firstFixed = graph.start().next();
-        Assert.assertThat(firstFixed, instanceOf(ReturnNode.class));
+        MatcherAssert.assertThat(firstFixed, instanceOf(ReturnNode.class));
 
         ReturnNode ret = (ReturnNode) firstFixed;
         if (ret.result() instanceof ConstantNode) {

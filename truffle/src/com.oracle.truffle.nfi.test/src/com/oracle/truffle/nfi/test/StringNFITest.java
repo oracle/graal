@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.test;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -71,14 +72,14 @@ public class StringNFITest extends NFITest {
     @Test
     public void testJavaStringArg(@Inject(StringArgNode.class) CallTarget callTarget) {
         Object ret = callTarget.call("42");
-        Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
+        assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);
     }
 
     @Test
     public void testBoxedStringArg(@Inject(StringArgNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(new BoxedPrimitive("42"));
-        Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
+        assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);
     }
 
@@ -104,7 +105,7 @@ public class StringNFITest extends NFITest {
     @Test
     public void testNativeStringArg(@Inject(NativeStringArgNode.class) CallTarget callTarget) {
         Object retObj = callTarget.call("8472");
-        Assert.assertThat("return value", retObj, is(instanceOf(Integer.class)));
+        assertThat("return value", retObj, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 8472, (int) (Integer) retObj);
     }
 
@@ -185,7 +186,7 @@ public class StringNFITest extends NFITest {
 
         Object ret = target.call(strArgCallback, strRetCallback);
 
-        Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
+        assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);
     }
 

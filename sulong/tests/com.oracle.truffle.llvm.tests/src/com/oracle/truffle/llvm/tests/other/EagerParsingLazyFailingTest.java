@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -110,7 +110,7 @@ public class EagerParsingLazyFailingTest {
         return options;
     }
 
-    @Rule public ExpectedException exception = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException exception = ExpectedException.none();
 
     @Test
     public void unsupportedInlineAsmNotExecuted() {

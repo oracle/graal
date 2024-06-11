@@ -40,15 +40,16 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import java.util.ArrayList;
 import java.util.Collection;
 
 import org.hamcrest.BaseMatcher;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -131,7 +132,7 @@ public class FloatingNFITest extends NFITest {
     @Test
     public void testDoubleParameter(@Inject(IncrementDoubleNode.class) CallTarget increment) {
         Object ret = increment.call(value);
-        Assert.assertThat("return value", ret, is(number(exactNumericValue + 1)));
+        assertThat("return value", ret, is(number(exactNumericValue + 1)));
     }
 
     public class IncrementFloatNode extends SendExecuteNode {
@@ -144,7 +145,7 @@ public class FloatingNFITest extends NFITest {
     @Test
     public void testFloatParameter(@Inject(IncrementFloatNode.class) CallTarget increment) {
         Object ret = increment.call(value);
-        Assert.assertThat("return value", ret, is(number(roundedNumericValue + 1)));
+        assertThat("return value", ret, is(number(roundedNumericValue + 1)));
     }
 
     public class IncrementIntNode extends SendExecuteNode {
@@ -154,7 +155,7 @@ public class FloatingNFITest extends NFITest {
         }
     }
 
-    @Rule public ExpectedException expectedException = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException expectedException = ExpectedException.none();
 
     @Test
     public void testIntParameter(@Inject(IncrementIntNode.class) CallTarget increment) {
@@ -165,6 +166,6 @@ public class FloatingNFITest extends NFITest {
         }
 
         Object ret = increment.call(value);
-        Assert.assertThat("return value", ret, is(number(intValue + 1)));
+        assertThat("return value", ret, is(number(intValue + 1)));
     }
 }

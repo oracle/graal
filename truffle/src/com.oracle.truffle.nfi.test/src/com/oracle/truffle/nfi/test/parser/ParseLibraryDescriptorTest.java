@@ -40,22 +40,23 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
-import com.oracle.truffle.nfi.test.parser.ErrorParseSignatureTest.ParserExceptionMatcher;
-import com.oracle.truffle.nfi.test.parser.backend.TestLibrary;
-import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.test.parser.ErrorParseSignatureTest.ParserExceptionMatcher;
+import com.oracle.truffle.nfi.test.parser.backend.TestLibrary;
+import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
+
 public class ParseLibraryDescriptorTest {
 
     @ClassRule public static RunWithPolyglotRule runWithPolyglot = new RunWithPolyglotRule();
-    @Rule public ExpectedException exception = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException exception = ExpectedException.none();
 
     private static NativeLibraryDescriptor parseLibraryDescriptor(String descriptor) {
         Source source = Source.newBuilder("nfi", String.format("with test %s", descriptor), "ParseLibraryDescriptorTest").internal(true).build();

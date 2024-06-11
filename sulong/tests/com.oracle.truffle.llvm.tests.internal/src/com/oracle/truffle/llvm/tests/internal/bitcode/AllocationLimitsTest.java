@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.llvm.tests.Platform;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.hamcrest.BaseMatcher;
@@ -49,6 +48,7 @@ import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.TruffleRunner;
 
@@ -96,7 +96,7 @@ public class AllocationLimitsTest {
         return runWithPolyglot.getPolyglotContext().eval(source);
     }
 
-    @Rule public ExpectedException exception = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException exception = ExpectedException.none();
 
     public static Value library;
 

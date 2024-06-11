@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
 public class VariableBitLimitsTest {
 
-    @Rule public ExpectedException exception = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException exception = ExpectedException.none();
 
     @Test
     public void allocaVarWidthUnderflow() {
