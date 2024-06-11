@@ -1,6 +1,5 @@
-
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +23,8 @@
  * questions.
  */
 package org.graalvm.igvutil.args;
+
+import java.io.PrintWriter;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -59,23 +60,27 @@ public class CommandGroup<C extends Command> {
         return selectedCommand;
     }
 
-    public void printUsage(HelpPrinter help) {
+    public void printUsage(PrintWriter writer) {
         if (selectedCommand == null) {
-            help.print("<SUBCOMMAND>");
+            writer.print("<SUBCOMMAND>");
         } else {
-            selectedCommand.printUsage(help);
+            selectedCommand.printUsage(writer);
         }
     }
 
-    public void printHelp(HelpPrinter help) {
+    public void printHelp(PrintWriter writer) {
         if (selectedCommand != null) {
-            selectedCommand.printHelp(help);
+            selectedCommand.printHelp(writer);
             return;
         }
-        help.println("SUBCOMMANDS:");
+        writer.println("SUBCOMMANDS:");
+        boolean separate = false;
         for (C command : subCommands.getValues()) {
-            help.printHelp(command.getName(), command.getDescription()).newline();
+            if (separate) {
+                writer.println();
+            }
+            writer.format(Command.HELP_ITEM_FMT, command.getName(), command.getDescription());
+            separate = true;
         }
-        help.newline();
     }
 }

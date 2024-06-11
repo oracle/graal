@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.igvutil.args;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -158,45 +159,61 @@ public class Command {
         return index;
     }
 
-    public void printUsage(HelpPrinter help) {
-        help.print("%s", name);
+
+    static final String INDENT = "  ";
+
+    static final String HELP_ITEM_FMT = "  %s%n    %s%n";
+
+    public void printUsage(PrintWriter writer) {
+        writer.append(getName());
         if (commandGroup != null) {
-            help.print(" ");
-            commandGroup.printUsage(help);
+            writer.append(' ');
+            commandGroup.printUsage(writer);
             if (!options.isEmpty() || !positional.isEmpty()) {
-                help.print(" --");
+                writer.append(" --");
             }
         }
         for (OptionValue<?> option : positional) {
-            help.print(" ");
-            option.printUsage(help);
+            writer.append(' ');
+            writer.append(option.getUsage());
         }
         if (!options.isEmpty()) {
-            help.print(" [OPTIONS]");
+            writer.append(" [OPTIONS]");
         }
     }
 
-    public void printHelp(HelpPrinter help) {
+    public void printHelp(PrintWriter writer) {
         if (commandGroup != null) {
-            commandGroup.printHelp(help);
+            commandGroup.printHelp(writer);
             return;
         }
 
+        boolean separate = false;
         if (!positional.isEmpty()) {
-            help.println("ARGS:");
+            writer.println("ARGS:");
             for (OptionValue<?> arg : positional) {
-                help.printHelp(arg.getName(), arg.getDescription());
-                help.newline();
+                if (separate) {
+                    writer.println();
+                }
+                writer.format(HELP_ITEM_FMT, arg.getUsage(), arg.getDescription());
+                separate = true;
             }
         }
         if (!options.isEmpty()) {
-            help.println("OPTIONS:");
+            if (separate) {
+                writer.println();
+                separate = false;
+            }
+            writer.println("OPTIONS:");
             var cursor = options.getEntries();
             while (cursor.advance()) {
+                if (separate) {
+                    writer.println();
+                }
                 String name = cursor.getKey();
                 OptionValue<?> value = cursor.getValue();
-                help.printHelp(name + " " + value.getName(), value.getDescription());
-                help.newline();
+                writer.format(HELP_ITEM_FMT, String.format("%s %s", name, value.getUsage()), value.getDescription());
+                separate = true;
             }
         }
     }
