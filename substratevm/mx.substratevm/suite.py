@@ -2169,6 +2169,7 @@ suite = {
 
         "SVM_DEBUG_HELPER": {
             "dependencies": ["com.oracle.svm.hosted.image.debug"],
+            "javaCompliance" : "21+",
         },
 
         "SVM_GRAALVM_SUPPORT" : {
