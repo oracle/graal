@@ -1666,12 +1666,11 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     void forEachConfig(TestRunner run) {
-        // synchronous execution of all configs
         var threadConfigs = vthreads && !TruffleOptions.AOT ? VTHREAD_CONFIGS : THREAD_CONFIGS;
-        for (int threadConfig = 0; threadConfig < threadConfigs.length; threadConfig++) {
-            int threads = threadConfigs[threadConfig];
-            for (int iterationConfig = 0; iterationConfig < ITERATION_CONFIGS.length; iterationConfig++) {
-                int events = ITERATION_CONFIGS[iterationConfig];
+
+        // synchronous execution of all configs
+        for (int threads : threadConfigs) {
+            for (int events : ITERATION_CONFIGS) {
                 if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT) {
                     if (VERBOSE) {
                         System.out.println("[" + threads + ", " + events + "]");
@@ -1688,10 +1687,8 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         // asynchronous execution of all configs
         if (RERUN_THREAD_CONFIG_ASYNC) {
             List<Future<?>> futures = new ArrayList<>();
-            for (int threadConfig = 0; threadConfig < threadConfigs.length; threadConfig++) {
-                int threads = threadConfigs[threadConfig];
-                for (int iterationConfig = 0; iterationConfig < ITERATION_CONFIGS.length; iterationConfig++) {
-                    int events = ITERATION_CONFIGS[iterationConfig];
+            for (int threads : threadConfigs) {
+                for (int events : ITERATION_CONFIGS) {
                     if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT) {
                         futures.add(service.submit(() -> run.run(threads, events)));
                     }
