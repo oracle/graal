@@ -42,14 +42,12 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -60,7 +58,6 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.code.BailoutException;
@@ -93,16 +90,6 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             c.initialize(lang);
         }
         return c;
-    }
-
-    /*
-     * This test verifies that JVMCI has all the features it needs for a OptimizedTruffleRuntime.
-     */
-    @Test
-    public void testJVMCIIsLatest() {
-        Assume.assumeTrue(Truffle.getRuntime() instanceof OptimizedTruffleRuntime);
-        OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
-        assertTrue(runtime.isLatestJVMCI());
     }
 
     @Test

@@ -20,7 +20,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-28866 Deprecated `TruffleLanguage.Env.isPolyglotEvalAllowed()`. Replace usages with `TruffleLanguage.Env.isPolyglotEvalAllowed(LanguageInfo)`. Please see javadoc for the updated usage.
 * GR-52843 Deprecated `Node.getCost()` and the associated `NodeCost` class without replacement. Truffle DSL no longer generates implementations of this method automatically and will therefore always return `NodeCost.MONOMORPHIC` by default. This is intended to reduce the binary footprint.
 * GR-52843 Added the `UnadoptableNode` interface. This is interface should be preferred to overriding `Node.isAdoptable()` if the result is statically known.
-* GR-40931 Virtual threads with a polyglot context are now experimentally supported on HotSpot. Experimental because access to caller frames in write or materialize mode is not yet supported and maximum 65535 virtual threads concurrently accessing the context.
+* GR-40931 Virtual threads with a polyglot context are now experimentally supported on HotSpot. Experimental because access to caller frames in write or materialize mode is not yet supported and maximum 65535 threads concurrently accessing the context.
 * GR-40931 Using virtual threads in a native-image will now emulate virtual threads using platform threads until Loom support for Truffle languages in native-image is implemented.
 * GR-40931 Added [`TruffleThreadBuilder#virtual()`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleThreadBuilder.html#virtual(boolean)) for languages to create virtual threads.
 
