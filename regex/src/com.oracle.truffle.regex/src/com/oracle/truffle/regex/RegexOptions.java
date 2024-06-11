@@ -156,10 +156,9 @@ public final class RegexOptions {
 
     public static final String PYTHON_LOCALE_NAME = "PythonLocale";
     public static final String JAVA_JDK_VERSION_NAME = "JavaJDKVersion";
-    public static final String[] JAVA_JDK_VERSION_OPTIONS = {"21", "22", "23"};
+    public static final String[] JAVA_JDK_VERSION_OPTIONS = {"21", "22", "23", "24"};
     public static final int JAVA_JDK_VERSION_MIN = 21;
-    public static final int JAVA_JDK_VERSION_MAX = 23;
-    private static final byte JAVA_JDK_VERSION_DEFAULT = JAVA_JDK_VERSION_MAX;
+    private static final byte JAVA_JDK_VERSION_DEFAULT = 24;
 
     public static final String MAX_DFA_SIZE_NAME = "MaxDFASize";
 
@@ -505,7 +504,7 @@ public final class RegexOptions {
                         break;
                     case 'J':
                         short version = parseShortOption(JAVA_JDK_VERSION_NAME);
-                        if (version < JAVA_JDK_VERSION_MIN || version > JAVA_JDK_VERSION_MAX) {
+                        if (version < JAVA_JDK_VERSION_MIN) {
                             throw optionsSyntaxErrorUnexpectedValue(JAVA_JDK_VERSION_OPTIONS);
                         }
                         javaJDKVersion = (byte) version;
