@@ -172,12 +172,14 @@ public final class ModuleLayerFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
 
-        Set<Module> runtimeImageNamedModules = accessImpl.getUniverse().getTypes()
+        Set<Module> runtimeImageModules = accessImpl.getUniverse().getTypes()
                         .stream()
                         .filter(ModuleLayerFeature::typeIsReachable)
                         .map(t -> t.getJavaClass().getModule())
-                        .filter(Module::isNamed)
                         .collect(Collectors.toSet());
+
+        Set<Module> runtimeImageNamedModules = runtimeImageModules.stream().filter(Module::isNamed).collect(Collectors.toSet());
+        Set<Module> runtimeImageUnnamedModules = runtimeImageModules.stream().filter(Predicate.not(Module::isNamed)).collect(Collectors.toSet());
 
         /*
          * Parse explicitly added modules via --add-modules. This is done early as this information
@@ -228,7 +230,7 @@ public final class ModuleLayerFeature implements InternalFeature {
          * Ensure that runtime modules have the same relations (i.e., reads, opens and exports) as
          * the originals.
          */
-        replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, runtimeImageNamedModules);
+        replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, runtimeImageNamedModules, runtimeImageUnnamedModules);
         replicateNativeAccess(runtimeImageNamedModules);
     }
 
@@ -431,61 +433,70 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
     }
 
-    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableNamedModules) {
+    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableNamedModules,
+                    Set<Module> analysisReachableUnnamedModules) {
         List<Module> applicationModules = findApplicationModules(runtimeBootLayer, cl.applicationModulePath());
 
-        Map<Module, Module> modulePairs = analysisReachableNamedModules
+        Map<Module, Module> namedModulePairs = analysisReachableNamedModules
                         .stream()
-                        .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
-        modulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.allUnnamedModule);
-        modulePairs.put(moduleLayerFeatureUtils.everyoneModule, moduleLayerFeatureUtils.everyoneModule);
-
-        Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
-        assert builderModule != null;
+                        .collect(Collectors.toMap(Function.identity(), m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
+        Map<Module, Module> unnamedModulePairs = analysisReachableUnnamedModules
+                        .stream()
+                        .collect(Collectors.toMap(Function.identity(), m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
+        unnamedModulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.allUnnamedModule);
+        unnamedModulePairs.put(moduleLayerFeatureUtils.everyoneModule, moduleLayerFeatureUtils.everyoneModule);
 
         try {
-            for (Map.Entry<Module, Module> e1 : modulePairs.entrySet()) {
+            for (Map.Entry<Module, Module> e1 : namedModulePairs.entrySet()) {
                 Module hostedFrom = e1.getKey();
-                if (!hostedFrom.isNamed()) {
-                    continue;
-                }
                 Module runtimeFrom = e1.getValue();
-                for (Map.Entry<Module, Module> e2 : modulePairs.entrySet()) {
-                    Module hostedTo = e2.getKey();
-                    if (hostedTo == hostedFrom) {
-                        continue;
-                    }
-                    Module runtimeTo = e2.getValue();
-                    if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.canRead(hostedTo)) {
-                        moduleLayerFeatureUtils.addReads(runtimeFrom, runtimeTo);
-                        if (hostedFrom == builderModule) {
-                            for (Module appModule : applicationModules) {
-                                moduleLayerFeatureUtils.addReads(appModule, runtimeTo);
-                            }
-                        }
-                    }
-                    for (String pn : runtimeFrom.getPackages()) {
-                        if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isOpen(pn, hostedTo)) {
-                            moduleLayerFeatureUtils.addOpens(runtimeFrom, pn, runtimeTo);
-                            if (hostedTo == builderModule) {
-                                for (Module appModule : applicationModules) {
-                                    moduleLayerFeatureUtils.addOpens(runtimeFrom, pn, appModule);
-                                }
-                            }
-                        }
-                        if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isExported(pn, hostedTo)) {
-                            moduleLayerFeatureUtils.addExports(runtimeFrom, pn, runtimeTo);
-                            if (hostedTo == builderModule) {
-                                for (Module appModule : applicationModules) {
-                                    moduleLayerFeatureUtils.addExports(runtimeFrom, pn, appModule);
-                                }
-                            }
-                        }
-                    }
+                for (Map.Entry<Module, Module> e2 : namedModulePairs.entrySet()) {
+                    replicateVisibilityModification(applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue());
+                }
+                for (Map.Entry<Module, Module> e2 : unnamedModulePairs.entrySet()) {
+                    replicateVisibilityModification(applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue());
                 }
             }
         } catch (IllegalAccessException ex) {
             throw VMError.shouldNotReachHere("Failed to transfer hosted module relations to the runtime boot module layer.", ex);
+        }
+    }
+
+    private void replicateVisibilityModification(List<Module> applicationModules, Module hostedFrom, Module hostedTo, Module runtimeFrom, Module runtimeTo)
+                    throws IllegalAccessException {
+        if (hostedTo == hostedFrom) {
+            return;
+        }
+
+        Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
+        assert builderModule != null;
+
+        if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.canRead(hostedTo)) {
+            moduleLayerFeatureUtils.addReads(runtimeFrom, runtimeTo);
+            if (hostedFrom == builderModule) {
+                for (Module appModule : applicationModules) {
+                    moduleLayerFeatureUtils.addReads(appModule, runtimeTo);
+                }
+            }
+        }
+
+        for (String pn : runtimeFrom.getPackages()) {
+            if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isOpen(pn, hostedTo)) {
+                moduleLayerFeatureUtils.addOpens(runtimeFrom, pn, runtimeTo);
+                if (hostedTo == builderModule) {
+                    for (Module appModule : applicationModules) {
+                        moduleLayerFeatureUtils.addOpens(runtimeFrom, pn, appModule);
+                    }
+                }
+            }
+            if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isExported(pn, hostedTo)) {
+                moduleLayerFeatureUtils.addExports(runtimeFrom, pn, runtimeTo);
+                if (hostedTo == builderModule) {
+                    for (Module appModule : applicationModules) {
+                        moduleLayerFeatureUtils.addExports(runtimeFrom, pn, appModule);
+                    }
+                }
+            }
         }
     }
 
@@ -732,24 +743,8 @@ public final class ModuleLayerFeature implements InternalFeature {
         public Module getRuntimeModuleForHostedModule(Module hostedModule, boolean optional) {
             if (hostedModule.isNamed()) {
                 return getRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), optional);
-            }
-
-            /*
-             * EVERYONE and ALL_UNNAMED modules are unnamed module instances that are used as
-             * markers throughout the JDK and therefore we need them in the image heap.
-             *
-             * We make an optimization that all hosted unnamed modules except EVERYONE module have
-             * the same runtime unnamed module. This does not break the module visibility semantics
-             * as unnamed modules can access all named modules, and visibility modifications that
-             * include unnamed modules do not depend on the actual instance, but only on the fact
-             * that the module is unnamed e.g., calling addExports from/to an unnamed module will do
-             * nothing.
-             */
-
-            if (hostedModule == everyoneModule) {
-                return everyoneModule;
             } else {
-                return allUnnamedModule;
+                return hostedModule;
             }
         }
 
@@ -779,7 +774,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             if (hostedModule.isNamed()) {
                 return getOrCreateRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), hostedModule.getDescriptor());
             } else {
-                return hostedModule == everyoneModule ? everyoneModule : allUnnamedModule;
+                return hostedModule;
             }
         }
 
