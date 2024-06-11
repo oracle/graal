@@ -62,8 +62,8 @@ class CompilationFailureEventImpl extends RootFunctionEventImpl {
 
     @Label("Exception Stack Trace") @Description("Exception Stack Trace") public String stackTrace;
 
-    CompilationFailureEventImpl(long id, String source, String language, String rootFunction) {
-        super(id, source, language, rootFunction);
+    CompilationFailureEventImpl(long engineId, long id, String source, String language, String rootFunction) {
+        super(engineId, id, source, language, rootFunction);
     }
 
     void setFailureData(int tier, boolean permanent, String reason, String stackTrace) {

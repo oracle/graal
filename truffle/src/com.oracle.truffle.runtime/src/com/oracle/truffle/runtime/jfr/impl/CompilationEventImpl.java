@@ -40,19 +40,19 @@
  */
 package com.oracle.truffle.runtime.jfr.impl;
 
+import java.util.function.Supplier;
+
 import com.oracle.truffle.runtime.jfr.CompilationEvent;
 
 import jdk.jfr.BooleanFlag;
 import jdk.jfr.Category;
-import jdk.jfr.Description;
 import jdk.jfr.DataAmount;
+import jdk.jfr.Description;
 import jdk.jfr.Label;
 import jdk.jfr.MemoryAddress;
 import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 import jdk.jfr.Unsigned;
-
-import java.util.function.Supplier;
 
 @Name("org.graalvm.compiler.truffle.Compilation")
 @Category("Truffle Compiler")
@@ -83,7 +83,7 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
 
     @Override
     public void compilationStarted() {
-        CompilationFailureEventImpl failureEvent = new CompilationFailureEventImpl(id, source, language, rootFunction);
+        CompilationFailureEventImpl failureEvent = new CompilationFailureEventImpl(engineId, id, source, language, rootFunction);
         if (failureEvent.isEnabled()) {
             failureEvent.begin();
             failure = failureEvent;
