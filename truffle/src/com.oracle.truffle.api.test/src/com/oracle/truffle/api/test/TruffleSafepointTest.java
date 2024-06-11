@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -125,10 +126,10 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     private static final Method SUBMIT_INTERNAL = ReflectionUtils.requireDeclaredMethod(TruffleLanguage.Env.class, "submitThreadLocalInternal", null);
 
     private static final int[] THREAD_CONFIGS = new int[]{1, 4, 16};
-    private static final int[] VTHREAD_CONFIGS = new int[]{1, 4, 16, 256};
     private static final int[] ITERATION_CONFIGS = new int[]{1, 8, 32};
-    private static final int MAX_THREAD_ITERATIONS_PRODUCT = 256 * 8;
+    private static final int MAX_THREAD_ITERATIONS_PRODUCT = 16 * 32; // = 512
     private static ExecutorService cachedThreadPool;
+    private static final Set<Thread> runningThreads = ConcurrentHashMap.newKeySet();
     private ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
 
@@ -159,7 +160,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             CANCELLED.set(true);
             cachedThreadPool.shutdown();
             if (!cachedThreadPool.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                throw failTimeout(null);
+                throw failTimeout("threadpool to shutdown", null);
             }
         }
     }
@@ -723,7 +724,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                     try {
                         // wait until all exceptions are reported
                         if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                            throw failTimeout(null);
+                            throw failTimeout("latch in testException", null);
                         }
                     } catch (InterruptedException e) {
                         fail();
@@ -1666,13 +1667,23 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     void forEachConfig(TestRunner run) {
+        /*
+         * It would be good to test with a number of virtual threads higher than carrier threads
+         * (e.g. 256), but unfortunately as detailed in GR-54643 that does not work for this test
+         * because calls to HotSpotThreadLocalHandshake.doHandshake for Truffle safepoints are
+         * considered native upcalls by virtual threads and pin the carrier threads. And when
+         * virtual threads pin all carrier threads, it seems Loom just hangs and does not try to
+         * compensate by adding more carrier threads. So we check we do not use more virtual threads
+         * than there are carrier threads (= availableProcessors() unless overridden by system
+         * property).
+         */
+        var threadConfigs = THREAD_CONFIGS;
+        int processors = Runtime.getRuntime().availableProcessors();
+
         // synchronous execution of all configs
-        var threadConfigs = vthreads && !TruffleOptions.AOT ? VTHREAD_CONFIGS : THREAD_CONFIGS;
-        for (int threadConfig = 0; threadConfig < threadConfigs.length; threadConfig++) {
-            int threads = threadConfigs[threadConfig];
-            for (int iterationConfig = 0; iterationConfig < ITERATION_CONFIGS.length; iterationConfig++) {
-                int events = ITERATION_CONFIGS[iterationConfig];
-                if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT) {
+        for (int threads : threadConfigs) {
+            for (int events : ITERATION_CONFIGS) {
+                if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT && !(vthreads && threads > processors)) {
                     if (VERBOSE) {
                         System.out.println("[" + threads + ", " + events + "]");
                     }
@@ -1688,24 +1699,10 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         // asynchronous execution of all configs
         if (RERUN_THREAD_CONFIG_ASYNC) {
             List<Future<?>> futures = new ArrayList<>();
-            for (int threadConfig = 0; threadConfig < threadConfigs.length; threadConfig++) {
-                int threads = threadConfigs[threadConfig];
-                for (int iterationConfig = 0; iterationConfig < ITERATION_CONFIGS.length; iterationConfig++) {
-                    int events = ITERATION_CONFIGS[iterationConfig];
-                    if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT) {
-                        try {
-                            if (futures.size() >= 64) {
-                                for (Future<?> future : futures) {
-                                    waitOrFail(future);
-                                }
-                                futures.clear();
-                            }
-                            futures.add(service.submit(() -> run.run(threads, events)));
-                        } catch (AssertionError e) {
-                            throw e;
-                        } catch (Throwable e) {
-                            throw new RuntimeException(e);
-                        }
+            for (int threads : threadConfigs) {
+                for (int events : ITERATION_CONFIGS) {
+                    if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT && !(vthreads && threads > processors)) {
+                        futures.add(service.submit(() -> run.run(threads, events)));
                     }
                 }
             }
@@ -1715,7 +1712,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         }
     }
 
-    private static void waitOrFail(Future<?> future) throws AssertionError {
+    private void waitOrFail(Future<?> future) throws AssertionError {
         try {
             future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
@@ -1723,18 +1720,24 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         } catch (ExecutionException e) {
             throw new AssertionError(e.getCause());
         } catch (TimeoutException e) {
-            throw failTimeout(e);
+            throw failTimeout("future in test " + name.getMethodName(), e);
         }
     }
 
-    private static RuntimeException failTimeout(TimeoutException e) throws AssertionError {
-        System.out.println("Timeout detected. Printing all threads: ");
-        for (Entry<Thread, StackTraceElement[]> elements : Thread.getAllStackTraces().entrySet()) {
-            Exception ex = new Exception(elements.getKey().toString());
-            ex.setStackTrace(elements.setValue(elements.getValue()));
+    private static RuntimeException failTimeout(String timeoutFor, TimeoutException e) throws AssertionError {
+        System.out.println();
+        System.out.println("During waiting for " + timeoutFor + ": Timeout detected. Printing all threads: ");
+        printAllThreads();
+        throw new AssertionError("Timed out waiting for " + timeoutFor, e);
+    }
+
+    private static void printAllThreads() {
+        for (Thread thread : runningThreads) {
+            StackTraceElement[] stackTrace = thread.getStackTrace();
+            Exception ex = new Exception(thread.toString());
+            ex.setStackTrace(stackTrace);
             ex.printStackTrace();
         }
-        throw new AssertionError("Timed out waiting for threads", e);
     }
 
     static class TestRootNode extends RootNode {
@@ -1805,13 +1808,14 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             Object targetEnter = env.getContext().enter(null);
             AtomicBoolean stopped = new AtomicBoolean();
 
-            TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped, ignoreCancelOnClose);
+            TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped, ignoreCancelOnClose, name.getMethodName());
             setup.root = new TestRootNode(proxyLanguage, stopped, setup, latch, callable);
             setup.target = setup.root.getCallTarget();
             env.getContext().leave(null, targetEnter);
             setup.futures = new ArrayList<>();
             for (int i = 0; i < threads; i++) {
                 setup.futures.add(service.submit(() -> {
+                    runningThreads.add(Thread.currentThread());
                     Object prev = env.getContext().enter(finalSetup.target.getRootNode());
                     try {
                         do {
@@ -1830,6 +1834,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                         return true;
                     } finally {
                         env.getContext().leave(finalSetup.target.getRootNode(), prev);
+                        runningThreads.remove(Thread.currentThread());
                     }
                 }));
             }
@@ -1877,18 +1882,20 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         @CompilationFinal TestRootNode root;
         final AtomicBoolean stopped;
         final boolean ignoreCancelOnClose;
+        final String testName;
 
-        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, AtomicBoolean stopped, boolean ignoreCancelOnClose) {
+        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, AtomicBoolean stopped, boolean ignoreCancelOnClose, String testName) {
             this.context = context;
             this.env = env;
             this.instrumentEnv = instrumentEnv;
             this.stopped = stopped;
             this.ignoreCancelOnClose = ignoreCancelOnClose;
+            this.testName = testName;
         }
 
         void stopAndAwait() {
             stopped.set(true);
-            awaitFutures(futures);
+            awaitFutures(futures, testName);
         }
 
         @Override
@@ -1934,7 +1941,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         }
     }
 
-    private static void awaitFutures(List<Future<Boolean>> futures) {
+    private static void awaitFutures(List<Future<Boolean>> futures, String testName) {
         for (Future<?> future : futures) {
             try {
                 future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -1943,7 +1950,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             } catch (InterruptedException e) {
                 throw new AssertionError(2);
             } catch (TimeoutException e) {
-                throw failTimeout(e);
+                throw failTimeout("awaitFutures() in " + testName, e);
             }
         }
     }
