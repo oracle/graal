@@ -159,7 +159,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             CANCELLED.set(true);
             cachedThreadPool.shutdown();
             if (!cachedThreadPool.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                throw failTimeout(null);
+                throw failTimeout("threadpool to shutdown", null);
             }
         }
     }
@@ -723,7 +723,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                     try {
                         // wait until all exceptions are reported
                         if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                            throw failTimeout(null);
+                            throw failTimeout("latch in testException", null);
                         }
                     } catch (InterruptedException e) {
                         fail();
@@ -1715,7 +1715,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         }
     }
 
-    private static void waitOrFail(Future<?> future) throws AssertionError {
+    private void waitOrFail(Future<?> future) throws AssertionError {
         try {
             future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
@@ -1723,18 +1723,23 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         } catch (ExecutionException e) {
             throw new AssertionError(e.getCause());
         } catch (TimeoutException e) {
-            throw failTimeout(e);
+            throw failTimeout("future in test " + name.getMethodName(), e);
         }
     }
 
-    private static RuntimeException failTimeout(TimeoutException e) throws AssertionError {
-        System.out.println("Timeout detected. Printing all threads: ");
+    private static RuntimeException failTimeout(String timeoutFor, TimeoutException e) throws AssertionError {
+        System.out.println();
+        System.out.println("During waiting for " + timeoutFor + ": Timeout detected. Printing all threads: ");
+        printAllThreads();
+        throw new AssertionError("Timed out waiting for " + timeoutFor, e);
+    }
+
+    private static void printAllThreads() {
         for (Entry<Thread, StackTraceElement[]> elements : Thread.getAllStackTraces().entrySet()) {
             Exception ex = new Exception(elements.getKey().toString());
             ex.setStackTrace(elements.setValue(elements.getValue()));
             ex.printStackTrace();
         }
-        throw new AssertionError("Timed out waiting for threads", e);
     }
 
     static class TestRootNode extends RootNode {
@@ -1805,7 +1810,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             Object targetEnter = env.getContext().enter(null);
             AtomicBoolean stopped = new AtomicBoolean();
 
-            TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped, ignoreCancelOnClose);
+            TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped, ignoreCancelOnClose, name.getMethodName());
             setup.root = new TestRootNode(proxyLanguage, stopped, setup, latch, callable);
             setup.target = setup.root.getCallTarget();
             env.getContext().leave(null, targetEnter);
@@ -1877,18 +1882,20 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         @CompilationFinal TestRootNode root;
         final AtomicBoolean stopped;
         final boolean ignoreCancelOnClose;
+        final String testName;
 
-        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, AtomicBoolean stopped, boolean ignoreCancelOnClose) {
+        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, AtomicBoolean stopped, boolean ignoreCancelOnClose, String testName) {
             this.context = context;
             this.env = env;
             this.instrumentEnv = instrumentEnv;
             this.stopped = stopped;
             this.ignoreCancelOnClose = ignoreCancelOnClose;
+            this.testName = testName;
         }
 
         void stopAndAwait() {
             stopped.set(true);
-            awaitFutures(futures);
+            awaitFutures(futures, testName);
         }
 
         @Override
@@ -1934,7 +1941,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         }
     }
 
-    private static void awaitFutures(List<Future<Boolean>> futures) {
+    private static void awaitFutures(List<Future<Boolean>> futures, String testName) {
         for (Future<?> future : futures) {
             try {
                 future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -1943,7 +1950,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             } catch (InterruptedException e) {
                 throw new AssertionError(2);
             } catch (TimeoutException e) {
-                throw failTimeout(e);
+                throw failTimeout("awaitFutures() in " + testName, e);
             }
         }
     }
