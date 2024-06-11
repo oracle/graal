@@ -228,9 +228,9 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     static final class ThrowOperation {
         @Specialization
         public static Object perform(long value,
-                        @Bind("$root") Node node,
+                        @Bind("$bytecode") BytecodeNode bytecodeNode,
                         @Bind("$bci") int bci) {
-            throw new TestException("fail", node, bci, value);
+            throw new TestException("fail", bytecodeNode, bci, value);
         }
     }
 
