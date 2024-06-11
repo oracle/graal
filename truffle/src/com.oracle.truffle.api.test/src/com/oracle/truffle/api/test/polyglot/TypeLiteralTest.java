@@ -41,9 +41,9 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThat;
 
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;

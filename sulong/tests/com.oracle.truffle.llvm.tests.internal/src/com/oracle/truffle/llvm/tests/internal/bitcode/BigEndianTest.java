@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -65,7 +65,7 @@ public class BigEndianTest {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
 
-    @Rule public ExpectedException exception = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException exception = ExpectedException.none();
 
     @Test
     public void testBitEndianDataLayout() throws IOException {

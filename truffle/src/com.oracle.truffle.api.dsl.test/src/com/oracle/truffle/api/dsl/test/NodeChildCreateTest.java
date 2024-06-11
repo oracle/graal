@@ -44,6 +44,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -84,7 +85,7 @@ public class NodeChildCreateTest {
     @Test
     public void testImplicit() {
         CreateTestNode node = CreateTestNodeGen.create();
-        Assert.assertThat("child0", node.getChild0(), is(notNullValue()));
+        MatcherAssert.assertThat("child0", node.getChild0(), is(notNullValue()));
         Assert.assertTrue("child0 is adoptable", node.getChild0().isAdoptable());
         Assert.assertEquals("result", 6, node.execute());
     }
@@ -107,7 +108,7 @@ public class NodeChildCreateTest {
     @Test
     public void testImplicitCreate() {
         CustomCreateTestNode node = CustomCreateTestNodeGen.create();
-        Assert.assertThat("child0", node.getChild0(), is(instanceOf(CreateTestNode.class)));
+        MatcherAssert.assertThat("child0", node.getChild0(), is(instanceOf(CreateTestNode.class)));
         Assert.assertTrue("child0 is adoptable", node.getChild0().isAdoptable());
         Assert.assertEquals("result", 9, node.execute());
     }

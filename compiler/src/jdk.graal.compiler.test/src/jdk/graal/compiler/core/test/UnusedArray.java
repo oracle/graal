@@ -25,12 +25,13 @@
 package jdk.graal.compiler.core.test;
 
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import org.junit.Test;
 
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
-import org.junit.Test;
 
 public class UnusedArray extends GraalCompilerTest {
     @SuppressWarnings("unused")

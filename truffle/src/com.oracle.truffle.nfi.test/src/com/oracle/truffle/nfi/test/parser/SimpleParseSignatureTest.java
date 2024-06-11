@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
-import com.oracle.truffle.nfi.test.parser.backend.TestSignature;
-import com.oracle.truffle.tck.TruffleRunner;
-import com.oracle.truffle.tck.TruffleRunner.Inject;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import java.util.ArrayList;
 import java.util.Collection;
-import static org.hamcrest.CoreMatchers.is;
+
 import org.hamcrest.core.Every;
 import org.junit.Assert;
 import org.junit.Test;
@@ -55,6 +53,12 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.test.parser.backend.TestSignature;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -97,7 +101,7 @@ public class SimpleParseSignatureTest extends ParseSignatureTest {
         TestSignature signature = getSignature(parse, 1);
         Assert.assertEquals("return type", signature.retType, NativeSimpleType.VOID);
         Assert.assertEquals("argument count", 1, signature.argTypes.size());
-        Assert.assertThat("argument types", signature.argTypes, Every.everyItem(is(type)));
+        assertThat("argument types", signature.argTypes, Every.everyItem(is(type)));
     }
 
     public class ParseTwoArgs extends ParseSignatureNode {
@@ -112,7 +116,7 @@ public class SimpleParseSignatureTest extends ParseSignatureTest {
         TestSignature signature = getSignature(parse, 2);
         Assert.assertEquals("return type", signature.retType, NativeSimpleType.VOID);
         Assert.assertEquals("argument count", 2, signature.argTypes.size());
-        Assert.assertThat("argument types", signature.argTypes, Every.everyItem(is(type)));
+        assertThat("argument types", signature.argTypes, Every.everyItem(is(type)));
     }
 
     public class ParseArrayArg extends ParseSignatureNode {
@@ -125,9 +129,9 @@ public class SimpleParseSignatureTest extends ParseSignatureTest {
     @Test
     public void testArrayArg(@Inject(ParseArrayArg.class) CallTarget parse) {
         TestSignature signature = getSignature(parse, 1);
-        Assert.assertThat("return type", signature.retType, is(NativeSimpleType.VOID));
+        assertThat("return type", signature.retType, is(NativeSimpleType.VOID));
         Assert.assertEquals("argument count", 1, signature.argTypes.size());
-        Assert.assertThat("argument types", signature.argTypes, Every.everyItem(isArrayType(type)));
+        assertThat("argument types", signature.argTypes, Every.everyItem(isArrayType(type)));
     }
 
     public class ParseArrayRet extends ParseSignatureNode {
@@ -141,6 +145,6 @@ public class SimpleParseSignatureTest extends ParseSignatureTest {
     public void testArrayRet(@Inject(ParseArrayRet.class) CallTarget parse) {
         TestSignature signature = getSignature(parse, 0);
         Assert.assertEquals("argument count", 0, signature.argTypes.size());
-        Assert.assertThat("return type", signature.retType, isArrayType(type));
+        assertThat("return type", signature.retType, isArrayType(type));
     }
 }

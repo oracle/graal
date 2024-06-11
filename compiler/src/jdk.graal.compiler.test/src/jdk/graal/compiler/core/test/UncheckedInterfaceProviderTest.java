@@ -27,7 +27,11 @@ package jdk.graal.compiler.core.test;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+import org.hamcrest.MatcherAssert;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodeinfo.Verbosity;
@@ -38,11 +42,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.spi.UncheckedInterfaceProvider;
 import jdk.graal.compiler.nodes.type.StampTool;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class UncheckedInterfaceProviderTest extends GraalCompilerTest {
     private Runnable interfaceField;
@@ -95,7 +96,7 @@ public class UncheckedInterfaceProviderTest extends GraalCompilerTest {
     public void test() {
         StructuredGraph graph = parseEager("snippet", StructuredGraph.AllowAssumptions.YES);
         for (BlackholeNode b : graph.getNodes().filter(BlackholeNode.class)) {
-            Assert.assertThat(b.getValue(), is(instanceOf(UncheckedInterfaceProvider.class)));
+            MatcherAssert.assertThat(b.getValue(), is(instanceOf(UncheckedInterfaceProvider.class)));
             Stamp uncheckedStamp = ((UncheckedInterfaceProvider) b.getValue()).uncheckedStamp();
             String context = b.getValue().toString(Verbosity.Debugger);
             Assert.assertNotNull(context, uncheckedStamp);
