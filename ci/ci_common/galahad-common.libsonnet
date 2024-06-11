@@ -39,6 +39,9 @@ local utils = import "common-utils.libsonnet";
       b + {
         downloads+: {
           JAVA_HOME: galahad_jdk,
+        },
+        environment+: {
+          JVMCI_VERSION_CHECK: "ignore",
         }
       }
     else
