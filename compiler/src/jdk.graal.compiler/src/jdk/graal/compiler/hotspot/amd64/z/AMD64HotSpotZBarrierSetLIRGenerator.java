@@ -450,7 +450,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     static class ZStoreNullOp extends AMD64BinaryConsumer.MemoryConstOp {
         public static final LIRInstructionClass<ZStoreNullOp> TYPE = LIRInstructionClass.create(ZStoreNullOp.class);
 
-        public ZStoreNullOp(AMD64BaseAssembler.OperandSize size, AMD64AddressValue x, LIRFrameState state) {
+        ZStoreNullOp(AMD64BaseAssembler.OperandSize size, AMD64AddressValue x, LIRFrameState state) {
             super(TYPE, AMD64Assembler.AMD64MIOp.MOV, size, x, 0, state);
         }
 

@@ -5905,9 +5905,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      * the algorithm / the heuristics.
      */
     public void disableOptimizeLongJumpsAfterException() {
-        assert optimizeLongJumpsBailouts
-                        .incrementAndGet() < MAX_OPTIMIZE_LONG_JUMPS_BAILOUTS : "Replacing 4byte-displacement jumps with 1byte-displacement jumps has resulted in too many BranchTargetOutOfBoundsExceptions. " +
-                                        "Please check the algorithm or disable the optimization by setting OptimizeLongJumps=false!";
+        assert optimizeLongJumpsBailouts.incrementAndGet() < MAX_OPTIMIZE_LONG_JUMPS_BAILOUTS : "Replacing 4byte-displacement jumps with 1byte-displacement jumps has resulted in too many BranchTargetOutOfBoundsExceptions. " +
+                        "Please check the algorithm or disable the optimization by setting OptimizeLongJumps=false!";
         optimizeLongJumps = false;
     }
 
