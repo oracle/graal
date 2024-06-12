@@ -140,9 +140,13 @@ fastr_no_recommended: {
 # GRAALPYTHON
 graalpython_linux: ${sulong_linux} {
   packages: {
-    python: "==3.4.1",
+    python3: "==3.8.10",
     libffi: ">=3.2.1",
     bzip2: ">=1.0.6",
+  },
+  environment: {
+    MX_PYTHON_VERSION: '3',
+    MX_PYTHON: "python3.8"
   }
 }
 
