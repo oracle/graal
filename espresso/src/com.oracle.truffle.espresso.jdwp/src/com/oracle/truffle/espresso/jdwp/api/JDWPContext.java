@@ -503,4 +503,6 @@ public interface JDWPContext {
      * Tests if the thread is a virtual thread.
      */
     boolean isVirtualThread(Object thread);
+
+    boolean isSingleSteppingDisabled();
 }

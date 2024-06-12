@@ -263,6 +263,11 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public boolean isSingleSteppingDisabled() {
+        return context.getLanguage().getThreadLocalState().isSteppingDisabled();
+    }
+
+    @Override
     public Object[] getAllGuestThreads() {
         StaticObject[] activeThreads = context.getActiveThreads();
         ArrayList<StaticObject> result = new ArrayList<>(activeThreads.length);
@@ -602,7 +607,7 @@ public final class JDWPContextImpl implements JDWPContext {
         if (callerRoot instanceof EspressoRootNode) {
             EspressoRootNode espressoRootNode = (EspressoRootNode) callerRoot;
             int bci = (int) readBCIFromFrame(callerRoot, frame);
-            if (bci != -1) {
+            if (bci >= 0) {
                 BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethodVersion().getOriginalCode());
                 return bs.nextBCI(bci);
             }
@@ -686,9 +691,9 @@ public final class JDWPContextImpl implements JDWPContext {
         return EspressoLanguage.class;
     }
 
-    private static BciProvider getBciProviderNode(Node node) {
-        if (node instanceof BciProvider) {
-            return (BciProvider) node;
+    private BciProvider getBciProviderNode(Node node) {
+        if (node instanceof BciProvider bciProvider) {
+            return bciProvider;
         }
         Node currentNode = node.getParent();
         while (currentNode != null) {
@@ -696,6 +701,10 @@ public final class JDWPContextImpl implements JDWPContext {
                 return (BciProvider) currentNode;
             }
             currentNode = currentNode.getParent();
+        }
+        Node instrumentableNode = getInstrumentableNode(node.getRootNode());
+        if (instrumentableNode instanceof BciProvider bciProvider) {
+            return bciProvider;
         }
         return null;
     }
