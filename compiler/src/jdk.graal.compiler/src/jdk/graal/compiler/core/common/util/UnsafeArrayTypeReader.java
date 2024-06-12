@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,7 @@
  */
 package jdk.graal.compiler.core.common.util;
 
-import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
-
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Provides low-level read access from a byte[] array for signed and unsigned values of size 1, 2,
@@ -42,7 +40,7 @@ import sun.misc.Unsafe;
  */
 public abstract class UnsafeArrayTypeReader extends AbstractTypeReader {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     public static int getS1(byte[] data, long byteIndex) {
         return UNSAFE.getByte(data, readOffset(data, byteIndex, Byte.BYTES));
@@ -145,7 +143,7 @@ public abstract class UnsafeArrayTypeReader extends AbstractTypeReader {
 }
 
 final class UnalignedUnsafeArrayTypeReader extends UnsafeArrayTypeReader {
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     protected static int getS2(byte[] data, long byteIndex) {
         return UNSAFE.getShort(data, readOffset(data, byteIndex, Short.BYTES));
@@ -186,7 +184,7 @@ final class UnalignedUnsafeArrayTypeReader extends UnsafeArrayTypeReader {
 }
 
 class AlignedUnsafeArrayTypeReader extends UnsafeArrayTypeReader {
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     protected static int getS2(byte[] data, long byteIndex) {
         long offset = readOffset(data, byteIndex, Short.BYTES);
