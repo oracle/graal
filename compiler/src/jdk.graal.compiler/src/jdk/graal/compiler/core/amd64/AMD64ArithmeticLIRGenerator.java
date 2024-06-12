@@ -94,6 +94,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MROp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64Shift;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEMROp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEOp;
@@ -154,6 +155,7 @@ import jdk.graal.compiler.lir.amd64.vector.AMD64VectorFloatCompareOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGenerator;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -182,7 +184,14 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         this.nullRegisterValue = nullRegisterValue;
     }
 
+    @Override
+    protected void setLirGen(LIRGenerator lirGen) {
+        super.setLirGen(lirGen);
+        simdEncoding = AMD64SIMDInstructionEncoding.forFeatures(((AMD64) lirGen.target().arch).getFeatures());
+    }
+
     private final AllocatableValue nullRegisterValue;
+    protected AMD64SIMDInstructionEncoding simdEncoding;
 
     @Override
     public Variable emitNegate(Value inputVal, boolean setFlags) {
@@ -199,7 +208,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case SINGLE:
                 JavaConstant floatMask = JavaConstant.forFloat(Float.intBitsToFloat(0x80000000));
                 if (isAvx) {
-                    getLIRGen().append(new AVXBinaryOp(VXORPS, getRegisterSize(result), result, asAllocatable(input), asAllocatable(getLIRGen().emitJavaConstant(floatMask))));
+                    getLIRGen().append(new AVXBinaryOp(VXORPS.encoding(simdEncoding), getRegisterSize(result), result, asAllocatable(input), asAllocatable(getLIRGen().emitJavaConstant(floatMask))));
                 } else {
                     getLIRGen().append(new AMD64Binary.DataTwoOp(SSEOp.XOR, PS, result, input, floatMask, PS.getBytes()));
                 }
@@ -207,7 +216,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case DOUBLE:
                 JavaConstant doubleMask = JavaConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L));
                 if (isAvx) {
-                    getLIRGen().append(new AVXBinaryOp(VXORPD, getRegisterSize(result), result, asAllocatable(input), asAllocatable(getLIRGen().emitJavaConstant(doubleMask))));
+                    getLIRGen().append(new AVXBinaryOp(VXORPD.encoding(simdEncoding), getRegisterSize(result), result, asAllocatable(input), asAllocatable(getLIRGen().emitJavaConstant(doubleMask))));
                 } else {
                     getLIRGen().append(new AMD64Binary.DataTwoOp(SSEOp.XOR, PD, result, input, doubleMask, PD.getBytes()));
                 }
@@ -349,13 +358,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return emitBinary(resultKind, ADD, QWORD, true, a, b, setFlags);
             case SINGLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VADDSS, a, b);
+                    return emitBinary(resultKind, VADDSS.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.ADD, SS, true, a, b);
                 }
             case DOUBLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VADDSD, a, b);
+                    return emitBinary(resultKind, VADDSD.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.ADD, SD, true, a, b);
                 }
@@ -374,13 +383,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return emitBinary(resultKind, SUB, QWORD, false, a, b, setFlags);
             case SINGLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VSUBSS, a, b);
+                    return emitBinary(resultKind, VSUBSS.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.SUB, SS, false, a, b);
                 }
             case DOUBLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VSUBSD, a, b);
+                    return emitBinary(resultKind, VSUBSD.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.SUB, SD, false, a, b);
                 }
@@ -429,13 +438,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return emitIMUL(QWORD, a, b);
             case SINGLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VMULSS, a, b);
+                    return emitBinary(resultKind, VMULSS.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.MUL, SS, true, a, b);
                 }
             case DOUBLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VMULSD, a, b);
+                    return emitBinary(resultKind, VMULSD.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.MUL, SD, true, a, b);
                 }
@@ -580,13 +589,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return getLIRGen().emitMove(lop.getQuotient());
             case SINGLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VDIVSS, a, b);
+                    return emitBinary(resultKind, VDIVSS.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.DIV, SS, false, a, b);
                 }
             case DOUBLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VDIVSD, a, b);
+                    return emitBinary(resultKind, VDIVSD.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.DIV, SD, false, a, b);
                 }
@@ -679,13 +688,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return emitBinary(resultKind, OR, QWORD, true, a, b, false);
             case SINGLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VORPS, a, b);
+                    return emitBinary(resultKind, VORPS.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.OR, PS, true, a, b);
                 }
             case DOUBLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VORPD, a, b);
+                    return emitBinary(resultKind, VORPD.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.OR, PD, true, a, b);
                 }
@@ -705,13 +714,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return emitBinary(resultKind, XOR, QWORD, true, a, b, false);
             case SINGLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VXORPS, a, b);
+                    return emitBinary(resultKind, VXORPS.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.XOR, PS, true, a, b);
                 }
             case DOUBLE:
                 if (isAvx) {
-                    return emitBinary(resultKind, VXORPD, a, b);
+                    return emitBinary(resultKind, VXORPD.encoding(simdEncoding), a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.XOR, PD, true, a, b);
                 }
@@ -1102,10 +1111,10 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         assert b.getPlatformKind().equals(c.getPlatformKind());
 
         if (a.getPlatformKind() == AMD64Kind.DOUBLE) {
-            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SD, AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
+            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SD.encoding(simdEncoding), AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
         } else {
             assert a.getPlatformKind() == AMD64Kind.SINGLE : Assertions.errorMessage(a, b, c);
-            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SS, AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
+            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SS.encoding(simdEncoding), AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
         }
         return result;
     }

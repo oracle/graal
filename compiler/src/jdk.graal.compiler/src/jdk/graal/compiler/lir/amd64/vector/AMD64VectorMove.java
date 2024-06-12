@@ -433,10 +433,11 @@ public class AMD64VectorMove {
     }
 
     private static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, RegisterValue result, JavaConstant input, AMD64SIMDInstructionEncoding enc) {
+
         if (input.isDefaultForKind()) {
             AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
             Register register = result.getRegister();
-            VXORPD.emit(masm, AVXKind.getRegisterSize(kind), register, register, register);
+            VXORPD.encoding(enc).emit(masm, AVXKind.getRegisterSize(kind), register, register, register);
             return;
         }
 

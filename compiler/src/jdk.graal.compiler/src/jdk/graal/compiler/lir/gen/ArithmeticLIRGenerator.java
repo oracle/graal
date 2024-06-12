@@ -26,7 +26,6 @@ package jdk.graal.compiler.lir.gen;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.lir.Variable;
-
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
@@ -40,6 +39,11 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
 
     public LIRGenerator getLIRGen() {
         return lirGen;
+    }
+
+    protected void setLirGen(LIRGenerator lirGen) {
+        assert this.lirGen == null;
+        this.lirGen = lirGen;
     }
 
     protected final AllocatableValue asAllocatable(Value value) {
