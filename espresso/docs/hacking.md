@@ -58,7 +58,7 @@ $ cd ../vm
 $ mx --dy /espresso,/sulong maven-deploy --tags=public --all-suites --all-distribution-types --version-suite=sdk --suppress-javadoc
 ```
 
-You can now depend on the jars using a version like `24.1.0-SNAPSHOT`.
+You can now depend on the jars using a version like `24.2.0-SNAPSHOT`.
 
 ## `mx espresso-standalone ...`
 

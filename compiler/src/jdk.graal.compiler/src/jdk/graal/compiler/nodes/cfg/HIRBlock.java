@@ -33,7 +33,7 @@ import java.util.Iterator;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -72,7 +72,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
     protected double relativeFrequency = -1D;
     protected ProfileSource frequencySource;
-    protected Loop<HIRBlock> loop;
+    protected CFGLoop<HIRBlock> loop;
 
     protected int numBackedges = -1;
 
@@ -94,11 +94,11 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
     }
 
     @Override
-    public Loop<HIRBlock> getLoop() {
+    public CFGLoop<HIRBlock> getLoop() {
         return loop;
     }
 
-    public void setLoop(Loop<HIRBlock> loop) {
+    public void setLoop(CFGLoop<HIRBlock> loop) {
         this.loop = loop;
         this.numBackedges = (isLoopHeader() ? loop.numBackedges() : -1);
     }
@@ -461,7 +461,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             return true;
         }
 
-        Loop<HIRBlock> l = block.loop;
+        CFGLoop<HIRBlock> l = block.loop;
         while (l != null) {
             if (l == this.loop) {
                 return true;
@@ -787,7 +787,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             }
 
             // Remove the current block from the blocks of the loops it belongs to
-            for (Loop<HIRBlock> currLoop = loop; currLoop != null; currLoop = currLoop.getParent()) {
+            for (CFGLoop<HIRBlock> currLoop = loop; currLoop != null; currLoop = currLoop.getParent()) {
                 GraalError.guarantee(currLoop.getBlocks().contains(this), "block not contained in a loop it is referencing");
                 currLoop.getBlocks().remove(this);
             }

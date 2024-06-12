@@ -41,7 +41,7 @@ import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
@@ -255,7 +255,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // Only the switch is unswitched
         test("test3Snippet", "reference3SwitchSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
+            public UnswitchingDecision shouldUnswitch(Loop loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
                 for (List<ControlSplitNode> nodes : controlSplits.getValues()) {
                     Assert.assertEquals(1, nodes.size());
                     if (nodes.get(0) instanceof SwitchNode) {
@@ -272,7 +272,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // Only the if is unswitched
         test("test3Snippet", "reference3IfSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
+            public UnswitchingDecision shouldUnswitch(Loop loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
                 for (List<ControlSplitNode> nodes : controlSplits.getValues()) {
                     Assert.assertEquals(1, nodes.size());
                     if (nodes.get(0) instanceof IfNode) {
@@ -289,7 +289,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // First the if is unswitched then the switch
         test("test3Snippet", "reference3IfSwitchSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
+            public UnswitchingDecision shouldUnswitch(Loop loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
                 if (controlSplits.size() == 2) {
                     for (List<ControlSplitNode> split : controlSplits.getValues()) {
                         Assert.assertEquals(1, split.size());
@@ -316,7 +316,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // First the switch is unswitched then the if
         test("test3Snippet", "reference3SwitchIfSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
+            public UnswitchingDecision shouldUnswitch(Loop loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
                 if (controlSplits.size() == 2) {
                     for (List<ControlSplitNode> split : controlSplits.getValues()) {
                         Assert.assertEquals(1, split.size());

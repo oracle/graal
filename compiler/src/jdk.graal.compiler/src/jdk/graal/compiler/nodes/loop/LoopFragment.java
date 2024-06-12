@@ -68,22 +68,52 @@ import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.TriState;
 
+/**
+ * A data structure that represents parts {@code ="fragments"} of a loop. Used for the optimizer to
+ * have well defined sets for an entire loop, the body, the header only etc.
+ *
+ * There are 2 main implementations: {@link LoopFragmentWhole} which defines the entirety of a loop
+ * including all loop control nodes. The second one is {@link LoopFragmentInside} which includes all
+ * loop nodes of the body and no control variables.
+ */
 public abstract class LoopFragment {
 
-    private final LoopEx loop;
+    /**
+     * The original loop this fragment is defined over.
+     */
+    private final Loop loop;
+    /**
+     * In case this fragment was duplicated a link to the original one.
+     */
     private final LoopFragment original;
+    /**
+     * All the nodes considered to be part of this fragment.
+     */
     protected NodeBitMap nodes;
+    /**
+     * A flag indicating if the {@link #nodes} map is ready, i.e., if this fragment is a duplicate
+     * we have to recompute the nodes.
+     */
     protected boolean nodesReady;
+    /**
+     * A mapping of old to new nodes after duplication.
+     */
     private EconomicMap<Node, Node> duplicationMap;
+    /**
+     * Phi nodes introduced when merging early loop ends for loop optimizations.
+     */
     protected List<PhiNode> introducedPhis;
+    /**
+     * Merge nodes introduced when merging early loop ends for loop optimizations.
+     */
     protected List<MergeNode> introducedMerges;
 
-    public LoopFragment(LoopEx loop) {
+    public LoopFragment(Loop loop) {
         this(loop, null);
         this.nodesReady = true;
     }
 
-    public LoopFragment(LoopEx loop, LoopFragment original) {
+    public LoopFragment(Loop loop, LoopFragment original) {
         this.loop = loop;
         this.original = original;
         this.nodesReady = false;
@@ -92,13 +122,13 @@ public abstract class LoopFragment {
     /**
      * Return the original LoopEx for this fragment. For duplicated fragments this returns null.
      */
-    public LoopEx loop() {
+    public Loop loop() {
         return loop;
     }
 
     public abstract LoopFragment duplicate();
 
-    public abstract void insertBefore(LoopEx l);
+    public abstract void insertBefore(Loop l);
 
     public boolean contains(Node n) {
         return nodes().isMarkedAndGrow(n);
@@ -155,7 +185,7 @@ public abstract class LoopFragment {
     public abstract NodeBitMap nodes();
 
     public StructuredGraph graph() {
-        LoopEx l;
+        Loop l;
         if (isDuplicate()) {
             l = original().loop();
         } else {
@@ -169,7 +199,7 @@ public abstract class LoopFragment {
     protected abstract void beforeDuplication();
 
     protected void finishDuplication() {
-        LoopEx originalLoopEx = original().loop();
+        Loop originalLoopEx = original().loop();
         ControlFlowGraph cfg = originalLoopEx.loopsData().getCFG();
         for (LoopExitNode exit : originalLoopEx.loopBegin().loopExits().snapshot()) {
             if (!originalLoopEx.loop().isLoopExit(cfg.blockFor(exit))) {
@@ -222,7 +252,7 @@ public abstract class LoopFragment {
         }
     }
 
-    protected static void computeNodes(NodeBitMap nodes, Graph graph, LoopEx loop, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {
+    protected static void computeNodes(NodeBitMap nodes, Graph graph, Loop loop, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {
         for (AbstractBeginNode b : blocks) {
             if (b.isDeleted()) {
                 continue;
@@ -394,7 +424,7 @@ public abstract class LoopFragment {
         workList.push(entry);
     }
 
-    private static void markFloating(WorkQueue workList, LoopEx loop, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
+    private static void markFloating(WorkQueue workList, Loop loop, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
         if (isLoopNode(start, loopNodes, nonLoopNodes).isKnown()) {
             return;
         }

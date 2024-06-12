@@ -37,7 +37,7 @@ import java.util.List;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -126,9 +126,9 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
     private boolean noRangeCheckInLoop(String method) {
         StructuredGraph graph = getFinalGraph(getResolvedJavaMethod(method), getOptionsMainPath());
         final StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        final List<Loop<HIRBlock>> loops = schedule.getCFG().getLoops();
+        final List<CFGLoop<HIRBlock>> loops = schedule.getCFG().getLoops();
         Assert.assertEquals(1, loops.size());
-        final Loop<HIRBlock> loop = loops.get(0);
+        final CFGLoop<HIRBlock> loop = loops.get(0);
         return loop.getBlocks().size() == 2;
     }
 
@@ -1026,9 +1026,9 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
 
     private static int countRangeChecksInLoop(StructuredGraph graph) {
         StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        List<Loop<HIRBlock>> loops = schedule.getCFG().getLoops();
+        List<CFGLoop<HIRBlock>> loops = schedule.getCFG().getLoops();
         Assert.assertEquals(1, loops.size());
-        Loop<HIRBlock> loop = loops.get(0);
+        CFGLoop<HIRBlock> loop = loops.get(0);
         int rangeChecks = 0;
         for (HIRBlock block : loop.getBlocks()) {
             for (Node node : schedule.nodesFor(block)) {

@@ -37,7 +37,7 @@ import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.Assertions;
@@ -689,7 +689,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     @Override
-    protected BlockT stripKilledLoopLocations(Loop<HIRBlock> loop, BlockT originalInitialState) {
+    protected BlockT stripKilledLoopLocations(CFGLoop<HIRBlock> loop, BlockT originalInitialState) {
         BlockT initialState = super.stripKilledLoopLocations(loop, originalInitialState);
         if (loop.getDepth() > GraalOptions.EscapeAnalysisLoopCutoff.getValue(cfg.graph.getOptions())) {
             /*
@@ -739,7 +739,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     @Override
-    protected void processInitialLoopState(Loop<HIRBlock> loop, BlockT initialState) {
+    protected void processInitialLoopState(CFGLoop<HIRBlock> loop, BlockT initialState) {
         for (PhiNode phi : ((LoopBeginNode) loop.getHeader().getBeginNode()).phis()) {
             if (phi.valueAt(0) != null) {
                 ValueNode alias = getAliasAndResolve(initialState, phi.valueAt(0));
