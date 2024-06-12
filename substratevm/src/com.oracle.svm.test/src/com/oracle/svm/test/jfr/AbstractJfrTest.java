@@ -41,6 +41,7 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -52,6 +53,7 @@ import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.jfr.Configuration;
+import jdk.jfr.Unsigned;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingFile;
 
@@ -190,6 +192,12 @@ public abstract class AbstractJfrTest {
 }
 
 class JfrTestFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        /* Needed so that the tests can call RecordedObject.getLong(). */
+        RuntimeProxyCreation.register(Unsigned.class);
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         /*
