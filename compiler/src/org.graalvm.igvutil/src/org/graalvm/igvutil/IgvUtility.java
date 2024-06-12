@@ -58,6 +58,15 @@ import jdk.graal.compiler.util.json.JsonBuilder;
 import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.graal.compiler.util.json.JsonWriter;
 
+/**
+ * Various utility programs to inspect and manipulate igv dumps.
+ * Specifically, this program offers three subcommands:
+ * <ul>
+ *     <li>{@code list}: show the contents of a .bgv file in a tree-like format</li>
+ *     <li>{@code flatten}: group graphs across multiple files/dumps by name or other properties.</li>
+ *     <li>{@code filter}: export graph data to JSON, optionally selecting a subset of graph/node properties.</li>
+ * </ul>
+ */
 public class IgvUtility {
     abstract static class GraphCommand extends Command {
         protected final OptionValue<List<String>> inputFiles;
@@ -94,7 +103,7 @@ public class IgvUtility {
      */
     static final class Printer extends GraphCommand {
         public Printer() {
-            super("list", "print IGV file contents");
+            super("list", "print IGV file contents in a tree-like format");
         }
 
         @Override
@@ -154,9 +163,7 @@ public class IgvUtility {
         private final Map<String, Group> groups = new HashMap<>();
 
         public Flatten() {
-            super("flatten", """
-                    Reorders graphs in the given input files so that they are grouped according
-                    to a specified property, such as their name.""");
+            super("flatten", "Group graphs across multiple files/dumps by name or other properties.");
             outputFile = addNamed("--output-file", new StringValue("PATH",
                     "Path that the flattened BGV file will be saved under"));
             flattenKey = addNamed("--by", new StringValue("PROPERTY",
@@ -203,7 +210,7 @@ public class IgvUtility {
         private final JsonWriter writer;
 
         public Filter() {
-            super("filter", "filter nodes and graphs according to properties and export to JSON");
+            super("filter", "export graph data to JSON, optionally selecting a subset of graph/node properties");
             nodePropertyFilter = addNamed("--node-properties", new StringValue("PROPERTIES", "", "comma-separated list of node properties"));
             graphPropertyFilter = addNamed("--graph-properties", new StringValue("PROPERTIES", "", "comma-separated list of graph properties"));
             writer = new JsonPrettyWriter(new PrintWriter(System.out));

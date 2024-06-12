@@ -53,7 +53,7 @@ public class JsonExporter {
         this.documentPropertyFilter = null;
     }
 
-    public JsonExporter(Set<String> nodePropertyFilter, Set<String> documentPropertyFilter) {
+    public JsonExporter(Set<String> documentPropertyFilter, Set<String> nodePropertyFilter) {
         this.nodePropertyFilter = nodePropertyFilter;
         this.documentPropertyFilter = documentPropertyFilter;
     }
@@ -105,27 +105,32 @@ public class JsonExporter {
         return o;
     }
 
+    /**
+     * Writes node properties, with special handling for specific properties which are
+     * known to have a wrong type, e.g. the ID property is serialized as a string but should be
+     * written as a number.
+     */
+    private void writeNodeProperty(InputNode node, String name, Object value, JsonBuilder.ObjectBuilder builder) throws IOException {
+        if (value == null) {
+            return;
+        }
+        Object writtenValue = switch (name) {
+            // ID property is stored as a string, replace with number
+            case KnownPropertyNames.PROPNAME_ID -> node.getId();
+            default -> interceptStackTrace(value);
+        };
+        builder.append(name, writtenValue);
+    }
+
     protected void writeNode(InputNode node, JsonBuilder.ObjectBuilder builder) throws IOException {
         if (nodePropertyFilter != null) {
             for (String propName : nodePropertyFilter) {
-                Object o = node.getProperties().get(propName);
-                if (o != null) {
-                    builder.append(propName, interceptStackTrace(o));
-                }
+                Object value = node.getProperties().get(propName);
+                writeNodeProperty(node, propName, value, builder);
             }
-            return;
-        }
-
-        for (Property<?> p : node.getProperties()) {
-            Object o = p.getValue();
-            if (o != null) {
-                String key = p.getName();
-                Object value = switch (key) {
-                    // ID property is stored as a string, replace with number
-                    case KnownPropertyNames.PROPNAME_ID -> node.getId();
-                    default -> interceptStackTrace(o);
-                };
-                builder.append(key, value);
+        } else {
+            for (Property<?> p : node.getProperties()) {
+                writeNodeProperty(node, p.getName(), p.getValue(), builder);
             }
         }
     }
