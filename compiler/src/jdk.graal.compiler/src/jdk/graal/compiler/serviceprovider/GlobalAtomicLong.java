@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package jdk.graal.compiler.serviceprovider;
 import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicLong;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * A shareable long value in the JVM process that is updated atomically. The long value is stored in
@@ -39,7 +39,7 @@ import sun.misc.Unsafe;
  */
 public class GlobalAtomicLong {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
      * Cleaner for freeing {@link #address}.
@@ -166,6 +166,6 @@ public class GlobalAtomicLong {
      * @see AtomicLong#compareAndSet(long, long)
      */
     public boolean compareAndSet(long expectedValue, long newValue) {
-        return UNSAFE.compareAndSwapLong(null, getAddress(), expectedValue, newValue);
+        return UNSAFE.compareAndSetLong(null, getAddress(), expectedValue, newValue);
     }
 }
