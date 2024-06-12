@@ -11,21 +11,19 @@ redirect_from: /reference-manual/native-image/Resources/
 By default, the `native-image` tool will not integrate any of the resources that are on the classpath into a native executable.
 To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or their corresponding `ClassLoader` methods) return specific resources (instead of `null`), you must specify the resources that should be accessible at runtime.
 
-## Resources Registration
+There are several ways a resource can be registered for inclusion and be made accessible at runtime:
+1. Native Image automatically includes a [resource configuration file](#resource-configuration-file) when placed in the _META-INF/native-image/_ directory. This approach is a great way for libraries and frameworks to provide an out-of-the-box experience.
+2. For more advanced use cases where a resource configuration file is insufficient, resources can be registered programmatically using the [public API](#public-api).
+3. For testing during development, the [command-line option](#command-line-option) provides a useful approach.
 
-There are several ways you can request (register) certain resources to be included in a native executable and, therefore, accessible at runtime:
-1. Creating a resource configuration file
-2. Via a command-line option
-3. Programmatically using a public API
-
-### Resource Configuration File
+## Resource Configuration File
 
 A resource configuration file contains information about the resources that you need to include in a native executable, encoded with patterns matching actual resources on your file system.
-A configuration file should be named _resource-config.json_.
+Such a configuration file has to be named _resource-config.json_ and placed in the _META-INF/native-image/_ directory so that `native-image` will automatically make use of it.
 You can either generate it using the [Tracing Agent](AutomaticMetadataCollection/#tracing-agent), and then manually refine it, or create it from scratch.
 You can choose one of the formats to specify the required resources (or combine them if necessary):
 1. Globs (**recommended**)
-2. Regular expressions (Regex)
+2. Regular expressions (Regex) (**discouraged**)
 
 See below a valid configuration file structure (described in more details in [resource-config-schema](assets/resource-config-schema-v1.1.0.json)):
 
@@ -42,78 +40,48 @@ See below a valid configuration file structure (described in more details in [re
   ],
   "resources": [
       {
-       "pattern": "<Java regexp that matches resource(s) to be included in the executable>"
+       "pattern": "<Java regex that matches resource(s) to be included in the executable>"
       },
       {
-       "pattern": "<another regexp>"
+       "pattern": "<another regex>"
       },
       ...
   ]
 }
 ```
 
-Once created, the configuration file's path can be passed to the `native-image` tool using the option `-H:ResourceConfigurationFiles=/path/to/resource-config.json`.
+Once created, the `native-image` tool automatically includes a resource configuration file when placed in the _META-INF/native-image/_ directory. 
+Alternatively, the configuration file's path can be passed to `native-image` using the option `-H:ResourceConfigurationFiles=/path/to/resource-config.json`.
 
-#### Globs
+### Globs
 
-You can write a glob pattern to specify required resources in the `globs` section of the configuration file.
-Also, if you use the [Tracing Agent](AutomaticMetadataCollection/#tracing-agent) to generate required configuration, it prints all entries in this format.
+You can write a glob pattern to specify any required resources in the `globs` section of the configuration file.
+Also, if you use the [Tracing Agent](AutomaticMetadataCollection/#tracing-agent) to generate the required configuration, it prints all entries in this format.
 
-Globs are the recommend way to provide resources for `native-image` because they:
+Globs are the recommended way to provide resources for `native-image` because they:
 * Have custom handling in `native-image` that can speed up a resource registration process
 * Are less expressive and therefore less error-prone than regular expressions
-* Provide better support for resource related checks at runtime
+* Provide better support for resource-related checks at runtime
 
 There are several rules to be observed when specifying a resource path:
-* The `native-image` tool supports only star (*) and globstar (**) wildcards patterns.
+* The `native-image` tool supports only _star_ (\*) and _globstar_ (*\*) wildcard patterns.
   * Per definition, _star_ can match any number of any characters on one level while _globstar_ can match any number of any levels.
   * If there is a need to treat a star literally (without special meaning), it can be escaped using `\ `.
 * In the glob, a _level_ represents part of the pattern separated with `/`.
 * When writing glob patterns the following rules must be observed:
   * Glob cannot be empty (for example, _""_ )
   * Glob cannot end with a trailing slash (`/`) (for example, _"foo/bar/"_)
-  * Glob cannot contain more than two consecutive (non-escaped) `*` characters on one level (for example, _"foo/***/"_ )
+  * Glob cannot contain more than two consecutive (non-escaped) `*` characters on one level (for example, _"foo/*\*\*/"_ )
   * Glob cannot contain empty levels (for example, _"foo//bar"_)
   * Glob cannot contain two consecutive globstar wildcards (example, _"foo/\*\*\/\*\*\"_)
-  * Glob cannot have other content on the same level as globstar wildcard (for example, _foo/**bar/x_)
+  * Glob cannot have other content on the same level as globstar wildcard (for example, _foo/*\*bar/x_)
 
-#### Regular Expressions (Regex)
+### Regular Expressions (Regex)
 
 Alternatively, you can write standard Java regular expressions (regex) patterns to specify required resources in the `resources` section of the configuration file.
 This approach should only be used in extreme cases if the expressive power of globs is not sufficient.
 
-### Command-Line Option
-
-Alternatively, you can specify individual resource paths directly to the `native-image` tool as follows:
-
-```shell
-native-image -H:IncludeResources="<Java regexp that matches resources to be included in the executable>" ...
-```
-Note that with this approach, you can only specify patterns written in the regex format, and therefore all advantages of using globs will not be accessible.
-
-### Public API
-
-You can also register resources programmatically, using the [Native Image Feature API](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html).
-With this approach, you cannot specify a resource using patterns, but only with its literal name.
-Note that resource registration cannot be performed after the [beforeAnalysis](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html#beforeAnalysis(org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess)) phase.
-
-## Embedded Resources Information
-
-There are two ways to see which resources were included in a native executable:
-1. Use the option `--emit=build-report` to generate a build report for your native executable.
-   There you can find information about all included resources under the `Resources` tab.
-2. Use the option `-H:+GenerateEmbeddedResourcesFile` to generate a JSON file  _embedded-resources.json_, listing all included resources.
-
-For each registered resource you get:
-* **Module** (or `unnamed` if a resource does not belong to any module)
-* **Name** (resource path)
-* **Origin** (location of the resource on the system)
-* **Type** (whether the resource is file, directory or missing)
-* **Size** (actual resource size)
-
-> Note: The size of a resource directory represents only the size of names of all directory entries (not a sum of the content sizes).
-
-## Example Usage
+### Example Usage
 
 Given this project structure:
 ```
@@ -138,6 +106,37 @@ Then:
 
 Check [this guide](guides/include-resources.md) which illustrates how to include a resource into a native executable.
 
+## Public API
+
+You can also register resources programmatically, using the [Native Image Feature API](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html).
+With this approach, you cannot specify a resource using patterns, but only with its literal name.
+Note that resource registration cannot be performed after the [beforeAnalysis](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html#beforeAnalysis(org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess)) phase.
+
+## Command-Line Option
+
+Alternatively, you can specify individual resource paths directly to the `native-image` tool as follows:
+
+```shell
+native-image -H:IncludeResources="<Java regex that matches resources to be included in the executable>" ...
+```
+Note that with this approach, you can only specify patterns written in the regex format, and therefore all advantages of using globs will not be accessible.
+
+## Embedded Resources Information
+
+There are two ways to see which resources were included in a native executable:
+1. Use the option `--emit build-report` to generate a build report for your native executable.
+   There you can find information about all included resources under the `Resources` tab.
+2. Use the option `-H:+GenerateEmbeddedResourcesFile` to generate a JSON file  _embedded-resources.json_, listing all included resources.
+
+For each registered resource you get:
+* **Module** (or `unnamed` if a resource does not belong to any module)
+* **Name** (resource path)
+* **Origin** (location of the resource on the system)
+* **Type** (whether the resource is a file, directory, or missing)
+* **Size** (actual resource size)
+
+> Note: The size of a resource directory represents only the size of the names of all directory entries (not a sum of the content sizes).
+
 ## Resource Bundles
 
 Java localization support (`java.util.ResourceBundle`) enables Java code to load L10N resources and show the user messages suitable for runtime settings such as time, locale, and format.
@@ -161,8 +160,8 @@ Alternatively, bundles can be specified directly as options to the `native-image
 native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle ...
 ```
 
-By default, bundles are included for all requested locales.
-To optimize this, use `IncludeResourceBundles` with a locale-specific substring, for example, `-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR`. It will only include the bundle in French.
+By default, resource bundles are included for all requested locales.
+To optimize this, use `IncludeResourceBundles` with a locale-specific substring, for example, `-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR`. It will only include the bundle for _French (France)_.
 
 ## Locales
 
@@ -176,10 +175,10 @@ You can include all locales via `-H:+IncludeAllLocales`, but note that it increa
 
 ## Resources in Java Modules
 
-For every resource (either specified with globs or regular expressions) or resource bundles, it is possible to specify the exact modules from which these resources or bundles should be taken.
+For every resource (either specified with globs or regular expressions) or resource bundle, it is possible to specify the module from which the resource or resource bundle should be taken.
 
 * For glob-based resource patterns, you can specify a module name in the separate `module` field in each entry.
-* For a regex-based resource patterns, or bundles, you can specify a module name before the resource/bundle name with `:` as a separator.
+* For a regex-based resource patterns or bundles, you can specify a module name before the resource/bundle name with `:` as a separator.
 
 For example:
 ```json
@@ -204,9 +203,9 @@ For example:
 ```
 
 This will cause the `native-image` tool to only include `resource-file.txt` from the Java module `library-module`.
-If other modules or the classpath contains resources that match the pattern `resource-file.txt`, only the one in module `library-module` is registered for inclusion in the executable.
-Similarly, if other bundles are accessible with the same bundle name `your.pkg.Bundle`, only the one from `main-module` is included.
-Native image will also ensure that the modules are guaranteed to be accessible at runtime.
+If other modules or the classpath contains resources that match the pattern `resource-file.txt`, only the one in `library-module` is registered for inclusion in the executable.
+Similarly, if other resource bundles are accessible with the same bundle name `your.pkg.Bundle`, only the one from `main-module` is included.
+Native Image will also ensure that the modules are guaranteed to be accessible at runtime.
 
 The following code pattern
 ```java
@@ -218,7 +217,7 @@ will always work as expected for resources registered as described above (even i
 
 Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of Java VM infrastructure.
 As a result, it causes the size of the executable to increase for smaller applications such as `HelloWorld`.
-Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact that all bundles are known ahead of build time.
+Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact that all resource bundles are known ahead of build time.
 For the original Java VM lookup, use the `-H:-LocalizationOptimizedMode` option.
 
 ### Further Reading
