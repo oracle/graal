@@ -419,14 +419,22 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
-        var exists = registeredMethods.containsKey(analysisMethod);
-        var conditionalValue = registeredMethods.computeIfAbsent(analysisMethod, (t) -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectExecutable));
+        boolean registered = false;
+        ConditionalRuntimeValue<Executable> conditionalValue = registeredMethods.get(analysisMethod);
+        if (conditionalValue == null) {
+            var newConditionalValue = new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectExecutable);
+            conditionalValue = registeredMethods.putIfAbsent(analysisMethod, newConditionalValue);
+            if (conditionalValue == null) {
+                conditionalValue = newConditionalValue;
+                registered = true;
+            }
+        }
         if (!queriedOnly) {
             /* queryOnly methods are conditioned by the type itself */
             conditionalValue.getConditions().addCondition(cnd);
         }
 
-        if (!exists) {
+        if (registered) {
             registerTypesForMethod(analysisMethod, reflectExecutable);
             AnalysisType declaringType = analysisMethod.getDeclaringClass();
             Class<?> declaringClass = declaringType.getJavaClass();

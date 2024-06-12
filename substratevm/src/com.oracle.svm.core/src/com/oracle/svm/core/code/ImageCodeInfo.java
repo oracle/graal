@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -31,25 +32,26 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.CIsolateData;
-import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
 
-public class ImageCodeInfo {
+public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSingleton {
     public static final String CODE_INFO_NAME = "image code";
-
-    private final CIsolateData<CodeInfoImpl> runtimeCodeInfo = CIsolateDataFactory.createStruct("runtimeCodeInfo", CodeInfoImpl.class);
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final HostedImageCodeInfo hostedImageCodeInfo = new HostedImageCodeInfo();
@@ -85,28 +87,49 @@ public class ImageCodeInfo {
 
     @Uninterruptible(reason = "Executes during isolate creation.")
     CodeInfo prepareCodeInfo() {
-        CodeInfoImpl info = runtimeCodeInfo.get();
-        assert info.getCodeStart().isNull() : "already initialized";
+        if (!ImageLayerBuildingSupport.buildingImageLayer()) {
+            ImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache();
+            CodeInfoImpl codeInfo = ImageCodeInfoStorage.get();
+            return ImageCodeInfo.prepareCodeInfo0(imageCodeInfo, codeInfo, WordFactory.nullPointer());
+        } else {
+            ImageCodeInfo[] imageCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfo.class);
+            ImageCodeInfoStorage[] runtimeCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfoStorage.class);
+            int size = imageCodeInfos.length;
+            for (int i = 0; i < size; i++) {
+                ImageCodeInfo imageCodeInfo = imageCodeInfos[i];
+                CodeInfoImpl codeInfoImpl = runtimeCodeInfos[i].getData();
+                CodeInfoImpl nextCodeInfoImpl = i + 1 < size ? runtimeCodeInfos[i + 1].getData() : WordFactory.nullPointer();
 
-        info.setObjectFields(NonmovableArrays.fromImageHeap(objectFields));
-        info.setCodeStart(codeStart);
-        info.setCodeSize(codeSize);
-        info.setDataOffset(dataOffset);
-        info.setDataSize(dataSize);
-        info.setCodeAndDataMemorySize(codeAndDataMemorySize);
-        info.setCodeInfoIndex(NonmovableArrays.fromImageHeap(codeInfoIndex));
-        info.setCodeInfoEncodings(NonmovableArrays.fromImageHeap(codeInfoEncodings));
-        info.setStackReferenceMapEncoding(NonmovableArrays.fromImageHeap(referenceMapEncoding));
-        info.setFrameInfoEncodings(NonmovableArrays.fromImageHeap(frameInfoEncodings));
-        info.setObjectConstants(NonmovableArrays.fromImageHeap(objectConstants));
-        info.setClasses(NonmovableArrays.fromImageHeap(classes));
-        info.setMemberNames(NonmovableArrays.fromImageHeap(memberNames));
-        info.setOtherStrings(NonmovableArrays.fromImageHeap(otherStrings));
-        info.setMethodTable(NonmovableArrays.fromImageHeap(methodTable));
-        info.setMethodTableFirstId(methodTableFirstId);
-        info.setIsAOTImageCode(true);
+                ImageCodeInfo.prepareCodeInfo0(imageCodeInfo, codeInfoImpl, nextCodeInfoImpl);
+            }
+            return runtimeCodeInfos[0].getData();
+        }
+    }
 
-        return info;
+    @Uninterruptible(reason = "Executes during isolate creation.")
+    private static CodeInfo prepareCodeInfo0(ImageCodeInfo imageCodeInfo, CodeInfoImpl infoImpl, CodeInfo next) {
+        assert infoImpl.getCodeStart().isNull() : "already initialized";
+
+        infoImpl.setObjectFields(NonmovableArrays.fromImageHeap(imageCodeInfo.objectFields));
+        infoImpl.setCodeStart(imageCodeInfo.codeStart);
+        infoImpl.setCodeSize(imageCodeInfo.codeSize);
+        infoImpl.setDataOffset(imageCodeInfo.dataOffset);
+        infoImpl.setDataSize(imageCodeInfo.dataSize);
+        infoImpl.setCodeAndDataMemorySize(imageCodeInfo.codeAndDataMemorySize);
+        infoImpl.setCodeInfoIndex(NonmovableArrays.fromImageHeap(imageCodeInfo.codeInfoIndex));
+        infoImpl.setCodeInfoEncodings(NonmovableArrays.fromImageHeap(imageCodeInfo.codeInfoEncodings));
+        infoImpl.setStackReferenceMapEncoding(NonmovableArrays.fromImageHeap(imageCodeInfo.referenceMapEncoding));
+        infoImpl.setFrameInfoEncodings(NonmovableArrays.fromImageHeap(imageCodeInfo.frameInfoEncodings));
+        infoImpl.setObjectConstants(NonmovableArrays.fromImageHeap(imageCodeInfo.objectConstants));
+        infoImpl.setClasses(NonmovableArrays.fromImageHeap(imageCodeInfo.classes));
+        infoImpl.setMemberNames(NonmovableArrays.fromImageHeap(imageCodeInfo.memberNames));
+        infoImpl.setOtherStrings(NonmovableArrays.fromImageHeap(imageCodeInfo.otherStrings));
+        infoImpl.setMethodTable(NonmovableArrays.fromImageHeap(imageCodeInfo.methodTable));
+        infoImpl.setMethodTableFirstId(imageCodeInfo.methodTableFirstId);
+        infoImpl.setIsAOTImageCode(true);
+        infoImpl.setNextImageCodeInfo(next);
+
+        return infoImpl;
     }
 
     /**
@@ -124,6 +147,11 @@ public class ImageCodeInfo {
 
     public List<Integer> getTotalByteArrayLengths() {
         return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length, methodTable.length);
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 
     /**

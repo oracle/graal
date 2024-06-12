@@ -96,6 +96,7 @@ import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DeoptSourceFrameInfo;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
+import com.oracle.svm.hosted.imagelayer.PriorLayerSymbolTracker;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -398,9 +399,13 @@ public abstract class NativeImageCodeCache {
             }
         }));
 
+        var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
         configurationExecutables.forEach(((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod method = hUniverse.lookup(analysisMethod);
+                if (analysisMethod.isInBaseLayer()) {
+                    symbolTracker.registerPriorLayerReference(method);
+                }
                 Object accessor = reflectionSupport.getAccessor(analysisMethod);
                 runtimeMetadataEncoder.addReflectionExecutableMetadata(hMetaAccess, method, reflectMethod, accessor);
             }

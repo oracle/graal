@@ -57,7 +57,7 @@ public final class RelocatableBuffer {
     }
 
     public void addRelocationWithoutAddend(int key, ObjectFile.RelocationKind relocationKind, Object targetObject) {
-        relocations.put(key, new Info(relocationKind, 0L, targetObject));
+        addRelocationWithAddend(key, relocationKind, 0, targetObject);
     }
 
     public void addRelocationWithAddend(int key, ObjectFile.RelocationKind relocationKind, long addend, Object targetObject) {
