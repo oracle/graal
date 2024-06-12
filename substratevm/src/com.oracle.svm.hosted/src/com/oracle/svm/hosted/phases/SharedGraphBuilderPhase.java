@@ -652,6 +652,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
+        protected int minLockDepthAtMonitorExit(boolean inEpilogue) {
+            return 1;
+        }
+
+        @Override
         protected void handleUnstructuredLocking(String msg, boolean isDeadEnd) {
             ValueNode methodSynchronizedObjectSnapshot = methodSynchronizedObject;
             if (getDispatchBlock(bci()) == blockMap.getUnwindBlock()) {
@@ -773,7 +778,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 MonitorIdNode id = frameState.peekMonitorId();
                 ValueNode lock = frameState.popLock();
                 frameState.pushLock(lock, id);
-                genMonitorExit(lock, null, bci(), false);
+                genMonitorExit(lock, null, bci(), includeMethodSynchronizeObject, false);
             }
         }
 
