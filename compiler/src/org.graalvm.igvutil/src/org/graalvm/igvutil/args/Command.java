@@ -170,7 +170,9 @@ public class Command {
                 continue;
             }
             OptionValue<?> value = named.get(args[index]);
-            if (value == null) {
+            if (value != null) {
+                index++;
+            } else {
                 if (nextPositionalArg >= positional.size()) {
                     break;
                 }

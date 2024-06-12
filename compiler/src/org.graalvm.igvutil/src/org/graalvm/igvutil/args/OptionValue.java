@@ -91,7 +91,7 @@ public abstract class OptionValue<T> {
      * @return the parsed option value, or a default if the argument wasn't parsed (yet).
      */
     public T getValue() {
-        return isSet() ? defaultValue : value;
+        return isSet() ? value : defaultValue;
     }
 
     /**
@@ -160,7 +160,7 @@ public abstract class OptionValue<T> {
     public String getUsage() {
         String usage = String.format("<%s>", name);
         if (defaultValue != null) {
-            usage += String.format(" (default: %s)", defaultValue);
+            usage += String.format(" (default: \"%s\")", defaultValue);
         }
         return usage;
     }
