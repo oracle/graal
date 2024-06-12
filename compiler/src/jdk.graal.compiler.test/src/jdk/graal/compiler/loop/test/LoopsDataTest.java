@@ -29,7 +29,7 @@ import java.util.Set;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import org.junit.Assert;
 import org.junit.Test;
@@ -83,7 +83,7 @@ public class LoopsDataTest extends GraalCompilerTest {
         Assert.assertEquals(3, loops.outerFirst().get(6).loop().getDepth());
         Assert.assertEquals(4, loops.outerFirst().get(7).loop().getDepth());
 
-        for (LoopEx loop : loops.loops()) {
+        for (Loop loop : loops.loops()) {
             if (loop.parent() != null) {
                 Assert.assertEquals(loop.parent().loop().getDepth() + 1, loop.loop().getDepth());
             }
@@ -94,8 +94,8 @@ public class LoopsDataTest extends GraalCompilerTest {
     public void testInnerFirst() {
         LoopsData loops = getLoopsData();
 
-        Set<LoopEx> seen = new HashSet<>();
-        for (LoopEx loop : loops.innerFirst()) {
+        Set<Loop> seen = new HashSet<>();
+        for (Loop loop : loops.innerFirst()) {
             assertFalse(seen.contains(loop), "%s has already been seen", loop);
             if (loop.parent() != null) {
                 assertFalse(seen.contains(loop.parent()), "%s's parent (%s) should not have already been seen", loop, loop.parent());
@@ -108,8 +108,8 @@ public class LoopsDataTest extends GraalCompilerTest {
     public void testOuterFirst() {
         LoopsData loops = getLoopsData();
 
-        Set<LoopEx> seen = new HashSet<>();
-        for (LoopEx loop : loops.outerFirst()) {
+        Set<Loop> seen = new HashSet<>();
+        for (Loop loop : loops.outerFirst()) {
             assertFalse(seen.contains(loop), "%s has already been seen", loop);
             if (loop.parent() != null) {
                 assertTrue(seen.contains(loop.parent()), "%s's parent (%s) should have already been seen", loop, loop.parent());

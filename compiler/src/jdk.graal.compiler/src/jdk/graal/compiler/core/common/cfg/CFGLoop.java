@@ -31,10 +31,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class Loop<T extends BasicBlock<T>> {
+/**
+ * An abstract representation of a loop inside the {@link AbstractControlFlowGraph}. Such a loop is
+ * defined as a block that represents the loop header as well as all blocks that cover all basic
+ * blocks of the loop and the blocks that exit it. Implementations provide additional data
+ * structures.
+ */
+public abstract class CFGLoop<T extends BasicBlock<T>> {
 
-    private final Loop<T> parent;
-    private final ArrayList<Loop<T>> children;
+    private final CFGLoop<T> parent;
+    private final ArrayList<CFGLoop<T>> children;
 
     private final int depth;
     private final int index;
@@ -48,7 +54,7 @@ public abstract class Loop<T extends BasicBlock<T>> {
      */
     private final ArrayList<T> naturalExits;
 
-    protected Loop(Loop<T> parent, int index, T header) {
+    protected CFGLoop(CFGLoop<T> parent, int index, T header) {
         this.parent = parent;
         if (parent != null) {
             this.depth = parent.getDepth() + 1;
@@ -70,11 +76,11 @@ public abstract class Loop<T extends BasicBlock<T>> {
         return "loop " + index + " depth " + getDepth() + (parent != null ? " outer " + parent.index : "");
     }
 
-    public Loop<T> getParent() {
+    public CFGLoop<T> getParent() {
         return parent;
     }
 
-    public Loop<T> getOutmostLoop() {
+    public CFGLoop<T> getOutmostLoop() {
         if (parent == null) {
             return this;
         } else {
@@ -82,7 +88,7 @@ public abstract class Loop<T extends BasicBlock<T>> {
         }
     }
 
-    public List<Loop<T>> getChildren() {
+    public List<CFGLoop<T>> getChildren() {
         return children;
     }
 
@@ -116,8 +122,8 @@ public abstract class Loop<T extends BasicBlock<T>> {
      * Determine if {@code potentialAncestor} equals {@code this} or an ancestor along the
      * {@link #getParent()} link.
      */
-    public boolean isAncestorOrSelf(Loop<?> potentialAncestor) {
-        Loop<?> p = this;
+    public boolean isAncestorOrSelf(CFGLoop<?> potentialAncestor) {
+        CFGLoop<?> p = this;
         while (p != null) {
             if (p == potentialAncestor) {
                 return true;

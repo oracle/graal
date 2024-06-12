@@ -47,7 +47,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <m2e.apt.activation>jdt_apt</m2e.apt.activation>
-    <graalvm.version>24.1.0-dev</graalvm.version>
+    <graalvm.version>24.2.0-dev</graalvm.version>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <launcherClass>org.graalvm.sl.launcher/com.oracle.truffle.sl.launcher.SLMain</launcherClass>

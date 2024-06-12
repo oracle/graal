@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.core.test;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
@@ -148,9 +148,9 @@ public class NestedLoopTest extends GraalCompilerTest {
         ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
 
         Assert.assertEquals(3, cfg.getLoops().size());
-        Loop<HIRBlock> rootLoop = cfg.getLoops().get(0);
-        Loop<HIRBlock> nestedLoop = cfg.getLoops().get(1);
-        Loop<HIRBlock> innerMostLoop = cfg.getLoops().get(2);
+        CFGLoop<HIRBlock> rootLoop = cfg.getLoops().get(0);
+        CFGLoop<HIRBlock> nestedLoop = cfg.getLoops().get(1);
+        CFGLoop<HIRBlock> innerMostLoop = cfg.getLoops().get(2);
         Invoke a = getInvoke("a", graph);
         Invoke b = getInvoke("b", graph);
         Invoke c = getInvoke("c", graph);
@@ -167,14 +167,14 @@ public class NestedLoopTest extends GraalCompilerTest {
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
     }
 
-    private static boolean contains(Loop<HIRBlock> loop, Invoke node, ControlFlowGraph cfg) {
+    private static boolean contains(CFGLoop<HIRBlock> loop, Invoke node, ControlFlowGraph cfg) {
         HIRBlock block = cfg.blockFor((Node) node);
         Assert.assertNotNull(block);
         return loop.getBlocks().contains(block);
     }
 
-    private static boolean containsDirect(Loop<HIRBlock> loop, Invoke node, ControlFlowGraph cfg) {
-        for (Loop<HIRBlock> child : loop.getChildren()) {
+    private static boolean containsDirect(CFGLoop<HIRBlock> loop, Invoke node, ControlFlowGraph cfg) {
+        for (CFGLoop<HIRBlock> child : loop.getChildren()) {
             if (contains(child, node, cfg)) {
                 return false;
             }

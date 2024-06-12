@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Graph.DuplicationReplacement;
 import jdk.graal.compiler.graph.Node;
@@ -37,7 +37,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 public class LoopFragmentWhole extends LoopFragment {
 
-    public LoopFragmentWhole(LoopEx loop) {
+    public LoopFragmentWhole(Loop loop) {
         super(loop);
     }
 
@@ -63,7 +63,7 @@ public class LoopFragmentWhole extends LoopFragment {
     @Override
     public NodeBitMap nodes() {
         if (nodes == null) {
-            Loop<HIRBlock> loop = loop().loop();
+            CFGLoop<HIRBlock> loop = loop().loop();
             NodeBitMap loopNodes = graph().createNodeBitMap();
             LoopFragment.computeNodes(loopNodes, graph(), loop(), LoopFragment.toHirBlocks(loop.getBlocks()), LoopFragment.toHirBlocks(loop.getLoopExits()));
             nodes = loopNodes;
@@ -111,7 +111,7 @@ public class LoopFragmentWhole extends LoopFragment {
     }
 
     @Override
-    public void insertBefore(LoopEx loop) {
+    public void insertBefore(Loop loop) {
         // nothing to do
     }
 }

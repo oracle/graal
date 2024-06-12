@@ -33,7 +33,7 @@ import java.util.function.Predicate;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.AbstractEndNode;
@@ -92,7 +92,7 @@ public final class ReentrantBlockIterator {
             return oldState;
         }
 
-        protected List<StateT> processLoop(Loop<HIRBlock> loop, StateT initialState) {
+        protected List<StateT> processLoop(CFGLoop<HIRBlock> loop, StateT initialState) {
             return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
         }
     }
@@ -101,7 +101,7 @@ public final class ReentrantBlockIterator {
         // no instances allowed
     }
 
-    public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop<HIRBlock> loop, StateT initialState) {
+    public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, CFGLoop<HIRBlock> loop, StateT initialState) {
         EconomicMap<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, block -> !(block.getLoop() == loop || block.isLoopHeader()));
 
         HIRBlock lh = loop.getHeader();
@@ -228,7 +228,7 @@ public final class ReentrantBlockIterator {
 
     private static <StateT> void recurseIntoLoop(BlockIteratorClosure<StateT> closure, Deque<HIRBlock> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state, HIRBlock successor) {
         // recurse into the loop
-        Loop<HIRBlock> loop = successor.getLoop();
+        CFGLoop<HIRBlock> loop = successor.getLoop();
         LoopBeginNode loopBegin = (LoopBeginNode) loop.getHeader().getBeginNode();
         assert successor.getBeginNode() == loopBegin : Assertions.errorMessage(successor, successor.getBeginNode(), loopBegin);
 

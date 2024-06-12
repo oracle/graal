@@ -43,7 +43,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     protected final ValueNode offset;
     protected final BinaryArithmeticNode<?> value;
 
-    public DerivedOffsetInductionVariable(LoopEx loop, InductionVariable base, ValueNode offset, BinaryArithmeticNode<?> value) {
+    public DerivedOffsetInductionVariable(Loop loop, InductionVariable base, ValueNode offset, BinaryArithmeticNode<?> value) {
         super(loop, base);
         this.offset = offset;
         this.value = value;

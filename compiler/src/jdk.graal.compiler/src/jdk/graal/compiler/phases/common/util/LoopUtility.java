@@ -26,7 +26,7 @@ package jdk.graal.compiler.phases.common.util;
 
 import java.util.EnumSet;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
@@ -54,7 +54,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.loop.BasicInductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
@@ -153,8 +153,8 @@ public class LoopUtility {
         }
         HIRBlock useBlock = cfg.blockFor(use);
         HIRBlock defBlock = cfg.blockFor(def);
-        Loop<HIRBlock> defLoop = defBlock.getLoop();
-        Loop<HIRBlock> useLoop = useBlock.getLoop();
+        CFGLoop<HIRBlock> defLoop = defBlock.getLoop();
+        CFGLoop<HIRBlock> useLoop = useBlock.getLoop();
         if (defLoop != null) {
             // the def is inside a loop, either a parent or a disjunct loop
             if (useLoop != null) {
@@ -206,7 +206,7 @@ public class LoopUtility {
         LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
         final EconomicSetNodeEventListener inputChanges = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.INPUT_CHANGED));
         try (NodeEventScope s = graph.trackNodeEvents(inputChanges)) {
-            for (LoopEx loop : loopsData.loops()) {
+            for (Loop loop : loopsData.loops()) {
                 removeObsoleteProxiesForLoop(loop);
             }
         }
@@ -218,7 +218,7 @@ public class LoopUtility {
      * {@link #removeObsoleteProxies(StructuredGraph, CoreProviders, CanonicalizerPhase)}, this does
      * not apply canonicalization.
      */
-    public static void removeObsoleteProxiesForLoop(LoopEx loop) {
+    public static void removeObsoleteProxiesForLoop(Loop loop) {
         for (LoopExitNode lex : loop.loopBegin().loopExits()) {
             for (ProxyNode proxy : lex.proxies().snapshot()) {
                 if (loop.isOutsideLoop(proxy.value())) {
@@ -232,7 +232,7 @@ public class LoopUtility {
      * Advance all of the loop's induction variables by {@code iterations} strides by modifying the
      * underlying phi's init value.
      */
-    public static void stepLoopIVs(StructuredGraph graph, LoopEx loop, ValueNode iterations) {
+    public static void stepLoopIVs(StructuredGraph graph, Loop loop, ValueNode iterations) {
         for (InductionVariable iv : loop.getInductionVariables().getValues()) {
             if (!(iv instanceof BasicInductionVariable)) {
                 // Only step basic IVs; this will advance derived IVs automatically.
@@ -262,7 +262,7 @@ public class LoopUtility {
      * stamp of an arithmetic operation. Thus, we manually inject the original stamps via pi nodes
      * into the unrolled versions. This ensures the divs verify correctly.
      */
-    public static void preserveCounterStampsForDivAfterUnroll(LoopEx loop) {
+    public static void preserveCounterStampsForDivAfterUnroll(Loop loop) {
         for (Node n : loop.inside().nodes()) {
             if (n instanceof FloatingIntegerDivRemNode<?> idiv) {
 
@@ -290,7 +290,7 @@ public class LoopUtility {
         loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "After preserving idiv stamps");
     }
 
-    private static PiNode piAnchorBeforeLoop(StructuredGraph graph, ValueNode v, Stamp s, LoopEx loop) {
+    private static PiNode piAnchorBeforeLoop(StructuredGraph graph, ValueNode v, Stamp s, Loop loop) {
         ValueNode opaqueDivisor = graph.addWithoutUnique(new OpaqueValueNode(v));
         // just anchor the pi before the loop, that dominates the other input
         return graph.addWithoutUnique(new PiNode(opaqueDivisor, s, AbstractBeginNode.prevBegin(loop.loopBegin().forwardEnd())));

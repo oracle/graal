@@ -35,7 +35,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.core.common.calc.Condition;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.GraalError;
@@ -80,17 +80,44 @@ import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
-public class LoopEx {
-    protected final Loop<HIRBlock> loop;
+/**
+ * Extra loop data for the given loop. This includes data on which nodes belong to a loop, counted
+ * loop information if the compiler detects it as a counted loop. Data about induction variables,
+ * parent loops and much more.
+ */
+public class Loop {
+    /**
+     * The corresponding {@link ControlFlowGraph} loop data structure.
+     */
+    protected final CFGLoop<HIRBlock> loop;
+    /**
+     * The corresponding fragment that describes the body nodes of this loop.
+     */
     protected LoopFragmentInside inside;
+    /**
+     * The corresponding fragment that describes the entire nodes in this loop.
+     */
     protected LoopFragmentWhole whole;
+    /**
+     * If this loop is counted, a link to the counted loop info.
+     */
     protected CountedLoopInfo counted;
+    /**
+     * A link to the enclosing loops data structure that contains information about all loops in the
+     * given graph.
+     */
     protected LoopsData data;
+    /**
+     * All {@code InductionVariable} of this loop, indexed by their operation node.
+     */
     protected EconomicMap<Node, InductionVariable> ivs;
+    /**
+     * Indicates if we already ran counted loop detection on this loop.
+     */
     protected boolean countedLoopChecked;
     protected int size = -1;
 
-    protected LoopEx(Loop<HIRBlock> loop, LoopsData data) {
+    protected Loop(CFGLoop<HIRBlock> loop, LoopsData data) {
         this.loop = loop;
         this.data = data;
     }
@@ -103,7 +130,7 @@ public class LoopEx {
         return data.getCFG().localLoopFrequencySource(loopBegin());
     }
 
-    public Loop<HIRBlock> loop() {
+    public CFGLoop<HIRBlock> loop() {
         return loop;
     }
 
@@ -121,11 +148,19 @@ public class LoopEx {
         return whole;
     }
 
+    /**
+     * Delete all the loop fragments of this loop. This can be necessary when floating nodes in the
+     * loop have changed and thus require a recomputation of the fragments.
+     */
     public void invalidateFragments() {
         inside = null;
         whole = null;
     }
 
+    /**
+     * Not only invalidate fragments but also the induction variables. This can be necessary when
+     * IVs have changed since this LoopEx was computed.
+     */
     public void invalidateFragmentsAndIVs() {
         inside = null;
         whole = null;
@@ -137,18 +172,6 @@ public class LoopEx {
          * form.
          */
         ivs = null;
-    }
-
-    @SuppressWarnings("unused")
-    public LoopFragmentInsideFrom insideFrom(FixedNode point) {
-        GraalError.unimplemented("intentional"); // ExcludeFromJacocoGeneratedReport
-        return null;
-    }
-
-    @SuppressWarnings("unused")
-    public LoopFragmentInsideBefore insideBefore(FixedNode point) {
-        GraalError.unimplemented("intentional"); // ExcludeFromJacocoGeneratedReport
-        return null;
     }
 
     public boolean isOutsideLoop(Node n) {
@@ -177,7 +200,7 @@ public class LoopEx {
         return counted;
     }
 
-    public LoopEx parent() {
+    public Loop parent() {
         if (loop.getParent() == null) {
             return null;
         }
@@ -253,7 +276,7 @@ public class LoopEx {
                     }
                 }
                 binary.replaceAtUsages(result);
-                graph.getOptimizationLog().report(LoopEx.class, "InvariantReassociation", binary);
+                graph.getOptimizationLog().report(Loop.class, "InvariantReassociation", binary);
                 GraphUtil.killWithUnusedFloatingInputs(binary);
                 count++;
             }
@@ -679,7 +702,7 @@ public class LoopEx {
      * increases/decreases its value by a fixed amount every iteration (that amount being the stride
      * of base IV).
      */
-    private static ValueNode calcOffsetTo(LoopEx loop, ValueNode opNode, ValueNode base, boolean forDerivedIV) {
+    private static ValueNode calcOffsetTo(Loop loop, ValueNode opNode, ValueNode base, boolean forDerivedIV) {
         if (isNumericInteger(opNode) && (opNode instanceof AddNode || opNode instanceof SubNode)) {
             BinaryArithmeticNode<?> arithOp = (BinaryArithmeticNode<?>) opNode;
             BinaryOp<?> op = arithOp.getArithmeticOp();
@@ -696,10 +719,10 @@ public class LoopEx {
      * Determine if the given {@code op} represents a {@code DerivedScaledInductionVariable}
      * variable with respect to {@code base}.
      *
-     * See {@link LoopEx#calcOffsetTo(LoopEx, ValueNode, ValueNode, boolean)}. Multiplication is
+     * See {@link Loop#calcOffsetTo(Loop, ValueNode, ValueNode, boolean)}. Multiplication is
      * commutative so the logic of addition applies here.
      */
-    private static ValueNode calcScaleTo(LoopEx loop, ValueNode op, ValueNode base) {
+    private static ValueNode calcScaleTo(Loop loop, ValueNode op, ValueNode base) {
         if (op instanceof MulNode) {
             MulNode mul = (MulNode) op;
             if (mul.getX() == base && loop.isOutsideLoop(mul.getY())) {

@@ -105,13 +105,13 @@ public class CFGVerifier {
         }
 
         if (cfg.getLoops() != null) {
-            for (Loop<T> loop : cfg.getLoops()) {
+            for (CFGLoop<T> loop : cfg.getLoops()) {
                 assert loop.getHeader().isLoopHeader() : "LoopHeader block must be loop header " + Assertions.errorMessageContext("loop", loop, "loop.getheader", loop.getHeader());
 
                 for (T block : loop.getBlocks()) {
                     assert block.getId() >= loop.getHeader().getId() : Assertions.errorMessageContext("block", block, "loop.getheader", loop.getHeader());
 
-                    Loop<?> blockLoop = block.getLoop();
+                    CFGLoop<?> blockLoop = block.getLoop();
                     while (blockLoop != loop) {
                         assert blockLoop != null;
                         blockLoop = blockLoop.getParent();
@@ -131,7 +131,7 @@ public class CFGVerifier {
                 for (T block : loop.getLoopExits()) {
                     assert block.getId() >= loop.getHeader().getId() : Assertions.errorMessageContext("block", block, "loop", loop, "loop.gethead", loop.getHeader());
 
-                    Loop<?> blockLoop = block.getLoop();
+                    CFGLoop<?> blockLoop = block.getLoop();
                     while (blockLoop != null) {
                         blockLoop = blockLoop.getParent();
                         assert blockLoop != loop : "Parent loop must be different than loop that is exitted " + Assertions.errorMessageContext("blockLoop", blockLoop, "loop", loop);
