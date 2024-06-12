@@ -62,7 +62,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.core.hub.ClassForNameSupportFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -72,6 +71,7 @@ import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ClassForNameFeature;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -258,7 +258,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(ClassForNameSupportFeature.class, DynamicProxyFeature.class);
+        return List.of(ClassForNameFeature.class, DynamicProxyFeature.class);
     }
 
     @Override

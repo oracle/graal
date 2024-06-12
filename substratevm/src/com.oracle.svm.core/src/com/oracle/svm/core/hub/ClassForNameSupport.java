@@ -26,6 +26,7 @@ package com.oracle.svm.core.hub;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
+import java.lang.management.PlatformManagedObject;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -38,14 +39,21 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticallyRegisteredImageSingleton
 public final class ClassForNameSupport {
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final Function<ClassLoader, ClassLoader> getRuntimeClassLoaderFunc;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ClassForNameSupport(Function<ClassLoader, ClassLoader> getRuntimeClassLoaderFunc) {
+        Objects.requireNonNull(getRuntimeClassLoaderFunc);
+        this.getRuntimeClassLoaderFunc = getRuntimeClassLoaderFunc;
+    }
 
     public static ClassForNameSupport singleton() {
         return ImageSingletons.lookup(ClassForNameSupport.class);
@@ -71,19 +79,31 @@ public final class ClassForNameSupport {
     private static final Object NEGATIVE_QUERY = new Object();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(Class<?> clazz, Function<ClassLoader, ClassLoader> getRuntimeClassLoaderFunc) {
-        registerClass(ConfigurationCondition.alwaysTrue(), clazz, getRuntimeClassLoaderFunc);
+    private ClassLoader getRuntimeClassLoader(Class<?> clazz, ClassLoader buildTimeClassLoader) {
+        if (buildTimeClassLoader != null && PlatformManagedObject.class.isAssignableFrom(clazz) && clazz.getName().startsWith("com.oracle.svm.core.")) {
+            /*
+             * Pretend our internal PlatformManagedObject implementations have the null-classloader
+             * to make Class#forName in DefaultMBeanServerInterceptor#isInstanceOf work as expected.
+             */
+            return null;
+        }
+        return getRuntimeClassLoaderFunc.apply(buildTimeClassLoader);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(ConfigurationCondition condition, Class<?> clazz, Function<ClassLoader, ClassLoader> getRuntimeClassLoaderFunc) {
+    public void registerClass(Class<?> clazz) {
+        registerClass(ConfigurationCondition.alwaysTrue(), clazz);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerClass(ConfigurationCondition condition, Class<?> clazz) {
         assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
         }
         synchronized (knownClasses) {
             String name = clazz.getName();
-            Entry entry = Entry.of(getRuntimeClassLoaderFunc.apply(clazz.getClassLoader()), name);
+            Entry entry = Entry.of(getRuntimeClassLoader(clazz, clazz.getClassLoader()), name);
             ConditionalRuntimeValue<Object> exisingEntry = knownClasses.get(entry);
             Object currentValue = exisingEntry == null ? null : exisingEntry.getValueUnconditionally();
 
