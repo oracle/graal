@@ -102,23 +102,48 @@ import jdk.vm.ci.meta.SpeculationLog;
  */
 public class CountedLoopInfo {
 
-    protected final LoopEx loop;
+    protected final Loop loop;
+
+    /**
+     * @see CountedLoopInfo#getLimitCheckedIV()
+     */
     protected InductionVariable limitCheckedIV;
-    protected ValueNode end;
+
+    /**
+     * @see #getLimit()
+     */
+    protected ValueNode limit;
+
     /**
      * {@code true} iff the limit is included in the limit test, e.g., the limit test is
      * {@code i <= n} rather than {@code i < n}.
      */
     protected boolean isLimitIncluded;
+
+    /**
+     * The first node inside the loop that is not considered to be part of the loop control nodes
+     * (terminating conditions). Depending on the shape of the loop, this can be different kind of
+     * nodes.
+     */
     protected AbstractBeginNode body;
+
+    /**
+     * The condition node that determines if this loop is exited or not. Can be in head or tail
+     * position depending on the shape of the loop. There can be an arbitrary number of if nodes in
+     * a loop. This one is special in that it either dominates or post dominates all others.
+     */
     protected IfNode ifNode;
+
+    /**
+     * Determine if we consider the control logic of the loop working in unsigned integer ranges.
+     */
     protected final boolean unsigned;
 
-    protected CountedLoopInfo(LoopEx loop, InductionVariable limitCheckedIV, IfNode ifNode, ValueNode end, boolean isLimitIncluded, AbstractBeginNode body, boolean unsigned) {
+    protected CountedLoopInfo(Loop loop, InductionVariable limitCheckedIV, IfNode ifNode, ValueNode limit, boolean isLimitIncluded, AbstractBeginNode body, boolean unsigned) {
         assert limitCheckedIV.direction() != null;
         this.loop = loop;
         this.limitCheckedIV = limitCheckedIV;
-        this.end = end;
+        this.limit = limit;
         this.isLimitIncluded = isLimitIncluded;
         this.body = body;
         this.ifNode = ifNode;
@@ -152,7 +177,7 @@ public class CountedLoopInfo {
      *         {@link InductionVariable} return by {@link CountedLoopInfo#getLimitCheckedIV()}
      */
     public ValueNode getLimit() {
-        return end;
+        return limit;
     }
 
     /**
@@ -187,8 +212,8 @@ public class CountedLoopInfo {
      * we distinguish between those two concepts.
      */
     public ValueNode getTripCountLimit() {
-        assert !isInverted() && getLimit() == end : "Only inverted loops must have a different trip count limit";
-        return end;
+        assert !isInverted() && getLimit() == limit : "Only inverted loops must have a different trip count limit";
+        return limit;
     }
 
     private void assertNoOverflow() {
@@ -499,10 +524,20 @@ public class CountedLoopInfo {
         return loop.loopBegin().getOverflowGuard();
     }
 
+    /**
+     * Determine if there are static properties or dynamic checks in place that guarantee that the
+     * {@link #getLimitCheckedIV()} never overflows.
+     */
     public boolean loopCanNeverOverflow() {
         return counterNeverOverflows() || getOverFlowGuard() != null;
     }
 
+    /**
+     * Determines with static analysis if the counter {@link #getLimitCheckedIV()} can ever
+     * overflow. If this method returns {@code true} it is statically known the limit checked
+     * induction variable never overflows. If this method returns {@code false} it is still possible
+     * that the limit checked IV never overflows but we have not been able to prove it statically.
+     */
     public boolean counterNeverOverflows() {
         if (loop.loopBegin().canNeverOverflow()) {
             return true;

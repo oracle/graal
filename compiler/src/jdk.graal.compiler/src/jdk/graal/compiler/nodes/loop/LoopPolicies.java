@@ -43,13 +43,13 @@ public interface LoopPolicies {
                         -1);
     }
 
-    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration);
+    boolean shouldPeel(Loop loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration);
 
-    boolean shouldFullUnroll(LoopEx loop);
+    boolean shouldFullUnroll(Loop loop);
 
-    boolean shouldPartiallyUnroll(LoopEx loop, CoreProviders providers);
+    boolean shouldPartiallyUnroll(Loop loop, CoreProviders providers);
 
-    boolean shouldTryUnswitch(LoopEx loop);
+    boolean shouldTryUnswitch(Loop loop);
 
     /**
      * Models the decision of {@code LoopPolicies::shouldUnswitch}. A decision can be considered
@@ -106,5 +106,5 @@ public interface LoopPolicies {
      * @param controlSplits the invariant grouped by their condition.
      * @return the decision to unswitch or not.
      */
-    UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits);
+    UnswitchingDecision shouldUnswitch(Loop loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits);
 }

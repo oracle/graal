@@ -37,7 +37,7 @@ import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BasicBlockSet;
 import jdk.graal.compiler.core.common.cfg.CFGVerifier;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -110,7 +110,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
     private NodeMap<HIRBlock> nodeToBlock;
     private HIRBlock[] reversePostOrder;
-    private List<Loop<HIRBlock>> loops;
+    private List<CFGLoop<HIRBlock>> loops;
     private int maxDominatorDepth;
     private EconomicMap<LoopBeginNode, LoopFrequencyData> localLoopFrequencyData;
 
@@ -405,8 +405,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     public static void addDeferredExit(DeferredExit[] deferredExits, HIRBlock b) {
-        Loop<HIRBlock> outermostExited = b.getDominator().getLoop();
-        Loop<HIRBlock> exitBlockLoop = b.getLoop();
+        CFGLoop<HIRBlock> outermostExited = b.getDominator().getLoop();
+        CFGLoop<HIRBlock> exitBlockLoop = b.getLoop();
         assert outermostExited != null : "Dominator must be in a loop. Possible cause is a missing loop exit node.";
         while (outermostExited.getParent() != null && outermostExited.getParent() != exitBlockLoop) {
             outermostExited = outermostExited.getParent();
@@ -841,7 +841,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     @Override
-    public List<Loop<HIRBlock>> getLoops() {
+    public List<CFGLoop<HIRBlock>> getLoops() {
         return loops;
     }
 
@@ -1233,8 +1233,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             for (HIRBlock block : reversePostOrder) {
                 AbstractBeginNode beginNode = block.getBeginNode();
                 if (beginNode instanceof LoopBeginNode) {
-                    Loop<HIRBlock> parent = block.getLoop();
-                    Loop<HIRBlock> loop = new HIRLoop(parent, loops.size(), block);
+                    CFGLoop<HIRBlock> parent = block.getLoop();
+                    CFGLoop<HIRBlock> loop = new HIRLoop(parent, loops.size(), block);
                     if (parent != null) {
                         parent.getChildren().add(loop);
                     }
@@ -1299,7 +1299,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         }
     }
 
-    private static void computeLoopBlocks(HIRBlock start, Loop<HIRBlock> loop, HIRBlock[] stack, boolean usePred) {
+    private static void computeLoopBlocks(HIRBlock start, CFGLoop<HIRBlock> loop, HIRBlock[] stack, boolean usePred) {
         if (start.getLoop() != loop) {
             start.setLoop(loop);
             stack[0] = start;

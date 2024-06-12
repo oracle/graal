@@ -42,7 +42,7 @@ import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopFragmentInside;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.options.OptionValues;
@@ -353,7 +353,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
                 LoopsData dataCounted = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
                 dataCounted.detectCountedLoops();
                 assertTrue(!dataCounted.countedLoops().isEmpty(), "must have counted loops");
-                for (LoopEx loop : dataCounted.countedLoops()) {
+                for (Loop loop : dataCounted.countedLoops()) {
                     LoopFragmentInside newSegment = loop.inside().duplicate();
                     newSegment.insertWithinAfter(loop, null);
                 }

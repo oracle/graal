@@ -30,7 +30,7 @@ import jdk.graal.compiler.graph.iterators.FilteredNodeIterable;
 import jdk.graal.compiler.nodes.DeoptimizingNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import org.junit.Assert;
 import org.junit.Test;
@@ -115,7 +115,7 @@ public class CountedLoopTest2 extends GraalCompilerTest {
         StructuredGraph graph = parseEager(methodName, AllowAssumptions.YES);
         LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
         Assert.assertEquals(nLoops, loops.loops().size());
-        for (LoopEx loop : loops.loops()) {
+        for (Loop loop : loops.loops()) {
             Assert.assertTrue(loop.detectCounted());
         }
 

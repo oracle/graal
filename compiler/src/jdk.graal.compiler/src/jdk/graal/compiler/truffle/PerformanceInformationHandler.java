@@ -37,7 +37,7 @@ import jdk.graal.compiler.truffle.phases.TruffleTier;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ControlSplitNode;
@@ -209,7 +209,7 @@ public final class PerformanceInformationHandler implements Closeable {
         }
         if (isWarningEnabled(TruffleCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
             ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computeFrequency(true).build();
-            for (Loop<HIRBlock> loop : cfg.getLoops()) {
+            for (CFGLoop<HIRBlock> loop : cfg.getLoops()) {
                 // check if all loop exit contain trusted profiles
                 List<HIRBlock> loopBlocks = loop.getBlocks();
                 for (HIRBlock exit : loop.getLoopExits()) {

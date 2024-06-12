@@ -33,7 +33,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -60,7 +60,7 @@ import jdk.graal.compiler.nodes.cfg.HIRLoop;
 import jdk.graal.compiler.nodes.cfg.LocationSet;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.extended.AnchoringNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
@@ -170,7 +170,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             this.ld = ld;
             this.graph = cfg.graph;
             this.licmNodesPerLoop = EconomicMap.create();
-            for (LoopEx lex : ld.loops()) {
+            for (Loop lex : ld.loops()) {
                 licmNodesPerLoop.put(lex.loopBegin(), graph.createNodeBitMap());
             }
             this.blockMaps = new BlockMap<>(cfg);
@@ -212,7 +212,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             // preserve for dominated and successors
             blockMaps.put(b, blockMap);
 
-            Loop<HIRBlock> hirLoop = b.getLoop();
+            CFGLoop<HIRBlock> hirLoop = b.getLoop();
             LocationSet thisLoopKilledLocations = hirLoop == null ? null : ((HIRLoop) hirLoop).getKillLocations();
 
             if (!b.isLoopHeader()) {
@@ -233,7 +233,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 killLoopLocations(thisLoopKilledLocations, blockMap);
             }
 
-            LoopEx loopCandidate = null;
+            Loop loopCandidate = null;
             boolean tryLICM = false;
             if (hirLoop != null && considerLICM) {
                 checkLICM: {
@@ -302,7 +302,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         }
 
         private static void processNode(FixedWithNextNode cur, LocationSet thisLoopKilledLocations,
-                        LoopEx loopCandidate, ValueMap blockMap, NodeBitMap licmNodes, ControlFlowGraph cfg) {
+                        Loop loopCandidate, ValueMap blockMap, NodeBitMap licmNodes, ControlFlowGraph cfg) {
             if (cur instanceof LoopExitNode) {
                 /*
                  * We exit a loop down this path, we have to account for the effects of the loop
@@ -392,7 +392,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
      * invariant based on its inputs (data fields of the node including indirect loop variant
      * dependencies like the memory graph are checked by the caller).
      */
-    public static boolean tryPerformLICM(LoopEx loop, FixedNode n, NodeBitMap liftedNodes) {
+    public static boolean tryPerformLICM(Loop loop, FixedNode n, NodeBitMap liftedNodes) {
         if (nodeCanBeLifted(n, loop, liftedNodes)) {
             loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "Before LICM of node %s", n);
             loop.loopBegin().getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Early GVN: LICM on node %s", n);
@@ -418,7 +418,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
 
     }
 
-    public static boolean nodeCanBeLifted(Node n, LoopEx loop, NodeBitMap liftedNodes) {
+    public static boolean nodeCanBeLifted(Node n, Loop loop, NodeBitMap liftedNodes) {
         /*
          * Note that the caller has to ensure n is not a memory kill at that point
          */
@@ -449,7 +449,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         return canLICM;
     }
 
-    public static boolean inputIsLoopInvariant(Node input, LoopEx loop, NodeBitMap liftedNodes) {
+    public static boolean inputIsLoopInvariant(Node input, Loop loop, NodeBitMap liftedNodes) {
         if (input == null) {
             return true;
         }
@@ -589,7 +589,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
          * Perform actual global value numbering. Replace node {@code n} with an equal node (inputs
          * and data fields) up in the dominance chain.
          */
-        public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes, LoopEx invariantInLoop) {
+        public void substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes, Loop invariantInLoop) {
             Node edgeDataEqual = find(n);
             if (edgeDataEqual != null) {
                 assert edgeDataEqual.graph() != null;

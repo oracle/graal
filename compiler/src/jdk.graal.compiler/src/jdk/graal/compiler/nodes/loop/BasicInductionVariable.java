@@ -47,7 +47,7 @@ public class BasicInductionVariable extends InductionVariable {
     protected ValueNode rawStride;
     protected BinaryArithmeticNode<?> op;
 
-    public BasicInductionVariable(LoopEx loop, ValuePhiNode phi, ValueNode init, ValueNode rawStride, BinaryArithmeticNode<?> op) {
+    public BasicInductionVariable(Loop loop, ValuePhiNode phi, ValueNode init, ValueNode rawStride, BinaryArithmeticNode<?> op) {
         super(loop);
         this.phi = phi;
         this.init = init;

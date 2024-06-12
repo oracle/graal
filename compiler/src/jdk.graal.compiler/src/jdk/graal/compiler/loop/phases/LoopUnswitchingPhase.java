@@ -38,7 +38,7 @@ import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.nodes.loop.LoopPolicies.UnswitchingDecision;
 import jdk.graal.compiler.nodes.loop.LoopsData;
@@ -69,7 +69,7 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
             do {
                 unswitched = false;
                 final LoopsData dataUnswitch = context.getLoopsDataProvider().getLoopsData(graph);
-                for (LoopEx loop : dataUnswitch.outerFirst()) {
+                for (Loop loop : dataUnswitch.outerFirst()) {
                     if (canUnswitch(loop)) {
                         if (getPolicies().shouldTryUnswitch(loop)) {
                             EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits = LoopTransformations.findUnswitchable(loop);
@@ -93,11 +93,11 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
         }
     }
 
-    private static boolean canUnswitch(LoopEx loop) {
+    private static boolean canUnswitch(Loop loop) {
         return loop.canDuplicateLoop();
     }
 
-    private static void logUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
+    private static void logUnswitch(Loop loop, List<ControlSplitNode> controlSplits) {
         StringBuilder sb = new StringBuilder("Unswitching ");
         sb.append(loop).append(" at ");
         for (ControlSplitNode controlSplit : controlSplits) {

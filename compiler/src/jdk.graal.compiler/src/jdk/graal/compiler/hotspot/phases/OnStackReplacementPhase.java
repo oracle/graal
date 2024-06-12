@@ -30,7 +30,7 @@ import java.util.BitSet;
 import java.util.Optional;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
@@ -69,7 +69,7 @@ import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -152,7 +152,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             osr = getEntryMarker(graph);
             LoopsData loops = providers.getLoopsDataProvider().getLoopsData(graph);
             // Find the loop that contains the EntryMarker
-            Loop<HIRBlock> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
+            CFGLoop<HIRBlock> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
             if (l == null) {
                 break;
             }
@@ -166,7 +166,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
 
             l = l.getOutmostLoop();
 
-            LoopEx loop = loops.loop(l);
+            Loop loop = loops.loop(l);
             loop.loopBegin().markOsrLoop();
             LoopTransformations.peel(loop);
 
@@ -379,7 +379,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
     private static LoopBeginNode osrLoop(EntryMarkerNode osr, CoreProviders providers) {
         // Check that there is an OSR loop for the OSR begin
         LoopsData loops = providers.getLoopsDataProvider().getLoopsData(osr.graph());
-        Loop<HIRBlock> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
+        CFGLoop<HIRBlock> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
         if (l == null) {
             return null;
         }

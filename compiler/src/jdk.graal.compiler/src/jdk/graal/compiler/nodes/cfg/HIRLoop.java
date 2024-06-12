@@ -24,15 +24,15 @@
  */
 package jdk.graal.compiler.nodes.cfg;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import org.graalvm.word.LocationIdentity;
 
-public final class HIRLoop extends Loop<HIRBlock> {
+public final class HIRLoop extends CFGLoop<HIRBlock> {
 
     private LocationSet killLocations;
 
-    protected HIRLoop(Loop<HIRBlock> parent, int index, HIRBlock header) {
+    protected HIRLoop(CFGLoop<HIRBlock> parent, int index, HIRBlock header) {
         super(parent, index, header);
     }
 
@@ -53,7 +53,7 @@ public final class HIRLoop extends Loop<HIRBlock> {
                 }
             }
         }
-        for (Loop<HIRBlock> child : this.getChildren()) {
+        for (CFGLoop<HIRBlock> child : this.getChildren()) {
             if (killLocations.isAny()) {
                 break;
             }
