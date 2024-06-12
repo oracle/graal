@@ -33,6 +33,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -48,12 +49,12 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     protected Class<?> findClass(String name) throws ClassNotFoundException {
-        throw new ClassNotFoundException(name);
+        return ClassForNameSupport.singleton().forName(name, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     @Substitute
-    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return ClassForNameSupport.singleton().forName(name, null);
+    protected Class<?> loadClass(String cn, boolean resolve) throws ClassNotFoundException {
+        return ClassLoaderUtil.loadClass(SubstrateUtil.cast(this, Target_java_lang_ClassLoader.class), cn);
     }
 
     @Substitute

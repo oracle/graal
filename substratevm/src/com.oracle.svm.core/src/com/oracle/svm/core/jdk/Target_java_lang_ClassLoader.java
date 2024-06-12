@@ -125,27 +125,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings("unused")
     Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        Class<?> clazz = findLoadedClass(name);
-        if (clazz != null) {
-            return clazz;
-        }
-        try {
-            if (parent != null) {
-                clazz = parent.loadClass(name);
-            } else {
-                clazz = findBootstrapClassOrNull(name);
-            }
-            if (clazz != null) {
-                return clazz;
-            }
-        } catch (ClassNotFoundException ignored) {
-            // not found in parent loader
-        }
-
-        if (!PredefinedClassesSupport.hasBytecodeClasses()) {
-            throw new ClassNotFoundException(name);
-        }
-        return findClass(name);
+        return ClassLoaderUtil.loadClass(this, name);
     }
 
     @Substitute
@@ -323,6 +303,33 @@ public final class Target_java_lang_ClassLoader {
 
 @TargetClass(className = "java.lang.AssertionStatusDirectives") //
 final class Target_java_lang_AssertionStatusDirectives {
+}
+
+final class ClassLoaderUtil {
+
+    public static Class<?> loadClass(Target_java_lang_ClassLoader receiver, String name) throws ClassNotFoundException {
+        Class<?> clazz = receiver.findLoadedClass(name);
+        if (clazz != null) {
+            return clazz;
+        }
+        try {
+            if (receiver.parent != null) {
+                clazz = SubstrateUtil.cast(receiver.parent, ClassLoader.class).loadClass(name);
+            } else {
+                clazz = Target_java_lang_ClassLoader.findBootstrapClassOrNull(name);
+            }
+            if (clazz != null) {
+                return clazz;
+            }
+        } catch (ClassNotFoundException ignored) {
+            // not found in parent loader
+        }
+
+        if (!PredefinedClassesSupport.hasBytecodeClasses()) {
+            throw new ClassNotFoundException(name);
+        }
+        return receiver.findClass(name);
+    }
 }
 
 @TargetClass(className = "java.lang.ClassLoader", innerClass = "ParallelLoaders")
