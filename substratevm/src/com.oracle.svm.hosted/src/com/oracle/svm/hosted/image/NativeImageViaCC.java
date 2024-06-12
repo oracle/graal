@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -167,6 +167,12 @@ public abstract class NativeImageViaCC extends NativeImage {
 
             if (SubstrateOptions.useDebugInfoGeneration()) {
                 BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
+                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib/svm/debug/gdb-debughelpers.py");
+                if (Files.exists(svmDebugHelper)) {
+                    Path svmDebugHelperCopy = imagePath.resolveSibling(svmDebugHelper.getFileName());
+                    Files.copy(svmDebugHelper, svmDebugHelperCopy, StandardCopyOption.REPLACE_EXISTING);
+                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, svmDebugHelperCopy);
+                }
                 if (Platform.includedIn(Platform.WINDOWS.class)) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
                 } else if (!SubstrateOptions.StripDebugInfo.getValue()) {
