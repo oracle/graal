@@ -25,7 +25,12 @@
 package com.oracle.svm.core.jdk;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.Platform;
@@ -34,10 +39,19 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredImageSingleton
-public final class StringInternSupport {
+public final class StringInternSupport implements MultiLayeredImageSingleton {
+
+    interface SetGenerator {
+        Set<String> generateSet();
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Field getInternedStringsField() {
@@ -59,17 +73,75 @@ public final class StringInternSupport {
      */
     @UnknownObjectField(availability = AfterHeapLayout.class) private String[] imageInternedStrings;
 
+    @Platforms(Platform.HOSTED_ONLY.class) private Object priorLayersInternedStrings;
+
+    @Platforms(Platform.HOSTED_ONLY.class) private IdentityHashMap<String, String> internedStringsIdentityMap;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public StringInternSupport() {
+        this(Set.of());
+    }
+
+    private StringInternSupport(Object obj) {
         this.internedStrings = new ConcurrentHashMap<>(16, 0.75f, 1);
+        this.priorLayersInternedStrings = obj;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setImageInternedStrings(String[] newImageInternedStrings) {
+        assert !ImageLayerBuildingSupport.buildingImageLayer();
         this.imageInternedStrings = newImageInternedStrings;
     }
 
-    protected String intern(String str) {
+    @SuppressWarnings("unchecked")
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public String[] layeredSetImageInternedStrings(Set<String> layerInternedStrings) {
+        assert ImageLayerBuildingSupport.buildingImageLayer();
+        /*
+         * When building a layered image, it is possible that this string has been interned in a
+         * prior layer. Thus, we must filter the interned string away from this array.
+         *
+         * In addition, the hashcode for the string should match across layers.
+         */
+        String[] currentLayerInternedStrings;
+        Set<String> priorInternedStrings;
+        if (priorLayersInternedStrings instanceof SetGenerator generator) {
+            priorInternedStrings = generator.generateSet();
+        } else {
+            priorInternedStrings = (Set<String>) priorLayersInternedStrings;
+        }
+        // don't need this anymore
+        priorLayersInternedStrings = null;
+
+        if (priorInternedStrings.isEmpty()) {
+            currentLayerInternedStrings = layerInternedStrings.toArray(String[]::new);
+        } else {
+            currentLayerInternedStrings = layerInternedStrings.stream().filter(value -> !priorInternedStrings.contains(value)).toArray(String[]::new);
+        }
+
+        Arrays.sort(currentLayerInternedStrings);
+
+        this.imageInternedStrings = currentLayerInternedStrings;
+
+        if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+            internedStringsIdentityMap = new IdentityHashMap<>(priorInternedStrings.size() + currentLayerInternedStrings.length);
+            for (var value : priorInternedStrings) {
+                String internedVersion = value.intern();
+                internedStringsIdentityMap.put(internedVersion, internedVersion);
+            }
+            Arrays.stream(currentLayerInternedStrings).forEach(internedString -> internedStringsIdentityMap.put(internedString, internedString));
+        }
+
+        return imageInternedStrings;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public IdentityHashMap<String, String> getInternedStringsIdentityMap() {
+        assert internedStringsIdentityMap != null;
+        return internedStringsIdentityMap;
+    }
+
+    String intern(String str) {
         String result = internedStrings.get(str);
         if (result != null) {
             return result;
@@ -80,14 +152,49 @@ public final class StringInternSupport {
 
     private String doIntern(String str) {
         String result = str;
-        int imageIdx = Arrays.binarySearch(imageInternedStrings, str);
-        if (imageIdx >= 0) {
-            result = imageInternedStrings[imageIdx];
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            StringInternSupport[] layers = MultiLayeredImageSingleton.getAllLayers(StringInternSupport.class);
+            for (StringInternSupport layer : layers) {
+                String[] layerImageInternedStrings = layer.imageInternedStrings;
+                int imageIdx = Arrays.binarySearch(layerImageInternedStrings, str);
+                if (imageIdx >= 0) {
+                    result = layerImageInternedStrings[imageIdx];
+                    break;
+                }
+            }
+        } else {
+            int imageIdx = Arrays.binarySearch(imageInternedStrings, str);
+            if (imageIdx >= 0) {
+                result = imageInternedStrings[imageIdx];
+            }
         }
         String oldValue = internedStrings.putIfAbsent(result, result);
         if (oldValue != null) {
             result = oldValue;
         }
         return result;
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+
+    @Override
+    public PersistFlags preparePersist(ImageSingletonWriter writer) {
+        // This can be switched to use constant ids in the future
+        List<String> newPriorInternedStrings = new ArrayList<>(internedStringsIdentityMap.size());
+
+        newPriorInternedStrings.addAll(internedStringsIdentityMap.keySet());
+
+        writer.writeStringList("internedStrings", newPriorInternedStrings);
+        return PersistFlags.CREATE;
+    }
+
+    @SuppressWarnings("unused")
+    public static Object createFromLoader(ImageSingletonLoader loader) {
+        SetGenerator gen = (() -> Set.of(loader.readStringList("internedStrings").toArray(new String[0])));
+
+        return new StringInternSupport(gen);
     }
 }
