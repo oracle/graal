@@ -514,7 +514,8 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
     features->fRDTSCP = 1;
   if (_cpuid_info->sef_cpuid7_ecx.bits.rdpid != 0)
     features->fRDPID = 1;
-  if (_cpuid_info->sefsl1_cpuid7_edx.bits.apx_f != 0)
+  if (_cpuid_info->sefsl1_cpuid7_edx.bits.apx_f != 0 &&
+      _cpuid_info->xem_xcr0_eax.bits.apx_f != 0)
     features->fAPX_F = 1;
 
   // AMD|Hygon features.
