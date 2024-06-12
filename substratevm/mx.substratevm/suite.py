@@ -735,6 +735,10 @@ suite = {
             "spotbugs" : "false",
         },
 
+        "com.oracle.svm.hosted.image.debug": {
+            "class": "GDBDebugHelpers",
+        },
+
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
         # functions that can cause a stack overflow like snprintf. If set to 1 or 2, it causes glibc to use internal
         # functions with extra checking that are not available in all libc implementations. Different distros use
@@ -950,6 +954,21 @@ suite = {
             ],
             "javaCompliance" : "21+",
             "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.test.missing.classes": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            ],
+            "annotationProcessors": [
+            ],
+            "checkstyle": "com.oracle.svm.test",
+            "javaCompliance" : "21+",
+            "workingSets": "SVM",
+            "spotbugs": "false",
+            "testProject": True,
             "jacoco" : "exclude",
         },
 
@@ -2086,8 +2105,18 @@ suite = {
             "sdk:NATIVEIMAGE",
             "SVM",
             "SVM_CONFIGURE",
+            "SVM_TEST_MISSING_CLASSES",
           ],
           "testDistribution" : True,
+        },
+
+        "SVM_TEST_MISSING_CLASSES" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies": [
+                "com.oracle.svm.test.missing.classes"
+            ],
+            "testDistribution": True,
         },
 
         # Special test distribution used for testing inclusion of resources from jar files with a space in their name.
@@ -2138,11 +2167,17 @@ suite = {
             },
         },
 
+        "SVM_DEBUG_HELPER": {
+            "dependencies": ["com.oracle.svm.hosted.image.debug"],
+            "javaCompliance" : "21+",
+        },
+
         "SVM_GRAALVM_SUPPORT" : {
             "native" : True,
             "platformDependent" : True,
             "description" : "SubstrateVM support distribution for the GraalVM",
             "layout" : {
+                "debug/": ["extracted-dependency:substratevm:SVM_DEBUG_HELPER"],
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/lib/" : ["dependency:com.oracle.svm.native.reporterchelper"],

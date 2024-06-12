@@ -565,3 +565,4 @@ void svm_dbg_print_locationInfo(graal_isolatethread_t* thread, size_t mem);
 ### Related Documentation
 
 * [Debug Info Feature](../DebugInfo.md)
+* [Debug Native Executables with a Python Helper Script](debug-native-executables-with-python-helper.md)
