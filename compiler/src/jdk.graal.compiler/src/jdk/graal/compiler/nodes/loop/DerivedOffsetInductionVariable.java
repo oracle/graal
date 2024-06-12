@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
@@ -34,6 +35,7 @@ import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticNode;
 
 public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
@@ -83,6 +85,16 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public boolean isConstantStride() {
+        if (isMaskedNegateStride()) {
+            if (base.isConstantStride()) {
+                try {
+                    LoopUtility.multiplyExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), base.constantStride(), -1);
+                    return true;
+                } catch (ArithmeticException e) {
+                    return false;
+                }
+            }
+        }
         return base.isConstantStride();
     }
 
@@ -101,10 +113,29 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantStrideSafe() throws ArithmeticException {
-        if (value instanceof SubNode && base.valueNode() == value.getY()) {
-            return Math.multiplyExact(base.constantStride(), -1);
+        if (isMaskedNegateStride()) {
+            return LoopUtility.multiplyExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), base.constantStride(), -1);
         }
         return base.constantStride();
+    }
+
+    /**
+     * Determine if the current induction variable's stride is actually one that represents a
+     * negation instead of a normal offset calculation. For example
+     *
+     * <pre>
+     * int i = 0;
+     * while (i < limit) {
+     *     int reversIv = off - i;
+     *     i++;
+     * }
+     * </pre>
+     *
+     * here {@code reverseIv} stride node is actually {@code i} negated since the IV is not
+     * {@code i op off} but {@code off op i} where {@code op} is a subtraction.
+     */
+    private boolean isMaskedNegateStride() {
+        return value instanceof SubNode && base.valueNode() == value.getY();
     }
 
     @Override
@@ -158,16 +189,18 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     private long opSafe(long b, long o) throws ArithmeticException {
+        // we can use offset bits in this method because all operands (init, scale, stride and
+        // extremum) have by construction equal bit sizes
         if (value instanceof AddNode) {
-            return Math.addExact(b, o);
+            return LoopUtility.addExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
         }
         if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return Math.subtractExact(b, o);
+                return LoopUtility.subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             } else {
                 assert base.valueNode() == value.getY() || base instanceof BasicInductionVariable basic && basic.getOp() instanceof IntegerExactArithmeticNode : Assertions.errorMessage(base,
                                 base.valueNode(), value, value.getY());
-                return Math.subtractExact(b, o);
+                return LoopUtility.subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             }
         }
         throw GraalError.shouldNotReachHereUnexpectedValue(value); // ExcludeFromJacocoGeneratedReport
