@@ -249,7 +249,7 @@ The schema also includes further details and explanations how this configuration
       "condition": {
         "typeReachable": "<condition-class>"
       },
-      "pattern": "META-INF/**/*txt"
+      "pattern": "META-INF/**/*.txt"
     }
   ],
   "resources": [
@@ -286,7 +286,7 @@ Resources can be specified via globs or Java regular expressions (see [Resource 
 We recommend using globs because they:
 * Have custom handling in `native-image` that can speed up a resource registration process
 * Are less expressive and therefore less error-prone than regular expressions
-* Provide better support for resource related checks at runtime
+* Provide better support for resource-related checks at runtime
 
 Learn more about globs and some syntax rules to be observed in the [Accessing Resources in Native Image documentation](Resources.md).
 
