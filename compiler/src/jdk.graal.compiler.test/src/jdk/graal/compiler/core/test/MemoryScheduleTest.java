@@ -27,11 +27,14 @@ package jdk.graal.compiler.core.test;
 import static jdk.graal.compiler.core.common.GraalOptions.OptImplicitNullChecks;
 import static jdk.graal.compiler.core.common.GraalOptions.OptScheduleOutOfLoops;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableCount.hasCount;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
-import static org.junit.Assert.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.debug.DebugContext;
@@ -57,8 +60,6 @@ import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
-import org.junit.Assert;
-import org.junit.Test;
 
 /**
  * In these test the FrameStates are explicitly cleared out, so that the scheduling of

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,9 @@ package com.oracle.truffle.llvm.tests.interop;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
@@ -47,8 +49,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.tests.interop.CxxVTableTest2Factory.CallFoo1NodeGen;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import org.junit.Rule;
-import org.junit.rules.ExpectedException;
 
 @RunWith(TruffleRunner.class)
 public class CxxVTableTest2 extends InteropTestBase {
@@ -118,7 +118,7 @@ public class CxxVTableTest2 extends InteropTestBase {
         Assert.assertEquals(12, foo2Result);
     }
 
-    @Rule public ExpectedException expectedException = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException expectedException = ExpectedException.none();
 
     @Test
     public void testNonExistingVirtualMethod() {

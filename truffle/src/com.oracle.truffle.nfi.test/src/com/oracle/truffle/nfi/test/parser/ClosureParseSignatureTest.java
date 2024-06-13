@@ -40,6 +40,17 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import java.util.Arrays;
+
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeMatcher;
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.source.Source;
@@ -49,13 +60,6 @@ import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.nfi.test.parser.backend.TestCallInfo;
 import com.oracle.truffle.nfi.test.parser.backend.TestClosure;
 import com.oracle.truffle.nfi.test.parser.backend.TestSignature;
-import java.util.Arrays;
-import static org.hamcrest.CoreMatchers.is;
-import org.hamcrest.Description;
-import org.hamcrest.Matcher;
-import org.hamcrest.TypeSafeMatcher;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class ClosureParseSignatureTest extends ParseSignatureTest {
 
@@ -100,17 +104,17 @@ public class ClosureParseSignatureTest extends ParseSignatureTest {
 
     private static void testWithClosure(String closureSig, int argCount, Validator validator) {
         TestCallInfo closureArgInfo = (TestCallInfo) doCall(String.format("(%s):void", closureSig), 1);
-        Assert.assertThat("return type", closureArgInfo.signature.retType, is(NativeSimpleType.VOID));
+        assertThat("return type", closureArgInfo.signature.retType, is(NativeSimpleType.VOID));
         Assert.assertEquals("argument count", 1, closureArgInfo.signature.argTypes.size());
-        Assert.assertThat("argument type", closureArgInfo.signature.argTypes.get(0), is(NativeSimpleType.POINTER));
-        Assert.assertThat("argument value", closureArgInfo.args[0], isClosureType(validator));
+        assertThat("argument type", closureArgInfo.signature.argTypes.get(0), is(NativeSimpleType.POINTER));
+        assertThat("argument value", closureArgInfo.args[0], isClosureType(validator));
 
         Object closureRetSymbol = doCall(String.format("() : %s", closureSig), 0);
         try {
             TestCallInfo returnedCallInfo = (TestCallInfo) InteropLibrary.getUncached().execute(closureRetSymbol, ParseSignatureTest.mkArgs(argCount));
             TestCallInfo closureRetInfo = (TestCallInfo) returnedCallInfo.executable;
             Assert.assertEquals("argument count", 0, closureRetInfo.signature.argTypes.size());
-            Assert.assertThat("return type", closureRetInfo.signature.retType, is(NativeSimpleType.POINTER));
+            assertThat("return type", closureRetInfo.signature.retType, is(NativeSimpleType.POINTER));
             validator.validateSignature(returnedCallInfo.signature);
         } catch (InteropException e) {
             throw new AssertionError(e);
@@ -120,7 +124,7 @@ public class ClosureParseSignatureTest extends ParseSignatureTest {
     @Test
     public void testClosureNoArgs() {
         testWithClosure("():void", 0, sig -> {
-            Assert.assertThat("return type", sig.retType, is(NativeSimpleType.VOID));
+            assertThat("return type", sig.retType, is(NativeSimpleType.VOID));
             Assert.assertEquals("argument count", 0, sig.argTypes.size());
         });
     }
@@ -128,16 +132,16 @@ public class ClosureParseSignatureTest extends ParseSignatureTest {
     @Test
     public void testClosureOneArg() {
         testWithClosure("(float):double", 1, sig -> {
-            Assert.assertThat("return type", sig.retType, is(NativeSimpleType.DOUBLE));
+            assertThat("return type", sig.retType, is(NativeSimpleType.DOUBLE));
             Assert.assertEquals("argument count", 1, sig.argTypes.size());
-            Assert.assertThat("argument type", sig.argTypes.get(0), is(NativeSimpleType.FLOAT));
+            assertThat("argument type", sig.argTypes.get(0), is(NativeSimpleType.FLOAT));
         });
     }
 
     @Test
     public void testClosureVarargs() {
         testWithClosure("(string, ...sint32):double", 2, sig -> {
-            Assert.assertThat("return type", sig.retType, is(NativeSimpleType.DOUBLE));
+            assertThat("return type", sig.retType, is(NativeSimpleType.DOUBLE));
             Assert.assertEquals("argument count", 2, sig.argTypes.size());
             Assert.assertEquals("fixed argument count", 1, sig.fixedArgCount);
         });

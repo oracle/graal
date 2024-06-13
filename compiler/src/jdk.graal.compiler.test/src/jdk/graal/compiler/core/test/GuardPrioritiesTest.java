@@ -24,15 +24,17 @@
  */
 package jdk.graal.compiler.core.test;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableCount.hasCount;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableIsEmpty.isNotEmpty;
-import static org.junit.Assert.assertThat;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assume.assumeThat;
 import static org.junit.Assume.assumeTrue;
 
 import java.util.Iterator;
+
+import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -48,8 +50,6 @@ import jdk.graal.compiler.phases.common.FloatingReadPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.SpeculationLog;
 
 public class GuardPrioritiesTest extends GraphScheduleTest {

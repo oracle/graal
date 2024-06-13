@@ -28,14 +28,8 @@ import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.calc.IsNullNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -48,6 +42,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 
 public class MaterializedFrameTest extends PartialEvaluationTest {
     private static RootNode createRootNode() {
