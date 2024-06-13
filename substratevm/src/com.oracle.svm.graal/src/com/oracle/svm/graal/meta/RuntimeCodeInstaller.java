@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -268,7 +268,9 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders(false, null));
         codeInfoEncoder.addMethod(method, compilation, 0, compilation.getTargetCodeSize());
-        codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
+        Runnable noop = () -> {
+        };
+        codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster, noop);
 
         assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, compilation.getTargetCodeSize(), runtimeMethodInfo, FrameInfoDecoder.SubstrateConstantAccess);
         assert !adjuster.isFinished() || codeInfoEncoder.verifyFrameInfo(runtimeMethodInfo);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -887,8 +887,8 @@ public class FrameInfoEncoder {
         return result;
     }
 
-    protected void encodeAllAndInstall(CodeInfo target) {
-        NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas();
+    protected void encodeAllAndInstall(CodeInfo target, Runnable recordActivity) {
+        NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas(recordActivity);
         install(target, frameInfoEncodings);
     }
 
@@ -905,7 +905,7 @@ public class FrameInfoEncoder {
                                         ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(CodeInfoAccess.getObjectConstants(info))));
     }
 
-    private NonmovableArray<Byte> encodeFrameDatas() {
+    private NonmovableArray<Byte> encodeFrameDatas(Runnable recordActivity) {
         UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         frameMetadata.encodeCompressedData(encodingBuffer, encoders);
         for (FrameData data : allDebugInfos) {
@@ -916,6 +916,7 @@ public class FrameInfoEncoder {
                 data.encodedFrameInfoIndex = frameMetadata.getEncodingOffset(data.frameSliceIndex);
                 assert frameMetadata.writeFrameVerificationInfo(data, encoders);
             }
+            recordActivity.run();
         }
         NonmovableArray<Byte> frameInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()), NmtCategory.Code);
         encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(frameInfoEncodings));

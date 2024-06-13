@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,9 +73,9 @@ import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder;
+import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
@@ -487,7 +487,7 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        HostedImageCodeInfo imageCodeInfo = installCodeInfo(snippetReflection, firstMethod, codeSize, codeInfoEncoder, runtimeMetadataEncoder);
+        HostedImageCodeInfo imageCodeInfo = installCodeInfo(snippetReflection, firstMethod, codeSize, codeInfoEncoder, runtimeMetadataEncoder, watchdog);
 
         if (ImageSingletons.contains(CallStackFrameMethodInfo.class)) {
             ImageSingletons.lookup(CallStackFrameMethodInfo.class).initialize(encoders, hMetaAccess);
@@ -513,9 +513,9 @@ public abstract class NativeImageCodeCache {
     }
 
     protected HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,
-                    RuntimeMetadataEncoder runtimeMetadataEncoder) {
+                    RuntimeMetadataEncoder runtimeMetadataEncoder, DeadlockWatchdog watchdog) {
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
-        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new HostedInstantReferenceAdjuster(snippetReflection));
+        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new HostedInstantReferenceAdjuster(snippetReflection), watchdog::recordActivity);
         runtimeMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
