@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,6 @@ public final class WasmContext {
     private final Linker linker;
     private final Map<String, WasmInstance> moduleInstances;
     private WasmInstance mainModuleInstance;
-    private int moduleNameCount;
     private final FdManager filesManager;
     private final WasmContextOptions contextOptions;
 
@@ -76,7 +75,6 @@ public final class WasmContext {
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
-        this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
         instantiateBuiltinInstances();
     }
@@ -168,13 +166,8 @@ public final class WasmContext {
         }
     }
 
-    private String freshModuleName() {
-        return "module-" + moduleNameCount++;
-    }
-
     public WasmModule readModule(byte[] data, ModuleLimits moduleLimits) {
-        String moduleName = freshModuleName();
-        return readModule(moduleName, data, moduleLimits);
+        return readModule("Unnamed", data, moduleLimits);
     }
 
     public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {

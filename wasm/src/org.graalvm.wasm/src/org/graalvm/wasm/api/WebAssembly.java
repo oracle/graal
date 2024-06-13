@@ -46,9 +46,11 @@ import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmConstant;
@@ -57,6 +59,7 @@ import org.graalvm.wasm.WasmCustomSection;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
@@ -71,12 +74,14 @@ import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.source.Source;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -123,7 +128,7 @@ public class WebAssembly extends Dictionary {
         addMember("ref_null", WasmConstant.NULL);
     }
 
-    private Object moduleInstantiate(Object[] args) {
+    public WasmInstance moduleInstantiate(Object[] args) {
         checkArgumentCount(args, 2);
         WasmModule source = toModule(args);
         Object importObject = args[1];
@@ -247,14 +252,26 @@ public class WebAssembly extends Dictionary {
         return global;
     }
 
-    private Object moduleDecode(Object[] args) {
-        checkArgumentCount(args, 1);
-        return moduleDecode(toBytes(args[0]));
+    private static String makeModuleName(byte[] data) {
+        return "js:module-" + Integer.toHexString(Arrays.hashCode(data));
     }
 
-    @SuppressWarnings("unused")
+    private WasmModuleWithSource moduleDecodeImpl(byte[] data) {
+        String moduleName = makeModuleName(data);
+        Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), moduleName).build();
+        CallTarget parseResult = currentContext.environment().parsePublic(source, WasmLanguage.PARSE_JS_MODULE_ARGS);
+        WasmModule module = WasmLanguage.getParsedModule(parseResult);
+        assert module.limits().equals(JsConstants.JS_LIMITS);
+        return new WasmModuleWithSource(module, source);
+    }
+
+    public Object moduleDecode(Object[] args) {
+        checkArgumentCount(args, 1);
+        return moduleDecodeImpl(toBytes(args[0]));
+    }
+
     public WasmModule moduleDecode(byte[] source) {
-        return currentContext.readModule(source, JS_LIMITS);
+        return moduleDecodeImpl(source).module();
     }
 
     private boolean moduleValidate(Object[] args) {
@@ -309,8 +326,8 @@ public class WebAssembly extends Dictionary {
 
     private static WasmModule toModule(Object[] args) {
         checkArgumentCount(args, 1);
-        if (args[0] instanceof WasmModule) {
-            return (WasmModule) args[0];
+        if (args[0] instanceof WasmModuleWithSource moduleObject) {
+            return moduleObject.module();
         } else {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm module");
         }
