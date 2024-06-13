@@ -1367,6 +1367,9 @@ public class OracleDBTests extends RegexTestBase {
         test("\\W$\\z", "m", " \n", 0, true, 1, 2);
         test("($)+?\\1", "m", "\n", 0, true, 1, 1, 1, 1);
         test("\\s$\\z", "m", " \n", 0, true, 1, 2);
+        test("[\ua762-\ua78d]", "i", "\ua7ae", 0, false);
+        test("[\u1f1d-\ua7ab]", "i", "\u2c63", 0, false);
+        test("[\u10b1-\u1cac]", "i", "\u1f04", 0, false);
         test("(a{1100,1100})\\1", "i", "a".repeat(2400), 0, true, 0, 2200, 0, 1100);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
