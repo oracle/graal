@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 24.1.0
+* GR-43839 Added optional parameter to TruffleString.ByteIndexOfCodePointSetNode to choose whether the node may calculate the input string's precise code range.
 * GR-51253 Extend allowed DynamicObject shape flags from 8 to 16 bits.
 * GR-42882 Changed behavior: Java host interop no longer exposes bridge methods.
 * GR-51385 Added an instrumentation filter to include available source sections only: `SourceSectionFilter.Builder#sourceSectionAvailableOnly(boolean)`
