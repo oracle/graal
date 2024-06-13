@@ -78,17 +78,15 @@ public abstract class Continuation implements Serializable {
     }
 
     /**
-     * Returns the entrypoint used to construct this continuation.
-     */
-    public abstract EntryPoint getEntryPoint();
-
-    /**
      * Returns {@code true} if this continuation is able to be {@link #resume() resumed}.
      * <p>
      * A continuation is resumable if it is freshly created, or if it has been resumed then
      * suspended.
      * <p>
-     * A continuation that has {@link #isComplete() finished executing} is not resumable.
+     * A continuation that has {@link #isCompleted() finished executing} is not resumable.
+     * <p>
+     * A continuation that is being serialized will return {@code false}, until serialization
+     * completes.
      */
     public abstract boolean isResumable();
 
@@ -96,25 +94,32 @@ public abstract class Continuation implements Serializable {
      * Returns {@code true} if execution of this continuation has completed, whether because the
      * {@link EntryPoint} has returned normally, or if an uncaught exception has propagated out of
      * the {@link EntryPoint}.
+     * <p>
+     * A continuation that is being serialized will return {@code false}, until serialization
+     * completes.
      */
-    public abstract boolean isComplete();
+    public abstract boolean isCompleted();
 
     /**
      * Runs the continuation until it either completes or calls {@link SuspendCapability#suspend()}.
-     * A continuation may not be resumed if it's already {@link #isComplete() completed}, nor if it
+     * A continuation may not be resumed if it's already {@link #isCompleted() completed}, nor if it
      * is already running.
      *
      * <p>
      * If an exception is thrown by the continuation and escapes the entry point, it will be
      * rethrown here. The continuation is then no longer usable and must be discarded.
-     *
+     * 
+     * @return {@code true} if the continuation was {@link SuspendCapability#suspend() suspended},
+     *         or {@code false} if execution of the continuation has completed normally.
+     * 
      * @throws IllegalContinuationStateException if the continuation is not {@link #isResumable()
      *             resumable}.
      * @throws IllegalMaterializedRecordException if the VM rejects the continuation. This can
      *             happen, for example, if a continuation was obtained by deserializing a malformed
      *             stream.
+     *
      */
-    public abstract void resume();
+    public abstract boolean resume();
 
     // region internals
 

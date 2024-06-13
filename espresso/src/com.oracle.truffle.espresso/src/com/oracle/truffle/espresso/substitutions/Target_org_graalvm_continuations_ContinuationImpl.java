@@ -62,11 +62,11 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
 
     @Substitution(hasReceiver = true)
     abstract static class Resume0 extends SubstitutionNode {
-        abstract void execute(StaticObject self);
+        abstract boolean execute(StaticObject self);
 
         @SuppressWarnings("try")
         @Specialization
-        static void resume0(StaticObject self,
+        static boolean resume0(StaticObject self,
                         @Bind("getLanguage()") EspressoLanguage lang, @Bind("getMeta()") Meta meta,
                         @Cached ContinuableMethodWithBytecode.ResumeNextContinuationNode rewind) {
             // This method is an intrinsic and the act of invoking one of those blocks the ability
@@ -93,12 +93,16 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
                 // TODO(GR-54326): Let Truffle Instrumentation know.
                 tls.disableSingleStepping();
                 rewind.execute(stack);
+                // Normal completion.
+                return false;
             } catch (UnwindContinuationException unwind) {
                 assert unwind.getContinuation() == self;
                 meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, unwind.head);
                 // Allow reporting of stepping in this thread again. It was blocked by the call to
                 // suspend0()
                 tls.enableSingleStepping();
+                // Suspended
+                return true;
             } finally {
                 scope.close();
             }
@@ -112,13 +116,13 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
 
     @Substitution(hasReceiver = true)
     abstract static class Start0 extends SubstitutionNode {
-        abstract void execute(StaticObject self);
+        abstract boolean execute(StaticObject self);
 
         // Try-with-resources generates a call to 'Throwable.addSuppressed()', which is blocklisted
         // by SVM.
         @SuppressWarnings("try")
         @Specialization
-        void start0(StaticObject self,
+        boolean start0(StaticObject self,
                         @Bind("getMeta()") Meta meta, @Bind("getLanguage()") EspressoLanguage lang,
                         @Cached("create(meta.continuum.org_graalvm_continuations_ContinuationImpl_run.getCallTarget())") DirectCallNode runCall) {
             // This method is an intrinsic and the act of invoking one of those blocks the ability
@@ -134,6 +138,8 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
                 // The run method is private in Continuation and is the continuation delimiter.
                 // Frames from run onwards will be unwound on suspend, and rewound on resume.
                 runCall.call(self);
+                // Normal completion
+                return false;
             } catch (UnwindContinuationException unwind) {
                 assert unwind.getContinuation() == self;
                 // Guest called suspend(). By the time we get here the frame info has been gathered
@@ -142,6 +148,8 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
                 // Allow reporting of stepping in this thread again. It was blocked by the call to
                 // suspend0()
                 tls.enableSingleStepping();
+                // Suspended
+                return true;
             } finally {
                 scope.close();
             }
