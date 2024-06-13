@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,6 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen.LLVMI64OffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "target", type = LLVMExpressionNode.class)
@@ -45,9 +44,23 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
 public abstract class LLVMOffsetStoreNode extends LLVMNode {
 
-    public abstract void executeWithTargetGeneric(LLVMPointer receiver, long offset, Object value);
-
     public abstract void executeWithTarget(VirtualFrame frame, LLVMPointer receiver, long offset);
+
+    /**
+     * Primitive stores shouldn't need a frame. These can also be used e.g. in InteropLibrary.
+     */
+    public abstract static class LLVMPrimitiveOffsetStoreNode extends LLVMOffsetStoreNode {
+
+        public abstract void executeWithTargetGeneric(LLVMPointer receiver, long offset, Object value);
+
+        public static final LLVMPrimitiveOffsetStoreNode create(LLVMInteropType.ValueKind kind) {
+            return CommonNodeFactory.createOffsetStoreNode(kind);
+        }
+
+        public static LLVMPrimitiveOffsetStoreNode getUncached(LLVMInteropType.ValueKind kind) {
+            return CommonNodeFactory.getUncachedOffsetStoreNode(kind);
+        }
+    }
 
     public abstract static class LLVMGenericOffsetStoreNode extends LLVMOffsetStoreNode {
 
@@ -57,25 +70,9 @@ public abstract class LLVMOffsetStoreNode extends LLVMNode {
             this.store = store;
         }
 
-        public static LLVMOffsetStoreNode create() {
-            return LLVMI64OffsetStoreNodeGen.create(null, null, null);
-        }
-
-        public static LLVMOffsetStoreNode create(LLVMExpressionNode value) {
-            return LLVMI64OffsetStoreNodeGen.create(null, null, value);
-        }
-
         @Specialization
-        protected void doOp(LLVMPointer addr, long offset, Object value) {
-            store.executeWithTarget(addr.increment(offset), value);
+        protected void doOp(VirtualFrame frame, LLVMPointer addr, long offset, Object value) {
+            store.executeWithTarget(frame, addr.increment(offset), value);
         }
-    }
-
-    public static final LLVMOffsetStoreNode create(LLVMInteropType.ValueKind kind) {
-        return CommonNodeFactory.createOffsetStoreNode(kind);
-    }
-
-    public static LLVMOffsetStoreNode getUncached(LLVMInteropType.ValueKind kind) {
-        return CommonNodeFactory.getUncachedOffsetStoreNode(kind);
     }
 }
