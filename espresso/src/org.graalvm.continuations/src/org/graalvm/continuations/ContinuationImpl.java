@@ -92,7 +92,7 @@ final class ContinuationImpl extends Continuation implements Serializable {
         // Note: If you change this enum, bump the format version and ensure correct deserialization
         // of old continuations.
 
-        /** Constructed via the no-arg constructor and pending deserialization. */
+        /** Pending deserialization, and/or deserialization failed. */
         INCOMPLETE,
         /** Locked for complex state capture or change (e.g., serialization/deserialization). */
         LOCKED,
@@ -173,17 +173,9 @@ final class ContinuationImpl extends Continuation implements Serializable {
     }
 
     @Override
-    public boolean isComplete() {
+    public boolean isCompleted() {
         State s = getState();
         return s == State.COMPLETED || s == State.FAILED;
-    }
-
-    /**
-     * Returns the entrypoint used to construct this continuation.
-     */
-    @Override
-    public EntryPoint getEntryPoint() {
-        return entryPoint;
     }
 
     /**
@@ -202,7 +194,7 @@ final class ContinuationImpl extends Continuation implements Serializable {
      *             {@link #stackFrameHead}.
      */
     @Override
-    public void resume() {
+    public boolean resume() {
         if (!isSupported()) {
             throw new UnsupportedOperationException("Continuations must be run on the Java on Truffle JVM with the java.Continuum option set to true.");
         }
@@ -212,7 +204,7 @@ final class ContinuationImpl extends Continuation implements Serializable {
             // Enable the use of suspend capabilities.
             setExclusiveOwner();
             try {
-                start0();
+                return start0();
             } finally {
                 clearExclusiveOwner();
             }
@@ -222,7 +214,7 @@ final class ContinuationImpl extends Continuation implements Serializable {
                 // We are ready to resume, make sure the VM has the most up-to-date frames
                 ensureDematerialized();
                 assert stackFrameHead == null;
-                resume0();
+                return resume0();
             } finally {
                 clearExclusiveOwner();
             }
@@ -233,8 +225,6 @@ final class ContinuationImpl extends Continuation implements Serializable {
                 case COMPLETED ->
                     throw new IllegalContinuationStateException("This continuation has already completed successfully.");
                 case FAILED -> throw new IllegalContinuationStateException("This continuation has failed and must be discarded.");
-                case INCOMPLETE ->
-                    throw new IllegalContinuationStateException("Do not construct this class using the no-arg constructor, which is there only for deserialization purposes.");
                 case LOCKED -> throw new IllegalContinuationStateException("You can't resume a continuation while it is being serialized or deserialized.");
                 // this is racy so ensure we have a general error message in those case
                 default -> throw new IllegalContinuationStateException("Only new or suspended continuation can be resumed");
@@ -379,6 +369,9 @@ final class ContinuationImpl extends Continuation implements Serializable {
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         state = State.INCOMPLETE;
         State currentState = lock();
+        if (currentState == State.RUNNING) {
+            throw new IllegalContinuationStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
+        }
         try {
             // At this point, nothing is initialized
             int header = in.readByte();
@@ -396,8 +389,10 @@ final class ContinuationImpl extends Continuation implements Serializable {
             if (currentState == State.SUSPENDED) {
                 stackFrameHead = FrameRecordSerializer.forIn(version, in).readRecord();
             }
-        } finally {
             unlock(currentState);
+        } catch (Throwable e) {
+            unlock(State.INCOMPLETE);
+            throw e;
         }
     }
 
@@ -555,9 +550,9 @@ final class ContinuationImpl extends Continuation implements Serializable {
         suspend0();
     }
 
-    private native void start0();
+    private native boolean start0();
 
-    private native void resume0();
+    private native boolean resume0();
 
     private native void suspend0();
 
