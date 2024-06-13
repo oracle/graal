@@ -91,6 +91,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
@@ -260,7 +261,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         if (allowForName) {
-            classForNameSupport.registerClass(condition, clazz);
+            classForNameSupport.registerClass(condition, getDynamicHub(clazz));
 
             if (!MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 /*
@@ -917,7 +918,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             /*
              * Reflection signature parsing will try to instantiate classes via Class.forName().
              */
-            classForNameSupport.registerClass(clazz);
+            classForNameSupport.registerClass(getDynamicHub(clazz));
         } else if (type instanceof TypeVariable<?>) {
             /* Bounds are reified lazily. */
             registerTypesForGenericSignature(queryGenericInfo(((TypeVariable<?>) type)::getBounds), dimension);
@@ -934,6 +935,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             registerTypesForGenericSignature(queryGenericInfo(wildcardType::getLowerBounds), dimension);
             registerTypesForGenericSignature(queryGenericInfo(wildcardType::getUpperBounds), dimension);
         }
+    }
+
+    private DynamicHub getDynamicHub(Class<?> clazz) {
+        return ((SVMHost) universe.hostVM()).dynamicHub(metaAccess.lookupJavaType(clazz));
     }
 
     private void registerTypesForRecordComponent(RecordComponent recordComponent) {

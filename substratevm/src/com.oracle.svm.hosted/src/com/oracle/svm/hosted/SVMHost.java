@@ -486,6 +486,14 @@ public class SVMHost extends HostVM {
          */
         boolean isProxyClass = Proxy.isProxyClass(javaClass);
 
+        /*
+         * SubstrateVM implementation classes have to appear as loaded by the bootstrap classloader
+         * at image run-time.
+         */
+        if (hubClassLoader == DynamicHub.class.getClassLoader()) {
+            hubClassLoader = null;
+        }
+
         return new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
                         isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, isLinked, simpleBinaryName,
                         getDeclaringClass(javaClass), getSignature(javaClass), isProxyClass);

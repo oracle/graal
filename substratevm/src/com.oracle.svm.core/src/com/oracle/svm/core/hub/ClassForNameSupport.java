@@ -26,7 +26,6 @@ package com.oracle.svm.core.hub;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
-import java.lang.management.PlatformManagedObject;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -79,31 +78,20 @@ public final class ClassForNameSupport {
     private static final Object NEGATIVE_QUERY = new Object();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private ClassLoader getRuntimeClassLoader(Class<?> clazz, ClassLoader buildTimeClassLoader) {
-        if (buildTimeClassLoader != null && PlatformManagedObject.class.isAssignableFrom(clazz) && clazz.getName().startsWith("com.oracle.svm.core.")) {
-            /*
-             * Pretend our internal PlatformManagedObject implementations have the null-classloader
-             * to make Class#forName in DefaultMBeanServerInterceptor#isInstanceOf work as expected.
-             */
-            return null;
-        }
-        return getRuntimeClassLoaderFunc.apply(buildTimeClassLoader);
+    public void registerClass(DynamicHub hub) {
+        registerClass(ConfigurationCondition.alwaysTrue(), hub);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(Class<?> clazz) {
-        registerClass(ConfigurationCondition.alwaysTrue(), clazz);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(ConfigurationCondition condition, Class<?> clazz) {
-        assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
+    public void registerClass(ConfigurationCondition condition, DynamicHub hub) {
+        assert !hub.isPrimitive() : "primitive classes cannot be looked up by name";
+        Class<?> clazz = hub.getHostedJavaClass();
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
         }
         synchronized (knownClasses) {
-            String name = clazz.getName();
-            Entry entry = Entry.of(getRuntimeClassLoader(clazz, clazz.getClassLoader()), name);
+            String name = hub.getName();
+            Entry entry = Entry.of(getRuntimeClassLoaderFunc.apply(hub.getClassLoader()), hub.getName());
             ConditionalRuntimeValue<Object> exisingEntry = knownClasses.get(entry);
             Object currentValue = exisingEntry == null ? null : exisingEntry.getValueUnconditionally();
 
