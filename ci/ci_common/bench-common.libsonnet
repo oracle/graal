@@ -126,12 +126,9 @@
   },
 
   generate_fork_builds(suite_obj, subdir='compiler', forks_file_base_name=null)::
-    /* based on a benchmark suite definition, generates the many forks version based on the hidden fields
-     * 'forks_batches' that specifies the number of batches this job should be split into and the corresponding
-     * 'forks_timelimit' that applies to those long-running jobs.
-     *
-     * The generated builder will set the 'FORK_COUNT_FILE' to the corresponding json file. So, make sure that the
-     * mx benchmark command sets --fork-count-file=${FORK_COUNT_FILE}
+    /* based on a benchmark suite definition, this generates a list of 'forks_batches' distinct jobs (with -batch<N> suffix)
+     * These jobs will run 'bench_forks_per_batch' times each benchmark. If the latter value is not specified or is null,
+     * we fallback to using the 'benchmarking-config' repository that contains per benchmark execution counts.
      */
     if std.objectHasAll(suite_obj, "bench_forks_per_batch") && suite_obj.bench_forks_per_batch != null then
       [ suite_obj + {
