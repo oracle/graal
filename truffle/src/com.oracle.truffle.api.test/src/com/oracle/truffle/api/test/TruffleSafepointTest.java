@@ -67,6 +67,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -170,7 +171,15 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     @Before
     public void before() throws ExecutionException, InterruptedException {
         Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
-        this.service = vthreads ? Executors.newVirtualThreadPerTaskExecutor() : cachedThreadPool;
+        if (vthreads) {
+            ThreadFactory factory = Thread.ofVirtual().uncaughtExceptionHandler((thread, exception) -> {
+                System.err.println("Uncaught exception in " + thread);
+                exception.printStackTrace(System.err);
+            }).factory();
+            this.service = Executors.newThreadPerTaskExecutor(factory);
+        } else {
+            this.service = cachedThreadPool;
+        }
 
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
