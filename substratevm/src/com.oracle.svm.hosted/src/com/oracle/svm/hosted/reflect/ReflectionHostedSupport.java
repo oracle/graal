@@ -39,9 +39,9 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 public interface ReflectionHostedSupport {
     Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses();
 
-    Map<AnalysisField, ConditionalRuntimeValue<Field>> getReflectionFields();
+    Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> getReflectionFields();
 
-    Map<AnalysisMethod, ConditionalRuntimeValue<Executable>> getReflectionExecutables();
+    Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables();
 
     Object getAccessor(AnalysisMethod method);
 
