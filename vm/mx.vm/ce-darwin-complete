@@ -1,4 +1,4 @@
-DYNAMIC_IMPORTS=/compiler,/espresso,/graal-js,/graal-nodejs,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,/wasm,graalpython,truffleruby
-COMPONENTS=antlr4,cmp,cov,dap,ellvm,ejvm,gvm,gwa,icu4j,ins,insight,insightheap,java,js,jsl,jss,lg,llp,llrc,llrl,llrn,lsp,nfi-libffi,nfi,ni,nic,nil,njs,njsl,poly,polynative,pro,pyn,pynl,rby,rbyl,rgx,sdk,sdkl,svm,svmt,svml,svmnfi,svmsl,tfl,tfla,tflc,tflm,truffle-json,vvm
-NATIVE_IMAGES=lib:pythonvm,graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-flang,graalvm-native-ld,lib:jsvm,lib:javavm,lib:graal-nodejs,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,lib:llvmvm,native-image,lib:rubyvm,lib:wasmvm,graalpy-polyglot-get
+DYNAMIC_IMPORTS=/compiler,/graal-js,/graal-nodejs,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,/wasm,graalpython,truffleruby
+COMPONENTS=antlr4,cmp,cov,dap,gvm,gwa,icu4j,ins,insight,insightheap,js,jsl,jss,lg,llp,llrc,llrl,llrn,lsp,nfi-libffi,nfi,ni,nic,nil,njs,njsl,poly,polynative,pro,pyn,pynl,rby,rbyl,rgx,sdk,sdkl,svm,svmt,svml,svmnfi,svmsl,tfl,tfla,tflc,tflm,truffle-json,vvm
+NATIVE_IMAGES=lib:pythonvm,graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-flang,graalvm-native-ld,lib:jsvm,lib:graal-nodejs,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,lib:llvmvm,native-image,lib:rubyvm,lib:wasmvm,graalpy-polyglot-get
 DISABLE_INSTALLABLES=false

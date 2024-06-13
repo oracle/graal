@@ -139,17 +139,6 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
-        "com.oracle.truffle.espresso.resources.runtime": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "truffle:TRUFFLE_API",
-            ],
-            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "javaCompliance": "17+",
-            "checkstyle": "com.oracle.truffle.espresso",
-        },
-
         "com.oracle.truffle.espresso.processor": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -349,26 +338,6 @@ suite = {
             "noMavenJavadoc": True,
         },
 
-        "JAVA_COMMUNITY": {
-            "type": "pom",
-            "runtimeDependencies": [
-                "ESPRESSO",
-                "ESPRESSO_LIBS_RESOURCES",
-                "ESPRESSO_RUNTIME_RESOURCES",
-                "truffle:TRUFFLE_NFI_LIBFFI",
-                "truffle:TRUFFLE_RUNTIME",
-                # sulong is not strictly required but it'll work out of the box in more cases if it's there
-                "sulong:SULONG_NFI",
-                "sulong:SULONG_NATIVE",
-            ],
-            "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
-            "maven": {
-                "groupId" : "org.graalvm.polyglot",
-                "artifactId": "java-community",
-                "tag": ["default", "public"],
-            },
-        },
-
         "ESPRESSO_LAUNCHER": {
             "subDir": "src",
             "dependencies": [
@@ -482,26 +451,6 @@ suite = {
                 },
             },
             "maven": False,
-        },
-
-        "ESPRESSO_RUNTIME_RESOURCES": {
-            "platformDependent": True,
-            "moduleInfo": {
-                "name": "org.graalvm.espresso.resources.runtime",
-            },
-            "distDependencies": [
-                "truffle:TRUFFLE_API",
-            ],
-            "dependencies": [
-                "com.oracle.truffle.espresso.resources.runtime",
-                "ESPRESSO_RUNTIME_DIR",
-            ],
-            "compress": True,
-            "useModulePath": True,
-            "description": "Runtime environment used by the Java on Truffle (aka Espresso) implementation",
-            "maven" : {
-                "tag": ["default", "public"],
-            },
         },
 
         "ESPRESSO_SUPPORT": {

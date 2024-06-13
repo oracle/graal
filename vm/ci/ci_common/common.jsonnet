@@ -357,7 +357,7 @@ local devkits = graal_common.devkits;
   weekly_vm_windows: self.vm_windows + {
     targets+: ['weekly'],
   },
-  
+
   weekly_vm_windows_amd64: self.vm_windows + {
     targets+: ['weekly'],
   },
@@ -457,8 +457,9 @@ local devkits = graal_common.devkits;
             downloads+: {
               JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17'],
               EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+              ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21'],
             } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
-              LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17-llvm'],
+              ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21-llvm'],
             } else {
             },
             environment+: {
@@ -469,8 +470,9 @@ local devkits = graal_common.devkits;
           {
             downloads+: {
               JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+              ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21'],
             } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
-              LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
+              ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-21-llvm'],
             } else {
             }
           }
@@ -932,14 +934,14 @@ local devkits = graal_common.devkits;
   #
 
   # Linux/AMD64
-  deploy_vm_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java21") + {name: 'post-merge-deploy-vm-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
+  deploy_vm_java21_linux_amd64: vm.vm_java_21 + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java21") + {name: 'post-merge-deploy-vm-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
 
   # Linux/AARCH64
   deploy_vm_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java21") + {name: 'post-merge-deploy-vm-java21-linux-aarch64', notify_groups:: ["deploy"]},
 
   # Darwin/AMD64
-  deploy_vm_base_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java21") + {name: 'post-merge-deploy-vm-base-java21-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_standalones_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_standalones_darwin_amd64("java21") + {name: 'post-merge-deploy-vm-standalones-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
+  deploy_vm_base_java21_darwin_amd64: vm.vm_java_21 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java21") + {name: 'post-merge-deploy-vm-base-java21-darwin-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_standalones_java21_darwin_amd64: vm.vm_java_21 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_standalones_darwin_amd64("java21") + {name: 'post-merge-deploy-vm-standalones-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   # Darwin/AARCH64
   deploy_vm_base_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64("java21") + {name: 'post-merge-deploy-vm-base-java21-darwin-aarch64', notify_groups:: ["deploy"]},
