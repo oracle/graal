@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.errors.OracleDBErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -243,10 +244,7 @@ public final class OracleDBRegexParser implements RegexParser {
             addCCAtomMultiCharExpansion(contents, CaseFoldAlgorithm.OracleDBAI);
         } else if (contents.isRange()) {
             CodePointSet range = ccAtomRangeIgnoreCase(contents.getCodePointSet());
-            charClassTmpCaseClosure.clear();
-            charClassTmpCaseClosure.addSet(range);
-            CaseFoldData.applyCaseFoldUnfold(charClassTmpCaseClosure, charClassTmp2, CaseFoldData.CaseFoldUnfoldAlgorithm.OracleDBSimple);
-            addCCAtomCodePointSet(charClassTmpCaseClosure.toCodePointSet());
+            addCCAtomCodePointSet(range);
         } else if (contents.isCharacterClass()) {
             addCCAtomCodePointSet(contents.getCodePointSet());
         } else {
@@ -261,7 +259,7 @@ public final class OracleDBRegexParser implements RegexParser {
         assert contents.isCharacter() || contents.isPosixCollationElement() || contents.isPosixCollationEquivalenceClass();
         assert contents.getCodePointSet().matchesSingleChar();
         // No transitive closure
-        CaseFoldData.getTable(algorithm).caseFold(contents.getCodePointSet().iterator().next(), (codepoint, caseFolded) -> {
+        CaseFoldData.getTable(algorithm).caseFold(contents.getCodePointSet(), (codepoint, caseFolded) -> {
             if (caseFolded.length > 1) {
                 CodePointSet encodingRange = Encodings.UTF_8.getFullSet();
                 CompilationBuffer compilationBuffer = lexer.getCompilationBuffer();
@@ -276,16 +274,15 @@ public final class OracleDBRegexParser implements RegexParser {
         MultiCharacterCaseFolding.caseClosure(algorithm, charClassTmpCaseClosure, charClassTmp2, (a, b) -> true, Encodings.UTF_8.getFullSet(), false);
     }
 
-    private CodePointSet ccAtomRangeIgnoreCase(CodePointSet range) {
-        assert range.size() == 1;
+    private CodePointSet ccAtomRangeIgnoreCase(CodePointSet parsedRange) {
+        assert parsedRange.size() == 1;
         assert flags.isIgnoreCase();
-        int lo = range.getMin();
-        int hi = range.getMax();
+        int lo = parsedRange.getMin();
+        int hi = parsedRange.getMax();
         CaseFoldData.CaseFoldTable caseFoldTable = CaseFoldData.getTable(CaseFoldAlgorithm.OracleDBSimple);
         int loLC = caseFoldSingle(caseFoldTable, lo);
         int hiLC = caseFoldSingle(caseFoldTable, hi);
-        int rangeLo = Math.min(loLC, hiLC);
-        int rangeHi = Math.max(loLC, hiLC);
+        CodePointSetAccumulator toAdd = new CodePointSetAccumulator();
         CodePointSetAccumulator toRemove = new CodePointSetAccumulator();
         if (UPPER_CASE.contains(lo) != UPPER_CASE.contains(hi)) {
             // oracledb-specific quirk: if range bounds are not of the same case, the range
@@ -297,22 +294,36 @@ public final class OracleDBRegexParser implements RegexParser {
                 return Encodings.UTF_8.getFullSet();
             } else {
                 CodePointSet ret = CodePointSet.create(Character.MIN_CODE_POINT, hiLC, loLC, Character.MAX_CODE_POINT);
-                for (Range r : ret) {
-                    caseFoldTable.caseFold(r, (codePoint, caseFolded) -> {
-                        if (!(loLC <= caseFolded[0] || caseFolded[0] <= hiLC)) {
-                            toRemove.addCodePoint(codePoint);
-                        }
-                    });
-                }
-                return ret.subtract(toRemove.toCodePointSet());
+                caseFoldTable.caseFold(ret, (codePoint, caseFolded) -> {
+                    if (!(loLC <= caseFolded[0] || caseFolded[0] <= hiLC)) {
+                        toRemove.addCodePoint(codePoint);
+                    }
+                });
+                caseFoldTable.caseFold(new Range(hiLC, loLC), (codePoint, caseFolded) -> {
+                    if (loLC <= caseFolded[0] || caseFolded[0] <= hiLC) {
+                        toAdd.addCodePoint(codePoint);
+                    }
+                });
+                return ret.subtract(toRemove.toCodePointSet()).union(toAdd.toCodePointSet());
             }
         } else {
-            caseFoldTable.caseFold(new Range(rangeLo, rangeHi), (codePoint, caseFolded) -> {
+            final CodePointSet range;
+            if (loLC > hiLC) {
+                range = CodePointSet.create(loLC);
+            } else {
+                range = CodePointSet.create(loLC, hiLC);
+            }
+            caseFoldTable.caseFold(Constants.ALL_WITHOUT_SURROGATES.subtract(range), (codePoint, caseFolded) -> {
+                if (loLC <= caseFolded[0] && caseFolded[0] <= hiLC) {
+                    toAdd.addCodePoint(codePoint);
+                }
+            });
+            caseFoldTable.caseFold(range, (codePoint, caseFolded) -> {
                 if (caseFolded[0] < loLC || caseFolded[0] > hiLC) {
                     toRemove.addCodePoint(codePoint);
                 }
             });
-            return CodePointSet.create(rangeLo, rangeHi).subtract(toRemove.toCodePointSet());
+            return range.subtract(toRemove.toCodePointSet()).union(toAdd.toCodePointSet());
         }
     }
 
