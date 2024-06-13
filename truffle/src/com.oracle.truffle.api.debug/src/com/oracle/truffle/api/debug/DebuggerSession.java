@@ -318,10 +318,9 @@ public final class DebuggerSession implements Closeable {
 
             @Override
             public DebugValue get(Object key) {
-                if (!(key instanceof String)) {
+                if (!(key instanceof String name)) {
                     return null;
                 }
-                String name = (String) key;
                 return polyglotBindings.getProperty(name);
             }
         };
@@ -470,7 +469,7 @@ public final class DebuggerSession implements Closeable {
         if (result == null) {
             return false;
         }
-        doSuspend(result.context, SuspendAnchor.BEFORE, result.frame, null);
+        doSuspend(result.context, SuspendAnchor.BEFORE, result.frame, null, false, false);
         return true;
     }
 
@@ -532,6 +531,8 @@ public final class DebuggerSession implements Closeable {
      * Suspends the current or the next execution of a given thread. Will throw an
      * {@link IllegalStateException} if the session is already closed.
      *
+     * Note that if a stepping strategy is currently active, we preserve the stepping state.
+     *
      * @since 20.0
      */
     public void suspend(Thread t) {
@@ -541,8 +542,34 @@ public final class DebuggerSession implements Closeable {
         if (closed) {
             throw new IllegalStateException("session closed");
         }
-
-        setSteppingStrategy(t, SteppingStrategy.createAlwaysHalt(), true);
+        // If there's an ongoing step request, we want to preserve that, so we use the preserve
+        // after halt strategy for suspend requests. In case the current strategy is a preserve halt
+        // strategy, we re-establish the halt next execution within the strategy. This is to
+        // avoid multiple nested levels of dual concurrent strategies.
+        SteppingStrategy currentStrategy = this.strategyMap.get(t);
+        SteppingStrategy newStrategy;
+        SuspendedEvent suspendedEvent = currentSuspendedEventMap.get(t);
+        if (suspendedEvent != null) {
+            // we're currently suspended and the old single step
+            // will be consumed if completed, hence we pick the next strategy
+            if (suspendedEvent.isStep()) {
+                currentStrategy = suspendedEvent.getNextStrategy();
+            }
+        }
+        if (currentStrategy != null) {
+            if (currentStrategy.isSingleStep()) {
+                newStrategy = SteppingStrategy.createPreserveAfterHalt(currentStrategy);
+            } else if (currentStrategy instanceof SteppingStrategy.PreserveAfterHalt preserveAfterHalt) {
+                // re-establish the halt strategy while preserving the current one
+                preserveAfterHalt.haltNextExecution();
+                newStrategy = preserveAfterHalt;
+            } else {
+                newStrategy = SteppingStrategy.createAlwaysHalt();
+            }
+        } else {
+            newStrategy = SteppingStrategy.createAlwaysHalt();
+        }
+        setSteppingStrategy(t, newStrategy, true);
     }
 
     /**
@@ -563,11 +590,7 @@ public final class DebuggerSession implements Closeable {
         suspendAll = true;
         // iterating concurrent hashmap should be save
         for (Thread t : strategyMap.keySet()) {
-            SteppingStrategy s = strategyMap.get(t);
-            assert s != null;
-            if (s.isDone() || s.isConsumed()) {
-                setSteppingStrategy(t, SteppingStrategy.createAlwaysHalt(), false);
-            }
+            suspend(t);
         }
         updateStepping();
     }
@@ -1127,7 +1150,7 @@ public final class DebuggerSession implements Closeable {
         // Fake the caller context
         Caller caller = findCurrentCaller(this, includeInternal);
         SuspendedContext context = SuspendedContext.create(caller.node, ((SteppingStrategy.Unwind) s).unwind);
-        doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode);
+        doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode, false, true);
     }
 
     static Caller findCurrentCaller(DebuggerSession session, boolean includeInternal) {
@@ -1286,11 +1309,13 @@ public final class DebuggerSession implements Closeable {
 
         boolean hitStepping = s.step(this, source.getContext(), suspendAnchor);
         boolean hitBreakpoint = !breaks.isEmpty();
+        boolean singleStepCompleted = hitStepping ? s.isSingleStepCompleted() : false;
+
         Object newReturnValue = returnValue;
         if (hitStepping || hitBreakpoint) {
             s.consume();
             newReturnValue = doSuspend(contextSupplier.get(), suspendAnchor, frame, source, inputValuesProvider, returnValue, exception, breaks,
-                            breakpointFailures);
+                            breakpointFailures, singleStepCompleted, s.isUnwind());
         } else {
             if (Debugger.TRACE) {
                 trace("ignored suspended reason: strategy(%s) from source:%s context:%s location:%s", s, source, source.getContext(), source.getSuspendAnchors());
@@ -1302,20 +1327,21 @@ public final class DebuggerSession implements Closeable {
         return newReturnValue;
     }
 
-    private Object doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame, InsertableNode insertableNode) {
-        return doSuspend(context, suspendAnchor, frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap());
+    private void doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame, InsertableNode insertableNode, boolean singleStepCompleted, boolean isUnwind) {
+        doSuspend(context, suspendAnchor, frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap(), singleStepCompleted, isUnwind);
     }
 
     private Object doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame,
                     InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
-                    List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures) {
+                    List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures, boolean singleStepCompleted, boolean isUnwind) {
         CompilerAsserts.neverPartOfCompilation();
         Thread currentThread = Thread.currentThread();
 
         SuspendedEvent suspendedEvent;
         Object newReturnValue;
         try {
-            suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, suspendAnchor, insertableNode, inputValuesProvider, returnValue, exception, breaks, conditionFailures);
+            suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, suspendAnchor, insertableNode, inputValuesProvider, returnValue, exception, breaks, conditionFailures,
+                            singleStepCompleted, isUnwind);
             if (exception != null) {
                 exception.setSuspendedEvent(suspendedEvent);
             }
