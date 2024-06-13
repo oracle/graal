@@ -372,7 +372,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * Back link to the SubstrateType used by the substrate meta access. Only used for the subset of
      * types for which a SubstrateType exists.
      */
-    @UnknownObjectField(fullyQualifiedTypes = "com.oracle.svm.graal.meta.SubstrateType")//
+    @UnknownObjectField(fullyQualifiedTypes = "com.oracle.svm.graal.meta.SubstrateType", canBeNull = true)//
     private SharedType metaType;
 
     /**

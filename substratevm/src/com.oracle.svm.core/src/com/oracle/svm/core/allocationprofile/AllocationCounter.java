@@ -41,7 +41,8 @@ public class AllocationCounter {
     /** Name of the method that increments this counter. */
     private final String name;
     /** Next allocation counter - this value is only written during compilation. */
-    @UnknownObjectField(availability = AfterCompilation.class) private AllocationCounter next;
+    @UnknownObjectField(canBeNull = true, availability = AfterCompilation.class)//
+    private AllocationCounter next;
     /** Number of allocations. */
     private long count;
     /** Size of allocations in bytes. */

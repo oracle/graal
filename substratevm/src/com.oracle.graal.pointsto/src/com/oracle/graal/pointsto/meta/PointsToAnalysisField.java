@@ -99,11 +99,7 @@ public class PointsToAnalysisField extends AnalysisField {
     public void saturatePrimitiveField() {
         assert fieldType.isPrimitive() || fieldType.isWordType() : this;
         var bb = ((PointsToAnalysis) getUniverse().getBigbang());
-        if (isStatic()) {
-            staticFieldFlow.addState(bb, TypeState.anyPrimitiveState());
-        } else {
-            initialInstanceFieldFlow.addState(bb, TypeState.anyPrimitiveState());
-            instanceFieldFlow.addState(bb, TypeState.anyPrimitiveState());
-        }
+        initialFlow.addState(bb, TypeState.anyPrimitiveState());
+        sinkFlow.addState(bb, TypeState.anyPrimitiveState());
     }
 }

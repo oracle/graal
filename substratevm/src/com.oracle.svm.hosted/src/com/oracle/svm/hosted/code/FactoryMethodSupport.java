@@ -56,6 +56,11 @@ public class FactoryMethodSupport {
     private final Map<AnalysisMethod, FactoryMethod> factoryMethods = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, FactoryMethod> factoryThrowMethods = new ConcurrentHashMap<>();
 
+    public static boolean isFactoryMethod(AnalysisMethod method) {
+        var javaClass = method.getDeclaringClass().getJavaClass();
+        return javaClass == FactoryMethodHolder.class || javaClass == FactoryThrowMethodHolder.class;
+    }
+
     public AnalysisMethod lookup(AnalysisMetaAccess aMetaAccess, AnalysisMethod aConstructor, boolean throwAllocatedObject) {
         VMError.guarantee(aConstructor.getDeclaringClass().isInstanceClass() && !aConstructor.getDeclaringClass().isAbstract(), "Must be a non-abstract instance class");
         Map<AnalysisMethod, FactoryMethod> methods = throwAllocatedObject ? factoryThrowMethods : factoryMethods;

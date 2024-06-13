@@ -30,15 +30,18 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -114,6 +117,12 @@ public class InlineBeforeAnalysisPolicyUtils {
 
         @Option(help = "Maximum number of methods inlined for method handle internals before static analysis")//
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisMethodHandleAllowedInlinings = new HostedOptionKey<>(10_000);
+
+        @Option(help = "Maximum number of computation nodes for constructors inlined into factory methods before static analysis")//
+        public static final HostedOptionKey<Integer> InlineBeforeAnalysisConstructorAllowedNodes = new HostedOptionKey<>(200);
+
+        @Option(help = "Maximum number of invokes for constructors inlined into factory methods before static analysis")//
+        public static final HostedOptionKey<Integer> InlineBeforeAnalysisConstructorAllowedInvokes = new HostedOptionKey<>(50);
     }
 
     /* Cached values of options, to avoid repeated option lookup. */
@@ -125,6 +134,10 @@ public class InlineBeforeAnalysisPolicyUtils {
     public final int optionMethodHandleAllowedInvokes = Options.InlineBeforeAnalysisMethodHandleAllowedInvokes.getValue();
     public final int optionMethodHandleAllowedDepth = Options.InlineBeforeAnalysisMethodHandleAllowedDepth.getValue();
     public final int optionMethodHandleAllowedInlinings = Options.InlineBeforeAnalysisMethodHandleAllowedInlinings.getValue();
+
+    public final boolean optionTrackNeverNullInstanceFields = PointstoOptions.TrackNeverNullInstanceFields.getValue(HostedOptionValues.singleton());
+    public final int optionConstructorAllowedNodes = Options.InlineBeforeAnalysisConstructorAllowedNodes.getValue();
+    public final int optionConstructorAllowedInvokes = Options.InlineBeforeAnalysisConstructorAllowedInvokes.getValue();
 
     @SuppressWarnings("unchecked") //
     private static final Class<? extends Annotation> COMPILED_LAMBDA_FORM_ANNOTATION = //
@@ -241,15 +254,17 @@ public class InlineBeforeAnalysisPolicyUtils {
         int maxNodes;
         int maxInvokes;
         final boolean inMethodHandleIntrinsification;
+        final boolean inConstructorInlining;
 
         int numNodes;
         int numInvokes;
         int totalInlinedMethods;
 
-        private AccumulativeCounters(int maxNodes, int maxInvokes, boolean inMethodHandleIntrinsification) {
+        private AccumulativeCounters(int maxNodes, int maxInvokes, boolean inMethodHandleIntrinsification, boolean inConstructorInlining) {
             this.maxNodes = maxNodes;
             this.maxInvokes = maxInvokes;
             this.inMethodHandleIntrinsification = inMethodHandleIntrinsification;
+            this.inConstructorInlining = inConstructorInlining;
         }
     }
 
@@ -258,7 +273,7 @@ public class InlineBeforeAnalysisPolicyUtils {
      * has exceeded a specified count, or an illegal node is inlined, then the process will be
      * aborted.
      */
-    public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMethod method, NodePredicate invalidNodePredicate) {
+    public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMethod caller, AnalysisMethod method, NodePredicate invalidNodePredicate) {
         AccumulativeCounters accumulativeCounters;
         int depth;
         if (outer == null) {
@@ -274,9 +289,13 @@ public class InlineBeforeAnalysisPolicyUtils {
                  * permit more types of nodes, but not recursively, i.e., not if we are already in a
                  * method handle intrinsification context.
                  */
-                accumulativeCounters = new AccumulativeCounters(optionMethodHandleAllowedNodes, optionMethodHandleAllowedInvokes, true);
+                accumulativeCounters = new AccumulativeCounters(optionMethodHandleAllowedNodes, optionMethodHandleAllowedInvokes, true, false);
+
+            } else if (optionTrackNeverNullInstanceFields && FactoryMethodSupport.isFactoryMethod(caller)) {
+                accumulativeCounters = new AccumulativeCounters(optionConstructorAllowedNodes, optionConstructorAllowedInvokes, false, true);
+
             } else {
-                accumulativeCounters = new AccumulativeCounters(optionAllowedNodes, optionAllowedInvokes, false);
+                accumulativeCounters = new AccumulativeCounters(optionAllowedNodes, optionAllowedInvokes, false, false);
             }
 
         } else if (outer.accumulativeCounters.inMethodHandleIntrinsification && !inlineForMethodHandleIntrinsification(method)) {
@@ -294,7 +313,11 @@ public class InlineBeforeAnalysisPolicyUtils {
              * inlining root.
              */
             depth = 1;
-            accumulativeCounters = new AccumulativeCounters(optionAllowedNodes, optionAllowedInvokes, false);
+            accumulativeCounters = new AccumulativeCounters(optionAllowedNodes, optionAllowedInvokes, false, false);
+
+        } else if (outer.accumulativeCounters.inConstructorInlining && !method.isConstructor()) {
+            depth = 1;
+            accumulativeCounters = new AccumulativeCounters(optionAllowedNodes, optionAllowedInvokes, false, false);
 
         } else {
             /* Nested inlining (potentially during method handle intrinsification). */
@@ -326,8 +349,6 @@ public class InlineBeforeAnalysisPolicyUtils {
         public void commitCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
             AccumulativeInlineScope calleeScope = (AccumulativeInlineScope) callee;
             if (accumulativeCounters != calleeScope.accumulativeCounters) {
-                assert accumulativeCounters.inMethodHandleIntrinsification != calleeScope.accumulativeCounters.inMethodHandleIntrinsification;
-
                 // Expand limits to hold the method handle intrinsification, but not more.
                 accumulativeCounters.maxNodes += calleeScope.numNodes;
                 accumulativeCounters.maxInvokes += calleeScope.numInvokes;
@@ -345,8 +366,6 @@ public class InlineBeforeAnalysisPolicyUtils {
             if (accumulativeCounters == calleeScope.accumulativeCounters) {
                 accumulativeCounters.numNodes -= calleeScope.numNodes;
                 accumulativeCounters.numInvokes -= calleeScope.numInvokes;
-            } else {
-                assert accumulativeCounters.inMethodHandleIntrinsification != calleeScope.accumulativeCounters.inMethodHandleIntrinsification;
             }
         }
 
@@ -457,7 +476,7 @@ public class InlineBeforeAnalysisPolicyUtils {
             accumulativeCounters.numNodes++;
 
             // With method handle intrinsification we permit all node types to become more effective
-            return allow || accumulativeCounters.inMethodHandleIntrinsification;
+            return allow || accumulativeCounters.inMethodHandleIntrinsification || accumulativeCounters.inConstructorInlining;
         }
 
         @Override

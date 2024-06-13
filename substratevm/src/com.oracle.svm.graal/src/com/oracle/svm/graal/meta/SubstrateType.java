@@ -60,7 +60,8 @@ public class SubstrateType implements SharedType {
     @UnknownObjectField(canBeNull = true)//
     SubstrateField[] rawAllInstanceFields;
 
-    @UnknownObjectField protected DynamicHub uniqueConcreteImplementation;
+    @UnknownObjectField(canBeNull = true)//
+    protected DynamicHub uniqueConcreteImplementation;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
         this.kind = kind;
