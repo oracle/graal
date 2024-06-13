@@ -40,34 +40,24 @@
  */
 package org.graalvm.continuations;
 
-import java.io.Externalizable;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serial;
+import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
-final class ContinuationImpl extends Continuation implements Externalizable {
+final class ContinuationImpl extends Continuation implements Serializable {
     @Serial private static final long serialVersionUID = -5833405097154096157L;
 
     private static final VarHandle STATE_HANDLE;
     private static final boolean ASSERTIONS_ENABLED = areAssertionsEnabled();
 
-    private static final int FORMAT_VERSION = 2;
+    static final int FORMAT_VERSION = 2;
     private static final int FORMAT_SHIFT = 4;
     private static final int FORMAT_MASK = 0xFF;
-
-    private static final int POOL_IDX_BITS = 16;
-    private static final int NEW_POOL_MASK = 1 << (POOL_IDX_BITS - 1);
-    private static final int POOL_IDX_MASK = NEW_POOL_MASK - 1;
-    private static final int MAX_POOL_IDX = NEW_POOL_MASK - 1;
 
     static {
         try {
@@ -309,33 +299,33 @@ final class ContinuationImpl extends Continuation implements Externalizable {
      * consistent with {@code verification types} for the given {@link #bci}.</li>
      * </ul>
      */
-    private static final class FrameRecord {
+    static final class FrameRecord {
         /**
          * The next frame in the stack.
          */
-        private FrameRecord next;   // Set by the VM
+        FrameRecord next;   // Set by the VM
 
         /**
          * Pointer stack and local slots. Note that not every slot is used.
          */
-        private final Object[] pointers;
+        final Object[] pointers;
 
         /**
          * Primitive stack and local slots. Note that not every slot is used.
          */
-        private final long[] primitives;
+        final long[] primitives;
 
         /**
          * The method of this stack frame.
          */
-        private final Method method;
+        final Method method;
 
         /**
          * The bci at which to resume the frame.
          */
-        private final int bci;
+        final int bci;
 
-        private FrameRecord(Object[] pointers, long[] primitives, Method method, int bci) {
+        FrameRecord(Object[] pointers, long[] primitives, Method method, int bci) {
             this.pointers = pointers;
             this.primitives = primitives;
             this.method = method;
@@ -344,21 +334,12 @@ final class ContinuationImpl extends Continuation implements Externalizable {
     }
 
     /**
-     * This constructor is intended only to allow deserialization. You shouldn't use it directly.
-     *
-     * @hidden
+     * Serializes the continuation using an internal format. The {@link ObjectOutputStream} will
+     * receive some opaque bytes followed by writes of the objects pointed to by the stack. It's up
+     * to the serialization engine to recursively serialize everything that's reachable.
      */
-    public ContinuationImpl() {
-        this.state = State.INCOMPLETE;
-    }
-
-    /**
-     * Serializes the continuation using an internal format. The {@link ObjectOutput} will receive
-     * some opaque bytes followed by writes of the objects pointed to by the stack. It's up to the
-     * serialization engine to recursively serialize everything that's reachable.
-     */
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
+    @Serial
+    private void writeObject(ObjectOutputStream out) throws IOException {
         State currentState = lock();
         if (currentState == State.RUNNING) {
             throw new IllegalContinuationStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
@@ -377,238 +358,46 @@ final class ContinuationImpl extends Continuation implements Externalizable {
             out.writeObject(entryPoint);
 
             if (currentState == State.SUSPENDED) {
-                Map<String, Integer> stringPool = new HashMap<>();
-                // We serialize frame-at-a-time. Prims go first, then object pointers. Conceptually
-                // there aren't two arrays, just one array of untyped slots but we don't currently
-                // know the real types of the slots, so have to serialize both arrays even though
-                // they'll contain quite a few nulls. There are more efficient encodings available.
-                FrameRecord cursor = stackFrameHead;
-                assert cursor != null;
-                while (cursor != null) {
-                    writeFrame(out, cursor, stringPool);
-                    out.writeBoolean(cursor.next != null);
-                    cursor = cursor.next;
-                }
+                FrameRecordSerializer.forOut(FORMAT_VERSION, out).writeRecord(stackFrameHead);
             }
         } finally {
             unlock(currentState);
         }
     }
 
-    private static void writeFrame(ObjectOutput out, FrameRecord cursor, Map<String, Integer> stringPool) throws IOException {
-        Method method = cursor.method;
-        out.writeObject(cursor.pointers);
-        out.writeObject(cursor.primitives);
-        writeMethodNameAndTypes(out, method, cursor.pointers.length > 1 ? cursor.pointers[1] : null, stringPool);
-        out.writeInt(cursor.bci);
-    }
-
-    private static void writeMethodNameAndTypes(ObjectOutput out, Method method, Object receiver, Map<String, Integer> stringPool) throws IOException {
-        if (receiver != null && method.getDeclaringClass() == receiver.getClass()) {
-            // Some classes such as Lambda classes can't be looked up by name. This is a JVM
-            // optimization designed to avoid
-            // contention on the global dictionary lock, but it means we need another way to get the
-            // class for the method. Fortunately, lambdas always have an instance, so we can read it
-            // out of the first pointer slot.
-            out.writeBoolean(true);
-        } else {
-            out.writeBoolean(false);
-            if (method.getDeclaringClass().isHidden()) {
-                throw new IOException("Can't serialize continuation with static frames from methods of hidden classes: %s.%s".formatted(method.getDeclaringClass().getName(), method.getName()));
-            }
-            writeString(out, method.getDeclaringClass().getName(), stringPool);
-        }
-        writeString(out, method.getName(), stringPool);
-        writeClass(out, method.getReturnType(), stringPool);
-        Class<?>[] paramTypes = method.getParameterTypes();
-        out.writeByte(paramTypes.length);
-        for (Class<?> p : paramTypes) {
-            writeClass(out, p, stringPool);
-        }
-    }
-
-    private static void writeClass(ObjectOutput out, Class<?> clazz, Map<String, Integer> stringPool) throws IOException {
-        if (clazz.isPrimitive()) {
-            if (clazz == int.class) {
-                out.writeByte('I');
-            } else if (clazz == boolean.class) {
-                out.writeByte('Z');
-            } else if (clazz == double.class) {
-                out.writeByte('D');
-            } else if (clazz == float.class) {
-                out.writeByte('F');
-            } else if (clazz == long.class) {
-                out.writeByte('J');
-            } else if (clazz == byte.class) {
-                out.writeByte('B');
-            } else if (clazz == char.class) {
-                out.writeByte('C');
-            } else if (clazz == short.class) {
-                out.writeByte('S');
-            } else if (clazz == void.class) {
-                out.writeByte('V');
-            } else {
-                throw new RuntimeException("Should not reach here: " + clazz);
-            }
-        } else {
-            out.writeByte('L');
-            writeString(out, clazz.getName(), stringPool);
-        }
-    }
-
-    private static void writeString(ObjectOutput out, String str, Map<String, Integer> stringPool) throws IOException {
-        Integer idx = stringPool.get(str);
-        if (idx == null) {
-            idx = stringPool.size();
-            if (idx == NEW_POOL_MASK) {
-                // pick an existing entry and replace it
-                Map.Entry<String, Integer> toReplace = stringPool.entrySet().iterator().next();
-                idx = toReplace.getValue();
-                stringPool.remove(toReplace.getKey());
-            }
-            stringPool.put(str, idx);
-            assert idx <= MAX_POOL_IDX;
-            out.writeChar(idx | NEW_POOL_MASK);
-            out.writeUTF(str);
-        } else {
-            assert idx <= MAX_POOL_IDX;
-            out.writeChar(idx);
-        }
-    }
-
     /**
-     * Initializes the continuation from the given {@link ObjectInput}.
+     * Initializes the continuation from the given {@link ObjectInputStream}.
      *
-     * @throws IllegalContinuationStateException if the continuation is in any {@link State} other
-     *             than {@link State#INCOMPLETE}.
+     * @throws IllegalContinuationStateException if the continuation is in state
+     *             {@link State#RUNNING}.
      * @throws FormatVersionException if the header read from the stream doesn't match the expected
      *             version number.
      * @throws IOException if there is a problem reading the stream, or if the stream appears to be
      *             corrupted.
      */
-    @Override
-    public synchronized void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        State previousState = lock();
-        if (previousState != State.INCOMPLETE) {
-            if (previousState != State.RUNNING) {
-                // For a RUNNING continuation locking doesn't happen.
-                unlock(previousState);
+    @Serial
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        state = State.INCOMPLETE;
+        State currentState = lock();
+        try {
+            // At this point, nothing is initialized
+            int header = in.readByte();
+            int version = (header >> FORMAT_SHIFT) & FORMAT_MASK;
+            if (version != FORMAT_VERSION) {
+                throw new FormatVersionException(version, FORMAT_VERSION);
             }
-            throw new IllegalContinuationStateException("Do not use readExternal on a Continuation object that was not just freshly created through the no-arg constructor");
-        }
-        int header = in.readByte();
-        int version = (header >> FORMAT_SHIFT) & FORMAT_MASK;
-        if (version != FORMAT_VERSION) {
-            throw new FormatVersionException(version, FORMAT_VERSION);
-        }
 
-        State serializedState = (State) in.readObject();
-        entryPoint = (EntryPoint) in.readObject();
-
-        if (serializedState == State.SUSPENDED) {
-            try {
-                FrameRecord last = null;
-                List<String> stringPool = new ArrayList<>();
-                do {
-                    // We read the context classloader here because we need the classloader that
-                    // holds the user's app. If we use Class.forName() in this code we get the
-                    // platform classloader because this class is provided by the VM, and thus can't
-                    // look up methods of user classes. If we use the classloader of the entrypoint
-                    // it breaks for Generator and any other classes we might want to ship with the
-                    // VM that use this API. So we need the user's app class loader.
-                    // We could walk the stack to find it just like ObjectInputStream does, but we
-                    // go with the context classloader here to make it easier for the user to
-                    // control.
-                    FrameRecord frame = readFrame(in, Thread.currentThread().getContextClassLoader(), stringPool);
-                    if (last == null) {
-                        stackFrameHead = frame;
-                    } else {
-                        last.next = frame;
-                    }
-                    last = frame;
-                } while (in.readBoolean());
-            } catch (NoSuchMethodException e) {
-                throw new IOException(e);
+            currentState = (State) in.readObject();
+            if (currentState == State.RUNNING) {
+                throw new IllegalContinuationStateException("Illegal serialized continuation is in running state.");
             }
-        }
-        unlock(serializedState);
-    }
+            entryPoint = (EntryPoint) in.readObject();
 
-    private static FrameRecord readFrame(ObjectInput in, ClassLoader classLoader, List<String> stringPool)
-                    throws IOException, ClassNotFoundException, NoSuchMethodException {
-        Object[] pointers = (Object[]) in.readObject();
-        long[] primitives = (long[]) in.readObject();
-        // Slot zero is always primitive (bci), so this is in slot 1.
-        Method method = readMethodNameAndTypes(in, classLoader, pointers.length > 1 ? pointers[1] : null, stringPool);
-        int bci = in.readInt();
-        return new FrameRecord(pointers, primitives, method, bci);
-    }
-
-    private static Method readMethodNameAndTypes(ObjectInput in, ClassLoader classLoader, Object possibleThis, List<String> stringPool)
-                    throws IOException, ClassNotFoundException, NoSuchMethodException {
-        Class<?> declaringClass;
-        if (in.readBoolean()) {
-            declaringClass = possibleThis.getClass();
-        } else {
-            declaringClass = Class.forName(readString(in, stringPool), false, classLoader);
-        }
-        String name = readString(in, stringPool);
-        Class<?> returnType = readClass(in, classLoader, stringPool);
-
-        int numArgs = in.readUnsignedByte();
-        Class<?>[] argTypes = new Class<?>[numArgs];
-        for (int i = 0; i < numArgs; i++) {
-            argTypes[i] = readClass(in, classLoader, stringPool);
-        }
-
-        for (Method method : declaringClass.getDeclaredMethods()) {
-            if (!method.getName().equals(name)) {
-                continue;
+            if (currentState == State.SUSPENDED) {
+                stackFrameHead = FrameRecordSerializer.forIn(version, in).readRecord();
             }
-            if (!Arrays.equals(method.getParameterTypes(), argTypes)) {
-                continue;
-            }
-            if (!method.getReturnType().equals(returnType)) {
-                continue;
-            }
-            return method;
-        }
-
-        throw new NoSuchMethodException("%s %s.%s(%s)".formatted(
-                        returnType.getName(), declaringClass.getName(), name, String.join(", ", Arrays.stream(argTypes).map(Class::getName).toList())));
-    }
-
-    private static Class<?> readClass(ObjectInput in, ClassLoader classLoader, List<String> stringPool) throws IOException, ClassNotFoundException {
-        int kind = in.readUnsignedByte();
-        return switch (kind) {
-            case 'I' -> int.class;
-            case 'Z' -> boolean.class;
-            case 'D' -> double.class;
-            case 'F' -> float.class;
-            case 'J' -> long.class;
-            case 'B' -> byte.class;
-            case 'C' -> char.class;
-            case 'S' -> short.class;
-            case 'V' -> void.class;
-            case 'L' -> Class.forName(readString(in, stringPool), false, classLoader);
-            default -> throw new IOException("Unexpected kind: " + kind);
-        };
-    }
-
-    private static String readString(ObjectInput in, List<String> stringPool) throws IOException {
-        int idx = in.readChar();
-        if ((idx & NEW_POOL_MASK) != 0) {
-            String value = in.readUTF();
-            idx = idx & POOL_IDX_MASK;
-            if (idx == stringPool.size()) {
-                stringPool.add(value);
-            } else {
-                stringPool.set(idx, value);
-            }
-            return value;
-        } else {
-            assert idx <= MAX_POOL_IDX;
-            return stringPool.get(idx);
+        } finally {
+            unlock(currentState);
         }
     }
 
