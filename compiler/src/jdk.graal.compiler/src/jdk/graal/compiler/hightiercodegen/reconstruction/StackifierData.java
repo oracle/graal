@@ -112,10 +112,10 @@ public class StackifierData implements ReconstructionData {
     }
 
     /**
-     * @return true iff {@code successor} comes directly after {@code block} in the sorted order
+     * @return true iff {@code successor} appears directly after {@code block} in the sorted order
      *         computed by {@link CFStackifierSortPhase}.
      */
-    public boolean areNextInOrder(HIRBlock block, HIRBlock successor) {
+    public boolean isPredecessor(HIRBlock block, HIRBlock successor) {
         return blockOrder(block) + 1 == blockOrder(successor);
     }
 
@@ -123,7 +123,7 @@ public class StackifierData implements ReconstructionData {
      * @return true iff {@code a} precedes {@code b} in the sorted order computed by
      *         {@link CFStackifierSortPhase}.
      */
-    public boolean comesBefore(HIRBlock a, HIRBlock b) {
+    public boolean isOrderedBefore(HIRBlock a, HIRBlock b) {
         return blockOrder(a) < blockOrder(b);
     }
 

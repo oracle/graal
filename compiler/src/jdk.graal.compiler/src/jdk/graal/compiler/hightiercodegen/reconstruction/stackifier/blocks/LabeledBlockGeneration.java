@@ -183,7 +183,7 @@ public class LabeledBlockGeneration {
              */
             return true;
         }
-        return !stackifierData.areNextInOrder(block, successor);
+        return !stackifierData.isPredecessor(block, successor);
     }
 
     /**
@@ -367,7 +367,7 @@ public class LabeledBlockGeneration {
         Loop<HIRBlock> l1 = block.getLoop();
         if (l1 != null) {
             HIRBlock lastLoopBlock = ((LoopScopeContainer) stackifierData.getScopeEntry(l1.getHeader().getBeginNode())).getLoopScope().getLastBlock(stackifierData);
-            return stackifierData.areNextInOrder(lastLoopBlock, successor);
+            return stackifierData.isPredecessor(lastLoopBlock, successor);
         }
         return false;
     }
@@ -489,10 +489,10 @@ public class LabeledBlockGeneration {
             }
         }
         for (HIRBlock b : labeledBlockEnds.getKeys()) {
-            if (stackifierData.comesBefore(predecessor, b) && stackifierData.comesBefore(b, successor)) {
+            if (stackifierData.isOrderedBefore(predecessor, b) && stackifierData.isOrderedBefore(b, successor)) {
                 // a LabeledBlock ends between break and ".. }"
                 LabeledBlock forwardBlock = labeledBlockEnds.get(b);
-                if (stackifierData.comesBefore(forwardBlock.getStart(), earliestStart)) {
+                if (stackifierData.isOrderedBefore(forwardBlock.getStart(), earliestStart)) {
                     earliestStart = forwardBlock.getStart();
                 }
             }

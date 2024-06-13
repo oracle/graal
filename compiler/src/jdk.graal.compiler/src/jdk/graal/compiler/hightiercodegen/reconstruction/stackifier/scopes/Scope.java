@@ -96,7 +96,7 @@ public class Scope {
     public HIRBlock getLastBlock(StackifierData stackifierData) {
         HIRBlock last = blocks.iterator().next();
         for (HIRBlock b : blocks) {
-            if (stackifierData.comesBefore(last, b)) {
+            if (stackifierData.isOrderedBefore(last, b)) {
                 last = b;
             }
         }
