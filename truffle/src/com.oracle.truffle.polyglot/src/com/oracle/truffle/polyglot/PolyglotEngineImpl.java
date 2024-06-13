@@ -1228,7 +1228,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         synchronized (this.lock) {
             Thread currentThread = Thread.currentThread();
             boolean interrupted = false;
-            while (closingThread != null && closingThread != currentThread) {
+            if (closingThread == currentThread) {
+                return;
+            }
+            while (closingThread != null) {
                 try {
                     this.lock.wait();
                 } catch (InterruptedException ie) {
@@ -1258,24 +1261,34 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     }
                 }
             }
-            if (!initiatedByContext) {
-                /*
-                 * context.cancel and context.closeAndMaybeWait close the engine if it is bound to
-                 * the context, so if we called these methods here, it might lead to
-                 * StackOverflowError.
-                 */
-                for (PolyglotContextImpl context : localContexts) {
-                    assert !Thread.holdsLock(context);
-                    assert context.parent == null;
-                    if (force) {
-                        context.cancel(false, null);
-                    } else {
-                        context.closeAndMaybeWait(false, null);
+
+            closingThread = currentThread;
+            try {
+                if (!initiatedByContext) {
+                    /*
+                     * context.cancel and context.closeAndMaybeWait close the engine if it is bound
+                     * to the context, so if we called these methods here, it might lead to
+                     * StackOverflowError.
+                     */
+                    for (PolyglotContextImpl context : localContexts) {
+                        assert !Thread.holdsLock(context);
+                        assert context.parent == null;
+                        if (force) {
+                            context.cancel(false, null);
+                        } else {
+                            context.closeAndMaybeWait(false, null);
+                        }
                     }
                 }
-            }
 
-            contexts.clear();
+                contexts.clear();
+            } finally {
+                /*
+                 * RuntimeSupport#onEngineClosing must be called without the closingThread set.
+                 * Otherwise, it will store a running thread into an auxiliary image.
+                 */
+                closingThread = null;
+            }
 
             if (RUNTIME.onEngineClosing(this.runtimeData)) {
                 getAPIAccess().engineClosed(api);
@@ -1284,13 +1297,21 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             closingThread = currentThread;
         }
 
-        // instruments should be shut-down even if they are currently still executed
-        // we want to see instrument output if the process is quit while executing.
-        for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
-            instrumentImpl.ensureFinalized();
-        }
-        for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
-            instrumentImpl.ensureClosed();
+        try {
+            // instruments should be shut-down even if they are currently still executed
+            // we want to see instrument output if the process is quit while executing.
+            for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
+                instrumentImpl.ensureFinalized();
+            }
+            for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
+                instrumentImpl.ensureClosed();
+            }
+        } catch (Throwable t) {
+            synchronized (this.lock) {
+                closingThread = null;
+                this.lock.notifyAll();
+            }
+            throw t;
         }
 
         synchronized (this.lock) {
@@ -1705,7 +1726,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotContextImpl context;
         boolean replayEvents;
-        boolean contextAddedToEngine;
         try {
             assert sandboxPolicy == contextSandboxPolicy : "Engine and context must have the same SandboxPolicy.";
             synchronized (this.lock) {
@@ -1820,13 +1840,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                             environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing, useSystemExit, null, null, null, null);
             context = loadPreinitializedContext(config);
             replayEvents = false;
-            contextAddedToEngine = false;
             if (context == null) {
                 synchronized (this.lock) {
                     checkState();
                     context = new PolyglotContextImpl(this, config);
                     addContext(context);
-                    contextAddedToEngine = true;
                 }
             } else if (context.engine == this) {
                 replayEvents = true;
@@ -1837,37 +1855,36 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         boolean hasContextBindings;
         boolean hasThreadBindings;
         try {
-            if (replayEvents) { // loaded context
-                /*
-                 * There might be new instruments to run with a preinitialized context and these
-                 * instruments might define context locals and context thread locals. The
-                 * instruments were created during the context loading before the context was added
-                 * to the engine's contexts set, and so the instrument creation did not update the
-                 * context's locals and thread locals. Since the context loading needs to enter the
-                 * context on the current thread for patching, we need to update both the context
-                 * locals and context thread locals.
-                 */
-                synchronized (context) {
-                    context.resizeContextLocals(this.contextLocalLocations);
-                    context.initializeInstrumentContextLocals(context.contextLocals);
-                    context.resizeContextThreadLocals(this.contextThreadLocalLocations);
-                    context.initializeInstrumentContextThreadLocals();
-                }
-            } else { // is new context
-                try {
+            try {
+                if (replayEvents) { // loaded context
+                    /*
+                     * There might be new instruments to run with a preinitialized context and these
+                     * instruments might define context locals and context thread locals. The
+                     * instruments were created during the context loading before the context was
+                     * added to the engine's contexts set, and so the instrument creation did not
+                     * update the context's locals and thread locals. Since the context loading
+                     * needs to enter the context on the current thread for patching, we need to
+                     * update both the context locals and context thread locals.
+                     */
+                    synchronized (context) {
+                        context.resizeContextLocals(this.contextLocalLocations);
+                        context.initializeInstrumentContextLocals(context.contextLocals);
+                        context.resizeContextThreadLocals(this.contextThreadLocalLocations);
+                        context.initializeInstrumentContextThreadLocals();
+                    }
+                } else { // is new context
+
                     synchronized (context) {
                         context.initializeContextLocals();
                         context.notifyContextCreated();
                     }
-                } catch (Throwable t) {
-                    if (contextAddedToEngine) {
-                        disposeContext(context);
-                        if (boundEngine) {
-                            ensureClosed(false, false);
-                        }
-                    }
-                    throw t;
                 }
+            } catch (Throwable t) {
+                context.engine.disposeContext(context);
+                if (boundEngine) {
+                    context.engine.ensureClosed(false, false);
+                }
+                throw t;
             }
             hasContextBindings = EngineAccessor.INSTRUMENT.hasContextBindings(this);
             hasThreadBindings = EngineAccessor.INSTRUMENT.hasThreadBindings(this);
