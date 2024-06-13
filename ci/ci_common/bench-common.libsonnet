@@ -103,8 +103,7 @@
       ["hwloc-bind", "--cpubind", cpu_bind, "--membind", "node:"+node, "--"] + cmd
   ,
 
-  // building block used to generate fork builds
-  many_forks_benchmarking:: common.build_base + {
+  clone_forks_files_repo:: common.build_base + {
     // assumes that the CI provides the following env vars: CURRENT_BRANCH, BUILD_DIR (as absolute path)
     local config_repo = "$BUILD_DIR/benchmarking-config",
     environment+: {
@@ -134,9 +133,17 @@
      * The generated builder will set the 'FORK_COUNT_FILE' to the corresponding json file. So, make sure that the
      * mx benchmark command sets --fork-count-file=${FORK_COUNT_FILE}
      */
-
-    if std.objectHasAll(suite_obj, "forks_batches") && std.objectHasAll(suite_obj, "forks_timelimit") && suite_obj.forks_batches != null then
-      [ $.many_forks_benchmarking + suite_obj + {
+    if std.objectHasAll(suite_obj, "bench_forks_per_batch") then
+      [ suite_obj + {
+        local batch_str = if suite_obj.forks_batches > 1 then "batch"+i else null,
+        "job_prefix":: "bench-forks-" + subdir,
+        "job_suffix":: batch_str,
+        "timelimit": suite_obj.forks_timelimit,
+        default_fork_count :: suite_obj.bench_forks_per_batch,
+      } + $.generate_fork_tags(suite_obj)
+      for i in std.range(0, suite_obj.forks_batches - 1)]
+    else if std.objectHasAll(suite_obj, "forks_batches") && std.objectHasAll(suite_obj, "forks_timelimit") && suite_obj.forks_batches != null then
+      [ $.clone_forks_files_repo + suite_obj + {
         local batch_str = if suite_obj.forks_batches > 1 then "batch"+i else null,
         "job_prefix":: "bench-forks-" + subdir,
         "job_suffix":: batch_str,
