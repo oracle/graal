@@ -418,15 +418,6 @@ public class FeatureImpl {
             return aField.registerAsUnsafeAccessed(reason);
         }
 
-        public void registerAsFrozenUnsafeAccessed(Field field, Object reason) {
-            registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field), reason);
-        }
-
-        public void registerAsFrozenUnsafeAccessed(AnalysisField aField, Object reason) {
-            aField.registerAsFrozenUnsafeAccessed();
-            registerAsUnsafeAccessed(aField, reason);
-        }
-
         public void registerAsRoot(Executable method, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
             bb.addRootMethod(method, invokeSpecial, reason, otherRoots);
         }
