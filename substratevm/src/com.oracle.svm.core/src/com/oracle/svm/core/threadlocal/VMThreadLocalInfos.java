@@ -27,6 +27,7 @@ package com.oracle.svm.core.threadlocal;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.Collection;
+import java.util.EnumSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -42,12 +43,14 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.log.Log;
 
 import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton
-public class VMThreadLocalInfos {
+public class VMThreadLocalInfos implements InitialLayerOnlyImageSingleton {
     /**
      * The {@link VMThreadLocalInfo} objects are scanned during analysis as soon as they are
      * discovered. After analysis, they are sorted and stored in the infos field.
@@ -126,5 +129,10 @@ public class VMThreadLocalInfos {
             }
         }
         return -1;
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }

@@ -74,6 +74,11 @@ public abstract class ImageLayerBuildingSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean firstImageBuild() {
+        return !buildingImageLayer() || buildingInitialLayer();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean lastImageBuild() {
         return !buildingImageLayer() || buildingApplicationLayer();
     }
