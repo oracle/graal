@@ -112,15 +112,15 @@
 
   renaissance: self.renaissance_template(),
 
-  specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + bc.bench_max_threads + {
+  specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + bc.bench_no_thread_cap + {
     suite:: "specjbb2015",
     downloads+: {
-      "SPECJBB2015": { name: "specjbb2015", version: "1.03" }
+      "SPECJBB2015": { name: "specjbb2015", version: "1.04" }
     },
     run+: [
       self.benchmark_cmd + ["specjbb2015", "--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00",
+    timelimit: "4:30:00",
     forks_batches:: 1,
     forks_timelimit:: "20:00:00",
     min_jdk_version:: 8,

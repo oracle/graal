@@ -52,6 +52,9 @@
     c.daily + hw.a12c + jdk + cc.libgraal + suite,
   for jdk in cc.product_jdks
   for suite in bench.groups.main_suites
+  ] + [
+    c.monthly + hw.a12c + jdk + cc.libgraal + bench.specjbb2015,
+  for jdk in cc.product_jdks
   ],
 
   local avx_builds = [
