@@ -26,19 +26,19 @@ package jdk.graal.compiler.hightiercodegen.reconstruction;
 
 import java.util.SortedSet;
 
+import org.graalvm.collections.EconomicMap;
+
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.CFStackifierSortPhase;
+import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
+import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.IfScopeContainer;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.LoopScopeContainer;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.Scope;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.ScopeContainer;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.SwitchScopeContainer;
-import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
 
 /**
  * This class contains all the data that is computed by the stackifier algorithm.
@@ -62,6 +62,11 @@ public class StackifierData implements ReconstructionData {
      * Basic blocks sorted by {@link CFStackifierSortPhase}.
      */
     private HIRBlock[] blocks;
+
+    /**
+     * Mapping from a basic block to its index in {@link #blocks}.
+     */
+    private EconomicMap<HIRBlock, Integer> blockIndexSortOrder;
 
     /**
      * Mapping from a basic block to the innermost enclosing scope.
@@ -96,6 +101,30 @@ public class StackifierData implements ReconstructionData {
         return enclosingScope;
     }
 
+    /**
+     * @return the index of {@code block} in the sorted order computed by
+     *         {@link CFStackifierSortPhase}.
+     */
+    public int blockOrder(HIRBlock block) {
+        return blockIndexSortOrder.get(block);
+    }
+
+    /**
+     * @return true iff {@code successor} comes directly after {@code block} in the sorted order
+     *         computed by {@link CFStackifierSortPhase}.
+     */
+    public boolean areNextInOrder(HIRBlock block, HIRBlock successor) {
+        return blockOrder(block) + 1 == blockOrder(successor);
+    }
+
+    /**
+     * @return true iff {@code a} precedes {@code b} in the sorted order computed by
+     *         {@link CFStackifierSortPhase}.
+     */
+    public boolean comesBefore(HIRBlock a, HIRBlock b) {
+        return blockOrder(a) < blockOrder(b);
+    }
+
     public void setEnclosingScope(EconomicMap<HIRBlock, Scope> enclosingScope) {
         this.enclosingScope = enclosingScope;
     }
@@ -110,6 +139,10 @@ public class StackifierData implements ReconstructionData {
 
     public void setSortedBlocks(HIRBlock[] sortedBlocks) {
         this.blocks = sortedBlocks;
+        this.blockIndexSortOrder = EconomicMap.create(sortedBlocks.length);
+        for (int i = 0; i < sortedBlocks.length; ++i) {
+            this.blockIndexSortOrder.put(sortedBlocks[i], i);
+        }
     }
 
     @Override
