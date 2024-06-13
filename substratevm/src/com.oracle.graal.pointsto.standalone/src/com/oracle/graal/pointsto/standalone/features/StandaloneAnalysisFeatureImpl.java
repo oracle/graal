@@ -221,15 +221,6 @@ public class StandaloneAnalysisFeatureImpl {
             return false;
         }
 
-        public void registerAsFrozenUnsafeAccessed(Field field) {
-            registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field));
-        }
-
-        public void registerAsFrozenUnsafeAccessed(AnalysisField aField) {
-            aField.registerAsFrozenUnsafeAccessed();
-            registerAsUnsafeAccessed(aField, "registered from standalone feature");
-        }
-
         public void registerAsUnsafeAccessed(Field field, Object reason) {
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), reason);
         }

@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.graal.pointsto.api.HostVM;
@@ -68,9 +67,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isUnsafeAccessedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisField.class, Object.class, "isUnsafeAccessed");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisField> unsafeFrozenTypeStateUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisField.class, "unsafeFrozenTypeState");
-
     private final int id;
     /** Marks a field loaded from a base layer. */
     private final boolean isInBaseLayer;
@@ -94,12 +90,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @SuppressWarnings("unused") private volatile Object isAccessed;
     @SuppressWarnings("unused") private volatile Object isWritten;
     @SuppressWarnings("unused") private volatile Object isFolded;
-
-    private boolean isJNIAccessed;
-
     @SuppressWarnings("unused") private volatile Object isUnsafeAccessed;
-    @SuppressWarnings("unused") private volatile int unsafeFrozenTypeState;
-    @SuppressWarnings("unused") private volatile Object observers;
 
     /**
      * By default all instance fields are null before are initialized. It can be specified by
@@ -109,8 +100,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     private ConcurrentMap<Object, Boolean> readBy;
     private ConcurrentMap<Object, Boolean> writtenBy;
-
-    protected TypeState instanceFieldTypeState;
 
     /** Field's position in the list of declaring type's fields, including inherited fields. */
     protected int position;
@@ -254,7 +243,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         initialInstanceFieldFlow = null;
         readBy = null;
         writtenBy = null;
-        instanceFieldTypeState = null;
     }
 
     public boolean registerAsAccessed(Object reason) {
@@ -359,22 +347,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public boolean isUnsafeAccessed() {
         return AtomicUtils.isSet(this, isUnsafeAccessedUpdater);
-    }
-
-    public void registerAsJNIAccessed() {
-        isJNIAccessed = true;
-    }
-
-    public boolean isJNIAccessed() {
-        return isJNIAccessed;
-    }
-
-    public void registerAsFrozenUnsafeAccessed() {
-        unsafeFrozenTypeStateUpdater.set(this, 1);
-    }
-
-    public boolean hasUnsafeFrozenTypeState() {
-        return AtomicUtils.isSet(this, unsafeFrozenTypeStateUpdater);
     }
 
     public Object getReadBy() {
