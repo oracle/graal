@@ -133,7 +133,7 @@
      * The generated builder will set the 'FORK_COUNT_FILE' to the corresponding json file. So, make sure that the
      * mx benchmark command sets --fork-count-file=${FORK_COUNT_FILE}
      */
-    if std.objectHasAll(suite_obj, "bench_forks_per_batch") then
+    if std.objectHasAll(suite_obj, "bench_forks_per_batch") && suite_obj.bench_forks_per_batch != null then
       [ suite_obj + {
         local batch_str = if suite_obj.forks_batches > 1 then "batch"+i else null,
         "job_prefix":: "bench-forks-" + subdir,

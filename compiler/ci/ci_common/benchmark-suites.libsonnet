@@ -141,7 +141,7 @@
     timelimit: "1:15:00",
     forks_batches:: 3,
     bench_forks_per_batch:: 1,
-    forks_timelimit:: "5:00:00",
+    forks_timelimit:: "1:15:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -184,6 +184,9 @@
       bench_upload
     ],
     timelimit: "2:00:00",
+    forks_batches:: 3,
+    bench_forks_per_batch:: 1,
+    forks_timelimit:: "2:00:00",
     min_jdk_version:: 11,
     max_jdk_version:: null
   },
