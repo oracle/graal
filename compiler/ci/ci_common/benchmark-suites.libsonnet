@@ -18,7 +18,7 @@
     main_suites:: unique_suites([$.specjvm2008] + self.open_suites),
     all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites),
 
-    weekly_forks_suites:: self.main_suites,
+    weekly_forks_suites:: self.main_suites + self.microservice_suites,
     all_but_main_suites:: std.setDiff(self.all_suites, self.main_suites, keyF=_suite_key),
   },
 
