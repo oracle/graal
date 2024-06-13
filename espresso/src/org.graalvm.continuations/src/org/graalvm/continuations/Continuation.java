@@ -118,10 +118,6 @@ public abstract class Continuation implements Serializable {
 
     // region internals
 
-    // Disallow subclassing outside this package.
-    Continuation() {
-    }
-
     private static boolean supported() {
         try {
             return isSupported0();
@@ -133,4 +129,8 @@ public abstract class Continuation implements Serializable {
     private static native boolean isSupported0();
 
     // endregion internals
+
+    // Disallow subclassing outside this package.
+    Continuation() {
+    }
 }
