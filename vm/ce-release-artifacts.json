@@ -1,8 +1,8 @@
 [
     {
-        "name": "graalvm-community-java23",
+        "name": "graalvm-community-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "artifacts": [
             {
                 "os": "linux",
@@ -29,7 +29,7 @@
     {
         "name": "maven-bundle-ce",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name":"maven-resource-bundle",
         "artifacts": [
             {
@@ -40,9 +40,9 @@
         ]
     },
     {
-        "name": "js-native-standalone-svm-java23",
+        "name": "js-native-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name":"graaljs",
         "artifacts": [
             {
@@ -73,9 +73,9 @@
         ]
     },
     {
-        "name": "js-java-standalone-svm-java23",
+        "name": "js-java-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name":"graaljs",
         "artifacts": [
             {
@@ -106,9 +106,9 @@
         ]
     },
     {
-        "name": "nodejs-native-standalone-svm-java23",
+        "name": "nodejs-native-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name":"graalnodejs",
         "artifacts": [
             {
@@ -139,9 +139,9 @@
         ]
     },
     {
-        "name": "nodejs-java-standalone-svm-java23",
+        "name": "nodejs-java-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name":"graalnodejs",
         "artifacts": [
             {
@@ -172,9 +172,9 @@
         ]
     },
     {
-        "name": "ruby-native-standalone-svm-java23",
+        "name": "ruby-native-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name":"truffleruby",
         "artifacts": [
             {
@@ -200,9 +200,9 @@
         ]
     },
     {
-        "name": "ruby-java-standalone-svm-java23",
+        "name": "ruby-java-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name":"truffleruby",
         "artifacts": [
             {
@@ -228,9 +228,9 @@
         ]
     },
     {
-        "name": "python-native-standalone-svm-java23",
+        "name": "python-native-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name":"graalpy",
         "artifacts": [
             {
@@ -261,9 +261,9 @@
         ]
     },
     {
-        "name": "python-java-standalone-svm-java23",
+        "name": "python-java-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name":"graalpy",
         "artifacts": [
             {
@@ -294,9 +294,9 @@
         ]
     },
     {
-        "name": "wasm-native-standalone-svm-java23",
+        "name": "wasm-native-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name": "graalwasm",
         "artifacts": [
             {
@@ -327,9 +327,9 @@
         ]
     },
     {
-        "name": "wasm-java-standalone-svm-java23",
+        "name": "wasm-java-standalone-svm-java24",
         "core": true,
-        "jdk": "jdk_23",
+        "jdk": "jdk_24",
         "override_name": "graalwasm",
         "artifacts": [
             {
