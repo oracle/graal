@@ -379,7 +379,7 @@ public class CFStackifierSortPhase extends BasePhase<StackifierData> {
 
         public void run() {
             sort();
-            stackifierData.setSortedBlocks(sortedBlocks);
+            stackifierData.setSortedBlocks(sortedBlocks, cfg);
             stackifierData.setEnclosingScope(enclosingScopes);
         }
     }
