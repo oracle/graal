@@ -147,7 +147,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     @Override
-    protected boolean isCaptureFramesForTrace(Node currentNode) {
+    protected boolean isCaptureFramesForTrace(boolean compiled) {
         return true;
     }
 
