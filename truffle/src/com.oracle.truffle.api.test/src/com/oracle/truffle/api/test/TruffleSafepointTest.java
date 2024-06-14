@@ -688,9 +688,20 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
 
     @TruffleBoundary
     private static void sleepNanosBoundary(int nanos) {
-        try {
-            Thread.sleep(0, nanos);
-        } catch (InterruptedException ie) {
+        long deadline = System.nanoTime() + nanos;
+        long now;
+        boolean interrupted = false;
+        while ((now = System.nanoTime()) < deadline) {
+            try {
+                Thread.sleep(0, (int) (deadline - now));
+                break;
+            } catch (InterruptedException e) {
+                // cancellation uses Thread#interrupt()
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -1940,13 +1951,20 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     @TruffleBoundary
     private static void waitForLatch(CountDownLatch latch) throws AssertionError {
         latch.countDown();
-        try {
-            latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+        boolean interrupted = false;
+        while (true) {
+            try {
+                if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    throw failTimeout("waitForLatch()", null);
+                }
+                break;
+            } catch (InterruptedException e) {
+                // cancellation uses Thread#interrupt()
+                interrupted = true;
+            }
         }
-        try {
-            latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 
