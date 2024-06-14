@@ -2384,8 +2384,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     if (!TruffleOptions.AOT) {
                         getEngineLogger().warning("""
                                         Using polyglot contexts on Java virtual threads on HotSpot is experimental in this release,
-                                        because access to caller frames in write or materialize mode is not yet supported on virtual threads (some tools and languages depend on that),
-                                        and there is a limit of maximum 65535 virtual threads concurrently accessing the context at the same time.
+                                        because access to caller frames in write or materialize mode is not yet supported on virtual threads (some tools and languages depend on that).
                                         To disable this warning use the '--engine.WarnVirtualThreadSupport=false' option or the '-Dpolyglot.engine.WarnVirtualThreadSupport=false' system property.
                                         """);
                     } else {
