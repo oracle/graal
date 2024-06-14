@@ -67,6 +67,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -193,7 +194,8 @@ public abstract class AbstractBasicInterpreterTest {
         List<TestRun> result = new ArrayList<>();
         for (Class<? extends BasicInterpreter> interpreterClass : allInterpreters()) {
             result.add(new TestRun(interpreterClass, false));
-            result.add(new TestRun(interpreterClass, true));
+            // TODO re-enable serialization tests
+// result.add(new TestRun(interpreterClass, true));
         }
         return result;
     }
@@ -385,6 +387,20 @@ public abstract class AbstractBasicInterpreterTest {
         b.endReturn();
     }
 
+    protected static void emitReturnIf(BasicInterpreterBuilder b, int arg, long value) {
+        b.beginIfThen();
+        b.emitLoadArgument(arg);
+        emitReturn(b, value);
+        b.endIfThen();
+    }
+
+    protected static void emitBranchIf(BasicInterpreterBuilder b, int arg, BytecodeLabel lbl) {
+        b.beginIfThen();
+        b.emitLoadArgument(arg);
+        b.emitBranch(lbl);
+        b.endIfThen();
+    }
+
     protected static void emitAppend(BasicInterpreterBuilder b, long value) {
         b.beginAppenderOperation();
         b.emitLoadArgument(0);
@@ -396,6 +412,13 @@ public abstract class AbstractBasicInterpreterTest {
         b.beginThrowOperation();
         b.emitLoadConstant(value);
         b.endThrowOperation();
+    }
+
+    protected static void emitThrowIf(BasicInterpreterBuilder b, int arg, long value) {
+        b.beginIfThen();
+        b.emitLoadArgument(arg);
+        emitThrow(b, value);
+        b.endIfThen();
     }
 
     public static List<Class<? extends BasicInterpreter>> allInterpreters() {

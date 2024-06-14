@@ -65,6 +65,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -74,13 +75,22 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     private final ProcessorContext context;
     public final TypeElement templateType;
-    private final String suffix;
+    // The generated class.
+    public final CodeTypeElement generatedType;
+    // The bytecode builder class.
+    public final CodeTypeElement builderType;
+    // The abstract class of the builder (different from builderType if GenerateBytecodeTestVariants
+    // used)
+    public final CodeTypeElement abstractBuilderType;
 
-    public BytecodeDSLModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, String suffix) {
+    public BytecodeDSLModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, CodeTypeElement generatedType, CodeTypeElement builderType,
+                    CodeTypeElement abstractBuilderType) {
         super(context, templateType, mirror);
         this.context = context;
         this.templateType = templateType;
-        this.suffix = suffix;
+        this.generatedType = generatedType;
+        this.builderType = builderType;
+        this.abstractBuilderType = abstractBuilderType;
     }
 
     private int operationId = 1;
@@ -134,6 +144,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel whileOperation;
     public OperationModel tryCatchOperation;
     public OperationModel finallyTryOperation;
+    public OperationModel finallyHandlerOperation;
     public OperationModel loadConstantOperation;
     public OperationModel loadLocalOperation;
     public OperationModel loadLocalMaterializedOperation;
@@ -174,7 +185,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public ExportsData tagTreeNodeLibrary;
 
     public String getName() {
-        return templateType.getSimpleName() + suffix;
+        return generatedType.getSimpleName().toString();
     }
 
     private List<TypeMirror> providedTags;

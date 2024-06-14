@@ -1338,9 +1338,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
                 b.beginBlock();
-                    b.beginFinallyTry(b.createLocal());
-                        b.emitVoidOperation();
-
+                    b.beginFinallyTry(b.createLocal(), () -> b.emitVoidOperation());
                         b.beginBlock();
                             b.emitVoidOperation();
                             b.beginIfThen();
@@ -1392,9 +1390,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             // @formatter:off
             b.beginRoot(LANGUAGE);
                 b.beginBlock();
-                    b.beginFinallyTry(b.createLocal());
-                        b.emitVoidOperation();
-
+                    b.beginFinallyTry(b.createLocal(), () -> b.emitVoidOperation());
                         b.beginBlock();
                             b.emitVoidOperation();
                             b.beginIfThen();
@@ -1419,9 +1415,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
                 b.beginBlock();
-                    b.beginFinallyTry(b.createLocal());
-                        b.emitVoidOperation();
-
+                    b.beginFinallyTry(b.createLocal(), () -> b.emitVoidOperation());
                         b.beginBlock();
                             b.emitVoidOperation();
                             b.beginIfThen();
@@ -1445,9 +1439,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
                 b.beginBlock();
-                    b.beginFinallyTry(b.createLocal());
-                        b.emitVoidOperation();
-
+                    b.beginFinallyTry(b.createLocal(), () -> b.emitVoidOperation());
                         b.beginBlock();
                             b.emitVoidOperation();
                             b.beginIfThen();

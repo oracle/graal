@@ -42,6 +42,8 @@ package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.List;
 
+import javax.lang.model.type.TypeMirror;
+
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
@@ -93,7 +95,8 @@ public class BytecodeDSLBuiltins {
                                         This operation *can* be nested in Source and SourceSection operations in order to provide a source location for the entire root node.
                                         <p>
                                         This method can also be called inside of another root operation. Bytecode generation for the outer root node suspends until generation for the inner root node finishes.
-                                        The inner root node is not lexically nested in the first (you can invoke the inner root node independently), but the inner root *can* manipulate the outer root's locals using materialized local accesses if the outer frame is provided to it.
+                                        The inner root node is not lexically nested in the first (you can invoke the inner root node independently), but the inner root *can* manipulate the outer root's locals using
+                                        materialized local accesses if the outer frame is provided to it.
                                         Multiple root nodes can be obtained from the {@link BytecodeNodes} object in the order of their {@link #beginRoot} calls.
                                         """,
                                         m.templateType.getSimpleName(), m.templateType.getSimpleName())) //
@@ -136,30 +139,51 @@ public class BytecodeDSLBuiltins {
                         .setVoid(true) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind the caught exception to")) //
                         .setDynamicOperands(voidableChild("try"), voidableChild("catch"));
+
+        TypeMirror parserType = context.getDeclaredType(Runnable.class);
         m.finallyTryOperation = m.operation(OperationKind.FINALLY_TRY, "FinallyTry",
                         """
-                                        FinallyTry implements a finally handler. It executes {@code try}, and after execution finishes it always executes {@code finally}.
+                                        FinallyTry implements a finally handler. It runs the given {@code finallyParser} to parse a {@code finally} operation.
+                                        FinallyTry executes {@code try}, and after execution finishes it always executes {@code finally}.
                                         If {@code try} finishes normally, {@code finally} executes and control continues after the FinallyTry operation.
                                         If {@code try} finishes exceptionally, the Truffle exception is stored in {@code exceptionLocal} and {@code finally} executes. The exception is rethrown after {@code finally}.
                                         If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
                                         This is a void operation; both {@code finally} and {@code try} can also be void.
-                                        <p>
-                                        Note that the ordering of the children does not match their execution order. This design is intentional to make bytecode generation simpler and faster.
                                         """) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to (if available)")) //
-                        .setDynamicOperands(voidableChild("finally"), voidableChild("try"));
+                        .setOperationBeginArguments(
+                                        new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to (if available)"), //
+                                        new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
+                                                        "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
+                        ).setDynamicOperands(voidableChild("try"));
         m.operation(OperationKind.FINALLY_TRY_CATCH, "FinallyTryCatch",
                         """
-                                        FinallyTryCatch implements a finally handler with different behaviour for thrown exceptions. It executes {@code try} and then one of the handlers.
+                                        FinallyTryCatch implements a finally handler with different behaviour for thrown exceptions. It runs the given {@code finallyParser} to parse a {@code finally} operation.
+                                        FinallyTryCatch executes {@code try} and then one of the handlers.
                                         If {@code try} finishes normally, {@code finally} executes and control continues after the FinallyTryCatch operation.
                                         If {@code try} finishes exceptionally, the Truffle exception is stored in {@code exceptionLocal} and {@code catch} executes. The exception is rethrown after {@code catch}.
                                         If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
                                         This is a void operation; any of {@code finally}, {@code try}, or {@code catch} can be void.
                                         """) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to")) //
-                        .setDynamicOperands(voidableChild("finally"), voidableChild("try"), voidableChild("catch"));
+                        .setOperationBeginArguments(
+                                        new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to"), //
+                                        new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
+                                                        "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
+                        ).setDynamicOperands(voidableChild("try"), voidableChild("catch"));
+        m.finallyHandlerOperation = m.operation(OperationKind.FINALLY_HANDLER, "FinallyHandler",
+                        """
+                                        FinallyHandler is an internal operation that has no stack effect. All finally parsers execute within a FinallyHandler operation.
+                                        Executing the parser emits new operations, but these operations should not affect the outer operation's child count/value validation.
+                                        To accomplish this, FinallyHandler "hides" these operations by popping any produced values and omitting calls to beforeChild/afterChild.
+                                        When walking the operation stack, we skip over operations above finallyOperationSp since they do not logically enclose the handler.
+                                        """) //
+                        .setVoid(true) //
+                        .setVariadic(true) //
+                        .setDynamicOperands(transparentOperationChild()) //
+                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "finallyOperationSp",
+                                        "the operation stack pointer for the finally operation that created the FinallyHandler")) //
+                        .setInternal();
         m.operation(OperationKind.LABEL, "Label", """
                         Label assigns {@code label} the current location in the bytecode (so that it can be used as the target of a Branch).
                         This is a void operation.

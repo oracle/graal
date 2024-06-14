@@ -140,14 +140,15 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             b.emitLoadConstant(1L);
             b.endStoreLocal();
 
-            b.beginFinallyTry(e);
-            // finally block
-            b.beginBlock();
-            BytecodeLocal l1 = b.createLocal("l1", null);
-            b.beginStoreLocal(l1);
-            b.emitLoadConstant(42L);
-            b.endStoreLocal();
-            b.endBlock();
+            b.beginFinallyTry(e, () -> {
+                // finally block
+                b.beginBlock();
+                BytecodeLocal l1 = b.createLocal("l1", null);
+                b.beginStoreLocal(l1);
+                b.emitLoadConstant(42L);
+                b.endStoreLocal();
+                b.endBlock();
+            });
 
             // if block
             b.beginIfThen();

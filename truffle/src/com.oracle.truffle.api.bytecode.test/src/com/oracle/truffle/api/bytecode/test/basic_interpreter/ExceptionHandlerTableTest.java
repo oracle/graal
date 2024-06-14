@@ -53,6 +53,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind;
@@ -81,20 +82,26 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
     }
 
     private static final class HandlerRangeValidator {
+        final BytecodeNode bytecodeNode;
         final List<ExceptionHandler> handlers;
         final Map<String, Integer> handlersByName;
         final Map<Integer, String> handlerToName;
 
         HandlerRangeValidator(BytecodeRootNode node) {
-            this.handlers = node.getBytecodeNode().getExceptionHandlers();
+            this.bytecodeNode = node.getBytecodeNode();
+            this.handlers = bytecodeNode.getExceptionHandlers();
             this.handlersByName = new HashMap<>();
             this.handlerToName = new HashMap<>();
         }
 
         private void validate(ExceptionRangeTree[] trees) {
-            assertOrdered(trees);
-            for (int i = 0; i < trees.length; i++) {
-                assertHandlersRecursive(trees[i]);
+            try {
+                assertOrdered(trees);
+                for (int i = 0; i < trees.length; i++) {
+                    assertHandlersRecursive(trees[i]);
+                }
+            } catch (AssertionError err) {
+                throw new AssertionError(err.getMessage() + "\n" + bytecodeNode.dump());
             }
         }
 
@@ -153,20 +160,6 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         b.emitLoadConstant(marker);
     }
 
-    private static void emitReturnIf(BasicInterpreterBuilder b, int arg, int value) {
-        b.beginIfThen();
-        b.emitLoadArgument(arg);
-        emitReturn(b, value);
-        b.endIfThen();
-    }
-
-    private static void emitBranchIf(BasicInterpreterBuilder b, int arg, BytecodeLabel lbl) {
-        b.beginIfThen();
-        b.emitLoadArgument(arg);
-        b.emitBranch(lbl);
-        b.endIfThen();
-    }
-
     // @formatter:off
     @Test
     public void testTryCatch() {
@@ -183,7 +176,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endTryCatch();
             b.endRoot();
         });
-
+        assertEquals(42L, root.getCallTarget().call());
         assertHandlers(root, handler(0));
     }
 
@@ -211,7 +204,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endTryCatch();
             b.endRoot();
         });
-
+        assertEquals(42L, root.getCallTarget().call());
         assertHandlers(root, handler(1, "ex1", handler(0, "ex2")));
     }
 
@@ -239,7 +232,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endTryCatch();
             b.endRoot();
         });
-
+        assertEquals(42L, root.getCallTarget().call());
         assertHandlers(root, handler(0, "ex1"), handler(1, "ex2"));
     }
 
@@ -267,7 +260,8 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endTag(ExpressionTag.class);
             b.endRoot();
         });
-
+        assertEquals(42L, root.getCallTarget().call(true));
+        assertEquals(null, root.getCallTarget().call(false));
         assertHandlers(root, handler(0));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
@@ -296,7 +290,8 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endTag(ExpressionTag.class);
             b.endRoot();
         });
-
+        assertEquals(42L, root.getCallTarget().call(true));
+        assertEquals(null, root.getCallTarget().call(false));
         assertHandlers(root, handler(0));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
@@ -335,7 +330,8 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
 
             b.endRoot();
         });
-
+        assertEquals(null, root.getCallTarget().call(true));
+        assertEquals(null, root.getCallTarget().call(false));
         assertHandlers(root, handler(0));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
@@ -374,11 +370,12 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endTag(ExpressionTag.class);
             b.endRoot();
         });
-
+        assertEquals(null, root.getCallTarget().call(true));
+        assertEquals(null, root.getCallTarget().call(false));
         assertHandlers(root, handler(0));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
-        assertHandlers(root, tag(1, handler(0)));
+        assertHandlers(root, tag(2, handler(0), handler(1)));
     }
 
     @Test
@@ -390,13 +387,12 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         BasicInterpreter root = parseNode("finallyTry", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal());
-            emitNop(b, "B");
-            emitNop(b, "A");
+            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "B"));
+                emitNop(b, "A");
             b.endFinallyTry();
             b.endRoot();
         });
-
+        assertEquals(null, root.getCallTarget().call());
         assertHandlers(root, handler(0));
     }
 
@@ -417,8 +413,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal());
-                emitNop(b, "D");
+            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "D"));
                 b.beginBlock();
                     emitNop(b, "A");
                     emitReturnIf(b, 0, 42);
@@ -432,7 +427,9 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endRoot();
         });
-
+        assertEquals(null, root.getCallTarget().call(false, false));
+        assertEquals(42L, root.getCallTarget().call(true, false));
+        assertEquals(null, root.getCallTarget().call(false, true));
         assertHandlers(root, handler(0, "ex1"), handler(1, "ex1"), handler(2, "ex1"));
     }
 
@@ -452,8 +449,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal());
-                emitNop(b, "C");
+            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "C"));
                 b.beginBlock();
                     emitNop(b, "A");
                     emitReturnIf(b, 0, 42);
@@ -466,7 +462,9 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endRoot();
         });
-
+        assertEquals(null, root.getCallTarget().call(false, false));
+        assertEquals(42L, root.getCallTarget().call(true, false));
+        assertEquals(null, root.getCallTarget().call(false, true));
         assertHandlers(root, handler(0, "ex1"), handler(1, "ex1"));
     }
 
@@ -487,7 +485,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal());
+            b.beginFinallyTry(b.createLocal(), () -> {
                 b.beginBlock();
                     emitNop(b, "B");
                     emitReturnIf(b, 0, 42);
@@ -495,7 +493,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                     emitBranchIf(b, 1, lbl);
                     emitNop(b, "D");
                 b.endBlock();
-
+            });
                 emitNop(b, "A");
             b.endFinallyTry();
 
@@ -503,7 +501,9 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endRoot();
         });
-
+        assertEquals(null, root.getCallTarget().call(false, false));
+        assertEquals(42L, root.getCallTarget().call(true, false));
+        assertEquals(null, root.getCallTarget().call(false, true));
         assertHandlers(root, handler(0));
     }
 
@@ -520,16 +520,14 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         BasicInterpreter root = parseNode("finallyTry", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal());
-                emitNop(b, "C");
-                b.beginFinallyTry(b.createLocal());
-                    emitNop(b, "B");
+            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "C"));
+                b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "B"));
                     emitNop(b, "A");
                 b.endFinallyTry();
             b.endFinallyTry();
             b.endRoot();
         });
-
+        assertEquals(null, root.getCallTarget().call());
         assertHandlers(root, handler(1, "ex1", handler(0, "ex2")));
     }
 
@@ -559,12 +557,10 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
 
             BytecodeLabel outerLbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal());
-                emitNop(b, "G");
+            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "G"));
                 b.beginBlock();
                     BytecodeLabel innerLbl = b.createLabel();
-                    b.beginFinallyTry(b.createLocal());
-                        emitNop(b, "E");
+                    b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "E"));
                         b.beginBlock();
                             emitNop(b, "A");
                             emitReturnIf(b, 0, 42);
@@ -584,7 +580,10 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endRoot();
         });
-
+        assertEquals(null, root.getCallTarget().call(false, false, false));
+        assertEquals(42L, root.getCallTarget().call(true, false, false));
+        assertEquals(null, root.getCallTarget().call(false, true, false));
+        assertEquals(null, root.getCallTarget().call(false, false, true));
         assertHandlers(root,
                         handler(1, "ex1", handler(0, "ex2")),
                         handler(3, "ex1", handler(2, "ex2")),
@@ -592,9 +591,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                         );
     }
 
-    // TODO this test needs to be revised once our strategy for "closing" guarded ranges when an outer handler is inlined into another handler is fixed.
     @Test
-    @Ignore
     public void testFinallyTryNestedEarlyExitsInFinally() {
         // try {
         //   try {                          // opens inner + outer
@@ -610,22 +607,28 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // outerLbl:
         BasicInterpreter root = parseNode("finallyTryNestedEarlyExitsInFinally", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal());
-                emitNop(b, "G");
+            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "G"));
                 b.beginBlock();
-                    b.beginFinallyTry(b.createLocal());
+                    b.beginFinallyTry(b.createLocal(), () -> {
                         b.beginBlock();
                             emitNop(b, "B");
                             emitReturnIf(b, 0, 42);
                             emitNop(b, "C");
                         b.endBlock();
-
+                    });
                         emitNop(b, "A");
                     b.endFinallyTry();
                 b.endBlock();
             b.endFinallyTry();
             b.endRoot();
         });
+        assertEquals(null, root.getCallTarget().call(false));
+        assertEquals(42L, root.getCallTarget().call(true));
+        assertHandlers(root,
+                        handler(1, "ex1", handler(0, "ex2")),
+                        handler(2, "ex1"),
+                        handler(3, "ex1")
+                        );
     }
     // @formatter:on
 }

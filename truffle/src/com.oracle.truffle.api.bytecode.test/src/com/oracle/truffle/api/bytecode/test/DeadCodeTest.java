@@ -139,15 +139,14 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginRoot(LANGUAGE);
 
             var local = b.createLocal();
-            b.beginFinallyTry(local);
-
-            b.beginBlock();
-            b.beginReturn();
-            b.emitLoadConstant(42);
-            b.endReturn();
-            emitUnreachableCode(b);
-            b.endBlock();
-
+            b.beginFinallyTry(local, () -> {
+                b.beginBlock();
+                b.beginReturn();
+                b.emitLoadConstant(42);
+                b.endReturn();
+                emitUnreachableCode(b);
+                b.endBlock();
+            });
             b.emitThrow();
             b.endFinallyTry();
 
@@ -162,8 +161,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.constant",
                         "return",
                         "load.constant",
-                        "return",
-                        "throw");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call(42));
     }
@@ -186,14 +184,14 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginRoot(LANGUAGE);
 
             var local = b.createLocal();
-            b.beginFinallyTryCatch(local);
-
-            b.beginBlock(); // finally
-            b.beginReturn();
-            b.emitLoadConstant(42);
-            b.endReturn();
-            emitUnreachableCode(b);
-            b.endBlock();
+            b.beginFinallyTryCatch(local, () -> {
+                b.beginBlock(); // finally
+                b.beginReturn();
+                b.emitLoadConstant(42);
+                b.endReturn();
+                emitUnreachableCode(b);
+                b.endBlock();
+            });
 
             b.emitThrow(); // try
 
@@ -245,14 +243,14 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.endReturn();
 
             var local = b.createLocal();
-            b.beginFinallyTryCatch(local);
-
-            b.beginBlock(); // finally
-            b.beginReturn();
-            b.emitLoadConstant(41);
-            b.endReturn();
-            emitUnreachableCode(b);
-            b.endBlock();
+            b.beginFinallyTryCatch(local, () -> {
+                b.beginBlock(); // finally
+                b.beginReturn();
+                b.emitLoadConstant(41);
+                b.endReturn();
+                emitUnreachableCode(b);
+                b.endBlock();
+            });
 
             b.emitThrow(); // try
 
@@ -294,14 +292,14 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginRoot(LANGUAGE);
 
             var local = b.createLocal();
-            b.beginFinallyTryCatch(local);
-
-            b.beginBlock(); // finally
-            b.beginReturn();
-            b.emitLoadConstant(42);
-            b.endReturn();
-            emitUnreachableCode(b);
-            b.endBlock();
+            b.beginFinallyTryCatch(local, () -> {
+                b.beginBlock(); // finally
+                b.beginReturn();
+                b.emitLoadConstant(42);
+                b.endReturn();
+                emitUnreachableCode(b);
+                b.endBlock();
+            });
 
             b.emitLoadConstant(41); // try
 
@@ -346,10 +344,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginRoot(LANGUAGE);
 
             var local = b.createLocal();
-            b.beginFinallyTryCatch(local);
-
-            b.emitLoadConstant(41); // finally
-
+            b.beginFinallyTryCatch(local, () -> b.emitLoadConstant(41));
             b.emitThrow(); // try
 
             b.beginBlock(); // catch
@@ -727,20 +722,22 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endReturn();
 
-            b.beginFinallyTry(b.createLocal());
-
-            b.emitLoadArgument(0);
-
+            b.beginFinallyTry(b.createLocal(), () -> b.emitLoadArgument(0));
             b.beginBlock();
             b.emitLabel(b.createLabel());
             b.endBlock();
-
             b.endFinallyTry();
 
             b.endRoot();
         }).getRootNode();
 
+        // TODO override label reachability behaviour when enclosing operation is not reachable.
         assertInstructions(node,
+                        "load.constant",
+                        "return",
+                        "load.argument",
+                        "pop",
+                        "branch",
                         "load.constant",
                         "return");
     }
@@ -768,18 +765,13 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginBlock();
 
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal());
-
-            b.emitLoadArgument(0); // finally
+            b.beginFinallyTry(b.createLocal(), () -> b.emitLoadArgument(0));
 
             b.beginBlock(); // begin try
-
             b.beginReturn();
             b.emitThrow();
             b.endReturn();
-
             b.emitBranch(lbl);
-
             b.endBlock(); // end try
 
             b.endFinallyTry();
@@ -830,8 +822,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         b.endIfThen();
 
         var e = b.createLocal();
-        b.beginFinallyTry(e);
-        b.emitLoadConstant(41);
+        b.beginFinallyTry(e, () -> b.emitLoadConstant(41));
         b.beginReturn();
         b.emitLoadConstant(41);
         b.endReturn();
@@ -896,8 +887,6 @@ public class DeadCodeTest extends AbstractInstructionTest {
         b.endWhile();
 
     }
-
-    // TODO conditional unreachable
 
     private static DeadCodeTestRootNode parse(BytecodeParser<DeadCodeTestRootNodeGen.Builder> builder) {
         BytecodeRootNodes<DeadCodeTestRootNode> nodes = DeadCodeTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);

@@ -42,11 +42,11 @@ package com.oracle.truffle.dsl.processor.bytecode.generator;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -87,29 +87,51 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
             return results;
         }
 
-        // For testing: when using {@link GenerateBytecodeTestVariants}, we want to have a single
-        // shared Builder interface that can be used in tests.
-        List<CodeTypeElement> builders = results.stream().map(result -> (CodeTypeElement) ElementUtils.findTypeElement(result, "Builder")).toList();
+        /**
+         * When using {@link GenerateBytecodeTestVariants}, we generate an abstract superclass
+         * defining the public interface for the Builders. Test code writes parsers using this
+         * abstract builder's interface so that the parser can be used to test each variant.
+         */
+        CodeTypeElement abstractBuilderType = modelList.getModels().getFirst().abstractBuilderType;
+        for (BytecodeDSLModel model : modelList.getModels()) {
+            assert abstractBuilderType == model.abstractBuilderType;
+        }
 
-        boolean first = true;
-        List<ExecutableElement> expectedPublicInterface = new ArrayList<>();
+        Iterator<CodeTypeElement> builders = results.stream().map(result -> (CodeTypeElement) ElementUtils.findTypeElement(result, "Builder")).iterator();
+
+        /**
+         * Define the abstract methods using the first Builder, then assert that the other Builders
+         * have the same set of methods.
+         */
+        CodeTypeElement firstBuilder = builders.next();
         Set<String> expectedPublicMethodNames = new HashSet<>();
+        for (ExecutableElement method : ElementFilter.methodsIn(firstBuilder.getEnclosedElements())) {
+            if (!method.getModifiers().contains(Modifier.PUBLIC)) {
+                continue;
+            }
 
-        for (TypeElement builder : builders) {
+            Set<Modifier> modifiers = new HashSet<>(method.getModifiers());
+            modifiers.add(Modifier.ABSTRACT);
+            CodeExecutableElement abstractMethod = new CodeExecutableElement(modifiers, method.getReturnType(), method.getSimpleName().toString());
+            method.getParameters().forEach(param -> abstractMethod.addParameter(param));
+            abstractMethod.setVarArgs(method.isVarArgs());
+            abstractBuilderType.add(abstractMethod);
+
+            expectedPublicMethodNames.add(method.getSimpleName().toString());
+        }
+
+        while (builders.hasNext()) {
+            TypeElement builder = builders.next();
             Set<String> publicMethodNames = new HashSet<>();
             for (ExecutableElement method : ElementFilter.methodsIn(builder.getEnclosedElements())) {
                 if (!method.getModifiers().contains(Modifier.PUBLIC)) {
                     continue;
                 }
                 publicMethodNames.add(method.getSimpleName().toString());
-                if (first) {
-                    expectedPublicInterface.add(method);
-                    expectedPublicMethodNames.add(method.getSimpleName().toString());
-                }
             }
 
             // If there's already issues with the model, validating the interfaces just adds noise.
-            if (!first && !modelList.hasErrors()) {
+            if (!modelList.hasErrors()) {
                 Set<String> missing = new HashSet<>();
                 Set<String> remaining = publicMethodNames;
 
@@ -130,30 +152,11 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
                         errorMessage += remaining.toString();
                     }
                     throw new AssertionError(errorMessage);
-
                 }
             }
-            first = false;
         }
 
-        TypeElement templateType = modelList.getTemplateType();
-        String builderName = templateType.getSimpleName() + "Builder";
-        CodeTypeElement abstractBuilderClass = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, ElementUtils.findPackageElement(templateType), builderName);
-        abstractBuilderClass.setSuperClass(types.BytecodeBuilder);
-        for (ExecutableElement method : expectedPublicInterface) {
-            Set<Modifier> modifiers = new HashSet<>(method.getModifiers());
-            modifiers.add(Modifier.ABSTRACT);
-            CodeExecutableElement interfaceMethod = new CodeExecutableElement(modifiers, method.getReturnType(), method.getSimpleName().toString());
-            method.getParameters().forEach(param -> interfaceMethod.addParameter(param));
-            interfaceMethod.setVarArgs(method.isVarArgs());
-            abstractBuilderClass.add(interfaceMethod);
-        }
-
-        for (CodeTypeElement builder : builders) {
-            builder.setSuperClass(abstractBuilderClass.asType());
-        }
-
-        results.add(abstractBuilderClass);
+        results.add(abstractBuilderType);
 
         return results;
 

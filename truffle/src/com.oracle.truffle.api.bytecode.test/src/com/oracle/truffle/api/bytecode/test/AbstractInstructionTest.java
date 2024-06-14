@@ -99,21 +99,6 @@ public class AbstractInstructionTest {
                         expectedInstructions.length, String.join("\n    ", expectedInstructions), node.dump()));
     }
 
-    public static void assertUnalignedBranch(BytecodeRootNode node, boolean expectUnaligned) {
-        for (Instruction instruction : node.getBytecodeNode().getInstructions()) {
-            if ("branch.unaligned".equals(instruction.getName())) {
-                if (expectUnaligned) {
-                    return;
-                } else {
-                    throw new AssertionError(String.format("Expected instructions to have no branch.unaligned instructions, but one was found: %s", node.dump()));
-                }
-            }
-        }
-        if (expectUnaligned) {
-            throw new AssertionError(String.format("Expected instructions to contain branch.unaligned, but none found: %s", node.dump()));
-        }
-    }
-
     public static void assertStable(QuickeningCounts expectedCounts, DebugBytecodeRootNode node, Object... args) {
         for (int i = 0; i < 100; i++) {
             node.getCallTarget().call(args);

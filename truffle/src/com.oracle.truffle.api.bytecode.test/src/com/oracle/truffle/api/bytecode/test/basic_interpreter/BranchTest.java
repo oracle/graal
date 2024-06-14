@@ -42,13 +42,11 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 
 public class BranchTest extends AbstractBasicInterpreterTest {
     // @formatter:off
@@ -162,7 +160,6 @@ public class BranchTest extends AbstractBasicInterpreterTest {
 
         assertEquals(123L, root.getCallTarget().call(1L));
         assertEquals(42L, root.getCallTarget().call(-1L));
-        AbstractInstructionTest.assertUnalignedBranch(root, false);
     }
 
     @Test
@@ -194,7 +191,6 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         });
 
         assertEquals(42L, root.getCallTarget().call());
-        AbstractInstructionTest.assertUnalignedBranch(root, true);
     }
 
     @Test

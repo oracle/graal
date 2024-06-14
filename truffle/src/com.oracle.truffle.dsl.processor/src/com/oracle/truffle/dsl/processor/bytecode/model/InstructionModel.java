@@ -157,7 +157,7 @@ public final class InstructionModel implements PrettyPrintable {
     public ShortCircuitInstructionModel shortCircuitModel;
 
     /*
-     * Contains all short circuit instructions used by converters.
+     * Contains the short circuit instructions that use this instruction as a converter.
      */
     public final List<InstructionModel> shortCircuitInstructions = new ArrayList<>();
 

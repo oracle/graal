@@ -274,15 +274,14 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginSource(source);
             b.beginSourceSection(0, 11);
 
-            b.beginFinallyTry(b.createLocal());
-
-            // finally
-            b.beginSourceSection(4, 7);
-            b.beginReturn();
-            b.emitGetSourcePosition();
-            b.endReturn();
-            b.endSourceSection();
-
+            b.beginFinallyTry(b.createLocal(), () -> {
+                // finally
+                b.beginSourceSection(4, 7);
+                b.beginReturn();
+                b.emitGetSourcePosition();
+                b.endReturn();
+                b.endSourceSection();
+            });
             // try
             b.beginSourceSection(0, 4);
             b.beginBlock();

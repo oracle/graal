@@ -57,6 +57,7 @@ public class OperationModel implements PrettyPrintable {
         TRY_CATCH,
         FINALLY_TRY,
         FINALLY_TRY_CATCH,
+        FINALLY_HANDLER,
         SOURCE,
         SOURCE_SECTION,
         TAG,
@@ -107,6 +108,7 @@ public class OperationModel implements PrettyPrintable {
             LOCAL_ARRAY,
             TAGS,
             LABEL,
+            FINALLY_PARSER,
         }
 
     }

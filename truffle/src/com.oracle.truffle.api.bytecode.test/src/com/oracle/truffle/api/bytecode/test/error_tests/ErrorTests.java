@@ -45,8 +45,6 @@ import java.util.Set;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
-import com.oracle.truffle.api.bytecode.LocalSetter;
-import com.oracle.truffle.api.bytecode.LocalSetterRange;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.Prolog;

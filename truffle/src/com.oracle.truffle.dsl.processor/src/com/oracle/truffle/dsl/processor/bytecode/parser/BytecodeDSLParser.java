@@ -43,6 +43,9 @@ package com.oracle.truffle.dsl.processor.bytecode.parser;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationValue;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -93,8 +96,10 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsMode
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.SuperInstructionDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.library.ExportsLibrary;
 import com.oracle.truffle.dsl.processor.library.ExportsParser;
@@ -130,7 +135,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             AnnotationMirror generateBytecodeMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateBytecode);
             assert generateBytecodeMirror != null;
             topLevelAnnotationMirror = generateBytecodeMirror;
-            models = List.of(new BytecodeDSLModel(context, typeElement, generateBytecodeMirror, "Gen"));
+
+            CodeTypeElement builderType = createBuilderType(types.BytecodeBuilder);
+            models = List.of(createBytecodeDSLModel(typeElement, generateBytecodeMirror, "Gen", builderType, builderType));
         }
 
         BytecodeDSLModels modelList = new BytecodeDSLModels(context, typeElement, topLevelAnnotationMirror, models);
@@ -159,6 +166,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         boolean enableYield = false;
         boolean enableTagInstrumentation = false;
 
+        String abstractBuilderName = typeElement.getSimpleName() + "Builder";
+        CodeTypeElement abstractBuilderType = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, ElementUtils.findPackageElement(typeElement), abstractBuilderName);
+        abstractBuilderType.setSuperClass(types.BytecodeBuilder);
+
         List<BytecodeDSLModel> result = new ArrayList<>();
 
         for (AnnotationMirror variant : variants) {
@@ -168,7 +179,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             AnnotationValue generateBytecodeMirrorValue = ElementUtils.getAnnotationValue(variant, "configuration");
             AnnotationMirror generateBytecodeMirror = ElementUtils.resolveAnnotationValue(AnnotationMirror.class, generateBytecodeMirrorValue);
 
-            BytecodeDSLModel model = new BytecodeDSLModel(context, typeElement, generateBytecodeMirror, suffix);
+            BytecodeDSLModel model = createBytecodeDSLModel(typeElement, generateBytecodeMirror, suffix, createBuilderType(abstractBuilderType.asType()), abstractBuilderType);
 
             if (!first && suffixes.contains(suffix)) {
                 model.addError(variant, suffixValue, "A variant with suffix \"%s\" already exists. Each variant must have a unique suffix.", suffix);
@@ -206,6 +217,17 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         return result;
+    }
+
+    private static CodeTypeElement createBuilderType(TypeMirror superClass) {
+        CodeTypeElement builderType = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
+        builderType.setSuperClass(superClass);
+        return builderType;
+    }
+
+    private BytecodeDSLModel createBytecodeDSLModel(TypeElement typeElement, AnnotationMirror generateBytecodeMirror, String suffix, CodeTypeElement builderType, CodeTypeElement abstractBuilderType) {
+        CodeTypeElement generatedType = GeneratorUtils.createClass(typeElement, null, Set.of(PUBLIC, FINAL), typeElement.getSimpleName() + suffix, typeElement.asType());
+        return new BytecodeDSLModel(context, typeElement, generateBytecodeMirror, generatedType, builderType, abstractBuilderType);
     }
 
     @SuppressWarnings("unchecked")
