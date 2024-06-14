@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Properties;
 
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionDescriptors;
@@ -61,6 +62,17 @@ public class HotSpotGraalOptionValues {
      */
     public static final String GRAAL_OPTION_PROPERTY_PREFIX = "jdk.graal.";
     public static final String LEGACY_GRAAL_OPTION_PROPERTY_PREFIX = "graal.";
+
+    /**
+     * Guard for issuing warning about deprecated Graal option prefix at most once.
+     */
+    private static final GlobalAtomicLong LEGACY_OPTION_DEPRECATION_WARNED = new GlobalAtomicLong(0L);
+
+    /**
+     * Guard for issuing warning about deprecated {@code jdk.graal.options.file} option at most
+     * once.
+     */
+    private static final GlobalAtomicLong GRAAL_OPTIONS_FILE_DEPRECATION_WARNED = new GlobalAtomicLong(0L);
 
     /**
      * Gets the system property assignment that would set the current value for a given option.
@@ -102,6 +114,9 @@ public class HotSpotGraalOptionValues {
             String optionsFile = savedProps.get(GRAAL_OPTIONS_FILE_PROPERTY_NAME);
 
             if (optionsFile != null) {
+                if (GRAAL_OPTIONS_FILE_DEPRECATION_WARNED.compareAndSet(0L, 1L)) {
+                    System.err.println("WARNING: The jdk.graal.options.file property is deprecated and will be ignored in a future release");
+                }
                 File graalOptions = new File(optionsFile);
                 if (graalOptions.exists()) {
                     try (FileReader fr = new FileReader(graalOptions)) {
@@ -126,7 +141,15 @@ public class HotSpotGraalOptionValues {
             for (Map.Entry<String, String> e : savedProps.entrySet()) {
                 String name = e.getKey();
                 if (name.startsWith(LEGACY_GRAAL_OPTION_PROPERTY_PREFIX)) {
-                    name = GRAAL_OPTION_PROPERTY_PREFIX + name.substring(LEGACY_GRAAL_OPTION_PROPERTY_PREFIX.length());
+                    String baseName = name.substring(LEGACY_GRAAL_OPTION_PROPERTY_PREFIX.length());
+                    name = GRAAL_OPTION_PROPERTY_PREFIX + baseName;
+                    if (LEGACY_OPTION_DEPRECATION_WARNED.compareAndSet(0L, 1L)) {
+                        System.err.printf("""
+                                        WARNING: The 'graal.' property prefix for the Graal option %s
+                                        WARNING: (and all other Graal options) is deprecated and will be ignored
+                                        WARNING: in a future release. Please use 'jdk.graal.%s' instead.%n""",
+                                        baseName, baseName);
+                    }
                 }
                 if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
                     if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME)) {

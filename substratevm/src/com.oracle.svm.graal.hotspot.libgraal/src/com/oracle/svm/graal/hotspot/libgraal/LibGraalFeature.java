@@ -850,6 +850,11 @@ final class HotSpotGraalOptionValuesUtil {
     private static final String LIBGRAAL_PREFIX = "jdk.libgraal.";
     private static final String LIBGRAAL_XOPTION_PREFIX = "jdk.libgraal.X";
 
+    /**
+     * Guard for issuing warning about deprecated Graal option prefix at most once.
+     */
+    private static final GlobalAtomicLong LEGACY_OPTION_DEPRECATION_WARNED = new GlobalAtomicLong(0L);
+
     static OptionValues initializeOptions() {
 
         // Parse "graal." options.
@@ -897,12 +902,20 @@ final class HotSpotGraalOptionValuesUtil {
         return options;
     }
 
-    private static String withoutPrefix(String value, String prefix, String prefixAlias) {
+    private static String withoutPrefix(String value, String prefix, String legacyPrefix) {
         if (value.startsWith(prefix)) {
             return value.substring(prefix.length());
         }
-        if (value.startsWith(prefixAlias)) {
-            return value.substring(prefixAlias.length());
+        if (value.startsWith(legacyPrefix)) {
+            String baseName = value.substring(legacyPrefix.length());
+            if (LEGACY_OPTION_DEPRECATION_WARNED.compareAndSet(0L, 1L)) {
+                System.err.printf("""
+                                WARNING: The '%s' property prefix for the Graal option %s
+                                WARNING: (and all other Graal options) is deprecated and will be ignored
+                                WARNING: in a future release. Please use 'jdk.graal.%s' instead.%n""",
+                                legacyPrefix, baseName, baseName);
+            }
+            return baseName;
         }
         return null;
     }
