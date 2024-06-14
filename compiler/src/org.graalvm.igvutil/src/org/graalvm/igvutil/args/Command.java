@@ -32,8 +32,8 @@ import org.graalvm.collections.EconomicMap;
 
 /**
  * Contains utilities to parse a set of named from command-line arguments.
- * A command is made up of positional and named named, as well as a single optional {@link CommandGroup}.
- * Named named can appear at any index in the arguments, and must be prefixed by their name.
+ * A command is made up of positional and named options, as well as a single optional {@link CommandGroup}.
+ * Named options can appear at any index in the arguments, and must be prefixed by their name.
  * Positional named must appear in the same order as they were added to the command, and they don't require being prefixed by a name.
  *
  * @see #addNamed(String, OptionValue)
@@ -134,8 +134,7 @@ public class Command {
         if (value == null) {
             return false;
         }
-        int index = value.parse(new String[]{valueString}, 0);
-        return index > 0;
+        return value.parseValue(valueString);
     }
 
     /**
@@ -151,35 +150,61 @@ public class Command {
     public int parse(String[] args, int offset) throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
         int nextPositionalArg = 0;
         int index = offset;
+        ListValue<?> currentListValue = null;
         while (index < args.length) {
-            if (args[index].contentEquals(SEPARATOR)) {
-                index++;
-                break;
-            }
-            if (args[index].contentEquals(HELP)) {
+            String arg = args[index];
+            if (arg.contentEquals(HELP)) {
                 throw new HelpRequestedException(this);
             }
             if (commandGroup != null && commandGroup.getSelectedCommand() == null) {
                 index = commandGroup.parse(args, index);
                 continue;
             }
-            // Split up argument of the form option=value
-            int equalSignIndex = args[index].indexOf(EQUAL_SIGN);
-            if (equalSignIndex > -1 && parseEqualsValue(args[index], equalSignIndex)) {
+            if (arg.contentEquals(SEPARATOR)) {
                 index++;
+                if (currentListValue != null) {
+                    currentListValue = null;
+                    continue;
+                } else {
+                    break;
+                }
+            }
+            // Handle argument of the form option=value
+            int equalSignIndex = arg.indexOf(EQUAL_SIGN);
+            if (equalSignIndex > -1 && parseEqualsValue(arg, equalSignIndex)) {
+                index++;
+                currentListValue = null;
                 continue;
             }
-            OptionValue<?> value = named.get(args[index]);
+            OptionValue<?> value = named.get(arg);
             if (value != null) {
                 index++;
+                currentListValue = null;
+            } else if (currentListValue != null) {
+                value = currentListValue;
             } else {
-                if (nextPositionalArg >= positional.size()) {
+                if (nextPositionalArg == positional.size()) {
                     break;
                 }
                 value = positional.get(nextPositionalArg++);
             }
-            index = value.parse(args, index);
+            arg = index == args.length ? null : args[index];
+            if (!value.parseValue(arg)) {
+                if (currentListValue != null) {
+                    currentListValue = null;
+                }
+            } else {
+                index++;
+                if (value instanceof ListValue<?> listValue) {
+                    currentListValue = listValue;
+                }
+            }
         }
+        verifyOptions(nextPositionalArg);
+        return index;
+    }
+
+    private void verifyOptions(int nextPositionalArg) throws MissingArgumentException {
         if (commandGroup != null && commandGroup.getSelectedCommand() == null) {
             throw new MissingArgumentException("SUBCOMMAND");
         }
@@ -191,10 +216,12 @@ public class Command {
                 throw new MissingArgumentException(name);
             }
         }
-        if (nextPositionalArg < positional.size()) {
-            throw new MissingArgumentException(positional.get(nextPositionalArg).getName());
+        for (int arg = nextPositionalArg; arg < positional.size(); ++arg) {
+            OptionValue<?> option = positional.get(arg);
+            if (option.isRequired()) {
+                throw new MissingArgumentException(positional.get(arg).getName());
+            }
         }
-        return index;
     }
 
     static final String INDENT = "  ";

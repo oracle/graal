@@ -74,9 +74,9 @@ public abstract class OptionValue<T> {
     /**
      * Constructs a not required option with a default value.
      *
-     * @param name the name of the argument.
+     * @param name         the name of the argument.
      * @param defaultValue the option's default value. Can be null.
-     * @param help the help message.
+     * @param help         the help message.
      */
     public OptionValue(String name, T defaultValue, String help) {
         this.name = name;
@@ -118,30 +118,14 @@ public abstract class OptionValue<T> {
         return description;
     }
 
-    /**
-     * Parses one or more arguments and updates {@link #value} to a non-null value if parsing succeeded.
-     *
-     * @param args the full array of program arguments as received in {@code main}.
-     * @param offset starting index from which arguments in {@code args} should be parsed.
-     * @return the index of the first argument in {@code args} that was not consumed during parsing of the option.
-     */
-    abstract int parseValue(String[] args, int offset);
+    public void clear() {
+        this.value = null;
+    }
 
     /**
-     * Parses one or more command-line arguments, throwing an {@link InvalidArgumentException} if parsing failed.
-     *
-     * @param args   the full array of program arguments as received in {@code main}.
-     * @param offset starting index from which arguments in {@code args} should be parsed.
-     * @return the index of the first argument in {@code args} that was not consumed during parsing of the option.
-     * @throws InvalidArgumentException if the option could not be parsed successfully.
+     * TODO
      */
-    public int parse(String[] args, int offset) throws InvalidArgumentException {
-        int index = parseValue(args, offset);
-        if (value == null) {
-            throw new InvalidArgumentException(name, "couldn't parse value");
-        }
-        return index;
-    }
+    public abstract boolean parseValue(String arg) throws InvalidArgumentException;
 
     /**
      * Converts an option that will parse a single argument into

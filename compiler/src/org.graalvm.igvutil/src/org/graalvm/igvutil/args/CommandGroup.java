@@ -30,8 +30,9 @@ import org.graalvm.collections.EconomicMap;
 
 /**
  * Encapsulates a set of sub-{@link Command}s of which the user can select one explicitly by name.
+ *
  * @param <C> Common type of all subcommands in the group.
- *           Useful when subcommands share common functionality by inheriting from the same subclass of {@link Command}.
+ *            Useful when subcommands share common functionality by inheriting from the same subclass of {@link Command}.
  */
 public class CommandGroup<C extends Command> {
     private final EconomicMap<String, C> subCommands = EconomicMap.create();
@@ -58,8 +59,9 @@ public class CommandGroup<C extends Command> {
     /**
      * Adds a command to the set of subcommands.
      */
-    public void addCommand(C command) {
+    public C addCommand(C command) {
         subCommands.put(command.getName(), command);
+        return command;
     }
 
     /**
@@ -67,6 +69,10 @@ public class CommandGroup<C extends Command> {
      */
     public C getSelectedCommand() {
         return selectedCommand;
+    }
+
+    public void clear() {
+        selectedCommand = null;
     }
 
     public void printUsage(PrintWriter writer) {

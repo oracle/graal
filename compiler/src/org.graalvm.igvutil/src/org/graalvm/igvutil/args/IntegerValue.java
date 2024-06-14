@@ -37,12 +37,15 @@ public class IntegerValue extends OptionValue<Integer> {
     }
 
     @Override
-    protected int parseValue(String[] args, int offset) {
+    public boolean parseValue(String arg) throws InvalidArgumentException {
+        if (arg == null) {
+            throw new InvalidArgumentException(getName(), "no value provided");
+        }
         try {
-            value = Integer.valueOf(args[offset]);
-            return offset + 1;
+            value = Integer.valueOf(arg);
+            return true;
         } catch (NumberFormatException e) {
-            return offset;
+            throw new InvalidArgumentException(getName(), String.format("invalid double value: \"%s\"", arg));
         }
     }
 }

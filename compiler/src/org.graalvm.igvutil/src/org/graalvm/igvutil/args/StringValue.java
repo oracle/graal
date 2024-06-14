@@ -37,8 +37,11 @@ public class StringValue extends OptionValue<String> {
     }
 
     @Override
-    protected int parseValue(String[] args, int offset) {
-        value = args[offset];
-        return offset + 1;
+    public boolean parseValue(String arg) throws InvalidArgumentException {
+        if (arg == null) {
+            throw new InvalidArgumentException(getName(), "no value provided");
+        }
+        value = arg;
+        return true;
     }
 }

@@ -47,23 +47,21 @@ public class ListValue<T> extends OptionValue<List<T>> {
     }
 
     @Override
-    public int parseValue(String[] args, int offset) {
-        int index;
-        for (index = offset; index < args.length; ) {
-            if (args[index].contentEquals(Command.SEPARATOR)) {
-                index++;
-                break;
-            }
-            index = inner.parseValue(args, index);
-            if (inner.value == null) {
-                break;
-            }
-            if (value == null) {
-                value = new ArrayList<>();
-            }
-            value.add(inner.value);
+    public boolean parseValue(String arg) {
+        if (arg == null) {
+            return false;
         }
-        return index;
+        try {
+            inner.parseValue(arg);
+        } catch (InvalidArgumentException e) {
+            // Terminate list if option fails to parse
+            return false;
+        }
+        if (value == null) {
+            value = new ArrayList<>();
+        }
+        value.add(inner.value);
+        return true;
     }
 
     @Override

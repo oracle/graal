@@ -29,13 +29,24 @@ package org.graalvm.igvutil.args;
  * {@code true} when it is present.
  */
 public class Flag extends OptionValue<Boolean> {
-    public Flag(String name, String help) {
-        super(name, false, help);
+    public Flag(String help) {
+        super("", false, help);
     }
 
     @Override
-    int parseValue(String[] args, int offset) {
+    public void clear() {
+        value = false;
+    }
+
+    @Override
+    public boolean parseValue(String arg) {
         value = true;
-        return offset;
+        return false;
+    }
+
+    @Override
+    public String getUsage() {
+        // No value, usage is only determined by flag name
+        return "";
     }
 }

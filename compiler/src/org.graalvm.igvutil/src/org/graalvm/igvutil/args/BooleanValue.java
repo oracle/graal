@@ -38,16 +38,20 @@ public class BooleanValue extends OptionValue<Boolean> {
     }
 
     @Override
-    protected int parseValue(String[] args, int offset) {
-        switch (args[offset].toLowerCase()) {
+    public boolean parseValue(String arg) throws InvalidArgumentException {
+        if (arg == null) {
+            throw new InvalidArgumentException(getName(), "no value provided");
+        }
+        switch (arg.toLowerCase()) {
             case "true":
                 value = true;
-                return offset + 1;
+                break;
             case "false":
                 value = false;
-                return offset + 1;
+                break;
             default:
-                return offset;
+                throw new InvalidArgumentException(getName(), String.format("invalid boolean value: \"%s\"", arg));
         }
+        return true;
     }
 }
