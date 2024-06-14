@@ -61,12 +61,13 @@
     environment+: {
       BENCH_RESULTS_FILE_PATH : "bench-results.json"
     },
+    default_fork_count::1,
     plain_benchmark_cmd::
       ["mx",
       "--kill-with-sigquit",
       "benchmark",
+      "--default-fork-count=" + self.default_fork_count,
       "--fork-count-file=${FORK_COUNT_FILE}",
-      "--extras=${BENCH_SERVER_EXTRAS}",
       "--results-file",
       "${BENCH_RESULTS_FILE_PATH}",
       "--machine-name=${MACHINE_NAME}"] +
