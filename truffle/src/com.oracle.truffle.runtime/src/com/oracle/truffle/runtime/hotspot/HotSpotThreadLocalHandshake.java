@@ -152,10 +152,6 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
         if (safepoint != null) {
             boolean pending = safepoint.isFastPendingSet();
 
-            // VirtualThread#carrierThread is not set yet, it set after this hook is called.
-            // However, Thread.currentCarrierThread() is already set so we can use that.
-            // We could also get the carrier thread from the hook arguments but that seems more
-            // expensive.
             Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
             long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
             UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, pending ? 1 : 0);
