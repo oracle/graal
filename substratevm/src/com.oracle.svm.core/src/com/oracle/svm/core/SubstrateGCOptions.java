@@ -82,13 +82,13 @@ public class SubstrateGCOptions {
     public static final RuntimeOptionKey<Long> ReservedAddressSpaceSize = new RuntimeOptionKey<>(0L);
 
     @Option(help = "Exit on the first occurrence of an out-of-memory error that is thrown because the Java heap is out of memory.", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> ExitOnOutOfMemoryError = new NotifyGCRuntimeOptionKey<>(false);
+    public static final RuntimeOptionKey<Boolean> ExitOnOutOfMemoryError = new NotifyGCRuntimeOptionKey<>(false, Immutable);
 
     @Option(help = "Report a fatal error on the first occurrence of an out-of-memory error that is thrown because the Java heap is out of memory.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ReportFatalErrorOnOutOfMemoryError = new RuntimeOptionKey<>(false);
 
     @Option(help = "Ignore calls to System.gc().", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new NotifyGCRuntimeOptionKey<>(false);
+    public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new NotifyGCRuntimeOptionKey<>(false, Immutable);
 
     @Option(help = "Print summary GC information after each collection.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> PrintGC = new NotifyGCRuntimeOptionKey<>(false);
