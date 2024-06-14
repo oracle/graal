@@ -202,7 +202,7 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
 
     @Override
     public boolean isEmpty() {
-        return serializations.isEmpty() && lambdaSerializationCapturingTypes.isEmpty() || interfaceListsSerializableProxies.isEmpty();
+        return serializations.isEmpty() && lambdaSerializationCapturingTypes.isEmpty() && interfaceListsSerializableProxies.isEmpty();
     }
 
     private static SerializationConfigurationType createConfigurationType(UnresolvedConfigurationCondition condition, String className, String customTargetConstructorClassName) {

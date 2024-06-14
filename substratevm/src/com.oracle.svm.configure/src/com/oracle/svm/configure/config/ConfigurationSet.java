@@ -167,13 +167,15 @@ public class ConfigurationSet {
             for (ConfigurationFile configFile : ConfigurationFile.agentGeneratedFiles()) {
                 JsonPrintable configuration = configSupplier.apply(configFile);
                 if (configuration instanceof ConfigurationBase<?, ?> configurationBase && !configurationBase.supportsCombinedFile()) {
-                    /* Fallback to legacy printing */
-                    for (Path specificPath : configFilePathResolver.apply(configFile)) {
-                        writtenFiles.add(specificPath);
-                        JsonWriter specificWriter = new JsonWriter(specificPath);
-                        configurationBase.printLegacyJson(specificWriter);
-                        specificWriter.newline();
-                        specificWriter.close();
+                    if (!configurationBase.isEmpty()) {
+                        /* Fallback to legacy printing */
+                        for (Path specificPath : configFilePathResolver.apply(configFile)) {
+                            writtenFiles.add(specificPath);
+                            JsonWriter specificWriter = new JsonWriter(specificPath);
+                            configurationBase.printLegacyJson(specificWriter);
+                            specificWriter.newline();
+                            specificWriter.close();
+                        }
                     }
                 } else {
                     if (first) {
