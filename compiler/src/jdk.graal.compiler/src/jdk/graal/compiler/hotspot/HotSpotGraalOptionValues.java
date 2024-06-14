@@ -65,7 +65,7 @@ public class HotSpotGraalOptionValues {
     /**
      * Prefix for system properties that correspond to libgraal Native Image options.
      */
-    public static final String LIBGRAAL_VM_OPTION_PROPERTY_PREFIX = "jdk.graal.vm.";
+    public static final String LIBGRAAL_VM_OPTION_PROPERTY_PREFIX = "jdk.graal.internal.";
 
     private static final Set<String> UNSUPPORTED_LIBGRAAL_PREFIXES = Set.of("jdk.libgraal.", "libgraal.");
 
@@ -141,8 +141,8 @@ public class HotSpotGraalOptionValues {
                     for (var prefix : UNSUPPORTED_LIBGRAAL_PREFIXES) {
                         if (name.startsWith(prefix)) {
                             String baseName = name.substring(prefix.length());
-                            String msg = String.format("The '%s' property prefix is no longer supported. Use jdk.graal.vm.%s instead of %s%s.",
-                                            prefix, baseName, prefix, baseName);
+                            String msg = String.format("The '%s' property prefix is no longer supported. Use %s%s instead of %s%s.",
+                                            prefix, LIBGRAAL_VM_OPTION_PROPERTY_PREFIX, baseName, prefix, baseName);
                             throw new IllegalArgumentException(msg);
                         }
                     }

@@ -296,15 +296,15 @@ def _test_libgraal_oome_dumping():
     }
     if mx.is_windows():
         # GR-39501
-        mx.log('-Djdk.graal.vm.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
+        mx.log('-Djdk.graal.internal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
         return
 
     for n, v in inputs.items():
         vmargs = ['-Djdk.graal.CrashAt=*',
-                  '-Djdk.graal.vm.Xmx128M',
-                  '-Djdk.graal.vm.PrintGC=true',
-                  '-Djdk.graal.vm.HeapDumpOnOutOfMemoryError=true',
-                  f'-Djdk.graal.vm.HeapDumpPath={n}',
+                  '-Djdk.graal.internal.Xmx128M',
+                  '-Djdk.graal.internal.PrintGC=true',
+                  '-Djdk.graal.internal.HeapDumpOnOutOfMemoryError=true',
+                  f'-Djdk.graal.internal.HeapDumpPath={n}',
                   '-Djdk.graal.SystemicCompilationFailureRate=0',
                   '-Djdk.graal.CrashAtThrowsOOME=true']
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()

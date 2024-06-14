@@ -906,7 +906,7 @@ final class Target_jdk_graal_compiler_core_GraalCompiler {
     private static boolean notifyCrash(String crashMessage) {
         if (LibGraalOptions.CrashAtThrowsOOME.getValue()) {
             if (HotSpotGraalOptionValuesUtil.OOME_CRASH_DONE.compareAndSet(0L, 1L)) {
-                // The -Djdk.graal.vm.Xmx option should also be employed to make
+                // The -Djdk.graal.internal.Xmx option should also be employed to make
                 // this allocation fail quicky
                 String largeString = Arrays.toString(new int[Integer.MAX_VALUE - 1]);
                 throw new InternalError("Failed to trigger OOME: largeString.length=" + largeString.length());

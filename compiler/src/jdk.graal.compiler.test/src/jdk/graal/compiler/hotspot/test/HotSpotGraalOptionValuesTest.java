@@ -112,7 +112,7 @@ public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
             Assert.fail(String.format("Expected non-0 exit code%n%s", proc.preserveArgfile()));
         }
 
-        String expect = "Error parsing Graal options: The 'jdk.libgraal.' property prefix is no longer supported. Use jdk.graal.vm.";
+        String expect = "Error parsing Graal options: The 'jdk.libgraal.' property prefix is no longer supported. Use jdk.graal.internal.";
         long matches = proc.output.stream().filter(line -> line.contains(expect)).count();
         if (matches != 1) {
             Assert.fail(String.format("Did not find exactly 1 match for '%s' in output of command [matches: %d]:%n%s",
