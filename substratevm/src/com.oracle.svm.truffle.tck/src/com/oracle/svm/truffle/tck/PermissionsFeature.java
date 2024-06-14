@@ -28,6 +28,7 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.report;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.lang.reflect.Proxy;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.file.Files;
@@ -357,6 +358,15 @@ public class PermissionsFeature implements Feature {
          * In this situation it is unnecessary to check for unsafe accesses.
          */
         if (inlinedUnsafeCall == null || isSystemOrSafeClass(mNode)) {
+            return;
+        }
+
+        if (Proxy.isProxyClass(mNode.getOwner().getJavaClass())) {
+            /*
+             * Starting JDK-23+26 Proxy generated code does unsafe compare and set. The generated
+             * proxy method calls the used invocation handler which is checked for possible unsafe
+             * access.
+             */
             return;
         }
 
