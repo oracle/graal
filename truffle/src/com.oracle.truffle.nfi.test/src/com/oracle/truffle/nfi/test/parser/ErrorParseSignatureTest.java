@@ -40,16 +40,17 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.source.Source;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeDiagnosingMatcher;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.source.Source;
 
 public class ErrorParseSignatureTest extends ParseSignatureTest {
 
@@ -58,7 +59,7 @@ public class ErrorParseSignatureTest extends ParseSignatureTest {
         runWithPolyglot.getTruffleTestEnv().parseInternal(source);
     }
 
-    @Rule public ExpectedException exception = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException exception = ExpectedException.none();
 
     static class ParserExceptionMatcher extends TypeSafeDiagnosingMatcher<AbstractTruffleException> {
 

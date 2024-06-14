@@ -26,6 +26,11 @@ package jdk.graal.compiler.replacements.test;
 
 import java.util.Objects;
 
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Scope;
@@ -39,11 +44,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordCastNode;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -141,7 +141,7 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
         return obj;
     }
 
-    @Rule public final ExpectedException thrown = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public final ExpectedException thrown = ExpectedException.none();
     private static final String UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG = "should not reach here: unknown reference alive across safepoint";
 
     @Test

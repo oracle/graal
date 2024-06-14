@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -1153,7 +1153,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         return pointerTypeId;
     }
 
-    @Rule public ExpectedException thrown = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void test() {

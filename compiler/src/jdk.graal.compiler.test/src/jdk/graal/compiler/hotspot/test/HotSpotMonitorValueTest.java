@@ -25,20 +25,20 @@
 package jdk.graal.compiler.hotspot.test;
 
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.core.phases.HighTier;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.options.OptionValues;
 import org.junit.Test;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.StackLockValue;

@@ -117,7 +117,7 @@ public class NodeChildUncachedTest {
         Assert.assertEquals("executeWith(41)", 83, node.executeWith(41));
     }
 
-    @Rule public ExpectedException exception = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException exception = ExpectedException.none();
 
     @Test
     public void testChildNotAvailable() {

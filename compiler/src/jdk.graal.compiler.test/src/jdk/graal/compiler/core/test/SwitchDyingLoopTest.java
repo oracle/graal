@@ -26,8 +26,10 @@ package jdk.graal.compiler.core.test;
 
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableCount.hasCount;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
+
+import org.junit.Test;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.nodes.LoopBeginNode;
@@ -36,8 +38,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaKind;
 
 public class SwitchDyingLoopTest extends GraalCompilerTest {

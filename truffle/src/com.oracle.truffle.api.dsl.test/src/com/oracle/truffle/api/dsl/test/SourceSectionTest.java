@@ -45,7 +45,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.createRootPrefix;
 import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;

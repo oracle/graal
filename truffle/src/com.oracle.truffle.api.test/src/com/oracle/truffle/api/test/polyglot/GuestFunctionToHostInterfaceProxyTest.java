@@ -41,8 +41,8 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
 
 import java.lang.reflect.Proxy;
 import java.util.Arrays;

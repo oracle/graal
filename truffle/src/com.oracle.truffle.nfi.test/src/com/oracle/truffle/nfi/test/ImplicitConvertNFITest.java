@@ -46,6 +46,7 @@ import static org.hamcrest.core.Is.is;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -117,7 +118,7 @@ public class ImplicitConvertNFITest extends NFITest {
         if (type == NativeSimpleType.POINTER) {
             Assert.assertTrue("isNumber", UNCACHED_INTEROP.isNumber(ret));
         } else {
-            Assert.assertThat("return value", ret, is(instanceOf(Number.class)));
+            MatcherAssert.assertThat("return value", ret, is(instanceOf(Number.class)));
         }
 
         long retValue = NumericNFITest.unboxNumber(ret);
