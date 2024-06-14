@@ -208,7 +208,8 @@ public final class ObjectGroupHistogram {
         } else if (info.getObject() instanceof Object[]) {
             for (Object element : (Object[]) info.getObject()) {
                 if (element != null) {
-                    ObjectInfo elementInfo = heap.getObjectInfo(heap.aUniverse.replaceObject(element));
+                    JavaConstant replacement = heap.aUniverse.replaceObjectWithConstant(element);
+                    ObjectInfo elementInfo = heap.getConstantInfo(replacement);
                     if (elementInfo != null) {
                         processObject(elementInfo, group, true, recursionLevel + 1, objectFilter, fieldFilter);
                     }

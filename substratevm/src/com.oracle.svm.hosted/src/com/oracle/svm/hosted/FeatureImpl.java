@@ -54,6 +54,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -291,6 +292,15 @@ public class FeatureImpl {
         @Override
         public void registerObjectReplacer(Function<Object, Object> replacer) {
             getUniverse().registerObjectReplacer(replacer);
+        }
+
+        /**
+         * Register an object replacer which may return an ImageHeapConstant. Note only one replacer
+         * can be triggered for a given object; otherwise an error will be thrown. Too, if the
+         * object should not be replaced then {@code null} should be returned.
+         */
+        public void registerObjectToConstantReplacer(Function<Object, ImageHeapConstant> replacer) {
+            getUniverse().registerObjectToConstantReplacer(replacer);
         }
 
         /**

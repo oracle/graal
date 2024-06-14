@@ -32,10 +32,15 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
+import java.util.EnumSet;
 import java.util.Objects;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 
 /**
  * This class provides replacement values for the {@link System#in}, {@link System#out}, and
@@ -47,7 +52,7 @@ import org.graalvm.nativeimage.hosted.Feature;
  * This can be customized by calling {@link #setIn}, {@link #setOut}, and {@link #setErr} before the
  * static analysis starts, i.e., in a {@link Feature#beforeAnalysis} method.
  */
-public final class SystemInOutErrSupport {
+public final class SystemInOutErrSupport implements InitialLayerOnlyImageSingleton {
     private InputStream in = new BufferedInputStream(new FileInputStream(FileDescriptor.in));
     private PrintStream out = newPrintStream(new FileOutputStream(FileDescriptor.out), System.getProperty("sun.stdout.encoding"));
     private PrintStream err = newPrintStream(new FileOutputStream(FileDescriptor.err), System.getProperty("sun.stderr.encoding"));
@@ -86,9 +91,14 @@ public final class SystemInOutErrSupport {
     public static void setErr(PrintStream err) {
         ImageSingletons.lookup(SystemInOutErrSupport.class).err = Objects.requireNonNull(err);
     }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
 }
 
 @SuppressWarnings("unused")
-class SystemInOutErrFeature implements Feature {
+class SystemInOutErrFeature implements Feature, FeatureSingleton {
     /* Dummy for backward compatibility. */
 }
