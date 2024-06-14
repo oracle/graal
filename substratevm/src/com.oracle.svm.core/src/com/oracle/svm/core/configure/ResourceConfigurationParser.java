@@ -176,19 +176,19 @@ public class ResourceConfigurationParser extends ConfigurationParser {
 
     private static String globToRegex(String glob) {
         /* this char will trigger last wildcard dump if the glob ends with the wildcard */
-        glob += '#';
+        String tmpGlob = glob + '#';
         StringBuilder sb = new StringBuilder();
 
         int quoteStartIndex = 0;
         Wildcard previousWildcard = Wildcard.START;
-        for (int i = 0; i < glob.length(); i++) {
-            char c = glob.charAt(i);
+        for (int i = 0; i < tmpGlob.length(); i++) {
+            char c = tmpGlob.charAt(i);
             Wildcard currentWildcard = previousWildcard.next(c);
 
             boolean wildcardStart = previousWildcard == Wildcard.START && currentWildcard != Wildcard.START;
             if (wildcardStart && quoteStartIndex != i) {
                 /* start of the new wildcard => quote previous content */
-                sb.append(Pattern.quote(glob.substring(quoteStartIndex, i)));
+                sb.append(Pattern.quote(tmpGlob.substring(quoteStartIndex, i)));
             }
 
             boolean consecutiveWildcards = previousWildcard == Wildcard.DOUBLE_STAR_SLASH && currentWildcard != Wildcard.START;
@@ -203,9 +203,9 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         }
 
         /* remove the last char we added artificially */
-        glob = glob.substring(0, glob.length() - 1);
-        if (quoteStartIndex < glob.length()) {
-            sb.append(Pattern.quote(glob.substring(quoteStartIndex)));
+        tmpGlob = tmpGlob.substring(0, tmpGlob.length() - 1);
+        if (quoteStartIndex < tmpGlob.length()) {
+            sb.append(Pattern.quote(tmpGlob.substring(quoteStartIndex)));
         }
 
         return sb.toString();
@@ -216,21 +216,25 @@ public class ResourceConfigurationParser extends ConfigurationParser {
      */
     private enum Wildcard {
         START("") {
+            @Override
             public Wildcard next(char c) {
                 return c == '*' ? STAR : START;
             }
         },
         STAR("[^/]*") {
+            @Override
             public Wildcard next(char c) {
                 return c == '*' ? DOUBLE_STAR : START;
             }
         },
         DOUBLE_STAR(".*") {
+            @Override
             public Wildcard next(char c) {
                 return c == '/' ? DOUBLE_STAR_SLASH : START;
             }
         },
         DOUBLE_STAR_SLASH("([^/]*(/|$))*") {
+            @Override
             public Wildcard next(char c) {
                 return c == '*' ? STAR : START;
             }
