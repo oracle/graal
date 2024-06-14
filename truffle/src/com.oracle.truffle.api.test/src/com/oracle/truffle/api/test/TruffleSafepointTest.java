@@ -1717,12 +1717,16 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         }
 
         // asynchronous execution of all configs
-        if (RERUN_THREAD_CONFIG_ASYNC) {
+        /*
+         * this is not done for virtual threads because it would cause to run more virtual threads
+         * concurrently than the number of processors (see above).
+         */
+        if (RERUN_THREAD_CONFIG_ASYNC && !vthreads) {
             List<Future<?>> futures = new ArrayList<>();
             for (int threads : threadConfigs) {
                 for (int events : ITERATION_CONFIGS) {
-                    if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT && !(vthreads && threads > processors)) {
-                        futures.add(service.submit(() -> run.run(threads, events)));
+                    if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT) {
+                        futures.add(cachedThreadPool.submit(() -> run.run(threads, events)));
                     }
                 }
             }
