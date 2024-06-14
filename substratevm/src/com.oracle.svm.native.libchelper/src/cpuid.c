@@ -311,7 +311,8 @@ static void initialize_cpuinfo(CpuidInfo *_cpuid_info)
     _cpuid_info->sef_cpuid7_edx.value = edx;
 
     get_cpuid_ecx_1(7, &eax, &ebx, &ecx, &edx);
-    _cpuid_info->sef_cpuid7_ecx1_eax.value = eax;
+    _cpuid_info->sefsl1_cpuid7_eax.value = eax;
+    _cpuid_info->sefsl1_cpuid7_edx.value = edx;
   }
 
   // topology
@@ -441,7 +442,7 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
       features->fF16C = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx2 != 0)
       features->fAVX2 = 1;
-      if (_cpuid_info->sef_cpuid7_ecx1_eax.bits.avx_ifma != 0)
+      if (_cpuid_info->sefsl1_cpuid7_eax.bits.avx_ifma != 0)
         features->fAVX_IFMA = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx512f != 0 &&
         _cpuid_info->xem_xcr0_eax.bits.opmask != 0 &&
@@ -513,6 +514,9 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
     features->fRDTSCP = 1;
   if (_cpuid_info->sef_cpuid7_ecx.bits.rdpid != 0)
     features->fRDPID = 1;
+  if (_cpuid_info->sefsl1_cpuid7_edx.bits.apx_f != 0 &&
+      _cpuid_info->xem_xcr0_eax.bits.apx_f != 0)
+    features->fAPX_F = 1;
 
   // AMD|Hygon features.
   if (is_amd_family(_cpuid_info))
