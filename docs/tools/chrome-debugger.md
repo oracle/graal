@@ -92,6 +92,7 @@ information and launch the debugger. Launch debugging via the printed WSS URL di
 * `--inspect.WaitAttached=(true|false)` when true, no guest language source code is executed until the inspector client is attached. Unlike `--inspect.Suspend=true`, the execution is resumed right
 after the client is attached. This assures that no execution is missed by the
 inspector client. It is `false` by default.
+* `--inspect.SuspensionTimeout` sets a timeout of a debugger suspension. The debugger session is disconnected after the timeout expires. The timeout value consists of a positive integer value followed by a chronological time unit. For example, '15m' or '10s'. Valid time units are 'ms' for milliseconds, 's' for seconds, 'm' for minutes, 'h' for hours, and 'd' for days. There is no timeout set by default.
 
 ### Advanced Debug Options
 The following options are for language experts and language developers:

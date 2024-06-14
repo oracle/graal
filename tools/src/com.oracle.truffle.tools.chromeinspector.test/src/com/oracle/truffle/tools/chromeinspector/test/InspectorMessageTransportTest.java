@@ -241,6 +241,24 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
     }
 
     @Test
+    public void inspectorTimeoutTest() {
+        Session session = new Session(true);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
+        try (Engine engine = endpoint.onOpen(session, Engine.newBuilder().option("inspect.SuspensionTimeout", "1s"))) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
+            }
+        }
+        int numMessages = MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length - 2;
+        Assert.assertEquals(session.messages.toString(), numMessages, session.messages.size());
+        assertMessages(session.messages, MESSAGES_TO_BACKEND.length - 1, MESSAGES_TO_CLIENT.length - 2);
+        String timeoutMessage = session.messages.get(numMessages - 1);
+        String expectedMessage = "2C{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"args\":[{\"type\":\"string\"," +
+                        "\"value\":\"Timeout of 1000ms as specified via '--inspect.SuspensionTimeout' was reached. The debugger session is disconnected.\"}]";
+        Assert.assertTrue(timeoutMessage, timeoutMessage.startsWith(expectedMessage));
+    }
+
+    @Test
     public void inspectorContextClosedTest() throws IOException, InterruptedException {
         Session session = new Session(null);
         DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
@@ -303,6 +321,11 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
             this.rc = rc;
         }
 
+        Session(boolean skipResume) {
+            remote.setSkipResume(skipResume);
+            this.rc = null;
+        }
+
         BasicRemote getBasicRemote() {
             return remote;
         }
@@ -341,9 +364,14 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
         Session.MsgHandler handler;
         private final List<String> messages;
         private boolean didStep = false;
+        private boolean skipResume;
 
         BasicRemote(List<String> messages) {
             this.messages = messages;
+        }
+
+        private void setSkipResume(boolean skipResume) {
+            this.skipResume = skipResume;
         }
 
         void sendText(String text) throws IOException {
@@ -357,7 +385,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
                 if (!didStep) {
                     handler.onMessage("{\"id\":50,\"method\":\"Debugger.stepOver\"}");
                     didStep = true;
-                } else {
+                } else if (!skipResume) {
                     handler.onMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
                     didStep = false;
                 }
@@ -383,8 +411,12 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
         }
 
         public Engine onOpen(final Session session) {
+            return onOpen(session, Engine.newBuilder());
+        }
+
+        public Engine onOpen(final Session session, Engine.Builder engineBuilder) {
             assert this != null;
-            Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new EndpointMessageTransport(session)).option("inspect", PORT);
+            engineBuilder.serverTransport(new EndpointMessageTransport(session)).option("inspect", PORT);
             if (path != null) {
                 engineBuilder.option("inspect.Path", path);
             }

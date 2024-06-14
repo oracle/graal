@@ -48,7 +48,7 @@ public final class InspectorTestInstrument extends TruffleInstrument {
     protected void onCreate(final Env env) {
         env.registerService(new InspectSessionInfoProvider() {
             @Override
-            public InspectSessionInfo getSessionInfo(final boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, final List<URI> sourcePath) {
+            public InspectSessionInfo getSessionInfo(final boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, final List<URI> sourcePath, Long suspensionTimeout) {
                 return new InspectSessionInfo() {
 
                     private InspectServerSession iss;
@@ -57,9 +57,10 @@ public final class InspectorTestInstrument extends TruffleInstrument {
                     private long id;
 
                     InspectSessionInfo init() {
-                        this.context = new InspectorExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, new PrintWriter(env.err(), true));
+                        PrintWriter err = new PrintWriter(env.err(), true);
+                        this.context = new InspectorExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, err, err, suspensionTimeout);
                         this.connectionWatcher = new ConnectionWatcher();
-                        this.iss = InspectServerSession.create(context, suspend, connectionWatcher);
+                        this.iss = InspectServerSession.create(context, suspend, connectionWatcher, () -> this.iss.dispose());
                         lastServerSession = new WeakReference<>(iss);
                         this.id = context.getId();
                         // Fake connection open
@@ -104,7 +105,7 @@ public final class InspectorTestInstrument extends TruffleInstrument {
 }
 
 interface InspectSessionInfoProvider {
-    InspectSessionInfo getSessionInfo(boolean suspend, boolean inspectInternal, boolean inspectInitialization, List<URI> sourcePath);
+    InspectSessionInfo getSessionInfo(boolean suspend, boolean inspectInternal, boolean inspectInitialization, List<URI> sourcePath, Long suspensionTimeout);
 }
 
 interface InspectSessionInfo {
