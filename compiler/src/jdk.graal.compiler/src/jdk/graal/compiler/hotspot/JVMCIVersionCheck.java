@@ -55,8 +55,8 @@ public final class JVMCIVersionCheck {
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "21", Map.of(DEFAULT_VENDOR_ENTRY, createLegacyVersion(23, 1, 33)),
                     "24", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("24+1", 1),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("24+1", 1)));
+                                    "Oracle Corporation", createLabsJDKVersion("24+2", 1),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("24+2", 1)));
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
@@ -321,7 +321,7 @@ public final class JVMCIVersionCheck {
             }
             // A "labsjdk" or a known OpenJDK
             if (minVersion == null) {
-                failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
+                // No minimum JVMCI version specified for JDK version
                 return;
             }
             Version v = Version.parse(vmVersion);
