@@ -139,7 +139,7 @@ public class WasmRootNode extends RootNode {
     }
 
     @Override
-    public final Object execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         assert WasmArguments.isValid(frame.getArguments());
         final WasmContext context = getContext();
         final WasmInstance instance = instance(frame);

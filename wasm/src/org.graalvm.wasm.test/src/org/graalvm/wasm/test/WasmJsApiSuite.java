@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
@@ -2277,6 +2278,118 @@ public class WasmJsApiSuite {
             }
             wasm.moduleInstantiate(module, importObject);
         });
+    }
+
+    @Test
+    public void testImportMultipleFunctionsWithTheSameName() throws IOException, InterruptedException {
+        String sourceText = """
+                        (module
+                        (type $t2 (func (param i32 i32) (result i32)))
+                        (type $t3 (func (param i32 i32 i32) (result i32)))
+                        (type $t4 (func (param i32 i32 i32 i32) (result i32)))
+                        (import "importModule" "sum" (func $sum2 (type $t2)))
+                        (import "importModule" "sum" (func $sum3 (type $t3)))
+                        (import "importModule" "sum" (func $sum4 (type $t4)))
+                        (func (export "calculate") (result i32)
+                            i32.const 42
+                            i32.const 43
+                            call $sum2
+                            i32.const 44
+                            i32.const 45
+                            i32.const 46
+                            call $sum3
+                            i32.const 47
+                            i32.const 48
+                            i32.const 49
+                            i32.const 50
+                            call $sum4
+                            i32.add
+                            i32.add
+                        )
+                        )
+                        """;
+        byte[] sourceBytes = compileWat("importMultipleFunctionsWithTheSameName", sourceText);
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Executable hostSum = new Executable(args -> Arrays.stream(args).mapToInt(a -> (int) a).sum());
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "importModule", Dictionary.create(new Object[]{
+                                            "sum", hostSum,
+                            }),
+            });
+            WasmInstance instance = moduleInstantiate(wasm, sourceBytes, importObject);
+
+            try {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                Object sum = lib.execute(WebAssembly.instanceExport(instance, "calculate"));
+                int intSum = lib.asInt(sum);
+                Assert.assertEquals("Incorrect result", 414, intSum);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testReimportWasmFunctionViaImportObject() throws IOException, InterruptedException {
+        for (boolean directly : new boolean[]{false, true}) {
+            String mod1 = directly ? """
+                            (module
+                            (type $t2 (func (param i32 i32) (result i32)))
+                            (import "host" "sum" (func $sum2 (type $t2)))
+                            (export "sum" (func $sum2))
+                            )
+                            """ : """
+                            (module
+                            (type $t2 (func (param i32 i32) (result i32)))
+                            (import "host" "sum" (func $sum2 (type $t2)))
+                            (func (export "sum") (type $t2)
+                                local.get 0
+                                local.get 1
+                                call $sum2
+                            )
+                            )
+                            """;
+            String mod2 = """
+                            (module
+                            (type $t2 (func (param i32 i32) (result i32)))
+                            (import "mod1" "sum" (func $sum2 (type $t2)))
+                            (func (export "calculate") (result i32)
+                                i32.const 41
+                                i32.const 42
+                                call $sum2
+                            )
+                            )
+                            """;
+            byte[] sourceBytesMod1 = compileWat("reimportWasmFunction1", mod1);
+            byte[] sourceBytesMod2 = compileWat("reimportWasmFunction2", mod2);
+            runTest(context -> {
+                WebAssembly wasm = new WebAssembly(context);
+                try {
+                    Executable hostSum = new Executable(args -> Arrays.stream(args).mapToInt(a -> (int) a).sum());
+                    Dictionary importObj1 = Dictionary.create(new Object[]{
+                                    "host", Dictionary.create(new Object[]{
+                                                    "sum", hostSum,
+                                    }),
+                    });
+                    WasmInstance instance1 = moduleInstantiate(wasm, sourceBytesMod1, importObj1);
+                    var mod1Sum = instance1.readMember("sum");
+                    Dictionary importObj2 = Dictionary.create(new Object[]{
+                                    "mod1", Dictionary.create(new Object[]{
+                                                    "sum", mod1Sum,
+                                    }),
+                    });
+                    WasmInstance instance2 = moduleInstantiate(wasm, sourceBytesMod2, importObj2);
+
+                    InteropLibrary lib = InteropLibrary.getUncached();
+                    Object sum = lib.execute(WebAssembly.instanceExport(instance2, "calculate"));
+                    int intSum = lib.asInt(sum);
+                    Assert.assertEquals("Incorrect result", 83, intSum);
+                } catch (InteropException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
     }
 
     private static void runMemoryTest(Consumer<WasmContext> testCase) throws IOException {

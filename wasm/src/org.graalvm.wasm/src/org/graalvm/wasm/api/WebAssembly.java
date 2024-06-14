@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,12 +46,9 @@ import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
 import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmConstant;
@@ -78,7 +75,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
@@ -129,115 +125,126 @@ public class WebAssembly extends Dictionary {
 
     private Object moduleInstantiate(Object[] args) {
         checkArgumentCount(args, 2);
-        Object source = args[0];
+        WasmModule source = toModule(args);
         Object importObject = args[1];
-        if (!(source instanceof WasmModule)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm module");
-        }
-        return moduleInstantiate((WasmModule) source, importObject);
+        return moduleInstantiate(source, importObject);
     }
 
     public WasmInstance moduleInstantiate(WasmModule module, Object importObject) {
+        CompilerAsserts.neverPartOfCompilation();
         final TruffleContext innerTruffleContext = currentContext.environment().newInnerContextBuilder().initializeCreatorContext(true).build();
         final Object prev = innerTruffleContext.enter(null);
         try {
             final WasmContext instanceContext = WasmContext.get(null);
-            WasmInstance instance = instantiateModule(module, importObject, instanceContext, innerTruffleContext);
-            instanceContext.linker().tryLink(instance);
+            WasmInstance instance = instantiateModule(module, instanceContext);
+            List<Object> imports = resolveModuleImports(module, instanceContext, importObject);
+            instanceContext.linker().tryLink(instance, imports);
             return instance;
         } finally {
             innerTruffleContext.leave(null, prev);
         }
     }
 
-    private static WasmInstance instantiateModule(WasmModule module, Object importObject, WasmContext context, TruffleContext truffleContext) {
-        final HashMap<String, ImportModule> importModules;
-        // To read the content of the import object, we need to enter the parent context that this
-        // import object originates from.
-        Object prev = truffleContext.getParent().enter(null);
-        try {
-            importModules = readModuleImports(module, importObject);
-        } finally {
-            truffleContext.getParent().leave(null, prev);
-        }
-        for (Map.Entry<String, ImportModule> entry : importModules.entrySet()) {
-            final String name = entry.getKey();
-            final ImportModule importModule = entry.getValue();
-            final WasmInstance importedInstance = importModule.createInstance(context.language(), context, name);
-            context.register(importedInstance);
-        }
+    private static WasmInstance instantiateModule(WasmModule module, WasmContext context) {
         return context.readInstance(module);
     }
 
-    private static HashMap<String, ImportModule> readModuleImports(WasmModule module, Object importObject) {
+    private static List<Object> resolveModuleImports(WasmModule module, WasmContext context, Object importObject) {
         CompilerAsserts.neverPartOfCompilation();
-        final Sequence<ModuleImportDescriptor> imports = moduleImports(module);
-        if (imports.getArraySize() != 0 && importObject == null) {
+        List<Object> resolvedImports = new ArrayList<>(module.numImportedSymbols());
+
+        if (!module.importedSymbols().isEmpty()) {
+            requireImportObject(importObject);
+        }
+
+        for (ImportDescriptor descriptor : module.importedSymbols()) {
+            final int listIndex = resolvedImports.size();
+            final Object member = getImportObjectMemberInParentContext(importObject, descriptor, context);
+
+            assert listIndex == descriptor.importedSymbolIndex;
+            resolvedImports.add(switch (descriptor.identifier) {
+                case ImportIdentifier.FUNCTION -> requireCallableInParentContext(member, descriptor, context);
+                case ImportIdentifier.TABLE -> requireWasmTable(member, descriptor);
+                case ImportIdentifier.MEMORY -> requireWasmMemory(member, descriptor);
+                case ImportIdentifier.GLOBAL -> requireWasmGlobal(member, descriptor);
+                default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier);
+            });
+        }
+
+        assert resolvedImports.size() == module.numImportedSymbols();
+        return resolvedImports;
+    }
+
+    private static Object requireImportObject(Object importObject) {
+        if (importObject == null) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Module requires imports, but import object is undefined.");
         }
+        return importObject;
+    }
 
-        HashMap<String, ImportModule> importModules = new HashMap<>();
-        final InteropLibrary lib = InteropLibrary.getUncached();
+    private static Object getImportObjectMemberInParentContext(Object importObject, ImportDescriptor descriptor, WasmContext context) {
+        final Object member;
+        TruffleContext parentContext = context.environment().getContext().getParent();
+        Object prev = parentContext.enter(null);
         try {
-            int i = 0;
-            while (i < imports.getArraySize()) {
-                final ModuleImportDescriptor d = (ModuleImportDescriptor) imports.readArrayElement(i);
-                final Object importedModule = getMember(importObject, d.module());
-                final Object member = getMember(importedModule, d.name());
-                switch (d.kind()) {
-                    case function:
-                        if (!lib.isExecutable(member)) {
-                            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " is not callable.");
-                        }
-                        WasmFunction f = module.importedFunction(d.name());
-                        ensureImportModule(importModules, d.module()).addFunction(d.name(), Pair.create(f, member));
-                        break;
-                    case memory:
-                        if (!(member instanceof WasmMemory)) {
-                            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " is not a valid memory.");
-                        }
-                        ensureImportModule(importModules, d.module()).addMemory(d.name(), (WasmMemory) member);
-                        break;
-                    case table:
-                        if (!(member instanceof WasmTable)) {
-                            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " is not a valid table.");
-                        }
-                        ensureImportModule(importModules, d.module()).addTable(d.name(), (WasmTable) member);
-                        break;
-                    case global:
-                        if (!(member instanceof WasmGlobal)) {
-                            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " is not a valid global.");
-                        }
-                        ensureImportModule(importModules, d.module()).addGlobal(d.name(), (WasmGlobal) member);
-                        break;
-                    default:
-                        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unimplemented case: " + d.kind());
-                }
+            final Object importedModuleObject = getMember(importObject, descriptor.moduleName);
+            member = getMember(importedModuleObject, descriptor.memberName);
+        } finally {
+            parentContext.leave(null, prev);
+        }
+        return member;
+    }
 
-                i += 1;
+    private static Object getMember(Object object, String name) {
+        try {
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            if (!lib.isMemberReadable(object, name)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Object does not contain member " + name + ".");
             }
-        } catch (InvalidArrayIndexException | UnknownIdentifierException | ClassCastException | UnsupportedMessageException e) {
+            return lib.readMember(object, name);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unexpected state.");
         }
-
-        return importModules;
     }
 
-    private static ImportModule ensureImportModule(HashMap<String, ImportModule> importModules, String name) {
-        ImportModule importModule = importModules.get(name);
-        if (importModule == null) {
-            importModule = new ImportModule();
-            importModules.put(name, importModule);
+    private static Object requireCallableInParentContext(Object member, ImportDescriptor importDescriptor, WasmContext context) {
+        TruffleContext parentContext = context.environment().getContext().getParent();
+        Object prev = parentContext.enter(null);
+        Object executable;
+        try {
+            executable = requireCallable(member, importDescriptor);
+        } finally {
+            parentContext.leave(null, prev);
         }
-        return importModule;
+        return executable;
     }
 
-    private static Object getMember(Object object, String name) throws UnknownIdentifierException, UnsupportedMessageException {
-        final InteropLibrary lib = InteropLibrary.getUncached();
-        if (!lib.isMemberReadable(object, name)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Object does not contain member " + name + ".");
+    private static Object requireCallable(Object member, ImportDescriptor importDescriptor) {
+        if (!(member instanceof WasmFunctionInstance || InteropLibrary.getUncached().isExecutable(member))) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " " + importDescriptor + " is not callable.");
         }
-        return lib.readMember(object, name);
+        return member;
+    }
+
+    private static WasmMemory requireWasmMemory(Object member, ImportDescriptor importDescriptor) {
+        if (!(member instanceof WasmMemory memory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " " + importDescriptor + " is not a valid memory.");
+        }
+        return memory;
+    }
+
+    private static WasmTable requireWasmTable(Object member, ImportDescriptor importDescriptor) {
+        if (!(member instanceof WasmTable table)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " " + importDescriptor + " is not a valid table.");
+        }
+        return table;
+    }
+
+    private static WasmGlobal requireWasmGlobal(Object member, ImportDescriptor importDescriptor) {
+        if (!(member instanceof WasmGlobal global)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Member " + member + " " + importDescriptor + " is not a valid global.");
+        }
+        return global;
     }
 
     private Object moduleDecode(Object[] args) {
@@ -347,6 +354,10 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Sequence<ModuleImportDescriptor> moduleImports(WasmModule module) {
+        return new Sequence<>(moduleImportsAsList(module));
+    }
+
+    public static List<ModuleImportDescriptor> moduleImportsAsList(WasmModule module) {
         CompilerAsserts.neverPartOfCompilation();
         final EconomicMap<ImportDescriptor, Integer> importedGlobalDescriptors = module.importedGlobalDescriptors();
         final EconomicMap<ImportDescriptor, Integer> importedTableDescriptors = module.importedTableDescriptors();
@@ -383,7 +394,7 @@ public class WebAssembly extends Dictionary {
                     throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier);
             }
         }
-        return new Sequence<>(list);
+        return List.copyOf(list);
     }
 
     private static Object customSections(Object[] args) {

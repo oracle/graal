@@ -44,7 +44,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.debugging.data.DebugFunction;
@@ -63,7 +62,7 @@ import com.oracle.truffle.api.source.Source;
 @SuppressWarnings("static-method")
 public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
-    private volatile List<BiConsumer<WasmContext, WasmInstance>> linkActions;
+    private volatile List<LinkAction> linkActions;
     private final ModuleLimits limits;
 
     private Source source;
@@ -115,8 +114,8 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return name;
     }
 
-    public List<BiConsumer<WasmContext, WasmInstance>> getOrRecreateLinkActions() {
-        var result = (List<BiConsumer<WasmContext, WasmInstance>>) LINK_ACTIONS.getAndSet(this, (List<BiConsumer<WasmContext, WasmInstance>>) null);
+    public List<LinkAction> getOrRecreateLinkActions() {
+        var result = (List<LinkAction>) LINK_ACTIONS.getAndSet(this, (List<LinkAction>) null);
         if (result != null) {
             return result;
         } else {
@@ -124,7 +123,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         }
     }
 
-    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
+    public void addLinkAction(LinkAction action) {
         assert !isParsed();
         linkActions.add(action);
     }
