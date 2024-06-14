@@ -45,7 +45,6 @@ import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -275,27 +274,32 @@ final class PolyglotThreadLocalActions {
                 return COMPLETED_FUTURE;
             }
 
-            Set<Thread> filterThreads = null;
-            if (threads != null) {
-                filterThreads = new HashSet<>(Arrays.asList(threads));
-            }
-
             boolean recurring = EngineAccessor.LANGUAGE.isRecurringTLAction(action);
             assert existingFuture == null || recurring : "recurring invariant";
 
             boolean sync = EngineAccessor.LANGUAGE.isSynchronousTLAction(action);
             boolean sideEffect = EngineAccessor.LANGUAGE.isSideEffectingTLAction(action);
             List<Thread> activePolyglotThreads = new ArrayList<>();
-            for (PolyglotThreadInfo info : context.getSeenThreads().values()) {
-                Thread t = info.getThread();
-                if (info.isActive() && (filterThreads == null || filterThreads.contains(t))) {
-                    if (info.isCurrent() && sync && info.isSafepointActive()) {
-                        throw new IllegalStateException(
-                                        "Recursive synchronous thread local action detected. " +
-                                                        "They are disallowed as they may cause deadlocks. " +
-                                                        "Schedule an asynchronous thread local action instead.");
+
+            if (threads == null) {
+                for (PolyglotThreadInfo info : context.getSeenThreads().values()) {
+                    Thread t = info.getThread();
+                    if (info.isActive()) {
+                        checkRecursiveSynchronousAction(info, sync);
+                        activePolyglotThreads.add(t);
                     }
-                    activePolyglotThreads.add(t);
+                }
+            } else {
+                for (Thread t : threads) {
+                    PolyglotThreadInfo info = context.getThreadInfo(t);
+                    /*
+                     * We need to ignore unknown threads (info is null) because the language might
+                     * pass a thread which was disposed concurrently.
+                     */
+                    if (info != null && info.isActive()) {
+                        checkRecursiveSynchronousAction(info, sync);
+                        activePolyglotThreads.add(t);
+                    }
                 }
             }
 
@@ -349,6 +353,14 @@ final class PolyglotThreadLocalActions {
             }
             handshake.future = future;
             return future;
+        }
+    }
+
+    private static void checkRecursiveSynchronousAction(PolyglotThreadInfo info, boolean sync) {
+        if (info.isCurrent() && sync && info.isSafepointActive()) {
+            throw new IllegalStateException("Recursive synchronous thread local action detected. " +
+                            "They are disallowed as they may cause deadlocks. " +
+                            "Schedule an asynchronous thread local action instead.");
         }
     }
 

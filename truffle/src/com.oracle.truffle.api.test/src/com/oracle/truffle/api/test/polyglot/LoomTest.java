@@ -82,7 +82,6 @@ public class LoomTest extends AbstractPolyglotTest {
     @Test
     public void testManyVirtualThreads() throws Throwable {
         Assume.assumeTrue(canCreateVirtualThreads() && !TruffleOptions.AOT);
-        Assume.assumeTrue("This test is too slow on non-Linux in CI. On Linux it takes about 7s locally.", System.getProperty("os.name").contains("Linux"));
 
         // Above 65535, which is the documented limit for Phaser, used by
         // ThreadLocalHandshake.Handshake
