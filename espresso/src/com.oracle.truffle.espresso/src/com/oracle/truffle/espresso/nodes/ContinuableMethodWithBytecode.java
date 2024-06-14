@@ -116,4 +116,9 @@ public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNod
             return records == null;
         }
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + "-Cont@" + bci;
+    }
 }
