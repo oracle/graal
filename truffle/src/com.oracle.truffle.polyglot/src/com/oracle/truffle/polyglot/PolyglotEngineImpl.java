@@ -2375,7 +2375,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     @SuppressWarnings("try")
     void validateVirtualThreadCreation() {
-        if (!warnedVirtualThreadSupport.compareAndExchange(false, true)) {
+        if (!warnedVirtualThreadSupport.get() && warnedVirtualThreadSupport.compareAndSet(false, true)) {
             try (AbstractPolyglotImpl.ThreadScope scope = impl.getRootImpl().createThreadScope()) {
                 var options = getEngineOptionValues();
                 boolean warnVirtualThreadSupport = options.get(PolyglotEngineOptions.WarnVirtualThreadSupport);
