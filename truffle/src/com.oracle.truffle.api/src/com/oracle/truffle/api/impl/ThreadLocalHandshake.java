@@ -49,9 +49,9 @@ import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
-import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -180,14 +180,84 @@ public abstract class ThreadLocalHandshake {
         throw (T) ex;
     }
 
+    /**
+     * This class is based on {@link java.util.concurrent.CountDownLatch} but also supports dynamic
+     * registration. A CountDownLatch already works like a (single-usage) barrier, so the only
+     * addition is that dynamic registration. CountDownLatch works fine as a barrier, because all
+     * countDown() calls happen-before await() calls and so all actions in all the threads involved
+     * happen-before the actions after the await(). It is similar to {@code
+     * Phaser#arriveAndAwaitAdvance()} which is equivalent to {@code awaitAdvance(arrive())}. The
+     * way this works is the count in the latch is the volatile variable, every countDown() is a
+     * compare-and-set, when the count reaches 0, all await() are released but only after reading
+     * the count (in tryAcquireShared()), and hence observing the effects of all countDown() calls.
+     */
+    @SuppressWarnings("serial")
+    private static final class Barrier extends AbstractQueuedSynchronizer {
+        Barrier(int initialParties) {
+            setState(initialParties);
+        }
+
+        @Override
+        protected int tryAcquireShared(int acquires) {
+            assert acquires == 1;
+            return getState() == 0 ? 1 : -1;
+        }
+
+        @Override
+        protected boolean tryReleaseShared(int releases) {
+            assert releases == 1;
+            while (true) {
+                int count = getState();
+                if (count == 0) {
+                    return false; // no waiters when already 0
+                }
+                int nextCount = count - 1;
+                if (compareAndSetState(count, nextCount)) {
+                    return nextCount == 0; // release waiters
+                }
+            }
+        }
+
+        public boolean register() {
+            while (true) {
+                int count = getState();
+                if (count == 0) {
+                    return false; // too late to register
+                } else {
+                    int nextCount = count + 1;
+                    if (compareAndSetState(count, nextCount)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        public void arrive() {
+            releaseShared(1);
+        }
+
+        public void await() throws InterruptedException {
+            acquireSharedInterruptibly(1);
+        }
+
+        public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
+            return tryAcquireSharedNanos(1, unit.toNanos(timeout));
+        }
+
+        public boolean isTerminated() {
+            return getState() == 0;
+        }
+    }
+
     public static final class Handshake<T extends Consumer<Node>> implements Future<Void> {
 
         private final boolean sideEffecting;
-        private final Phaser phaser;
         private volatile boolean cancelled;
         private final T action;
         private final boolean syncStartOfEvent;
+        private final Barrier startBarrier;
         private final boolean syncEndOfEvent;
+        private final Barrier endBarrier;
         // avoid rescheduling processed events on the same thread
         private final Map<Thread, Boolean> threads;
         private final Consumer<T> onDone;
@@ -197,12 +267,9 @@ public abstract class ThreadLocalHandshake {
             this.onDone = onDone;
             this.sideEffecting = sideEffecting;
             this.syncStartOfEvent = syncStartOfEvent;
+            this.startBarrier = syncStartOfEvent ? new Barrier(numberOfThreads) : null;
             this.syncEndOfEvent = syncEndOfEvent;
-            try {
-                this.phaser = new Phaser(numberOfThreads);
-            } catch (IllegalArgumentException e) {
-                throw new UnsupportedOperationException("Truffle does not currently support more than 65535 threads concurrently entered in the same context due to Phaser limitations");
-            }
+            this.endBarrier = new Barrier(numberOfThreads);
             /*
              * Mark the handshake for all initial threads as active (not deactivated).
              */
@@ -214,72 +281,99 @@ public abstract class ThreadLocalHandshake {
             return cancelled;
         }
 
+        private boolean isTerminated() {
+            return endBarrier.isTerminated();
+        }
+
         void perform(Node node) {
             try {
                 if (syncStartOfEvent) {
-                    phaser.arriveAndAwaitAdvance();
+                    startBarrier.arrive();
+                    await(startBarrier);
                 }
                 if (!cancelled) {
                     action.accept(node);
                 }
             } finally {
-                phaser.arriveAndDeregister();
+                endBarrier.arrive();
 
                 if (syncEndOfEvent) {
-                    phaser.awaitAdvance(syncStartOfEvent ? 1 : 0);
-                    assert phaser.isTerminated();
+                    await(endBarrier);
+                    assert isTerminated();
                 }
 
-                if (phaser.isTerminated()) {
+                if (isTerminated()) {
                     onDone.accept(action);
                 }
             }
         }
 
-        boolean activateThread() {
-            int result = phaser.register();
-            if (result != 0) {
-                // did not activate on time.
-                phaser.arriveAndDeregister();
-                return false;
+        private static void await(Barrier latch) {
+            boolean interrupted = false;
+            while (true) {
+                try {
+                    latch.await();
+                    break;
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
             }
-            return true;
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        boolean activateThread() {
+            if (syncStartOfEvent) {
+                if (!startBarrier.register()) {
+                    return false;
+                }
+
+                if (!endBarrier.register()) {
+                    /*
+                     * endBarrier.register() -> false with startBarrier.register() -> true before is
+                     * impossible, because the other threads must wait this thread in
+                     * `await(startBarrier)` before continuing.
+                     */
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
+
+                return true;
+            } else {
+                return endBarrier.register();
+            }
         }
 
         void deactivateThread() {
-            phaser.arriveAndDeregister();
-            if (phaser.isTerminated()) {
+            if (syncStartOfEvent) {
+                startBarrier.arrive();
+            }
+            endBarrier.arrive();
+
+            if (isTerminated()) {
                 onDone.accept(action);
             }
         }
 
         @Override
         public Void get() throws InterruptedException {
-            if (syncStartOfEvent) {
-                phaser.awaitAdvanceInterruptibly(0);
-                phaser.awaitAdvanceInterruptibly(1);
-            } else {
-                phaser.awaitAdvanceInterruptibly(0);
-            }
+            endBarrier.await();
             return null;
         }
 
         public Void get(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException {
-            if (syncStartOfEvent) {
-                phaser.awaitAdvanceInterruptibly(0, timeout, unit);
-                phaser.awaitAdvanceInterruptibly(1, timeout, unit);
-            } else {
-                phaser.awaitAdvanceInterruptibly(0, timeout, unit);
+            if (!endBarrier.await(timeout, unit)) {
+                throw new TimeoutException();
             }
             return null;
         }
 
         public boolean isDone() {
-            return cancelled || phaser.isTerminated();
+            return cancelled || isTerminated();
         }
 
         public boolean cancel(boolean mayInterruptIfRunning) {
-            if (!phaser.isTerminated()) {
+            if (!isTerminated()) {
                 cancelled = true;
                 return true;
             } else {
@@ -289,8 +383,8 @@ public abstract class ThreadLocalHandshake {
 
         @Override
         public String toString() {
-            return "Handshake[action=" + action + ", phaser=" + phaser + ", cancelled=" + cancelled + ", sideEffecting=" + sideEffecting + ", syncStartOfEvent=" + syncStartOfEvent +
-                            ", syncEndOfEvent=" + syncEndOfEvent + "]";
+            return "Handshake[action=" + action + ", startBarrier=" + startBarrier + ", endBarrier=" + endBarrier + ", cancelled=" + cancelled + ", sideEffecting=" +
+                            sideEffecting + ", syncStartOfEvent=" + syncStartOfEvent + ", syncEndOfEvent=" + syncEndOfEvent + "]";
         }
 
     }
