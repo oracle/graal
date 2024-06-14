@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,13 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * Represents the state of a WebAssembly module.
@@ -224,7 +225,7 @@ public abstract class RuntimeState {
         return result;
     }
 
-    void setGlobalAddress(int globalIndex, int address) {
+    public void setGlobalAddress(int globalIndex, int address) {
         ensureGlobalsCapacity(globalIndex);
         checkNotLinked();
         globalAddresses[globalIndex] = address;
@@ -236,7 +237,7 @@ public abstract class RuntimeState {
         return result;
     }
 
-    void setTableAddress(int tableIndex, int address) {
+    public void setTableAddress(int tableIndex, int address) {
         ensureTablesCapacity(tableIndex);
         checkNotLinked();
         tableAddresses[tableIndex] = address;

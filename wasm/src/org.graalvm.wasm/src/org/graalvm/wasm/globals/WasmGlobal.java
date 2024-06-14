@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ package org.graalvm.wasm.globals;
 import com.oracle.truffle.api.interop.TruffleObject;
 import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.api.ValueType;
+import org.graalvm.wasm.constants.GlobalModifier;
 
 public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleObject {
 
@@ -61,6 +62,10 @@ public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleOb
 
     public boolean isMutable() {
         return mutable;
+    }
+
+    public byte getMutability() {
+        return mutable ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT;
     }
 
     public abstract int loadAsInt();
