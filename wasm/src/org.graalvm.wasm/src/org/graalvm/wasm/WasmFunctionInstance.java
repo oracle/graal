@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     private final WasmFunction function;
     private final CallTarget target;
     private final TruffleContext truffleContext;
+    private Object importedFunction;
 
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
@@ -83,7 +84,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         this(context, null, null, target);
     }
 
-    private WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
+    public WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
         Assert.assertNotNull(target, "Call target must be non-null", Failure.UNSPECIFIED_INTERNAL);
         this.context = context;
         this.moduleInstance = moduleInstance;
@@ -124,6 +125,14 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
 
     public TruffleContext getTruffleContext() {
         return truffleContext;
+    }
+
+    public void setImportedFunction(Object importedFunction) {
+        this.importedFunction = importedFunction;
+    }
+
+    public Object getImportedFunction() {
+        return importedFunction;
     }
 
     @SuppressWarnings("static-method")

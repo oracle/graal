@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package org.graalvm.wasm;
 
-import java.util.Objects;
+import java.util.List;
 
-public final class ImportDescriptor {
-    public final String moduleName;
-    public final String memberName;
-    public final int identifier;
-    public final int index;
-    public final int importedSymbolIndex;
+@FunctionalInterface
+public interface LinkAction {
 
-    public ImportDescriptor(String moduleName, String memberName, int identifier, int index, int importedSymbolIndex) {
-        this.moduleName = moduleName;
-        this.memberName = memberName;
-        this.identifier = identifier;
-        this.index = index;
-        this.importedSymbolIndex = importedSymbolIndex;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(identifier, index, importedSymbolIndex, moduleName, memberName);
-    }
-
-    @Override
-    public boolean equals(Object object) {
-        return object instanceof ImportDescriptor that &&
-                        this.identifier == that.identifier &&
-                        this.index == that.index &&
-                        this.importedSymbolIndex == that.importedSymbolIndex &&
-                        this.moduleName.equals(that.moduleName) &&
-                        this.memberName.equals(that.memberName);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("(import %s from %s)", memberName, moduleName);
-    }
+    void accept(WasmContext context, WasmInstance instance, List<Object> imports);
 }
