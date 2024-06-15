@@ -975,7 +975,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              * Exception proxies are stored as-is in the image heap
              */
             if (ExceptionProxy.class.isAssignableFrom(type)) {
+                /*
+                 * The image heap scanning does not see the actual instances, so we need to be
+                 * conservative and assume fields can have any value.
+                 */
                 analysisType.registerAsInstantiated("Is used by annotation of element registered for reflection.");
+                for (var f : analysisType.getInstanceFields(true)) {
+                    var aField = (AnalysisField) f;
+                    universe.getBigbang().injectFieldTypes(aField, List.of(aField.getType()), true);
+                }
             }
         }
     }

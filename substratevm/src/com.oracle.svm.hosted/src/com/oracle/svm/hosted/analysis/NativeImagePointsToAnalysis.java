@@ -28,6 +28,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
@@ -119,8 +120,8 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
-    public void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes) {
-        customTypeFieldHandler.injectFieldTypes(aField, customTypes);
+    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
+        customTypeFieldHandler.injectFieldTypes(aField, customTypes, canBeNull);
     }
 
     @Override
