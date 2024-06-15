@@ -101,6 +101,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     private static final int FLAG_USE_MERGE_EXPLODE = 1 << 11;
     private static final int FLAG_RECURSIVE_BACK_REFERENCES = 1 << 12;
     private static final int FLAG_BACKREF_IGNORE_CASE_MULTI_CHARACTER_EXPANSION = 1 << 13;
+    private static final int FLAG_MATCH_BOUNDARY_ASSERTIONS = 1 << 14;
 
     private final PureNFA nfa;
     private final int numberOfStates;
@@ -227,6 +228,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         flags = setFlag(flags, FLAG_USE_MERGE_EXPLODE, nStates <= ast.getOptions().getMaxBackTrackerCompileSize() && nTransitions <= ast.getOptions().getMaxBackTrackerCompileSize());
         flags = setFlag(flags, FLAG_RECURSIVE_BACK_REFERENCES, ast.getProperties().hasRecursiveBackReferences());
         flags = setFlag(flags, FLAG_BACKREF_IGNORE_CASE_MULTI_CHARACTER_EXPANSION, ast.getOptions().getFlavor().backreferenceIgnoreCaseMultiCharExpansion() && ast.getProperties().hasBackReferences());
+        flags = setFlag(flags, FLAG_MATCH_BOUNDARY_ASSERTIONS, ast.getProperties().hasMatchBoundaryAssertions());
         return flags;
     }
 
@@ -303,6 +305,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         return isFlagSet(FLAG_BACKREF_IGNORE_CASE_MULTI_CHARACTER_EXPANSION);
     }
 
+    public boolean isMatchBoundaryAssertions() {
+        return isFlagSet(FLAG_MATCH_BOUNDARY_ASSERTIONS);
+    }
+
     private boolean isFlagSet(int flag) {
         return isFlagSet(flags, flag);
     }
@@ -329,7 +335,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index) {
         return TRegexBacktrackingNFAExecutorLocals.create(input, fromIndex, maxIndex, regionFrom, regionTo, index, getNumberOfCaptureGroups(),
                         nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow, zeroWidthQuantifierCGOffsets,
-                        isTransitionMatchesStepByStep(), maxNTransitions, isTrackLastGroup(), returnsFirstGroup(), isRecursiveBackreferences(), isBackreferenceIgnoreCaseMultiCharExpansion());
+                        isTransitionMatchesStepByStep(), maxNTransitions, isTrackLastGroup(), returnsFirstGroup(), isRecursiveBackreferences(), isBackreferenceIgnoreCaseMultiCharExpansion(),
+                        isMatchBoundaryAssertions());
     }
 
     private static final int IP_BEGIN = -1;
@@ -777,6 +784,16 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         if (transition.hasDollarGuard() && index < locals.getRegionTo()) {
             return false;
         }
+        if (isMatchBoundaryAssertions()) {
+            if (locals.isMatchEndAssertionTraversed() && (target.isCharacterClass() || target.isBackReference())) {
+                return false;
+            }
+            if (transition.hasMatchBeginGuard() && index != locals.getCaptureGroupStart(0)) {
+                // we omit this guard on transitions containing a capture group update of the
+                // beginning of group 0, so doing this check before capture group updates is fine
+                return false;
+            }
+        }
         long[] guards = transition.getGuards();
         CompilerAsserts.partialEvaluationConstant(guards);
         for (int i = 0; i < guards.length; i++) {
@@ -866,6 +883,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     protected void updateState(TRegexBacktrackingNFAExecutorLocals locals, PureNFATransition transition, int index) {
         CompilerAsserts.partialEvaluationConstant(transition);
         assert !isRecursiveBackreferences();
+        if (transition.hasMatchEndGuard()) {
+            assert isMatchBoundaryAssertions();
+            locals.setMatchEndAssertionTraversed();
+        }
         locals.apply(transition, index);
         for (long guard : transition.getGuards()) {
             CompilerAsserts.partialEvaluationConstant(guard);
@@ -946,6 +967,16 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         if (transition.hasDollarGuard() && index < locals.getRegionTo()) {
             return false;
         }
+        if (isMatchBoundaryAssertions()) {
+            if (locals.isMatchEndAssertionTraversed() && (target.isCharacterClass() || target.isBackReference())) {
+                return false;
+            }
+            if (transition.hasMatchBeginGuard() && index != locals.getCaptureGroupStart(0)) {
+                // we omit this guard on transitions containing a capture group update of the
+                // beginning of group 0, so doing this check before capture group updates is fine
+                return false;
+            }
+        }
         switch (target.getKind()) {
             case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
                 assert !target.isInitialState();
@@ -974,6 +1005,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 break;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
+        }
+        if (transition.hasMatchEndGuard()) {
+            assert isMatchBoundaryAssertions();
+            locals.setMatchEndAssertionTraversed();
         }
         for (long guard : transition.getGuards()) {
             switch (TransitionGuard.getKind(guard)) {

@@ -709,6 +709,10 @@ public final class RegexASTBuilder {
         addPositionAssertion(Token.createDollar());
     }
 
+    public void addPositionAssertion(PositionAssertion.Type type) {
+        addTerm(ast.createPositionAssertion(type));
+    }
+
     /**
      * Adds a quantifier to the current {@link Term}.
      * 

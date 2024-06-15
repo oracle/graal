@@ -677,8 +677,10 @@ public final class DFAGenerator implements JsonConvertible {
                 bfsNext.clear();
             }
         }
-        assert literalFirstState != null;
-        assert literalLastState != null;
+        if (literalFirstState == null || literalLastState == null) {
+            // may happen when transitions to the literal have been pruned during NFA generation
+            return;
+        }
 
         // find the literal's beginning and end in the DFA
         DFAStateNodeBuilder literalFirstDFAState = null;
