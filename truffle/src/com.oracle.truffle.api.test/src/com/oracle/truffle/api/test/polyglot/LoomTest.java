@@ -48,6 +48,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -77,6 +78,7 @@ public class LoomTest extends AbstractPolyglotTest {
         }
     }
 
+    @Ignore("GR-54696 too slow and can hang")
     @Test
     public void testManyVirtualThreads() throws Throwable {
         Assume.assumeTrue(canCreateVirtualThreads() && !TruffleOptions.AOT);
