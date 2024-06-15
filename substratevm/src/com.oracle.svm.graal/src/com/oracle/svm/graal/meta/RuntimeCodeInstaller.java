@@ -287,12 +287,10 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
             boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
             VMError.guarantee(noPriorMatch, "Patching same offset twice.");
             patchesHandled++;
-            if (dataPatch.reference instanceof DataSectionReference) {
-                DataSectionReference ref = (DataSectionReference) dataPatch.reference;
+            if (dataPatch.reference instanceof DataSectionReference ref) {
                 int pcDisplacement = dataOffset + ref.getOffset() - dataPatch.pcOffset;
                 patch.patchCode(code.rawValue(), pcDisplacement, compiledBytes);
-            } else if (dataPatch.reference instanceof ConstantReference) {
-                ConstantReference ref = (ConstantReference) dataPatch.reference;
+            } else if (dataPatch.reference instanceof ConstantReference ref) {
                 SubstrateObjectConstant refConst = (SubstrateObjectConstant) ref.getConstant();
                 objectConstants.add(patch.getOffset(), patch.getLength(), refConst);
             } else {

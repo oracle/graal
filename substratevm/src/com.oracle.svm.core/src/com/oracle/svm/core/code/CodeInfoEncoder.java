@@ -712,8 +712,7 @@ class CodeInfoVerifier {
     private void verifyValue(CompilationResult compilation, JavaValue e, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         JavaValue expectedValue = e;
 
-        if (expectedValue instanceof StackLockValue) {
-            StackLockValue lock = (StackLockValue) expectedValue;
+        if (expectedValue instanceof StackLockValue lock) {
             assert ValueUtil.isIllegal(lock.getSlot()) : actualValue;
             assert lock.isEliminated() == actualValue.isEliminatedMonitor() : actualValue;
             expectedValue = lock.getOwner();
