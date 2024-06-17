@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes;
 
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.Locale;
 import java.util.Objects;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -65,7 +66,8 @@ public final class GraphState {
     private static final EnumSet<StageFlag> LOW_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.LOW_TIER_LOWERING,
                     StageFlag.EXPAND_LOGIC,
-                    StageFlag.ADDRESS_LOWERING);
+                    StageFlag.ADDRESS_LOWERING,
+                    StageFlag.REMOVE_OPAQUE_VALUES);
     private static final EnumSet<StageFlag> ENTERPRISE_MID_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.OPTIMISTIC_ALIASING,
                     StageFlag.GUARD_LOWERING,
@@ -628,6 +630,7 @@ public final class GraphState {
         PARTIAL_REDUNDANCY_SCHEDULE,
         ADDRESS_LOWERING,
         FINAL_CANONICALIZATION,
+        REMOVE_OPAQUE_VALUES,
         TARGET_VECTOR_LOWERING,
     }
 
@@ -773,7 +776,7 @@ public final class GraphState {
          *         is found, returns {@link #COMMUNITY}.
          */
         public static MandatoryStages getFromName(String name) {
-            switch (name.toLowerCase()) {
+            switch (name.toLowerCase(Locale.ROOT)) {
                 case "economy":
                     return ECONOMY;
                 case "community":

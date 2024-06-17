@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,10 +87,12 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
     /**
      * In the case of an outgoing call with multiple returned values, or if the return is more than
      * one quadword long, there is no way to represent them in Java and the returns need special
-     * treatment. This is done using an extra prefix argument which is interpreted as a pointer to
+     * treatment. This is done using an extra prefix argument which is interpreted as a pointer to a
      * buffer where the values will be stored.
      *
-     * This is currently only allowed in custom conventions.
+     * This is currently only allowed in custom conventions. Some ABIs allow return values which
+     * span multiple registers. This value thus has to be moved to the heap before returning to
+     * Java.
      */
     public boolean usesReturnBuffer() {
         return outgoing && returnSaving != null && returnSaving.length >= 2;

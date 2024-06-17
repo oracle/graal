@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -334,7 +334,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
+    public Value emitZeroExtend(Value inputVal, int fromBits, int toBits, boolean requiresExplicitZeroExtend, boolean requiresLIRKindChange) {
         assert fromBits <= toBits && toBits <= 64 : fromBits + " " + toBits;
         if (fromBits == toBits) {
             return inputVal;
@@ -450,7 +450,8 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case Long:
                 return AArch64MacroAssembler.isAddSubtractImmediate(constValue.asLong(), true);
             case Object:
-                return constValue.isNull();
+                /* Object constants can't be encoded as immediates in add/subtract. */
+                return false;
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(constValue.getJavaKind().getStackKind()); // ExcludeFromJacocoGeneratedReport
         }
@@ -686,7 +687,8 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitNormalizedUnsignedCompare(Value x, Value y) {
+    public Variable emitNormalizedUnsignedCompare(LIRKind compareKind, Value x, Value y) {
+        GraalError.guarantee(compareKind.getPlatformKind() == AArch64Kind.DWORD || compareKind.getPlatformKind() == AArch64Kind.QWORD, "unsupported subword comparison: %s", compareKind);
         Variable result = getLIRGen().newVariable(LIRKind.value(AArch64Kind.DWORD));
         getLIRGen().append(new AArch64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
         return result;

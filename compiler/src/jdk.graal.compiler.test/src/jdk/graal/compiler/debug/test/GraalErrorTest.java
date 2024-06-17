@@ -24,9 +24,10 @@
  */
 package jdk.graal.compiler.debug.test;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.debug.GraalError;
 
 public class GraalErrorTest {
 
@@ -35,10 +36,10 @@ public class GraalErrorTest {
         void call();
     }
 
-    @Test
     /**
      * Test that the errors actually fail and provide the correct message.
      */
+    @Test
     public void testErrors() {
         error("unimplemented: test", () -> GraalError.unimplemented("test"));
         error("unimplemented override", () -> GraalError.unimplementedOverride());

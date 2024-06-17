@@ -52,10 +52,6 @@ public final class JNIAccessibleMethodDescriptor {
     }
 
     public static JNIAccessibleMethodDescriptor of(Executable method) {
-        StringBuilder sb = new StringBuilder("(");
-        for (Class<?> type : method.getParameterTypes()) {
-            sb.append(MetaUtil.toInternalName(type.getName()));
-        }
         String name = method.getName();
         Class<?> returnType;
         if (method instanceof Constructor) {
@@ -66,9 +62,24 @@ public final class JNIAccessibleMethodDescriptor {
         } else {
             throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
         }
-        sb.append(')').append(MetaUtil.toInternalName(returnType.getName()));
+        return of(name, method.getParameterTypes(), returnType);
+    }
+
+    public static JNIAccessibleMethodDescriptor of(String methodName, Class<?>[] parameterTypes) {
+        return of(methodName, parameterTypes, null);
+    }
+
+    private static JNIAccessibleMethodDescriptor of(String methodName, Class<?>[] parameterTypes, Class<?> returnType) {
+        StringBuilder sb = new StringBuilder("(");
+        for (Class<?> type : parameterTypes) {
+            sb.append(MetaUtil.toInternalName(type.getName()));
+        }
+        sb.append(')');
+        if (returnType != null) {
+            sb.append(MetaUtil.toInternalName(returnType.getName()));
+        }
         assert sb.indexOf(".") == -1 : "Malformed signature (needs to use '/' as package separator)";
-        return new JNIAccessibleMethodDescriptor(name, sb.toString());
+        return new JNIAccessibleMethodDescriptor(methodName, sb.toString());
     }
 
     private final CharSequence name;
@@ -93,6 +104,23 @@ public final class JNIAccessibleMethodDescriptor {
 
     public String getSignature() {
         return (String) signature;
+    }
+
+    /**
+     * Performs a potentially costly conversion to string, only for slow paths.
+     */
+    public String getNameConvertToString() {
+        return name.toString();
+    }
+
+    public String getSignatureWithoutReturnType() {
+        String signatureString = signature.toString();
+        int parametersEnd = signatureString.lastIndexOf(')');
+        if (!signatureString.isEmpty() && signatureString.charAt(0) == '(' && parametersEnd != -1) {
+            return signatureString.substring(0, parametersEnd + 1);
+        } else {
+            return null;
+        }
     }
 
     @Override

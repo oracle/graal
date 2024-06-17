@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
 import com.oracle.truffle.espresso.analysis.Util;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
@@ -60,7 +61,7 @@ public final class LivenessAnalysis {
     public static final DebugTimer PROPAGATE_TIMER = DebugTimer.create("propagation", LIVENESS_TIMER);
     public static final DebugTimer ACTION_TIMER = DebugTimer.create("action", LIVENESS_TIMER);
 
-    private static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis(null, null, null, null);
+    public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis(null, null, null, null);
 
     /*
      * <action> at index <i> means that once the bytecode at bci <i> executed, we need to perform
@@ -116,6 +117,24 @@ public final class LivenessAnalysis {
         }
     }
 
+    public void performOnEdge(EspressoFrameDescriptor.Builder frame, int bci, int nextBci) {
+        if (edge != null && edge[nextBci] != null) {
+            edge[nextBci].onEdge(frame, bci);
+        }
+    }
+
+    public void onStart(EspressoFrameDescriptor.Builder frame) {
+        if (onStart != null) {
+            onStart.execute(frame);
+        }
+    }
+
+    public void performPostBCI(EspressoFrameDescriptor.Builder frame, int bci) {
+        if (postBci != null && postBci[bci] != null) {
+            postBci[bci].execute(frame);
+        }
+    }
+
     public void catchUpOSR(VirtualFrame frame, int bci, boolean disable) {
         CompilerAsserts.neverPartOfCompilation();
         if (!disable) {
@@ -123,6 +142,10 @@ public final class LivenessAnalysis {
                 catchUpMap.catchUp(frame, bci);
             }
         }
+    }
+
+    public boolean isEmpty() {
+        return this == NO_ANALYSIS;
     }
 
     @SuppressWarnings("try")

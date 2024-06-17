@@ -116,6 +116,10 @@
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
   {
+    "name": "org.graalvm.polyglot.Engine$ImplHolder",
+    "allDeclaredFields": true
+  },
+  {
     "name": "org.graalvm.polyglot.Source",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
@@ -150,6 +154,12 @@
     "methods": [
       { "name": "log", "parameterTypes": ["java.lang.String", "java.lang.Throwable"] },
       { "name": "log", "parameterTypes": ["java.lang.Throwable", "java.lang.String"] }
+    ]
+  },
+  {
+    "name": "com.oracle.truffle.polyglot.InternalResourceRoots",
+    "methods": [
+      { "name": "getInstance", "parameterTypes": [] }
     ]
   },
   {
@@ -226,6 +236,26 @@
   },
   {
     "name": "com.oracle.truffle.api.test.polyglot.AutomaticLeaveTest$ContextCloser",
+    "allPublicMethods": true
+  },
+  {
+    "name": "java.util.function.BiFunction",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$BiFunctionLike",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$BiFunctionBase",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$BiFunctionReturningValue",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$HostCallee",
     "allPublicMethods": true
   }
 ]

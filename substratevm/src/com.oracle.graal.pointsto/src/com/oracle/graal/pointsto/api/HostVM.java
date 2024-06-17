@@ -82,6 +82,10 @@ public abstract class HostVM {
         this.classReachabilityListeners = new ArrayList<>();
     }
 
+    public ClassLoader getClassLoader() {
+        return classLoader;
+    }
+
     public OptionValues options() {
         return options;
     }
@@ -123,20 +127,20 @@ public abstract class HostVM {
     }
 
     /**
-     * Check if the type is allowed.
-     * 
-     * @param type the type to check
-     * @param kind usage kind
-     */
-    public void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind) {
-    }
-
-    /**
      * Register newly created type.
      * 
      * @param newValue the type to register
      */
     public void registerType(AnalysisType newValue) {
+    }
+
+    /**
+     * Register newly created type with a given identityHashCode.
+     *
+     * @param newValue the type to register
+     * @param identityHashCode the hash code of the hub
+     */
+    public void registerType(AnalysisType newValue, int identityHashCode) {
     }
 
     /**
@@ -154,6 +158,19 @@ public abstract class HostVM {
      * @param newValue the type to initialize
      */
     public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
+
+    /**
+     * Run initialization tasks for a type when it is marked as instantiated.
+     *
+     * @param bb the static analysis
+     * @param type the type that is marked as instantiated
+     */
+    public void onTypeInstantiated(BigBang bb, AnalysisType type) {
+    }
+
+    public boolean useBaseLayer() {
+        return false;
+    }
 
     /**
      * Check if an {@link AnalysisType} is initialized.
@@ -246,15 +263,7 @@ public abstract class HostVM {
         return true;
     }
 
-    public void installInThread(@SuppressWarnings("unused") Object vmConfig) {
-        Thread.currentThread().setContextClassLoader(classLoader);
-    }
-
     public void clearInThread() {
-    }
-
-    public Object getConfiguration() {
-        return null;
     }
 
     public abstract Comparator<? super ResolvedJavaType> getTypeComparator();

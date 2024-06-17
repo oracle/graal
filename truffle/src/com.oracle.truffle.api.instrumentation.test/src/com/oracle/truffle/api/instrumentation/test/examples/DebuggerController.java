@@ -40,8 +40,9 @@
  */
 package com.oracle.truffle.api.instrumentation.test.examples;
 
-import com.oracle.truffle.api.instrumentation.EventContext;
 import org.graalvm.polyglot.Instrument;
+
+import com.oracle.truffle.api.instrumentation.EventContext;
 
 /**
  * Publicly exposed API of a debugger. Provides operations that its clients can use to control the
@@ -49,7 +50,7 @@ import org.graalvm.polyglot.Instrument;
  * {@link Instrument#lookup(java.lang.Class)} with <code>DebuggerController.<b>class</b></code>
  * parameter to obtain the interface.
  */
-// BEGIN: DebuggerController
+// @start region = "DebuggerController"
 public abstract class DebuggerController {
     DebuggerController() {
     }
@@ -69,4 +70,4 @@ public abstract class DebuggerController {
     }
 
 }
-// END: DebuggerController
+// @end region = "DebuggerController"

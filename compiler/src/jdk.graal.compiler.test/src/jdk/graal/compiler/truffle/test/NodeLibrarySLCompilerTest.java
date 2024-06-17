@@ -26,6 +26,8 @@ package jdk.graal.compiler.truffle.test;
 
 import java.io.IOException;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -45,9 +47,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 
 /**
  * Test that scope variables are accessed as efficiently as language implemented variables.

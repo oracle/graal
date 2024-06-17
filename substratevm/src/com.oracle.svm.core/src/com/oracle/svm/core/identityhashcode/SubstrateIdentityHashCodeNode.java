@@ -29,14 +29,13 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.core.config.ConfigurationValues;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
-import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "Decided depending on identity hash code storage.", //
                 size = NodeSize.SIZE_UNKNOWN, sizeRationale = "Decided depending on identity hash code storage.")
@@ -44,12 +43,9 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     public static final NodeClass<SubstrateIdentityHashCodeNode> TYPE = NodeClass.create(SubstrateIdentityHashCodeNode.class);
 
-    public static ValueNode create(ValueNode object, int bci) {
-        /*
-         * Because the canonicalization logic is in the superclass, it is easier to always create a
-         * new node and then canonicalize it.
-         */
-        return (ValueNode) new SubstrateIdentityHashCodeNode(object, bci).canonical(null);
+    public static ValueNode create(ValueNode object, int bci, CoreProviders providers) {
+        ValueNode result = canonical(object, providers);
+        return result != null ? result : new SubstrateIdentityHashCodeNode(object, bci);
     }
 
     protected SubstrateIdentityHashCodeNode(ValueNode object, int bci) {
@@ -60,11 +56,6 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
     public LocationIdentity getKilledLocationIdentity() {
         // With optional identity hash codes, we must write bits in the object header.
         return isIdentityHashFieldOptional() ? LocationIdentity.any() : IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION;
-    }
-
-    @Override
-    protected int getIdentityHashCode(JavaConstant constant) {
-        return ((TypedConstant) constant).getIdentityHashCode();
     }
 
     @Override

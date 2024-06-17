@@ -98,7 +98,8 @@ public final class JSRegexParser implements RegexParser {
 
     @Override
     public AbstractRegexObject getNamedCaptureGroups() {
-        return AbstractRegexObject.createNamedCaptureGroupMapListInt(lexer.getNamedCaptureGroups());
+        Map<String, List<Integer>> namedCaptureGroups = lexer.getNamedCaptureGroups();
+        return AbstractRegexObject.createNamedCaptureGroupMapListInt(namedCaptureGroups.isEmpty() ? null : namedCaptureGroups);
     }
 
     @Override
@@ -218,7 +219,7 @@ public final class JSRegexParser implements RegexParser {
                     curCharClass.clear();
                     break;
                 case charClassAtom:
-                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents());
+                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents().getCodePointSet());
                     break;
                 case charClassEnd:
                     boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar();

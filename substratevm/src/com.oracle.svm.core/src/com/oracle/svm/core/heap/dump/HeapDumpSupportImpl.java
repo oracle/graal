@@ -28,8 +28,6 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.io.IOException;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -37,7 +35,6 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -46,7 +43,9 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
@@ -55,11 +54,15 @@ import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.TimeUtils;
 
+import jdk.graal.compiler.api.replacements.Fold;
+
 public class HeapDumpSupportImpl extends HeapDumping {
     private final HeapDumpWriter writer;
     private final HeapDumpOperation heapDumpOperation;
+    private final VMMutex outOfMemoryHeapDumpMutex = new VMMutex("outOfMemoryHeapDump");
 
     private CCharPointer outOfMemoryHeapDumpPath;
+    private boolean outOfMemoryHeapDumpAttempted;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapDumpSupportImpl(HeapDumpMetadata metadata) {
@@ -77,13 +80,30 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
     @Override
     public void teardownDumpHeapOnOutOfMemoryError() {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(outOfMemoryHeapDumpPath);
+        UntrackedNullableNativeMemory.free(outOfMemoryHeapDumpPath);
         outOfMemoryHeapDumpPath = WordFactory.nullPointer();
     }
 
     @Override
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "OutOfMemoryError heap dumping must not allocate.")
     public void dumpHeapOnOutOfMemoryError() {
+        /*
+         * Try exactly once to create an out-of-memory heap dump. If another thread triggers an
+         * OutOfMemoryError while heap dumping is in progress, it needs to wait until heap dumping
+         * finishes.
+         */
+        outOfMemoryHeapDumpMutex.lock();
+        try {
+            if (!outOfMemoryHeapDumpAttempted) {
+                dumpHeapOnOutOfMemoryError0();
+                outOfMemoryHeapDumpAttempted = true;
+            }
+        } finally {
+            outOfMemoryHeapDumpMutex.unlock();
+        }
+    }
+
+    private void dumpHeapOnOutOfMemoryError0() {
         CCharPointer path = outOfMemoryHeapDumpPath;
         if (path.isNull()) {
             Log.log().string("OutOfMemoryError heap dumping failed because the heap dump file path could not be allocated.").newline();

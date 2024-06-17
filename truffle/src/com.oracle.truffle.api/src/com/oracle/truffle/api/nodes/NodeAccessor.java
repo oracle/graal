@@ -197,6 +197,16 @@ final class NodeAccessor extends Accessor {
         public boolean isSameFrame(RootNode root, Frame frame1, Frame frame2) {
             return root.isSameFrame(frame1, frame2);
         }
+
+        @Override
+        public int findBytecodeIndex(RootNode rootNode, Node callNode, Frame frame) {
+            return rootNode.findBytecodeIndex(callNode, frame);
+        }
+
+        @Override
+        public boolean isCaptureFramesForTrace(RootNode rootNode, Node callNode) {
+            return rootNode.isCaptureFramesForTrace(callNode);
+        }
     }
 
 }

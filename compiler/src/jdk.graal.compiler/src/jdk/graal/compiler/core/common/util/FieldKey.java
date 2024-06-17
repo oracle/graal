@@ -33,8 +33,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * example, a JVMCI implementation can scope the validity of a {@link ResolvedJavaField} to a single
  * compilation such that VM resources held by the {@link ResolvedJavaField} object can be released
  * once compilation ends.
- *
- * @see MethodKey for keys created with {@link ResolvedJavaMethod}
+ * <p>
+ * See {@link MethodKey} for keys created with {@link ResolvedJavaMethod}
  */
 public final class FieldKey {
 

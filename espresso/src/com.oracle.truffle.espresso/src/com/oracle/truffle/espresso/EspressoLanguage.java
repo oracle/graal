@@ -27,9 +27,11 @@ import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
@@ -44,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -77,16 +80,22 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
+import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.CompactGuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.GraalGuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.GuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.SafetyGuestFieldOffsetStrategy;
 
 // TODO: Update website once Espresso has one
 @Registration(id = EspressoLanguage.ID, //
                 name = EspressoLanguage.NAME, //
                 implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
-                dependentLanguages = "nfi", //
+                dependentLanguages = {"nfi"}, //
                 website = "https://www.graalvm.org/dev/reference-manual/java-on-truffle/")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
@@ -146,6 +155,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     // endregion Preinit and sharing
 
     @CompilationFinal private volatile boolean fullyInitialized;
+
+    @CompilationFinal private JImageExtensions jImageExtensions;
+
+    @CompilationFinal private GuestFieldOffsetStrategy guestFieldOffsetStrategy;
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = locals.createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -221,6 +234,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
         previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
         whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
+
+        EspressoOptions.GuestFieldOffsetStrategyEnum strategy = env.getOptions().get(EspressoOptions.GuestFieldOffsetStrategy);
+        guestFieldOffsetStrategy = switch (strategy) {
+            case safety -> new SafetyGuestFieldOffsetStrategy();
+            case compact -> new CompactGuestFieldOffsetStrategy();
+            case graal -> new GraalGuestFieldOffsetStrategy();
+        };
+        assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
     @Override
@@ -306,7 +327,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysis) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview) &&
-                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI);
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy);
     }
 
     private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
@@ -532,12 +554,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
                     justification = "non-volatile for performance reasons, javaVersion is initialized very early during context creation with an enum value, only benign races expected.")
     public void tryInitializeJavaVersion(JavaVersion version) {
+        Objects.requireNonNull(version);
         JavaVersion ref = this.javaVersion;
         if (ref == null) {
             synchronized (this) {
                 ref = this.javaVersion;
                 if (ref == null) {
-                    this.javaVersion = ref = Objects.requireNonNull(version);
+                    if (!getGuestFieldOffsetStrategy().isAllowed(version)) {
+                        throw EspressoError.fatal("This guest field offset strategy (" + getGuestFieldOffsetStrategy().name() + ") is not allowed with this Java version (" + version + ")");
+                    }
+                    this.javaVersion = ref = version;
                 }
             }
         }
@@ -570,6 +596,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
     }
 
+    private static final String[] KNOWN_ESPRESSO_RUNTIMES = {"jdk21", "openjdk21"};
+    private static final Pattern VALID_RESOURCE_ID = Pattern.compile("[0-9a-z\\-]+");
+
     public static Path getEspressoRuntime(TruffleLanguage.Env env) {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
         // libraries bundled with GraalVM.
@@ -590,11 +619,72 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             }
         }
         try {
-            Path resources = Path.of(env.getInternalResource("espresso-runtime").getAbsoluteFile().toString());
-            assert Files.isDirectory(resources);
-            return resources;
+            if (env.getOptions().hasBeenSet(EspressoOptions.JavaHome)) {
+                // This option's value will be used, no need to guess
+                if (env.getOptions().hasBeenSet(EspressoOptions.RuntimeResourceId)) {
+                    env.getLogger(EspressoContext.class).warning("Both java.JavaHome and java.RuntimeResourceId are set. RuntimeResourceId will be ignored.");
+                }
+                return null;
+            }
+            if (env.getOptions().hasBeenSet(EspressoOptions.RuntimeResourceId)) {
+                String runtimeName = env.getOptions().get(EspressoOptions.RuntimeResourceId);
+                if (!VALID_RESOURCE_ID.matcher(runtimeName).matches()) {
+                    throw EspressoError.fatal("Invalid RuntimeResourceId: " + runtimeName);
+                }
+                TruffleFile resource = env.getInternalResource("espresso-runtime-" + runtimeName);
+                if (resource == null) {
+                    throw EspressoError.fatal("Couldn't find: espresso-runtime-" + runtimeName + " internal resource.\n" +
+                                    "Did you add the corresponding jar to the class or module path?");
+                }
+                Path resources = Path.of(resource.getAbsoluteFile().toString());
+                assert Files.isDirectory(resources);
+                return resources;
+            }
+            for (String runtimeName : KNOWN_ESPRESSO_RUNTIMES) {
+                TruffleFile resource = env.getInternalResource("espresso-runtime-" + runtimeName);
+                if (resource != null) {
+                    Path resources = Path.of(resource.getAbsoluteFile().toString());
+                    assert Files.isDirectory(resources);
+                    env.getLogger(EspressoContext.class).info(() -> "Selected " + runtimeName + " runtime");
+                    return resources;
+                }
+            }
+            if (OS.getCurrent() == OS.Linux && JavaVersion.HOST_VERSION.compareTo(JavaVersion.latestSupported()) <= 0) {
+                if (!EspressoOptions.RUNNING_ON_SVM || (boolean) env.getConfig().getOrDefault("preinit", false)) {
+                    // we might be able to use the host runtime libraries
+                    env.getLogger(EspressoContext.class).info("Trying to use the host's runtime libraries");
+                    return Paths.get(System.getProperty("java.home"));
+                }
+            }
+            throw EspressoError.fatal("Couldn't find suitable runtime libraries for espresso. You can try to\n" +
+                            "add a jar with the necessary resources such as org.graalvm.espresso:espresso-runtime-resources-*,\n" +
+                            "or set java.JavaHome explicitly.");
         } catch (IOException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+    }
+
+    public DisableSingleStepping disableStepping() {
+        return new DisableSingleStepping();
+    }
+
+    public final class DisableSingleStepping implements AutoCloseable {
+
+        private DisableSingleStepping() {
+            getThreadLocalState().disableSingleStepping();
+        }
+
+        @Override
+        public void close() {
+            getThreadLocalState().enableSingleStepping();
+        }
+    }
+
+    public JImageExtensions getJImageExtensions() {
+        return jImageExtensions;
+    }
+
+    public GuestFieldOffsetStrategy getGuestFieldOffsetStrategy() {
+        return guestFieldOffsetStrategy;
     }
 }

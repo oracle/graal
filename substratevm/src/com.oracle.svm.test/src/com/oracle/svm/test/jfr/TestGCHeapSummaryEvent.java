@@ -25,6 +25,7 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -35,6 +36,7 @@ import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedObject;
 
 public class TestGCHeapSummaryEvent extends JfrRecordingTest {
     @Test
@@ -49,5 +51,18 @@ public class TestGCHeapSummaryEvent extends JfrRecordingTest {
 
     private static void validateEvents(List<RecordedEvent> events) {
         assertTrue(events.size() > 0);
+        for (RecordedEvent event : events) {
+            RecordedObject heapSpace = event.getValue("heapSpace");
+            assertEquals(-1, heapSpace.getLong("start"));
+            assertEquals(-1, heapSpace.getLong("committedEnd"));
+            assertEquals(-1, heapSpace.getLong("reservedEnd"));
+
+            long committedSize = heapSpace.getLong("committedSize");
+            assertTrue(committedSize > 0);
+            assertTrue(heapSpace.getLong("reservedSize") >= committedSize);
+            assertTrue(event.getLong("gcId") >= 0);
+            assertTrue(event.getString("when").equals("Before GC") || event.getString("when").equals("After GC"));
+            assertTrue(event.getLong("heapUsed") > 0);
+        }
     }
 }

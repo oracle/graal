@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
@@ -38,6 +37,8 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Utility class that provides low-level output methods for basic Java data types (strings and
@@ -331,6 +332,11 @@ public abstract class Log implements AutoCloseable {
     public abstract Log resetIndentation();
 
     /**
+     * Returns the current indentation.
+     */
+    public abstract int getIndentation();
+
+    /**
      * Prints the strings "true" or "false" depending on the value.
      */
     public abstract Log bool(boolean value);
@@ -622,6 +628,11 @@ public abstract class Log implements AutoCloseable {
         @Override
         public Log resetIndentation() {
             return this;
+        }
+
+        @Override
+        public int getIndentation() {
+            return 0;
         }
     }
 

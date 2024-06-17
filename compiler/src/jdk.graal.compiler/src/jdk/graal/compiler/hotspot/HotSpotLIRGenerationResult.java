@@ -26,15 +26,16 @@ package jdk.graal.compiler.hotspot;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.StandardOp.SaveRegistersOp;
 import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
 
@@ -46,10 +47,12 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      * deoptimization stub.
      */
     private StackSlot deoptimizationRescueSlot;
-    protected final Object stub;
+    protected final Stub stub;
     private final boolean requiresReservedStackAccessCheck;
 
     private int maxInterpreterFrameSize;
+
+    private StandardOp.SaveRegistersOp saveOnEntry;
 
     /**
      * Map from debug infos that need to be updated with callee save information to the operations
@@ -58,10 +61,18 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
     private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
     public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, RegisterAllocationConfig registerAllocationConfig,
-                    CallingConvention callingConvention, Object stub, boolean requiresReservedStackAccessCheck) {
+                    CallingConvention callingConvention, Stub stub, boolean requiresReservedStackAccessCheck) {
         super(compilationId, lir, frameMapBuilder, registerAllocationConfig, callingConvention);
         this.stub = stub;
         this.requiresReservedStackAccessCheck = requiresReservedStackAccessCheck;
+    }
+
+    public void setSaveOnEntry(StandardOp.SaveRegistersOp saveOnEntry) {
+        this.saveOnEntry = saveOnEntry;
+    }
+
+    public StandardOp.SaveRegistersOp getSaveOnEntry() {
+        return saveOnEntry;
     }
 
     public EconomicMap<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo() {
@@ -69,7 +80,7 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
     }
 
     public Stub getStub() {
-        return (Stub) stub;
+        return stub;
     }
 
     public StackSlot getDeoptimizationRescueSlot() {

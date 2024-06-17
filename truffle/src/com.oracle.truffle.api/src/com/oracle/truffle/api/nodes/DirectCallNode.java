@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 
 /**
@@ -70,6 +71,7 @@ public abstract class DirectCallNode extends Node {
 
     /** @since 0.8 or earlier */
     protected DirectCallNode(CallTarget callTarget) {
+        Objects.requireNonNull(callTarget);
         this.callTarget = callTarget;
     }
 
@@ -201,9 +203,13 @@ public abstract class DirectCallNode extends Node {
         return String.format("%s(target=%s)", getClass().getSimpleName(), getCurrentCallTarget());
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * Creates cached direct call node using bytecode index <code>-1</code>.
+     *
+     * @since 0.8 or earlier
+     */
     public static DirectCallNode create(CallTarget target) {
-        return Truffle.getRuntime().createDirectCallNode(target);
+        return NodeAccessor.RUNTIME.createDirectCallNode(target);
     }
 
 }

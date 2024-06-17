@@ -33,7 +33,6 @@ import java.util.function.Predicate;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
-import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
@@ -41,7 +40,6 @@ import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
@@ -138,16 +136,12 @@ public final class ReentrantBlockIterator {
         StateT state = initialState;
         HIRBlock current = start;
 
-        StructuredGraph graph = start.getBeginNode().graph();
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
 
         while (true) { // TERMINATION ARGUMENT: processing all blocks reverse post order until end
                        // of cfg or until a bailout is triggered because of a long compile
             CompilationAlarm.checkProgress(start.getCfg().graph);
-            if (compilationAlarm.hasExpired()) {
-                double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
-                throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);
-            }
+            compilationAlarm.checkExpiration();
             HIRBlock next = null;
             if (stopAtBlock != null && stopAtBlock.test(current)) {
                 states.put(current.getBeginNode(), state);

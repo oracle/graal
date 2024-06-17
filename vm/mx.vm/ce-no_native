@@ -1,4 +1,4 @@
 DYNAMIC_IMPORTS=/compiler,/graal-js,/sdk,/substratevm,/tools,/truffle
-COMPONENTS=cmp,cov,dap,gu,gvm,ins,insight,insightheap,lsp,nfi-libffi,poly,polynative,pro,sdk,sdkl,tfl,tfla,tflc,tflm,truffle-json
+COMPONENTS=cmp,cov,dap,gvm,ins,insight,insightheap,lsp,nfi-libffi,poly,polynative,pro,sdk,sdkl,tfl,tfla,tflc,tflm,truffle-json
 NATIVE_IMAGES=false
 DISABLE_INSTALLABLES=ni,nil

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -198,18 +198,18 @@ public class StackTraceTest {
                     public Object visitFrame(FrameInstance frameInstance) {
 
                         Frame readOnlyFrame = frameInstance.getFrame(FrameAccess.READ_ONLY);
-                        Assert.assertEquals(42, readOnlyFrame.getValue(demoIndex));
+                        assertEquals(42, readOnlyFrame.getValue(demoIndex));
 
                         Frame readWriteFrame = frameInstance.getFrame(FrameAccess.READ_WRITE);
-                        Assert.assertEquals(42, readWriteFrame.getValue(demoIndex));
+                        assertEquals(42, readWriteFrame.getValue(demoIndex));
                         readWriteFrame.setObject(demoIndex, 43);
 
                         Frame materializedFrame = frameInstance.getFrame(FrameAccess.MATERIALIZE);
-                        Assert.assertEquals(43, materializedFrame.getValue(demoIndex));
+                        assertEquals(43, materializedFrame.getValue(demoIndex));
 
                         materializedFrame.setObject(demoIndex, 44);
-                        Assert.assertEquals(44, readOnlyFrame.getValue(demoIndex));
-                        Assert.assertEquals(44, readWriteFrame.getValue(demoIndex));
+                        assertEquals(44, readOnlyFrame.getValue(demoIndex));
+                        assertEquals(44, readWriteFrame.getValue(demoIndex));
 
                         return null;
                     }
@@ -239,8 +239,8 @@ public class StackTraceTest {
                         return "foobar";
                     }
                 });
-                Assert.assertEquals(1, visitCount);
-                Assert.assertEquals("foobar", result);
+                assertEquals(1, visitCount);
+                assertEquals("foobar", result);
 
                 visitCount = 0;
                 result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
@@ -253,8 +253,8 @@ public class StackTraceTest {
                         }
                     }
                 });
-                Assert.assertEquals(2, visitCount);
-                Assert.assertEquals("foobar", result);
+                assertEquals(2, visitCount);
+                assertEquals("foobar", result);
 
                 return null;
             }
@@ -317,6 +317,16 @@ public class StackTraceTest {
 
     private static Node findCallNode(CallTarget target) {
         return findTestCallNode(target).getCallNode();
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void assertEquals(int expected, int actual) {
+        Assert.assertEquals(expected, actual);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void assertEquals(Object expected, Object actual) {
+        Assert.assertEquals(expected, actual);
     }
 
     private static void assertInvariants(StackTrace stack) {

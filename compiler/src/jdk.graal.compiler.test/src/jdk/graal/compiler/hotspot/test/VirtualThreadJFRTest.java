@@ -52,6 +52,10 @@ public class VirtualThreadJFRTest extends SubprocessTest {
     private static class TestEvent extends Event {
     }
 
+    private static boolean isJFRAvailable() {
+        return ModuleLayer.boot().findModule("jdk.jfr").isPresent();
+    }
+
     public static void testSnippet() {
         try (Recording r = new Recording()) {
             r.start();
@@ -122,7 +126,13 @@ public class VirtualThreadJFRTest extends SubprocessTest {
 
     @Test
     public void testInSubprocess() throws InterruptedException, IOException {
-        launchSubprocess(this::testJFR);
+        String[] args;
+        if (isJFRAvailable()) {
+            args = new String[0];
+        } else {
+            args = new String[]{"--add-modules", "jdk.jfr"};
+        }
+        launchSubprocess(this::testJFR, args);
     }
 
 }

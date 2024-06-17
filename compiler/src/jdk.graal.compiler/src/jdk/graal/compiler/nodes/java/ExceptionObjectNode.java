@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,10 @@ import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.BeginStateSplitNode;
 import jdk.graal.compiler.nodes.DeoptimizingNode;
@@ -44,6 +47,7 @@ import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.WithExceptionNode;
 import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
@@ -60,6 +64,12 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_8, size = SIZE_8)
 public final class ExceptionObjectNode extends BeginStateSplitNode implements Lowerable, SingleMemoryKill, DeoptimizingNode.DeoptAfter {
     public static final NodeClass<ExceptionObjectNode> TYPE = NodeClass.create(ExceptionObjectNode.class);
+
+    /**
+     * Marker flag to express that this node can be unconditionally deleted in lower. We do it with
+     * a marking scheme to not care about fixed node removal order in lowering.
+     */
+    private boolean unconditionallyMarkForDeletion;
 
     public ExceptionObjectNode(MetaAccessProvider metaAccess) {
         super(TYPE, StampFactory.objectNonNull(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(Throwable.class))));
@@ -90,25 +100,51 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
              * Now the lowering to BeginNode+LoadExceptionNode can be performed, since no more
              * deopts can float in between the begin node and the load exception node.
              */
-            LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp(NodeView.DEFAULT)));
-
-            GraalError.guarantee(graph().getGuardsStage().areFrameStatesAtDeopts(), "Should be after FSA %s", this);
+            final StructuredGraph graph = graph();
+            LoadExceptionObjectNode loadException = graph.add(new LoadExceptionObjectNode(stamp(NodeView.DEFAULT)));
+            GraalError.guarantee(graph.getGuardsStage().areFrameStatesAtDeopts(), "Should be after FSA %s", this);
             GraalError.guarantee(stateAfter() != null, "StateAfter must not be null for %s", this);
             loadException.setStateAfter(stateAfter());
-            BeginNode begin = graph().add(new BeginNode());
+            AbstractBeginNode begin;
+            if (graph.isSubstitution()) {
+                begin = graph.add(new LoweredExceptionObjectBegin());
+            } else {
+                begin = graph.add(new BeginNode());
+            }
             FixedWithNextNode insertAfter = begin;
-            graph().addAfterFixed(this, begin);
+            graph.addAfterFixed(this, begin);
             replaceAtUsages(loadException, InputType.Value);
             if (hasUsages()) {
-                MemoryAnchorNode anchor = graph().add(new MemoryAnchorNode(LocationIdentity.any()));
-                graph().addAfterFixed(begin, anchor);
+                MemoryAnchorNode anchor = graph.add(new MemoryAnchorNode(LocationIdentity.any()));
+                graph.addAfterFixed(begin, anchor);
                 replaceAtUsages(anchor, InputType.Memory);
                 insertAfter = anchor;
             }
-            graph().addAfterFixed(insertAfter, loadException);
-            graph().removeFixed(this);
+            graph.addAfterFixed(insertAfter, loadException);
+            graph.removeFixed(this);
             loadException.lower(tool);
         }
+    }
+
+    /**
+     * Special marker begin node to signal that an exception handler ({@link ExceptionObjectNode})
+     * was lowered as part of a snippet graph. We use this node to simplify graph stitching during
+     * snippet template instantiation for complex exception snippets.
+     */
+    @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    public static final class LoweredExceptionObjectBegin extends AbstractBeginNode {
+        public static final NodeClass<LoweredExceptionObjectBegin> TYPE = NodeClass.create(LoweredExceptionObjectBegin.class);
+
+        public LoweredExceptionObjectBegin() {
+            super(TYPE);
+        }
+    }
+
+    /**
+     * See {@link ExceptionObjectNode#unconditionallyMarkForDeletion}.
+     */
+    public void markForDeletion() {
+        unconditionallyMarkForDeletion = true;
     }
 
     /**
@@ -117,9 +153,17 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
      * @see jdk.graal.compiler.replacements.SnippetTemplate#replaceExceptionObjectNode
      */
     private boolean isMarkerAndCanBeRemoved() {
+        if (unconditionallyMarkForDeletion) {
+            if (this.hasNoUsages()) {
+                return true;
+            } else {
+                throw GraalError.shouldNotReachHere("Cannot mark exception object with usages unconditionally for deletion " + this);
+            }
+        }
         if (predecessor() instanceof WithExceptionNode) {
             return false;
         }
+
         GraalError.guarantee(predecessor() instanceof ExceptionObjectNode || predecessor() instanceof MergeNode, "Unexpected predecessor of %s: %s", this, predecessor());
         GraalError.guarantee(getExceptionValueFromState(this) == getExceptionValueFromState((StateSplit) predecessor()), "predecessor of %s with unexpected state: %s", this, predecessor());
         GraalError.guarantee(hasNoUsages(), "Unexpected usages of %s", this);

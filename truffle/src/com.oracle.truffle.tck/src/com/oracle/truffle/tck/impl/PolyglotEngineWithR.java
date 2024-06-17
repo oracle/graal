@@ -74,7 +74,6 @@ public class PolyglotEngineWithR {
         callRFunctionFromJava();
     }
 
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithR#callRFunctionFromJava
     @FunctionalInterface
     interface BinomQuantile {
         int qbinom(double q, int count, double prob);
@@ -85,5 +84,4 @@ public class PolyglotEngineWithR {
         BinomQuantile func = engine.eval(src).as(BinomQuantile.class);
         assertEquals(4, func.qbinom(0.37, 10, 0.5));
     }
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithR#callRFunctionFromJava
 }

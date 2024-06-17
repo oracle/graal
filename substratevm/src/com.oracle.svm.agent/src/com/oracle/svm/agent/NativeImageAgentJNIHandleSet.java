@@ -80,16 +80,21 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIObjectHandle javaLangReflectProxy = WordFactory.nullPointer();
     private JNIMethodId javaLangReflectProxyIsProxyClass = WordFactory.nullPointer();
 
-    private JNIMethodId javaUtilLocaleToLanguageTag;
-    private JNIFieldId javaUtilResourceBundleParentField;
-    private JNIMethodId javaUtilResourceBundleGetLocale;
+    final JNIObjectHandle javaUtilLocale;
+    final JNIMethodId javaUtilLocaleGetLanguage;
+    final JNIMethodId javaUtilLocaleGetCountry;
+    final JNIMethodId javaUtilLocaleGetVariant;
+    final JNIMethodId javaUtilLocaleForLanguageTag;
+    final JNIMethodId javaUtilLocaleToLanguageTag;
+    final JNIMethodId javaUtilLocaleEquals;
 
     final JNIFieldId javaLangInvokeSerializedLambdaCapturingClass;
 
-    final JNIMethodId sunUtilResourcesBundlesCacheKeyGetName;
-    final JNIMethodId sunUtilResourcesBundlesCacheKeyGetLocale;
-
     final JNIMethodId javaLangModuleGetName;
+
+    private JNIMethodId javaLangInvokeCallSiteMakeSite = WordFactory.nullPointer();
+    private JNIMethodId javaLangInvokeMethodHandleNativesLinkCallSiteImpl = WordFactory.nullPointer();
+    private JNIMethodId javaLangInvokeMethodHandleNativesLinkCallSite = WordFactory.nullPointer();
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
@@ -128,12 +133,16 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         JNIObjectHandle serializedLambda = findClass(env, "java/lang/invoke/SerializedLambda");
         javaLangInvokeSerializedLambdaCapturingClass = getFieldId(env, serializedLambda, "capturingClass", "Ljava/lang/Class;", false);
 
-        JNIObjectHandle sunUtilResourcesBundlesCacheKey = findClass(env, "sun/util/resources/Bundles$CacheKey");
-        sunUtilResourcesBundlesCacheKeyGetName = getMethodId(env, sunUtilResourcesBundlesCacheKey, "getName", "()Ljava/lang/String;", false);
-        sunUtilResourcesBundlesCacheKeyGetLocale = getMethodId(env, sunUtilResourcesBundlesCacheKey, "getLocale", "()Ljava/util/Locale;", false);
-
         JNIObjectHandle javaLangModule = findClass(env, "java/lang/Module");
         javaLangModuleGetName = getMethodId(env, javaLangModule, "getName", "()Ljava/lang/String;", false);
+
+        javaUtilLocale = newClassGlobalRef(env, "java/util/Locale");
+        javaUtilLocaleGetLanguage = getMethodId(env, javaUtilLocale, "getLanguage", "()Ljava/lang/String;", false);
+        javaUtilLocaleGetCountry = getMethodId(env, javaUtilLocale, "getCountry", "()Ljava/lang/String;", false);
+        javaUtilLocaleGetVariant = getMethodId(env, javaUtilLocale, "getVariant", "()Ljava/lang/String;", false);
+        javaUtilLocaleForLanguageTag = getMethodId(env, javaUtilLocale, "forLanguageTag", "(Ljava/lang/String;)Ljava/util/Locale;", true);
+        javaUtilLocaleEquals = getMethodId(env, javaUtilLocale, "equals", "(Ljava/lang/Object;)Z", false);
+        javaUtilLocaleToLanguageTag = getMethodId(env, javaUtilLocale, "toLanguageTag", "()Ljava/lang/String;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {
@@ -240,27 +249,31 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         return javaLangReflectProxyIsProxyClass;
     }
 
-    public JNIMethodId getJavaUtilLocaleToLanguageTag(JNIEnvironment env) {
-        if (javaUtilLocaleToLanguageTag.isNull()) {
-            JNIObjectHandle javaUtilLocale = findClass(env, "java/util/Locale");
-            javaUtilLocaleToLanguageTag = getMethodId(env, javaUtilLocale, "toLanguageTag", "()Ljava/lang/String;", false);
+    public JNIMethodId getJavaLangInvokeCallSiteMakeSite(JNIEnvironment env) {
+        if (javaLangInvokeCallSiteMakeSite.isNull()) {
+            JNIObjectHandle javaLangInvokeCallSite = findClass(env, "java/lang/invoke/CallSite");
+            javaLangInvokeCallSiteMakeSite = getMethodId(env, javaLangInvokeCallSite, "makeSite",
+                            "(Ljava/lang/invoke/MethodHandle;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/Object;Ljava/lang/Class;)Ljava/lang/invoke/CallSite;", true);
         }
-        return javaUtilLocaleToLanguageTag;
+        return javaLangInvokeCallSiteMakeSite;
     }
 
-    public JNIFieldId getJavaUtilResourceBundleParentField(JNIEnvironment env) {
-        if (javaUtilResourceBundleParentField.isNull()) {
-            JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
-            javaUtilResourceBundleParentField = getFieldId(env, javaUtilResourceBundle, "parent", "Ljava/util/ResourceBundle;", false);
+    public JNIMethodId getJavaLangInvokeMethodHandleNativesLinkCallSiteImpl(JNIEnvironment env) {
+        if (javaLangInvokeMethodHandleNativesLinkCallSiteImpl.isNull()) {
+            JNIObjectHandle javaLangInvokeMethodHandleNatives = findClass(env, "java/lang/invoke/MethodHandleNatives");
+            javaLangInvokeMethodHandleNativesLinkCallSiteImpl = getMethodId(env, javaLangInvokeMethodHandleNatives, "linkCallSiteImpl",
+                            "(Ljava/lang/Class;Ljava/lang/invoke/MethodHandle;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/invoke/MemberName;",
+                            true);
         }
-        return javaUtilResourceBundleParentField;
+        return javaLangInvokeMethodHandleNativesLinkCallSiteImpl;
     }
 
-    public JNIMethodId getJavaUtilResourceBundleGetLocale(JNIEnvironment env) {
-        if (javaUtilResourceBundleGetLocale.isNull()) {
-            JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
-            javaUtilResourceBundleGetLocale = getMethodId(env, javaUtilResourceBundle, "getLocale", "()Ljava/util/Locale;", false);
+    public JNIMethodId getJavaLangInvokeMethodHandleNativesLinkCallSite(JNIEnvironment env) {
+        if (javaLangInvokeMethodHandleNativesLinkCallSite.isNull()) {
+            JNIObjectHandle javaLangInvokeMethodHandleNatives = findClass(env, "java/lang/invoke/MethodHandleNatives");
+            javaLangInvokeMethodHandleNativesLinkCallSite = getMethodIdOptional(env, javaLangInvokeMethodHandleNatives, "linkCallSite",
+                            "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/invoke/MemberName;", true);
         }
-        return javaUtilResourceBundleGetLocale;
+        return javaLangInvokeMethodHandleNativesLinkCallSite;
     }
 }

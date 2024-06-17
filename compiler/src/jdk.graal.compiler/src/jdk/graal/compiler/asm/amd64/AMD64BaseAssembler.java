@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,8 @@ import static jdk.vm.ci.amd64.AMD64.r13;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 
+import java.util.EnumSet;
+
 import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.asm.Assembler;
@@ -62,8 +64,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.PlatformKind;
-
-import java.util.EnumSet;
 
 /**
  * This class implements an assembler that can encode most X86 instructions.
@@ -283,6 +283,14 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
     public void setForce4ByteNonZeroDisplacements(boolean force4ByteNonZeroDisplacements) {
         this.force4ByteNonZeroDisplacements = force4ByteNonZeroDisplacements;
+    }
+
+    /**
+     * Returns {@code true}} if this assembler is configured to emit all non-zero displacements in
+     * addresses as 4 bytes even if they would fit into a byte.
+     */
+    public boolean force4ByteNonZeroDisplacements() {
+        return force4ByteNonZeroDisplacements;
     }
 
     protected void annotatePatchingImmediate(int operandOffset, int operandSize) {

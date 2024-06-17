@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import static jdk.graal.compiler.core.common.GraalOptions.AssemblyGCBarriers;
 import static jdk.graal.compiler.core.common.GraalOptions.FullUnroll;
 import static jdk.graal.compiler.core.common.GraalOptions.LoopPeeling;
 import static jdk.graal.compiler.core.common.GraalOptions.OptReadElimination;
@@ -39,6 +40,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -52,10 +54,10 @@ import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
-import jdk.graal.compiler.nodes.gc.G1PostWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1PreWriteBarrier;
-import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrier;
-import jdk.graal.compiler.nodes.gc.SerialWriteBarrier;
+import jdk.graal.compiler.nodes.gc.G1PostWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1PreWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrierNode;
+import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
@@ -111,6 +113,11 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
         public int hashCode() {
             return Objects.hash(a, b);
         }
+    }
+
+    @Before
+    public void checkAssemblyBarriers() {
+        Assume.assumeFalse("doesn't work with assembly barriers ", AssemblyGCBarriers.getValue(getInitialOptions()));
     }
 
     private int expectedBarriers;
@@ -312,10 +319,10 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
         Assert.assertNotEquals("test must set expected barrier count", expectedBarriers, -1);
         int barriers = 0;
         if (config.useG1GC()) {
-            barriers = graph.getNodes().filter(G1ReferentFieldReadBarrier.class).count() + graph.getNodes().filter(G1PreWriteBarrier.class).count() +
-                            graph.getNodes().filter(G1PostWriteBarrier.class).count();
+            barriers = graph.getNodes().filter(G1ReferentFieldReadBarrierNode.class).count() + graph.getNodes().filter(G1PreWriteBarrierNode.class).count() +
+                            graph.getNodes().filter(G1PostWriteBarrierNode.class).count();
         } else {
-            barriers = graph.getNodes().filter(SerialWriteBarrier.class).count();
+            barriers = graph.getNodes().filter(SerialWriteBarrierNode.class).count();
         }
         if (expectedBarriers != barriers) {
             Assert.assertEquals(expectedBarriers, barriers);
@@ -324,13 +331,13 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
             if (config.useG1GC()) {
                 if (write.getBarrierType() != BarrierType.NONE) {
                     Assert.assertEquals(1, write.successors().count());
-                    Assert.assertTrue(write.next() instanceof G1PostWriteBarrier);
-                    Assert.assertTrue(write.predecessor() instanceof G1PreWriteBarrier || write.getLocationIdentity().isImmutable());
+                    Assert.assertTrue(write.next() instanceof G1PostWriteBarrierNode);
+                    Assert.assertTrue(write.predecessor() instanceof G1PreWriteBarrierNode || write.getLocationIdentity().isImmutable());
                 }
             } else {
                 if (write.getBarrierType() != BarrierType.NONE) {
                     Assert.assertEquals(1, write.successors().count());
-                    Assert.assertTrue(write.next() instanceof SerialWriteBarrier);
+                    Assert.assertTrue(write.next() instanceof SerialWriteBarrierNode);
                 }
             }
         }
@@ -345,7 +352,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
                 }
                 Assert.assertTrue(BarrierType.REFERENCE_GET == read.getBarrierType());
                 if (config.useG1GC()) {
-                    Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
+                    Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrierNode);
                 }
             }
         }
@@ -357,7 +364,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     @Before
     public void before() {
-        assumeTrue("ZGC has no write barriers", !(config.gc == HotSpotGC.Z));
+        assumeTrue("ZGC has no write barriers", !(config.gc == HotSpotGC.X));
         expectedBarriers = -1;
     }
 

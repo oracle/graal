@@ -51,6 +51,7 @@ public final class Target_java_lang_reflect_ReflectAccess {
         Target_java_lang_reflect_Method copy = method.copy();
         copyExecutable(SubstrateUtil.cast(copy, Target_java_lang_reflect_Executable.class),
                         SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class));
+        copy.methodAccessorFromMetadata = method.methodAccessorFromMetadata;
         return copy;
     }
 
@@ -84,5 +85,6 @@ class Util_java_lang_reflect_ReflectAccess {
 
     static void copyAccessibleObject(Target_java_lang_reflect_AccessibleObject copy, Target_java_lang_reflect_AccessibleObject accessibleObject) {
         copy.typeAnnotations = accessibleObject.typeAnnotations;
+        copy.conditions = accessibleObject.conditions;
     }
 }

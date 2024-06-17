@@ -171,6 +171,16 @@ public class SubstrateField implements SharedField {
     }
 
     @Override
+    public boolean isInBaseLayer() {
+        return false;
+    }
+
+    @Override
+    public JavaConstant getStaticFieldBase() {
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
     public String toString() {
         return "SubstrateField<" + format("%h.%n") + " location: " + location + ">";
     }

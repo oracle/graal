@@ -56,7 +56,7 @@ public final class DefaultDirectCallNode extends DirectCallNode {
 
     @Override
     public Object call(Object... arguments) {
-        return ((DefaultCallTarget) callTarget).callDirectOrIndirect(this, arguments);
+        return ((DefaultCallTarget) callTarget).call(this, arguments);
     }
 
     @Override

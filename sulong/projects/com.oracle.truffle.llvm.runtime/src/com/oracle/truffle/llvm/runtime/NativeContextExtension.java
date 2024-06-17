@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -86,7 +86,7 @@ public abstract class NativeContextExtension implements ContextExtension {
 
     public abstract NativePointerIntoLibrary getNativeHandle(String name);
 
-    public abstract CallTarget createNativeWrapperFactory(LLVMFunctionCode code);
+    public abstract CallTarget createNativeWrapperFactory(LLVMFunctionCode code, String backend);
 
     public abstract void addLibraryHandles(Object library);
 
@@ -134,6 +134,8 @@ public abstract class NativeContextExtension implements ContextExtension {
     public abstract Object getNativeFunction(String name, String signature);
 
     public abstract Source getNativeSignatureSourceSkipStackArg(FunctionType type) throws UnsupportedNativeTypeException;
+
+    public abstract String getNativeSignature(FunctionType type);
 
     public abstract Object createSignature(Source signatureSource);
 

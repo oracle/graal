@@ -27,6 +27,7 @@ package com.oracle.svm.core.option;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -115,7 +116,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
 
     @Override
     public String toString() {
-        return "<" + ClassUtil.getUnqualifiedName(valueType).toLowerCase() + ">*";
+        return "<" + ClassUtil.getUnqualifiedName(valueType).toLowerCase(Locale.ROOT) + ">*";
     }
 
     public static final class Strings extends LocatableMultiOptionValue<String> {

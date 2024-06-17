@@ -122,16 +122,16 @@ public interface SamplerSampleWriterData extends PointerBase {
     void setMaxDepth(int value);
 
     /**
-     * Returns the number of frames.
+     * Returns the number of frames that were visited or skipped.
      */
     @RawField
-    int getNumFrames();
+    int getSeenFrames();
 
     /**
-     * Sets the number of frames.
+     * Sets the number of frames that were visited or skipped.
      */
     @RawField
-    void setNumFrames(int value);
+    void setSeenFrames(int value);
 
     /**
      * Returns {@code true} if the stack size exceeds {@link #getMaxDepth()}.

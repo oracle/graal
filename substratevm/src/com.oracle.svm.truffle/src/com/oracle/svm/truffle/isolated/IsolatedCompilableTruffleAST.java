@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import com.oracle.svm.graal.isolated.IsolatedHandles;
 import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -117,8 +118,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
 
     @Override
     public boolean isSameOrSplit(TruffleCompilable ast) {
-        IsolatedCompilableTruffleAST other = (IsolatedCompilableTruffleAST) ast;
-        return isSameOrSplit0(IsolatedCompileContext.get().getClient(), handle, other.handle);
+        ClientHandle<SubstrateCompilableTruffleAST> astHandle = ast == null ? IsolatedHandles.nullHandle() : ((IsolatedCompilableTruffleAST) ast).handle;
+        return isSameOrSplit0(IsolatedCompileContext.get().getClient(), handle, astHandle);
     }
 
     @Override
@@ -169,22 +170,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void onCompilationFailed0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
                     CompilerHandle<Supplier<String>> serializedExceptionHandle, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
-
-        Supplier<String> serializedException = new Supplier<>() {
-            @Override
-            public String get() {
-                ClientHandle<String> resultHandle = getReasonAndStackTrace0(IsolatedCompileClient.get().getCompiler(), serializedExceptionHandle);
-                return IsolatedCompileClient.get().unhand(resultHandle);
-            }
-        };
+        Supplier<String> serializedException = new IsolatedStringSupplier(serializedExceptionHandle);
         IsolatedCompileClient.get().unhand(compilableHandle).onCompilationFailed(serializedException, silent, bailout, permanentBailout, graphTooBig);
-    }
-
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static ClientHandle<String> getReasonAndStackTrace0(@SuppressWarnings("unused") CompilerIsolateThread compiler, CompilerHandle<Supplier<String>> reasonAndStackTraceHandle) {
-
-        Supplier<String> supplier = IsolatedCompileContext.get().unhand(reasonAndStackTraceHandle);
-        return IsolatedCompileContext.get().createStringInClient(supplier.get());
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
@@ -224,7 +211,10 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
                     ClientHandle<SubstrateCompilableTruffleAST> compilableHandle, ClientHandle<SubstrateCompilableTruffleAST> otherHandle) {
 
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
-        SubstrateCompilableTruffleAST other = IsolatedCompileClient.get().unhand(otherHandle);
+        SubstrateCompilableTruffleAST other = null;
+        if (otherHandle.notEqual(IsolatedHandles.nullHandle())) {
+            other = IsolatedCompileClient.get().unhand(otherHandle);
+        }
         return compilable.isSameOrSplit(other);
     }
 

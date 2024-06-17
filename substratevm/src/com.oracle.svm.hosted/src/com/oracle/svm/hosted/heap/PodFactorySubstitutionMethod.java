@@ -81,14 +81,6 @@ final class PodFactorySubstitutionProcessor extends SubstitutionProcessor {
         }
         return method;
     }
-
-    @Override
-    public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof PodFactorySubstitutionMethod) {
-            return ((PodFactorySubstitutionMethod) method).getOriginal();
-        }
-        return method;
-    }
 }
 
 final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {

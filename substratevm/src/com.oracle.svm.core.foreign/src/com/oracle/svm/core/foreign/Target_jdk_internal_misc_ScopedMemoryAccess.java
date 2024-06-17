@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,13 +70,13 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     void closeScope0(MemorySessionImpl session, Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError error) {
-        throw unsupportedFeature("Arena.ofShared is not yet supported.");
+        throw unsupportedFeature("GR-52276: Arena.ofShared not supported");
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK21OrEarlier.class)
     boolean closeScope0(MemorySessionImpl session) {
-        throw unsupportedFeature("Arena.ofShared is not yet supported.");
+        throw unsupportedFeature("GR-52276: Arena.ofShared not supported");
     }
 }
 

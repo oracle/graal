@@ -532,7 +532,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
      * One Instruction Per Byte</a> by John Keiser and Daniel Lemire, and the author's
      * implementation in <a href=
      * "https://github.com/simdjson/simdjson/blob/d996ffc49423cee75922c30432323288c34f3c04/src/generic/stage1/utf8_lookup4_algorithm.h">
-     * the simdjson library</a>.
+     * the simdjson library</a>. Follow-up changes made sure this is compatible with simdjson 3.6.4.
      *
      * @see <a href="https://github.com/simdjson/simdjson">https://github.com/simdjson/simdjson</a>
      * @see <a href="https://lemire.me/blog/2020/10/20/ridiculously-fast-unicode-utf-8-validation/">

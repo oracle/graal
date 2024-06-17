@@ -61,7 +61,7 @@ The CONSTRAINED policy:
   * Disallows implementation of arbitrary host [classes](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowAllClassImplementations-boolean-) and [interfaces](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowAllImplementations-boolean-).
   * Disallows implementation of `java.lang.FunctionalInterface`.
   * Disallows host object mappings of [mutable target types](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowMutableTargetMappings-org.graalvm.polyglot.HostAccess.MutableTargetMapping...-).
-The [HostAccess.CONSTRAINED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html#CONSTRAINED) host access policy is preconfigured to fulfil the requirements for the CONSTRAINED sandboxing policy.
+The [HostAccess.CONSTRAINED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html#CONSTRAINED) host access policy is preconfigured to fulfill the requirements for the CONSTRAINED sandboxing policy.
 
 Example:
 ```java
@@ -82,7 +82,7 @@ In particular, guest code running with the ISOLATED policy will be executed in t
 This means that they no longer share runtime elements such as the JIT compiler or the garbage collector with the host application, making the host VM significantly more resilient against faults in the guest VM.
 
 In addition to the restrictions of the CONSTRAINED policy, the ISOLATED policy:
-* Requires [method scoping](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#methodScoping-boolean-) to be enabled. This avoids cyclic dependencies between host and guest objects. The [HostAccess.ISOLATED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html#ISOLATED) host access policy is preconfigured to fulfil the requirements for the ISOLATED sandboxing policy.
+* Requires [method scoping](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#methodScoping-boolean-) to be enabled. This avoids cyclic dependencies between host and guest objects. The [HostAccess.ISOLATED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html#ISOLATED) host access policy is preconfigured to fulfill the requirements for the ISOLATED sandboxing policy.
 * Requires setting the maximum isolate heap size. This is the heap size that will be used by the guest VM. If the engine is shared by multiple contexts, execution of these contexts will share the isolate heap.
 * Requires setting the host call stack headroom. This protects against host stack starving on upcalls to the host: the guest will be prohibited from performing an upcall if the remaining stack size drops below the specified value.
 * Requires setting the maximum CPU time limit. This restricts the workload to execute within the given time frame.
@@ -123,11 +123,10 @@ The attack surface of GraalVM when running untrusted code consists of the entire
 In addition to the restrictions of the ISOLATED policy, the UNTRUSTED policy:
 * Requires redirection of the standard [input](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#in-java.io.InputStream-) stream.
 * Requires setting the maximum memory consumption of the guest code. This is a limit in addition to the maximum isolate heap size backed by a mechanism that keeps track of the size of objects allocated by the guest code on the guest VM heap. This limit can be thought of as a "soft" memory limit, whereas the isolate heap size is the "hard" limit.
-* Requires setting the maximum number of stack frames that can be pushed on the stack by guest code. This limit can protect against unbounded recursion to exhaust the stack.
-* Requires setting the maximum AST depth of the guest code. Together with the stack frame limit, this puts a bound on the stack space consumed by guest code.
+* Requires setting the maximum AST depth of the guest code. This puts a bound on the stack space consumed by a single guest method.
 * Requires setting the maximum output and error stream sizes. As output and error streams have to be redirected, the receiving ends are on the host side. Limiting the output and error stream sizes protects against availability issues on the host.
 * Requires untrusted code mitigations to be enabled. Untrusted code mitigations address risks from JIT spraying and speculative execution attacks. They include constant blinding as well as comprehensive use of speculative execution barriers.
-* Further restricts host access to ensure there are no implicit entry points to host code. This means that guest-code access to host arrays, lists, maps, buffers, iterables and iterators is disallowed. The reason is that there may be various implementations of these APIs on the host side, resulting in implicit entry points. In addition, direct mappings of guest implementations to host interfaces via [HostAccess.Builder#allowImplementationsAnnotatedBy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html) are disallowed. The [HostAccess.UNTRUSTED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html#UNTRUSTED) host access policy is preconfigured to fulfil the requirements for the UNTRUSTED sandboxing policy.
+* Further restricts host access to ensure there are no implicit entry points to host code. This means that guest-code access to host arrays, lists, maps, buffers, iterables and iterators is disallowed. The reason is that there may be various implementations of these APIs on the host side, resulting in implicit entry points. In addition, direct mappings of guest implementations to host interfaces via [HostAccess.Builder#allowImplementationsAnnotatedBy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html) are disallowed. The [HostAccess.UNTRUSTED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html#UNTRUSTED) host access policy is preconfigured to fulfill the requirements for the UNTRUSTED sandboxing policy.
 
 Example:
 ```java
@@ -141,7 +140,6 @@ try (Context context = Context.newBuilder("js")
                               .option("sandbox.MaxHeapMemory", "128MB")
                               .option("sandbox.MaxCPUTime","2s")
                               .option("sandbox.MaxStatements","50000")
-                              .option("sandbox.MaxStackFrames","2")
                               .option("sandbox.MaxThreads","1")
                               .option("sandbox.MaxASTDepth","10")
                               .option("sandbox.MaxOutputStreamSize","32B")
@@ -159,7 +157,7 @@ GraalVM allows exchanging objects between host and guest code and exposing host 
 When exposing host methods to less privileged guest code, these methods become part of the attack surface of the more privileged host code.
 Therefore the sandboxing policies already restrict host access in the CONSTRAINED policy to make host entry points explicit.
 
-`HostAccess.CONSTRAINED` is the pre-defined host access policy for the CONSTRAINED sandbox policy.
+`HostAccess.CONSTRAINED` is the predefined host access policy for the CONSTRAINED sandbox policy.
 To expose a host class method, it has to be annotated with `@HostAccess.Export`.
 This annotation is not inherited.
 Service providers such as [polyglot file system](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/polyglot/io/FileSystem.html) implementations or output stream recipients for standard output and error stream redirections are exposed to guest code invocations.
@@ -168,12 +166,12 @@ Guest code can also implement a Java interface that has been annotated with `@Im
 Host code using such an interface directly interacts with guest code.
 
 Host code that interacts with guest code has to be implemented in a robust manner:
-* Input validation. All data passed from the guest, e.g. via parameters to an exposed method, is untrusted and should be thorougly validated by host code where applicable.
+* Input validation. All data passed from the guest, for example, via parameters to an exposed method, is untrusted and should be thoroughly validated by host code where applicable.
 * Reentrancy. Exposed host code should be reentrant as guest code may invoke it at any time. Do note that simply applying the `synchronized` keyword to a code block does not necessarily make it reentrant.
 * Thread-safety. Exposed host code should be thread-safe as guest code may invoke them from multiple threads at the same time.
-* Resource consumption. Exposed host code should be aware of its resource consumption. In particular, constructs that allocate memory based on untrusted input data, either directly or indirectly, e.g. through recursion, should either be avoided altogether or implement limits.
+* Resource consumption. Exposed host code should be aware of its resource consumption. In particular, constructs that allocate memory based on untrusted input data, either directly or indirectly, for example, through recursion, should either be avoided altogether or implement limits.
 * Privileged functionality. Restrictions enforced by the sandbox can be entirely bypassed by exposing host methods that provide restricted functionality. For example, guest code with a CONSTRAINED sandbox policy cannot perform host file IO operations. However, exposing a host method to the context that allows writing to arbitrary files effectively bypasses this restriction.
-* Side channels. Depending on the guest language, guest code may have access to timing information. For example, in Javascript the `Date()` object provides fine-grained timing information. In the UNTRUSTED sandbox policy the granularity of Javascript timers is pre-configured to one second and can be lowered to 100 milliseconds. However, host code should be aware that guest code may time its execution, potentially discovering secret information if the host code performs secret-depending processing.
+* Side channels. Depending on the guest language, guest code may have access to timing information. For example, in Javascript the `Date()` object provides fine-grained timing information. In the UNTRUSTED sandbox policy the granularity of Javascript timers is preconfigured to one second and can be lowered to 100 milliseconds. However, host code should be aware that guest code may time its execution, potentially discovering secret information if the host code performs secret-depending processing.
 
 Host code that is unaware of interacting with untrusted guest code should never be directly exposed to guest code without taking the aforementioned aspects into account.
 As an example, an antipattern would be to implement a third party interface and forwarding all method invocations to guest code.
@@ -232,7 +230,7 @@ Certain limits can be [reset](#resetting-resource-limits) at any point of time d
 
 The `sandbox.MaxCPUTime` option allows you to specify the maximum CPU time spent running guest code.
 CPU time spent depends on the underlying hardware.
-The maximum [CPU time](https://docs.oracle.com/en/java/javase/17/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically cancelled and the context is closed.
+The maximum [CPU time](https://docs.oracle.com/en/java/javase/22/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically canceled and the context is closed.
 By default the time limit is checked every 10 milliseconds.
 This can be customized using the `sandbox.MaxCPUTimeCheckInterval` option.
 
@@ -246,8 +244,8 @@ The CPU time of all threads will be added and checked against the CPU time limit
 This can mean that if two threads execute the same context then the time limit will be exceeded twice as fast.
 
 The time limit is enforced by a separate high-priority thread that will be woken regularly.
-There is no guarantee that the context will be cancelled within the accuracy specified.
-The accuracy may be significantly missed, e.g. if the host VM causes a full garbage collection.
+There is no guarantee that the context will be canceled within the accuracy specified.
+The accuracy may be significantly missed, for example, if the host VM causes a full garbage collection.
 If the time limit is never exceeded then the throughput of the guest context is not affected.
 If the time limit is exceeded for one context then it may slow down the throughput for other contexts with the same explicit engine temporarily.
 
@@ -271,7 +269,7 @@ try (Context context = Context.newBuilder("js")
 
 ### Limiting the number of executed statements
 
-Specifies the maximum number of statements a context may execute until it is cancelled.
+Specifies the maximum number of statements a context may execute until it is canceled.
 After the statement limit was triggered for a context, it is no longer usable and every use of the context will throw a `PolyglotException` that returns `true` for `PolyglotException.isCancelled()`.
 The statement limit is independent of the number of threads executing.
 
@@ -318,7 +316,7 @@ Together with the AST depth limit it can restrict total stack space usage.
 ### Limiting the number of active threads
 
 Limits the number of threads that can be used by a context at the same point in time.
-Multi-threading is not supported in the UNTRUSTED sandbox policy.
+Multithreading is not supported in the UNTRUSTED sandbox policy.
 
 ### Heap memory limits
 
@@ -342,14 +340,14 @@ try (Context context = Context.newBuilder("js")
 }
 ```
 
-The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on [low memory notification](https://docs.oracle.com/en/java/javase/11/docs/api/java.management/java/lang/management/MemoryMXBean.html).
+The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on [low memory notification](https://docs.oracle.com/en/java/javase/22/docs/api/java.management/java/lang/management/MemoryMXBean.html).
 
 The allocated bytes are checked by a separate high-priority thread that will be woken regularly.
 There is one such thread for each memory-limited context (one with `sandbox.MaxHeapMemory` set).
 The retained bytes computation is done by yet another high-priority thread that is started from the allocated bytes checking thread as needed.
-The retained bytes computation thread also cancels the context if the heap memory limit is exeeded.
-Additionaly, when the low memory trigger is invoked, all contexts on engines with at least one memory-limited context are paused together with their allocation checkers.
-All individual retained size computations are cancelled.
+The retained bytes computation thread also cancels the context if the heap memory limit is exceeded.
+Additionally, when the low memory trigger is invoked, all contexts on engines with at least one memory-limited context are paused together with their allocation checkers.
+All individual retained size computations are canceled.
 Retained bytes in the heap for each memory-limited context are computed by a single high-priority thread.
 
 The heap memory limit will not prevent the context from causing `OutOfMemory` errors.
@@ -359,7 +357,7 @@ Retained size computation for a context can be customized using the expert optio
 
 Retained size computation for a context is triggered when a retained bytes estimate exceeds a certain factor of specified `sandbox.MaxHeapMemory`.
 The estimate is based on heap memory
-[allocated](https://docs.oracle.com/en/java/javase/17/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) by threads where the context has been active.
+[allocated](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) by threads where the context has been active.
 More precisely, the estimate is the result of previous retained bytes computation, if available, plus bytes allocated since the start of the previous computation.
 By default the factor of `sandbox.MaxHeapMemory` is 1.0 and it can be customized by the `sandbox.AllocatedBytesCheckFactor` option.
 The factor must be positive.
@@ -376,8 +374,8 @@ This can be configured by the `sandbox.RetainedBytesCheckInterval` option. The i
 The allocated bytes checking for a context can be disabled by the `sandbox.AllocatedBytesCheckEnabled` option.
 By default it is enabled ("true"). If disabled ("false"), retained size checking for the context can be triggered only by the low memory trigger.
 
-When the total number of bytes allocated in the heap for the whole host VM exceeds a certain factor of the total heap memory of the VM, [low memory notification](https://docs.oracle.com/en/java/javase/17/docs/api/java.management/java/lang/management/MemoryMXBean.html) is invoked and initiates the following process.
-The execution for all engines with at least one execution context which has the `sandbox.MaxHeapMemory` option set is paused, retained bytes in the heap for each memory-limited context are computed, contexts exceeding their limits are cancelled, and then the execution is resumed.
+When the total number of bytes allocated in the heap for the whole host VM exceeds a certain factor of the total heap memory of the VM, [low memory notification](https://docs.oracle.com/en/java/javase/22/docs/api/java.management/java/lang/management/MemoryMXBean.html) is invoked and initiates the following process.
+The execution for all engines with at least one execution context which has the `sandbox.MaxHeapMemory` option set is paused, retained bytes in the heap for each memory-limited context are computed, contexts exceeding their limits are canceled, and then the execution is resumed.
 The default factor is 0.7. This can be configured by the `sandbox.RetainedBytesCheckFactor` option.
 The factor must be between 0.0 and 1.0. All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.RetainedBytesCheckFactor`.
 
@@ -388,6 +386,8 @@ That way the low memory trigger can be used together with libraries that also se
 The described low memory trigger can be disabled by the `sandbox.UseLowMemoryTrigger` option.
 By default it is enabled ("true"). If disabled ("false"), retained size checking for the execution context can be triggered only by the allocated bytes checker.
 All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.UseLowMemoryTrigger`.
+
+The `sandbox.UseLowMemoryTrigger` option is not supported for the ISOLATED and UNTRUSTED sandbox policies. The option defaults to disabled (`false`) wherever it is not supported.
 
 ### Limiting the amount of data written to standard output and error streams
 
@@ -447,7 +447,7 @@ try (Context context = Context.newBuilder("js")
 
 The main defense enforced by the ISOLATED and UNTRUSTED sandbox policy through the `engine.SpawnIsolate` option is that the Polyglot engine runs in a dedicated `native-image` isolate, moving execution of guest code to a VM-level fault domain separate from the host application, with its own heap, garbage collector and JIT compiler.
 
-Apart from setting a hard limit for the memory consumption of guest code via the guest's heap size, it also allows to focus runtime defenses just on guest code and not cause performance degredation of host code.
+Apart from setting a hard limit for the memory consumption of guest code via the guest's heap size, it also allows to focus runtime defenses just on guest code and not cause performance degradation of host code.
 The runtime defenses are enabled by the `engine.UntrustedCodeMitigation` option.
 
 ### Constant Blinding
@@ -481,11 +481,11 @@ A speculative execution barrier is placed at each target of a conditional branch
 
 ## Sharing Execution Engines
 
-Guest code of different trust domains has to be separated at the Polylgot engine level, i.e. only guest code of the same trust domain should share an engine.
+Guest code of different trust domains has to be separated at the Polylgot engine level, that is, only guest code of the same trust domain should share an engine.
 When multiple context share an engine, all of them must have the same sandbox policy (the engine's sandbox policy).
 Application developers may choose to share execution engines among execution contexts for performance reasons.
 While the context holds the state of the executed code, the engine holds the code itself.
-Sharing of an execution engine among multiple contexts needs to be set up explicitly and can increase performance in scenarios where a number of contexts execute the same code. In scenarios where contexts that share an execution engine for common code also execute sensitive (i.e., private) code, the corresponding source objects can opt out from code sharing with:
+Sharing of an execution engine among multiple contexts needs to be set up explicitly and can increase performance in scenarios where a number of contexts execute the same code. In scenarios where contexts that share an execution engine for common code also execute sensitive (private) code, the corresponding source objects can opt out from code sharing with:
 ```java
 Source.newBuilder(…).cached(false).build()
 ```
@@ -495,14 +495,14 @@ Source.newBuilder(…).cached(false).build()
 Polyglot sandboxing is not available in GraalVM Community Edition.
 
 Depending on the sandboxing policy, only a subset of Truffle languages, instruments, and options are available.
-In particular, sandboxing is currently only supported for the runtime's [default version](https://github.com/oracle/graaljs/blob/master/docs/user/JavaScriptCompatibility.md) of ECMAScript, i.e. ECMAScript 2022.
+In particular, sandboxing is currently only supported for the runtime's [default version](https://github.com/oracle/graaljs/blob/master/docs/user/JavaScriptCompatibility.md) of ECMAScript (ECMAScript 2022).
 Sandboxing is also not supported from within GraalVM's Node.js.
 
-Polyglot sandboxing is not compatible with modifications to the VM setup via e.g. system properties that change the behavior of the VM.
+Polyglot sandboxing is not compatible with modifications to the VM setup via (for example) system properties that change the behavior of the VM.
 
 The sandboxing policy is subject to incompatible changes across major GraalVM releases to maintain a secure-by-default posture.
 
-Polyglot sandboxing cannot protect against vulnerabilities in its operating environment, i.e. vulnerabilities in the operating system or the underlying hardware.
+Polyglot sandboxing cannot protect against vulnerabilities in its operating environment, such as vulnerabilities in the operating system or the underlying hardware.
 We recommend to adopt the appropriate external isolation primitives to protect against corresponding risks.
 
 ## Differentiation with Java Security Manager

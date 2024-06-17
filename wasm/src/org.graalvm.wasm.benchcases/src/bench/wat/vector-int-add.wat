@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 (module
   (type $int_func (func (result i32)))
   (type $proc (func))
+  (type $teardown_func (func (param i32)))
 
   (global $iterations i32 (i32.const 10000000))
 
@@ -48,15 +49,21 @@
 
   (func (export "benchmarkSetupEach") (type $proc))
 
-  (func (export "benchmarkTeardownEach") (type $proc))
+  (func (export "benchmarkTeardownEach") (type $teardown_func))
 
   (func (export "benchmarkRun") (type $int_func)
     (local $i i32)
+    (local $u v128)
     (local $v v128)
+    (local $tmp v128)
+    (local.set $u (v128.const i32x4 2 4 8 16))
+    (local.set $v (v128.const i32x4 3 5 7 11))
 
     (loop $bench_loop
       ;; Perform vector addition
-      (local.set $v (i32x4.add (local.get $v) (v128.const i32x4 1 256 65536 16777216)))
+      (local.set $tmp (local.get $v))
+      (local.set $v (i32x4.add (local.get $u) (local.get $v)))
+      (local.set $u (local.get $tmp))
 
       ;; Increment loop counter and exit loop
       (local.set $i (i32.add (local.get $i) (i32.const 1)))

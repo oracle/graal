@@ -60,14 +60,4 @@ class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
         }
         return callWrappers.computeIfAbsent(method, JNINativeCallWrapperMethod::new);
     }
-
-    @Override
-    public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof JNINativeCallWrapperMethod) {
-            return ((JNINativeCallWrapperMethod) method).getOriginal();
-        } else if (method instanceof JNICallTrampolineMethod) {
-            return ((JNICallTrampolineMethod) method).getOriginal();
-        }
-        return method;
-    }
 }

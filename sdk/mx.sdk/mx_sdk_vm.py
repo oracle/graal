@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ from abc import ABCMeta
 import mx
 import mx_javamodules
 import mx_subst
+import mx_util
 import os
 import re
 import shutil
@@ -204,11 +205,10 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, set_default_relative_home_path=True, isolate_library_layout_distribution=None, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, set_default_relative_home_path=True, **kwargs):
         """
         :param str language
         :param str main_class
-        :param isolate_library_layout_distribution dict
         """
         kwargs.pop('destination', None)
         super(LanguageLibraryConfig, self).__init__('lib/<lib:' + language + 'vm>', jar_distributions, build_args, home_finder=True, headers=headers, **kwargs)
@@ -227,7 +227,6 @@ class LanguageLibraryConfig(LibraryConfig):
         if set_default_relative_home_path:
             # Ensure the language launcher can always find the language home
             self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
-        self.isolate_library_layout_distribution = isolate_library_layout_distribution
 
 class GraalVmComponent(object):
     def __init__(self,
@@ -951,7 +950,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
     # Read hashes stored in java.base (the only module in the JDK where hashes are stored)
     hashes = _read_java_base_hashes(jdk)
 
-    build_dir = mx.ensure_dir_exists(join(dst_jdk_dir + ".build"))
+    build_dir = mx_util.ensure_dir_exists(join(dst_jdk_dir + ".build"))
 
     # Directory under dst_jdk_dir for artifacts related to use_upgrade_module_path
     upgrade_dir = join(dst_jdk_dir, 'upgrade_modules_support')
@@ -977,7 +976,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                 for name, requires in sorted(target_requires.items()):
                     module_jar = join(build_dir, name + '.jar')
                     jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
-                    module_build_dir = mx.ensure_dir_exists(join(build_dir, name))
+                    module_build_dir = mx_util.ensure_dir_exists(join(build_dir, name))
                     module_info = jmd.as_module_info()
                     module_info_java = join(module_build_dir, 'module-info.java')
                     module_info_class = join(module_build_dir, 'module-info.class')
@@ -1122,7 +1121,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         if use_upgrade_module_path:
             # Move synthetic upgrade modules into final location
             for jmd, jarpath in synthetic_modules.items():
-                mx.ensure_dir_exists(dirname(jarpath))
+                mx_util.ensure_dir_exists(dirname(jarpath))
                 os.rename(jmd.jarpath, jarpath)
             # Persist VM options cooked into image to be able to skip a subsequent
             # jlink execution if the options do not change.

@@ -88,7 +88,10 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new VerifyHeapAtReturnPhase());
         }
 
-        appendPhase(new LoopFullUnrollPhase(canonicalizer, createLoopPolicies(options)));
+        if (GraalOptions.FullUnroll.getValue(options)) {
+            appendPhase(new LoopFullUnrollPhase(canonicalizer, createLoopPolicies(options)));
+        }
+
         appendPhase(new RemoveValueProxyPhase(canonicalizer));
 
         appendPhase(new LoopSafepointInsertionPhase());
@@ -99,7 +102,9 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
-        appendPhase(new OptimizeDivPhase(canonicalizer));
+        if (GraalOptions.OptimizeDiv.getValue(options)) {
+            appendPhase(new OptimizeDivPhase(canonicalizer));
+        }
 
         appendPhase(new FrameStateAssignmentPhase());
 

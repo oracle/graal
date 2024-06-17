@@ -62,6 +62,9 @@ public final class Target_java_lang_invoke_MemberName {
     public native boolean isField();
 
     @Alias
+    public native boolean isInvocable();
+
+    @Alias
     public native Class<?> getDeclaringClass();
 
     @Alias
@@ -69,6 +72,9 @@ public final class Target_java_lang_invoke_MemberName {
 
     @Alias
     public native Class<?> getFieldType();
+
+    @Alias
+    public native MethodType getInvocationType();
 
     @Alias
     public native byte getReferenceKind();

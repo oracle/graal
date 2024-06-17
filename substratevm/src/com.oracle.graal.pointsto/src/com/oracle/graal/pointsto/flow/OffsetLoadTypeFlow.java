@@ -29,7 +29,6 @@ import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -248,60 +247,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         @Override
         public String toString() {
             return "UnsafeLoadTypeFlow<" + getState() + ">";
-        }
-    }
-
-    public static class UnsafePartitionLoadTypeFlow extends AbstractUnsafeLoadTypeFlow {
-
-        protected final UnsafePartitionKind partitionKind;
-        protected final AnalysisType partitionType;
-
-        public UnsafePartitionLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> arrayFlow,
-                        UnsafePartitionKind partitionKind, AnalysisType partitionType) {
-            super(loadLocation, objectType, componentType, arrayFlow);
-            this.partitionKind = partitionKind;
-            this.partitionType = partitionType;
-        }
-
-        private UnsafePartitionLoadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafePartitionLoadTypeFlow original) {
-            super(bb, methodFlows, original);
-            this.partitionKind = original.partitionKind;
-            this.partitionType = original.partitionType;
-        }
-
-        @Override
-        public AbstractUnsafeLoadTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new UnsafePartitionLoadTypeFlow(bb, methodFlows, this);
-        }
-
-        @Override
-        public TypeState filter(PointsToAnalysis bb, TypeState update) {
-            if (partitionType.equals(bb.getObjectType())) {
-                /* No need to filter. */
-                return update;
-            } else {
-                /* Filter the incoming state with the partition type. */
-                return TypeState.forIntersection(bb, update, partitionType.getAssignableTypes(true));
-            }
-        }
-
-        @Override
-        public void onObservedUpdate(PointsToAnalysis bb) {
-            TypeState objectState = getObjectState();
-
-            for (AnalysisObject object : objectState.objects(bb)) {
-                AnalysisType objectType = object.type();
-                assert !objectType.isArray() : objectType;
-
-                for (AnalysisField field : objectType.unsafeAccessedFields(partitionKind)) {
-                    processField(bb, object, field);
-                }
-            }
-        }
-
-        @Override
-        public String toString() {
-            return "UnsafePartitionLoadTypeFlow<" + getState() + "> : " + partitionKind;
         }
     }
 }

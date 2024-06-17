@@ -26,96 +26,16 @@
 import re
 import os
 from tempfile import mkstemp
+from typing import List, Optional
 
 import mx
 import mx_benchmark
 import mx_sdk_benchmark
-import mx_compiler
-from mx_java_benchmarks import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
+from mx_benchmark import DataPoints
+from mx_sdk_benchmark import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
+from mx_sdk_benchmark import JvmciJdkVm, SUCCESSFUL_STAGE_PATTERNS, Stage
 
 _suite = mx.suite('compiler')
-
-class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
-    def __init__(self, raw_name, raw_config_name, extra_args):
-        super(JvmciJdkVm, self).__init__()
-        self.raw_name = raw_name
-        self.raw_config_name = raw_config_name
-        self.extra_args = extra_args
-
-    def name(self):
-        return self.raw_name
-
-    def config_name(self):
-        return self.raw_config_name
-
-    def post_process_command_line_args(self, args):
-        return [arg if not callable(arg) else arg() for arg in self.extra_args] + args
-
-    def get_jdk(self):
-        tag = mx.get_jdk_option().tag
-        if tag and tag != mx_compiler._JVMCI_JDK_TAG:
-            mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
-                self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
-        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG)
-
-    def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
-        return self.get_jdk().run_java(
-            args, out=out, err=out, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, command_mapper_hooks=self.command_mapper_hooks)
-
-    def generate_java_command(self, args):
-        return self.get_jdk().generate_java_command(self.post_process_command_line_args(args))
-
-    def rules(self, output, benchmarks, bmSuiteArgs):
-        rules = super(JvmciJdkVm, self).rules(output, benchmarks, bmSuiteArgs)
-        return rules
-
-
-def add_or_replace_arg(option_key, value, vm_option_list):
-    """
-    Determines if an option with the same key as option_key is already present in vm_option_list.
-    If so, it replaces the option value with the given one. If not, it appends the option
-    to the end of the list. It then returns the modified list.
-
-    For example, if arg_list contains the argument '-Djdk.graal.CompilerConfig=community', and this function
-    is called with an option_key of '-Djdk.graal.CompilerConfig' and a value of 'economy', the resulting
-    argument list will contain one instance of '-Djdk.graal.CompilerConfig=economy'.
-    """
-    arg_string = option_key + '=' + value
-    idx = next((idx for idx, arg in enumerate(vm_option_list) if arg.startswith(option_key)), -1)
-    if idx == -1:
-        vm_option_list.append(arg_string)
-    else:
-        vm_option_list[idx] = arg_string
-    return vm_option_list
-
-def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0, hosted=True):
-    prefixes = [('', ['-XX:+UseJVMCICompiler'])]
-    if hosted:
-        prefixes.append(('hosted-', ['-XX:-UseJVMCICompiler']))
-    for prefix, args in prefixes:
-        extended_raw_config_name = prefix + raw_config_name
-        extended_extra_args = extra_args + args
-        if include_default:
-            mx_benchmark.add_java_vm(
-                JvmciJdkVm(raw_name, extended_raw_config_name, extended_extra_args), suite, priority)
-        for variant in variants:
-            compiler_config = None
-            if len(variant) == 2:
-                var_name, var_args = variant
-                var_priority = priority
-            elif len(variant) == 3:
-                var_name, var_args, var_priority = variant
-            elif len(variant) == 4:
-                var_name, var_args, var_priority, compiler_config = variant
-            else:
-                raise TypeError("unexpected tuple size for jvmci variant {} (size must be <= 4)".format(variant))
-
-            variant_args = extended_extra_args + var_args
-            if compiler_config is not None:
-                variant_args = add_or_replace_arg('-Djdk.graal.CompilerConfiguration', compiler_config, variant_args)
-
-            mx_benchmark.add_java_vm(
-                JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, variant_args), suite, var_priority)
 
 
 _graal_variants = [
@@ -125,10 +45,10 @@ _graal_variants = [
     ('serialgc', ['-XX:+UseSerialGC'], 12),
     ('pargc', ['-XX:+UseParallelGC'], 12),
     ('g1gc', ['-XX:+UseG1GC'], 12),
-    ('zgc', ['-XX:+UseZGC'], 12),
+    ('zgc', ['-XX:+UseZGC', '-XX:-ZGenerational'], 12),
     # ('gen-zgc', ['-XX:+UseZGC', '-XX:+ZGenerational'], 12), # GR-45919 not yet supported
-    ('zgc-avx2', ['-XX:+UseZGC', '-XX:UseAVX=2'], 12),
-    ('zgc-avx3', ['-XX:+UseZGC', '-XX:UseAVX=3'], 12),
+    ('zgc-avx2', ['-XX:+UseZGC', '-XX:-ZGenerational', '-XX:UseAVX=2'], 12),
+    ('zgc-avx3', ['-XX:+UseZGC', '-XX:-ZGenerational', '-XX:UseAVX=3'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-profile-info', ['-Djvmci.UseProfilingInformation=false'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
@@ -140,7 +60,7 @@ _graal_variants = [
     ('avx2', ['-XX:UseAVX=2'], 11),
     ('avx3', ['-XX:UseAVX=3'], 11),
 ]
-build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Djdk.graal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
+mx_sdk_benchmark.build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Djdk.graal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
 # On 64 bit systems -client is not supported. Nevertheless, when running with -server, we can
 # force the VM to just compile code with C1 but not with C2 by adding option -XX:TieredStopAtLevel=1.
@@ -152,7 +72,7 @@ mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+Enable
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-serialgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseSerialGC']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-pargc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseParallelGC']), _suite, 2)
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-zgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseZGC']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-zgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseZGC', '-XX:-ZGenerational']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-gen-zgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseZGC', '-XX:+ZGenerational']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-no-tiered-comp', ['-server', '-XX:-EnableJVMCI', '-XX:-TieredCompilation']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
@@ -406,7 +326,45 @@ class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBen
 mx_benchmark.add_bm_suite(ScalaDaCapoTimingBenchmarkSuite())
 
 
-class JMHNativeImageBenchmarkMixin(mx_sdk_benchmark.NativeImageBenchmarkMixin):
+class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_benchmark.NativeImageBenchmarkMixin):
+
+    def get_jmh_result_file(self, bm_suite_args: List[str]) -> Optional[str]:
+        """
+        Only generate a JMH result file in the run stage. Otherwise the file-based rule (see
+        :class:`mx_benchmark.JMHJsonRule`) will produce datapoints at every stage, based on results from a previous
+        stage.
+        """
+        if self.is_native_mode(bm_suite_args) and not self.stages_info.fallback_mode:
+            # At this point, the StagesInfo class may not have all the information yet, in that case we rely on the
+            # requested stage. But if this function is called later again when it is fully set up, we have to use the
+            # effective stage instead.
+            # This is important so that the JMH parsing rule is only enabled when the stage actually ran (if it is
+            # skipped, it would otherwise pick up a previous result file)
+            if self.stages_info.is_set_up:
+                current_stage = self.stages_info.effective_stage
+            else:
+                current_stage = self.stages_info.requested_stage
+
+            if current_stage not in [Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN]:
+                return None
+
+        return super().get_jmh_result_file(bm_suite_args)
+
+    def fallback_mode_reason(self, bm_suite_args: List[str]) -> Optional[str]:
+        """
+        JMH benchmarks need to use the fallback mode if --jmh-run-individually is used.
+        The flag causes one native image to be built per JMH benchmark. This is fundamentally incompatible with the
+        default benchmarking mode of running each stage on its own because a benchmark will overwrite the intermediate
+        files of the previous benchmark if not all stages are run at once.
+
+        In the fallback mode, collection of performance data is limited. Only performance data of the ``run`` stage can
+        reliably be collected. Other metrics, such as image build statistics or profiling performance cannot reliably be
+        collected because they cannot be attributed so a specific individual JMH benchmark.
+        """
+        if self.jmhArgs(bm_suite_args).jmh_run_individually:
+            return "--jmh-run-individually is not compatible with selecting individual stages"
+        else:
+            return None
 
     def extra_image_build_argument(self, benchmark, args):
         # JMH does HotSpot-specific field offset checks in class initializers
@@ -462,6 +420,9 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite, JMH
     def subgroup(self):
         return "graal-compiler"
 
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 
@@ -476,6 +437,9 @@ class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite, JMHJarBas
 
     def subgroup(self):
         return "graal-compiler"
+
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
 
 mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
@@ -492,9 +456,15 @@ class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarB
     def subgroup(self):
         return "graal-compiler"
 
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
     def filter_distribution(self, dist):
         return super(JMHDistGraalCoreBenchmarkSuite, self).filter_distribution(dist) and \
                not JMHDistWhiteboxBenchmarkSuite.is_whitebox_dependency(dist)
+
+    def successPatterns(self):
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 
 mx_benchmark.add_bm_suite(JMHDistGraalCoreBenchmarkSuite())
@@ -510,6 +480,9 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
 
     def subgroup(self):
         return "graal-compiler"
+
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     @staticmethod
     def is_whitebox_dependency(dist):
@@ -541,6 +514,9 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
     def getJMHEntry(self, bmSuiteArgs):
         assert self.dist
         return [mx.distribution(self.dist).mainClass]
+
+    def successPatterns(self):
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())

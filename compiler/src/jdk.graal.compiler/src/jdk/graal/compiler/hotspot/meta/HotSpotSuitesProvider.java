@@ -56,7 +56,6 @@ import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.tiers.SuitesCreator;
-
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -87,7 +86,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             position.add(new UseTrappingNullChecksPhase());
         }
 
-        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.X) {
             ListIterator<BasePhase<? super MidTierContext>> mid = suites.getMidTier().findPhase(WriteBarrierAdditionPhase.class);
             // No write barriers required
             mid.remove();

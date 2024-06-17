@@ -74,9 +74,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -166,16 +164,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
         }
         return null;
-    }
-
-    @Override
-    public ResolvedJavaType resolve(ResolvedJavaType type) {
-        if (type instanceof SubstitutionType) {
-            return ((SubstitutionType) type).getAnnotated();
-        } else if (type instanceof InjectedFieldsType) {
-            return ((InjectedFieldsType) type).getOriginal();
-        }
-        return type;
     }
 
     @Override
@@ -282,24 +270,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
         }
         return method;
-    }
-
-    @Override
-    public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        ResolvedJavaMethod cur = method;
-        while (true) {
-            if (cur instanceof SubstitutionMethod) {
-                cur = ((SubstitutionMethod) cur).getOriginal();
-            } else if (cur instanceof CustomSubstitutionMethod) {
-                cur = ((CustomSubstitutionMethod) cur).getOriginal();
-            } else if (cur instanceof AnnotatedMethod) {
-                cur = ((AnnotatedMethod) cur).getOriginal();
-            } else if (cur instanceof IncompatibleClassChangeFallbackMethod) {
-                cur = ((IncompatibleClassChangeFallbackMethod) cur).getOriginal();
-            } else {
-                return cur;
-            }
-        }
     }
 
     /**
@@ -615,23 +585,35 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     private void handleDeletedClass(Class<?> originalClass, Delete deleteAnnotation) {
         if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+            ResolvedJavaType type = metaAccess.lookupJavaType(originalClass);
+
+            try {
+                type.link();
+            } catch (LinkageError ignored) {
+                /*
+                 * Ignore any linking errors. A type that cannot be linked doesn't need elements
+                 * replaced: it will simply fail at runtime with the same linkage error before
+                 * reaching those elements.
+                 */
+                return;
+            }
+
             /*
              * We register all methods and fields as deleted. That still allows usage of the type in
              * type checks.
              */
-            for (Executable m : originalClass.getDeclaredMethods()) {
-                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
+            for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
                 registerAsDeleted(null, method, deleteAnnotation);
             }
-            for (Executable m : originalClass.getDeclaredConstructors()) {
-                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                registerAsDeleted(null, method, deleteAnnotation);
+            for (ResolvedJavaMethod constructor : type.getDeclaredConstructors()) {
+                registerAsDeleted(null, constructor, deleteAnnotation);
             }
-            for (Field f : originalClass.getDeclaredFields()) {
-                ResolvedJavaField field = metaAccess.lookupJavaField(f);
-                registerAsDeleted(null, field, deleteAnnotation);
+            for (ResolvedJavaField f : type.getInstanceFields(false)) {
+                registerAsDeleted(null, f, deleteAnnotation);
             }
-
+            for (ResolvedJavaField f : type.getStaticFields()) {
+                registerAsDeleted(null, f, deleteAnnotation);
+            }
         } else {
             deleteAnnotations.put(metaAccess.lookupJavaType(originalClass), deleteAnnotation);
         }
@@ -962,16 +944,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         Class<?> targetClass = originalClass;
         String targetName = "";
         boolean isFinal = original.isFinal() && annotated.isFinal();
-        boolean disableCaching = false;
 
         if (recomputeAnnotation != null) {
             kind = recomputeAnnotation.kind();
             targetName = recomputeAnnotation.name();
             isFinal = recomputeAnnotation.isFinal();
-            disableCaching = recomputeAnnotation.disableCaching();
             guarantee(!isFinal || !ComputedValueField.isOffsetRecomputation(kind), "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
-                            RecomputeFieldValue.class.getSimpleName(), kind, annotated);
-            guarantee(!isFinal || !disableCaching, "@%s can not be final if caching is disabled: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);
             if (recomputeAnnotation.declClass() != RecomputeFieldValue.class) {
                 guarantee(recomputeAnnotation.declClassName().isEmpty(), "Both class and class name specified");
@@ -982,7 +960,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
         Class<?> transformedValueAllowedType = getTargetClass(annotatedField.getType());
 
-        return ComputedValueField.create(original, annotated, kind, transformedValueAllowedType, null, targetClass, targetName, isFinal, disableCaching);
+        return ComputedValueField.create(original, annotated, kind, transformedValueAllowedType, null, targetClass, targetName, isFinal);
     }
 
     protected void reinitializeField(Field annotatedField) {

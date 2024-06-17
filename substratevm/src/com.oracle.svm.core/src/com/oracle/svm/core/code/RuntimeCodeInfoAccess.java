@@ -24,12 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import java.util.EnumSet;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -45,7 +40,11 @@ import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
@@ -172,9 +171,10 @@ public final class RuntimeCodeInfoAccess {
             continueVisiting = continueVisiting && CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(),
                             impl.getCodeConstantsReferenceMapEncoding(), impl.getCodeConstantsReferenceMapIndex(), visitor, null);
         }
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoObjectConstants(), visitor);
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoSourceClasses(), visitor);
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoSourceMethodNames(), visitor);
+        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectConstants(), visitor);
+        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getClasses(), visitor);
+        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getMemberNames(), visitor);
+        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getOtherStrings(), visitor);
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getDeoptimizationObjectConstants(), visitor);
         return continueVisiting;
     }
@@ -203,12 +203,12 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static CodeInfo allocateMethodInfo() {
-        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT);
+        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT, NmtCategory.Code);
         return allocateMethodInfo(objectFields);
     }
 
     public static CodeInfo allocateMethodInfo(NonmovableObjectArray<Object> objectData) {
-        CodeInfoImpl info = UnmanagedMemory.calloc(CodeInfoAccess.getSizeOfCodeInfo());
+        CodeInfoImpl info = NativeMemory.calloc(CodeInfoAccess.getSizeOfCodeInfo(), NmtCategory.Code);
 
         assert objectData.isNonNull() && NonmovableArrays.lengthOf(objectData) == CodeInfoImpl.OBJFIELDS_COUNT;
         info.setObjectFields(objectData);
@@ -235,12 +235,23 @@ public final class RuntimeCodeInfoAccess {
         CommittedMemoryProvider.get().freeExecutableMemory(codeStart, codeSize, WordFactory.unsigned(SubstrateOptions.codeAlignment()));
     }
 
-    public static int makeCodeMemoryExecutableReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
-        return CommittedMemoryProvider.get().protect(codeStart, codeSize, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
+    public static void makeCodeMemoryExecutableReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
+        protectCodeMemory(codeStart, codeSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.EXECUTE);
     }
 
-    public static int makeCodeMemoryExecutableWritable(CodePointer start, UnsignedWord size) {
-        return CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE, CommittedMemoryProvider.Access.EXECUTE));
+    public static void makeCodeMemoryExecutableWritable(CodePointer start, UnsignedWord size) {
+        VMError.guarantee(RuntimeCodeCache.Options.WriteableCodeCache.getValue(), "memory must not be writable and executable at the same time unless we have a writable code cache");
+        protectCodeMemory(start, size, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.EXECUTE);
+    }
+
+    private static void protectCodeMemory(CodePointer codeStart, UnsignedWord codeSize, int permissions) {
+        int result = VirtualMemoryProvider.get().protect(codeStart, codeSize, permissions);
+        if (result != 0) {
+            throw VMError.shouldNotReachHere("Failed to modify protection of code memory. This may be caused by " +
+                            "a. a too restrictive OS-limit of allowed memory mappings (see vm.max_map_count on Linux), " +
+                            "b. a too strict security policy if you are running on Security-Enhanced Linux (SELinux), or " +
+                            "c. a Native Image internal error.");
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -279,7 +290,7 @@ public final class RuntimeCodeInfoAccess {
         }
 
         impl.setState(CodeInfo.STATE_FREED);
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
+        NullableNativeMemory.free(info);
     }
 
     private static final NonmovableArrayAction GUARANTEE_ALL_OBJECTS_IN_IMAGE_HEAP_ACTION = new NonmovableArrayAction() {
@@ -313,6 +324,7 @@ public final class RuntimeCodeInfoAccess {
         action.apply(impl.getDeoptimizationEncodings());
         action.apply(impl.getCodeConstantsReferenceMapEncoding());
         action.apply(impl.getCodeObserverHandles());
+        action.apply(impl.getMethodTable());
         forEachObjectArray(info, action);
     }
 
@@ -320,9 +332,10 @@ public final class RuntimeCodeInfoAccess {
     public static void forEachObjectArray(CodeInfo info, NonmovableArrayAction action) {
         CodeInfoImpl impl = cast(info);
         action.apply(impl.getObjectFields());
-        action.apply(impl.getFrameInfoObjectConstants());
-        action.apply(impl.getFrameInfoSourceClasses());
-        action.apply(impl.getFrameInfoSourceMethodNames());
+        action.apply(impl.getObjectConstants());
+        action.apply(impl.getClasses());
+        action.apply(impl.getMemberNames());
+        action.apply(impl.getOtherStrings());
         action.apply(impl.getDeoptimizationObjectConstants());
     }
 

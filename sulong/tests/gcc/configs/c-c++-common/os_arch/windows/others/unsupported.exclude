@@ -1,0 +1,106 @@
+# undefined __divti3
+gcc-5.2.0/gcc/testsuite/c-c++-common/int128-2.c
+
+# undefined __divdc3
+gcc-5.2.0/gcc/testsuite/c-c++-common/torture/complex-alias-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/builtin-math-7.c
+
+# undefined __divsc3
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/complex-5.c
+
+# undefined __mulsc3
+gcc-5.2.0/gcc/testsuite/c-c++-common/torture/complex-sign-mul-minus-one.c
+gcc-5.2.0/gcc/testsuite/c-c++-common/torture/complex-sign-mul-one.c
+gcc-5.2.0/gcc/testsuite/c-c++-common/torture/complex-sign-mul.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20070614-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr53366-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr53366-2.c
+
+# undefined __muld3
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr47473.c
+
+# undefined __fixsfti
+gcc-5.2.0/gcc/testsuite/c-c++-common/ubsan/float-cast-overflow-7.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr49218.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/fp-int-convert-timode.c
+
+# undefined __floatuntisf
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/fp-int-convert-2.c
+
+# undefined __udivti3
+gcc-5.2.0/gcc/testsuite/gcc.dg/pr64807.c
+
+# undefined bcopy
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/bcopy.c
+
+# fputs different argcount
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/pr38360.c
+
+# typedef size_t to long
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20041214-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/20080716-1.c
+
+# missing sys/mman.h
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/loop-2f.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/loop-2g.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/20030711-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/20050826-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/pr55430.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/pr65408.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/struct-ret-3.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr49038.c
+
+# missing sys/resource.h
+gcc-5.2.0/gcc/testsuite/gcc.dg/split-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/split-3.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/split-4.c
+
+# missing unistd.h
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/ftrapv-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-prof/time-profiler-2.c
+
+# incompatible FILE
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr43987.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/pr27531-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/format/cmn-err-1.c
+
+# undefined macro _GCC_ATOMIC_TEST_AND_SET_TRUEVAL
+gcc-5.2.0/gcc/testsuite/gcc.dg/atomic-flag.c
+
+# redefinition ATTR
+gcc-5.2.0/gcc/testsuite/gcc.dg/bf-ms-layout-2.c
+
+# undefined __memset_chk
+gcc-5.2.0/gcc/testsuite/gcc.dg/pr40340-3.c
+
+# mac68k alignment not supported
+gcc-5.2.0/gcc/testsuite/gcc.dg/pragma-darwin.c
+
+# incompatible sigaction
+gcc-5.2.0/gcc/testsuite/gcc.dg/setjmp-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/setjmp-2.c
+
+# undefined stpcpy
+gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-14g.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-14gf.c
+
+# undefined __strcpy_chk
+gcc-5.2.0/gcc/testsuite/gcc.dg/Wobjsize-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20100103-2_0.c
+
+# undefined link_error
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-ssa/pr15791-2.c
+
+# conflicting types for remove
+gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-26.c
+
+# conflicting types for printf
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr38405.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/tls/thr-init-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/tls/thr-init-2.c
+
+# incompatible complex numbers
+gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/pr64307.c
+
+# incompatible inline asm
+gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20090914-2_0.c

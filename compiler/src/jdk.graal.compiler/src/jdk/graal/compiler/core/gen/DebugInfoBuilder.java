@@ -28,12 +28,14 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Queue;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.ImplicitLIRFrameState;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -49,8 +51,6 @@ import jdk.graal.compiler.nodes.virtual.MaterializedObjectState;
 import jdk.graal.compiler.nodes.virtual.VirtualBoxingNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
-import jdk.graal.compiler.debug.Assertions;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.VirtualObject;
@@ -268,8 +268,6 @@ public class DebugInfoBuilder {
 
             assert state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI || state.locksSize() == 0 : Assertions.errorMessageContext("node", node, "state", state);
 
-            assert !(state.getMethod().isSynchronized() && state.bci != BytecodeFrame.BEFORE_BCI && state.bci != BytecodeFrame.AFTER_BCI && state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI) ||
-                            state.locksSize() > 0 : Assertions.errorMessageContext("state", state, "node", node, "bci", state.bci);
             assert state.verify();
 
             int numLocals = state.localsSize();

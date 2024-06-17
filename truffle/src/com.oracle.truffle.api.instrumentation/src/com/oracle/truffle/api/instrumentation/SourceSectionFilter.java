@@ -762,7 +762,7 @@ public final class SourceSectionFilter {
         /**
          * Constructs a new index range between one a first index inclusive and a second index
          * exclusive. Parameters must comply <code>startIndex >= 0</code> and
-         * <code>startIndex <= endIndex</code>.
+         * <code>startIndex &lt;= endIndex</code>.
          *
          * @param startIndex the start index (inclusive)
          * @param endIndex the end index (exclusive)

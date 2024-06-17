@@ -72,8 +72,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
  * }
  * </pre>
  *
- * {@inheritDoc}
- *
  * @see #create()
  * @see LoopConditionProfile
  * @see CountingConditionProfile

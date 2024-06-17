@@ -37,7 +37,7 @@ import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 @TargetClass(className = "jdk.internal.reflect.AccessorGenerator")
-public final class Target_jdk_internal_reflect_AccessorGenerator {
+final class Target_jdk_internal_reflect_AccessorGenerator {
 }
 
 @TargetClass(classNameProvider = Name_jdk_internal_reflect_SerializationConstructorAccessorGenerator_helper.class)

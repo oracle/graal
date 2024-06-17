@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,8 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
+import com.oracle.truffle.object.LocationImpl;
+import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -68,8 +70,8 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
 
     final Shape rootShape = Shape.newBuilder().build();
     final Object value = new Object();
-    final Location declaredLocation = rootShape.allocator().declaredLocation(value);
-    final Shape shapeWithDeclared = rootShape.addProperty(Property.create("declared", declaredLocation, 0));
+    final Location declaredLocation = ((ShapeImpl) rootShape).allocator().declaredLocation(value);
+    final Shape shapeWithDeclared = ((ShapeImpl) rootShape).addProperty(Property.create("declared", declaredLocation, 0));
 
     private DynamicObject newInstance() {
         return new TestDynamicObjectDefault(rootShape);
@@ -92,18 +94,16 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
 
         Property property = object.getShape().getProperty("declared");
         Assert.assertEquals(true, property.getLocation().canStore(value));
-        Assert.assertEquals(true, property.getLocation().canSet(value));
         try {
-            property.set(object, value, shapeWithDeclared);
+            property.getLocation().set(object, value, shapeWithDeclared);
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.fail(e.getMessage());
         }
 
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
-        Assert.assertEquals(false, property.getLocation().canSet(newValue));
         try {
-            property.set(object, newValue, shapeWithDeclared);
+            property.getLocation().set(object, newValue, shapeWithDeclared);
             Assert.fail();
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.assertThat(e, CoreMatchers.instanceOf(com.oracle.truffle.api.object.IncompatibleLocationException.class));
@@ -129,23 +129,22 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
 
     @SuppressWarnings("deprecation")
     @Test
-    public void testAddDeclaredLocation() {
+    public void testAddDeclaredLocation() throws com.oracle.truffle.api.object.IncompatibleLocationException {
         Property property = shapeWithDeclared.getProperty("declared");
 
         DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
-        property.setSafe(object, value, rootShape, shapeWithDeclared);
+        ((LocationImpl) property.getLocation()).set(object, value, rootShape, shapeWithDeclared);
         Assert.assertSame(shapeWithDeclared, object.getShape());
         Assert.assertSame(value, library.getOrDefault(object, "declared", null));
 
         DynamicObject object2 = newInstance();
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
-        Assert.assertEquals(false, property.getLocation().canSet(newValue));
         try {
-            property.getLocation().set(object2, newValue, rootShape, shapeWithDeclared);
+            ((LocationImpl) property.getLocation()).set(object2, newValue, rootShape, shapeWithDeclared);
             Assert.fail();
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
             // expected

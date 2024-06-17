@@ -57,7 +57,6 @@ import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
-import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -296,7 +295,7 @@ public class StackifierIRWalker extends IRWalker {
                      * emitted the loop header.
                      */
                     assert currentBlock == blocks[0] : Assertions.errorMessage(currentBlock, blocks[0]);
-                } else if (!(node instanceof LoopExitNode)) {
+                } else {
                     lowerNode(node);
                 }
                 // for verification purposes
@@ -520,10 +519,10 @@ public class StackifierIRWalker extends IRWalker {
      * Also generates a potential forward jump to the next basic block in the control-flow-graph.
      */
     protected void lowerUnhandledBlockEnd(HIRBlock currentBlock, FixedNode lastNode) {
-        if (!(lastNode instanceof LoopExitNode) && !(lastNode instanceof LoopBeginNode)) {
+        if (!(lastNode instanceof LoopBeginNode)) {
             /*
-             * Special case for basic blocks with only one node. LoopExitNode and LoopBeginNode need
-             * to be handled separately again, as they must not be lowered by the node lowerer.
+             * Special case for basic blocks with only one node. LoopBeginNode need to be handled
+             * separately again, as they must not be lowered by the node lowerer.
              */
             lowerNode(lastNode);
         }

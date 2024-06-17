@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -49,7 +50,6 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
@@ -64,7 +64,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Core class of the Reachability Analysis. Contains the crucial part: resolving virtual methods.
  * The resolving is done in two directions. Whenever a new method is marked as virtually invoked,
  * see {@link #onMethodInvoked(ReachabilityAnalysisMethod, Object)}, and whenever a new type is
- * marked as instantiated, see {@link #onTypeInstantiated(ReachabilityAnalysisType,Object)}.
+ * marked as instantiated, see {@link #onTypeInstantiated(AnalysisType)}.
  *
  * @see MethodSummary
  * @see MethodSummaryProvider
@@ -226,8 +226,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             BytecodePosition position = new BytecodePosition(null, method, 0);
             getUniverse().registerEmbeddedRoot(constant, position);
 
-            AnalysisType type = (AnalysisType) ((TypedConstant) constant).getType(getMetaAccess());
-            registerTypeAsInHeap(type, reason);
+            AnalysisType type = ((TypedConstant) constant).getType();
+            type.registerAsInstantiated(reason);
         }
     }
 
@@ -263,19 +263,23 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      * NUMBER_OF_INVOKED_METHODS_ON_TYPE). and is one of the places that we should try to optimize
      * in near future.
      */
-    protected void onTypeInstantiated(ReachabilityAnalysisType type, Object reason) {
-        type.forAllSuperTypes(current -> {
-            Set<ReachabilityAnalysisMethod> invokedMethods = ((ReachabilityAnalysisType) current).getInvokedVirtualMethods();
-            for (ReachabilityAnalysisMethod curr : invokedMethods) {
-                ReachabilityAnalysisMethod method = type.resolveConcreteMethod(curr, current);
-                if (method != null) {
-                    markMethodImplementationInvoked(method, reason);
+    @Override
+    public void onTypeInstantiated(AnalysisType type) {
+        ReachabilityAnalysisEngine bb = (ReachabilityAnalysisEngine) universe.getBigbang();
+        bb.schedule(() -> {
+            type.forAllSuperTypes(current -> {
+                Set<ReachabilityAnalysisMethod> invokedMethods = ((ReachabilityAnalysisType) current).getInvokedVirtualMethods();
+                for (ReachabilityAnalysisMethod curr : invokedMethods) {
+                    ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) type.resolveConcreteMethod(curr, current);
+                    if (method != null) {
+                        markMethodImplementationInvoked(method, type.getInstantiatedReason());
+                    }
                 }
-            }
 
-            for (ReachabilityAnalysisMethod method : ((ReachabilityAnalysisType) current).getInvokedSpecialMethods()) {
-                markMethodImplementationInvoked(method, reason);
-            }
+                for (ReachabilityAnalysisMethod method : ((ReachabilityAnalysisType) current).getInvokedSpecialMethods()) {
+                    markMethodImplementationInvoked(method, type.getInstantiatedReason());
+                }
+            });
         });
     }
 

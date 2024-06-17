@@ -70,7 +70,6 @@ import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
-import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
@@ -95,7 +94,7 @@ public class SubstrateGraphKit extends GraphKit {
 
     private final FrameStateBuilder frameState;
     private int nextBCI;
-    private final List<ValueNode> arguments;
+    private final List<ValueNode> initialArguments;
 
     @SuppressWarnings("this-escape")
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers,
@@ -107,12 +106,10 @@ public class SubstrateGraphKit extends GraphKit {
         frameState.disableStateVerification();
         List<ValueNode> collectedArguments = new ArrayList<>();
         frameState.initializeForMethodStart(null, true, graphBuilderPlugins, collectedArguments);
-        arguments = Collections.unmodifiableList(collectedArguments);
+        initialArguments = Collections.unmodifiableList(collectedArguments);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
-    }
-
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId) {
-        this(debug, stubMethod, providers, graphBuilderPlugins, compilationId, false);
+        // Record method dependency in the graph
+        graph.recordMethod(graph.method());
     }
 
     @Override
@@ -137,7 +134,7 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public List<ValueNode> getInitialArguments() {
-        return arguments;
+        return initialArguments;
     }
 
     public LoadFieldNode createLoadField(ValueNode object, ResolvedJavaField field) {
@@ -168,24 +165,24 @@ public class SubstrateGraphKit extends GraphKit {
         return createInvokeWithExceptionAndUnwind(findMethod(declaringClass, name, invokeKind == InvokeKind.Static), invokeKind, frameState, bci(), args);
     }
 
-    public InvokeWithExceptionNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... argumentsParam) {
-        return startInvokeWithException(targetMethod, kind, frameState, bci(), argumentsParam);
+    public InvokeWithExceptionNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... args) {
+        return startInvokeWithException(targetMethod, kind, frameState, bci(), args);
     }
 
-    public InvokeWithExceptionNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... argumentsParam) {
-        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), argumentsParam);
+    public InvokeWithExceptionNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... args) {
+        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), args);
     }
 
     public ConstantNode createConstant(Constant value, JavaKind kind) {
         return ConstantNode.forConstant(StampFactory.forKind(kind), value, getMetaAccess(), getGraph());
     }
 
-    public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> argumentsParam, Signature signature, int newThreadStatus, boolean emitDeoptTarget) {
-        return createCFunctionCallWithCapture(targetAddress, argumentsParam, signature, newThreadStatus, emitDeoptTarget, SubstrateCallingConventionKind.Native.toType(true),
+    public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> args, Signature signature, int newThreadStatus, boolean emitDeoptTarget) {
+        return createCFunctionCallWithCapture(targetAddress, args, signature, newThreadStatus, emitDeoptTarget, SubstrateCallingConventionKind.Native.toType(true),
                         null, null, null);
     }
 
-    public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> argumentsParam, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
+    public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> args, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
                     CallingConvention.Type convention, ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
         assert ((captureFunction == null) && (statesToCapture == null) && (captureBuffer == null)) ||
                         ((captureFunction != null) && (statesToCapture != null) && (captureBuffer != null));
@@ -211,7 +208,7 @@ public class SubstrateGraphKit extends GraphKit {
         JavaKind cReturnKind = javaReturnKind.getStackKind();
         JavaType returnType = signature.getReturnType(null);
         Stamp returnStamp = returnStamp(returnType, cReturnKind);
-        InvokeNode invoke = createIndirectCall(targetAddress, argumentsParam, signature.toParameterTypes(null), returnStamp, cReturnKind, convention);
+        InvokeNode invoke = createIndirectCall(targetAddress, args, signature.toParameterTypes(null), returnStamp, cReturnKind, convention);
 
         if (fixedStatesToCapture != null) {
             append(new CFunctionCaptureNode(captureFunction, fixedStatesToCapture, captureBuffer));
@@ -243,26 +240,26 @@ public class SubstrateGraphKit extends GraphKit {
         return getLoweringProvider().implicitLoadConvertWithBooleanCoercionIfNecessary(getGraph(), asKind(returnType), result);
     }
 
-    public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> argumentsParam, Signature signature, SubstrateCallingConventionKind callKind) {
-        assert argumentsParam.size() == signature.getParameterCount(false);
+    public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, Signature signature, SubstrateCallingConventionKind callKind) {
+        assert args.size() == signature.getParameterCount(false);
         assert callKind != SubstrateCallingConventionKind.Native : "return kind and stamp would be incorrect";
         JavaKind returnKind = signature.getReturnKind().getStackKind();
         Stamp returnStamp = returnStamp(signature.getReturnType(null), returnKind);
-        return createIndirectCall(targetAddress, argumentsParam, signature.toParameterTypes(null), returnStamp, returnKind, callKind);
+        return createIndirectCall(targetAddress, args, signature.toParameterTypes(null), returnStamp, returnKind, callKind);
     }
 
-    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> argumentsParam, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
                     SubstrateCallingConventionKind callKind) {
-        return createIndirectCall(targetAddress, argumentsParam, parameterTypes, returnStamp, returnKind, callKind.toType(true));
+        return createIndirectCall(targetAddress, args, parameterTypes, returnStamp, returnKind, callKind.toType(true));
     }
 
-    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> argumentsParam, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
                     CallingConvention.Type convention) {
         frameState.clearStack();
 
         int bci = bci();
         CallTargetNode callTarget = getGraph().add(
-                        new IndirectCallTargetNode(targetAddress, argumentsParam.toArray(new ValueNode[argumentsParam.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
+                        new IndirectCallTargetNode(targetAddress, args.toArray(new ValueNode[args.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
                                         convention, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
@@ -373,11 +370,5 @@ public class SubstrateGraphKit extends GraphKit {
         lastFixedNode = noExceptionEdge;
 
         return withExceptionNode;
-    }
-
-    public void appendStateSplitProxy() {
-        StateSplitProxyNode proxy = new StateSplitProxyNode();
-        append(proxy);
-        proxy.setStateAfter(frameState.create(bci(), proxy));
     }
 }

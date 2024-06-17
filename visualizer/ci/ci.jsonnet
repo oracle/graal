@@ -1,5 +1,6 @@
 {
   local common = import '../../ci/ci_common/common.jsonnet',
+  local utils = import '../../ci/ci_common/common-utils.libsonnet',
 
   Gate:: {
     timelimit : "30:00",
@@ -7,7 +8,7 @@
     run: [
       ["cd", "./visualizer"],
       ["mx", "pylint" ],
-      ["mx", "verify-graal-graphio" ],
+      # temporarily disabled until GR-52034 is closed ["mx", "verify-graal-graphio" ],
       ["mx", "build" ],
       ["mx", "clean" ],
       ["mx", "build-release" ],
@@ -34,8 +35,10 @@
     ]
   },
 
-  builds: [
+  local _builds = [
     common.linux_amd64 + common.oraclejdk11 + self.Gate + { name: "gate-visualizer-linux-amd64-oraclejdk-11" },
     common.linux_amd64 + common.labsjdkLatestCE + self.Integration + { name: "gate-visualizer-integration-linux-amd64-labsjdk-latest" },
-  ]
+  ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

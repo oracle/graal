@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,7 +112,7 @@ public final class RightShiftNode extends ShiftNode<Shr> {
 
                 if (xStamp.lowerBound() >> amount == xStamp.upperBound() >> amount) {
                     // Right shift turns the result of the expression into a constant.
-                    return ConstantNode.forIntegerKind(stamp.getStackKind(), xStamp.lowerBound() >> amount);
+                    return ConstantNode.forIntegerBits(xStamp.getBits(), xStamp.lowerBound() >> amount);
                 }
             }
 
@@ -128,10 +128,10 @@ public final class RightShiftNode extends ShiftNode<Shr> {
                             IntegerStamp istamp = (IntegerStamp) other.getX().stamp(view);
 
                             if (istamp.isPositive()) {
-                                return ConstantNode.forIntegerKind(stamp.getStackKind(), 0);
+                                return ConstantNode.forIntegerBits(istamp.getBits(), 0);
                             }
                             if (istamp.isStrictlyNegative()) {
-                                return ConstantNode.forIntegerKind(stamp.getStackKind(), -1L);
+                                return ConstantNode.forIntegerBits(istamp.getBits(), -1L);
                             }
 
                             /*

@@ -45,11 +45,6 @@ import com.oracle.svm.core.util.UnsignedUtils;
 
 public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeapProvider {
     @Override
-    public boolean guaranteesHeapPreferredAddressSpaceAlignment() {
-        return true;
-    }
-
-    @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
         Pointer selfReservedMemory = WordFactory.nullPointer();

@@ -133,7 +133,7 @@ public final class OptimizedRuntimeOptions {
         }
     });
 
-    @Option(help = ExceptionAction.HELP, usageSyntax = "Silent|Print|Throw|Diagnose|ExitVM", category = OptionCategory.INTERNAL) //
+    @Option(help = ExceptionAction.HELP, usageSyntax = "Silent|Print|Throw|Diagnose|ExitVM", category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED) //
     public static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, EXCEPTION_ACTION_TYPE);
 
     @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL) //
@@ -158,7 +158,8 @@ public final class OptimizedRuntimeOptions {
     // TODO: GR-29949
     public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(10000L);
 
-    @Option(help = "Manually set the number of compiler threads. By default, the number of compiler threads is scaled with the number of available cores on the CPU.", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
+    @Option(help = "Manually set the number of compiler threads. By default, the number of compiler threads is scaled with the number of available cores on the CPU.", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT, //
+                    stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED) //
     public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(-1);
 
     @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue (default: true).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //

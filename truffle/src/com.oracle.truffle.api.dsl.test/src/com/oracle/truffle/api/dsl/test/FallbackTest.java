@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -759,6 +759,34 @@ public class FallbackTest extends AbstractPolyglotTest {
                         @ExpectError("@CachedLibrary annotations with specialized receivers are not supported in combination with @Fallback annotations. " +
                                         "Specify the @CachedLibrary(limit=\"...\") attribute and remove the receiver expression to use an dispatched library instead.")//
                         @CachedLibrary("arg0") InteropLibrary node) {
+            return "f0";
+        }
+
+    }
+
+    /*
+     * Test for GR-52819.
+     */
+    @SuppressWarnings("unused")
+    public abstract static class FallbackWithManualDispatch extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(int arg0,
+                        @CachedLibrary("this") InteropLibrary node) {
+            return "s0";
+        }
+
+        @Specialization
+        protected String s1(double arg0,
+                        @CachedLibrary("this") InteropLibrary node) {
+            return "s1";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @CachedLibrary("this") InteropLibrary node) {
             return "f0";
         }
 

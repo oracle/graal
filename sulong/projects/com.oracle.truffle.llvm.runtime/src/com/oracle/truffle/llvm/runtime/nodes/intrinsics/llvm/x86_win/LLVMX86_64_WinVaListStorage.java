@@ -336,10 +336,13 @@ public final class LLVMX86_64_WinVaListStorage implements TruffleObject {
         }
 
         @ExportMessage
-        public void initialize(Object[] arguments, int numberOfExplicitArguments, @SuppressWarnings("unused") Frame frame,
+        public void initialize(Object[] arguments, int numberOfExplicitArguments, Frame frame,
                         @Exclusive @Cached LLVMI64OffsetStoreNode storeI64Node,
-                        @Exclusive @Cached LLVMPointerOffsetStoreNode storePointerNode) {
-            initNative(arguments, numberOfExplicitArguments, nativeVAListPtr, storeI64Node, storePointerNode);
+                        @Exclusive @Cached LLVMPointerOffsetStoreNode storePointerNode,
+                        @Cached StackAllocationNode stackAllocationNode) {
+            LLVMPointer argsPointer = stackAllocationNode.executeWithTarget((arguments.length - numberOfExplicitArguments) * Long.BYTES, frame);
+            initNative(arguments, numberOfExplicitArguments, argsPointer, storeI64Node, storePointerNode);
+            storePointerNode.executeWithTarget(nativeVAListPtr, 0, argsPointer);
         }
 
         @ExportMessage

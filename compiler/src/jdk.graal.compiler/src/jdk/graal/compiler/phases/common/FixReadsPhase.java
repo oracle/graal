@@ -239,7 +239,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             this.debug = graph.getDebug();
             this.schedule = schedule;
             this.metaAccess = metaAccess;
-            this.rawCanonicalizerTool = new RawCanonicalizerTool(new Providers(metaAccess, null, null, null, null, null, null, null, null, null, null, null, null));
+            this.rawCanonicalizerTool = new RawCanonicalizerTool(new Providers(metaAccess, null, null, null, null, null, null, null, null, null, null, null, null, null));
             blockActionStart = new BlockMap<>(schedule.getCFG());
             endMaps = EconomicMap.create(Equivalence.IDENTITY);
             stampMap = graph.createNodeMap();

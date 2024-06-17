@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,7 +75,7 @@ import org.graalvm.polyglot.SandboxPolicy;
  * <p>
  * <b>Example usage:</b>
  *
- * {@link OptionSnippets.MyLanguage}.
+ * {@snippet file="com/oracle/truffle/api/Option.java" region="OptionSnippets.MyLanguage"}.
  *
  * @see OptionDescriptor
  * @see Option.Group
@@ -232,9 +232,9 @@ public @interface Option {
 
 class OptionSnippets {
 
-    // @formatter:off
+    // @formatter:off // @replace regex='.*' replacement=''
 
-    // BEGIN: OptionSnippets.MyLanguage
+    // @start region="OptionSnippets.MyLanguage"
     @TruffleLanguage.Registration(id = "mylang", name = "My Language",
                                   version = "1.0")
     abstract static class MyLanguage extends TruffleLanguage<Context> {
@@ -264,7 +264,7 @@ class OptionSnippets {
             return new MyLanguageOptionDescriptors();
         }
     }
-    // END: OptionSnippets.MyLanguage
+    // @end region="OptionSnippets.MyLanguage"
 
     static class MyLanguageOptionDescriptors implements OptionDescriptors {
 

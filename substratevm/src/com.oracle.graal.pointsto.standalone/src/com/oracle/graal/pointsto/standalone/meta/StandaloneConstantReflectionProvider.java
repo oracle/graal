@@ -50,7 +50,7 @@ public class StandaloneConstantReflectionProvider extends HotSpotConstantReflect
     @Override
     public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         ResolvedJavaField wrappedField = ((AnalysisField) field).getWrapped();
-        JavaConstant ret = universe.fromHosted(super.readFieldValue(wrappedField, universe.toHosted(receiver)));
+        JavaConstant ret = universe.getHostedValuesProvider().interceptHosted(super.readFieldValue(wrappedField, receiver));
         if (ret == null) {
             ret = wrappedField.getConstantValue();
             if (ret == null) {

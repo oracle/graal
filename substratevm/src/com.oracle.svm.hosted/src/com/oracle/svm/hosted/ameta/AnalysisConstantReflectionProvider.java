@@ -42,14 +42,15 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.classinitialization.TypeReachedProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
-import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -60,17 +61,19 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider {
+public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider, IdentityHashCodeProvider, TypeReachedProvider {
     private final AnalysisUniverse universe;
     protected final UniverseMetaAccess metaAccess;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
+    private final ClassInitializationSupport classInitializationSupport;
     private SimulateClassInitializerSupport simulateClassInitializerSupport;
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
-    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess) {
+    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
         this.metaAccess = metaAccess;
         this.methodHandleAccess = new AnalysisMethodHandleAccessProvider(universe);
+        this.classInitializationSupport = classInitializationSupport;
     }
 
     @Override
@@ -85,6 +88,39 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
     }
 
     @Override
+    public Integer identityHashCode(JavaConstant constant) {
+        if (constant == null || constant.getJavaKind() != JavaKind.Object) {
+            return null;
+        } else if (constant.isNull()) {
+            /* System.identityHashCode is specified to return 0 when passed null. */
+            return 0;
+        } else if (constant instanceof RelocatableConstant) {
+            /* Kind of a primitive constant, so it does not have an identity hash code. */
+            return null;
+        }
+
+        ImageHeapConstant imageHeapConstant = (ImageHeapConstant) constant;
+        if (imageHeapConstant.hasIdentityHashCode()) {
+            /*
+             * If the ImageHeapConstant already has a hash code, that value has precedence over the
+             * hosted object.
+             */
+            return imageHeapConstant.getIdentityHashCode();
+        }
+
+        Object hostedObject = Objects.requireNonNull(universe.getSnippetReflection().asObject(Object.class, constant));
+        if (hostedObject instanceof DynamicHub hub) {
+            /*
+             * We need to use the identity hash code of the original java.lang.Class object and not
+             * of the DynamicHub, so that hash maps that are filled during image generation and use
+             * Class keys still work at run time.
+             */
+            hostedObject = hub.getHostedJavaClass();
+        }
+        return System.identityHashCode(hostedObject);
+    }
+
+    @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
         return EmptyMemoryAccessProvider.SINGLETON;
     }
@@ -93,7 +129,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
-        if (!source.getJavaKind().isObject()) {
+        if (!source.getJavaKind().isObject() || source.isNull()) {
             return null;
         }
         ImageHeapConstant imageHeapConstant = (ImageHeapConstant) source;
@@ -178,7 +214,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     public JavaConstant readValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
         if (!field.isStatic()) {
-            if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
+            if (!(receiver instanceof ImageHeapInstance imageHeapInstance) || !field.getDeclaringClass().isAssignableFrom(imageHeapInstance.getType())) {
                 /*
                  * During compiler optimizations, it is possible to see field loads with a constant
                  * receiver of a wrong type. The code will later be removed as dead code, and in
@@ -249,30 +285,18 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
-        if (constant instanceof SubstrateObjectConstant substrateConstant) {
-            return extractJavaType(substrateConstant);
-        } else if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
-                /* All constants of type DynamicHub/java.lang.Class must have a hosted object. */
-                return extractJavaType(Objects.requireNonNull(imageHeapConstant.getHostedObject()));
-            }
-        }
-        return null;
-    }
-
-    private ResolvedJavaType extractJavaType(JavaConstant constant) {
-        Object obj = universe.getHostedValuesProvider().asObject(Object.class, constant);
-        if (obj instanceof DynamicHub hub) {
-            return getHostVM().lookupType(hub);
-        } else if (obj instanceof Class) {
-            throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
+        if (constant instanceof JavaConstant javaConstant && metaAccess.isInstanceOf(javaConstant, Class.class)) {
+            /* All type constants must have a hosted object. */
+            Object hostedObject = Objects.requireNonNull(universe.getSnippetReflection().asObject(Object.class, javaConstant));
+            VMError.guarantee(!(hostedObject instanceof Class<?>), "Must not have java.lang.Class object: %s", hostedObject);
+            return getHostVM().lookupType((DynamicHub) hostedObject);
         }
         return null;
     }
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return universe.getHeapScanner().createImageHeapConstant(asConstant(getHostVM().dynamicHub(type)), ObjectScanner.OtherReason.UNKNOWN);
+        return universe.getHeapScanner().createImageHeapConstant(getHostVM().dynamicHub(type), ObjectScanner.OtherReason.UNKNOWN);
     }
 
     @Override
@@ -289,11 +313,12 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         if (value == null) {
             return JavaConstant.NULL_POINTER;
         }
-        return universe.getHeapScanner().createImageHeapConstant(asConstant(value), ObjectScanner.OtherReason.UNKNOWN);
+        return universe.getHeapScanner().createImageHeapConstant(value, ObjectScanner.OtherReason.UNKNOWN);
     }
 
-    private static JavaConstant asConstant(Object object) {
-        return SubstrateObjectConstant.forObject(object);
+    @Override
+    public boolean initializationCheckRequired(ResolvedJavaType type) {
+        return classInitializationSupport.requiresInitializationNodeForTypeReached(type);
     }
 
     private SVMHost getHostVM() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -39,7 +40,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -59,7 +59,7 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
 
     protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex,
                     int accessTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
-        this(c, stamp, (NewFrameNode) frame.get(), frameSlotIndex, accessTag, type, accessFlags);
+        this(c, stamp, (NewFrameNode) frame.get(false), frameSlotIndex, accessTag, type, accessFlags);
     }
 
     protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, int frameSlotIndex,
@@ -97,6 +97,14 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
 
     public final int getAccessTag() {
         return accessTag;
+    }
+
+    /**
+     * Ensures that static-ness of slots is consistent. That means that static slots should only be
+     * accessed statically, and non-static slots accessed non-statically.
+     */
+    protected final void ensureStaticSlotAccessConsistency() {
+        GraalError.guarantee(getFrame().isStatic(getFrameSlotIndex()) == accessFlags.isStatic(), "Inconsistent Static slot usage.");
     }
 
     protected final void insertDeoptimization(VirtualizerTool tool) {

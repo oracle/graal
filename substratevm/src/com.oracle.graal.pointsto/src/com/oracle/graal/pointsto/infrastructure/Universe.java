@@ -68,7 +68,5 @@ public interface Universe {
      */
     JavaConstant lookup(JavaConstant constant);
 
-    ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method);
-
     ResolvedJavaType objectType();
 }

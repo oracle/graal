@@ -24,6 +24,22 @@
  */
 package org.graalvm.tools.insight.heap.instrument;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeSet;
+
+import org.graalvm.tools.insight.Insight;
+import org.graalvm.tools.insight.heap.HeapDump;
+import org.graalvm.tools.insight.heap.HeapDump.ArrayBuilder;
+import org.graalvm.tools.insight.heap.HeapDump.ClassInstance;
+import org.graalvm.tools.insight.heap.HeapDump.InstanceBuilder;
+import org.graalvm.tools.insight.heap.HeapDump.ObjectInstance;
+import org.graalvm.tools.insight.heap.HeapDump.ThreadBuilder;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -34,20 +50,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.tools.insight.heap.HeapDump.InstanceBuilder;
-import org.graalvm.tools.insight.heap.HeapDump.ThreadBuilder;
-import org.graalvm.tools.insight.heap.HeapDump;
-import org.graalvm.tools.insight.heap.HeapDump.ClassInstance;
-import org.graalvm.tools.insight.heap.HeapDump.ObjectInstance;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeSet;
-import org.graalvm.tools.insight.Insight;
-import org.graalvm.tools.insight.heap.HeapDump.ArrayBuilder;
 
 final class HeapGenerator {
     private final HeapDump.Builder generator;
@@ -389,6 +391,7 @@ final class HeapGenerator {
      * @param charLength number of characters in the section
      * @throws IOException when I/O fails
      */
+    @SuppressWarnings({"javadoc", "unused"})
     private ObjectInstance dumpSourceSection(HeapDump seg, ObjectInstance sourceId, Integer charIndex, Integer charLength) throws IOException {
         if (sourceSectionClass == null) {
             sourceSectionClass = seg.newClass("com.oracle.truffle.api.source.SourceSection").field("source", Object.class).field("charIndex", int.class).field("charLength",
@@ -412,11 +415,12 @@ final class HeapGenerator {
      * @param seg segment to write heap data to
      * @param source object representing the {@code SourceInfo} object defined by {@link Insight}
      *            specification
-     * @return instance of the dumped object representing the source
+     * @return instance of the dumped object representing the source represented
      * @throws IOException when I/O fails
      * @throws UnsupportedMessageException for example if the source object isn't properly
      *             represented
      */
+    @SuppressWarnings({"javadoc", "unused"})
     private ObjectInstance dumpSource(InteropLibrary iop, HeapDump seg, Object source) throws IOException, UnsupportedMessageException {
         String srcName = readMember(iop, source, "name", iop::asString);
         String mimeType = asStringOrNull(iop, source, "mimeType");

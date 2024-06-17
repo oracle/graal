@@ -38,10 +38,10 @@ class JNIRegistrationsJavaZip extends JNIRegistrationUtil implements InternalFea
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        rerunClassInit(a, "java.util.zip.Inflater", "java.util.zip.Deflater");
+        initializeAtRunTime(a, "java.util.zip.Inflater", "java.util.zip.Deflater");
         /* These classes have class initializers that lazily load the zip library. */
-        rerunClassInit(a, "java.util.zip.Adler32", "java.util.zip.CRC32");
-        rerunClassInit(a, "sun.net.www.protocol.jar.JarFileFactory", "sun.net.www.protocol.jar.JarURLConnection");
+        initializeAtRunTime(a, "java.util.zip.Adler32", "java.util.zip.CRC32");
+        initializeAtRunTime(a, "sun.net.www.protocol.jar.JarFileFactory", "sun.net.www.protocol.jar.JarURLConnection");
     }
 
     @Override

@@ -779,7 +779,12 @@ public abstract class DSLExpression {
                     }
                     DeclaredType declaredReceiverType = (DeclaredType) receiverType;
                     if (foundIndex != -1) {
-                        return declaredReceiverType.getTypeArguments().get(foundIndex);
+                        List<? extends TypeMirror> typeArguments = declaredReceiverType.getTypeArguments();
+                        if (foundIndex < typeArguments.size()) {
+                            return typeArguments.get(foundIndex);
+                        }
+                        // fall-though: this will most likely generate wrong type, but user will get
+                        // type error from Java compiler in the right place
                     }
                 }
                 return resolvedMethod.getReturnType();

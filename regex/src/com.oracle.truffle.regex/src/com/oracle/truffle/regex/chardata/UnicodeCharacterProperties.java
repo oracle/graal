@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.regex.chardata;
 
-import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 
 public final class UnicodeCharacterProperties {
 
@@ -52,6 +52,6 @@ public final class UnicodeCharacterProperties {
      *         property.
      */
     public static CharacterSet getUnicodeProperty(String propertySpec) {
-        return UnicodeProperties.getProperty(propertySpec);
+        return ECMAScriptFlavor.UNICODE.getProperty(propertySpec);
     }
 }

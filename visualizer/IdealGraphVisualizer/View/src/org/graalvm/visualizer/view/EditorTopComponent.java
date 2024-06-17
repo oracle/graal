@@ -182,7 +182,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
                 BatikSVG.printToStream(svgGenerator, out, true);
             } catch (IOException e) {
                 NotifyDescriptor message = new NotifyDescriptor.Message(
-                        Bundle.EXPORT_BATIK_ErrorExportingSVG(e.getLocalizedMessage()), NotifyDescriptor.ERROR_MESSAGE);
+                        Bundle.EXPORT_BATIK_ErrorExportingSVG(e.toString()), NotifyDescriptor.ERROR_MESSAGE);
                 DialogDisplayer.getDefault().notifyLater(message);
             } finally {
                 if (os != null) {

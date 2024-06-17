@@ -40,6 +40,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -47,6 +49,7 @@ import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
+import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -111,6 +114,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
     private final SubstrateUniverseFactory universeFactory;
     private SubstrateGraalRuntime sGraalRuntime;
 
+    private final ImageCodeInfo imageCodeInfo;
     private final HostedStringDeduplication stringTable;
 
     private final Class<?> jvmciCleanerClass = ReflectionUtil.lookupClass(false, "jdk.vm.ci.hotspot.Cleaner");
@@ -125,6 +129,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         this.aUniverse = aUniverse;
         this.sProviders = sProviders;
         this.universeFactory = universeFactory;
+        this.imageCodeInfo = CodeInfoTable.getImageCodeCache();
         this.stringTable = HostedStringDeduplication.singleton();
     }
 
@@ -202,8 +207,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else if (source instanceof FieldLocationIdentity && !(source instanceof SubstrateFieldLocationIdentity)) {
             dest = createFieldLocationIdentity((FieldLocationIdentity) source);
         } else if (source instanceof ImageHeapConstant heapConstant) {
-            VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
-            dest = heapConstant.getHostedObject();
+            dest = SubstrateGraalUtils.hostedToRuntime(heapConstant, beforeAnalysisAccess.getBigBang().getConstantReflectionProvider());
         }
 
         assert dest != null;
@@ -237,7 +241,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         SubstrateMethod sMethod = methods.get(aMethod);
         if (sMethod == null) {
             assert !(original instanceof HostedMethod) : "too late to create new method";
-            SubstrateMethod newMethod = universeFactory.createMethod(aMethod, stringTable);
+            SubstrateMethod newMethod = universeFactory.createMethod(aMethod, imageCodeInfo, stringTable);
             sMethod = methods.putIfAbsent(aMethod, newMethod);
             if (sMethod == null) {
                 sMethod = newMethod;
@@ -458,17 +462,9 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) providers.getConstantFieldProvider()).isFinalField(hField, null)
                             ? providers.getConstantReflection().readFieldValue(hField, null)
                             : null;
-            constantValue = unwrapConstant(constantValue);
+            constantValue = SubstrateGraalUtils.hostedToRuntime(constantValue, providers.getConstantReflection());
             sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten() || !hField.isValueAvailable(), constantValue);
         }
-    }
-
-    static JavaConstant unwrapConstant(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant heapConstant) {
-            VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
-            return heapConstant.getHostedObject();
-        }
-        return constant;
     }
 
     public void updateSubstrateDataAfterHeapLayout(HostedUniverse hUniverse) {
@@ -482,7 +478,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
              * We access the offset of methods in the image code section here. Therefore, this code
              * can only run after the heap and code cache layout was done.
              */
-            sMethod.setSubstrateData(vTableIndex, hMethod.isCodeAddressOffsetValid() ? hMethod.getCodeAddressOffset() : 0, hMethod.getDeoptOffsetInImage());
+            int imageCodeOffset = hMethod.isCodeAddressOffsetValid() ? hMethod.getCodeAddressOffset() : 0;
+            sMethod.setSubstrateData(vTableIndex, imageCodeOffset, hMethod.getImageCodeDeoptOffset());
         }
     }
 

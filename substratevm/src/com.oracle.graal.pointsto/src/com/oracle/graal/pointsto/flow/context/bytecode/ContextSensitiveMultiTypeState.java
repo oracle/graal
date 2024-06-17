@@ -47,7 +47,7 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
         super(bb, canBeNull, typesBitSet, typesCount);
         this.objects = objects;
         assert objects.length > 1 : "Multi type state with single object.";
-        assert checkObjects(bb);
+        assert checkObjects();
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
@@ -79,11 +79,7 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
         return objectTypeIds;
     }
 
-    private boolean checkObjects(PointsToAnalysis bb) {
-        if (!bb.extendedAsserts()) {
-            return true;
-        }
-
+    private boolean checkObjects() {
         for (int idx = 0; idx < objects.length - 1; idx++) {
             AnalysisObject o0 = objects[idx];
             AnalysisObject o1 = objects[idx + 1];

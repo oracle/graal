@@ -64,8 +64,9 @@ import jdk.vm.ci.code.CodeUtil;
  */
 public final class ObjectHeaderImpl extends ObjectHeader {
     private static final UnsignedWord UNALIGNED_BIT = WordFactory.unsigned(0b00001);
-    private static final UnsignedWord REMEMBERED_SET_BIT = WordFactory.unsigned(0b00010);
-    private static final UnsignedWord FORWARDED_BIT = WordFactory.unsigned(0b00100);
+    private static final UnsignedWord REMSET_OR_MARKED1_BIT = WordFactory.unsigned(0b00010);
+    private static final UnsignedWord FORWARDED_OR_MARKED2_BIT = WordFactory.unsigned(0b00100);
+    private static final UnsignedWord MARKED_BITS = REMSET_OR_MARKED1_BIT.or(FORWARDED_OR_MARKED2_BIT);
 
     /**
      * Optional: per-object identity hash code state to avoid a fixed field, initially implicitly
@@ -220,7 +221,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static boolean hasIdentityHashFromAddressInline(Word header) {
+    public static boolean hasIdentityHashFromAddressInline(Word header) {
         if (GraalDirectives.inIntrinsic()) {
             ReplacementsUtil.staticAssert(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
         } else {
@@ -267,7 +268,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             result = result.shiftLeft(numReservedExtraBits);
         }
         if (rememberedSet) {
-            result = result.or(REMEMBERED_SET_BIT);
+            result = result.or(REMSET_OR_MARKED1_BIT);
         }
         if (unaligned) {
             result = result.or(UNALIGNED_BIT);
@@ -307,7 +308,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         assert (header & reservedBitsMask) == 0 : "Object header bits must be zero initially";
         if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
             if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
-                header |= REMEMBERED_SET_BIT.rawValue();
+                header |= REMSET_OR_MARKED1_BIT.rawValue();
             }
             if (partition.usesUnalignedObjects()) {
                 header |= UNALIGNED_BIT.rawValue();
@@ -345,13 +346,48 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setRememberedSetBit(Object o) {
         UnsignedWord oldHeader = readHeaderFromObject(o);
-        UnsignedWord newHeader = oldHeader.or(REMEMBERED_SET_BIT);
+        assert oldHeader.and(FORWARDED_OR_MARKED2_BIT).equal(0);
+        UnsignedWord newHeader = oldHeader.or(REMSET_OR_MARKED1_BIT);
         writeHeaderToObject(o, newHeader);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean hasRememberedSet(UnsignedWord header) {
-        return header.and(REMEMBERED_SET_BIT).notEqual(0);
+        return header.and(REMSET_OR_MARKED1_BIT).notEqual(0);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setMarked(Object o) {
+        if (!SerialGCOptions.useCompactingOldGen()) { // not guarantee(): always folds, prevent call
+            throw VMError.shouldNotReachHere("Only for compacting GC.");
+        }
+        UnsignedWord header = readHeaderFromObject(o);
+        assert header.and(FORWARDED_OR_MARKED2_BIT).equal(0) : "forwarded or already marked";
+        /*
+         * The remembered bit is already set if the object was in the old generation before, or
+         * unset if it was only just absorbed from the young generation, in which case we set it.
+         */
+        writeHeaderToObject(o, header.or(MARKED_BITS));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void unsetMarkedAndKeepRememberedSetBit(Object o) {
+        UnsignedWord header = readHeaderFromObject(o);
+        assert isMarkedHeader(header);
+        writeHeaderToObject(o, header.and(FORWARDED_OR_MARKED2_BIT.not()));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isMarked(Object o) {
+        return isMarkedHeader(readHeaderFromObject(o));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isMarkedHeader(UnsignedWord header) {
+        if (!SerialGCOptions.useCompactingOldGen()) {
+            throw VMError.shouldNotReachHere("Only for compacting GC.");
+        }
+        return header.and(MARKED_BITS).equal(MARKED_BITS);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -362,16 +398,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isForwardedHeader(UnsignedWord header) {
-        return header.and(FORWARDED_BIT).notEqual(0);
+        return header.and(MARKED_BITS).equal(FORWARDED_OR_MARKED2_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Object getForwardedObject(Pointer ptr) {
+    public Object getForwardedObject(Pointer ptr) {
         return getForwardedObject(ptr, readHeaderFromPointer(ptr));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Object getForwardedObject(Pointer ptr, UnsignedWord header) {
+    public Object getForwardedObject(Pointer ptr, UnsignedWord header) {
         assert isForwardedHeader(header);
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             if (hasShift()) {
@@ -417,7 +453,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         }
 
         assert getHeaderBitsFromHeader(result).equal(0);
-        return result.or(FORWARDED_BIT);
+        return result.or(FORWARDED_OR_MARKED2_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton
 public class Processor {
@@ -53,11 +54,7 @@ public class Processor {
             return optionValue;
         }
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return Containers.activeProcessorCount();
-        } else {
-            return 1;
-        }
+        return Containers.activeProcessorCount();
     }
 
     public int getLastQueriedActiveProcessorCount() {

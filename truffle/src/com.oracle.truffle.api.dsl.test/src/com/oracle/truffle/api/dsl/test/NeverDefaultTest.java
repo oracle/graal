@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -792,8 +792,8 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
         SingleInstanceNodeCacheNode returnNull = adoptNode(SingleInstanceNodeCacheNodeGen.create()).get();
         GuardCacheNode.returnNull = true;
         assertFails(() -> returnNull.execute(null, 1), NullPointerException.class, (e) -> {
-            assertEquals("Specialization 's0(int, GuardCacheNode)' cache 'cachedNode' returned a 'null' default value. " +
-                            "The cache initializer must never return a default value for this cache. Use @Cached(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns 'null'.",
+            assertEquals("A specialization cache returned a default value. The cache initializer must never return a default value for this cache. " +
+                            "Use @Cached(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns the default value.",
                             e.getMessage());
         });
         GuardCacheNode.returnNull = false;

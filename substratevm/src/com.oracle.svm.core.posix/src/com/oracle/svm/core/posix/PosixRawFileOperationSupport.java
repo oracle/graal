@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -42,6 +41,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 import com.oracle.svm.core.posix.headers.Errno;
@@ -58,7 +58,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     public CCharPointer allocateCPath(String path) {
         byte[] data = path.getBytes();
-        CCharPointer filename = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(data.length + 1));
+        CCharPointer filename = UntrackedNullableNativeMemory.malloc(WordFactory.unsigned(data.length + 1));
         if (filename.isNull()) {
             return WordFactory.nullPointer();
         }

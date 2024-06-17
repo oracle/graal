@@ -33,13 +33,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.svm.util.LogUtils;
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionStability;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
@@ -52,7 +46,14 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 public class NativeImageOptions {
 
@@ -142,9 +143,9 @@ public class NativeImageOptions {
     @Option(help = "Allow MethodTypeFlow to see @Fold methods")//
     public static final HostedOptionKey<Boolean> AllowFoldMethods = new HostedOptionKey<>(false);
 
-    @APIOption(name = "report-unsupported-elements-at-runtime")//
-    @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = User)//
-    public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<>(false);
+    @APIOption(name = "report-unsupported-elements-at-runtime", deprecated = "The option is deprecated and will be removed in the future. The use of unsupported elements is always reported at run time.")//
+    @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = Debug)//
+    public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<>(true);
 
     @APIOption(name = "allow-incomplete-classpath", deprecated = "Allowing an incomplete classpath is now the default. Use --link-at-build-time to report linking errors at image build time for a class or package.")//
     @Option(help = "Deprecated", type = User)//

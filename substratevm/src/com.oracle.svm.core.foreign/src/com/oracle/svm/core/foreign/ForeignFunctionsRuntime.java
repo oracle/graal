@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,10 @@ package com.oracle.svm.core.foreign;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
+import java.lang.invoke.MethodHandle;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -33,6 +37,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.OS;
@@ -41,6 +47,7 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -52,8 +59,14 @@ public class ForeignFunctionsRuntime {
         return ImageSingletons.lookup(ForeignFunctionsRuntime.class);
     }
 
+    private final AbiUtils.TrampolineTemplate trampolineTemplate = AbiUtils.singleton().generateTrampolineTemplate();
     private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = EconomicMap.create();
+    private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = EconomicMap.create();
 
+    private final Map<Long, TrampolineSet> trampolines = new HashMap<>();
+    private TrampolineSet currentTrampolineSet;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public ForeignFunctionsRuntime() {
     }
 
@@ -63,18 +76,51 @@ public class ForeignFunctionsRuntime {
         VMError.guarantee(downcallStubs.put(nep, new FunctionPointerHolder(ptr)) == null);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void addUpcallStubPointer(JavaEntryPointInfo jep, CFunctionPointer ptr) {
+        VMError.guarantee(!upcallStubs.containsKey(jep), "Seems like multiple stubs were generated for " + jep);
+        VMError.guarantee(upcallStubs.put(jep, new FunctionPointerHolder(ptr)) == null);
+    }
+
     /**
-     * We'd rather report the function descriptor rather than the native method type, but we don't
-     * have it available here. One could intercept this exception in
+     * We'd rather report the function descriptor than the native method type, but we don't have it
+     * available here. One could intercept this exception in
      * {@link jdk.internal.foreign.abi.DowncallLinker#getBoundMethodHandle} and add information
      * about the descriptor there.
      */
-    public CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep) {
-        FunctionPointerHolder pointer = downcallStubs.get(nep);
-        if (pointer == null) {
+    CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep) {
+        FunctionPointerHolder holder = downcallStubs.get(nep);
+        if (holder == null) {
             throw new UnregisteredForeignStubException(nep);
-        } else {
-            return pointer.functionPointer;
+        }
+        return holder.functionPointer;
+    }
+
+    CFunctionPointer getUpcallStubPointer(JavaEntryPointInfo jep) {
+        FunctionPointerHolder holder = upcallStubs.get(jep);
+        if (holder == null) {
+            throw new UnregisteredForeignStubException(jep);
+        }
+        return holder.functionPointer;
+    }
+
+    Pointer registerForUpcall(MethodHandle methodHandle, JavaEntryPointInfo jep) {
+        synchronized (trampolines) {
+            if (currentTrampolineSet == null || !currentTrampolineSet.hasFreeTrampolines()) {
+                currentTrampolineSet = new TrampolineSet(trampolineTemplate);
+                trampolines.put(currentTrampolineSet.base().rawValue(), currentTrampolineSet);
+            }
+            return currentTrampolineSet.assignTrampoline(methodHandle, getUpcallStubPointer(jep));
+        }
+    }
+
+    void freeTrampoline(long addr) {
+        synchronized (trampolines) {
+            long base = TrampolineSet.getAllocationBase(WordFactory.pointer(addr)).rawValue();
+            TrampolineSet trampolineSet = trampolines.get(base);
+            if (trampolineSet.tryFree()) {
+                trampolines.remove(base);
+            }
         }
     }
 
@@ -85,8 +131,16 @@ public class ForeignFunctionsRuntime {
             super(generateMessage(nep));
         }
 
+        UnregisteredForeignStubException(JavaEntryPointInfo jep) {
+            super(generateMessage(jep));
+        }
+
         private static String generateMessage(NativeEntryPointInfo nep) {
             return "Cannot perform downcall with leaf type " + nep.methodType() + " as it was not registered at compilation time.";
+        }
+
+        private static String generateMessage(JavaEntryPointInfo jep) {
+            return "Cannot perform upcall with leaf type " + jep.cMethodType() + " as it was not registered at compilation time.";
         }
     }
 
@@ -94,12 +148,12 @@ public class ForeignFunctionsRuntime {
      * Workaround for CapturableState.mask() being interruptible.
      */
     @Fold
-    public static int getMask(CapturableState state) {
+    static int getMask(CapturableState state) {
         return state.mask();
     }
 
     @Fold
-    public static boolean isWindows() {
+    static boolean isWindows() {
         return OS.WINDOWS.isCurrent();
     }
 
@@ -112,6 +166,7 @@ public class ForeignFunctionsRuntime {
      */
     @Uninterruptible(reason = "Interruptions might change call state.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/share/prims/downcallLinker.cpp")
     public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
         assert statesToCapture != 0;
         assert captureBuffer.isNonNull();

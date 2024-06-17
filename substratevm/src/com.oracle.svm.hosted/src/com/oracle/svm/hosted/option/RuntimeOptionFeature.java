@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.option;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -54,7 +55,8 @@ public class RuntimeOptionFeature implements InternalFeature {
         access.registerObjectReachableCallback(OptionKey.class, this::collectOptionKeys);
     }
 
-    private void collectOptionKeys(@SuppressWarnings("unused") DuringAnalysisAccess access, OptionKey<?> optionKey) {
+    @SuppressWarnings("unused")
+    private void collectOptionKeys(DuringAnalysisAccess access, OptionKey<?> optionKey, ObjectScanner.ScanReason reason) {
         if (optionKey instanceof HostedOptionKey<?>) {
             /* HostedOptionKey's are reached when building the NativeImage driver executable. */
             return;

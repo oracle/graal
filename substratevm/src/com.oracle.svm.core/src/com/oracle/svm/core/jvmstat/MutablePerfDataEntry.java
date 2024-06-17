@@ -32,8 +32,8 @@ package com.oracle.svm.core.jvmstat;
  * well). However, this is fairly tricky as the performance data memory is only reserved after the
  * heap was already started up. So, it could happen that the GC (especially G1) tries to write to
  * the performance data memory before it is reserved. This could probably be solved by porting the
- * code that maps the performance data memory to system Java so that the performance data memory
- * could be initialized after the image heap was mapped but before the GC is started up. Same
+ * code that maps the performance data memory to uninterruptible code so that the performance data
+ * memory could be initialized after the image heap was mapped but before the GC is started up. Same
  * applies to the teardown. See GR-40601.
  */
 public interface MutablePerfDataEntry extends PerfDataEntry {

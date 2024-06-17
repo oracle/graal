@@ -118,7 +118,7 @@ meth public abstract !hasdefault boolean inherit()
 meth public abstract !hasdefault boolean value()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratePackagePrivate
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 
@@ -454,7 +454,7 @@ meth public static com.oracle.truffle.api.dsl.SpecializationStatistics$NodeStati
 supr java.lang.Object
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.SuppressPackageWarnings
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PACKAGE])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.String[] value()

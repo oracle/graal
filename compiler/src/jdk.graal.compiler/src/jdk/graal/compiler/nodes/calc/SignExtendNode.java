@@ -46,9 +46,9 @@ import jdk.vm.ci.code.CodeUtil;
 /**
  * The {@code SignExtendNode} converts an integer to a wider integer using sign extension.
  *
- * On all supported architectures, sub-word (<32 bit) operations generally do not yield performance
- * improvements. They can even be slower than 32 bit operations. Thus, nodes extending <32 bit
- * values to 32 bit or more should usually not be removed.
+ * On all supported architectures, sub-word (&lt;32 bit) operations generally do not yield
+ * performance improvements. They can even be slower than 32 bit operations. Thus, nodes extending
+ * &lt;32 bit values to 32 bit or more should usually not be removed.
  */
 @NodeInfo(cycles = CYCLES_1)
 public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
@@ -115,7 +115,7 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
             if (other.getResultBits() > other.getInputBits()) {
                 // sxxx -(zero-extend)-> 0000 sxxx -(sign-extend)-> 00000000 0000sxxx
                 // ==> sxxx -(zero-extend)-> 00000000 0000sxxx
-                return ZeroExtendNode.create(other.getValue(), other.getInputBits(), resultBits, view, other.isInputAlwaysPositive());
+                return ZeroExtendNode.create(other.getValue(), other.getInputBits(), resultBits, view);
             }
         }
 
@@ -124,7 +124,7 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
             if ((inputStamp.mayBeSet() & (1L << (inputBits - 1))) == 0L) {
                 // 0xxx -(sign-extend)-> 0000 0xxx
                 // ==> 0xxx -(zero-extend)-> 0000 0xxx
-                return ZeroExtendNode.create(forValue, inputBits, resultBits, view, true);
+                return ZeroExtendNode.create(forValue, inputBits, resultBits, view);
             }
         }
         if (forValue instanceof NarrowNode) {

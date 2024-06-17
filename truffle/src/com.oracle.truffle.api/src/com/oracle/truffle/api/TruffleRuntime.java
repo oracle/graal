@@ -75,7 +75,9 @@ public interface TruffleRuntime {
      * @return the new call node
      * @since 0.8 or earlier
      */
-    DirectCallNode createDirectCallNode(CallTarget target);
+    default DirectCallNode createDirectCallNode(CallTarget target) {
+        return DirectCallNode.create(target);
+    }
 
     /**
      * Creates a new loop node with an implementation provided by a Truffle runtime implementation.
@@ -93,7 +95,9 @@ public interface TruffleRuntime {
      * @return the new call node
      * @since 0.8 or earlier
      */
-    IndirectCallNode createIndirectCallNode();
+    default IndirectCallNode createIndirectCallNode() {
+        return IndirectCallNode.create();
+    }
 
     /**
      * Creates a new assumption object that can be checked and invalidated.
@@ -147,7 +151,7 @@ public interface TruffleRuntime {
      * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
      * frame iteration should stop.
      * <p>
-     * Instances of {@link FrameInstance} must note escape the invocation of
+     * Instances of {@link FrameInstance} must not escape the invocation of
      * {@link FrameInstanceVisitor#visitFrame(FrameInstance)}. This rule is currently not enforced,
      * but will be in future versions of Truffle.
      *

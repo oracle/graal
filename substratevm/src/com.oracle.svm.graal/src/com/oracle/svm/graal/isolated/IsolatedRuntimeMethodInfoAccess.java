@@ -25,25 +25,57 @@
 package com.oracle.svm.graal.isolated;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
 
 final class IsolatedRuntimeMethodInfoAccess {
 
-    public static void startTrackingInCurrentIsolate(CodeInfo info) {
-        RuntimeCodeInfoAccess.forEachArray(info, TRACK_ACTION);
+    public static void startTrackingInCurrentIsolate(CodeInstallInfo installInfo) {
+        CodeInfo info = installInfo.getCodeInfo();
         InstalledCodeObserverSupport.attachToCurrentIsolate(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
         RuntimeCodeInfoMemory.singleton().add(info);
+
+        /* NonmovableArray tracking and native memory tracking. */
+        RuntimeCodeInfoAccess.forEachArray(info, TRACK_ACTION);
+
+        ForeignIsolateReferenceAdjusterData adjusterData = installInfo.getAdjusterData();
+        NonmovableArrays.trackUnmanagedArray(adjusterData.getAddresses());
+        NonmovableArrays.trackUnmanagedArray(adjusterData.getHandles());
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().track(installInfo);
+            NativeMemoryTracking.singleton().track(installInfo.getAdjusterData());
+            NativeMemoryTracking.singleton().track(installInfo.getCodeInfo());
+            NativeMemoryTracking.singleton().track(adjusterData.getAddresses());
+            NativeMemoryTracking.singleton().track(adjusterData.getHandles());
+        }
     }
 
-    public static void untrackInCurrentIsolate(CodeInfo info) {
+    public static void untrackInCurrentIsolate(CodeInstallInfo installInfo) {
+        CodeInfo info = installInfo.getCodeInfo();
         RuntimeCodeInfoMemory.singleton().remove(info);
         InstalledCodeObserverSupport.detachFromCurrentIsolate(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
+
+        /* NonmovableArray tracking and native memory tracking. */
         RuntimeCodeInfoAccess.forEachArray(info, UNTRACK_ACTION);
+
+        ForeignIsolateReferenceAdjusterData adjusterData = installInfo.getAdjusterData();
+        NonmovableArrays.untrackUnmanagedArray(adjusterData.getAddresses());
+        NonmovableArrays.untrackUnmanagedArray(adjusterData.getHandles());
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().untrack(installInfo);
+            NativeMemoryTracking.singleton().untrack(installInfo.getAdjusterData());
+            NativeMemoryTracking.singleton().untrack(installInfo.getCodeInfo());
+            NativeMemoryTracking.singleton().untrack(adjusterData.getAddresses());
+            NativeMemoryTracking.singleton().untrack(adjusterData.getHandles());
+        }
     }
 
     private static final RuntimeCodeInfoAccess.NonmovableArrayAction TRACK_ACTION = new RuntimeCodeInfoAccess.NonmovableArrayAction() {
@@ -51,6 +83,9 @@ final class IsolatedRuntimeMethodInfoAccess {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void apply(NonmovableArray<?> array) {
             NonmovableArrays.trackUnmanagedArray(array);
+            if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+                NativeMemoryTracking.singleton().track(array);
+            }
         }
     };
     private static final RuntimeCodeInfoAccess.NonmovableArrayAction UNTRACK_ACTION = new RuntimeCodeInfoAccess.NonmovableArrayAction() {
@@ -58,6 +93,9 @@ final class IsolatedRuntimeMethodInfoAccess {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void apply(NonmovableArray<?> array) {
             NonmovableArrays.untrackUnmanagedArray(array);
+            if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+                NativeMemoryTracking.singleton().untrack(array);
+            }
         }
     };
 

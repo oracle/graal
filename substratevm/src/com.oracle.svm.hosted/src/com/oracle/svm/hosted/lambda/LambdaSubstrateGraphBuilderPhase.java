@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.lambda;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
 
-import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -35,7 +34,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LambdaSubstrateGraphBuilderPhase extends GraphBuilderPhase {
@@ -74,7 +73,7 @@ public class LambdaSubstrateGraphBuilderPhase extends GraphBuilderPhase {
         @Override
         protected void genLoadConstant(int cpi, int opcode) {
             Object con = lookupConstant(cpi, opcode, false);
-            BootstrapMethodIntrospection bootstrap = GraalServices.lookupBootstrapMethodIntrospection(constantPool, cpi, -1);
+            BootstrapMethodInvocation bootstrap = constantPool.lookupBootstrapMethodInvocation(cpi, -1);
             if (con == null && bootstrap != null && BootstrapMethodConfiguration.singleton().isCondyTrusted(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod()))) {
                 /*
                  * With the current implementation of LambdaUtils#findStableLambdaName, each lambda

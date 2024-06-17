@@ -34,11 +34,11 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 import com.oracle.truffle.runtime.OptimizedIndirectCallNode;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 @SuppressWarnings("try")
 public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
@@ -72,11 +72,13 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
             @Override
             public Object execute(VirtualFrame frame) {
+                CallTarget target;
                 if (frame.getArguments().length == 0) {
-                    return indirectCallNode.call(innerTarget, noArguments);
+                    target = innerTarget;
                 } else {
-                    return indirectCallNode.call(uninitializedInnerTarget, noArguments);
+                    target = uninitializedInnerTarget;
                 }
+                return indirectCallNode.call(target, noArguments);
             }
         }.getCallTarget();
         final int compilationThreshold = outerTarget.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);

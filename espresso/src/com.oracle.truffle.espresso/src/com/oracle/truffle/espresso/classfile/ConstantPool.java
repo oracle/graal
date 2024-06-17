@@ -452,14 +452,14 @@ public abstract class ConstantPool {
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(ClassLoadingEnv env, ClassfileStream stream, ClassfileParser parser, int majorVersion, int minorVersion) {
+    public static ImmutableConstantPool parse(ClassLoadingEnv env, ClassfileStream stream, ClassfileParser parser, int majorVersion, int minorVersion) {
         return parse(env, stream, parser, null, majorVersion, minorVersion);
     }
 
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(ClassLoadingEnv env, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, int majorVersion, int minorVersion) {
+    public static ImmutableConstantPool parse(ClassLoadingEnv env, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, int majorVersion, int minorVersion) {
         final int length = stream.readU2();
         if (length < 1) {
             throw stream.classFormatError("Invalid constant pool size (" + length + ")");
@@ -628,7 +628,7 @@ public abstract class ConstantPool {
         }
         int rawPoolLength = stream.getPosition() - rawPoolStartPosition;
 
-        ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, rawPoolLength);
+        ImmutableConstantPool constantPool = new ImmutableConstantPool(entries, majorVersion, minorVersion, rawPoolLength);
 
         if (parser.hasSeenBadConstant()) {
             return constantPool;
@@ -652,10 +652,5 @@ public abstract class ConstantPool {
 
     private static boolean existsAt(StaticObject[] patches, int index) {
         return patches != null && 0 <= index && index < patches.length && StaticObject.notNull(patches[index]);
-    }
-
-    @SuppressWarnings("unused")
-    ConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
-        return this;
     }
 }

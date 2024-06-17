@@ -39,7 +39,6 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
@@ -195,7 +194,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
             // ~x & ~y |-> ~(x | y)
             return new NotNode(OrNode.create(((NotNode) forX).getValue(), ((NotNode) forY).getValue(), view));
         }
-        if (forY instanceof NotNode && ((NotNode) forY).getValue() == forX) {
+        if (forY instanceof NotNode && ((NotNode) forY).getValue() == forX && rawXStamp instanceof IntegerStamp) {
             // x & ~x |-> 0
             return ConstantNode.forIntegerStamp(rawXStamp, 0L);
         }

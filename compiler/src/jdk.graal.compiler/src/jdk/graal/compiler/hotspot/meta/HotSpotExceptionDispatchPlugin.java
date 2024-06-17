@@ -67,7 +67,7 @@ import sun.misc.Unsafe;
  */
 public final class HotSpotExceptionDispatchPlugin implements NodePlugin {
     public static class Options {
-        @Option(help = "Testing only option that forces deopts for exception throws", type = OptionType.Expert)//
+        @Option(help = "Testing only option that forces deopts for exception throws", type = OptionType.Debug)//
         public static final OptionKey<Boolean> HotSpotPostOnExceptions = new OptionKey<>(false);
     }
 

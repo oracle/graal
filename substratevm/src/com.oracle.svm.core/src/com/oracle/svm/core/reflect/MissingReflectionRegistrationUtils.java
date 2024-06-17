@@ -56,6 +56,17 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
+    public static MissingReflectionRegistrationError errorForQueriedOnlyField(Field field) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("read or write field", field.toString()),
+                        field.getClass(), field.getDeclaringClass(), field.getName(), null);
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        return exception;
+    }
+
     public static void forMethod(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
         StringJoiner paramTypeNames = new StringJoiner(", ", "(", ")");
         if (paramTypes != null) {
@@ -69,7 +80,7 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
-    public static void forQueriedOnlyExecutable(Executable executable) {
+    public static MissingReflectionRegistrationError errorForQueriedOnlyExecutable(Executable executable) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("invoke method", executable.toString()),
                         executable.getClass(), executable.getDeclaringClass(), executable.getName(), executable.getParameterTypes());
         report(exception);
@@ -77,7 +88,7 @@ public final class MissingReflectionRegistrationUtils {
          * If report doesn't throw, we throw the exception anyway since this is a Native
          * Image-specific error that is unrecoverable in any case.
          */
-        throw exception;
+        return exception;
     }
 
     public static void forBulkQuery(Class<?> declaringClass, String methodName) {
@@ -87,7 +98,7 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
-    public static void forProxy(Class<?>... interfaces) {
+    public static MissingReflectionRegistrationError errorForProxy(Class<?>... interfaces) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access the proxy class inheriting",
                         Arrays.toString(Arrays.stream(interfaces).map(Class::getTypeName).toArray()),
                         "The order of interfaces used to create proxies matters.", "dynamic-proxy"),
@@ -97,7 +108,20 @@ public final class MissingReflectionRegistrationUtils {
          * If report doesn't throw, we throw the exception anyway since this is a Native
          * Image-specific error that is unrecoverable in any case.
          */
-        throw exception;
+        return exception;
+    }
+
+    public static MissingReflectionRegistrationError errorForArray(Class<?> elementClass, int dimension) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("instantiate the array class",
+                        elementClass.getTypeName() + "[]".repeat(dimension),
+                        "Add \"unsafeAllocated\" to the array class registration to enable runtime instantiation.", "reflection"),
+                        null, null, null, null);
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        return exception;
     }
 
     private static String errorMessage(String failedAction, String elementDescriptor) {
@@ -112,7 +136,7 @@ public final class MissingReflectionRegistrationUtils {
                         ERROR_EMPHASIS_INDENT + elementDescriptor +
                         System.lineSeparator() +
                         System.lineSeparator() +
-                        " without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
+                        "without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
                         (note != null ? "Note: " + note + " " : "") +
                         "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#" + helpLink + " for help.";
     }

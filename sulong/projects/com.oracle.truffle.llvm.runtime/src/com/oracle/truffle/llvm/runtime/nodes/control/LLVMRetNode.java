@@ -265,4 +265,14 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
             return LLVMNativePointer.createNull();
         }
     }
+
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
+    public abstract static class LLVMTailReturnNode extends LLVMRetNode {
+
+        @Specialization
+        protected Object doOp(Object retResult) {
+            return retResult;
+        }
+    }
+
 }

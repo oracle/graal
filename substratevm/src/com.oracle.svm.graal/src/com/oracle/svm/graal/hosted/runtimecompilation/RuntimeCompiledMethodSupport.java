@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
@@ -53,6 +54,7 @@ import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
@@ -71,6 +73,7 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -78,6 +81,7 @@ import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -96,6 +100,8 @@ import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.replacements.nodes.MacroNode;
+import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -113,6 +119,9 @@ public class RuntimeCompiledMethodSupport {
     public static class Options {
         @Option(help = "Remove Deopt(Entries,Anchors,Proxies) determined to be unneeded after the runtime compiled graphs have been finalized.")//
         public static final HostedOptionKey<Boolean> RemoveUnneededDeoptSupport = new HostedOptionKey<>(true);
+
+        @Option(help = "Verify runtime compilation framestates during bytecode parsing.")//
+        public static final HostedOptionKey<Boolean> VerifyRuntimeCompilationFrameStates = new HostedOptionKey<>(false);
     }
 
     private record CompilationState(
@@ -131,9 +140,9 @@ public class RuntimeCompiledMethodSupport {
         ImageHeapScanner imageScanner = bb.getUniverse().getHeapScanner();
 
         GraphEncoder graphEncoder = new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
-        HostedProviders runtimeCompilationProviders = hostedProviders.copyWith(
-                        constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse))).copyWith(
-                                        new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
+        HostedProviders runtimeCompilationProviders = hostedProviders //
+                        .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse))) //
+                        .copyWith(new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
 
         SubstrateCompilationDirectives.singleton().resetDeoptEntries();
 
@@ -197,15 +206,21 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         public void run(DebugContext debug) {
-            compileRuntimeCompiledMethod(debug, method);
+            compileRuntimeCompiledMethod(debug);
         }
 
         @SuppressWarnings("try")
-        private void compileRuntimeCompiledMethod(DebugContext debug, HostedMethod hostedMethod) {
-            assert hostedMethod.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
+        private void compileRuntimeCompiledMethod(DebugContext debug) {
+            assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
 
-            AnalysisMethod aMethod = hostedMethod.getWrapped();
-            StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, false,
+            /*
+             * The availability of NodeSourcePosition for JIT compilation is controlled by a
+             * separate option and not TrackNodeSourcePosition to decouple AOT and JIT compilation.
+             */
+            boolean trackNodeSourcePosition = SubstrateOptions.IncludeNodeSourcePositions.getValue();
+
+            AnalysisMethod aMethod = method.getWrapped();
+            StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, trackNodeSourcePosition, false,
                             (arch, analyzedGraph) -> new RuntimeCompilationGraphDecoder(arch, analyzedGraph, compilationState.heapScanner));
             if (graph == null) {
                 throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
@@ -216,7 +231,18 @@ public class RuntimeCompiledMethodSupport {
              */
             aMethod.setAnalyzedGraph(null);
 
-            try (DebugContext.Scope s = debug.scope("RuntimeOptimize", graph, hostedMethod, this)) {
+            if (!trackNodeSourcePosition) {
+                /*
+                 * GR-52693: Even if a graph is built with trackNodeSourcePosition set to false,
+                 * that explicit information is overwritten when the option TrackNodeSourcePosition
+                 * is set to true. We therefore clear the NodeSourcePosition manually.
+                 */
+                for (Node node : graph.getNodes()) {
+                    node.clearNodeSourcePosition();
+                }
+            }
+
+            try (DebugContext.Scope s = debug.scope("RuntimeOptimize", graph, method, this)) {
                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                 canonicalizer.apply(graph, compilationState.runtimeCompilationProviders);
 
@@ -241,7 +267,7 @@ public class RuntimeCompiledMethodSupport {
              * Registering all deopt entries seen within the optimized graph. This should be
              * strictly a subset of the deopt entrypoints seen during evaluation.
              */
-            AnalysisMethod origMethod = hostedMethod.getMultiMethod(ORIGINAL_METHOD).getWrapped();
+            AnalysisMethod origMethod = method.getMultiMethod(ORIGINAL_METHOD).getWrapped();
             DeoptimizationUtils.registerDeoptEntries(graph, compilationState.registeredRuntimeCompilations.contains(origMethod),
                             (deoptEntryMethod -> {
                                 PointsToAnalysisMethod deoptMethod = (PointsToAnalysisMethod) ((PointsToAnalysisMethod) deoptEntryMethod).getMultiMethod(DEOPT_TARGET_METHOD);
@@ -250,7 +276,7 @@ public class RuntimeCompiledMethodSupport {
                             }));
 
             assert verifyNodes(graph);
-            var previous = compilationState.runtimeGraphs.put(hostedMethod, graph);
+            var previous = compilationState.runtimeGraphs.put(method, graph);
             assert previous == null;
 
             // graph encoder is not currently threadsafe
@@ -324,9 +350,8 @@ public class RuntimeCompiledMethodSupport {
 
     static class RuntimeCompilationReflectionProvider extends AnalysisConstantReflectionProvider {
 
-        @SuppressWarnings("unused")
         RuntimeCompilationReflectionProvider(BigBang bb, ClassInitializationSupport classInitializationSupport) {
-            super(bb.getUniverse(), bb.getMetaAccess());
+            super(bb.getUniverse(), bb.getMetaAccess(), classInitializationSupport);
         }
 
         @Override
@@ -368,12 +393,12 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         protected void addObject(Object object) {
-            super.addObject(unwrap(object));
+            super.addObject(hostedToRuntime(object));
         }
 
         @Override
         protected void writeObjectId(Object object) {
-            super.writeObjectId(unwrap(object));
+            super.writeObjectId(hostedToRuntime(object));
         }
 
         @Override
@@ -381,12 +406,11 @@ public class RuntimeCompiledMethodSupport {
             return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
         }
 
-        private Object unwrap(Object object) {
-            if (object instanceof ImageHeapConstant ihc) {
-                VMError.guarantee(ihc.getHostedObject() != null);
-                return ihc.getHostedObject();
+        private Object hostedToRuntime(Object object) {
+            if (object instanceof ImageHeapConstant heapConstant) {
+                return SubstrateGraalUtils.hostedToRuntime(heapConstant, heapScanner.getConstantReflection());
             } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
-                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(hc.getHostedObject()));
+                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.hostedToRuntime(hc, heapScanner.getConstantReflection())));
             }
             return object;
         }
@@ -411,9 +435,9 @@ public class RuntimeCompiledMethodSupport {
         protected Object readObject(MethodScope methodScope) {
             Object object = super.readObject(methodScope);
             if (object instanceof JavaConstant constant) {
-                return heapScanner.getImageHeapConstant(constant);
+                return SubstrateGraalUtils.runtimeToHosted(constant, heapScanner);
             } else if (object instanceof ObjectLocationIdentity oli) {
-                return locationIdentityCache.computeIfAbsent(oli.getObject(), (obj) -> ObjectLocationIdentity.create(heapScanner.getImageHeapConstant(obj)));
+                return locationIdentityCache.computeIfAbsent(oli.getObject(), (constant) -> ObjectLocationIdentity.create(SubstrateGraalUtils.runtimeToHosted(constant, heapScanner)));
             }
             return object;
         }
@@ -458,14 +482,25 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         protected boolean shouldVerifyFrameStates() {
-            /*
-             * (GR-46115) Ideally we should verify frame states in methods registered for runtime
-             * compilations, as well as any other methods that can deoptimize. Because runtime
-             * compiled methods can pull in almost arbitrary code, this means most frame states
-             * should be verified. We currently use illegal states as placeholders in many places,
-             * so this cannot be enabled at the moment.
-             */
-            return false;
+            return Options.VerifyRuntimeCompilationFrameStates.getValue();
+        }
+    }
+
+    /**
+     * Converts {@link MacroWithExceptionNode}s into explicit {@link InvokeWithExceptionNode}s. This
+     * is necessary to ensure a MacroNode within runtime compilation converted back to an invoke
+     * will always have a proper deoptimization target.
+     */
+    public static class ConvertMacroNodes extends Phase {
+        @Override
+        protected void run(StructuredGraph graph) {
+            for (Node n : graph.getNodes().snapshot()) {
+                VMError.guarantee(!(n instanceof MacroNode), "DeoptTarget Methods do not support Macro Nodes: method %s, node %s", graph.method(), n);
+
+                if (n instanceof MacroWithExceptionNode macro) {
+                    macro.replaceWithInvoke();
+                }
+            }
         }
     }
 

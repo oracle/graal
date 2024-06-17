@@ -41,7 +41,7 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.sampler.SamplerJfrStackTraceSerializer;
 import com.oracle.svm.core.sampler.SamplerStackTraceSerializer;
-import com.oracle.svm.core.sampler.SamplerStackWalkVisitor;
+import com.oracle.svm.core.sampler.SamplerStatistics;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.UserError;
@@ -159,9 +159,9 @@ public class JfrFeature implements InternalFeature {
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
         ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
         ImageSingletons.add(JfrGCNames.class, new JfrGCNames());
-        ImageSingletons.add(SamplerStackWalkVisitor.class, new SamplerStackWalkVisitor());
         ImageSingletons.add(JfrExecutionSamplerSupported.class, new JfrExecutionSamplerSupported());
         ImageSingletons.add(SamplerStackTraceSerializer.class, new SamplerJfrStackTraceSerializer());
+        ImageSingletons.add(SamplerStatistics.class, new SamplerStatistics());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
@@ -170,6 +170,9 @@ public class JfrFeature implements InternalFeature {
         JfrSerializerSupport.get().register(new JfrGCNameSerializer());
         JfrSerializerSupport.get().register(new JfrVMOperationNameSerializer());
         JfrSerializerSupport.get().register(new JfrGCWhenSerializer());
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            JfrSerializerSupport.get().register(new JfrNmtCategorySerializer());
+        }
 
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
@@ -186,8 +189,8 @@ public class JfrFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
-        JfrManager manager = JfrManager.get();
-        runtime.addStartupHook(manager.startupHook());
-        runtime.addShutdownHook(manager.shutdownHook());
+        runtime.addInitializationHook(JfrManager.initializationHook());
+        runtime.addStartupHook(JfrManager.startupHook());
+        runtime.addShutdownHook(JfrManager.shutdownHook());
     }
 }

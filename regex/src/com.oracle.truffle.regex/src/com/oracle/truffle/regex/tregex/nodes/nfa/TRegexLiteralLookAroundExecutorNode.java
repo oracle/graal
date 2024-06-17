@@ -118,7 +118,7 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexBacktracker
 
     @TruffleBoundary
     @Override
-    public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int index, int maxIndex) {
+    public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index) {
         throw new UnsupportedOperationException();
     }
 

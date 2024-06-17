@@ -62,9 +62,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -157,6 +157,16 @@ final class Target_java_lang_Enum {
 @TargetClass(java.lang.String.class)
 final class Target_java_lang_String {
 
+    // Checkstyle: stop
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = true) //
+    public static boolean COMPACT_STRINGS;
+    // Checkstyle: resume
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = true) //
+    public static byte LATIN1;
+
     @Substitute
     public String intern() {
         String thisStr = SubstrateUtil.cast(this, String.class);
@@ -180,7 +190,7 @@ final class Target_java_lang_String {
     native byte coder();
 
     @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = true) //
-    byte[] value;
+    public byte[] value;
 
     @Alias //
     int hash;
@@ -216,6 +226,9 @@ final class Target_java_lang_Throwable {
     @Alias @RecomputeFieldValue(kind = Reset)//
     Object backtrace;
 
+    @Alias//
+    Throwable cause;
+
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ThrowableStackTraceFieldValueTransformer.class)//
     StackTraceElement[] stackTrace;
 
@@ -227,50 +240,14 @@ final class Target_java_lang_Throwable {
     // Checkstyle: resume
 
     /**
-     * Fills in the execution stack trace. {@link Throwable#fillInStackTrace()} cannot be
-     * {@code synchronized}, because it might be called in a {@link VMOperation} (via one of the
-     * {@link Throwable} constructors), where we are not allowed to block. To work around that, we
-     * do the following:
-     * <ul>
-     * <li>If we are not in a {@link VMOperation}, it executes {@link #fillInStackTrace(int)} in a
-     * block {@code synchronized} by the supplied {@link Throwable}. This is the default case.
-     * <li>If we are in a {@link VMOperation}, it checks if the {@link Throwable} is currently
-     * locked. If not, {@link #fillInStackTrace(int)} is called without synchronization, which is
-     * safe in a {@link VMOperation}. If it is locked, we do not do any filling (and thus do not
-     * collect the stack trace).
-     * </ul>
+     * Fills in the execution stack trace. Our {@link Throwable#fillInStackTrace()} cannot be
+     * declared {@code synchronized} because it might be called in a {@link VMOperation} (via one of
+     * the {@link Throwable} constructors), where we are not allowed to block. We work around that
+     * in {@link #fillInStackTrace(int)}.
      */
     @Substitute
-    @NeverInline("Starting a stack walk in the caller frame")
     public Target_java_lang_Throwable fillInStackTrace() {
-        if (VMOperation.isInProgress()) {
-            if (MonitorSupport.singleton().isLockedByAnyThread(this)) {
-                /*
-                 * The Throwable is locked. We cannot safely fill in the stack trace. Do nothing and
-                 * accept that we will not get a stack track.
-                 */
-            } else {
-                /*
-                 * The Throwable is not locked. We can safely fill the stack trace without
-                 * synchronization because we VMOperation is single threaded.
-                 */
-
-                /* Copy of `Throwable#fillInStackTrace()` */
-                if (stackTrace != null || backtrace != null) {
-                    fillInStackTrace(0);
-                    stackTrace = UNASSIGNED_STACK;
-                }
-            }
-        } else {
-            synchronized (this) {
-                /* Copy of `Throwable#fillInStackTrace()` */
-                if (stackTrace != null || backtrace != null) {
-                    fillInStackTrace(0);
-                    stackTrace = UNASSIGNED_STACK;
-                }
-            }
-        }
-        return this;
+        return fillInStackTrace(0);
     }
 
     /**
@@ -283,15 +260,42 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     Target_java_lang_Throwable fillInStackTrace(int dummy) {
-        /*
-         * Start out by clearing the backtrace for this object, in case the VM runs out of memory
-         * while allocating the stack trace.
-         */
-        backtrace = null;
+        if (VMOperation.isInProgress()) {
+            if (MonitorSupport.singleton().isLockedByAnyThread(this)) {
+                /*
+                 * The Throwable is locked. We cannot safely fill in the stack trace. Do nothing and
+                 * accept that we will not get a stack trace.
+                 */
+            } else {
+                /*
+                 * The Throwable is not locked. We can safely fill the stack trace without
+                 * synchronization because we VMOperation is single threaded.
+                 */
 
-        BacktraceVisitor visitor = new BacktraceVisitor();
-        JavaThreads.visitCurrentStackFrames(visitor);
-        backtrace = visitor.getArray();
+                if (stackTrace != null || backtrace != null) {
+                    backtrace = null;
+
+                    BacktraceVisitor visitor = new BacktraceVisitor();
+                    JavaThreads.visitCurrentStackFrames(visitor);
+                    backtrace = visitor.getArray();
+
+                    stackTrace = UNASSIGNED_STACK;
+                }
+            }
+        } else {
+            /* Execute with synchronization. This is the default case. */
+            synchronized (this) {
+                if (stackTrace != null || backtrace != null) {
+                    backtrace = null;
+
+                    BacktraceVisitor visitor = new BacktraceVisitor();
+                    JavaThreads.visitCurrentStackFrames(visitor);
+                    backtrace = visitor.getArray();
+
+                    stackTrace = UNASSIGNED_STACK;
+                }
+            }
+        }
         return this;
     }
 }
@@ -516,7 +520,7 @@ final class Target_java_lang_Math {
 @Substitute
 final class Target_java_lang_ClassValue {
 
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JavaLangSubstitutions.ClassValueInitializer.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassValueInitializer.class)//
     private final ConcurrentMap<Class<?>, Object> values;
 
     @Substitute
@@ -556,8 +560,38 @@ final class Target_java_lang_ClassValue {
     }
 }
 
+class ClassValueInitializer implements FieldValueTransformerWithAvailability {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        ClassValue<?> v = (ClassValue<?>) receiver;
+        Map<Class<?>, Object> map = ClassValueSupport.getValues().get(v);
+        assert map != null;
+        return map;
+    }
+
+    @Override
+    public ValueAvailability valueAvailability() {
+        /*
+         * We want to wait to constant fold this value until all possible HotSpot initialization
+         * code has run.
+         */
+        return ValueAvailability.AfterAnalysis;
+    }
+}
+
 @TargetClass(java.lang.NullPointerException.class)
 final class Target_java_lang_NullPointerException {
+
+    /**
+     * {@link NullPointerException} overrides {@link Throwable#fillInStackTrace()} with a
+     * {@code synchronized} method which is not permitted in a {@link VMOperation}. We hand over to
+     * {@link Target_java_lang_Throwable#fillInStackTrace(int)} which already handles this properly.
+     */
+    @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    Target_java_lang_Throwable fillInStackTrace() {
+        return SubstrateUtil.cast(this, Target_java_lang_Throwable.class).fillInStackTrace(0);
+    }
 
     @Substitute
     @SuppressWarnings("static-method")
@@ -605,14 +639,14 @@ final class Target_jdk_internal_loader_BootLoader {
 
     @Substitute
     private static Class<?> loadClassOrNull(String name) {
-        return ClassForNameSupport.forNameOrNull(name, null);
+        return ClassForNameSupport.singleton().forNameOrNull(name, null);
     }
 
     @SuppressWarnings("unused")
     @Substitute
     private static Class<?> loadClass(Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
-        return ClassForNameSupport.forNameOrNull(name, null);
+        return ClassForNameSupport.singleton().forNameOrNull(name, null);
     }
 
     @SuppressWarnings("unused")
@@ -684,49 +718,4 @@ final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransf
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
 
-    public static final class StringUtil {
-        /**
-         * Returns a character from a string at {@code index} position based on the encoding format.
-         */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static char charAt(String string, int index) {
-            Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
-            byte[] value = str.value;
-            if (str.isLatin1()) {
-                return Target_java_lang_StringLatin1.getChar(value, index);
-            } else {
-                return Target_java_lang_StringUTF16.getChar(value, index);
-            }
-        }
-
-        public static byte coder(String string) {
-            return SubstrateUtil.cast(string, Target_java_lang_String.class).coder();
-        }
-    }
-
-    public static final class ClassValueSupport {
-
-        /**
-         * Marker value that replaces null values in the
-         * {@link java.util.concurrent.ConcurrentHashMap}.
-         */
-        public static final Object NULL_MARKER = new Object();
-
-        final Map<ClassValue<?>, Map<Class<?>, Object>> values;
-
-        public ClassValueSupport(Map<ClassValue<?>, Map<Class<?>, Object>> map) {
-            values = map;
-        }
-    }
-
-    static class ClassValueInitializer implements FieldValueTransformer {
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            ClassValueSupport support = ImageSingletons.lookup(ClassValueSupport.class);
-            ClassValue<?> v = (ClassValue<?>) receiver;
-            Map<Class<?>, Object> map = support.values.get(v);
-            assert map != null;
-            return map;
-        }
-    }
 }

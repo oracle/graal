@@ -69,6 +69,7 @@
   gate:: $.target("gate"),
   daily:: $.target("daily"),
   weekly:: $.target("weekly"),
+  ondemand:: $.target("ondemand"),
 
   use_musl:: require_musl + task_spec({
       mxgate_config+::["musl"],

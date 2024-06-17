@@ -49,7 +49,6 @@ import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -170,15 +169,7 @@ public class CEntryPointSupport implements InternalFeature {
         r.register(new RequiredInvocationPlugin("getCurrentThread") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (SubstrateOptions.MultiThreaded.getValue()) {
-                    b.addPush(JavaKind.Object, ReadReservedRegister.createReadIsolateThreadNode(b.getGraph()));
-                } else if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    ValueNode heapBase = b.add(ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
-                    ConstantNode addend = b.add(ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND));
-                    b.addPush(JavaKind.Object, new AddNode(heapBase, addend));
-                } else {
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), CEntryPointSetup.SINGLE_THREAD_SENTINEL.rawValue()));
-                }
+                b.addPush(JavaKind.Object, ReadReservedRegister.createReadIsolateThreadNode(b.getGraph()));
                 return true;
             }
         });

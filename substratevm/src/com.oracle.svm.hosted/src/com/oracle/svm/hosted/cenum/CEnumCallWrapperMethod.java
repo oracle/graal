@@ -40,10 +40,7 @@ import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.JavaKind;
@@ -51,8 +48,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Generated code for patching {@link CEnumLookup} annotated methods and calling
- * EnumRuntimeData.convertCToJava(long).
+ * Create a synthetic graph to substitute native methods that are annotated with {@link CEnumLookup}
+ * or {@link CEnumValue}.
  */
 public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
 
@@ -76,33 +73,30 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
-
         AnalysisType returnType = method.getSignature().getReturnType();
         ValueNode arg = kit.getInitialArguments().get(0);
 
-        CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess());
+        ValueNode returnValue = createInvoke(method, kit, returnType, arg);
 
         JavaKind pushKind = CInterfaceInvocationPlugin.pushKind(method);
-        ValueNode returnValue;
-        if (method.getAnnotation(CEnumLookup.class) != null) {
-            EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(returnType);
-            JavaKind parameterKind = JavaKind.Int;
-            returnValue = tool.createEnumLookupInvoke(kit, returnType, enumInfo, parameterKind, arg);
-        } else if (method.getAnnotation(CEnumValue.class) != null) {
-            ResolvedJavaType declaringType = method.getDeclaringClass();
-            EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(declaringType);
-            ValueNode invoke = tool.createEnumValueInvoke(kit, enumInfo, returnType.getJavaKind(), arg);
-
-            ValueNode adapted = CInterfaceInvocationPlugin.adaptPrimitiveType(kit.getGraph(), invoke, invoke.stamp(NodeView.DEFAULT).getStackKind(), returnType.getJavaKind(), false);
-            Stamp originalStamp = StampFactory.forKind(returnType.getJavaKind());
-            returnValue = CInterfaceInvocationPlugin.adaptPrimitiveType(kit.getGraph(), adapted, returnType.getJavaKind(), originalStamp.getStackKind(), false);
-        } else {
-            throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
-        }
-
         kit.getFrameState().push(pushKind, returnValue);
         kit.createReturn(returnValue, pushKind);
 
         return kit.finalizeGraph();
+    }
+
+    private ValueNode createInvoke(AnalysisMethod method, HostedGraphKit kit, AnalysisType returnType, ValueNode arg) {
+        if (method.getAnnotation(CEnumLookup.class) != null) {
+            /* Call a method that converts the primitive value to a Java enum. */
+            EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(returnType);
+            return CInterfaceEnumTool.singleton().createInvokeLookupEnum(kit, returnType, enumInfo, arg);
+        } else if (method.getAnnotation(CEnumValue.class) != null) {
+            /* Call a method that converts a Java enum to a primitive value. */
+            ResolvedJavaType declaringType = method.getDeclaringClass();
+            EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(declaringType);
+            return CInterfaceEnumTool.singleton().createInvokeEnumToValue(kit, enumInfo, returnType, arg);
+        }
+
+        throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
     }
 }

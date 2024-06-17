@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.api.directives;
 
+import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
@@ -68,11 +69,24 @@ public final class GraalDirectives {
 
     /**
      * Directive for the compiler to fall back to the bytecode interpreter at this point.
+     * <p/>
      *
      * This is equivalent to calling
      * {@link #deoptimize(DeoptimizationAction, DeoptimizationReason, boolean)} with
      * {@link DeoptimizationAction#None}, {@link DeoptimizationReason#TransferToInterpreter} and
      * {@code false} as arguments.
+     * <p/>
+     *
+     * This directive is typically used directly after a branch:
+     *
+     * <pre>
+     * if (someCondition) {
+     *     deoptimize();
+     * }
+     * </pre>
+     *
+     * This combination will be transformed into a guard. Code between the {@code if} and the
+     * deoptimization may be removed from the compiled code.
      */
     public static void deoptimize() {
     }
@@ -86,6 +100,32 @@ public final class GraalDirectives {
      * {@link DeoptimizationReason#TransferToInterpreter} and {@code false} as arguments.
      */
     public static void deoptimizeAndInvalidate() {
+    }
+
+    /**
+     * Directive for the compiler to fall back to the bytecode interpreter at this point.
+     * <p/>
+     *
+     * This is similar to calling {@link #deoptimize()}, but the deoptimization will use a precise
+     * frame state and will be prevented from being converted to a guard or otherwise moving in the
+     * control flow.
+     * <p/>
+     *
+     * This directive is typically used if the deoptimization is at the end of a section of code
+     * that should remain part of the compiled code:
+     *
+     * <pre>
+     *     if (someCondition) {
+     *         ... some code ...
+     *         preciseDeoptimize();
+     *     }
+     * </pre>
+     *
+     * Unlike {@link #deoptimize()}, this construct will not be transformed into a guard, and the
+     * code preceding the precise deoptimization will not be removed from the compiled code.
+     */
+    public static void preciseDeoptimize() {
+
     }
 
     /**
@@ -161,6 +201,22 @@ public final class GraalDirectives {
     }
 
     /**
+     * A call to this method will force the compiler to assume from this position on that the given
+     * argument is a positive number.
+     */
+    public static int positivePi(int n) {
+        return n;
+    }
+
+    /**
+     * A call to this method will force the compiler to assume from this position on that the given
+     * argument is a positive number.
+     */
+    public static long positivePi(long n) {
+        return n;
+    }
+
+    /**
      * Injects a probability for the given condition into the profiling information of a branch
      * instruction. The probability must be a value between 0.0 and 1.0 (inclusive). This directive
      * should only be used for the condition of an if statement. The parameter condition should also
@@ -195,11 +251,11 @@ public final class GraalDirectives {
      * Example usage (it specifies that the expected iteration count of the loop condition is 500,
      * so the iteration count of the loop body is 499):
      *
-     * <code>
+     * {@snippet :
      * for (int i = 0; injectIterationCount(500, i < array.length); i++) {
      *     // ...
      * }
-     * </code>
+     * }
      *
      * @param iterations the expected number of iterations that should be injected
      */
@@ -483,6 +539,39 @@ public final class GraalDirectives {
             deoptimize();
         }
         return value;
+    }
+
+    /**
+     * Ensures that the given object allocation is represented as one that never moves, i.e., is
+     * fixed and has proper exception edges. {@code object} must be an allocation represented by a
+     * {@link AbstractNewObjectNode} in Graal IR. There must not be any statements between the
+     * original allocation bytecode and the call to {@link #ensureAllocatedHere(Object)}.
+     * Additionally, the parameter to the intrinsic must be a fresh allocation and no local variable
+     * because there must not be any references to the allocation before it is marked non-movable.
+     *
+     * Allowed patterns are
+     *
+     * <pre>
+     * Object[] array = GraalDirectives.ensureAllocatedHere(new Object[10]);
+     * </pre>
+     *
+     * but not cases where there are statements between the allocation and the intrinsic
+     *
+     * <pre>
+     * Object[] array = new Object[10];
+     * sideEffect(); // prohibited to have something between allocation and intrinsic
+     * GraalDirectives.ensureAllocatedHere(array);
+     * </pre>
+     *
+     * and patterns where the argument is used as a local variable are also not allowed
+     *
+     * <pre>
+     * Object[] array = new Object[10];// used as a local
+     * GraalDirectives.ensureAllocatedHere(array);
+     * </pre>
+     */
+    public static <T> T ensureAllocatedHere(T object) {
+        return object;
     }
 
     /**

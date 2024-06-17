@@ -56,7 +56,7 @@ final class PECoff {
 
         static int totalsize = 20;
 
-        /**
+        /*
          * IMAGE_FILE_HEADER defines
          */
 
@@ -94,7 +94,7 @@ final class PECoff {
 
         static int totalsize = 40;
 
-        /**
+        /*
          * IMAGE_SECTION_HEADER defines
          */
 

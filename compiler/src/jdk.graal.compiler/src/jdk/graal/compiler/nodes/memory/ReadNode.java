@@ -43,6 +43,7 @@ import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.ReadBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.CanonicalizableLocation;
@@ -123,9 +124,9 @@ public class ReadNode extends FloatableAccessNode
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
-        if (getBarrierType() != BarrierType.NONE && gen.getLIRGeneratorTool().getBarrierSet() != null) {
+        if (getBarrierType() != BarrierType.NONE && gen.getLIRGeneratorTool().getBarrierSet() instanceof ReadBarrierSetLIRGeneratorTool barrierSet) {
             assert extendKind == MemoryExtendKind.DEFAULT : Assertions.errorMessage(this, extendKind);
-            gen.setResult(this, gen.getLIRGeneratorTool().getBarrierSet().emitBarrieredLoad(readKind, gen.operand(address), gen.state(this), memoryOrder, getBarrierType()));
+            gen.setResult(this, barrierSet.emitBarrieredLoad(gen.getLIRGeneratorTool(), readKind, gen.operand(address), gen.state(this), memoryOrder, getBarrierType()));
         } else {
             gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this), memoryOrder, extendKind));
         }
@@ -137,8 +138,21 @@ public class ReadNode extends FloatableAccessNode
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (tool.allUsagesAvailable() && hasNoUsages()) {
-            // Read without usages or guard can be safely removed.
+        if (!getUsedAsNullCheck() && tool.allUsagesAvailable() && hasNoUsages()) {
+            /**
+             * Read without usages or guard can be safely removed as long as it does not act as the
+             * null check for dominated memory accesses.
+             *
+             * <pre>
+             * readWithNullCheck(object.a);
+             * read(object.b);
+             * read(object.c);
+             * </pre>
+             *
+             * In this pattern the first read is the null check for the dominated reads of b and c.
+             * Thus, the read of a must not be removed after fix reads phase even if it has no
+             * usages.
+             */
             return null;
         }
         if (canCanonicalizeRead()) {

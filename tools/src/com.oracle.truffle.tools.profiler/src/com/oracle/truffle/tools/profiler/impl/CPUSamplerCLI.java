@@ -49,7 +49,6 @@ import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONObject;
 
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.CPUSamplerData;
@@ -191,16 +190,17 @@ class CPUSamplerCLI extends ProfilerCLI {
                     "Note: Interpreter is considered Tier 0. (default: false)", usageSyntax = "true|false|0,1,2", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     static final OptionKey<int[]> ShowTiers = new OptionKey<>(null, SHOW_TIERS_OUTPUT_TYPE);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (for example, Math.*) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<WildcardFilter> FILTER_ROOT = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (for example, *program*.sl) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<WildcardFilter> FILTER_FILE = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterMimeType", help = "Only profile the language with given mime-type. (eg. application/javascript) (default: profile all)", usageSyntax = "<mime-type>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterMimeType", help = "Only profile the language with given mime-type. (for example, application/javascript) (default: profile all)", //
+                    usageSyntax = "<mime-type>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "FilterLanguage", help = "Only profile the language with given ID. (eg. js) (default: profile all).", usageSyntax = "<languageId>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterLanguage", help = "Only profile the language with given ID. (for example, js) (default: profile all).", usageSyntax = "<languageId>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
     @Option(name = "SampleInternal", help = "Capture internal elements.", category = OptionCategory.INTERNAL) //
@@ -221,9 +221,13 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> SAMPLE_CONTEXT_INITIALIZATION = new OptionKey<>(false);
 
+    @Option(name = "GatherAsyncStackTrace", help = "Try to gather async stack trace elements for each sample (default: true). " +
+                    "Disabling this option may reduce sampling overhead.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> GATHER_ASYNC_STACK_TRACE = new OptionKey<>(true);
+
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler, String absoluteOutputPath) {
         PrintStream out = chooseOutputStream(env, absoluteOutputPath);
-        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        List<CPUSamplerData> data = sampler.getDataList();
         OptionValues options = env.getOptions();
         switch (chooseOutput(options)) {
             case HISTOGRAM:
@@ -276,15 +280,15 @@ class CPUSamplerCLI extends ProfilerCLI {
         return OUTPUT.getDefaultValue();
     }
 
-    private static void printSamplingCallTree(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
-        for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
-            new SamplingCallTree(entry.getValue(), options).print(out);
+    private static void printSamplingCallTree(PrintStream out, OptionValues options, List<CPUSamplerData> data) {
+        for (CPUSamplerData entry : data) {
+            new SamplingCallTree(entry, options).print(out);
         }
     }
 
-    private static void printSamplingHistogram(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
-        for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
-            new SamplingHistogram(entry.getValue(), options).print(out);
+    private static void printSamplingHistogram(PrintStream out, OptionValues options, List<CPUSamplerData> data) {
+        for (CPUSamplerData entry : data) {
+            new SamplingHistogram(entry, options).print(out);
         }
     }
 
@@ -307,7 +311,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static boolean sampleDurationTooLong(CPUSampler sampler) {
-        for (CPUSamplerData value : sampler.getData().values()) {
+        for (CPUSamplerData value : sampler.getDataList()) {
             if (value.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod() * MILLIS_TO_NANOS) {
                 return true;
             }
@@ -319,13 +323,13 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println("-------------------------------------------------------------------------------- ");
     }
 
-    private static void printSamplingJson(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
+    private static void printSamplingJson(PrintStream out, OptionValues options, List<CPUSamplerData> data) {
         boolean gatheredHitTimes = options.get(GATHER_HIT_TIMES);
         JSONObject output = new JSONObject();
         output.put("tool", CPUSamplerInstrument.ID);
         output.put("version", CPUSamplerInstrument.VERSION);
         JSONArray contexts = new JSONArray();
-        for (CPUSamplerData samplerData : data.values()) {
+        for (CPUSamplerData samplerData : data) {
             contexts.put(perContextData(samplerData, gatheredHitTimes));
         }
         output.put("contexts", contexts);

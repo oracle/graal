@@ -24,11 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory.CompilationLevelAdjustment.None;
-
-import jdk.graal.compiler.debug.GraalError;
-
-import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
+import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
@@ -38,7 +34,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 class IsGraalPredicate extends IsGraalPredicateBase {
 
     /**
-     * Module containing {@link HotSpotJVMCICompilerFactory}.
+     * Module containing {@link HotSpotJVMCIBackendFactory}.
      */
     private final Module jvmciModule;
 
@@ -54,7 +50,7 @@ class IsGraalPredicate extends IsGraalPredicateBase {
     private Module compilerConfigurationModule;
 
     IsGraalPredicate() {
-        jvmciModule = HotSpotJVMCICompilerFactory.class.getModule();
+        jvmciModule = HotSpotJVMCIBackendFactory.class.getModule();
         graalModule = HotSpotGraalCompilerFactory.class.getModule();
     }
 
@@ -62,15 +58,5 @@ class IsGraalPredicate extends IsGraalPredicateBase {
     void onCompilerConfigurationFactorySelection(HotSpotJVMCIRuntime runtime, CompilerConfigurationFactory factory) {
         compilerConfigurationModule = factory.getClass().getModule();
         runtime.excludeFromJVMCICompilation(jvmciModule, graalModule, compilerConfigurationModule);
-    }
-
-    @Override
-    boolean apply(Class<?> declaringClass) {
-        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Override
-    HotSpotJVMCICompilerFactory.CompilationLevelAdjustment getCompilationLevelAdjustment() {
-        return None;
     }
 }

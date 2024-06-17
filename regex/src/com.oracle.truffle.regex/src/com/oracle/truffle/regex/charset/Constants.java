@@ -213,7 +213,10 @@ public final class Constants {
                     0x3001, 0xfefe,
                     0xff00, 0x10ffff);
 
-    // \r, \n, 0x2028, 0x2029
+    // 0x000A, LINE FEED (LF), <LF>
+    // 0x000D, CARRIAGE RETURN (CR), <CR>
+    // 0x2028, LINE SEPARATOR, <LS>
+    // 0x2029, PARAGRAPH SEPARATOR, <PS>
     public static final CodePointSet LINE_TERMINATOR = CodePointSet.createNoDedup(
                     0x000a, 0x000a,
                     0x000d, 0x000d,

@@ -1,0 +1,2 @@
+# The following test crashes when running the ref executable
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.martin/pmf1.C.dir

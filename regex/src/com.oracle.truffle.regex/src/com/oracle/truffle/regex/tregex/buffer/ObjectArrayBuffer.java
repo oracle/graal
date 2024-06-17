@@ -56,7 +56,7 @@ import java.util.Iterator;
  * <pre>
  * SomeClass[] typedArray = new SomeClass[0];
  * ObjectArrayBuffer buf = new ObjectArrayBuffer();
- * List<SomeClass[]> results = new ArrayList<>();
+ * List&lt;SomeClass[]> results = new ArrayList&lt;>();
  * for (Object obj : listOfThingsToProcess) {
  *     for (Object x : obj.thingsThatShouldBecomeSomeClass()) {
  *         buf.add(someCalculation(x));

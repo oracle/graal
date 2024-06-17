@@ -53,13 +53,14 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
@@ -69,6 +70,7 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -85,8 +87,8 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.UnsafePartitionKind;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -293,10 +295,10 @@ public class FeatureImpl {
         /**
          * Register a callback that is executed when an object of the specified type or any of its
          * subtypes is marked as reachable.
-         * 
+         *
          * @since 24.0
          */
-        public <T> void registerObjectReachableCallback(Class<T> clazz, BiConsumer<DuringAnalysisAccess, T> callback) {
+        public <T> void registerObjectReachableCallback(Class<T> clazz, ObjectReachableCallback<T> callback) {
             getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(callback);
         }
 
@@ -357,7 +359,7 @@ public class FeatureImpl {
         }
 
         public void registerAsUsed(AnalysisType aType, Object reason) {
-            bb.registerTypeAsReachable(aType, reason);
+            aType.registerAsReachable(reason);
         }
 
         @Override
@@ -370,7 +372,19 @@ public class FeatureImpl {
         }
 
         public void registerAsInHeap(AnalysisType aType, Object reason) {
-            bb.registerTypeAsInHeap(aType, reason);
+            aType.registerAsInstantiated(reason);
+        }
+
+        @Override
+        public void registerAsUnsafeAllocated(Class<?> clazz) {
+            registerAsUnsafeAllocated(getMetaAccess().lookupJavaType(clazz));
+        }
+
+        public void registerAsUnsafeAllocated(AnalysisType aType) {
+            if (aType.isAbstract()) {
+                throw UserError.abort("Cannot register an abstract class as instantiated: " + aType.toJavaName(true));
+            }
+            aType.registerAsUnsafeAllocated("From feature");
         }
 
         @Override
@@ -379,7 +393,7 @@ public class FeatureImpl {
         }
 
         public void registerAsAccessed(AnalysisField aField, Object reason) {
-            bb.markFieldAccessed(aField, reason);
+            aField.registerAsAccessed(reason);
         }
 
         public void registerAsRead(Field field, Object reason) {
@@ -387,7 +401,7 @@ public class FeatureImpl {
         }
 
         public void registerAsRead(AnalysisField aField, Object reason) {
-            bb.markFieldRead(aField, reason);
+            aField.registerAsRead(reason);
         }
 
         @Override
@@ -395,17 +409,13 @@ public class FeatureImpl {
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), "registered from Feature API");
         }
 
+        public void registerAsUnsafeAccessed(Field field, Object reason) {
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), reason);
+        }
+
         public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
-            return registerAsUnsafeAccessed(aField, DefaultUnsafePartition.get(), reason);
-        }
-
-        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind, Object reason) {
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind, reason);
-        }
-
-        public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind, Object reason) {
             assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
-            return aField.registerAsUnsafeAccessed(partitionKind, reason);
+            return aField.registerAsUnsafeAccessed(reason);
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field, Object reason) {
@@ -422,6 +432,10 @@ public class FeatureImpl {
         }
 
         public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
+            bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
+        }
+
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, ObjectScanner.ScanReason reason, MultiMethod.MultiMethodKey... otherRoots) {
             bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 
@@ -578,7 +592,7 @@ public class FeatureImpl {
 
         public long objectFieldOffset(HostedField hField) {
             int result = hField.getLocation();
-            assert result > 0;
+            assert result > 0 : Assertions.errorMessage(hField, hField.getLocation());
             return result;
         }
 

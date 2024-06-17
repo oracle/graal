@@ -134,7 +134,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
         assert pageSize % objectAlignment == 0 : "Page size does not match object alignment";
 
-        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap);
+        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap, pageSize);
 
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             assert partition.getStartOffset() % partition.getStartAlignment() == 0 : partition;
@@ -143,25 +143,25 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         return layoutInfo;
     }
 
-    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
+    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap, int pageSize) {
         allocator = new ChunkedImageHeapAllocator(imageHeap, startOffset);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             partition.layout(allocator);
         }
-        return populateInfoObjects(imageHeap.countDynamicHubs());
+        return populateInfoObjects(imageHeap.countDynamicHubs(), pageSize);
     }
 
-    private ImageHeapLayoutInfo populateInfoObjects(int dynamicHubCount) {
+    private ImageHeapLayoutInfo populateInfoObjects(int dynamicHubCount, int pageSize) {
         // Determine writable start boundary from chunks: a chunk that contains writable objects
         // must also have a writable card table
-        long offsetOfFirstWritableAlignedChunk = getWritableRegular().getStartOffset();
+        long offsetOfFirstWritableAlignedChunk = -1;
         for (AlignedChunk chunk : allocator.getAlignedChunks()) {
-            if (chunk.isWritable() && chunk.getBegin() < offsetOfFirstWritableAlignedChunk) {
-                assert offsetOfFirstWritableAlignedChunk <= chunk.getEnd();
+            if (chunk.isWritable()) {
                 offsetOfFirstWritableAlignedChunk = chunk.getBegin();
                 break; // (chunks are in ascending memory order)
             }
         }
+        VMError.guarantee(offsetOfFirstWritableAlignedChunk >= 0 && offsetOfFirstWritableAlignedChunk % pageSize == 0, "Start of the writable part is assumed to be page-aligned");
         long offsetOfFirstWritableUnalignedChunk = -1;
         long offsetOfLastWritableUnalignedChunk = -1;
         for (UnalignedChunk chunk : allocator.getUnalignedChunks()) {

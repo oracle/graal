@@ -41,11 +41,11 @@
 package com.oracle.truffle.api.instrumentation;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventProviderWithInputChainNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * An event node created by an {@link ExecutionEventNodeFactory} for a specific locations of a guest
@@ -55,7 +55,6 @@ import com.oracle.truffle.api.nodes.NodeInfo;
  *
  * @since 0.12
  */
-@NodeInfo(cost = NodeCost.NONE)
 @SuppressWarnings("unused")
 public abstract class ExecutionEventNode extends Node {
     /** @since 0.12 */

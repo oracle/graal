@@ -47,10 +47,6 @@ import com.oracle.svm.core.util.Counter.Group;
  * A counter that can be {@linkplain #inc() incremented}. The counting code is only emitted when an
  * option is enabled. Counters are {@link Group grouped} for printing.
  *
- * Currently there is no shutdown hook in Substrate VM that is invoked automatically, so
- * {@link CounterSupport#logValues} needs to be called manually at the end of the application to
- * print counter values.
- *
  * Use this class in the following way:
  *
  * <pre>

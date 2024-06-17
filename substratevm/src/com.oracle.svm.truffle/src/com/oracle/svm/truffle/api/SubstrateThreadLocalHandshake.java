@@ -141,7 +141,6 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
             return HOSTED_STATE.get();
         } else {
             TruffleSafepointImpl state = STATE.get();
-            assert state != null;
             if (state == null) {
                 throw CompilerDirectives.shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
                                 "Did you call getCurrent() outside while a polyglot context not entered?");

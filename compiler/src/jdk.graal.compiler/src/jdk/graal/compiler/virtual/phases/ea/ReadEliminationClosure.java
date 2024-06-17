@@ -179,11 +179,16 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             ValueNode object = null;
                             if (node instanceof LoadFieldNode) {
                                 object = ((LoadFieldNode) node).object();
-                            } else if (node instanceof ReadNode) {
+                            } else if (node instanceof ReadNode read) {
+                                if (!read.getBarrierType().canReadEliminate()) {
+                                    assert deleted == false;
+                                    return false;
+                                }
                                 object = ((ReadNode) node).getAddress();
                             } else {
                                 // unknown node, no elimination possible
-                                return deleted;
+                                assert deleted == false;
+                                return false;
                             }
                             object = GraphUtil.unproxify(object);
                             ValueNode access = (ValueNode) node;

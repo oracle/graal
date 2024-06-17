@@ -37,9 +37,6 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.ServiceLoader;
 
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
-
 /**
  * Miscellaneous methods for modifying and generating file system paths.
  *
@@ -177,39 +174,55 @@ public class PathUtilities {
 
     private static final String ELLIPSIS = "...";
 
-    static String createUnique(OptionValues options, OptionKey<String> baseNameOption, String id, String label, String ext, boolean createMissingDirectory) throws IOException {
+    /**
+     * Constructs a filename from the given parts (prefix + label + suffix). If the resulting
+     * filename would be too long, it is shortened by first truncating the label, and if that is not
+     * enough, the prefix. The suffix is always left as-is.
+     */
+    private static String constructFileName(String prefix, String label, String suffix) {
+        int fileNameLengthWithoutLabel = suffix.length() + prefix.length() + "[]".length();
+        int labelLengthLimit = MAX_FILE_NAME_LENGTH - fileNameLengthWithoutLabel;
+        String fileName;
+        if (labelLengthLimit < ELLIPSIS.length()) {
+            // `prefix` is very long, so we can't fit the label in the filename
+            int prefixLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), prefix.length());
+            fileName = prefix.substring(0, prefixLengthLimit) + suffix;
+        } else if (label == null) {
+            fileName = prefix + suffix;
+        } else {
+            String adjustedLabel = label;
+            if (label.length() > labelLengthLimit) {
+                adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
+            }
+            fileName = prefix + '[' + adjustedLabel + ']' + suffix;
+        }
+        return sanitizeFileName(fileName);
+    }
+
+    /**
+     * Attempts to create a unique file or directory in the given directory. The resulting filename
+     * is obtained by concatenating the parameters (prefix + label + [uniqueTag] + ext), where
+     * uniqueTag is chosen to make the resulting filename unique in the given directory.
+     *
+     * @param directory the directory in which the unique filename will be created
+     * @param prefix base name for the resulting filename. May be truncated if it's too large.
+     * @param label an optional label that will be appended to the prefix if the filename is not too
+     *            large.
+     * @param ext extension to the unique path. Will always be retained as-is, even if the filename
+     *            would be too large.
+     * @param createMissingDirectory if true, the unique path, along with any non-existing parent
+     *            directories, is created as a directory instead of a file.
+     * @return the path to the created unique file or directory.
+     * @throws IOException if creating the file or directory fails in any way other than it already
+     *             existing.
+     */
+    public static String createUnique(String directory, String prefix, String label, String ext, boolean createMissingDirectory)
+                    throws IOException {
         String uniqueTag = "";
         int dumpCounter = 1;
-        String prefix;
-        if (id == null) {
-            prefix = baseNameOption.getValue(options);
-            int slash = prefix.lastIndexOf(File.separatorChar);
-            prefix = prefix.substring(slash + 1);
-        } else {
-            prefix = id;
-        }
         for (;;) {  // TERMINATION ARGUMENT: Time stamps make collisions very unlikely.
-            int fileNameLengthWithoutLabel = uniqueTag.length() + ext.length() + prefix.length() + "[]".length();
-            int labelLengthLimit = MAX_FILE_NAME_LENGTH - fileNameLengthWithoutLabel;
-            String fileName;
-            if (labelLengthLimit < ELLIPSIS.length()) {
-                // This means `id` is very long
-                String suffix = uniqueTag + ext;
-                int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), prefix.length());
-                fileName = sanitizeFileName(prefix.substring(0, idLengthLimit) + suffix);
-            } else {
-                if (label == null) {
-                    fileName = sanitizeFileName(prefix + uniqueTag + ext);
-                } else {
-                    String adjustedLabel = label;
-                    if (label.length() > labelLengthLimit) {
-                        adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
-                    }
-                    fileName = sanitizeFileName(prefix + '[' + adjustedLabel + ']' + uniqueTag + ext);
-                }
-            }
-            String dumpDir = DebugOptions.getDumpDirectory(options);
-            String result = getPath(dumpDir, fileName);
+            String fileName = constructFileName(prefix, label, uniqueTag + ext);
+            String result = getPath(directory, fileName);
             try {
                 if (createMissingDirectory) {
                     if (exists(result)) {

@@ -32,6 +32,13 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 
 import java.util.EnumSet;
 
+import org.graalvm.nativeimage.Platform.AMD64;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+
 import jdk.graal.compiler.replacements.StringLatin1InflateNode;
 import jdk.graal.compiler.replacements.StringUTF16CompressNode;
 import jdk.graal.compiler.replacements.nodes.AESNode;
@@ -57,16 +64,11 @@ import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
-import org.graalvm.nativeimage.Platform.AMD64;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 
 @AutomaticallyRegisteredFeature
 @Platforms(AMD64.class)
-public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
+public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase implements FeatureSingleton, UnsavedSingleton {
 
     private static final EnumSet<CPUFeature> BASELINE = EnumSet.of(SSE2);
 

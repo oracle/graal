@@ -30,10 +30,10 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.nodes.StructuredGraph;
-
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -48,6 +48,95 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * same answer for the entire compilation. This can improve the consistency of compilation results.
  */
 public class StableProfileProvider implements ProfileProvider {
+
+    private final TypeResolver resolver;
+
+    /**
+     * The profile provider uses a type resolver during profile replay to resolve the string type
+     * names in type profiles to {@link ResolvedJavaType}s.
+     */
+    public interface TypeResolver {
+        /**
+         * Try to resolve the given {@code typeName} to a {@link ResolvedJavaType}.
+         *
+         * @param method the method containing the type profile in which the type name occurs
+         * @param realProfile the currently loaded profile of {@code method}
+         * @param bci the bci at which the type occurred
+         * @param loadingIssuingType the type that triggered the load of the respective profile
+         * @param typeName the type name to be resolved
+         * @return a {@link ResolvedJavaType} if the type can be resolved, null otherwise
+         */
+        ResolvedJavaType resolve(ResolvedJavaMethod method, ProfilingInfo realProfile, int bci, ResolvedJavaType loadingIssuingType, String typeName);
+    }
+
+    /**
+     * Default strategy for resolving type names into {@link ResolvedJavaType}s. This resolver
+     * follows a four-step process to resolve types:
+     * <ol>
+     * <li>If the type exists in the real profile, use the type from the real profile</li>
+     * <li>Try to resolve the type with the method owner as context</li>
+     * <li>Try to resolve the type with the load triggering type as context</li>
+     * <li>Try to resolve the type with any type occurring in the real profile as context</li>
+     * </ol>
+     */
+    public static class DefaultTypeResolver implements TypeResolver {
+        @Override
+        public ResolvedJavaType resolve(ResolvedJavaMethod method, ProfilingInfo realProfile, int bci, ResolvedJavaType loadingIssuingType, String typeName) {
+            JavaTypeProfile actualProfile = realProfile.getTypeProfile(bci);
+
+            ResolvedJavaType actualType = null;
+            if (actualProfile != null) {
+                for (JavaTypeProfile.ProfiledType actual : actualProfile.getTypes()) {
+                    if (actual.getType().getName().equals(typeName)) {
+                        actualType = actual.getType();
+                        break;
+                    }
+                }
+            }
+
+            if (actualType == null) {
+                try {
+                    actualType = UnresolvedJavaType.create(typeName).resolve(method.getDeclaringClass());
+                } catch (NoClassDefFoundError ncdfe) {
+                    // do nothing
+                }
+            }
+
+            if (actualType == null) {
+                // try using the original type issuing the load operation of this profile
+                try {
+                    actualType = UnresolvedJavaType.create(typeName).resolve(loadingIssuingType);
+                } catch (NoClassDefFoundError ncdfe) {
+                    // do nothing
+                }
+            }
+            if (actualType == null) {
+                if (actualProfile != null) {
+                    for (JavaTypeProfile.ProfiledType actual : actualProfile.getTypes()) {
+                        try {
+                            actualType = UnresolvedJavaType.create(typeName).resolve(actual.getType());
+                        } catch (NoClassDefFoundError ncdfe) {
+                            // do nothing
+                        }
+                        if (actualType != null) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return actualType;
+        }
+    }
+
+    public StableProfileProvider(TypeResolver resolver) {
+        this.resolver = resolver;
+    }
+
+    public StableProfileProvider() {
+        this.resolver = new DefaultTypeResolver();
+    }
+
     private static final JavaTypeProfile NULL_PROFILE = new JavaTypeProfile(TriState.UNKNOWN, 1.0, new JavaTypeProfile.ProfiledType[0]);
 
     private static final double[] NULL_SWITCH_PROBABILITIES = new double[0];
@@ -135,7 +224,7 @@ public class StableProfileProvider implements ProfileProvider {
     }
 
     /**
-     * Lazy cache of the per method profile queries.
+     * Lazy cache of the per-method profile queries.
      */
     public class CachingProfilingInfo implements ProfilingInfo {
 
@@ -184,62 +273,31 @@ public class StableProfileProvider implements ProfileProvider {
                 TriState theNullSeen = parseTriState((String) symbolicTypeProfile.get("nullSeen"));
                 double notRecordedProbabilty = (double) symbolicTypeProfile.get("notRecordedProbability");
                 List<?> types = (List<?>) symbolicTypeProfile.get("types");
-                JavaTypeProfile.ProfiledType[] pitems = new JavaTypeProfile.ProfiledType[types.size()];
-                int i = 0;
+                ArrayList<JavaTypeProfile.ProfiledType> recoverableTypes = new ArrayList<>();
                 for (Object e : types) {
                     EconomicMap<String, Object> entry = (EconomicMap<String, Object>) e;
                     String typeName = (String) entry.get("type");
-                    ResolvedJavaType actualType = null;
-                    double probability = (double) entry.get("probability");
-                    JavaTypeProfile actualProfile = realProfile.getTypeProfile(bci);
-                    if (actualProfile != null) {
-                        for (JavaTypeProfile.ProfiledType actual : actualProfile.getTypes()) {
-                            if (actual.getType().getName().equals(typeName)) {
-                                actualType = actual.getType();
-                                break;
-                            }
-                        }
-                    }
-                    if (actualType == null) {
-                        try {
-                            actualType = UnresolvedJavaType.create(typeName).resolve(method.getDeclaringClass());
-                        } catch (NoClassDefFoundError ncdfe) {
-                            // do nothing
-                        }
-                    }
-                    if (actualType == null) {
-                        // try using the original type issuing the load operation of this profile
-                        try {
-                            actualType = UnresolvedJavaType.create(typeName).resolve(loadingIssuingType);
-                        } catch (NoClassDefFoundError ncdfe) {
-                            // do nothing
-                        }
-                    }
-                    if (actualType == null) {
-                        if (actualProfile != null) {
-                            for (JavaTypeProfile.ProfiledType actual : actualProfile.getTypes()) {
-                                try {
-                                    actualType = UnresolvedJavaType.create(typeName).resolve(actual.getType());
-                                } catch (NoClassDefFoundError ncdfe) {
-                                    // do nothing
-                                }
-                                if (actualType != null) {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (actualType == null) {
 
+                    double probability = (double) entry.get("probability");
+
+                    ResolvedJavaType actualType = null;
+                    actualType = resolver.resolve(method, realProfile, bci, loadingIssuingType, typeName);
+
+                    if (actualType == null) {
                         if (frozen) {
                             throw new InternalError("Unable to load " + typeName + " for profile");
                         } else {
                             TTY.println("Unable to load " + typeName + " for profile");
                         }
+                    } else {
+                        /*
+                         * Only create a JavaTypeProfile if we could resolve the type. The
+                         * ProfiledType constructor will fail otherwise.
+                         */
+                        recoverableTypes.add(new JavaTypeProfile.ProfiledType(actualType, probability));
                     }
-                    pitems[i++] = new JavaTypeProfile.ProfiledType(actualType, probability);
                 }
-                typeProfile = new JavaTypeProfile(theNullSeen, notRecordedProbabilty, pitems);
+                typeProfile = new JavaTypeProfile(theNullSeen, notRecordedProbabilty, recoverableTypes.toArray(new JavaTypeProfile.ProfiledType[0]));
             }
         }
 

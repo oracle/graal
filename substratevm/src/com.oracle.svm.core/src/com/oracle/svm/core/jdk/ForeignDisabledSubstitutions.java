@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 import java.nio.channels.FileChannel;
 import java.util.List;
@@ -36,6 +37,7 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
@@ -63,6 +65,20 @@ final class Target_java_lang_foreign_Arena {
 
 @TargetClass(className = "java.lang.foreign.Linker", onlyWith = ForeignDisabled.class)
 final class Target_java_lang_foreign_Linker {
+}
+
+@TargetClass(className = "java.lang.foreign.Linker", innerClass = "Option", onlyWith = ForeignDisabled.class)
+final class Target_java_lang_foreign_Linker_Option {
+}
+
+@TargetClass(className = "jdk.internal.foreign.abi.AbstractLinker", onlyWith = ForeignDisabled.class)
+final class Target_jdk_internal_foreign_abi_AbstractLinker {
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    Target_java_lang_foreign_MemorySegment upcallStub(MethodHandle target, Target_java_lang_foreign_FunctionDescriptor function,
+                    Target_java_lang_foreign_Arena arena, Target_java_lang_foreign_Linker_Option... options) {
+        throw ForeignDisabledSubstitutions.fail();
+    }
 }
 
 @TargetClass(className = "jdk.internal.foreign.abi.SharedUtils", onlyWith = ForeignDisabled.class)
@@ -97,6 +113,10 @@ final class Target_jdk_internal_foreign_FunctionDescriptorImpl {
     }
 }
 
+@TargetClass(className = "java.lang.foreign.FunctionDescriptor", onlyWith = ForeignDisabled.class)
+final class Target_java_lang_foreign_FunctionDescriptor {
+}
+
 @TargetClass(className = "jdk.internal.foreign.SegmentFactories", onlyWith = {ForeignDisabled.class, JDK22OrLater.class})
 final class Target_jdk_internal_foreign_SegmentFactories {
     @Substitute
@@ -129,6 +149,13 @@ final class Target_jdk_internal_foreign_layout_AbstractLayout {
     @AlwaysInline("Make remaining code in callers unreachable.")
     @SuppressWarnings({"unused", "static-method"})
     VarHandle varHandle(Target_java_lang_foreign_MemoryLayout_PathElement... elements) {
+        throw ForeignDisabledSubstitutions.fail();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    @SuppressWarnings({"unused", "static-method"})
+    VarHandle varHandleInternal(Target_java_lang_foreign_MemoryLayout_PathElement... elements) {
         throw ForeignDisabledSubstitutions.fail();
     }
 

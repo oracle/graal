@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -48,7 +49,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.standalone.StandaloneHost;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -152,7 +152,9 @@ public class StandaloneAnalysisFeatureImpl {
 
         public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
             return reachableMethodOverrides(getMetaAccess().lookupJavaMethod(baseMethod)).stream()
-                            .map(AnalysisMethod::getJavaMethod).collect(Collectors.toCollection(LinkedHashSet::new));
+                            .map(AnalysisMethod::getJavaMethod)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
@@ -181,7 +183,12 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         public void registerAsInHeap(AnalysisType aType, Object reason) {
-            aType.registerAsInHeap(reason);
+            aType.registerAsInstantiated(reason);
+        }
+
+        @Override
+        public void registerAsUnsafeAllocated(Class<?> type) {
+            getMetaAccess().lookupJavaType(type).registerAsUnsafeAllocated("registered from Feature API");
         }
 
         @Override
@@ -223,14 +230,8 @@ public class StandaloneAnalysisFeatureImpl {
             registerAsUnsafeAccessed(aField, "registered from standalone feature");
         }
 
-        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind, Object reason) {
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind, reason);
-        }
-
-        public void registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind, Object reason) {
-            if (!aField.isUnsafeAccessed()) {
-                aField.registerAsUnsafeAccessed(partitionKind, reason);
-            }
+        public void registerAsUnsafeAccessed(Field field, Object reason) {
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), reason);
         }
 
         public void registerAsInvoked(Executable method, boolean invokeSpecial, Object reason) {

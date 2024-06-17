@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -171,14 +172,14 @@ public class SubstrateReplacements extends ReplacementsImpl {
      * as immutable.
      */
     private static boolean isImmutable(Object o) {
-        return !(o instanceof SubstrateForeignCallLinkage) && !(o instanceof SubstrateTargetDescription);
+        return !(o instanceof SubstrateForeignCallLinkage) && !(o instanceof SubstrateTargetDescription) && !(o instanceof ImageCodeInfo);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Collection<StructuredGraph> getSnippetGraphs(boolean trackNodeSourcePosition, OptionValues options) {
+    public Collection<StructuredGraph> getSnippetGraphs(boolean trackNodeSourcePosition, OptionValues options, Function<Object, Object> objectTransformer) {
         List<StructuredGraph> result = new ArrayList<>(snippetStartOffsets.size());
         for (ResolvedJavaMethod method : snippetStartOffsets.keySet()) {
-            result.add(getSnippet(method, null, null, null, trackNodeSourcePosition, null, options));
+            result.add(getSnippet(method, null, trackNodeSourcePosition, options, objectTransformer));
         }
         return result;
     }
@@ -206,6 +207,10 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, OptionValues options) {
+        return getSnippet(method, args, trackNodeSourcePosition, options, Function.identity());
+    }
+
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args, boolean trackNodeSourcePosition, OptionValues options, Function<Object, Object> objectTransformer) {
         Integer startOffset = snippetStartOffsets.get(method);
         if (startOffset == null) {
             throw VMError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)"));
@@ -222,7 +227,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
             StructuredGraph result = new StructuredGraph.Builder(optionValues, debug)
                             .method(method)
                             .trackNodeSourcePosition(trackNodeSourcePosition)
-                            .recordInlinedMethods(false)
+                            .recordInlinedMethods(true)
                             .setIsSubstitution(true)
                             .build();
 
@@ -245,6 +250,11 @@ public class SubstrateReplacements extends ReplacementsImpl {
                 @Override
                 public IntrinsicContext getIntrinsic() {
                     return intrinsic;
+                }
+
+                @Override
+                protected Object readObject(MethodScope methodScope) {
+                    return objectTransformer.apply(super.readObject(methodScope));
                 }
             };
 

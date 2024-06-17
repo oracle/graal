@@ -53,7 +53,6 @@ import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
-import com.oracle.svm.core.jni.headers.JNIErrors;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.DefineClassFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.FindClassFunctionPointer;
@@ -115,7 +114,7 @@ final class JniCallInterceptor {
         JNIObjectHandle callerClass = getCallerClass(state, env);
         JNIObjectHandle result = jniFunctions().getDefineClass().invoke(env, name, loader, buf, bufLen);
         if (shouldTrace()) {
-            traceCall(env, "DefineClass", nullHandle(), nullHandle(), callerClass, result.notEqual(nullHandle()), state, fromCString(name));
+            traceCall(env, "DefineClass", nullHandle(), nullHandle(), callerClass, name.notEqual(nullHandle()), state, fromCString(name));
         }
         return result;
     }
@@ -138,9 +137,25 @@ final class JniCallInterceptor {
             result = nullHandle();
         }
         if (shouldTrace()) {
-            traceCall(env, "FindClass", nullHandle(), nullHandle(), callerClass, result.notEqual(nullHandle()), state, fromCString(name));
+            traceCall(env, "FindClass", nullHandle(), nullHandle(), callerClass, name.notEqual(nullHandle()), state, fromCString(name));
         }
         return result;
+    }
+
+    @CEntryPoint(name = "AllocObject")
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
+    static JNIObjectHandle allocObject(JNIEnvironment env, JNIObjectHandle clazz) {
+        InterceptedState state = initInterceptedState();
+        JNIObjectHandle callerClass = getCallerClass(state, env);
+        JNIObjectHandle result = jniFunctions().getAllocObject().invoke(env, clazz);
+        if (nullHandle().equal(result) || clearException(env)) {
+            result = nullHandle();
+        }
+        if (shouldTrace()) {
+            traceCall(env, "AllocObject", clazz, nullHandle(), callerClass, clazz.notEqual(nullHandle()), state);
+        }
+        return result;
+
     }
 
     @CEntryPoint(name = "GetMethodID")
@@ -150,7 +165,8 @@ final class JniCallInterceptor {
         JNIObjectHandle callerClass = getCallerClass(state, env);
         JNIMethodId result = jniFunctions().getGetMethodID().invoke(env, clazz, name, signature);
         if (shouldTrace()) {
-            traceCall(env, "GetMethodID", clazz, getMethodDeclaringClass(result), callerClass, result.isNonNull(), state, fromCString(name), fromCString(signature));
+            boolean shouldHandleCall = clazz.notEqual(nullHandle()) && name.notEqual(nullHandle()) && signature.notEqual(nullHandle());
+            traceCall(env, "GetMethodID", clazz, getMethodDeclaringClass(result), callerClass, shouldHandleCall, state, fromCString(name), fromCString(signature));
         }
         return result;
     }
@@ -161,9 +177,9 @@ final class JniCallInterceptor {
         InterceptedState state = initInterceptedState();
         JNIObjectHandle callerClass = getCallerClass(state, env);
         JNIMethodId result = jniFunctions().getGetStaticMethodID().invoke(env, clazz, name, signature);
-        result.isNonNull();
         if (shouldTrace()) {
-            traceCall(env, "GetStaticMethodID", clazz, getMethodDeclaringClass(result), callerClass, result.isNonNull(), state, fromCString(name), fromCString(signature));
+            boolean shouldHandleCall = clazz.notEqual(nullHandle()) && name.notEqual(nullHandle()) && signature.notEqual(nullHandle());
+            traceCall(env, "GetStaticMethodID", clazz, getMethodDeclaringClass(result), callerClass, shouldHandleCall, state, fromCString(name), fromCString(signature));
         }
         return result;
     }
@@ -175,7 +191,8 @@ final class JniCallInterceptor {
         JNIObjectHandle callerClass = getCallerClass(state, env);
         JNIFieldId result = jniFunctions().getGetFieldID().invoke(env, clazz, name, signature);
         if (shouldTrace()) {
-            traceCall(env, "GetFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, result.isNonNull(), state, fromCString(name), fromCString(signature));
+            boolean shouldHandleCall = clazz.notEqual(nullHandle()) && name.notEqual(nullHandle()) && signature.notEqual(nullHandle());
+            traceCall(env, "GetFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, shouldHandleCall, state, fromCString(name), fromCString(signature));
         }
         return result;
     }
@@ -187,7 +204,8 @@ final class JniCallInterceptor {
         JNIObjectHandle callerClass = getCallerClass(state, env);
         JNIFieldId result = jniFunctions().getGetStaticFieldID().invoke(env, clazz, name, signature);
         if (shouldTrace()) {
-            traceCall(env, "GetStaticFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, result.isNonNull(), state, fromCString(name), fromCString(signature));
+            boolean shouldHandleCall = clazz.notEqual(nullHandle()) && name.notEqual(nullHandle()) && signature.notEqual(nullHandle());
+            traceCall(env, "GetStaticFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, shouldHandleCall, state, fromCString(name), fromCString(signature));
         }
         return result;
     }
@@ -199,7 +217,7 @@ final class JniCallInterceptor {
         JNIObjectHandle callerClass = getCallerClass(state, env);
         int result = jniFunctions().getThrowNew().invoke(env, clazz, message);
         if (shouldTrace()) {
-            traceCall(env, "ThrowNew", clazz, nullHandle(), callerClass, (result == JNIErrors.JNI_OK()), state, Tracer.UNKNOWN_VALUE);
+            traceCall(env, "ThrowNew", clazz, nullHandle(), callerClass, clazz.notEqual(nullHandle()), state, Tracer.UNKNOWN_VALUE);
         }
         return result;
     }
@@ -266,7 +284,8 @@ final class JniCallInterceptor {
         }
         JNIObjectHandle result = jniFunctions().getToReflectedMethod().invoke(env, clazz, method, isStatic);
         if (shouldTrace()) {
-            traceCall(env, "ToReflectedMethod", clazz, declaring, callerClass, result.notEqual(nullHandle()), state, name, signature);
+            boolean shouldHandleCall = clazz.notEqual(nullHandle()) && name != null && signature != null;
+            traceCall(env, "ToReflectedMethod", clazz, declaring, callerClass, shouldHandleCall, state, name, signature);
         }
         return result;
     }
@@ -280,7 +299,8 @@ final class JniCallInterceptor {
         String name = getFieldName(clazz, field);
         JNIObjectHandle result = jniFunctions().getToReflectedField().invoke(env, clazz, field, isStatic);
         if (shouldTrace()) {
-            traceCall(env, "ToReflectedField", clazz, declaring, callerClass, result.notEqual(nullHandle()), state, name);
+            boolean shouldHandleCall = clazz.notEqual(nullHandle()) && name != null;
+            traceCall(env, "ToReflectedField", clazz, declaring, callerClass, shouldHandleCall, state, name);
         }
         return result;
     }
@@ -299,7 +319,7 @@ final class JniCallInterceptor {
             }
         }
         if (shouldTrace()) {
-            traceCall(env, "NewObjectArray", resultClass, nullHandle(), callerClass, result.notEqual(nullHandle()), state);
+            traceCall(env, "NewObjectArray", resultClass, nullHandle(), callerClass, elementClass.notEqual(nullHandle()), state);
         }
         return result;
     }
@@ -316,6 +336,7 @@ final class JniCallInterceptor {
         JNINativeInterface functions = functionsPtr.read();
         functions.setDefineClass(defineClassLiteral.getFunctionPointer());
         functions.setFindClass(findClassLiteral.getFunctionPointer());
+        functions.setAllocObject(allocObjectLiteral.getFunctionPointer());
         functions.setGetMethodID(getMethodIDLiteral.getFunctionPointer());
         functions.setGetStaticMethodID(getStaticMethodIDLiteral.getFunctionPointer());
         functions.setGetFieldID(getFieldIDLiteral.getFunctionPointer());
@@ -341,6 +362,9 @@ final class JniCallInterceptor {
 
     private static final CEntryPointLiteral<FindClassFunctionPointer> findClassLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "findClass", JNIEnvironment.class, CCharPointer.class);
+
+    private static final CEntryPointLiteral<FindClassFunctionPointer> allocObjectLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+                    "allocObject", JNIEnvironment.class, JNIObjectHandle.class);
 
     private static final CEntryPointLiteral<GetMethodIDFunctionPointer> getMethodIDLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "getMethodID", JNIEnvironment.class, JNIObjectHandle.class, CCharPointer.class, CCharPointer.class);

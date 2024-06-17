@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.thread.JavaThreads.fromTarget;
 import static com.oracle.svm.core.thread.JavaThreads.isCurrentThreadVirtual;
@@ -57,11 +56,9 @@ import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -72,7 +69,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
@@ -96,7 +92,9 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -190,12 +188,17 @@ public abstract class PlatformThreads {
         mainGroupThreadsArray[0] = mainThread;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long getThreadAllocatedBytes() {
+        return Heap.getHeap().getThreadAllocatedMemory(CurrentIsolate.getCurrentThread());
+    }
+
     @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
     public static long getThreadAllocatedBytes(long javaThreadId) {
         // Accessing the value for the current thread is fast.
         Thread curThread = PlatformThreads.currentThread.get();
         if (curThread != null && JavaThreads.getThreadId(curThread) == javaThreadId) {
-            return Heap.getHeap().getThreadAllocatedMemory(CurrentIsolate.getCurrentThread());
+            return getThreadAllocatedBytes();
         }
 
         // If the value of another thread is accessed, then we need to do a slow lookup.
@@ -434,8 +437,9 @@ public abstract class PlatformThreads {
         }
 
         /*
-         * First of all, ensure we are in RUNNABLE state. If !manuallyStarted, we race with the
-         * thread that launched us to set the status and we could still be in status NEW.
+         * First of all, ensure we are in RUNNABLE state. If this thread was started by the current
+         * isolate, we race with the thread that launched us to set the status and we could still be
+         * in status NEW.
          */
         setThreadStatus(thread, ThreadStatus.RUNNABLE);
         assignCurrent0(thread);
@@ -474,32 +478,8 @@ public abstract class PlatformThreads {
          */
     }
 
-    /**
-     * Tear down all application threads (except the current one). This is called from an
-     * {@link CEntryPoint} exit action.
-     *
-     * @return true if the application threads have been torn down, false otherwise.
-     */
-    public boolean tearDown() {
-        /* If the VM is single-threaded then this is the last (and only) thread. */
-        if (!MultiThreaded.getValue()) {
-            return true;
-        }
-        /* Tell all the threads that the VM is being torn down. */
-        boolean result = tearDownPlatformThreads();
-
-        // Detach last thread data
-        Thread thread = currentThread.get(CurrentIsolate.getCurrentThread());
-        if (thread != null) {
-            toTarget(thread).threadData.detach();
-        }
-        return result;
-    }
-
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
-    public static void detachThread(IsolateThread vmThread) {
-        assert VMThreads.THREAD_MUTEX.isOwner(true);
-
+    public static void detach(IsolateThread vmThread) {
         Thread thread = currentThread.get(vmThread);
         if (thread != null) {
             toTarget(thread).threadData.detach();
@@ -567,7 +547,7 @@ public abstract class PlatformThreads {
     }
 
     /** Have each thread, except this one, tear itself down. */
-    private static boolean tearDownPlatformThreads() {
+    public static boolean tearDownOtherThreads() {
         final Log trace = Log.noopLog().string("[PlatformThreads.tearDownPlatformThreads:").newline().flush();
 
         /*
@@ -587,7 +567,8 @@ public abstract class PlatformThreads {
         Set<ExecutorService> pools = Collections.newSetFromMap(new IdentityHashMap<>());
         Set<ExecutorService> poolsWithNonDaemons = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Thread thread : threads) {
-            if (thread == null || thread == currentThread.get()) {
+            assert thread != null;
+            if (thread == currentThread.get()) {
                 continue;
             }
 
@@ -737,14 +718,14 @@ public abstract class PlatformThreads {
         T startData = WordFactory.nullPointer();
         ObjectHandle threadHandle = WordFactory.zero();
         try {
-            startData = UnmanagedMemory.malloc(startDataSize);
+            startData = NativeMemory.malloc(startDataSize, NmtCategory.Threading);
             threadHandle = ObjectHandles.getGlobal().create(thread);
 
             startData.setIsolate(CurrentIsolate.getIsolate());
             startData.setThreadHandle(threadHandle);
         } catch (Throwable e) {
             if (startData.isNonNull()) {
-                UnmanagedMemory.free(startData);
+                freeStartData(startData);
             }
             if (threadHandle.notEqual(WordFactory.zero())) {
                 ObjectHandles.getGlobal().destroy(threadHandle);
@@ -802,7 +783,7 @@ public abstract class PlatformThreads {
     }
 
     protected static void freeStartData(ThreadStartData startData) {
-        UnmanagedMemory.free(startData);
+        NativeMemory.free(startData);
     }
 
     void startThread(Thread thread, long stackSize) {
@@ -880,9 +861,9 @@ public abstract class PlatformThreads {
 
     static StackTraceElement[] getStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
         assert !isVirtual(thread);
-        if (thread == currentThread.get()) {
+        if (thread != null && thread == currentThread.get()) {
             Pointer startSP = getCarrierSPOrElse(thread, callerSP);
-            return StackTraceUtils.getStackTrace(filterExceptions, startSP, WordFactory.nullPointer());
+            return StackTraceUtils.getCurrentThreadStackTrace(filterExceptions, startSP, WordFactory.nullPointer());
         }
         assert !filterExceptions : "exception stack traces can be taken only for the current thread";
         return StackTraceUtils.asyncGetStackTrace(thread);
@@ -895,7 +876,7 @@ public abstract class PlatformThreads {
     }
 
     static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
-        assert !isVirtual(thread);
+        assert thread != null && !isVirtual(thread) : "may only be called for platform or carrier threads";
         Pointer carrierSP = getCarrierSPOrElse(thread, WordFactory.nullPointer());
         IsolateThread isolateThread = getIsolateThread(thread);
         if (isolateThread == CurrentIsolate.getCurrentThread()) {
@@ -904,13 +885,17 @@ public abstract class PlatformThreads {
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
              */
-            return StackTraceUtils.getStackTrace(false, startSP, WordFactory.nullPointer());
+            return StackTraceUtils.getCurrentThreadStackTrace(false, startSP, WordFactory.nullPointer());
         }
-        if (carrierSP.isNonNull()) { // mounted virtual thread, skip its frames
-            CodePointer carrierIP = FrameAccess.singleton().readReturnAddress(carrierSP);
-            return StackTraceUtils.getThreadStackTraceAtSafepoint(carrierSP, WordFactory.nullPointer(), carrierIP);
+        if (carrierSP.isNonNull()) {
+            /*
+             * The given thread is a carrier thread and has a mounted virtual thread. Skip the
+             * frames of the virtual thread and only visit the stack frames that belong to the
+             * carrier thread.
+             */
+            return StackTraceUtils.getStackTraceAtSafepoint(isolateThread, carrierSP, WordFactory.nullPointer());
         }
-        return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
+        return StackTraceUtils.getStackTraceAtSafepoint(isolateThread);
     }
 
     static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
@@ -1134,7 +1119,7 @@ public abstract class PlatformThreads {
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
                 Thread thread = PlatformThreads.fromVMThread(cur);
-                if (!thread.isVirtual()) { // filter BoundVirtualThread
+                if (thread != null && !thread.isVirtual()) { // filters BoundVirtualThread
                     result.put(thread, StackTraceUtils.getStackTraceAtSafepoint(thread));
                 }
             }

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
+from itertools import islice
 from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
@@ -43,6 +44,7 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_javamodules
 import mx_subst
+import mx_util
 import mx_substratevm_benchmark  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
@@ -462,7 +464,7 @@ def svm_gate_body(args, tasks):
 
             json_and_schema_file_pairs = [
                 ('build-artifacts.json', 'build-artifacts-schema-v0.9.0.json'),
-                ('build-output.json', 'build-output-schema-v0.9.2.json'),
+                ('build-output.json', 'build-output-schema-v0.9.3.json'),
             ]
 
             build_output_file = join(svmbuild_dir(), 'build-output.json')
@@ -596,7 +598,16 @@ def javac_image_command(javac_path):
     )
 
 
-def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, force_builder_on_cp=False):
+# replace with itertools.batched once python 3.12 is supported.
+def batched(iterable, n):
+    if n < 1:
+        raise ValueError('n must be at least one')
+    it = iter(iterable)
+    while batch := tuple(islice(it, n)):
+        yield batch
+
+
+def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, force_builder_on_cp=False, test_classes_per_run=None):
     build_args = build_args or []
     javaProperties = {}
     for dist in suite.dists:
@@ -610,7 +621,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
 
     run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
-    mx.ensure_dir_exists(junit_native_dir)
+    mx_util.ensure_dir_exists(junit_native_dir)
     junit_test_dir = junit_native_dir if preserve_image else tempfile.mkdtemp(dir=junit_native_dir)
     try:
         unittest_deps = []
@@ -621,7 +632,8 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         if not exists(unittest_file):
             mx.abort('No matching unit tests found. Skip image build and execution.')
         with open(unittest_file, 'r') as f:
-            mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
+            test_classes = [line.rstrip() for line in f]
+            mx.log('Building junit image for matching: ' + ' '.join(test_classes))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
         macro_junit = '--macro:junit'
         if force_builder_on_cp:
@@ -634,12 +646,25 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         image_pattern_replacement = unittest_image + ".exe" if mx.is_windows() else unittest_image
         run_args = [arg.replace('${unittest.image}', image_pattern_replacement) for arg in run_args]
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
-        mx.run([unittest_image] + run_args)
+
+        if not test_classes_per_run:
+            # Run all tests in one go. The default behavior.
+            test_classes_per_run = sys.maxsize
+
+        failures = []
+        for classes in batched(test_classes, test_classes_per_run):
+            ret = mx.run([unittest_image] + run_args + [arg for c in classes for arg in ['--run-explicit', c]], nonZeroIsFatal=False)
+            if ret != 0:
+                failures.append((ret, classes))
+        if len(failures) != 0:
+            fail_descs = (f"> Test run of the following classes failed with exit code {ret}: {', '.join(classes)}" for ret, classes in failures)
+            mx.log('Some test runs failed:\n' + '\n'.join(fail_descs))
+            mx.abort(1)
     finally:
         if not preserve_image:
             mx.rmtree(junit_test_dir)
 
-_mask_str = '#'
+_mask_str = '$mask$'
 
 
 def _mask(arg, arg_list):
@@ -655,19 +680,21 @@ def unmask(args):
 
 def _native_unittest(native_image, cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
-    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--force-builder-on-cp']
+    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--force-builder-on-cp', '--test-classes-per-run']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
     parser.add_argument(all_args[0], metavar='ARG', nargs='*', default=[])
     parser.add_argument(all_args[1], metavar='ARG', nargs='*', default=[])
     parser.add_argument('--blacklist', help='run all testcases not specified in <file>', metavar='<file>')
     parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>')
     parser.add_argument('-p', '--preserve-image', help='do not delete the generated native image', action='store_true')
+    parser.add_argument('--test-classes-per-run', help='run N test classes per image run, instead of all tests at once', nargs=1, type=int)
     parser.add_argument('--force-builder-on-cp', help='force image builder to run on classpath', action='store_true')
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
     pargs = parser.parse_args(cmdline_args)
 
     blacklist = unmask([pargs.blacklist])[0] if pargs.blacklist else None
     whitelist = unmask([pargs.whitelist])[0] if pargs.whitelist else None
+    test_classes_per_run = pargs.test_classes_per_run[0] if pargs.test_classes_per_run else None
 
     if whitelist:
         try:
@@ -683,7 +710,7 @@ def _native_unittest(native_image, cmdline_args):
             mx.log('warning: could not read blacklist: ' + blacklist)
 
     unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
-    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, pargs.force_builder_on_cp)
+    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, pargs.force_builder_on_cp, test_classes_per_run)
 
 
 def jvm_unittest(args):
@@ -764,7 +791,7 @@ def _cinterfacetutorial(native_image, args=None):
     # clean / create output directory
     if exists(build_dir):
         mx.rmtree(build_dir)
-    mx.ensure_dir_exists(build_dir)
+    mx_util.ensure_dir_exists(build_dir)
 
     # Build the shared library from Java code
     native_image(['--shared', '-o', join(build_dir, 'libcinterfacetutorial'), '-Dcom.oracle.svm.tutorial.headerfile=' + join(c_source_dir, 'mydata.h'),
@@ -828,7 +855,7 @@ void main() {
 
 
 def _helloworld(native_image, javac_command, path, build_only, args, variant=list(_helloworld_variants.keys())[0]):
-    mx.ensure_dir_exists(path)
+    mx_util.ensure_dir_exists(path)
     hello_file = os.path.join(path, 'HelloWorld.java')
     envkey = 'HELLO_WORLD_MESSAGE'
     output = 'Hello from native-image!'
@@ -927,7 +954,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
 
     def build_debug_test(variant_name, image_name, extra_args):
         per_build_path = join(path, variant_name)
-        mx.ensure_dir_exists(per_build_path)
+        mx_util.ensure_dir_exists(per_build_path)
         build_args = native_image_args + extra_args + [
             '-o', join(per_build_path, image_name)
         ]
@@ -961,7 +988,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
-    mx.ensure_dir_exists(path)
+    mx_util.ensure_dir_exists(path)
 
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
@@ -1054,7 +1081,7 @@ def _native_image_launcher_extra_jvm_args():
     Gets the extra JVM args needed for running com.oracle.svm.driver.NativeImage.
     """
     # Support for running as Java module
-    res = []
+    res = [f'-XX:{max_heap_size_flag}']
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return res
@@ -1065,11 +1092,13 @@ driver_build_args = [
     '--link-at-build-time=com.oracle.svm.driver,com.oracle.svm.driver.metainf',
 ]
 
+max_heap_size_flag = f"MaxHeapSize={round(0.8 * 256 * 1024 * 1024)}" # 80% of 256MB
+
 driver_exe_build_args = driver_build_args + svm_experimental_options([
     '-H:+AllowJRTFileSystem',
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
-    f'-R:MaxHeapSize={256 * 1024 * 1024}',
+    f'-R:{max_heap_size_flag}',
 ])
 
 additional_ni_dependencies = []
@@ -1275,6 +1304,34 @@ libgraal_jar_distributions = [
     'sdk:JNIUTILS',
     'substratevm:GRAAL_HOTSPOT_LIBRARY']
 
+def allow_build_path_in_libgraal():
+    """
+    Determines if the ALLOW_ABSOLUTE_PATHS_IN_OUTPUT env var is any other value than ``false``.
+    """
+    return mx.get_env('ALLOW_ABSOLUTE_PATHS_IN_OUTPUT', None) != 'false'
+
+def prevent_build_path_in_libgraal():
+    """
+    If `allow_build_path_in_libgraal() == False`, returns linker
+    options to prevent the build path from showing up in a string in libgraal.
+    """
+    if not allow_build_path_in_libgraal():
+        if mx.is_linux():
+            return ['-H:NativeLinkerOption=-Wl,-soname=libjvmcicompiler.so']
+        if mx.is_darwin():
+            return [
+                '-H:NativeLinkerOption=-Wl,-install_name,@rpath/libjvmcicompiler.dylib',
+
+                # native-image doesn't support generating debug info on Darwin
+                # but the helper C libraries are built with debug info which
+                # can include the build path. Use the -S to strip the debug info
+                # info from the helper C libraries to avoid these paths.
+                '-H:NativeLinkerOption=-Wl,-S'
+            ]
+        if mx.is_windows():
+            return ['-H:NativeLinkerOption=-pdbaltpath:%_PDB%']
+    return []
+
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
     '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
@@ -1330,12 +1387,12 @@ libgraal_build_args = [
     # No need for container support in libgraal as HotSpot already takes care of it
     '-H:-UseContainerSupport',
 ] + ([
-   # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
-   '-H:PageSize=64K'
+    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
+    '-H:PageSize=64K'
 ] if mx.get_arch() == 'aarch64' else []) + ([
-   # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
-   '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
-] if mx.is_linux() else []))
+    # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
+    '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
+] if mx.is_linux() else [])) + prevent_build_path_in_libgraal()
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1519,11 +1576,7 @@ def cinterfacetutorial(args):
 
 @mx.command(suite.name, 'clinittest', 'Runs the ')
 def clinittest(args):
-    def build_and_test_clinittest_images(native_image, args=None):
-        build_and_test_clinittest_image(native_image, args, True)
-        build_and_test_clinittest_image(native_image, args, False)
-
-    def build_and_test_clinittest_image(native_image, args, new_class_init_policy):
+    def build_and_test_clinittest_image(native_image, args):
         args = [] if args is None else args
         test_cp = classpath('com.oracle.svm.test')
         build_dir = join(svmbuild_dir(), 'clinittest')
@@ -1531,12 +1584,7 @@ def clinittest(args):
         # clean / create output directory
         if exists(build_dir):
             mx.rmtree(build_dir)
-        mx.ensure_dir_exists(build_dir)
-
-        if new_class_init_policy:
-            policy_args = svm_experimental_options(['-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
-        else:
-            policy_args = svm_experimental_options(['-H:-StrictImageHeap', '-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
+        mx_util.ensure_dir_exists(build_dir)
 
         # Build and run the example
         binary_path = join(build_dir, 'clinittest')
@@ -1547,9 +1595,10 @@ def clinittest(args):
                 '-o', binary_path,
                 '-H:+ReportExceptionStackTraces',
                 '-H:Class=com.oracle.svm.test.clinit.TestClassInitialization',
+                '--features=com.oracle.svm.test.clinit.TestClassInitializationFeature',
             ] + svm_experimental_options([
                 '-H:+PrintClassInitialization',
-            ]) + policy_args + args)
+            ]) + args)
         mx.run([binary_path])
 
         # Check the reports for initialized classes
@@ -1563,16 +1612,8 @@ def clinittest(args):
                                                    "Classes marked with " + marker + " must have init kind " + init_kind + " and message " + msg)]
             with open(classes_file) as f:
                 for line in f:
-                    if new_class_init_policy:
-                        checkLine(line, "MustBeSafeEarly", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
-                        checkLine(line, "MustBeSafeLate", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
-                        checkLine(line, "MustBeSimulated", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
-                        checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
-                    else:
-                        checkLine(line, "MustBeSafeEarly", "BUILD_TIME", "class proven as side-effect free before analysis", wrongly_initialized_lines)
-                        checkLine(line, "MustBeSafeLate", "BUILD_TIME", "class proven as side-effect free after analysis", wrongly_initialized_lines)
-                        checkLine(line, "MustBeSimulated", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
-                        checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+                    checkLine(line, "MustBeSimulated", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
+                    checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
 
                 if len(wrongly_initialized_lines) > 0:
                     msg = ""
@@ -1585,7 +1626,7 @@ def clinittest(args):
 
         check_class_initialization(all_classes_file)
 
-    native_image_context_run(build_and_test_clinittest_images, args)
+    native_image_context_run(build_and_test_clinittest_image, args)
 
 
 class SubstrateJvmFuncsFallbacksBuilder(mx.Project):
@@ -1795,7 +1836,7 @@ JNIEXPORT void JNICALL {0}() {{
                 if same_content:
                     mx.TimeStampFile(jvm_fallbacks_path).touch()
                 else:
-                    mx.ensure_dir_exists(dirname(jvm_fallbacks_path))
+                    mx_util.ensure_dir_exists(dirname(jvm_fallbacks_path))
                     with open(jvm_fallbacks_path, mode='w') as new_fallback_file:
                         new_fallback_file.write(new_fallback.getvalue())
                         mx.log('Updated ' + jvm_fallbacks_path)
@@ -1867,7 +1908,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         """
         if not hasattr(self, '.results'):
             graal_compiler_flags_map = self.compute_graal_compiler_flags_map()
-            mx.ensure_dir_exists(self.output_dir())
+            mx_util.ensure_dir_exists(self.output_dir())
             versions = sorted(graal_compiler_flags_map.keys())
             file_paths = []
             changed = self.config_file_update(self.result_file_path("versions"), versions, file_paths)
@@ -1982,20 +2023,25 @@ def native_image_on_jvm(args, **kwargs):
         for key, value in javaProperties.items():
             args.append("-D" + key + "=" + value)
 
-    arg = [executable]
     jacoco_args = mx_gate.get_jacoco_agent_args(agent_option_prefix='-J')
+    passedArgs = args
     if jacoco_args is not None:
-        arg += jacoco_args
-    arg += args
-    mx.run(arg, **kwargs)
+        passedArgs += jacoco_args
+    mx.run([executable] + _debug_args() + passedArgs, **kwargs)
 
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
     executable = vm_executable_path('native-image-configure')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
-    mx.run([executable] + args, **kwargs)
+    mx.run([executable] + _debug_args() + args, **kwargs)
 
+def _debug_args():
+    debug_args = get_jdk().debug_args
+    if debug_args and not mx.is_debug_disabled():
+        # prefix debug args with `--vm.` for bash launchers
+        return [f'--vm.{arg[1:]}' for arg in debug_args]
+    return []
 
 @mx.command(suite.name, 'native-unittest')
 def native_unittest(args):

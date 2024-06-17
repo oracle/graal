@@ -67,7 +67,7 @@ public interface FieldRef {
     /**
      * Returns the declaring class of the field.
      * 
-     * @return the {@KlassRef} which declared this field
+     * @return the {@link KlassRef} which declared this field
      */
     KlassRef getDeclaringKlass();
 

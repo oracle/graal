@@ -26,6 +26,7 @@ import static java.lang.Math.max;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -220,6 +221,65 @@ public final class Signatures {
     }
 
     /**
+     * Gives an iterable over the signatures. Can be parameterized to iterate in reverse order, or
+     * whether to include the return type.
+     */
+    public static Iterable<Symbol<Type>> iterable(final Symbol<Type>[] signature, boolean reverse, boolean withReturnType) {
+        return new SignatureIter(signature, reverse, withReturnType);
+    }
+
+    private static final class SignatureIter implements Iterable<Symbol<Type>>, Iterator<Symbol<Type>> {
+        private final Symbol<Type>[] signature;
+        private final int start;
+        private final int end;
+        private final int step;
+
+        private int pos;
+
+        private SignatureIter(final Symbol<Type>[] signature, boolean reverse, boolean withReturnType) {
+            this.signature = signature;
+            int tmpStart = 0;
+            int tmpEnd = Signatures.parameterCount(signature);
+            int tmpStep = 1;
+            if (withReturnType) {
+                tmpEnd = signature.length;
+            }
+            this.pos = tmpStart;
+            if (reverse) {
+                tmpStep = -1;
+                this.pos = tmpEnd;
+            }
+            this.start = tmpStart;
+            this.end = tmpEnd;
+            this.step = tmpStep;
+        }
+
+        @Override
+        public Iterator<Symbol<Type>> iterator() {
+            return this;
+        }
+
+        @Override
+        public boolean hasNext() {
+            int next = nextIdx();
+            return next >= start && next < end;
+        }
+
+        @Override
+        public Symbol<Type> next() {
+            assert hasNext();
+            int nextIdx = nextIdx();
+            Symbol<Type> next = signature[nextIdx];
+            this.pos = nextIdx;
+            return next;
+        }
+
+        private int nextIdx() {
+            return pos + step;
+        }
+    }
+
+    /**
      * Validates a raw signature.
      */
     public static boolean isValid(Symbol<Signature> signature) {
@@ -276,7 +336,7 @@ public final class Signatures {
     public final Symbol<Signature> makeRaw(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         if (parameterTypes == null || parameterTypes.length == 0) {
             final byte[] bytes = new byte[2 + returnType.length()];
-            Symbol.copyBytes(returnType, 0, bytes, 2, returnType.length());
+            returnType.writeTo(bytes, 2);
             bytes[0] = '(';
             bytes[1] = ')';
             return symbols.symbolify(ByteSequence.wrap(bytes));
@@ -292,11 +352,11 @@ public final class Signatures {
         int pos = 0;
         bytes[pos++] = '(';
         for (Symbol<Type> param : parameterTypes) {
-            Symbol.copyBytes(param, 0, bytes, pos, param.length());
+            param.writeTo(bytes, pos);
             pos += param.length();
         }
         bytes[pos++] = ')';
-        Symbol.copyBytes(returnType, 0, bytes, pos, returnType.length());
+        returnType.writeTo(bytes, pos);
         pos += returnType.length();
         assert pos == totalLength + 2;
         return symbols.symbolify(ByteSequence.wrap(bytes));
@@ -317,7 +377,7 @@ public final class Signatures {
             byte[] bytes = new byte[/* () */ 2 + returnType.length()];
             bytes[0] = '(';
             bytes[1] = ')';
-            Symbol.copyBytes(returnType, 0, bytes, 2, returnType.length());
+            returnType.writeTo(bytes, 2);
             return bytes;
         }
 
@@ -331,11 +391,11 @@ public final class Signatures {
         int pos = 0;
         bytes[pos++] = '(';
         for (Symbol<Type> param : parameterTypes) {
-            Symbol.copyBytes(param, 0, bytes, pos, param.length());
+            param.writeTo(bytes, pos);
             pos += param.length();
         }
         bytes[pos++] = ')';
-        Symbol.copyBytes(returnType, 0, bytes, pos, returnType.length());
+        returnType.writeTo(bytes, pos);
         pos += returnType.length();
         assert pos == totalLength + 2;
         return bytes;

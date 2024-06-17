@@ -1,0 +1,21 @@
+Start a flight recording by passing a comma-separated list of key-value pairs.
+
+Usage: -XX:StartFlightRecording=[key[=value][,...]]
+
+The following key-value pairs are supported:
+
+name       (Optional) Specify a name to identify the recording, for example, `name=MyRecording` to identify the recording, for example, "name=MyRecording".
+
+settings   (Optional) Specify a settings file (profile.jfc, default.jfc, etc.), for example, "settings=myprofile.jfc".
+
+delay      (Optional) Delay recording start with (s)econds, (m)inutes, (h)ours, or (d)ays, for example, "delay=5h".
+
+duration   (Optional) Duration of recording in (s)econds, (m)inutes, (h)ours, or (d)ays for example, "duration=300s". Default: 0 (infinite).
+
+filename   (Optional) Specify a resulting recording filename, for example, "filename=recording1.jfr".
+
+maxage     (Optional) Maximum time to keep the recorded data on disk in (s)econds, (m)inutes, (h)ours, or (d)ays, e.g., 60m, or 0 for no limit, for example, "maxage=1d". Default: 0 (no limit).
+
+maxsize    (Optional) Maximum amount of bytes to keep on disk in (k)B, (M)B or (G)B, or 0 for no limit, for example, 500M, or 0 for no limit, for example, "maxsize=1G". Default: 0 (no limit).
+
+dumponexit (Optional) Whether to dump a running recording when the JVM shuts down, for example, "dumponexit=true". Default: false.

@@ -35,13 +35,13 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.ModuleUtil;
+import com.oracle.svm.core.jdk.ModuleNative;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 final class ScopedValuesEnabled implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC >= 21 || (JavaVersionUtil.JAVA_SPEC >= 20 && ModuleUtil.bootLayerContainsModule("jdk.incubator.concurrent"));
+        return JavaVersionUtil.JAVA_SPEC >= 21 || (JavaVersionUtil.JAVA_SPEC >= 20 && ModuleNative.bootLayerContainsModule("jdk.incubator.concurrent"));
     }
 }
 

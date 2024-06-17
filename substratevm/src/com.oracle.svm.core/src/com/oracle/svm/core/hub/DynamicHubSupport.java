@@ -42,6 +42,10 @@ public final class DynamicHubSupport {
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private int maxTypeId;
     @UnknownObjectField(availability = AfterHostedUniverse.class) private byte[] referenceMapEncoding;
 
+    public static DynamicHubSupport singleton() {
+        return ImageSingletons.lookup(DynamicHubSupport.class);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHubSupport() {
     }
@@ -57,7 +61,7 @@ public final class DynamicHubSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(NonmovableArray<Byte> referenceMapEncoding) {
+    public void setReferenceMapEncoding(NonmovableArray<Byte> referenceMapEncoding) {
         this.referenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
     }
 

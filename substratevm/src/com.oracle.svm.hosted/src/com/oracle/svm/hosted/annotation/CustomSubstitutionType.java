@@ -48,6 +48,11 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     }
 
     @Override
+    public ResolvedJavaType unwrapTowardsOriginalType() {
+        return original;
+    }
+
+    @Override
     public String getName() {
         return original.getName();
     }
@@ -376,10 +381,5 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
 
     public ResolvedJavaType getOriginal() {
         return original;
-    }
-
-    @Override
-    public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(original);
     }
 }

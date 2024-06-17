@@ -1,5 +1,5 @@
 DYNAMIC_IMPORTS=/compiler,/graal-js,/graal-nodejs,/sdk,/substratevm,/tools,/truffle
-COMPONENTS=cmp,cov,dap,gu,gvm,ins,insight,insightheap,js,jsl,jss,lg,lsp,nfi-libffi,njs,njsl,ni,nic,nil,poly,polynative,pro,sdk,sdkl,sjvm,svm,svmt,svmnfi,svmsl,tfl,tfla,tflc,tflm,truffle-json
+COMPONENTS=cmp,cov,dap,gvm,ins,insight,insightheap,js,jsl,jss,lg,lsp,nfi-libffi,njs,njsl,ni,nic,nil,poly,polynative,pro,sdk,sdkl,sjvm,svm,svmt,svmnfi,svmsl,tfl,tfla,tflc,tflm,truffle-json
 NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-flang,graalvm-native-ld,lib:graal-nodejs,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,native-image
 NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
 DISABLE_INSTALLABLES=False

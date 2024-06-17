@@ -37,7 +37,18 @@ import org.graalvm.word.PointerBase;
  * {@link JavaFrameAnchors}
  */
 @RawStructure
-public interface JavaFrameAnchor extends PointerBase {
+public interface JavaFrameAnchor extends JavaFrameAnchorFields {
+    long MAGIC = 0xFEDCBA9876543210L;
+
+    @RawField
+    long getMagicAfter();
+
+    @RawField
+    void setMagicAfter(long value);
+}
+
+@RawStructure
+interface JavaFrameAnchorFields extends JavaFrameAnchorPreamble {
     @RawField
     JavaFrameAnchor getPreviousAnchor();
 
@@ -55,4 +66,13 @@ public interface JavaFrameAnchor extends PointerBase {
 
     @RawField
     void setLastJavaIP(CodePointer value);
+}
+
+@RawStructure
+interface JavaFrameAnchorPreamble extends PointerBase {
+    @RawField
+    long getMagicBefore();
+
+    @RawField
+    void setMagicBefore(long value);
 }

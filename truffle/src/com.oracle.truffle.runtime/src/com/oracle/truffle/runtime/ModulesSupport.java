@@ -56,12 +56,7 @@ public final class ModulesSupport {
     private static final ModulesAccessor ACCESSOR;
 
     static {
-        if (isClassIsolationDisabled()) {
-            ATTACH_AVAILABLE = loadModulesSupportLibrary();
-        } else {
-            ATTACH_AVAILABLE = ModulesSupport.class.getModule().isNamed() && loadModulesSupportLibrary();
-        }
-
+        ATTACH_AVAILABLE = loadModulesSupportLibrary();
         if (ATTACH_AVAILABLE) {
             // this is the only access we really need to request natively using JNI.
             // after that we can access through the Modules class
@@ -70,10 +65,6 @@ public final class ModulesSupport {
         } else {
             ACCESSOR = null;
         }
-    }
-
-    private static boolean isClassIsolationDisabled() {
-        return Boolean.parseBoolean(System.getProperty("polyglotimpl.DisableClassPathIsolation", "true"));
     }
 
     private ModulesSupport() {
@@ -151,6 +142,14 @@ public final class ModulesSupport {
             ACCESSOR.addExports(base, p, target);
         } else {
             ACCESSOR.addExportsToAllUnnamed(base, p);
+        }
+    }
+
+    public static void addOpens(Module base, String p, Module target) {
+        if (target.isNamed()) {
+            ACCESSOR.addOpens(base, p, target);
+        } else {
+            ACCESSOR.addOpensToAllUnnamed(base, p);
         }
     }
 

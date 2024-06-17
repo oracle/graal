@@ -36,13 +36,7 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.calc.Condition;
-import jdk.graal.compiler.core.common.calc.FloatConvert;
-import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
@@ -56,6 +50,11 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
+
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 
 public class LLVMIRBuilder implements AutoCloseable {
     private static final String DEFAULT_INSTR_NAME = "";
@@ -1358,8 +1357,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     /* Atomic */
 
     public void buildFence() {
-        boolean singleThread = !SubstrateOptions.MultiThreaded.getValue();
-        LLVM.LLVMBuildFence(builder, LLVM.LLVMAtomicOrderingSequentiallyConsistent, singleThread ? TRUE : FALSE, DEFAULT_INSTR_NAME);
+        LLVM.LLVMBuildFence(builder, LLVM.LLVMAtomicOrderingSequentiallyConsistent, FALSE, DEFAULT_INSTR_NAME);
     }
 
     public LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue, MemoryOrderMode memoryOrder, boolean returnValue) {
@@ -1374,8 +1372,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     private static final int LLVM_CMPXCHG_SUCCESS = 1;
 
     LLVMValueRef buildAtomicCmpXchg(LLVMValueRef addr, LLVMValueRef expected, LLVMValueRef newVal, MemoryOrderMode memoryOrder, boolean returnValue) {
-        boolean singleThread = !SubstrateOptions.MultiThreaded.getValue();
-        LLVMValueRef cas = LLVM.LLVMBuildAtomicCmpXchg(builder, addr, expected, newVal, atomicOrdering(memoryOrder, true), atomicOrdering(memoryOrder, false), singleThread ? TRUE : FALSE);
+        LLVMValueRef cas = LLVM.LLVMBuildAtomicCmpXchg(builder, addr, expected, newVal, atomicOrdering(memoryOrder, true), atomicOrdering(memoryOrder, false), FALSE);
         return buildExtractValue(cas, returnValue ? LLVM_CMPXCHG_VALUE : LLVM_CMPXCHG_SUCCESS);
     }
 
@@ -1398,8 +1395,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     private LLVMValueRef buildAtomicRMW(int operation, LLVMValueRef address, LLVMValueRef value) {
         LLVMTypeRef valueType = LLVM.LLVMTypeOf(value);
         LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObjectType(typeOf(address)), false));
-        boolean singleThread = !SubstrateOptions.MultiThreaded.getValue();
-        return LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, value, LLVM.LLVMAtomicOrderingMonotonic, singleThread ? TRUE : FALSE);
+        return LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, value, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
     }
 
     public void buildClearCache(LLVMValueRef start, LLVMValueRef end) {

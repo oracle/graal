@@ -24,19 +24,14 @@
  */
 package com.oracle.svm.hosted.heap;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
-import java.lang.invoke.VarHandle;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Member;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
@@ -46,19 +41,13 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.VarHandleFeature;
-import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
-import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.methodhandles.MethodHandleFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -71,10 +60,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final Field economicMapImplTotalEntriesField;
     private final Field economicMapImplDeletedEntriesField;
     private final ReflectionHostedSupport reflectionSupport;
-    private final Class<?> memberNameClass;
-    private final MethodHandleFeature methodHandleSupport;
-    private final Class<?> directMethodHandleClass;
-    private final VarHandleFeature varHandleSupport;
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
 
     @SuppressWarnings("this-escape")
@@ -89,10 +74,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplDeletedEntriesField = ReflectionUtil.lookupField(economicMapImpl, "deletedEntries");
         ImageSingletons.add(ImageHeapScanner.class, this);
         reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
-        memberNameClass = getClass("java.lang.invoke.MemberName");
-        methodHandleSupport = ImageSingletons.lookup(MethodHandleFeature.class);
-        directMethodHandleClass = getClass("java.lang.invoke.DirectMethodHandle");
-        varHandleSupport = ImageSingletons.lookup(VarHandleFeature.class);
         fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     }
 
@@ -107,7 +88,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
 
     @Override
     protected ImageHeapConstant getOrCreateImageHeapConstant(JavaConstant javaConstant, ScanReason reason) {
-        VMError.guarantee(javaConstant instanceof TypedConstant, "Not a substrate constant: %s", javaConstant);
         return super.getOrCreateImageHeapConstant(javaConstant, reason);
     }
 
@@ -124,18 +104,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     @Override
     public JavaConstant readStaticFieldValue(AnalysisField field) {
         AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
-        JavaConstant constant = aConstantReflection.readValue(field, null, true);
-        if (constant instanceof DirectSubstrateObjectConstant) {
-            /*
-             * The "late initialization" doesn't work with heap snapshots because the wrong value
-             * will be snapshot for classes proven late, so we only read via the shadow heap if
-             * simulation of class initializers is enabled. This branch will be removed when the old
-             * initialization strategy is removed.
-             */
-            VMError.guarantee(!SimulateClassInitializerSupport.singleton().isEnabled());
-            return toImageHeapObject(constant, ObjectScanner.OtherReason.UNKNOWN);
-        }
-        return constant;
+        return aConstantReflection.readValue(field, null, true);
     }
 
     @Override
@@ -161,14 +130,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
             reflectionSupport.registerHeapReflectionExecutable(executable, reason);
         } else if (object instanceof DynamicHub hub) {
             reflectionSupport.registerHeapDynamicHub(hub, reason);
-        } else if (object instanceof VarHandle varHandle) {
-            varHandleSupport.registerHeapVarHandle(varHandle);
-        } else if (directMethodHandleClass.isInstance(object)) {
-            varHandleSupport.registerHeapMethodHandle((MethodHandle) object);
-        } else if (object instanceof MethodType methodType) {
-            methodHandleSupport.registerHeapMethodType(methodType);
-        } else if (memberNameClass.isInstance(object)) {
-            methodHandleSupport.registerHeapMemberName((Member) object);
         }
     }
 }

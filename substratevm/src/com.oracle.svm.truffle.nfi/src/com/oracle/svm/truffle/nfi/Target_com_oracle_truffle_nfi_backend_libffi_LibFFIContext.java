@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,8 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[] arrayTypeMap;
     @Alias @RecomputeFieldValue(kind = Kind.Reset) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType cachedEnvType;
 
+    @Alias Target_com_oracle_truffle_nfi_backend_libffi_LibFFILanguage language;
+
     @Alias
     native long getNativeEnv();
 
@@ -103,6 +105,20 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
         NativeTruffleContext ctx = WordFactory.pointer(context);
         support.destroyContextHandle(ctx.contextHandle());
         UnmanagedMemory.free(ctx);
+    }
+
+    @Substitute
+    private static long initializeNativeEnvV2(long context, @SuppressWarnings("unused") Target_com_oracle_truffle_nfi_backend_spi_NFIState state) {
+        /*
+         * No need to store the state, on SVM thread-local lookups are reasonably fast from the
+         * native side.
+         */
+        return initializeNativeEnv(context);
+    }
+
+    @Substitute
+    private static void disposeNativeEnvV2(long env) {
+        UnmanagedMemory.free(WordFactory.pointer(env));
     }
 
     @Substitute

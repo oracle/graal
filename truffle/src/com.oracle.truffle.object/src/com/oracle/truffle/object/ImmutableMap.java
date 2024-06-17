@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,4 +63,27 @@ public interface ImmutableMap<K, V> extends Map<K, V> {
      */
     ImmutableMap<K, V> copyAndRemove(K key);
 
+    @Override
+    default V put(final K key, final V value) {
+        throw unmodifiableException();
+    }
+
+    @Override
+    default void putAll(final Map<? extends K, ? extends V> m) {
+        throw unmodifiableException();
+    }
+
+    @Override
+    default V remove(final Object key) {
+        throw unmodifiableException();
+    }
+
+    @Override
+    default void clear() {
+        throw unmodifiableException();
+    }
+
+    static RuntimeException unmodifiableException() {
+        throw new UnsupportedOperationException();
+    }
 }

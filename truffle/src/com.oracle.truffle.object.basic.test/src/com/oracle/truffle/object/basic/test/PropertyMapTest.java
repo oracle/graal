@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.PropertyMap;
+import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
 public class PropertyMapTest {
@@ -147,7 +148,7 @@ public class PropertyMapTest {
 
     @SuppressWarnings("deprecation")
     private Location newLocation(Object id) {
-        return rootShape.allocator().locationForValue(id);
+        return ((ShapeImpl) rootShape).allocator().locationForValue(id);
     }
 
     void assertEqualsOrdered(Map<Object, Property> referenceMap, PropertyMap map) {

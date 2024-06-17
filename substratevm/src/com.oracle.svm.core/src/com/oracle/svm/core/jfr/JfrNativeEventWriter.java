@@ -224,6 +224,23 @@ public final class JfrNativeEventWriter {
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void putString(JfrNativeEventWriterData data, Pointer utf8Buffer, int numBytes) {
+        assert utf8Buffer.isNonNull();
+        assert numBytes >= 0;
+
+        if (numBytes == 0) {
+            putByte(data, JfrChunkFileWriter.StringEncoding.EMPTY_STRING.getValue());
+        } else {
+            putByte(data, JfrChunkFileWriter.StringEncoding.UTF8_BYTE_ARRAY.getValue());
+            putInt(data, numBytes);
+            if (ensureSize(data, numBytes)) {
+                UnmanagedMemoryUtil.copy(utf8Buffer, data.getCurrentPos(), WordFactory.unsigned(numBytes));
+                data.setCurrentPos(data.getCurrentPos().add(numBytes));
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putEventThread(JfrNativeEventWriterData data) {
         putThread(data, SubstrateJVM.getCurrentThreadId());
     }

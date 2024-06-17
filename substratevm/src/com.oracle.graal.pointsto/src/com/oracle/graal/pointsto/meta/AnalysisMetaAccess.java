@@ -30,6 +30,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.Optional;
 
+import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -75,7 +76,17 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
 
     @Override
     public AnalysisType lookupJavaType(JavaConstant constant) {
-        return (AnalysisType) super.lookupJavaType(constant);
+        if (constant.getJavaKind() != JavaKind.Object || constant.isNull()) {
+            return null;
+        } else if (constant instanceof TypedConstant typedConstant) {
+            return typedConstant.getType();
+        }
+        /*
+         * Ideally, this path should be unreachable, i.e., we should only see TypedConstant. But the
+         * image heap scanning during static analysis is not implemented cleanly enough and invokes
+         * this method both with image heap constants and original HotSpot object constants.
+         */
+        return getUniverse().lookup(getWrapped().lookupJavaType(constant));
     }
 
     @Override

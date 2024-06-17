@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Member;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 
 /**
@@ -83,7 +84,7 @@ public interface MemberRefConstant extends PoolConstant {
             return pool.classAt(classIndex).getName(pool);
         }
 
-        public Klass getResolvedHolderKlass(Klass accessingKlass, RuntimeConstantPool pool) {
+        public Klass getResolvedHolderKlass(ObjectKlass accessingKlass, RuntimeConstantPool pool) {
             return pool.resolvedKlassAt(accessingKlass, classIndex);
         }
 
@@ -111,7 +112,7 @@ public interface MemberRefConstant extends PoolConstant {
     }
 
     @TruffleBoundary
-    static void doAccessCheck(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, Meta meta) {
+    static void doAccessCheck(ObjectKlass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, Meta meta) {
         if (!MemberRefConstant.checkAccess(accessingKlass, resolvedKlass, member)) {
             String message = "Class " + accessingKlass.getExternalName() + " cannot access method " + resolvedKlass.getExternalName() + "#" + member.getName();
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(message));
@@ -134,7 +135,7 @@ public interface MemberRefConstant extends PoolConstant {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
+    static boolean checkAccess(ObjectKlass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
         if (member.isPublic()) {
             return true;
         }

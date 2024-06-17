@@ -245,18 +245,9 @@ public final class Arguments {
             builder.option("java.BootClasspathAppend", bootClasspathAppend);
         }
 
-        // classpath provenance order:
-        // (1) the java.class.path property
-        if (classpath == null) {
-            // (2) the environment variable CLASSPATH
-            classpath = System.getenv("CLASSPATH");
-            if (classpath == null) {
-                // (3) the current working directory only
-                classpath = ".";
-            }
+        if (classpath != null) {
+            builder.option("java.Classpath", classpath);
         }
-
-        builder.option("java.Classpath", classpath);
 
         for (int i = 0; i < jvmArgs.size(); i++) {
             builder.option("java.VMArguments." + i, jvmArgs.get(i));

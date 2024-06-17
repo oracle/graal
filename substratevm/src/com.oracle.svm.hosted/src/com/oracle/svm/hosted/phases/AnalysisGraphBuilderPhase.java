@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,20 +30,13 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.WrongMethodTypeException;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-
-import com.oracle.graal.pointsto.heap.ImageHeapInstance;
-import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
-import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ModuleSupport;
 
-import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.java.BciBlockMapping;
@@ -78,6 +71,7 @@ import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
@@ -140,7 +134,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
         }
 
-        private boolean tryNodePluginForDynamicInvocation(BootstrapMethodIntrospection bootstrap) {
+        private boolean tryNodePluginForDynamicInvocation(BootstrapMethodInvocation bootstrap) {
             for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
                 var result = plugin.convertInvokeDynamic(this, bootstrap);
                 if (result != null) {
@@ -153,9 +147,9 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
         @Override
         protected void genInvokeDynamic(int cpi, int opcode) {
-            BootstrapMethodIntrospection bootstrap;
+            BootstrapMethodInvocation bootstrap;
             try {
-                bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, opcode);
+                bootstrap = constantPool.lookupBootstrapMethodInvocation(cpi, opcode);
             } catch (Throwable ex) {
                 bootstrapMethodHandler.handleBootstrapException(ex, "invoke dynamic");
                 return;
@@ -164,13 +158,9 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 return;
             }
             JavaMethod calleeMethod = lookupMethodInPool(cpi, opcode);
-            /*
-             * Bootstrap methods are executed at build time for Web Image due to an issue with
-             * BoundMethodHandle$SpeciesData
-             */
+
             if (bootstrap == null || calleeMethod instanceof ResolvedJavaMethod ||
-                            BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod())) ||
-                            ImageSingletons.lookup(Platform.class).getOS().equals("js")) {
+                            BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod()))) {
                 super.genInvokeDynamic(cpi, opcode);
                 return;
             }
@@ -182,12 +172,10 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             MethodType methodType = getSnippetReflection().asObject(MethodType.class, bootstrap.getType());
 
             for (JavaConstant argument : staticArgumentsList) {
-                if (argument instanceof ImageHeapInstance imageHeapInstance) {
-                    Object arg = ((DirectSubstrateObjectConstant) imageHeapInstance.getHostedObject()).getObject();
-                    if (arg instanceof UnresolvedJavaType unresolvedJavaType) {
-                        handleUnresolvedType(unresolvedJavaType);
-                        return;
-                    }
+                Object arg = getSnippetReflection().asObject(Object.class, argument);
+                if (arg instanceof UnresolvedJavaType unresolvedJavaType) {
+                    handleUnresolvedType(unresolvedJavaType);
+                    return;
                 }
             }
 

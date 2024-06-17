@@ -25,13 +25,13 @@
 package jdk.graal.compiler.nodes;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.Op;
-import jdk.graal.compiler.graph.Node.IndirectCanonicalization;
+import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
 
 /**
  * An {@code ArithmeticOperation} is an operation that does primitive value arithmetic without side
  * effect.
  */
-public interface ArithmeticOperation extends IndirectCanonicalization {
+public interface ArithmeticOperation extends IndirectInputChangedCanonicalization {
 
     Op getArithmeticOp();
 }

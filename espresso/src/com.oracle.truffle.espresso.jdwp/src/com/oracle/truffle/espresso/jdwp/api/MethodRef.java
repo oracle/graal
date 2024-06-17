@@ -108,13 +108,6 @@ public interface MethodRef {
     byte[] getOriginalCode();
 
     /**
-     * Returns all declared parameter types of the method.
-     *
-     * @return an array of parameter types
-     */
-    KlassRef[] getParameters();
-
-    /**
      * @return the local variable table of the method
      */
     LocalVariableTableRef getLocalVariableTable();
@@ -225,11 +218,4 @@ public interface MethodRef {
      * @return last bci
      */
     long getLastBCI();
-
-    /**
-     * Determines if the method was compiled with a variable table.
-     *
-     * @return true if the method has a variable table
-     */
-    boolean hasVariableTable();
 }

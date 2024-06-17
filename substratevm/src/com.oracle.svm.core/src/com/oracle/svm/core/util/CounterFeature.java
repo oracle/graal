@@ -25,12 +25,14 @@
 package com.oracle.svm.core.util;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.util.Counter.Group;
 
 @AutomaticallyRegisteredFeature
@@ -55,7 +57,11 @@ public class CounterFeature implements InternalFeature {
                 enabledGroups.add(group);
             }
         }
-        enabledGroups.sort((g1, g2) -> g1.name.compareTo(g2.name));
-        ImageSingletons.add(CounterSupport.class, new CounterSupport(enabledGroups.toArray(new Group[enabledGroups.size()])));
+
+        if (enabledGroups.size() > 0) {
+            enabledGroups.sort(Comparator.comparing(g -> g.name));
+            ImageSingletons.add(CounterSupport.class, new CounterSupport(enabledGroups.toArray(new Group[0])));
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(CounterSupport.shutdownHook());
+        }
     }
 }

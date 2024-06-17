@@ -30,12 +30,6 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.ModifiableOptionValues;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeOptions.Descriptor;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
@@ -45,6 +39,13 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.util.ClassUtil;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.ModifiableOptionValues;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
 
 /**
  * The singleton holder of runtime options.
@@ -130,7 +131,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
     }
 
     private static DescriptorImpl asDescriptor(OptionDescriptor descriptor) {
-        if (descriptor == null || !(descriptor.getOptionKey() instanceof RuntimeOptionKey)) {
+        if (descriptor == null) {
             return null;
         }
         String help = descriptor.getHelp();

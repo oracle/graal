@@ -24,22 +24,19 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
-import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractStateSplit;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptBciSupplier;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo
 public abstract class IdentityHashCodeNode extends AbstractStateSplit implements Canonicalizable, Lowerable, SingleMemoryKill, DeoptBciSupplier {
@@ -71,20 +68,17 @@ public abstract class IdentityHashCodeNode extends AbstractStateSplit implements
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (object.isConstant()) {
-            assert object.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp : Assertions.errorMessage(object);
-            JavaConstant c = (JavaConstant) object.asConstant();
-
-            int identityHashCode;
-            if (c.isNull()) {
-                identityHashCode = 0;
-            } else {
-                identityHashCode = getIdentityHashCode(c);
-            }
-            return ConstantNode.forInt(identityHashCode);
-        }
-        return this;
+        ValueNode result = canonical(object, tool);
+        return result != null ? result : this;
     }
 
-    protected abstract int getIdentityHashCode(JavaConstant constant);
+    protected static ValueNode canonical(ValueNode object, CoreProviders providers) {
+        if (object.isJavaConstant()) {
+            Integer identityHashCode = providers.getIdentityHashCodeProvider().identityHashCode(object.asJavaConstant());
+            if (identityHashCode != null) {
+                return ConstantNode.forInt(identityHashCode);
+            }
+        }
+        return null;
+    }
 }

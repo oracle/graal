@@ -26,16 +26,15 @@ package jdk.graal.compiler.lir.amd64;
 
 import static java.lang.Double.doubleToRawLongBits;
 import static java.lang.Float.floatToRawIntBits;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -52,7 +51,6 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -254,38 +252,6 @@ public class AMD64Move {
             }
             // restore scratch register
             move(backupKind, crb, masm, scratch.asValue(backupSlot.getValueKind()), backupSlot);
-        }
-    }
-
-    @Opcode("STACKMOVE")
-    public static final class AMD64PushPopStackMove extends AMD64LIRInstruction implements StandardOp.ValueMoveOp {
-        public static final LIRInstructionClass<AMD64PushPopStackMove> TYPE = LIRInstructionClass.create(AMD64PushPopStackMove.class);
-
-        @Def({OperandFlag.STACK}) protected AllocatableValue result;
-        @Use({OperandFlag.STACK, OperandFlag.HINT}) protected AllocatableValue input;
-        private final OperandSize size;
-
-        public AMD64PushPopStackMove(OperandSize size, AllocatableValue result, AllocatableValue input) {
-            super(TYPE);
-            this.result = result;
-            this.input = input;
-            this.size = size;
-        }
-
-        @Override
-        public AllocatableValue getInput() {
-            return input;
-        }
-
-        @Override
-        public AllocatableValue getResult() {
-            return result;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64MOp.PUSH.emit(masm, size, (AMD64Address) crb.asAddress(input));
-            AMD64MOp.POP.emit(masm, size, (AMD64Address) crb.asAddress(result));
         }
     }
 

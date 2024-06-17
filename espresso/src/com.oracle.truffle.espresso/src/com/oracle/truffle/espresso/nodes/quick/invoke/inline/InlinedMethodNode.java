@@ -135,7 +135,7 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         preludeChecks(frame);
         return executeBody(frame);
     }

@@ -80,7 +80,11 @@ public class ImageHeap {
     public Object getSnapshot(JavaConstant constant) {
         JavaConstant uncompressed = CompressibleConstant.uncompress(constant);
         if (uncompressed instanceof ImageHeapConstant imageHeapConstant) {
-            assert imageHeapConstant.getHostedObject() == null || objectsCache.get(imageHeapConstant.getHostedObject()).equals(imageHeapConstant);
+            /*
+             * A base layer constant was in the objectsCache from the base image. It might not have
+             * been put in the objectsCache of the extension image yet.
+             */
+            assert imageHeapConstant.getHostedObject() == null || imageHeapConstant.isInBaseLayer() || objectsCache.get(imageHeapConstant.getHostedObject()).equals(imageHeapConstant);
             return imageHeapConstant;
         }
         return objectsCache.get(uncompressed);
@@ -96,11 +100,15 @@ public class ImageHeap {
     public void setValue(JavaConstant constant, ImageHeapConstant value) {
         assert !(constant instanceof ImageHeapConstant) : constant;
         Object previous = objectsCache.put(CompressibleConstant.uncompress(constant), value);
-        AnalysisError.guarantee(!(previous instanceof ImageHeapConstant), "An ImageHeapConstant: %s is already registered for hosted JavaConstant: %s.", previous, constant);
+        AnalysisError.guarantee(!(previous instanceof ImageHeapConstant) || previous == value, "An ImageHeapConstant: %s is already registered for hosted JavaConstant: %s.", previous, constant);
     }
 
     public Set<ImageHeapConstant> getReachableObjects(AnalysisType type) {
         return reachableObjects.getOrDefault(type, Collections.emptySet());
+    }
+
+    public Map<AnalysisType, Set<ImageHeapConstant>> getReachableObjects() {
+        return reachableObjects;
     }
 
     public boolean addReachableObject(AnalysisType type, ImageHeapConstant heapObj) {

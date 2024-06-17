@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.strings;
 
-import static com.oracle.truffle.api.strings.TStringConstants.EMPTY_BYTES;
-
 /**
  * Wrapper object containing a {@link TruffleString}'s internal byte array, along with a byte offset
  * and length defining the region in use.
@@ -50,7 +48,7 @@ import static com.oracle.truffle.api.strings.TStringConstants.EMPTY_BYTES;
  */
 public final class InternalByteArray {
 
-    static final InternalByteArray EMPTY = new InternalByteArray(EMPTY_BYTES, 0, 0);
+    static final InternalByteArray EMPTY = new InternalByteArray(TruffleString.Encoding.EMPTY_BYTES, 0, 0);
 
     private final byte[] array;
     private final int offset;

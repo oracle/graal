@@ -1,0 +1,7 @@
+# bitfield size too large for type
+gcc-5.2.0/gcc/testsuite/g++.dg/abi/bitfield9.C
+gcc-5.2.0/gcc/testsuite/g++.dg/abi/bitfield11.C
+gcc-5.2.0/gcc/testsuite/g++.dg/abi/bitfield3.C
+
+# error: ambiguous vftable component for 'RA' introduced via covariant thunks; this is an inherent limitation of the ABI
+gcc-5.2.0/gcc/testsuite/g++.dg/abi/covariant4.C

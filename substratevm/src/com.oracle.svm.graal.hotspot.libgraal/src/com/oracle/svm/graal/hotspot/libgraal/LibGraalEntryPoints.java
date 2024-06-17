@@ -87,7 +87,7 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * Entry points in libgraal corresponding to native methods in the scope and
- * {@code CompileTheWorld}.
+ * {@code StandaloneBulkCompile}.
  */
 public final class LibGraalEntryPoints {
 
@@ -311,7 +311,7 @@ public final class LibGraalEntryPoints {
 
     /**
      * The implementation of
-     * {@code jdk.graal.compiler.hotspot.test.CompileTheWorld.compileMethodInLibgraal()}.
+     * {@code jdk.graal.compiler.hotspot.test.StandaloneBulkCompile.compileMethodInLibgraal()}.
      *
      * @param methodHandle the method to be compiled. This is a handle to a
      *            {@link HotSpotResolvedJavaMethod} in HotSpot's heap. A value of 0L can be passed
@@ -346,7 +346,7 @@ public final class LibGraalEntryPoints {
      * @return a handle to a {@link InstalledCode} in HotSpot's heap or 0 if compilation failed
      */
     @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_CompileTheWorld_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_LibGraalCompilationDriver_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
     private static long compileMethod(JNIEnv jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,
@@ -374,7 +374,7 @@ public final class LibGraalEntryPoints {
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
             try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
                 OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
-                CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, eagerResolving, installAsDefault);
+                CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, false, eagerResolving, installAsDefault);
                 if (profilePathBufferAddress > 0) {
                     String profileLoadPath = CTypeConversion.toJavaString(WordFactory.pointer(profilePathBufferAddress));
                     options = new OptionValues(options, Options.LoadProfiles, profileLoadPath);

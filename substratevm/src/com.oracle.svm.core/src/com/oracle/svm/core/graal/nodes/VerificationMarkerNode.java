@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -51,6 +52,13 @@ public final class VerificationMarkerNode extends FixedWithNextNode implements L
 
     @Override
     protected void afterClone(Node other) {
+        if (((StructuredGraph) other.graph()).isSubstitution()) {
+            /*
+             * If this node is inlined into a graph as part of snippet lowering (through
+             * Graph.addDuplicates) its fine to clone the marker.
+             */
+            return;
+        }
         throw VMError.shouldNotReachHere("Marker must be unique, therefore the node cannot be cloned");
     }
 

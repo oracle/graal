@@ -24,14 +24,16 @@
  */
 package org.graalvm.tools.insight.test;
 
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import java.util.Collections;
 import java.util.Map;
+
 import org.graalvm.tools.insight.Insight;
 
-// @formatter:off
-// BEGIN: org.graalvm.tools.insight.test.MeaningOfWorldInstrument
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+
+// @formatter:off // @replace regex='.*' replacement=''
+// @start region="org.graalvm.tools.insight.test.MeaningOfWorldInstrument"
 @Registration(
     id = "meaningOfWorld", name = "Meaning Of World", version = "demo",
     services = { Insight.SymbolProvider.class }
@@ -44,5 +46,5 @@ public final class MeaningOfWorldInstrument extends TruffleInstrument {
         env.registerService(provider);
     }
 }
-// END: org.graalvm.tools.insight.test.MeaningOfWorldInstrument
-// @formatter:on
+// @end region="org.graalvm.tools.insight.test.MeaningOfWorldInstrument"
+// @formatter:on // @replace regex='.*' replacement=''

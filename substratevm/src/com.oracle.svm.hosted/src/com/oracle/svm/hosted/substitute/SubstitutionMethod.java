@@ -29,7 +29,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -100,6 +99,11 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
 
     public ResolvedJavaMethod getAnnotated() {
         return annotated;
+    }
+
+    @Override
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return original;
     }
 
     @Override
@@ -281,10 +285,5 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     @Override
     public SpeculationLog getSpeculationLog() {
         throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Override
-    public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(original);
     }
 }

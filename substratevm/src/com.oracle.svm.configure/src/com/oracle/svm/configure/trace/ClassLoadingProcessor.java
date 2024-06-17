@@ -42,7 +42,7 @@ public class ClassLoadingProcessor extends AbstractProcessor {
 
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
-        if ("onClassFileLoadHook".equals(function)) {
+        if ("onClassFileLoadHook".equals(function) || "onMethodHandleClassFileInit".equals(function)) {
             expectSize(args, 2);
             String nameInfo = (String) args.get(0);
             byte[] classData = asBinary(args.get(1));

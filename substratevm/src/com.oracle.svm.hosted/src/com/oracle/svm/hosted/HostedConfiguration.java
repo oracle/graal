@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +45,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -170,17 +172,43 @@ public class HostedConfiguration {
 
     private static DynamicHubLayout createDynamicHubLayout(HostedMetaAccess hMetaAccess) {
         var dynamicHubType = hMetaAccess.lookupJavaType(Class.class);
-        var typeIDSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckSlots"));
-        var vtableField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "vtable"));
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        int typeIDSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
-        int typeIDSlotsSize = layout.sizeInBytes(typeIDSlotsField.getType().getComponentType().getStorageKind());
-
+        var vtableField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "vtable"));
         JavaKind vTableSlotStorageKind = vtableField.getType().getComponentType().getStorageKind();
         int vTableSlotSize = layout.sizeInBytes(vTableSlotStorageKind);
 
-        return new DynamicHubLayout(layout, dynamicHubType, typeIDSlotsField, typeIDSlotsOffset, typeIDSlotsSize, vtableField, vTableSlotStorageKind, vTableSlotSize);
+        var closedTypeWorldTypeCheckSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "closedTypeWorldTypeCheckSlots"));
+        int closedTypeWorldTypeCheckSlotsOffset;
+        int closedTypeWorldTypeCheckSlotSize;
+
+        Set<HostedField> ignoredFields;
+        if (SubstrateOptions.closedTypeWorld()) {
+            closedTypeWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
+            closedTypeWorldTypeCheckSlotSize = layout.sizeInBytes(closedTypeWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
+
+            ignoredFields = Set.of(
+                            closedTypeWorldTypeCheckSlotsField,
+                            vtableField,
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeIDDepth")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numClassTypes")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numInterfaceTypes")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldTypeCheckSlots")));
+        } else {
+            closedTypeWorldTypeCheckSlotsOffset = -1;
+            closedTypeWorldTypeCheckSlotSize = -1;
+
+            ignoredFields = Set.of(
+                            closedTypeWorldTypeCheckSlotsField,
+                            vtableField,
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckStart")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckRange")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckSlot")));
+
+        }
+        return new DynamicHubLayout(layout, dynamicHubType, closedTypeWorldTypeCheckSlotsField, closedTypeWorldTypeCheckSlotsOffset, closedTypeWorldTypeCheckSlotSize, vtableField,
+                        vTableSlotStorageKind,
+                        vTableSlotSize, ignoredFields);
     }
 
     public static boolean isArrayLikeLayout(HostedType clazz) {
@@ -195,12 +223,13 @@ public class HostedConfiguration {
         return HybridLayout.isHybridField(field) || DynamicHubLayout.singleton().isInlinedField(field);
     }
 
-    public SVMHost createHostVM(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions) {
-        return new SVMHost(options, loader, classInitializationSupport, annotationSubstitutions);
+    public SVMHost createHostVM(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
+                    MissingRegistrationSupport missingRegistrationSupport) {
+        return new SVMHost(options, loader, classInitializationSupport, annotationSubstitutions, missingRegistrationSupport);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll) {
-        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll);
+        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, Collections.emptyList());
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
@@ -225,10 +254,9 @@ public class HostedConfiguration {
 
             /* Because of @Alias fields, the field lookup might not be declared in our class. */
             if (hField.getDeclaringClass().equals(clazz)) {
-                if (dynamicHubLayout.isInlinedField(hField)) {
+                if (dynamicHubLayout.isIgnoredField(hField)) {
                     /*
-                     * The typeid slots and the vtable of the dynamic hub are not materialized, so
-                     * they need no field offset.
+                     * Ignored fields do not need a field offset.
                      */
                     allFields.add(hField);
                 } else if (HybridLayout.isHybridField(hField)) {
@@ -305,7 +333,7 @@ public class HostedConfiguration {
         return new NativeImageCodeCacheFactory() {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
-                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
+                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), compileQueue.getBaseLayerMethods(), heap);
             }
         };
     }

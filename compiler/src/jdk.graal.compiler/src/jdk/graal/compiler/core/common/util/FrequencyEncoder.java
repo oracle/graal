@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.common.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -55,6 +56,7 @@ public class FrequencyEncoder<T> {
 
     protected final EconomicMap<T, Entry<T>> map;
     protected boolean containsNull;
+    protected boolean encoded;
 
     /**
      * Creates an encoder that uses object identity.
@@ -70,32 +72,45 @@ public class FrequencyEncoder<T> {
         return new FrequencyEncoder<>(EconomicMap.create(Equivalence.DEFAULT));
     }
 
+    /*
+     * Creates an encoder that uses {@link Object#equals(Object)} object equality and calls the
+     * provided verifier before adding an element.
+     */
+    public static <T> FrequencyEncoder<T> createVerifyingEqualityEncoder(Consumer<T> verifier) {
+        return new VerifyingFrequencyEncoder<>(EconomicMap.create(Equivalence.DEFAULT), verifier);
+    }
+
     protected FrequencyEncoder(EconomicMap<T, Entry<T>> map) {
         this.map = map;
     }
 
     /**
      * Adds an object to the array.
+     *
+     * @return whether the object has been added for the first time.
      */
-    public void addObject(T object) {
+    public boolean addObject(T object) {
+        // assert !encoded; -- some users currently encode, add more objects, then re-encode.
         if (object == null) {
+            boolean added = !containsNull;
             containsNull = true;
-            return;
+            return added;
         }
-
         Entry<T> entry = map.get(object);
         if (entry == null) {
             entry = new Entry<>(object);
             map.put(object, entry);
         }
         entry.frequency++;
+        return (entry.frequency == 1);
     }
 
     /**
-     * Returns the index of an object in the array. The object must have been
-     * {@link #addObject(Object) added} before.
+     * Returns the index of an object in the array. The object must have been {@linkplain #addObject
+     * added} and {@link #encodeAll} must have been called before.
      */
     public int getIndex(T object) {
+        assert encoded;
         if (object == null) {
             assert containsNull;
             return 0;
@@ -103,6 +118,19 @@ public class FrequencyEncoder<T> {
         Entry<T> entry = map.get(object);
         assert entry != null && entry.index >= 0 : Assertions.errorMessageContext("entry", entry);
         return entry.index;
+    }
+
+    /**
+     * Returns the index of an object in the array or -1 if it has not been {@linkplain #addObject
+     * added}. {@link #encodeAll} must have been called before.
+     */
+    public int findIndex(T object) {
+        assert encoded;
+        if (object == null) {
+            return containsNull ? 0 : -1;
+        }
+        Entry<T> entry = map.get(object);
+        return (entry != null) ? entry.index : -1;
     }
 
     /**
@@ -117,6 +145,7 @@ public class FrequencyEncoder<T> {
      * correct length}.
      */
     public T[] encodeAll(T[] allObjects) {
+        // assert !encoded; -- some users currently encode, add more objects, then re-encode.
         assert allObjects.length == getLength() : Assertions.errorMessage(allObjects, getLength());
         List<Entry<T>> sortedEntries = new ArrayList<>(allObjects.length);
         for (Entry<T> value : map.getValues()) {
@@ -136,6 +165,22 @@ public class FrequencyEncoder<T> {
             allObjects[index] = entry.object;
             assert entry.object != null;
         }
+        encoded = true;
         return allObjects;
+    }
+
+    static class VerifyingFrequencyEncoder<T> extends FrequencyEncoder<T> {
+        private final Consumer<T> verifier;
+
+        VerifyingFrequencyEncoder(EconomicMap<T, Entry<T>> map, Consumer<T> verifier) {
+            super(map);
+            this.verifier = verifier;
+        }
+
+        @Override
+        public boolean addObject(T object) {
+            verifier.accept(object);
+            return super.addObject(object);
+        }
     }
 }

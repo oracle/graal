@@ -26,16 +26,17 @@ package com.oracle.svm.core.os;
 
 import java.io.File;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Provides unbuffered, OS-independent operations on files. Most of the code is implemented in a way
@@ -75,7 +76,7 @@ public interface RawFileOperationSupport {
     /**
      * Tries to allocate a platform-dependent C string for the given path. Note that the returned
      * value needs to be freed manually once it is no longer needed (see
-     * {@link UnmanagedMemorySupport#free}).
+     * {@link UntrackedNullableNativeMemory#free}).
      *
      * @return If the allocation is successful, a non-null value is returned.
      */

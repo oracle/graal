@@ -1,6 +1,0 @@
-Bundle-Symbolic-Name: org.graalvm.ruby
-Bundle-Name: Truffle Ruby
-Bundle-Version: 1.0
-Bundle-RequireCapability: org.graalvm; filter := "(&(graalvm_version=19.3.3)(os_arch=amd64))"
-x-GraalVM-License-Type: Testing License
-x-GraalVM-License-Path: license.txt

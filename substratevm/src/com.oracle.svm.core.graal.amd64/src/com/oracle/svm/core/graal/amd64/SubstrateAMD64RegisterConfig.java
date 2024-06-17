@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -295,7 +295,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             locations[0] = r11.asValue(paramValueKind);
         }
 
-        if (type.fixedParameterAssignment == null) {
+        if (!type.customABI()) {
             int currentGeneral = 0;
             int currentXMM = 0;
 
@@ -406,7 +406,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             locations[locations.length - 1] = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
             if (type.customABI()) {
                 var extendsParametersAssignment = Arrays.copyOf(type.fixedParameterAssignment, type.fixedParameterAssignment.length + 1);
-                extendsParametersAssignment[extendsParametersAssignment.length - 1] = AssignedLocation.forRegister(rax);
+                extendsParametersAssignment[extendsParametersAssignment.length - 1] = AssignedLocation.forRegister(rax, JavaKind.Long);
                 type = SubstrateCallingConventionType.makeCustom(
                                 type.outgoing,
                                 extendsParametersAssignment,

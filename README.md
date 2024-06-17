@@ -27,7 +27,6 @@ Directory | Description
 [`.github/`](.github/) | Configuration files for GitHub issues, workflows, ….
 [`compiler/`](compiler/) | [Graal compiler][reference-compiler], a modern, versatile compiler written in Java.
 [`espresso/`](espresso/) | [Espresso][java-on-truffle], a meta-circular Java bytecode interpreter for the GraalVM.
-[`java-benchmarks/`](java-benchmarks/) | Java benchmarks.
 [`regex/`](regex/) | TRegex, a regular expression engine for other GraalVM languages.
 [`sdk/`](sdk/) | [GraalVM SDK][graalvm-sdk], long-term supported APIs of GraalVM.
 [`substratevm/`](substratevm/) | Framework for ahead-of-time (AOT) compilation with [Native Image][native-image].

@@ -129,6 +129,10 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             }
         }
 
+        // For SharedSecrets.getJavaLangAccess().currentCarrierThread()
+        Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
+        ModulesSupport.addExports(javaBase, "jdk.internal.access", runtimeModule);
+
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
             // try LibGraal
@@ -187,6 +191,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             }
         }
         HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
+        HotSpotVirtualThreadHooks.ensureLoaded();
         compilationSupport.registerRuntime(rt);
         return rt;
     }

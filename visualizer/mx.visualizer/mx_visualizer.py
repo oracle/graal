@@ -20,6 +20,7 @@
 # questions.
 
 import mx
+import mx_util
 import os
 import tempfile
 import zipfile
@@ -118,7 +119,7 @@ class NetBeansBuildTask(mx.BuildTask):
     def build(self):
         if self.subject.mxLibs:
             libs_dir = os.path.join(self.subject.dir, self.subject.subDir or 'IdealGraphVisualizer', self.subject.name, 'lib')
-            mx.ensure_dir_exists(libs_dir)
+            mx_util.ensure_dir_exists(libs_dir)
             for lib in self.subject.mxLibs:
                 lib_path = lib.classpath_repr(resolve=False)
                 link_name = os.path.join(libs_dir, os.path.basename(lib_path))
@@ -269,8 +270,15 @@ def verify_graal_graphio(args):
     parser.add_argument('-q', '--quiet', action='store_true', help='Only produce output if something is changed')
     args = parser.parse_args(args)
 
-    visualizer_dir = 'IdealGraphVisualizer/Data/src/org/graalvm/graphio'
-    graal_dir = '../compiler/src/org.graalvm.graphio/src/org/graalvm/graphio'
+    visualizer_dir = 'IdealGraphVisualizer/Data/src/jdk/graal/compiler/graphio'
+    if not exists(visualizer_dir):
+        mx.log(f"Error: {visualizer_dir} doesn't exist")
+        mx.abort(1)
+
+    graal_dir = '../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/graphio'
+    if not exists(graal_dir):
+        mx.log(f"Error: {graal_dir} doesn't exist")
+        mx.abort(1)
 
     def _handle_error(msg, base_file, dest_file):
         if args.sync:
@@ -297,12 +305,20 @@ def verify_graal_graphio(args):
             _handle_error('file mismatch', base_file, dest_file)
         mx.logv(f"File '{_common_string_end(base_file, dest_file)}' matches.")
 
+
+    verified = 0
     for root, _, files in os.walk(graal_dir):
         rel_root = os.path.relpath(root, graal_dir)
         for f in files:
             graal_file = join(graal_dir, rel_root, f)
             visualizer_file = join(visualizer_dir, rel_root, f)
             _verify_file(graal_file, visualizer_file)
+            verified += 1
+
+    if verified == 0:
+        mx.log("No files were found to verify")
+        mx.abort(1)
+
 
     if not args.quiet:
-        mx.log("org.graalvm.graphio is unchanegd.")
+        mx.log("org.graalvm.graphio is unchanged.")

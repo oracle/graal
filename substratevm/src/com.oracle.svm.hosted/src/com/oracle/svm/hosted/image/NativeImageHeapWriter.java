@@ -44,6 +44,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
@@ -51,7 +52,6 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.code.CEntryPointLiteralFeature;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -95,7 +95,15 @@ public final class NativeImageHeapWriter {
     public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
         try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
-                assert !(info.getConstant() instanceof SubstrateObjectConstant) || !heap.isBlacklisted(info.getObject());
+                assert !heap.isBlacklisted(info.getObject());
+                if (info.getConstant().isInBaseLayer()) {
+                    /*
+                     * Base layer constants are only added to the heap model to store the absolute
+                     * offset in the base layer heap. We don't need to actually write them; their
+                     * absolute offset is used by the objects that reference them.
+                     */
+                    continue;
+                }
                 writeObject(info, buffer);
             }
 
@@ -118,6 +126,10 @@ public final class NativeImageHeapWriter {
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : heap.hUniverse.getFields()) {
+            if (field.wrapped.isInBaseLayer()) {
+                /* Base layer static field values are accessed via the base layer arrays. */
+                continue;
+            }
             if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
@@ -136,7 +148,7 @@ public final class NativeImageHeapWriter {
 
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw NativeImageHeap.reportIllegalType(target, reason);
+            throw NativeImageHeap.reportIllegalType(target, reason, "Inconsistent image heap.");
         }
     }
 
@@ -341,20 +353,25 @@ public final class NativeImageHeapWriter {
              * If the object is a dynamic hub, then the typeID and vTable (& length) slots will be
              * written.
              */
-            JavaConstant con = info.getConstant();
+            ImageHeapConstant con = info.getConstant();
 
             HostedInstanceClass instanceClazz = (HostedInstanceClass) clazz;
             long idHashOffset;
             Stream<HostedField> instanceFields = Arrays.stream(clazz.getInstanceFields(true)).filter(HostedField::isRead);
 
             if (dynamicHubLayout.isDynamicHub(clazz)) {
-                /* Write typeID slots. */
-                short[] typeIDSlots = (short[]) heap.readInlinedField(dynamicHubLayout.typeIDSlotsField, con);
-                int typeIDSlotsLength = typeIDSlots.length;
-                for (int i = 0; i < typeIDSlotsLength; i++) {
-                    int index = getIndexInBuffer(info, dynamicHubLayout.getTypeIDSlotsOffset(i));
-                    short value = typeIDSlots[i];
-                    bufferBytes.putShort(index, value);
+                /*
+                 * Write typeID slots for closed world. In the open world configuration information
+                 * is stored in a separate array since it has a variable length.
+                 */
+                if (SubstrateOptions.closedTypeWorld()) {
+                    short[] typeIDSlots = (short[]) heap.readInlinedField(dynamicHubLayout.closedTypeWorldTypeCheckSlotsField, con);
+                    int typeIDSlotsLength = typeIDSlots.length;
+                    for (int i = 0; i < typeIDSlotsLength; i++) {
+                        int index = getIndexInBuffer(info, dynamicHubLayout.getClosedTypeWorldTypeCheckSlotsOffset(i));
+                        short value = typeIDSlots[i];
+                        bufferBytes.putShort(index, value);
+                    }
                 }
 
                 /* Write vtable slots and length. */
@@ -369,7 +386,7 @@ public final class NativeImageHeapWriter {
                 }
 
                 idHashOffset = dynamicHubLayout.getIdentityHashOffset(vtableLength);
-                instanceFields = instanceFields.filter(field -> !dynamicHubLayout.isInlinedField(field));
+                instanceFields = instanceFields.filter(field -> !dynamicHubLayout.isIgnoredField(field));
 
             } else if (heap.getHybridLayout(clazz) != null) {
                 HybridLayout hybridLayout = heap.getHybridLayout(clazz);
@@ -412,36 +429,20 @@ public final class NativeImageHeapWriter {
         } else if (clazz.isArray()) {
 
             JavaKind kind = clazz.getComponentType().getStorageKind();
-            JavaConstant constant = info.getConstant();
+            ImageHeapConstant constant = info.getConstant();
 
             int length = heap.hConstantReflection.readArrayLength(constant);
             bufferBytes.putInt(getIndexInBuffer(info, objectLayout.getArrayLengthOffset()), length);
             bufferBytes.putInt(getIndexInBuffer(info, objectLayout.getArrayIdentityHashOffset(kind, length)), info.getIdentityHashCode());
 
-            if (constant instanceof ImageHeapConstant) {
-                if (clazz.getComponentType().isPrimitive()) {
-                    ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;
-                    writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
-                } else {
-                    heap.hConstantReflection.forEachArrayElement(constant, (element, index) -> {
-                        final int elementIndex = getIndexInBuffer(info, objectLayout.getArrayElementOffset(kind, index));
-                        writeConstant(buffer, elementIndex, kind, element, info);
-                    });
-                }
+            if (clazz.getComponentType().isPrimitive()) {
+                ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;
+                writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
             } else {
-                Object array = info.getObject();
-                if (array instanceof Object[]) {
-                    Object[] oarray = (Object[]) array;
-                    assert oarray.length == length;
-                    for (int i = 0; i < length; i++) {
-                        final int elementIndex = getIndexInBuffer(info, objectLayout.getArrayElementOffset(kind, i));
-                        Object element = maybeReplace(oarray[i], info);
-                        assert (oarray[i] instanceof RelocatedPointer) == (element instanceof RelocatedPointer);
-                        writeConstant(buffer, elementIndex, kind, element, info);
-                    }
-                } else {
-                    writePrimitiveArray(info, buffer, objectLayout, kind, array, length);
-                }
+                heap.hConstantReflection.forEachArrayElement(constant, (element, index) -> {
+                    final int elementIndex = getIndexInBuffer(info, objectLayout.getArrayElementOffset(kind, index));
+                    writeConstant(buffer, elementIndex, kind, element, info);
+                });
             }
         } else {
             throw shouldNotReachHereUnexpectedInput(clazz); // ExcludeFromJacocoGeneratedReport

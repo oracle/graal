@@ -26,15 +26,17 @@ package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
-import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
-import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProvider;
+import java.util.Arrays;
+
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
+import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -337,7 +339,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
                     temporaryLocations[i++] = reg.asValue();
                 }
                 if (stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS) {
-                    GraalError.guarantee(temporaryLocations.length == 0, "no registers are expected to be killed: %s %s", this, temporaryLocations);
+                    GraalError.guarantee(temporaryLocations.length == 0, "no registers are expected to be killed: %s %s", this, Arrays.toString(temporaryLocations));
                 }
                 temporaries = temporaryLocations;
             }

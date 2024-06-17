@@ -97,7 +97,14 @@ public class EncodedGraph {
     protected int[] nodeStartOffsets;
 
     public EncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, StructuredGraph sourceGraph) {
-        this(encoding, startOffset, objects, types, sourceGraph.getAssumptions(), sourceGraph.getMethods(), sourceGraph.hasUnsafeAccess(), sourceGraph.trackNodeSourcePosition());
+        this(encoding,
+                        startOffset,
+                        objects,
+                        types,
+                        sourceGraph.getAssumptions(),
+                        sourceGraph.isRecordingInlinedMethods() ? sourceGraph.getMethods() : null,
+                        sourceGraph.hasUnsafeAccess(),
+                        sourceGraph.trackNodeSourcePosition());
     }
 
     public EncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, Assumptions assumptions, List<ResolvedJavaMethod> inlinedMethods,
@@ -138,6 +145,10 @@ public class EncodedGraph {
 
     public Assumptions getAssumptions() {
         return assumptions;
+    }
+
+    public boolean isRecordingInlinedMethods() {
+        return inlinedMethods != null;
     }
 
     public List<ResolvedJavaMethod> getInlinedMethods() {

@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ImmutableConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -56,11 +56,11 @@ public final class ParserKlass {
     /**
      * Unresolved constant pool, only trivial entries (with no resolution involved) are computed.
      */
-    private final ConstantPool pool;
+    private final ImmutableConstantPool pool;
 
     private final int thisKlassIndex;
 
-    public ParserKlass(ConstantPool pool,
+    public ParserKlass(ImmutableConstantPool pool,
                     int flags,
                     Symbol<Name> name,
                     Symbol<Type> type,
@@ -110,7 +110,7 @@ public final class ParserKlass {
         return superInterfaces;
     }
 
-    public ConstantPool getConstantPool() {
+    public ImmutableConstantPool getConstantPool() {
         return pool;
     }
 

@@ -29,10 +29,6 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.List;
 
-import jdk.graal.compiler.debug.MethodFilter;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionValues;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -44,6 +40,10 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+
+import jdk.graal.compiler.debug.MethodFilter;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionValues;
 
 public final class ReachabilityTracePrinter {
     public static final String PATH_MESSAGE_PREFIX = "See the generated report for a complete reachability trace: ";
@@ -119,13 +119,9 @@ public final class ReachabilityTracePrinter {
                 continue;
             }
 
-            if (type.isAllocated()) {
-                String header = "Type " + type.toJavaName() + " is marked as allocated";
-                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getAllocatedReason(), header);
-                writer.println(trace);
-            } else if (type.isInHeap()) {
-                String header = "Type " + type.toJavaName() + " is marked as in-heap";
-                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getInHeapReason(), header);
+            if (type.isInstantiated()) {
+                String header = "Type " + type.toJavaName() + " is marked as instantiated";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getInstantiatedReason(), header);
                 writer.println(trace);
             } else {
                 String header = "Type " + type.toJavaName() + " is marked as reachable";

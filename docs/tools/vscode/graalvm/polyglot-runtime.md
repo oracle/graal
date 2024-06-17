@@ -261,7 +261,7 @@ To start the Language Server Protocol, pass the `--lsp` option to the command li
 This extension works as a client to the Language Server Protocol.
 By default, a language server is started as a part of every process being executed or debugged via the VS Code user interface.
 The other possibility (available on option) is a language server started as a separated process that is informed about every application being executed or debugged.
-It tries to "dry-run" the same code as the original application and serve the run-time data afterwards.
+It tries to "dry-run" the same code as the original application and serve the runtime data afterwards.
 Currently, both approaches start the language server, providing the smart editing features for the following GraalVM-supported languages - JavaScript, Python, R, Ruby, and [SimpleLanguage](https://github.com/graalvm/simplelanguage).
 
 > Important: GraalVM's Language Server Protocol itself does not provide the static data usually gathered by parsing the application sources (as these data are sometimes fuzzy in the case of dynamic languages). Instead, it was designed to provide the accurate dynamic data gathered from the application runtime.

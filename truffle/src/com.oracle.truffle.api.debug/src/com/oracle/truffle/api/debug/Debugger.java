@@ -305,7 +305,9 @@ public final class Debugger {
     /**
      * Disable stepping on the current thread. The current thread must be in an entered context.
      * Assure that the stepping is restored again by calling {@link #restoreStepping()} like:
-     * {@link DebuggerSnippets#disableStepping}
+     *
+     * {@snippet file="com/oracle/truffle/api/debug/Debugger.java"
+     * region="DebuggerSnippets#disableStepping"}
      * <p>
      * The typical usage is to disable stepping on a specific code path. E.g. when a guest code is
      * executed as a safepoint action, which executes out of an apparent code flow. The calls to
@@ -456,7 +458,7 @@ class DebuggerSnippets {
 
     public void disableStepping() {
         Engine engine = Engine.create();
-        // BEGIN: DebuggerSnippets#disableStepping
+        // @start region = "DebuggerSnippets#disableStepping"
         Debugger debugger = Debugger.find(engine);
         debugger.disableStepping();
         try {
@@ -464,7 +466,7 @@ class DebuggerSnippets {
         } finally {
             debugger.restoreStepping();
         }
-        // END: DebuggerSnippets#disableStepping
+        // @end region = "DebuggerSnippets#disableStepping"
     }
 
 }

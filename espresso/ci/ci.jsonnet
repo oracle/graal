@@ -1,5 +1,6 @@
 {
   local common = import 'ci_common/common.jsonnet',
+  local utils = import '../../ci/ci_common/common-utils.libsonnet',
 
   suite_name: 'espresso',
   basic_guard_includes: [],
@@ -7,7 +8,7 @@
   nativeimage_guard_includes: [],
   vm_guard_includes: [],
 
-  builds: common.builds + [
+  local _builds = common.builds + [
     // Benchmarks
     // AWFY peak perf. benchmarks
     common.jdk21_weekly_bench_linux    + common.espresso_benchmark('jvm-ce-llvm', 'awfy:*'                                        , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk21-linux-amd64'},
@@ -48,5 +49,7 @@
     // Memory footprint
     common.jdk21_on_demand_linux       + common.espresso_minheap_benchmark('jvm-ce-llvm', 'awfy:*', 'infinite-overhead')                                                             + {name: 'ondemand-bench-espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk21-linux-amd64'},
     common.jdk21_on_demand_bench_linux + common.espresso_minheap_benchmark('jvm-ce-llvm', 'awfy:*', '1.5-overhead')                                                                  + {name: 'ondemand-bench-espresso-jvm-ce-awfy-minheap-1.5-ovh-jdk21-linux-amd64'},
-  ]
+  ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

@@ -87,7 +87,6 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
         if (scope != null) {
             scope.setCallTree(tree);
         }
-
         tree.dumpBasic("Before Inline");
         if (TruffleCompilerOptions.Inlining.getValue(context.compilerOptions)) {
             policy.run(tree);

@@ -44,9 +44,9 @@ import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
-import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
-import jdk.graal.compiler.nodes.gc.SerialWriteBarrier;
-import jdk.graal.compiler.nodes.gc.WriteBarrier;
+import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
+import jdk.graal.compiler.nodes.gc.WriteBarrierNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.type.StampTool;
@@ -73,9 +73,9 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
 
     public void registerLowerings(MetaAccessProvider metaAccess, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         PostWriteBarrierLowering lowering = new PostWriteBarrierLowering(metaAccess);
-        lowerings.put(SerialWriteBarrier.class, lowering);
+        lowerings.put(SerialWriteBarrierNode.class, lowering);
         // write barriers are currently always imprecise
-        lowerings.put(SerialArrayRangeWriteBarrier.class, lowering);
+        lowerings.put(SerialArrayRangeWriteBarrierNode.class, lowering);
     }
 
     @Snippet
@@ -118,7 +118,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         RememberedSet.get().dirtyCardForAlignedObject(fixedObject, verifyOnly);
     }
 
-    private class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrier> {
+    private class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrierNode> {
         private final ResolvedJavaType storedContinuationType;
 
         PostWriteBarrierLowering(MetaAccessProvider metaAccess) {
@@ -126,7 +126,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         }
 
         @Override
-        public void lower(WriteBarrier barrier, LoweringTool tool) {
+        public void lower(WriteBarrierNode barrier, LoweringTool tool) {
             Arguments args = new Arguments(postWriteBarrierSnippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
 
@@ -149,9 +149,9 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
-        private static boolean getVerifyOnly(WriteBarrier barrier) {
-            if (barrier instanceof SerialWriteBarrier) {
-                return ((SerialWriteBarrier) barrier).getVerifyOnly();
+        private static boolean getVerifyOnly(WriteBarrierNode barrier) {
+            if (barrier instanceof SerialWriteBarrierNode) {
+                return ((SerialWriteBarrierNode) barrier).getVerifyOnly();
             }
             return false;
         }

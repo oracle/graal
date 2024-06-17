@@ -177,7 +177,7 @@ public abstract class LoopNode extends Node {
      * <pre>
      * public int executeCustomLoopSum(int[] data) {
      *     int sum = 0;
-     *     for (int i = 0; i < data.length; i++) {
+     *     for (int i = 0; i &lt; data.length; i++) {
      *         sum += data[i];
      *     }
      *     LoopNode.reportLoopCount(this, data.length);

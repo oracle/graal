@@ -32,7 +32,7 @@ outlined in the [Reporting Vulnerabilities guide](https://www.oracle.com/corpora
 
 ## Polyglot Languages
 
-For every Polyglot language shipped with GraalVM, a launcher, e.g., interactive shell, is provided.
+For every Polyglot language shipped with GraalVM, a launcher, for example, an interactive shell, is provided.
 These launchers behave in the same way and come with the same security guarantees as their "original" counterparts.
 
 ### Polyglot Sandboxing
@@ -54,13 +54,13 @@ Typically, these languages are not memory-safe unless using managed execution an
 
 In managed mode, all access to unmanaged code including the operating system is mediated by the language runtime. In particular this means that:
 
-* In regards to temporal and spatial memory safety, memory is allocated from the Java heap. This means that memory allocations are managed objects and all accesses are performed in a memory-safe manner (no arbitrary pointer arithmetics and no unchecked out-of-bounds accesses).
+* In regards to temporal and spatial memory safety, memory is allocated from the Java heap. This means that memory allocations are managed objects and all accesses are performed in a memory-safe manner (no arbitrary pointer arithmetic and no unchecked out-of-bounds accesses).
 * Regarding type safety, it is not possible to reinterpret a data pointer into a function pointer and execute arbitrary instructions (since these are distinct pointer types for LLVM runtime).
 * System calls are intercepted and routed to the corresponding Truffle APIs. For example, file IO is mapped to the Truffle `FileSystem` API.
-The set of currently supported system calls is very limited -- only syscalls that can safely be mapped to the Truffle API level are available. Since LLVM Runtime in managed mode always runs bitcode compiled for Linux/x86, it only needs to implement system calls for this platform.
+The set of currently supported system calls is very limited&mdash;only syscalls that can safely be mapped to the Truffle API level are available. Since LLVM Runtime in managed mode always runs bitcode compiled for Linux/x86, it only needs to implement system calls for this platform.
 * All dependent libraries are executed in managed mode as well, removing all references to natively executed system libraries. This includes libraries that are provided by the LLVM Runtime, such as muslibc.
 
-Managed mode can be selected when creating a context `(Context.create())` or when calling the `bin/lli` binary by specifying the `--llvm.managed` option. A "managed" context will adhere to any restrictions (e.g., `allowIO`) passed during context creation and does not need the `allowNativeAccess` privilege.
+Managed mode can be selected when creating a context `(Context.create())` or when calling the `bin/lli` binary by specifying the `--llvm.managed` option. A "managed" context will adhere to any restrictions (for example, `allowIO`) passed during context creation and does not need the `allowNativeAccess` privilege.
 
 ## Native Image
 

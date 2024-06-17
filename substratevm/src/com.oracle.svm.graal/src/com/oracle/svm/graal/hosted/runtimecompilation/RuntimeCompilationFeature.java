@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -87,6 +86,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
+import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
@@ -124,19 +124,23 @@ import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.ExplicitOOMEExceptionEdges;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
@@ -144,6 +148,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -172,7 +177,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
         public static final HostedOptionKey<Boolean> EnforceMaxRuntimeCompileMethods = new HostedOptionKey<>(false);
 
-        @Option(help = "Perform InlineBeforeAnalysis on runtime compiled methods")//
+        @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
         public static final HostedOptionKey<Boolean> RuntimeCompilationInlineBeforeAnalysis = new HostedOptionKey<>(true);
     }
 
@@ -218,6 +223,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private final Set<SubstrateMethod> substrateAnalysisMethods = ConcurrentHashMap.newKeySet();
     private final Map<AnalysisMethod, String> invalidForRuntimeCompilation = new ConcurrentHashMap<>();
     private final Set<RuntimeCompilationCandidate> runtimeCompilationCandidates = ConcurrentHashMap.newKeySet();
+    private final Set<AnalysisMethod> runtimeCompilationsFailedDuringParsing = ConcurrentHashMap.newKeySet();
     private CallTreeInfo callTreeMetadata = null;
     private HostedProviders analysisProviders = null;
     private AllowInliningPredicate allowInliningPredicate = (builder, target) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
@@ -259,7 +265,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         initialized = true;
 
         hostedProviders = newHostedProviders;
-        graphBuilderConfig = newGraphBuilderConfig.withNodeSourcePosition(true);
+
+        graphBuilderConfig = newGraphBuilderConfig.withNodeSourcePosition(true).withOOMEExceptionEdges(ExplicitOOMEExceptionEdges.DisableOOMEExceptionEdges);
         assert !runtimeCompilationCandidatePredicateUpdated : "Updated compilation predicate multiple times";
         runtimeCompilationCandidatePredicate = newRuntimeCompilationCandidatePredicate;
         runtimeCompilationCandidatePredicateUpdated = true;
@@ -326,12 +333,12 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         if (registeredRuntimeCompilations.add(aMethod)) {
             aMethod.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
             /*
-             * For static methods it is important to also register the deopt targets to ensure the
-             * method will be linked appropriately. However, we do not need to make the entire flow
-             * until we see what FrameStates exist.
+             * For static methods it is important to also register the runtime and deopt targets as
+             * roots to ensure the methods will be linked appropriately. However, we do not need to
+             * make the entire flow for the deopt version until we see what FrameStates exist within
+             * the runtime version.
              */
-            var deoptMethod = aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
-            SubstrateCompilationDirectives.singleton().registerDeoptTarget(deoptMethod);
+            getStubDeoptVersion(aMethod);
             config.registerAsRoot(aMethod, true, "Runtime compilation, registered in " + RuntimeCompilationFeature.class, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
         }
 
@@ -386,12 +393,12 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
                         runtimeConfig.getProviders().getSnippetReflection(), runtimeProviders.getWordTypes(), runtimeProviders.getPlatformConfigurationProvider(),
                         new GraphPrepareMetaAccessExtensionProvider(),
-                        runtimeProviders.getLoopsDataProvider());
+                        runtimeProviders.getLoopsDataProvider(), runtimeProviders.getIdentityHashCodeProvider());
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
 
-        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, config.getNativeLibraries(),
+        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), config.getNativeLibraries(),
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
@@ -430,12 +437,24 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
          */
         SubstrateReplacements replacements = (SubstrateReplacements) TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders().getReplacements();
         for (NodeClass<?> nodeClass : replacements.getSnippetNodeClasses()) {
-            config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
+            config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsInstantiated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
+
+        /*
+         * The snippet graphs are prepared for runtime compilation by the
+         * RuntimeCompilationGraphEncoder, so constants are represented as SubstrateObjectConstant.
+         * Get back the ImageHeapConstant.
+         */
+        Function<Object, Object> objectTransformer = (object) -> {
+            if (object instanceof JavaConstant constant) {
+                return SubstrateGraalUtils.runtimeToHosted(constant, config.getUniverse().getHeapScanner());
+            }
+            return object;
+        };
         /*
          * Ensure runtime snippet graphs are analyzed.
          */
-        NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions());
+        NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions(), objectTransformer);
 
         /*
          * Ensure that all snippet methods have their SubstrateMethod object created by the object
@@ -467,7 +486,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         AnalysisMetaAccess metaAccess = config.getMetaAccess();
         NodeClass<?>[] nodeClasses = graphEncoder.getNodeClasses();
         for (NodeClass<?> nodeClass : nodeClasses) {
-            metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
+            metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsInstantiated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
         if (TruffleRuntimeCompilationSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();
@@ -497,6 +516,12 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     public void afterAnalysis(Feature.AfterAnalysisAccess access) {
         VMError.guarantee(callTreeMetadata == null);
         callTreeMetadata = CallTreeInfo.create(((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse(), invalidForRuntimeCompilation);
+        if (!runtimeCompilationsFailedDuringParsing.isEmpty()) {
+            System.out.println("PermanentBailouts seen while parsing runtime compiled methods. One reason for this can be encountering invalid frame states.");
+            for (AnalysisMethod failedMethod : runtimeCompilationsFailedDuringParsing) {
+                printFailingRuntimeMethodTrace(callTreeMetadata, failedMethod, failedMethod);
+            }
+        }
 
         ProgressReporter.singleton().setNumRuntimeCompiledMethods(callTreeMetadata.runtimeCompilations().size());
         // after analysis has completed we must ensure no new SubstrateTypes are introduced
@@ -580,17 +605,21 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         } else if (errorMethod.isDeoptTarget()) {
                             failingRuntimeMethod = errorMethod.getMultiMethod(RUNTIME_COMPILED_METHOD);
                         }
-                        System.out.println("Parsing failed on a special method version: " + errorMethod.format("%H.%n"));
-                        System.out.println("Method reachability trace");
-                        if (failingRuntimeMethod != null) {
-                            Arrays.stream(CallTreeInfo.getCallTrace(treeInfo, failingRuntimeMethod, registeredRuntimeCompilations)).forEach(System.out::println);
-                        } else {
-                            System.out.println("trace unavailable");
-                        }
+                        printFailingRuntimeMethodTrace(treeInfo, failingRuntimeMethod, errorMethod);
                         System.out.println("error: " + e.getMessage());
                     }
                 }
             }
+        }
+    }
+
+    private void printFailingRuntimeMethodTrace(CallTreeInfo treeInfo, AnalysisMethod failingRuntimeMethod, AnalysisMethod errorMethod) {
+        System.out.println("Parsing failed on a special method version: " + errorMethod.format("%H.%n"));
+        System.out.println("Method reachability trace");
+        if (failingRuntimeMethod != null) {
+            Arrays.stream(CallTreeInfo.getCallTrace(treeInfo, failingRuntimeMethod, registeredRuntimeCompilations)).forEach(System.out::println);
+        } else {
+            System.out.println("trace unavailable");
         }
     }
 
@@ -649,11 +678,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             if (graph == null) {
                 if (!method.hasBytecodes()) {
                     recordFailed(method);
+                    runtimeCompilationsFailedDuringParsing.add(method);
                     return HostVM.PARSING_FAILED;
                 }
 
                 parsed = true;
-                graph = new StructuredGraph.Builder(debug.getOptions(), debug, StructuredGraph.AllowAssumptions.YES).method(method)
+                graph = new StructuredGraph.Builder(debug.getOptions(), debug, StructuredGraph.AllowAssumptions.YES)
+                                .method(method)
                                 /*
                                  * Needed for computation of the list of all runtime compilable
                                  * methods in TruffleFeature.
@@ -668,6 +699,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                     } catch (PermanentBailoutException ex) {
                         bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
                         recordFailed(method);
+                        runtimeCompilationsFailedDuringParsing.add(method);
                         return HostVM.PARSING_FAILED;
                     }
                 }
@@ -678,11 +710,6 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                     new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
                 }
                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, analysisProviders);
-
-                if (DeoptimizationUtils.createGraphInvalidator(graph).get()) {
-                    recordFailed(method);
-                    return HostVM.PARSING_FAILED;
-                }
 
             } catch (Throwable ex) {
                 debug.handle(ex);
@@ -700,16 +727,16 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
             PointsToAnalysisMethod aMethod = (PointsToAnalysisMethod) graph.method();
             MultiMethod.MultiMethodKey multiMethodKey = aMethod.getMultiMethodKey();
-            Supplier<Boolean> graphInvalidator = DeoptimizationUtils.createGraphInvalidator(graph);
-            if (aMethod.isOriginalMethod() && DeoptimizationUtils.canDeoptForTesting(aMethod, false, graphInvalidator)) {
-                DeoptimizationUtils.registerDeoptEntriesForDeoptTesting(bb, graph, aMethod);
-                return true;
-            }
+            Supplier<Boolean> graphChecker = DeoptimizationUtils.createGraphChecker(graph,
+                            multiMethodKey == RUNTIME_COMPILED_METHOD ? DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES : DeoptimizationUtils.AOT_COMPILATION_INVALID_NODES);
             if (multiMethodKey != ORIGINAL_METHOD) {
-                if (graphInvalidator.get()) {
+                if (!graphChecker.get()) {
                     recordFailed(aMethod);
                     return false;
                 }
+            } else if (DeoptimizationUtils.canDeoptForTesting(aMethod, false, graphChecker)) {
+                DeoptimizationUtils.registerDeoptEntriesForDeoptTesting(bb, graph, aMethod);
+                return true;
             }
             if (multiMethodKey == RUNTIME_COMPILED_METHOD) {
                 /*
@@ -720,6 +747,9 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 /*
                  * Because this graph will have its flowgraph immediately updated after this, there
                  * is no reason to make this method's flowgraph a stub on creation.
+                 *
+                 * We intentionally do not call getFullDeoptVersion because we want to wait until
+                 * all deopt entries are registered before triggering the flow update.
                  */
                 Collection<ResolvedJavaMethod> recomputeMethods = DeoptimizationUtils.registerDeoptEntries(graph, registeredRuntimeCompilations.contains(origMethod),
                                 (deoptEntryMethod -> ((PointsToAnalysisMethod) deoptEntryMethod).getOrCreateMultiMethod(DEOPT_TARGET_METHOD)));
@@ -748,11 +778,16 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        public void initializeInlineBeforeAnalysisPolicy(SVMHost svmHost, InlineBeforeAnalysisPolicyUtils inliningUtils) {
-            if (RuntimeCompilationFeature.Options.RuntimeCompilationInlineBeforeAnalysis.getValue()) {
-                assert runtimeInlineBeforeAnalysisPolicy == null;
-                runtimeInlineBeforeAnalysisPolicy = new RuntimeCompilationInlineBeforeAnalysisPolicy(svmHost, inliningUtils);
+        public void afterParsingHook(AnalysisMethod method, StructuredGraph graph) {
+            if (method.isDeoptTarget()) {
+                new RuntimeCompiledMethodSupport.ConvertMacroNodes().apply(graph);
             }
+        }
+
+        @Override
+        public void initializeInlineBeforeAnalysisPolicy(SVMHost svmHost, InlineBeforeAnalysisPolicyUtils inliningUtils) {
+            assert runtimeInlineBeforeAnalysisPolicy == null : runtimeInlineBeforeAnalysisPolicy;
+            runtimeInlineBeforeAnalysisPolicy = new RuntimeCompilationInlineBeforeAnalysisPolicy(svmHost, inliningUtils);
         }
 
         @Override
@@ -762,11 +797,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             } else if (multiMethodKey == DEOPT_TARGET_METHOD) {
                 return InlineBeforeAnalysisPolicy.NO_INLINING;
             } else if (multiMethodKey == RUNTIME_COMPILED_METHOD) {
-                if (RuntimeCompilationFeature.Options.RuntimeCompilationInlineBeforeAnalysis.getValue()) {
-                    assert runtimeInlineBeforeAnalysisPolicy != null;
-                    return runtimeInlineBeforeAnalysisPolicy;
-                }
-                return InlineBeforeAnalysisPolicy.NO_INLINING;
+                assert runtimeInlineBeforeAnalysisPolicy != null;
+                return runtimeInlineBeforeAnalysisPolicy;
             } else {
                 throw VMError.shouldNotReachHere("Unexpected method key: %s", multiMethodKey);
             }
@@ -823,8 +855,18 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
+        protected boolean shouldOmitIntermediateMethodInState(AnalysisMethod method) {
+            /*
+             * We don't want to miss any FrameStates within runtime compiled methods since they are
+             * needed in case a deoptimization occurs.
+             */
+            return false;
+        }
+
+        @Override
         protected FixedWithNextNode processInvokeArgs(AnalysisMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
             StructuredGraph graph = insertionPoint.graph();
+            assert SubstrateCompilationDirectives.isRuntimeCompiledMethod(targetMethod) : targetMethod;
             InlinedInvokeArgumentsNode newNode = graph.add(new InlinedInvokeArgumentsNode(targetMethod, arguments));
             newNode.setNodeSourcePosition(sourcePosition);
             graph.addAfterFixed(insertionPoint, newNode);
@@ -838,7 +880,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             }
 
             InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accScope;
-            if (policyScope instanceof InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope) {
+            if (policyScope instanceof RuntimeCompilationAlwaysInlineScope) {
                 /*
                  * If we are in "trivial inlining" mode, we make inlining decisions as if we are
                  * still the root (= null) accumulative inlining scope.
@@ -857,7 +899,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
              * (i.e., all calls to this method are inlined), then the method's full flow will not
              * need to be created.
              */
-            AnalysisMethod runtimeMethod = method.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+            AnalysisMethod runtimeMethod = getStubRuntimeVersion(method);
             return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(runtimeMethod);
         }
 
@@ -871,32 +913,58 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method) {
             if (outer instanceof InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accOuter) {
                 /*
-                 * once the accumulative policy is activated, then we cannot return to the trivial
-                 * policy
+                 * Once the accumulative policy is activated, we cannot return to the trivial
+                 * policy.
                  */
-                return inliningUtils.createAccumulativeInlineScope(accOuter, method);
+                return inliningUtils.createAccumulativeInlineScope(accOuter, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
 
-            assert outer == null || outer instanceof InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope : "unexpected outer scope: " + outer;
+            assert outer == null || outer instanceof RuntimeCompilationAlwaysInlineScope : "unexpected outer scope: " + outer;
 
             /*
              * Check if trivial is possible. We use the graph size as the main criteria, similar to
              * the trivial inlining for AOT compilation.
-             * 
+             *
              * In addition, we do not allow method handle internals to be processed by the trivial
              * inlining. The regular accumulative inlining scope has a special mode for method
              * handle intrinsification with larger thresholds in order to fully inline the method
              * handle.
              */
-            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method) && !AnnotationAccess.isAnnotationPresent(method, InlineBeforeAnalysisPolicyUtils.COMPILED_LAMBDA_FORM_ANNOTATION);
+            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method) && !InlineBeforeAnalysisPolicyUtils.isMethodHandleIntrinsificationRoot(method);
             int inliningDepth = outer == null ? 1 : outer.inliningDepth + 1;
             if (trivialInlineAllowed && inliningDepth <= trivialAllowingInliningDepth) {
-                return new InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope(inliningDepth);
+                return new RuntimeCompilationAlwaysInlineScope(inliningDepth);
             } else {
                 // start with a new accumulative inline scope
-                return inliningUtils.createAccumulativeInlineScope(null, method);
+                return inliningUtils.createAccumulativeInlineScope(null, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends AnalysisMethod> T getStubDeoptVersion(T implementation) {
+        return (T) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends AnalysisMethod> T getFullDeoptVersion(BigBang bb, T implementation, InvokeTypeFlow parsingReason) {
+        PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD);
+        PointsToAnalysis analysis = (PointsToAnalysis) bb;
+        runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, true);
+        return (T) runtimeMethod;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends AnalysisMethod> T getStubRuntimeVersion(T implementation) {
+        return (T) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends AnalysisMethod> T getFullRuntimeVersion(BigBang bb, T implementation, InvokeTypeFlow parsingReason) {
+        PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
+        PointsToAnalysis analysis = (PointsToAnalysis) bb;
+        runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, false);
+        return (T) runtimeMethod;
     }
 
     private class RuntimeCompilationAnalysisPolicy implements HostVM.MultiMethodAnalysisPolicy {
@@ -928,9 +996,9 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                  * method, so deopt targets must be created for them as well.
                  */
                 if (registeredRuntimeCompilation) {
-                    return List.of(implementation, getStubDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
+                    return List.of(implementation, getStubDeoptVersion(implementation), getFullRuntimeVersion(bb, implementation, invokeFlow));
                 } else if (SubstrateCompilationDirectives.singleton().isFrameInformationRequired(implementation)) {
-                    return List.of(implementation, getDeoptVersion(bb, implementation, true, invokeFlow));
+                    return List.of(implementation, getFullDeoptVersion(bb, implementation, invokeFlow));
                 } else if (DeoptimizationUtils.canDeoptForTesting(implementation, false, () -> false)) {
                     /*
                      * If the target is registered for deoptimization, then we must also make a
@@ -952,7 +1020,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                      * runtime deoptimizes).
                      */
                     if (runtimeCompilationCandidate) {
-                        return List.of(implementation, getStubDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
+                        return List.of(implementation, getStubDeoptVersion(implementation), getFullRuntimeVersion(bb, implementation, invokeFlow));
                     } else {
                         /*
                          * If this method cannot be jitted, then only the original implementation is
@@ -972,7 +1040,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                      * runtime compiled method's invoke.
                      */
                     if (runtimeCompilationCandidate) {
-                        return List.of(implementation, getStubDeoptVersion(implementation), getRuntimeVersion(bb, implementation, false, invokeFlow));
+                        return List.of(implementation, getStubDeoptVersion(implementation), getStubRuntimeVersion(implementation));
                     } else {
                         /*
                          * If this method cannot be jitted, then only the original implementation is
@@ -983,44 +1051,6 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 }
             }
 
-        }
-
-        protected <T extends AnalysisMethod> T getStubDeoptVersion(T implementation) {
-            /*
-             * Flows for deopt versions are only created once a frame state for the method is seen
-             * within a runtime compiled method.
-             */
-            return getDeoptVersion(null, implementation, false, null);
-        }
-
-        @SuppressWarnings("unchecked")
-        protected <T extends AnalysisMethod> T getDeoptVersion(BigBang bb, T implementation, boolean createFlow, InvokeTypeFlow parsingReason) {
-            if (createFlow) {
-                PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD);
-                PointsToAnalysis analysis = (PointsToAnalysis) bb;
-                runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, true);
-                return (T) runtimeMethod;
-            } else {
-                /*
-                 * If a flow is not needed then temporarily a stub can be created.
-                 */
-                return (T) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        protected <T extends AnalysisMethod> T getRuntimeVersion(BigBang bb, T implementation, boolean createFlow, InvokeTypeFlow parsingReason) {
-            if (createFlow) {
-                PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
-                PointsToAnalysis analysis = (PointsToAnalysis) bb;
-                runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, false);
-                return (T) runtimeMethod;
-            } else {
-                /*
-                 * If a flow is not needed then temporarily a stub can be created.
-                 */
-                return (T) implementation.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
-            }
         }
 
         @Override
@@ -1112,5 +1142,44 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     @Override
     public boolean canVirtualize(ResolvedJavaType instanceType) {
         return true;
+    }
+}
+
+/**
+ * This scope will always allow nodes to be inlined.
+ */
+class RuntimeCompilationAlwaysInlineScope extends InlineBeforeAnalysisPolicy.AbstractPolicyScope {
+
+    RuntimeCompilationAlwaysInlineScope(int inliningDepth) {
+        super(inliningDepth);
+    }
+
+    @Override
+    public void commitCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
+        // nothing to do
+    }
+
+    @Override
+    public void abortCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
+        // nothing to do
+    }
+
+    @Override
+    public boolean processNode(AnalysisMetaAccess metaAccess, AnalysisMethod method, Node node) {
+        /*
+         * Inline as long as an invalid node has not been seen.
+         */
+        return !DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES.test(node);
+    }
+
+    @Override
+    public boolean processNonInlinedInvoke(CoreProviders providers, CallTargetNode node) {
+        // always inlining
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return "RuntimeCompilationAlwaysInlineScope";
     }
 }

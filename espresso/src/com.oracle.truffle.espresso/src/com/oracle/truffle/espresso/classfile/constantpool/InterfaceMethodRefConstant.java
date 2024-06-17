@@ -108,7 +108,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
          * programming language, and are disallowed in Java SE 8 and above.)
          */
         @Override
-        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             METHODREF_RESOLVE_COUNT.inc();
             EspressoContext context = pool.getContext();
             Meta meta = context.getMeta();

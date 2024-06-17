@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,9 +90,11 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         String name = SubstrateUtil.classLoaderNameAndId(loader);
         // name will look like "org.foo.bar.FooBarClassLoader @1234"
         // trim it down to something more manageable
+        // escaping quotes in the classlaoder name does not work in GDB
+        // but the name is still unique without quotes
         name = SubstrateUtil.stripPackage(name);
         name = stripOuterClass(name);
-        name = name.replace(" @", "_");
+        name = name.replace(" @", "_").replace("'", "").replace("\"", "");
         return name;
     }
 

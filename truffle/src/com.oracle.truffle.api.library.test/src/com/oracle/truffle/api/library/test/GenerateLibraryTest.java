@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.library.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
@@ -56,7 +55,6 @@ import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.CachedLibraryTest.SimpleDispatchedNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
@@ -149,7 +147,6 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         uncached = getUncachedDispatch(SampleLibrary.class);
-        assertSame(NodeCost.MEGAMORPHIC, uncached.getCost());
         assertEquals("s1_uncached", uncached.call(s1));
         assertEquals("s1_uncached", uncached.call(s1));
         assertEquals("s2_uncached", uncached.call(s2));
@@ -173,45 +170,29 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         cached = createCachedDispatch(SampleLibrary.class, 0);
-        assertSame(NodeCost.MEGAMORPHIC, cached.getCost());
         assertEquals("s1_uncached", cached.call(s1));
-        assertSame(NodeCost.MEGAMORPHIC, cached.getCost());
 
         cached = createCachedDispatch(SampleLibrary.class, 1);
-        assertSame(NodeCost.UNINITIALIZED, cached.getCost());
         assertEquals("s1_cached", cached.call(s1));
-        assertSame(NodeCost.MONOMORPHIC, cached.getCost());
         assertEquals("s1_cached", cached.call(s1));
-        assertSame(NodeCost.MONOMORPHIC, cached.getCost());
         assertEquals("s2_uncached", cached.call(s2));
-        assertSame(NodeCost.MEGAMORPHIC, cached.getCost());
         assertEquals("s3_uncached", cached.call(s3));
         assertEquals("s1_uncached", cached.call(s1));
 
         cached = createCachedDispatch(SampleLibrary.class, 2);
-        assertSame(NodeCost.UNINITIALIZED, cached.getCost());
         assertEquals("s1_cached", cached.call(s1));
-        assertSame(NodeCost.MONOMORPHIC, cached.getCost());
         assertEquals("s1_cached", cached.call(s1));
-        assertSame(NodeCost.MONOMORPHIC, cached.getCost());
         assertEquals("s2_cached", cached.call(s2));
-        assertSame(NodeCost.POLYMORPHIC, cached.getCost());
         assertEquals("s3_uncached", cached.call(s3));
-        assertSame(NodeCost.MEGAMORPHIC, cached.getCost());
         assertEquals("s2_uncached", cached.call(s2));
         assertEquals("s1_uncached", cached.call(s1));
 
         SimpleDispatchedNode.limit = 3;
         cached = createCachedDispatch(SampleLibrary.class, 3);
-        assertSame(NodeCost.UNINITIALIZED, cached.getCost());
         assertEquals("s1_cached", cached.call(s1));
-        assertSame(NodeCost.MONOMORPHIC, cached.getCost());
         assertEquals("s1_cached", cached.call(s1));
-        assertSame(NodeCost.MONOMORPHIC, cached.getCost());
         assertEquals("s2_cached", cached.call(s2));
-        assertSame(NodeCost.POLYMORPHIC, cached.getCost());
         assertEquals("s3_cached", cached.call(s3));
-        assertSame(NodeCost.POLYMORPHIC, cached.getCost());
 
     }
 

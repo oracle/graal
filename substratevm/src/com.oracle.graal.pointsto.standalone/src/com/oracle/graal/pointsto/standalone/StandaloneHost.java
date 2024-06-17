@@ -61,6 +61,11 @@ public class StandaloneHost extends HostVM {
         assert existing == null;
     }
 
+    @Override
+    public void registerType(AnalysisType analysisType, int identityHashCode) {
+        registerType(analysisType);
+    }
+
     public AnalysisType lookupType(Class<?> clazz) {
         assert clazz != null : "Class must not be null";
         return classToType.get(clazz);

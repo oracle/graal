@@ -27,7 +27,6 @@ package jdk.graal.compiler.hotspot;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.common.NativeImageReinitialize;
 
 /**
@@ -60,12 +59,29 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     VERIFY_OOPS,
     VERIFY_OOP_BITS,
     VERIFY_OOP_MASK,
-    VERIFY_OOP_COUNT_ADDRESS();
+    VERIFY_OOP_COUNT_ADDRESS,
+    Z_BARRIER_RELOCATION_FORMAT_LOAD_GOOD_BEFORE_SHL("amd64"),
+    Z_BARRIER_RELOCATION_FORMAT_LOAD_BAD_AFTER_TEST("amd64"),
+    Z_BARRIER_RELOCATION_FORMAT_MARK_BAD_AFTER_TEST("amd64"),
+    Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_AFTER_CMP("amd64"),
+    Z_BARRIER_RELOCATION_FORMAT_STORE_BAD_AFTER_TEST("amd64"),
+    Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_AFTER_OR("amd64"),
+    Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_AFTER_MOV("amd64"),
+    Z_BARRIER_RELOCATION_FORMAT_LOAD_GOOD_BEFORE_TB_X("aarch64"),
+    Z_BARRIER_RELOCATION_FORMAT_MARK_BAD_BEFORE_MOV("aarch64"),
+    Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_BEFORE_MOV("aarch64"),
+    Z_BARRIER_RELOCATION_FORMAT_STORE_BAD_BEFORE_MOV("aarch64");
 
     @NativeImageReinitialize private Integer value;
+    private final String arch;
 
     HotSpotMarkId() {
+        this(null);
+    }
+
+    HotSpotMarkId(String arch) {
         this.value = null;
+        this.arch = arch;
     }
 
     void setValue(Integer value) {
@@ -74,6 +90,10 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
 
     public int getValue() {
         return value;
+    }
+
+    public String getArch() {
+        return arch;
     }
 
     @Override
@@ -97,5 +117,4 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
                         ", value=" + value +
                         '}';
     }
-
 }

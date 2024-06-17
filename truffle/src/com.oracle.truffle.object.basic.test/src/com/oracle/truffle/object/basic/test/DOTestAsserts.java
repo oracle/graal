@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -170,8 +170,8 @@ public abstract class DOTestAsserts {
         return true;
     }
 
-    @SuppressWarnings("deprecation")
     public static void assertObjectLocation(Location location) {
-        Assert.assertTrue(location instanceof com.oracle.truffle.api.object.ObjectLocation);
+        Assert.assertFalse(location.isValue());
+        Assert.assertTrue(((LocationImpl) location).getType() == Object.class);
     }
 }

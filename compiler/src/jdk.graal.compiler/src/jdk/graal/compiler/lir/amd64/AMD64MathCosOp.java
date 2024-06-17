@@ -26,6 +26,8 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.r8;
@@ -45,8 +47,6 @@ import static jdk.vm.ci.amd64.AMD64.xmm4;
 import static jdk.vm.ci.amd64.AMD64.xmm5;
 import static jdk.vm.ci.amd64.AMD64.xmm6;
 import static jdk.vm.ci.amd64.AMD64.xmm7;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
@@ -68,12 +68,12 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
  *
  *          X =~= N * pi/32 + r
  *
- *     so that |r| <= pi/64 + epsilon. We restrict inputs to those
- *     where |N| <= 932560. Beyond this, the range reduction is
+ *     so that |r| &lt;= pi/64 + epsilon. We restrict inputs to those
+ *     where |N| &lt;= 932560. Beyond this, the range reduction is
  *     insufficiently accurate. For extremely small inputs,
  *     denormalization can occur internally, impacting performance.
  *     This means that the main path is actually only taken for
- *     2^-252 <= |X| < 90112.
+ *     2^-252 &lt;= |X| &lt; 90112.
  *
  *     To avoid branches, we perform the range reduction to full
  *     accuracy each time.
@@ -152,7 +152,7 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
  *          msc3       =   r4 * psc3
  *          sincospols =   psc1 + msc3
  *          pols       =   sincospols *
- *                         <S_hi * r^2 | (C_hl + sigma) * r^3>
+ *                         &lt;S_hi * r^2 | (C_hl + sigma) * r^3>
  *
  *     4. CORRECTION TERM
  *
@@ -191,7 +191,7 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
  *
  *     7. SMALL ARGUMENTS
  *
- *     Inputs with |X| < 2^-252 are treated specially as
+ *     Inputs with |X| &lt; 2^-252 are treated specially as
  *     1 - |x|.
  *
  * Special cases:

@@ -881,7 +881,11 @@ public class CommonNodeFactory {
     }
 
     public static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type) {
-        return LLVMCallNode.create(type, functionNode, argNodes, true);
+        return createFunctionCall(functionNode, argNodes, type, false);
+    }
+
+    public static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, boolean mustTail) {
+        return LLVMCallNode.create(type, functionNode, argNodes, true, mustTail);
     }
 
     public static LLVMStatementNode createDebugTrap() {

@@ -727,7 +727,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             Label throwableHandler = new Label();
 
             List<Klass> catchList = computeUniqueCatchList(exceptionTypes);
-            if (catchList.size() > 0) {
+            if (!catchList.isEmpty()) {
                 for (Klass ex : catchList) {
                     mv.visitTryCatchBlock(startBlock, endBlock, runtimeHandler,
                                     dotToSlash(ex.getNameAsString()));
@@ -738,11 +738,26 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             }
             mv.visitLabel(startBlock);
 
+            String invokeName;
+            String invokeSig;
+
             if (returnType.isPrimitive()) {
                 JavaKind kind = returnType.getJavaKind();
-                mv.visitLdcInsn(Type.getType(kind.toBoxedJavaClass()));
+                if (kind == JavaKind.Char) {
+                    mv.visitLdcInsn(Type.getType(kind.toBoxedJavaClass()));
+                    invokeName = "invokeMemberWithCast";
+                    invokeSig = "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;" +
+                                    "[Ljava/lang/Object;)Ljava/lang/Object;";
+                } else {
+                    invokeName = "invokeMember";
+                    invokeSig = "(Ljava/lang/Object;Ljava/lang/String;" +
+                                    "[Ljava/lang/Object;)Ljava/lang/Object;";
+                }
             } else {
                 mv.visitLdcInsn(Type.getType(returnType.getTypeAsString()));
+                invokeName = "invokeMemberWithCast";
+                invokeSig = "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;" +
+                                "[Ljava/lang/Object;)Ljava/lang/Object;";
             }
 
             mv.visitVarInsn(ALOAD, 0);
@@ -764,9 +779,8 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                 mv.visitTypeInsn(ANEWARRAY, JL_OBJECT);
             }
             mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
-                            "invokeMemberWithCast",
-                            "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;" +
-                                            "[Ljava/lang/Object;)Ljava/lang/Object;",
+                            invokeName,
+                            invokeSig,
                             false);
 
             if (returnType == meta._void) {
@@ -839,27 +853,42 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         private void codeUnwrapReturnValue(MethodVisitor mv, Klass type) {
             if (type.isPrimitive()) {
                 JavaKind kind = JavaKind.fromTypeString(type.getTypeAsString());
-                String wrapperClassName = dotToSlash(kind.toBoxedJavaClass().getName());
-                mv.visitTypeInsn(CHECKCAST, wrapperClassName);
-                mv.visitMethodInsn(INVOKEVIRTUAL,
-                                wrapperClassName,
-                                kind.getUnwrapMethodName(), kind.getUnwrapMethodDesc(), false);
 
                 switch (kind) {
-                    case Int:
-                    case Boolean:
-                    case Byte:
-                    case Short:
                     case Char:
+                        String wrapperClassName = dotToSlash(kind.toBoxedJavaClass().getName());
+                        mv.visitTypeInsn(CHECKCAST, wrapperClassName);
+                        mv.visitMethodInsn(INVOKEVIRTUAL,
+                                        wrapperClassName,
+                                        kind.getUnwrapMethodName(), kind.getUnwrapMethodDesc(), false);
+                        mv.visitInsn(IRETURN);
+                        break;
+                    case Int:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asInt", "(Ljava/lang/Object;)I", false);
+                        mv.visitInsn(IRETURN);
+                        break;
+                    case Boolean:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asBoolean", "(Ljava/lang/Object;)Z", false);
+                        mv.visitInsn(IRETURN);
+                        break;
+                    case Byte:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asByte", "(Ljava/lang/Object;)B", false);
+                        mv.visitInsn(IRETURN);
+                        break;
+                    case Short:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asShort", "(Ljava/lang/Object;)S", false);
                         mv.visitInsn(IRETURN);
                         break;
                     case Long:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asLong", "(Ljava/lang/Object;)J", false);
                         mv.visitInsn(LRETURN);
                         break;
                     case Float:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asFloat", "(Ljava/lang/Object;)F", false);
                         mv.visitInsn(FRETURN);
                         break;
                     case Double:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asDouble", "(Ljava/lang/Object;)D", false);
                         mv.visitInsn(DRETURN);
                         break;
                     default:

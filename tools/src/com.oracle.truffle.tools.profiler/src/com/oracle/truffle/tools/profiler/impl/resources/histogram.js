@@ -159,7 +159,7 @@ function h_create_element_for_id(id, bar, width) {
     t.style.textAnchor = "left";
     t.setAttribute("x", xpad + 3);
     t.setAttribute("y", y - 5 + fg_frameheight);
-    t.style.fontSize = fontSize;
+    t.style.fontSize = fontSize + "px";
     t.style.fontFamily = "Verdana";
     t.style.fill = "rgb(0, 0, 0)";
 

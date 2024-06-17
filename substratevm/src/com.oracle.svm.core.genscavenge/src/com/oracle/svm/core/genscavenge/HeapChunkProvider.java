@@ -32,7 +32,6 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
@@ -175,9 +174,7 @@ final class HeapChunkProvider {
      */
     private void pushUnusedAlignedChunk(AlignedHeader chunk) {
         assert VMOperation.isGCInProgress();
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
-        }
+        VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
 
         HeapChunk.setNext(chunk, unusedAlignedChunks.get());
         unusedAlignedChunks.set(chunk);
@@ -281,7 +278,7 @@ final class HeapChunkProvider {
     }
 
     void logFreeChunks(Log log) {
-        HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", true);
+        HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

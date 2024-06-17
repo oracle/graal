@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -144,14 +144,21 @@ public abstract class DynamicObject implements TruffleObject {
 
     private static void verifyShape(Shape shape, Class<? extends DynamicObject> subclass) {
         Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
-        if (!(shapeType == subclass || (shapeType.isAssignableFrom(subclass) && DynamicObject.class.isAssignableFrom(shapeType)))) {
+        assert DynamicObject.class.isAssignableFrom(shapeType) : shapeType;
+        if (!(shapeType == subclass || shapeType == DynamicObject.class || shapeType.isAssignableFrom(subclass)) ||
+                        shape.hasInstanceProperties()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw illegalShape(shape, subclass);
+        }
+    }
+
+    private static IllegalArgumentException illegalShape(Shape shape, Class<? extends DynamicObject> subclass) {
+        Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
+        if (!(shapeType == subclass || shapeType == DynamicObject.class || shapeType.isAssignableFrom(subclass))) {
             throw illegalShapeType(shapeType, subclass);
         }
-        if (shape.hasInstanceProperties()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw illegalShapeProperties();
-        }
+        assert shape.hasInstanceProperties() : shape;
+        throw illegalShapeProperties();
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
@@ -224,10 +231,6 @@ public abstract class DynamicObject implements TruffleObject {
     @TruffleBoundary
     private static CloneNotSupportedException cloneNotSupported() throws CloneNotSupportedException {
         throw new CloneNotSupportedException();
-    }
-
-    final DynamicObject objectClone() throws CloneNotSupportedException {
-        return (DynamicObject) super.clone();
     }
 
     final Object[] getObjectStore() {

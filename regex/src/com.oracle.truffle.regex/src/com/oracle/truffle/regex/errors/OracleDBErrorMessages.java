@@ -42,13 +42,14 @@ package com.oracle.truffle.regex.errors;
 
 public interface OracleDBErrorMessages {
     String UNSUPPORTED_FLAG = "Unsupported match_param flag";
-    String QUANTIFIER_OUT_OF_ORDER = "invalid interval value in regular expression";
     String UNTERMINATED_GROUP = "unmatched parentheses in regular expression";
     String UNMATCHED_LEFT_BRACKET = "unmatched bracket in regular expression";
     String UNMATCHED_RIGHT_PARENTHESIS = "unmatched parentheses in regular expression";
     String MISSING_GROUP_FOR_BACKREFERENCE = "invalid back reference in regular expression";
     String INVALID_CHARACTER_CLASS = "invalid character class in regular expression";
+    String INVALID_INTERVAL = "invalid interval in regular expression";
     String INVALID_RANGE = "invalid range in regular expression";
     String INVALID_COLLATION_ELEMENT = "invalid collation class in regular expression";
     String INVALID_EQUIVALENCE_CLASS = "invalid equivalence class in regular expression";
+    String KNOWN_BUG = "known bug";
 }

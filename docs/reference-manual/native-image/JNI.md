@@ -48,7 +48,7 @@ Such a list can be specified with the following image build argument:
 -H:JNIConfigurationFiles=/path/to/jni-config.json
 ```
 Here, _jni-config.json_ is a JSON configuration file.
-Check the JSON schema for specifing JNI metadata [here](ReachabilityMetadata.md#specifying-metadata-with-json).
+Check the JSON schema for specifying JNI metadata [here](ReachabilityMetadata.md#specifying-metadata-with-json).
 
 The `native-image` builder generates JNI reflection metadata for all classes, methods, and fields referenced in the configuration file.
 More than one JNI configuration can be used by specifying multiple paths for `JNIConfigurationFiles` and separating them with `,`.

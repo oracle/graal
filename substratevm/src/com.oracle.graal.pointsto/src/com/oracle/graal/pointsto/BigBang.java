@@ -33,7 +33,6 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -90,8 +89,6 @@ public interface BigBang extends ReachabilityAnalysis {
 
     DebugContext getDebug();
 
-    boolean extendedAsserts();
-
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
     boolean trackPrimitiveValues();
@@ -111,7 +108,11 @@ public interface BigBang extends ReachabilityAnalysis {
     }
 
     @SuppressWarnings("unused")
-    default void onTypeInstantiated(AnalysisType type, UsageKind usageKind) {
+    default void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes) {
+    }
+
+    @SuppressWarnings("unused")
+    default void onTypeInstantiated(AnalysisType type) {
     }
 
     @SuppressWarnings("unused")

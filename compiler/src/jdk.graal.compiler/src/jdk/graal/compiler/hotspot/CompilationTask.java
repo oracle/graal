@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,6 +60,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.BailoutException;
@@ -78,7 +79,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     static class Options {
         @Option(help = "Perform a full GC of the libgraal heap after every compile to reduce idle heap and reclaim " +
-                        "references to the HotSpot heap.  This flag has no effect in the context of jargraal", type = OptionType.Expert)//
+                        "references to the HotSpot heap.  This flag has no effect in the context of jargraal.", type = OptionType.Debug)//
         public static final OptionKey<Boolean> FullGCAfterCompile = new OptionKey<>(false);
     }
 
@@ -105,6 +106,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     private final StableProfileProvider profileProvider;
 
     private final boolean shouldRetainLocalVariables;
+    private final boolean shouldUsePreciseUnresolvedDeopts;
 
     private final boolean eagerResolving;
 
@@ -138,6 +140,11 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         @Override
         public String toString() {
             return getMethod().format("%H.%n(%p) @ " + getEntryBCI());
+        }
+
+        @Override
+        protected void parseRetryOptions(String[] options, EconomicMap<OptionKey<?>, Object> values) {
+            OptionsParser.parseOptions(options, values, OptionsParser.getOptionsLoader());
         }
 
         @Override
@@ -220,7 +227,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 graph = compiler.createGraph(method, entryBCI, profileProvider, compilationId, debug.getOptions(), debug);
-                result = compiler.compile(graph, shouldRetainLocalVariables, eagerResolving, compilationId, debug);
+                result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -249,7 +256,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     HotSpotCompilationRequest request,
                     boolean useProfilingInfo,
                     boolean installAsDefault) {
-        this(jvmciRuntime, compiler, request, useProfilingInfo, false, false, installAsDefault);
+        this(jvmciRuntime, compiler, request, useProfilingInfo, false, false, false, installAsDefault);
     }
 
     public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime,
@@ -257,8 +264,9 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     HotSpotCompilationRequest request,
                     boolean useProfilingInfo,
                     boolean shouldRetainLocalVariables,
+                    boolean shouldUsePreciseUnresolvedDeopts,
                     boolean installAsDefault) {
-        this(jvmciRuntime, compiler, request, useProfilingInfo, shouldRetainLocalVariables, false, installAsDefault);
+        this(jvmciRuntime, compiler, request, useProfilingInfo, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, false, installAsDefault);
     }
 
     public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime,
@@ -266,6 +274,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     HotSpotCompilationRequest request,
                     boolean useProfilingInfo,
                     boolean shouldRetainLocalVariables,
+                    boolean shouldUsePreciseUnresolvedDeopts,
                     boolean eagerResolving,
                     boolean installAsDefault) {
         this.jvmciRuntime = jvmciRuntime;
@@ -273,6 +282,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         this.compilationId = new HotSpotCompilationIdentifier(request);
         this.profileProvider = useProfilingInfo ? new StableProfileProvider() : null;
         this.shouldRetainLocalVariables = shouldRetainLocalVariables;
+        this.shouldUsePreciseUnresolvedDeopts = shouldUsePreciseUnresolvedDeopts;
         this.eagerResolving = eagerResolving;
         this.installAsDefault = installAsDefault;
     }
@@ -413,7 +423,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             }
         }
 
-        ProfileReplaySupport result = ProfileReplaySupport.profileReplayPrologue(debug, graalRuntime, entryBCI, method, profileProvider, profileSaveFilter);
+        ProfileReplaySupport result = ProfileReplaySupport.profileReplayPrologue(debug, graalRuntime.getHostProviders(), entryBCI, method, profileProvider, profileSaveFilter);
         try {
             return compilation.run(debug);
         } finally {
@@ -431,7 +441,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     }
                 }
                 if (result != null) {
-                    result.profileReplayEpilogue(debug, compilation, profileProvider, compilationId, entryBCI, method);
+                    result.profileReplayEpilogue(debug, compilation.result, compilation.graph, profileProvider, compilationId, entryBCI, method);
                 }
             } catch (Throwable t) {
                 return compilation.handleException(t);

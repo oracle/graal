@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jni.functions;
 
-import jdk.graal.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
@@ -36,7 +34,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -73,12 +70,15 @@ import com.oracle.svm.core.jni.headers.JNIJavaVMOption;
 import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.Utf8;
+
+import jdk.graal.compiler.serviceprovider.IsolateUtil;
 
 /**
  * Implementation of the JNI invocation API for interacting with a Java VM without having an
@@ -128,7 +128,7 @@ public final class JNIInvocationInterface {
                     int vmArgc = vmArgs.getNOptions();
                     if (vmArgc > 0) {
                         UnsignedWord size = SizeOf.unsigned(CCharPointerPointer.class).multiply(vmArgc + 1);
-                        CCharPointerPointer argv = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
+                        CCharPointerPointer argv = UntrackedNullableNativeMemory.malloc(size);
                         if (argv.isNull()) {
                             return JNIErrors.JNI_ENOMEM();
                         }
@@ -169,7 +169,7 @@ public final class JNIInvocationInterface {
 
                 int code = CEntryPointActions.enterCreateIsolate(params);
                 if (params.isNonNull()) {
-                    ImageSingletons.lookup(UnmanagedMemorySupport.class).free(params.getArgv());
+                    UntrackedNullableNativeMemory.free(params.getArgv());
                     params = WordFactory.nullPointer();
                 }
 

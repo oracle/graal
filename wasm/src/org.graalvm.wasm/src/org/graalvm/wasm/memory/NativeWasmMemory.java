@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -244,10 +244,10 @@ class NativeWasmMemory extends WasmMemory {
 
     @Override
     public Vector128 load_i128(Node node, long address) {
-        validateAddress(node, address, 16);
-        byte[] bytes = new byte[16];
-        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, 16);
-        return Vector128.ofBytes(bytes);
+        validateAddress(node, address, Vector128.BYTES);
+        byte[] bytes = new byte[Vector128.BYTES];
+        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, Vector128.BYTES);
+        return new Vector128(bytes);
     }
 
     @Override
@@ -302,6 +302,12 @@ class NativeWasmMemory extends WasmMemory {
     public void store_i64_32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
+    }
+
+    @Override
+    public void store_i128(Node node, long address, Vector128 value) {
+        validateAddress(node, address, 16);
+        unsafe.copyMemory(value.getBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
     }
 
     @Override
@@ -893,29 +899,29 @@ class NativeWasmMemory extends WasmMemory {
         if (!this.isShared()) {
             return 0;
         }
-        return invokeNotifyCallback(address, count);
+        return invokeNotifyCallback(node, address, count);
     }
 
     @Override
     @TruffleBoundary
     public int atomic_wait32(Node node, long address, int expected, long timeout) {
-        validateAtomicAddress(node, address, 4);
+        validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, false);
+        return invokeWaitCallback(node, address, expected, timeout, false);
     }
 
     @Override
     @TruffleBoundary
     public int atomic_wait64(Node node, long address, long expected, long timeout) {
-        validateAtomicAddress(node, address, 8);
+        validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, true);
+        return invokeWaitCallback(node, address, expected, timeout, true);
     }
 
     @Override

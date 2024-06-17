@@ -38,7 +38,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 
 @TargetClass(value = Executable.class)
 public final class Target_java_lang_reflect_Executable {
@@ -57,7 +57,7 @@ public final class Target_java_lang_reflect_Executable {
         if (rawParameters == null) {
             return null;
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReflectParameters(SubstrateUtil.cast(this, Executable.class), rawParameters);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReflectParameters(SubstrateUtil.cast(this, Executable.class), rawParameters);
     }
 
     @Substitute
@@ -68,7 +68,7 @@ public final class Target_java_lang_reflect_Executable {
     static class RawParametersComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getReflectParametersEncoding((Executable) receiver);
+            return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getReflectParametersEncoding((Executable) receiver);
         }
     }
 }

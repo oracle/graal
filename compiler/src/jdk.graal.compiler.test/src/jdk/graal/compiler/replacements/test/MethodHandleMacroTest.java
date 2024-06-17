@@ -28,6 +28,8 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -39,8 +41,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.replacements.InlineDuringParsingPlugin;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -86,7 +86,7 @@ public class MethodHandleMacroTest extends GraalCompilerTest {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver) {
-                b.addPush(JavaKind.Int, new TestMacroNode(MacroNode.MacroParams.of(b, CallTargetNode.InvokeKind.Special, targetMethod, receiver.get())));
+                b.addPush(JavaKind.Int, new TestMacroNode(MacroNode.MacroParams.of(b, CallTargetNode.InvokeKind.Special, targetMethod, receiver.get(true))));
                 return true;
             }
         });

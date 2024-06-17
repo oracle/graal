@@ -204,13 +204,35 @@ public class OptionValues {
                 assert existing == null || existing == desc : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
             }
         }
+        int size = 0;
+        if (all) {
+            size = sortedOptions.entrySet().size();
+        } else {
+            for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
+                String key = e.getKey();
+                OptionDescriptor desc = e.getValue();
+                if (all || !excludeOptionFromHelp(key, desc)) {
+                    size++;
+                }
+            }
+        }
+        int i = 0;
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             String key = e.getKey();
             OptionDescriptor desc = e.getValue();
             if (all || !excludeOptionFromHelp(key, desc)) {
                 printHelp(out, namePrefix, key, desc);
+                if (i++ != size - 1) {
+                    // print new line between options
+                    out.printf("%n");
+                }
             }
         }
+    }
+
+    private static String getEdition(Class<?> c) {
+        boolean eeModule = "com.oracle.graal.graal_enterprise".equals(c.getModule().getName());
+        return eeModule ? "enterprise" : "community";
     }
 
     private void printHelp(PrintStream out, String namePrefix, String key, OptionDescriptor desc) {
@@ -221,7 +243,10 @@ public class OptionValues {
         String name = namePrefix + key;
         String assign = containsKey(desc.getOptionKey()) ? ":=" : "=";
         String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getOptionValueType().getSimpleName();
-        String linePrefix = String.format("%s %s %s ", name, assign, value);
+
+        String edition = String.format("[%s edition]", getEdition(desc.getDeclaringClass()));
+        String linePrefix = String.format("%s %s %s %s", name, assign, value, edition);
+
         int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
         int linePad = typeStartPos - linePrefix.length();
         if (linePad > 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -339,7 +339,7 @@ final class ConsListPropertyMap extends PropertyMap {
         }
 
         public Property setValue(Property value) {
-            throw unmodifiableException();
+            throw ImmutableMap.unmodifiableException();
         }
     }
 

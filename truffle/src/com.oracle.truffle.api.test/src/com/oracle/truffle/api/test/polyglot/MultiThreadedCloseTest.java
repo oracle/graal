@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,8 +58,11 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-public class MultiThreadedCloseTest extends AbstractPolyglotTest {
+@RunWith(Parameterized.class)
+public class MultiThreadedCloseTest extends AbstractThreadedPolyglotTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -77,7 +80,7 @@ public class MultiThreadedCloseTest extends AbstractPolyglotTest {
             @Override
             protected void initializeContext(CloseContext ctx) throws Exception {
                 ctx.executor = Executors.newCachedThreadPool((r) -> {
-                    return ctx.registerThread(ctx.env.newTruffleThreadBuilder(r).threadGroup(ctx.group).build());
+                    return ctx.registerThread(ctx.env.newTruffleThreadBuilder(r).virtual(vthreads).threadGroup(ctx.group).build());
                 });
                 ctx.executor.submit(() -> {
                     ctx.env.parseInternal(Source.newBuilder(ProxyLanguage.ID, "", "test").build());
@@ -106,7 +109,7 @@ public class MultiThreadedCloseTest extends AbstractPolyglotTest {
             protected void initializeContext(CloseContext ctx) throws Exception {
                 ctx.registerThread(ctx.env.newTruffleThreadBuilder(() -> {
                     ctx.env.parseInternal(Source.newBuilder(ProxyLanguage.ID, "", "test").build());
-                }).threadGroup(ctx.group).build()).start();
+                }).virtual(vthreads).threadGroup(ctx.group).build()).start();
             }
 
             @Override

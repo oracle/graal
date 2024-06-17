@@ -40,6 +40,8 @@ public interface BuildArtifacts {
 
         /* For all executables needed at run-time. */
         EXECUTABLE("executables"),
+        /* Native image layer. */
+        IMAGE_LAYER("image_layer"),
         /* For all shared libraries that are not JDK-related and needed at run-time. */
         SHARED_LIBRARY("shared_libraries"),
 
@@ -62,6 +64,7 @@ public interface BuildArtifacts {
         BUILD_INFO("build_info"),
         /* For all debugging-related artifacts. */
         DEBUG_INFO("debug_info"),
+        LAYER_SNAPSHOT("layer_snapshot"),
 
         /* For C header files. */
         C_HEADER("c_headers"),

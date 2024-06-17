@@ -32,6 +32,8 @@ import java.util.TreeSet;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 
 /**
  * This class documents unimplemented Graal intrinsics and categorizes them into 3 categories:
@@ -81,7 +83,7 @@ public final class UnimplementedGraalIntrinsics {
         c.addAll(Arrays.asList(elements));
     }
 
-    public UnimplementedGraalIntrinsics() {
+    public UnimplementedGraalIntrinsics(Architecture arch) {
         int jdk = Runtime.version().feature();
         add(ignore,
                         // These are dead
@@ -102,8 +104,6 @@ public final class UnimplementedGraalIntrinsics {
                         // handled by an intrinsic for StringUTF16.indexOfUnsafe
                         "java/lang/StringUTF16.indexOf([BI[BII)I",
                         "java/lang/StringUTF16.indexOf([B[B)I",
-                        // handled by an intrinsic for StringUTF16.indexOfCharUnsafe
-                        "java/lang/StringUTF16.indexOfChar([BIII)I",
                         // handled by an intrinsic for StringUTF16.indexOfLatin1Unsafe
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                         "java/lang/StringUTF16.indexOfLatin1([B[B)I",
@@ -115,6 +115,20 @@ public final class UnimplementedGraalIntrinsics {
                         "jdk/jfr/internal/JVM.commit(J)J",
                         "jdk/jfr/internal/JVM.counterTime()J",
                         "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
+
+        if (arch instanceof AMD64 amd64) {
+            if (amd64.getFeatures().contains(AMD64.CPUFeature.SHA) && !amd64.getFeatures().contains(AMD64.CPUFeature.AVX2)) {
+                // This happens when UseAVX=0 or 1 is specified.
+                add(ignore,
+                                "sun/security/provider/SHA2.implCompress0([BI)V");
+            }
+        }
+
+        if (jdk == 21) {
+            // JDK-8325169
+            // handled by an intrinsic for StringUTF16.indexOfCharUnsafe
+            add(ignore, "java/lang/StringUTF16.indexOfChar([BIII)I");
+        }
 
         add(toBeInvestigated, // @formatter:off
                         // JDK-8309130: x86_64 AVX512 intrinsics for Arrays.sort methods (GR-48679)

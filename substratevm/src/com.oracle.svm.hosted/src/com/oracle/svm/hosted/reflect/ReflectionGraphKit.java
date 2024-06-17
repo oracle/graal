@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
@@ -103,8 +102,7 @@ public class ReflectionGraphKit extends HostedGraphKit {
     private final List<FixedWithNextNode> illegalArgumentExceptionPaths = new ArrayList<>();
     private final List<ExceptionObjectNode> invocationTargetExceptionPaths = new ArrayList<>();
 
-    @SuppressWarnings("unused")
-    public ReflectionGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
+    public ReflectionGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, providers, method);
     }
 

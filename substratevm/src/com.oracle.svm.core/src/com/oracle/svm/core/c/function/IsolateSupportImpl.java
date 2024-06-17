@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.Isolates.IsolateException;
 import org.graalvm.nativeimage.Isolates.ProtectionDomain;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -42,6 +41,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider.UnsupportedDomainException;
@@ -57,6 +58,10 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
     @Override
     public IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException {
+        return createIsolate(parameters, false);
+    }
+
+    public static IsolateThread createIsolate(CreateIsolateParameters parameters, boolean compilationIsolate) throws IsolateException {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
             throw new IsolateException(ISOLATES_DISABLED_MESSAGE);
         }
@@ -85,7 +90,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
                 // Internally, we use C-style arguments, i.e., the first argument is reserved for
                 // the name of the binary. We use null when isolates are created manually.
                 argc = isolateArgCount + 1;
-                argv = UnmanagedMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc));
+                argv = NativeMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc), NmtCategory.Internal);
                 argv.write(0, WordFactory.nullPointer());
 
                 pointerHolders = new CTypeConversion.CCharPointerHolder[isolateArgCount];
@@ -100,11 +105,12 @@ public final class IsolateSupportImpl implements IsolateSupport {
             params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
             params.setAuxiliaryImagePath(auxImagePath.get());
             params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
-            params.setVersion(4);
+            params.setVersion(5);
             params.setIgnoreUnrecognizedArguments(false);
             params.setExitWhenArgumentParsingFails(false);
             params.setArgc(argc);
             params.setArgv(argv);
+            params.setIsCompilationIsolate(compilationIsolate);
 
             // Try to create the isolate.
             IsolateThreadPointer isolateThreadPtr = UnsafeStackValue.get(IsolateThreadPointer.class);
@@ -116,7 +122,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
                 for (CTypeConversion.CCharPointerHolder ph : pointerHolders) {
                     ph.close();
                 }
-                UnmanagedMemory.free(params.getArgv());
+                NativeMemory.free(params.getArgv());
             }
 
             throwOnError(result);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,9 +53,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
  * {@link Float#floatToRawIntBits} and {@link Double#doubleToRawLongBits}, so that for example
  * {@code -0.0} is not considered the same as {@code 0.0}, even though primitive equality would
  * normally say that it was.
- * </p>
- *
- * {@inheritDoc}
  *
  * @since 0.10
  */

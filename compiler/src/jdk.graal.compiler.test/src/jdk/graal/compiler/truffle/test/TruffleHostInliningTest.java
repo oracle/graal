@@ -80,6 +80,7 @@ public class TruffleHostInliningTest {
                                             "-Djdk.graal.MethodFilter=" + TruffleHostInliningTest.class.getSimpleName() + ".*",
                                             "-Djdk.graal.CompilationFailureAction=Print",
                                             "-Djdk.graal.LogFile=" + logFile.getAbsolutePath(),
+                                            String.format("-XX:CompileCommand=compileonly,%s::*", TruffleHostInliningTest.class.getName()),
                                             "-Xbatch").// force synchronous compilation
                             postfixVmOption("-XX:+UseJVMCICompiler").// force Graal host compilation
                             onExit((process) -> {

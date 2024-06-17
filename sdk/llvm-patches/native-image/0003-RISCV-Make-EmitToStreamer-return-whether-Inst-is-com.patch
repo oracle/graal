@@ -1,0 +1,51 @@
+From 0ae27f9381f297241542cfcb9c2dfd686fc3f8b4 Mon Sep 17 00:00:00 2001
+From: Pengcheng Wang <wangpengcheng.pp@bytedance.com>
+Date: Wed, 10 Apr 2024 11:02:55 +0800
+Subject: [PATCH 3/4] [RISCV] Make EmitToStreamer return whether Inst is
+ compressed
+
+This is helpful to reduce calls of `RISCVRVC::compress` in #77337.
+
+Reviewers: asb, lukel97, topperc
+
+Reviewed By: topperc
+
+Pull Request: https://github.com/llvm/llvm-project/pull/88120
+
+(cherry picked from commit 8dc006ea4008c1af298e56c4db6fffe2a40a2ba9)
+---
+ llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp b/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
+index b2e9cd87373b..16fba8bc525a 100644
+--- a/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
++++ b/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
+@@ -80,7 +80,8 @@ public:
+   bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
+                              const char *ExtraCode, raw_ostream &OS) override;
+ 
+-  void EmitToStreamer(MCStreamer &S, const MCInst &Inst);
++  // Returns whether Inst is compressed.
++  bool EmitToStreamer(MCStreamer &S, const MCInst &Inst);
+   bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
+                                    const MachineInstr *MI);
+ 
+@@ -180,12 +181,13 @@ void RISCVAsmPrinter::LowerSTATEPOINT(MCStreamer &OutStreamer, StackMaps &SM,
+   SM.recordStatepoint(*MILabel, MI);
+ }
+ 
+-void RISCVAsmPrinter::EmitToStreamer(MCStreamer &S, const MCInst &Inst) {
++bool RISCVAsmPrinter::EmitToStreamer(MCStreamer &S, const MCInst &Inst) {
+   MCInst CInst;
+   bool Res = RISCVRVC::compress(CInst, Inst, *STI);
+   if (Res)
+     ++RISCVNumInstrsCompressed;
+   AsmPrinter::EmitToStreamer(*OutStreamer, Res ? CInst : Inst);
++  return Res;
+ }
+ 
+ // Simple pseudo-instructions have their lowering (with expansion to real
+-- 
+2.42.0
+

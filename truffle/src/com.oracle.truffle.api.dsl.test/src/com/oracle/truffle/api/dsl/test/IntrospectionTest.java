@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,7 +79,6 @@ public class IntrospectionTest {
 
     @SuppressWarnings("unused")
     @TypeSystemReference(IntrospectionTypeSystem.class)
-    // BEGIN: com.oracle.truffle.api.dsl.test.IntrospectionTest
     @Introspectable
     abstract static class NegateNode extends Node {
 
@@ -117,7 +116,6 @@ public class IntrospectionTest {
         info = Introspection.getSpecialization(node, "doGeneric");
         assertEquals(1, info.getInstances());
     }
-    // END: com.oracle.truffle.api.dsl.test.IntrospectionTest
 
     public abstract static class Introspection1Node extends ReflectableNode {
 

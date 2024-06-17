@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,13 @@ package com.oracle.svm.hosted.foreign;
 
 import java.util.List;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.DowncallStubsHolder;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
@@ -44,6 +43,9 @@ import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -83,7 +85,9 @@ import jdk.vm.ci.meta.Signature;
  * the call state, which could happen if a safepoint was inserted between the downcall and the
  * capture.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/share/prims/nativeEntryPoint.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
 class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
         return ResolvedSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
@@ -92,13 +96,34 @@ class DowncallStub extends NonBytecodeMethod {
     private final NativeEntryPointInfo nep;
 
     DowncallStub(NativeEntryPointInfo nep, MetaAccessProvider metaAccess) {
-        super(
-                        DowncallStubsHolder.stubName(nep),
+        super(DowncallStubsHolder.stubName(nep),
                         true,
                         metaAccess.lookupJavaType(DowncallStubsHolder.class),
                         createSignature(metaAccess),
                         DowncallStubsHolder.getConstantPool(metaAccess));
         this.nep = nep;
+    }
+
+    @Uninterruptible(reason = "See DowncallStub.getInjectedAnnotations.", calleeMustBe = false)
+    @SuppressWarnings("unused")
+    private static void uninterruptibleAnnotationForAllowHeapAccessHolder() {
+    }
+
+    private static final AnnotationValue[] INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
+                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(DowncallStub.class, "uninterruptibleAnnotationForAllowHeapAccessHolder")));
+
+    @Override
+    public AnnotationValue[] getInjectedAnnotations() {
+        /*
+         * When allowHeapAccess is enabled, a HeapMemorySegmentImpl may be passed to a downcall. In
+         * that case, the downcall stub will generate a native pointer to the backing object. Thus,
+         * ensure that no safepoint is generated in the stub, so that a GC cannot move the backing
+         * object while the native pointer to it still exists.
+         */
+        if (nep.allowHeapAccess()) {
+            return INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS;
+        }
+        return null;
     }
 
     /**
@@ -117,7 +142,10 @@ class DowncallStub extends NonBytecodeMethod {
         arguments = argumentsAndNep.getLeft();
         ValueNode runtimeNep = argumentsAndNep.getRight();
 
-        AbiUtils.Adapter.AdaptationResult adapted = AbiUtils.singleton().adapt(kit.unboxArguments(arguments, this.nep.methodType()), this.nep);
+        AbiUtils.Adapter.Result.FullNativeAdaptation adapted = AbiUtils.singleton().adapt(kit.unboxArguments(arguments, this.nep.methodType()), this.nep);
+        for (var node : adapted.nodesToAppendToGraph()) {
+            kit.append(node);
+        }
 
         ValueNode callAddress = adapted.getArgument(AbiUtils.Adapter.Extracted.CallTarget);
 

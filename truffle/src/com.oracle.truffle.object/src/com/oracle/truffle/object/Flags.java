@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,68 +44,60 @@ package com.oracle.truffle.object;
  * Helper methods for accessing property and object flags.
  */
 public final class Flags {
-    static final long DEFAULT = 0L;
+    static final int DEFAULT = 0;
 
     /** If set, {@code int} values can be implicitly cast to {@code long}. */
-    static final long IMPLICIT_CAST_INT_TO_LONG = 1L << 32;
+    static final int IMPLICIT_CAST_INT_TO_LONG = 1 << 0;
     /** If set, {@code int} values can be implicitly cast to {@code double}. */
-    static final long IMPLICIT_CAST_INT_TO_DOUBLE = 1L << 33;
+    static final int IMPLICIT_CAST_INT_TO_DOUBLE = 1 << 1;
 
     /** Only set property if it already exists. */
-    static final long SET_EXISTING = 1L << 34;
+    static final int IF_PRESENT = 1 << 2;
+    /** Only set property if it does not already exist. */
+    static final int IF_ABSENT = 1 << 3;
     /** Redefine property if it already exists. */
-    static final long UPDATE_FLAGS = 1L << 35;
+    static final int UPDATE_FLAGS = 1 << 4;
 
     /** Define property as constant in the shape. */
-    static final long CONST = 1L << 36;
+    static final int CONST = 1 << 5;
     /** Declare property with constant initial value in the shape. */
-    static final long DECLARE = 1L << 37;
+    static final int DECLARE = 1 << 6;
     /** Split off separate shape. */
-    static final long SEPARATE_SHAPE = 1L << 38;
-
-    static final long PROPERTY_FLAGS_MASK = 0xffff_ffffL;
+    static final int SEPARATE_SHAPE = 1 << 7;
 
     private Flags() {
         // do not instantiate
     }
 
-    private static boolean getFlag(long flags, long flagBit) {
+    private static boolean getFlag(int flags, int flagBit) {
         return (flags & flagBit) != 0;
     }
 
-    public static boolean isImplicitCastIntToLong(long flags) {
+    public static boolean isImplicitCastIntToLong(int flags) {
         return getFlag(flags, IMPLICIT_CAST_INT_TO_LONG);
     }
 
-    public static boolean isImplicitCastIntToDouble(long flags) {
+    public static boolean isImplicitCastIntToDouble(int flags) {
         return getFlag(flags, IMPLICIT_CAST_INT_TO_DOUBLE);
     }
 
-    public static boolean isSetExisting(long flags) {
-        return getFlag(flags, SET_EXISTING);
+    public static boolean isSetExisting(int flags) {
+        return getFlag(flags, IF_PRESENT);
     }
 
-    public static boolean isUpdateFlags(long flags) {
+    public static boolean isUpdateFlags(int flags) {
         return getFlag(flags, UPDATE_FLAGS);
     }
 
-    public static boolean isConstant(long flags) {
+    public static boolean isConstant(int flags) {
         return getFlag(flags, CONST);
     }
 
-    public static boolean isDeclaration(long flags) {
+    public static boolean isDeclaration(int flags) {
         return getFlag(flags, DECLARE);
     }
 
-    public static boolean isSeparateShape(long flags) {
+    public static boolean isSeparateShape(int flags) {
         return getFlag(flags, SEPARATE_SHAPE);
-    }
-
-    public static int getPropertyFlags(long putFlags) {
-        return (int) (putFlags & PROPERTY_FLAGS_MASK);
-    }
-
-    public static long propertyFlagsToPutFlags(int propertyFlags) {
-        return (propertyFlags & PROPERTY_FLAGS_MASK);
     }
 }

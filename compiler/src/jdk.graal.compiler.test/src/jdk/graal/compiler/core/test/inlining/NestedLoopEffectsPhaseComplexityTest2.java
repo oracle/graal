@@ -362,7 +362,7 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
     private static int InliningCountLowerBound = 1;
     private static int InliningCountUpperBound = 128;
 
-    @Rule public TestRule timeout = createTimeoutSeconds(120);
+    @Rule public TestRule timeout = createTimeoutSeconds(240);
 
     private void testAndTimeFixedDepth(String snippet, int remainingNewInstanceOffs) {
         StructuredGraph g1 = prepareGraph(snippet, Integer.MAX_VALUE);

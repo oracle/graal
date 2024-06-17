@@ -86,16 +86,16 @@ class CPUTracerCLI extends ProfilerCLI {
     @Option(name = "TraceInternal", help = "Trace internal elements (default: false).", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (for example, Math.*) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<WildcardFilter> FILTER_ROOT = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (for example, *program*.sl) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<WildcardFilter> FILTER_FILE = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. application/javascript) (default: no filter).", usageSyntax = "<mime-type>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (for example, application/javascript) (default: no filter).", usageSyntax = "<mime-type>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js) (default: no filter).", usageSyntax = "<languageId>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (for example, js) (default: no filter).", usageSyntax = "<languageId>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
     @Option(name = "Output", help = "Print a 'histogram' or 'json' as output (default: histogram).", usageSyntax = "histogram|json", category = OptionCategory.USER, stability = OptionStability.STABLE) //

@@ -213,7 +213,7 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
 
     @Test
     public void testNonRedundantInstanceOf() {
-        checkInstanceOfCount("testNonRedundantInstanceOfClass", 2);
+        checkInstanceOfCount("testNonRedundantInstanceOfClass", 1);
         checkInstanceOfCount("testNonRedundantInstanceOfArray", 2);
         checkInstanceOfCount("testNonRedundantInstanceOfImplicitNonNull", 2);
     }

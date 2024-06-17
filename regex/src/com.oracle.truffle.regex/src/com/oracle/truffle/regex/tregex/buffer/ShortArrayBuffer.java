@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.util.EmptyArrays;
  *
  * <pre>
  * ShortArrayBuffer buf = new ShortArrayBuffer();
- * List<short[]> results = new ArrayList<>();
+ * List&lt;short[]> results = new ArrayList&lt;>();
  * for (Object obj : listOfThingsToProcess) {
  *     for (Object x : obj.thingsThatShouldBecomeShorts()) {
  *         buf.add(someCalculation(x));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,7 +117,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
     private static final byte NONE = (byte) 0xff;
-    private static final int TYPE_MASK = 0xf;
+    private static final int TYPE_MASK = 0x0f;
     private static final int MODE_MASK = 0x30;
 
     private static final int MODE_CLEARED = 0x00;
@@ -218,7 +218,8 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
             if (insertBefore.isAlive()) {
                 StructuredGraph graph = insertBefore.graph();
                 ConstantNode defaultForKind = ConstantNode.defaultForKind(NewFrameNode.asJavaKind(accessTag), graph);
-                graph.addBeforeFixed(insertBefore, graph.add(new VirtualFrameSetNode(frame, index, accessTag, defaultForKind, type, VirtualFrameAccessFlags.NON_STATIC_NO_SET_TAG_UPDATE)));
+                graph.addBeforeFixed(insertBefore, graph.add(new VirtualFrameSetNode(frame, index, accessTag, defaultForKind, type,
+                                frame.isStatic(index) ? VirtualFrameAccessFlags.STATIC_NO_SET_TAG_UPDATE : VirtualFrameAccessFlags.NON_STATIC_NO_SET_TAG_UPDATE)));
             }
         }
     }

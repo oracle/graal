@@ -29,40 +29,57 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 public abstract class ConditionalConfigurationRegistry {
-    private final Map<String, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
+    private Feature.BeforeAnalysisAccess beforeAnalysisAccess;
+    private final Map<Class<?>, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
-    protected void registerConditionalConfiguration(ConfigurationCondition condition, Runnable runnable) {
+    protected void registerConditionalConfiguration(ConfigurationCondition condition, Consumer<ConfigurationCondition> consumer) {
         Objects.requireNonNull(condition, "Cannot use null value as condition for conditional configuration. Please ensure that you register a non-null condition.");
-        Objects.requireNonNull(runnable, "Cannot use null value as runnable for conditional configuration. Please ensure that you register a non-null runnable.");
+        Objects.requireNonNull(consumer, "Cannot use null value as runnable for conditional configuration. Please ensure that you register a non-null runnable.");
+        if (condition.isRuntimeChecked() && !condition.isAlwaysTrue()) {
+            /*
+             * We do this before the type is reached as the handler runs during analysis when it is
+             * too late to register types for reached tracking. If the type is never reached, there
+             * is no damage as subtypes will also never be reached.
+             */
+            ClassInitializationSupport.singleton().addForTypeReachedTracking(condition.getType());
+        }
         if (ConfigurationCondition.alwaysTrue().equals(condition)) {
             /* analysis optimization to include new types as early as possible */
-            runnable.run();
+            consumer.accept(ConfigurationCondition.alwaysTrue());
         } else {
-            Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getTypeName(), key -> new ConcurrentLinkedQueue<>());
-            handlers.add(runnable);
+            ConfigurationCondition runtimeCondition;
+            if (condition.isRuntimeChecked()) {
+                runtimeCondition = condition;
+            } else {
+                runtimeCondition = ConfigurationCondition.alwaysTrue();
+            }
+            if (beforeAnalysisAccess == null) {
+                Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
+                handlers.add(() -> consumer.accept(runtimeCondition));
+            } else {
+                beforeAnalysisAccess.registerReachabilityHandler(access -> consumer.accept(runtimeCondition), condition.getType());
+            }
+
         }
+
     }
 
-    public void flushConditionalConfiguration(Feature.BeforeAnalysisAccess b) {
-        for (Map.Entry<String, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
-            TypeResult<Class<?>> typeResult = ((FeatureImpl.BeforeAnalysisAccessImpl) b).getImageClassLoader().findClass(reachabilityEntry.getKey());
-            b.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), typeResult.get());
+    public void setAnalysisAccess(Feature.BeforeAnalysisAccess beforeAnalysisAccess) {
+        VMError.guarantee(this.beforeAnalysisAccess == null, "Analysis access can be set only once.");
+        this.beforeAnalysisAccess = Objects.requireNonNull(beforeAnalysisAccess);
+        for (Map.Entry<Class<?>, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
+            this.beforeAnalysisAccess.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), reachabilityEntry.getKey());
         }
         pendingReachabilityHandlers.clear();
-    }
-
-    public void flushConditionalConfiguration(Feature.DuringAnalysisAccess b) {
-        if (!pendingReachabilityHandlers.isEmpty()) {
-            b.requireAnalysisIteration();
-        }
-        flushConditionalConfiguration((Feature.BeforeAnalysisAccess) b);
     }
 
 }

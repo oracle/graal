@@ -1,0 +1,5 @@
+# linker error, undefined void __cdecl f(struct D &)
+gcc-5.2.0/gcc/testsuite/g++.dg/template/lookup8.C
+
+# use of undeclared identifier value
+gcc-5.2.0/gcc/testsuite/g++.dg/template/static34.C

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,7 +98,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -141,12 +140,6 @@ import com.oracle.truffle.tck.tests.ValueAssert;
 public class LanguageSPITest {
 
     static LanguageContext langContext;
-
-    @BeforeClass
-    public static void beforeClass() {
-        // shared static state
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
-    }
 
     @After
     public void cleanup() {
@@ -997,7 +990,7 @@ public class LanguageSPITest {
                 case CREATE_THREAD:
                     return env.isCreateThreadAllowed();
                 case POLYGLOT_ACCESS:
-                    return env.isPolyglotBindingsAccessAllowed() || env.isPolyglotEvalAllowed();
+                    return env.isPolyglotBindingsAccessAllowed() || env.isPolyglotEvalAllowed(null);
                 case ENVIRONMENT_ACCESS:
                     // environment access can only be observed with properties
                     String value = env.getEnvironment().get(OUTER_CONTEXT_TEST_KEY);

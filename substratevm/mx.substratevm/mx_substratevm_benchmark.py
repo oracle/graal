@@ -26,23 +26,21 @@
 from __future__ import print_function
 
 import os
-import re
 import tempfile
 import zipfile
 from glob import glob
 
 import mx
 import mx_benchmark
-import mx_java_benchmarks
 import mx_sdk_benchmark
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS
 
 _suite = mx.suite("substratevm")
-_successful_stage_pattern = re.compile(r'Successfully finished the last specified stage:.*$', re.MULTILINE)
 
 
 def extract_archive(path, extracted_name):
-    extracted_archive = mx.join(mx.dirname(path), extracted_name)
-    if not mx.exists(extracted_archive):
+    extracted_archive = os.path.join(os.path.dirname(path), extracted_name)
+    if not os.path.exists(extracted_archive):
         # There can be multiple processes doing this so be atomic about it
         with mx.SafeDirectoryUpdater(extracted_archive, create=True) as sdu:
             with zipfile.ZipFile(path, 'r') as zf:
@@ -53,23 +51,41 @@ def extract_archive(path, extracted_name):
 def list_jars(path):
     jars = []
     for f in os.listdir(path):
-        if os.path.isfile(mx.join(path, f)) and f.endswith('.jar'):
+        if os.path.isfile(os.path.join(path, f)) and f.endswith('.jar'):
             jars.append(f)
     return jars
 
+# The agent fails to generate the configuration for org.apache.spark.status.JobDataWrapper.completionTime, which is not
+# executed on the first iteration. Therefore, we supply the missing information manually.
+# See GR-51788
+movie_lens_reflection_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'movie-lens-reflection-config.json')
 
 force_buildtime_init_slf4j_1_7_73 = '--initialize-at-build-time=org.slf4j,org.apache.log4j'
+force_buildtime_init_slf4j_1_7_73_spark = '--initialize-at-build-time=org.apache.logging.slf4j.Log4jLoggerFactory,\
+org.apache.logging.slf4j.SLF4JServiceProvider,org.apache.logging.slf4j.Log4jMarkerFactory,org.apache.logging.slf4j.Log4jMDCAdapter,\
+org.apache.logging.log4j,org.apache.logging.log4j,org.apache.logging.log4j.core.util.WatchManager,org.apache.logging.log4j.core.config.xml.XmlConfiguration, \
+org.apache.logging.log4j.core.config.AbstractConfiguration,org.apache.logging.log4j.util.ServiceLoaderUtil,org.slf4j.LoggerFactory'
+force_buildtime_init_netty_4_1_72 = '--initialize-at-build-time=io.netty.util.internal.logging'
+force_runtime_init_slf4j_1_7_73 = '--initialize-at-run-time=org.apache.log4j.LogManager'
 force_runtime_init_netty_4_1_72 = '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+force_runtime_init_netty_4_1_72_spark = '--initialize-at-run-time=io.netty.buffer.AbstractByteBufAllocator\
+io.netty.channel.AbstractChannelHandlerContext,io.netty.channel.ChannelInitializer,io.netty.channel.ChannelOutboundBuffer,\
+io.netty.util.internal.SystemPropertyUtil,io.netty.channel.AbstractChannel,io.netty.util.internal.PlatformDependent,\
+io.netty.util.internal.InternalThreadLocalMap,io.netty.channel.socket.nio.SelectorProviderUtil,io.netty.util.concurrent.DefaultPromise, \
+io.netty.util.NetUtil,io.netty.channel.DefaultChannelPipeline,io.netty.util.concurrent.FastThreadLocalThread,io.netty.util.internal.StringUtil, \
+io.netty.util.internal.PlatformDependent0,io.netty.util,io.netty.bootstrap,io.netty.channel,io.netty.buffer,io.netty.resolver,io.netty.handler.codec.CodecOutputList'
 _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'als'               : [
-                           '--report-unsupported-elements-at-runtime',
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
     'chi-square'        : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
-                           force_runtime_init_netty_4_1_72
+                           force_buildtime_init_slf4j_1_7_73_spark,
+                           force_buildtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72_spark,
+                           force_runtime_init_slf4j_1_7_73
                           ],
     'finagle-chirper'   : [
                             force_buildtime_init_slf4j_1_7_73,
@@ -80,37 +96,43 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                             force_runtime_init_netty_4_1_72
                           ],
     'log-regression'    : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
                            force_runtime_init_netty_4_1_72
                           ],
     'movie-lens'        : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
-                           force_runtime_init_netty_4_1_72
+                           force_buildtime_init_slf4j_1_7_73_spark,
+                           force_buildtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72_spark,
+                           force_runtime_init_slf4j_1_7_73,
+                           '-H:ReflectionConfigurationFiles=' + movie_lens_reflection_config
                           ],
     'dec-tree'          : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
                            force_runtime_init_netty_4_1_72
                           ],
     'page-rank'         : [
-                           '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
-                           force_runtime_init_netty_4_1_72
+                           force_buildtime_init_slf4j_1_7_73_spark,
+                           force_buildtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72_spark,
+                           force_runtime_init_slf4j_1_7_73
                           ],
     'naive-bayes'       : [
-                            '--report-unsupported-elements-at-runtime',
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
     'gauss-mix'       :   [
-                            '--report-unsupported-elements-at-runtime',
                             force_buildtime_init_slf4j_1_7_73,
-                            force_runtime_init_netty_4_1_72
+                            force_buildtime_init_slf4j_1_7_73_spark,
+                            force_buildtime_init_netty_4_1_72,
+                            force_runtime_init_netty_4_1_72,
+                            force_runtime_init_netty_4_1_72_spark,
+                            force_runtime_init_slf4j_1_7_73
                           ],
     'neo4j-analytics':    [
-                            '--report-unsupported-elements-at-runtime',
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
@@ -119,7 +141,7 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                           ]
 }
 
-class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+class RenaissanceNativeImageBenchmarkSuite(mx_sdk_benchmark.RenaissanceBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     """
     Building an image for a renaissance benchmark requires all libraries for the group this benchmark belongs to
     and a harness project compiled with the same scala version as the benchmark.
@@ -162,6 +184,9 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
     def standalone_jar_path(self, benchmark_name):
         standalone_jars_directory = "single"
         return os.path.join(self.renaissance_unpacked(), standalone_jars_directory, "{}.jar".format(benchmark_name))
+
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def extra_run_arg(self, benchmark, args, image_run_args):
         run_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_run_arg(benchmark, args, image_run_args)
@@ -234,9 +259,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         return vm_args + ["-jar", self.standalone_jar_path(self.benchmarkName())] + run_args + [self.benchmarkName()]
 
     def successPatterns(self):
-        return super(RenaissanceNativeImageBenchmarkSuite, self).successPatterns() + [
-            _successful_stage_pattern
-        ]
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 mx_benchmark.add_bm_suite(RenaissanceNativeImageBenchmarkSuite())
 
@@ -253,7 +276,7 @@ class BaseDaCapoNativeImageBenchmarkSuite():
     def collect_dependencies(path):
         deps = []
         for f in list_jars(path):
-            deps.append(mx.join(path, f))
+            deps.append(os.path.join(path, f))
         return deps
 
     @staticmethod
@@ -280,9 +303,9 @@ class BaseDaCapoNativeImageBenchmarkSuite():
         benchmark_resources = self.benchmark_resources(benchmark)
         if benchmark_resources:
             for resource in benchmark_resources:
-                dacapo_dat_resource = extract_archive(mx.join(dacapo_extracted, resource), benchmark)
+                dacapo_dat_resource = extract_archive(os.path.join(dacapo_extracted, resource), benchmark)
                 dat_resource_name = os.path.splitext(os.path.basename(resource))[0]
-                dacapo_dat_resources.append(mx.join(dacapo_dat_resource, dat_resource_name))
+                dacapo_dat_resources.append(os.path.join(dacapo_dat_resource, dat_resource_name))
                 #collects nested jar files and classes directories
                 dacapo_nested_resources += self.collect_nested_dependencies(dacapo_dat_resource)
         return dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources
@@ -292,9 +315,9 @@ class BaseDaCapoNativeImageBenchmarkSuite():
         # if there are more versions of the same jar, we choose one and omit remaining from the classpath
         if benchmark in exclude_libs:
             for lib in exclude_libs[benchmark]:
-                lib_path = mx.join(path, lib)
+                lib_path = os.path.join(path, lib)
                 if lib_path in deps:
-                    deps.remove(mx.join(path, lib))
+                    deps.remove(os.path.join(path, lib))
         return deps
 
 
@@ -319,8 +342,7 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     'pmd':      [],
     # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
     # order that can lead to runtime issues. See GR-26324.
-    'xalan':    ['--report-unsupported-elements-at-runtime',
-                 '--initialize-at-build-time=org.apache.crimson.parser.Parser2,org.apache.crimson.parser.Parser2$Catalog,org.apache.crimson.parser.Parser2$NullHandler,org.apache.xml.utils.res.CharArrayWrapper'],
+    'xalan':    ['--initialize-at-build-time=org.apache.crimson.parser.Parser2,org.apache.crimson.parser.Parser2$Catalog,org.apache.crimson.parser.Parser2$NullHandler,org.apache.xml.utils.res.CharArrayWrapper'],
     # There are two main issues with fop:
     # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However
     #    DaCapo Harness sets the `java.util.logging.config.file` property at run-time. Therefore, we set
@@ -329,8 +351,7 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     #    not exist and would fail the benchmark when assertions are enabled.
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
-    'fop':      ['--report-unsupported-elements-at-runtime',
-                 f"-Djava.util.logging.config.file={_empty_file()}",
+    'fop':      [f"-Djava.util.logging.config.file={_empty_file()}",
                  '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
     'batik':    []
 }
@@ -382,7 +403,7 @@ _daCapo_exclude_lib = {
     'fop'         : ['saxon-9.1.0.8.jar', 'saxon-9.1.0.8-dom.jar'],  # Native-image picks the wrong service provider from these jars
 }
 
-class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     '''
     Some methods in DaCapo source are modified because they relied on the jar's nested structure,
     e.g. loading all configuration files for benchmarks from a nested directory.
@@ -400,9 +421,6 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
             return lib.get_path(True)
         return None
 
-    def daCapoSuiteTitle(self):
-        return super(DaCapoNativeImageBenchmarkSuite, self).suite_title()
-
     def availableSuiteVersions(self):
         # This version also ships a custom harness class to allow native image to find the entry point in the nested jar
         return ["9.12-MR1-git+2baec49"]
@@ -413,6 +431,9 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
 
     def benchmark_resources(self, benchmark):
         return _dacapo_resources[benchmark]
+
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
@@ -458,9 +479,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         return cp
 
     def successPatterns(self):
-        return super(DaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
-            _successful_stage_pattern
-        ]
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 
 mx_benchmark.add_bm_suite(DaCapoNativeImageBenchmarkSuite())
@@ -515,12 +534,9 @@ _scala_daCapo_additional_lib = {
 }
 
 
-class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+class ScalaDaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     def name(self):
         return 'scala-dacapo-native-image'
-
-    def daCapoSuiteTitle(self):
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).suite_title()
 
     def daCapoPath(self):
         lib = mx.library(self.daCapoLibraryName(), False)
@@ -537,6 +553,9 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
 
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
+
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
@@ -584,14 +603,12 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
         return cp
 
     def successPatterns(self):
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
-            _successful_stage_pattern
-        ]
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
     @staticmethod
     def substitution_path():
         path = mx.project('com.oracle.svm.bench').classpath_repr()
-        if not mx.exists(path):
+        if not os.path.exists(path):
             mx.abort('Path to substitutions for scala dacapo not present: ' + path + '. Did you build all of substratevm?')
         return path
 
@@ -599,30 +616,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
 mx_benchmark.add_bm_suite(ScalaDaCapoNativeImageBenchmarkSuite())
 
 
-class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
-    """
-    Console applications suite for Native Image
-    """
-
-    def name(self):
-        return 'console-native-image'
-
-    def benchSuiteName(self, bmSuiteArgs=None):
-        return 'console'
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        args = super(ConsoleNativeImageBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
-        self.benchmark_name = benchmarks[0]
-        return args
-
-    def checkSamplesInPgo(self):
-        return False
-
-
-mx_benchmark.add_bm_suite(ConsoleNativeImageBenchmarkSuite())
-
-
-class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008BenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+class SpecJVM2008NativeImageBenchmarkSuite(mx_sdk_benchmark.SpecJvm2008BenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     """
     SpecJVM2008 for Native Image
     """
@@ -636,6 +630,9 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
 
     def benchSuiteName(self, bmSuiteArgs=None):
         return 'specjvm2008'
+
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         args = super().createCommandLineArgs(benchmarks, bmSuiteArgs)
@@ -655,14 +652,13 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
         return super().extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args) + SpecJVM2008NativeImageBenchmarkSuite.short_run_args
 
     def extra_image_build_argument(self, benchmark, args):
-        # Don't wrap the option `-H:-ParseRuntimeOptions` with `mx_sdk_vm_impl.svm_experimental_options`, as all args are wrapped already.
         # The reason to add `-H:CompilationExpirationPeriod` is that we encounter non-deterministic compiler crash due to expiration (GR-50701).
-        return super().extra_image_build_argument(benchmark, args) + ['-H:-ParseRuntimeOptions', '-H:CompilationExpirationPeriod=600']
+        return super().extra_image_build_argument(benchmark, args) + ['-H:CompilationExpirationPeriod=600']
 
     def extra_run_arg(self, benchmark, args, image_run_args):
         return super().extra_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.long_run_args
 
     def successPatterns(self):
-        return super().successPatterns() + [_successful_stage_pattern]
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 mx_benchmark.add_bm_suite(SpecJVM2008NativeImageBenchmarkSuite())

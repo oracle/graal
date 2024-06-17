@@ -121,6 +121,7 @@ import jdk.graal.compiler.lir.amd64.AMD64Arithmetic.FPDivRemOp;
 import jdk.graal.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.lir.amd64.AMD64Binary;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
+import jdk.graal.compiler.lir.amd64.AMD64BitCountOp;
 import jdk.graal.compiler.lir.amd64.AMD64BitSwapOp;
 import jdk.graal.compiler.lir.amd64.AMD64ClearRegisterOp;
 import jdk.graal.compiler.lir.amd64.AMD64ConvertFloatToIntegerOp;
@@ -992,7 +993,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
+    public Value emitZeroExtend(Value inputVal, int fromBits, int toBits, boolean requiresExplicitZeroExtend, boolean requiresLIRKindChange) {
         assert fromBits <= toBits && toBits <= 64 : fromBits + " " + toBits;
         if (fromBits == toBits) {
             return inputVal;
@@ -1013,8 +1014,11 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             /*
              * Always emit DWORD operations, even if the resultKind is Long. On AMD64, all DWORD
              * operations implicitly set the upper half of the register to 0, which is what we want
-             * anyway. Compared to the QWORD oparations, the encoding of the DWORD operations is
-             * sometimes one byte shorter.
+             * anyway. Compared to the QWORD operations, the encoding of the DWORD operations is
+             * sometimes one byte shorter. See section 3.4.1.1 in
+             * @formatter:off
+             * https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-1-manual.pdf
+             * @formatter:on
              */
             switch (fromBits) {
                 case 8:
@@ -1022,7 +1026,22 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 case 16:
                     return emitConvertOp(resultKind, MOVZX, DWORD, inputVal);
                 case 32:
-                    return emitConvertOp(resultKind, MOV, DWORD, inputVal);
+                    if (requiresExplicitZeroExtend) {
+                        return emitConvertOp(resultKind, MOV, DWORD, inputVal);
+                    } else if (requiresLIRKindChange) {
+                        // We assume that the DWORD-size inputVal is generated via DWORD operation
+                        // and its upper half is implicitly set to 0. If the input is only used by
+                        // the current ZeroExtendNode, the MovToRegOp will hint the register
+                        // allocator to use the same register for both result and input, which then
+                        // becomes a no-op.
+                        Variable result = getLIRGen().newVariable(resultKind);
+                        getLIRGen().append(new AMD64Move.MoveToRegOp(AMD64Kind.DWORD, result, asAllocatable(inputVal)));
+                        return result;
+                    } else {
+                        // There is no need for changing the LIRKind. We can directly treat the
+                        // input value as implicitly zero-extended to 64-bits.
+                        return inputVal;
+                    }
             }
 
             // odd bit count, fall back on manual masking
@@ -1041,11 +1060,15 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Variable emitBitCount(Value value) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(value).changeType(AMD64Kind.DWORD));
-        assert ((AMD64Kind) value.getPlatformKind()).isInteger();
-        if (value.getPlatformKind() == AMD64Kind.QWORD) {
-            getLIRGen().append(new AMD64Unary.RMOp(POPCNT, QWORD, result, asAllocatable(value)));
+        if (getLIRGen().target().arch.getFeatures().contains(CPUFeature.POPCNT)) {
+            assert ((AMD64Kind) value.getPlatformKind()).isInteger();
+            if (value.getPlatformKind() == AMD64Kind.QWORD) {
+                getLIRGen().append(new AMD64Unary.RMOp(POPCNT, QWORD, result, asAllocatable(value)));
+            } else {
+                getLIRGen().append(new AMD64Unary.RMOp(POPCNT, DWORD, result, asAllocatable(value)));
+            }
         } else {
-            getLIRGen().append(new AMD64Unary.RMOp(POPCNT, DWORD, result, asAllocatable(value)));
+            getLIRGen().append(new AMD64BitCountOp(getLIRGen(), result, asAllocatable(value)));
         }
         return result;
     }
@@ -1738,9 +1761,9 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Variable emitNormalizedUnsignedCompare(Value x, Value y) {
+    public Variable emitNormalizedUnsignedCompare(LIRKind compareKind, Value x, Value y) {
         Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
-        getLIRGen().append(new AMD64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
+        getLIRGen().append(new AMD64NormalizedUnsignedCompareOp(result, compareKind, asAllocatable(x), asAllocatable(y)));
         return result;
     }
 }

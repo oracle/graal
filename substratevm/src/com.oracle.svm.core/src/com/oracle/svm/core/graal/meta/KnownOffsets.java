@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -32,6 +31,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public final class KnownOffsets {
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
@@ -77,13 +78,22 @@ public final class KnownOffsets {
         return vtableEntrySize > 0;
     }
 
-    public int getVTableOffset(int vTableIndex) {
+    /**
+     * Returns of the offset of the index either relative to the start of the vtable
+     * ({@code fromDynamicHubStart} == false) or start of the dynamic hub
+     * ({@code fromDynamicHubStart} == true).
+     */
+    public int getVTableOffset(int vTableIndex, boolean fromDynamicHubStart) {
         assert isFullyInitialized();
-        return vtableBaseOffset + vTableIndex * vtableEntrySize;
+        if (fromDynamicHubStart) {
+            return vtableBaseOffset + vTableIndex * vtableEntrySize;
+        } else {
+            return vTableIndex * vtableEntrySize;
+        }
     }
 
     public int getTypeIDSlotsOffset() {
-        assert isFullyInitialized();
+        assert isFullyInitialized() && SubstrateOptions.closedTypeWorld();
         return typeIDSlotsOffset;
     }
 
@@ -104,7 +114,7 @@ public final class KnownOffsets {
 
     public int getVMThreadStatusOffset() {
         assert isFullyInitialized();
-        assert SubstrateOptions.MultiThreaded.getValue() && vmThreadStatusOffset != -1;
+        assert vmThreadStatusOffset != -1;
         return vmThreadStatusOffset;
     }
 

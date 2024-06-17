@@ -31,7 +31,9 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.memory.NativeMemory;
 
+/** Platform-independent LibC support. Don't use this class directly, use {@link LibC} instead. */
 public interface LibCSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int errno();
@@ -51,15 +53,19 @@ public interface LibCSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     <T extends PointerBase> T memset(T s, SignedWord c, UnsignedWord n);
 
+    /** Don't call this directly, see {@link NativeMemory} for more details. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     <T extends PointerBase> T malloc(UnsignedWord size);
 
+    /** Don't call this directly, see {@link NativeMemory} for more details. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     <T extends PointerBase> T calloc(UnsignedWord nmemb, UnsignedWord size);
 
+    /** Don't call this directly, see {@link NativeMemory} for more details. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     <T extends PointerBase> T realloc(PointerBase ptr, UnsignedWord size);
 
+    /** Don't call this directly, see {@link NativeMemory} for more details. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void free(PointerBase ptr);
 

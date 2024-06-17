@@ -26,57 +26,23 @@
 package com.oracle.svm.core.configure;
 
 import java.util.Comparator;
-import java.util.Objects;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-public class ConditionalElement<T> {
-    private final ConfigurationCondition condition;
-    private final T element;
-
-    public ConditionalElement(ConfigurationCondition condition, T element) {
-        this.condition = condition;
-        this.element = element;
-    }
-
-    public ConfigurationCondition getCondition() {
-        return condition;
-    }
-
-    public T getElement() {
-        return element;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        ConditionalElement<?> that = (ConditionalElement<?>) o;
-        return Objects.equals(condition, that.condition) &&
-                        Objects.equals(element, that.element);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(condition, element);
-    }
+public record ConditionalElement<T>(UnresolvedConfigurationCondition condition, T element) {
 
     public static <T extends Comparable<T>> Comparator<ConditionalElement<T>> comparator() {
         return (o1, o2) -> Comparator
-                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::getElement)
-                        .thenComparing(ConditionalElement::getCondition)
+                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::element)
+                        .thenComparing(ConditionalElement::condition)
                         .compare(o1, o2);
     }
 
     public static <T> Comparator<ConditionalElement<T>> comparator(Comparator<T> elementComparator) {
         return (o1, o2) -> Comparator
-                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::getElement, elementComparator)
-                        .thenComparing(ConditionalElement::getCondition)
+                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::element, elementComparator)
+                        .thenComparing(ConditionalElement::condition)
                         .compare(o1, o2);
     }
 }

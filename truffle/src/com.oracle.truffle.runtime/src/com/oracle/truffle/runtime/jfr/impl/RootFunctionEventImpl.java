@@ -41,16 +41,17 @@
 package com.oracle.truffle.runtime.jfr.impl;
 
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
 import jdk.jfr.Description;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.runtime.jfr.RootFunctionEvent;
 import com.oracle.truffle.api.nodes.RootNode;
 
 abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent {
 
+    @Label("Id") @Description("Truffle Compilable Unique Id") public long id;
     @Label("Source") @Description("Compiled Source") public String source;
     @Label("Language") @Description("Guest Language") public String language;
     @Label("Root Function") @Description("Root Function") public String rootFunction;
@@ -58,14 +59,16 @@ abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent 
     RootFunctionEventImpl() {
     }
 
-    RootFunctionEventImpl(String source, String language, String rootFunction) {
+    RootFunctionEventImpl(long id, String source, String language, String rootFunction) {
+        this.id = id;
         this.source = source;
         this.language = language;
         this.rootFunction = rootFunction;
     }
 
     @Override
-    public void setRootFunction(RootCallTarget target) {
+    public void setRootFunction(OptimizedCallTarget target) {
+        this.id = target.id;
         RootNode rootNode = target.getRootNode();
         this.source = targetName(rootNode);
         LanguageInfo languageInfo = rootNode.getLanguageInfo();

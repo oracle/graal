@@ -26,10 +26,10 @@
 
 package com.oracle.graal.pointsto.standalone.test;
 
+import java.lang.reflect.Array;
+
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.Replacements;
-
-import java.lang.reflect.Array;
 
 /**
  * This case is for

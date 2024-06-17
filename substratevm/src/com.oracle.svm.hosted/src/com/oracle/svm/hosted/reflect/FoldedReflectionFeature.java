@@ -48,12 +48,12 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
 
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 /**
  * This feature prints all reflective elements that are in the native image heap. Its goal is to
@@ -101,8 +101,8 @@ public class FoldedReflectionFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        access.registerObjectReachableCallback(Executable.class, (analysisAccess, executable) -> executables.add(executable));
-        access.registerObjectReachableCallback(Field.class, (analysisAccess, field) -> fields.add(field));
+        access.registerObjectReachableCallback(Executable.class, (analysisAccess, executable, reason) -> executables.add(executable));
+        access.registerObjectReachableCallback(Field.class, (analysisAccess, field, reason) -> fields.add(field));
     }
 
     @Override

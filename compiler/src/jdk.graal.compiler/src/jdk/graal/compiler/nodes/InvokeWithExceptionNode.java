@@ -69,6 +69,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     protected int bci;
     protected boolean polymorphic;
     protected InlineControl inlineControl;
+    private boolean isInOOMETry;
 
     public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci) {
         super(TYPE, callTarget.returnStamp().getTrustedStamp());
@@ -252,5 +253,15 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Override
     protected NodeSize dynamicNodeSizeEstimate() {
         return InvokeNode.estimatedNodeSize(callTarget);
+    }
+
+    @Override
+    public boolean isInOOMETry() {
+        return isInOOMETry;
+    }
+
+    @Override
+    public void setInOOMETry(boolean isInOOMETry) {
+        this.isInOOMETry = isInOOMETry;
     }
 }

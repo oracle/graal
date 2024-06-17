@@ -29,6 +29,8 @@ import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.hotspot.nodes.type.KlassPointerStamp;
 import jdk.graal.compiler.hotspot.nodes.type.MethodPointerStamp;
 import jdk.graal.compiler.nodes.spi.StampProvider;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 
 public class HotSpotStampProvider implements StampProvider {
 
@@ -40,5 +42,15 @@ public class HotSpotStampProvider implements StampProvider {
     @Override
     public AbstractPointerStamp createMethodStamp() {
         return MethodPointerStamp.methodNonNull();
+    }
+
+    @Override
+    public AbstractPointerStamp createMethodAlwaysNullStamp() {
+        return MethodPointerStamp.methodAlwaysNull();
+    }
+
+    @Override
+    public Constant methodPointerAlwaysNullConstant() {
+        return JavaConstant.NULL_POINTER;
     }
 }

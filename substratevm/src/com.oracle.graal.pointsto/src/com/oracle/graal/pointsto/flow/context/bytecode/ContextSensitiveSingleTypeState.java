@@ -45,7 +45,7 @@ public class ContextSensitiveSingleTypeState extends SingleTypeState {
     public ContextSensitiveSingleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type, AnalysisObject... objects) {
         super(bb, canBeNull, type);
         this.objects = objects;
-        assert checkObjects(bb);
+        assert checkObjects();
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
@@ -54,11 +54,7 @@ public class ContextSensitiveSingleTypeState extends SingleTypeState {
         this.objects = other.objects;
     }
 
-    protected boolean checkObjects(BigBang bb) {
-        if (!bb.extendedAsserts()) {
-            return true;
-        }
-
+    protected boolean checkObjects() {
         /* Check that the objects array are sorted by type. */
         for (int idx = 0; idx < objects.length - 1; idx++) {
             AnalysisObject o0 = objects[idx];

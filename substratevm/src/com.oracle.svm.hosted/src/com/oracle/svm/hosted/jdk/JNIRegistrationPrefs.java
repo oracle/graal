@@ -66,13 +66,13 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
          * ensure we pick up the loadLibrary call and properly link against the library.
          */
         String preferencesImplementation = getPlatformPreferencesClassName();
-        rerunClassInit(access, preferencesImplementation);
+        initializeAtRunTime(access, preferencesImplementation);
         ArrayList<Class<?>> triggers = new ArrayList<>();
         triggers.add(clazz(access, preferencesImplementation));
 
         if (isDarwin()) {
             String darwinSpecificClass = "java.util.prefs.MacOSXPreferencesFile";
-            rerunClassInit(access, darwinSpecificClass);
+            initializeAtRunTime(access, darwinSpecificClass);
             triggers.add(clazz(access, darwinSpecificClass));
         }
 

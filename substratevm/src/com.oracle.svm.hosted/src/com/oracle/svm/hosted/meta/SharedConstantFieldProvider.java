@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.meta;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -56,7 +57,7 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     @Override
     public boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        return super.isFinalField(field, tool) && allowConstantFolding(field);
+        return super.isFinalField(field, tool) && allowConstantFolding(field, tool);
     }
 
     @Override
@@ -72,11 +73,20 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
         } else {
             stable = super.isStableField(field, tool);
         }
-        return stable && allowConstantFolding(field);
+        return stable && allowConstantFolding(field, tool);
     }
 
-    private boolean allowConstantFolding(ResolvedJavaField field) {
+    private boolean allowConstantFolding(ResolvedJavaField field, ConstantFieldTool<?> tool) {
         var aField = asAnalysisField(field);
+
+        /*
+         * During compiler optimizations, it is possible to see field loads with a constant receiver
+         * of a wrong type that might not even be an ImageHeapConstant. Also, we need to ensure that
+         * the ImageHeapConstant allows constant folding of its fields.
+         */
+        if (!field.isStatic() && (!(tool.getReceiver() instanceof ImageHeapConstant receiver) || !receiver.allowConstantFolding())) {
+            return false;
+        }
 
         /*
          * This code should run as late as possible, because it has side effects. So we only do it

@@ -25,7 +25,9 @@
 
 from __future__ import print_function
 import os
+from functools import total_ordering
 from os.path import join, exists, basename, dirname, isdir
+import argparse
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
@@ -38,6 +40,8 @@ import csv
 import mx
 import mx_truffle
 import mx_sdk_vm
+from mx_sdk_benchmark import JVMCI_JDK_TAG, DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite, RenaissanceBenchmarkSuite
+import mx_graal_benchmark #pylint: disable=unused-import
 
 import mx_gate
 from mx_gate import Task
@@ -50,7 +54,6 @@ import mx_sdk_vm_impl
 
 import mx_benchmark
 
-import argparse
 import shlex
 import json
 
@@ -58,10 +61,6 @@ import mx_graal_tools #pylint: disable=unused-import
 
 _suite = mx.suite('compiler')
 
-if 'java-benchmarks' in (s.name for s in _suite.suite_imports):
-    # allows removing the static import of `java-benchmarks` from source code bundles
-    import mx_java_benchmarks
-    import mx_graal_benchmark #pylint: disable=unused-import
 
 """ Prefix for running the VM. """
 _vm_prefix = None
@@ -79,7 +78,7 @@ jdk = mx.get_jdk(tag='default')
 
 
 class JavaLangRuntimeVersion(mx.Comparable):
-    """Wrapper for by java.lang.Runtime.Version"""
+    """Wrapper for java.lang.Runtime.Version"""
 
     _cmp_cache = {}
     _feature_re = re.compile('[1-9][0-9]*')
@@ -124,10 +123,48 @@ class JavaLangRuntimeVersion(mx.Comparable):
             self._feature = int(JavaLangRuntimeVersion._feature_re.match(self.version).group(0))
         return self._feature
 
+@total_ordering
+class JVMCIVersionCheckVersion(object):
+    def __init__(self, jdk_version, jvmci_major, jvmci_minor, jvmci_build):
+        """
+        Python version of jdk.graal.compiler.hotspot.JVMCIVersionCheck.Version
 
-#: 4-tuple (jdk_version, jvmci_major, jvmci_minor, jvmci_build) of JVMCI version, if any, denoted by `jdk`
-# jdk_version is a JavaLangRuntimeVersion
-# jvmci_major and jvmci_minor might be 0 if not needed (JDK 22+)
+        jdk_version is a JavaLangRuntimeVersion
+        jvmci_major and jvmci_minor might be 0 if not needed (JDK 22+)
+        """
+        assert isinstance(jdk_version, JavaLangRuntimeVersion)
+        assert isinstance(jvmci_major, int)
+        assert isinstance(jvmci_minor, int)
+        assert isinstance(jvmci_build, int)
+        self.jdk_version = jdk_version
+        self.jvmci_major = jvmci_major
+        self.jvmci_minor = jvmci_minor
+        self.jvmci_build = jvmci_build
+
+    def _as_tuple(self):
+        return (self.jdk_version, self.jvmci_major, self.jvmci_minor, self.jvmci_build)
+
+    def __eq__(self, other):
+        if not isinstance(other, JVMCIVersionCheckVersion):
+            return False
+        return self._as_tuple() == other._as_tuple()
+
+    def __lt__(self, other):
+        if not isinstance(other, JVMCIVersionCheckVersion):
+            return NotImplemented
+        return self._as_tuple() < other._as_tuple()
+
+    def __str__(self):
+        jdk_version, jvmci_major, jvmci_minor, jvmci_build = self._as_tuple()
+        if jvmci_major == 0:
+            if jvmci_build == 0:
+                return f'(openjdk|oraclejdk)-{jdk_version}'
+            else:
+                return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-b{jvmci_build:02d}'
+        else:
+            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-{jvmci_major}.{jvmci_minor}-b{jvmci_build:02d}'
+
+
 _jdk_jvmci_version = None
 _jdk_min_jvmci_version = None
 
@@ -145,7 +182,7 @@ def _check_jvmci_version(jdk):
         if out.data:
             try:
                 (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = out.data.split(',')
-                return (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
+                return JVMCIVersionCheckVersion(JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
             except ValueError:
                 mx.warn(f'Could not parse jvmci version from JVMCIVersionCheck output:\n{out.data}')
             return None
@@ -475,24 +512,6 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     for r in unit_test_runs:
         r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments), extraUnitTestArguments=extraUnitTestArguments)
 
-    # Run selected tests (initially those from GR-6581) under -Xcomp
-    xcompTests = [
-        'BlackholeDirectiveTest',
-        'OpaqueDirectiveTest',
-        'CompiledMethodTest',
-        'ControlFlowAnchorDirectiveTest',
-        'ConditionalElimination',
-        'MarkUnsafeAccessTest',
-        'PEAAssertionsTest',
-        'MergeCanonicalizerTest',
-        'ExplicitExceptionTest',
-        'GuardedIntrinsicTest',
-        'HashCodeTest',
-        'ProfilingInfoTest',
-        'GraalOSRLockTest'
-    ]
-    UnitTestRun('XcompUnitTests', [], tags=GraalTags.test).run(['compiler'], tasks, ['-Xcomp', '-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments) + xcompTests)
-
     # Run ctw against rt.jar on hosted
     ctw_flags = [
         '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
@@ -551,7 +570,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     bmSuiteArgs = ["--jvm", "server"]
     benchVmArgs = bmSuiteArgs + _remove_empty_entries(extraVMarguments)
 
-    dacapo_suite = mx_java_benchmarks.DaCapoBenchmarkSuite()
+    dacapo_suite = DaCapoBenchmarkSuite()
     dacapo_gate_iterations = {
         k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
@@ -589,7 +608,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # run Scala DaCapo benchmarks #
     ###############################
-    scala_dacapo_suite = mx_java_benchmarks.ScalaDaCapoBenchmarkSuite()
+    scala_dacapo_suite = ScalaDaCapoBenchmarkSuite()
     scala_dacapo_gate_iterations = {
         k: default_iterations for k, v in scala_dacapo_suite.daCapoIterations().items() if v > 0
     }
@@ -614,7 +633,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # run Renaissance benchmarks #
     ###############################
-    renaissance_suite = mx_java_benchmarks.RenaissanceBenchmarkSuite()
+    renaissance_suite = RenaissanceBenchmarkSuite()
     renaissance_gate_iterations = {
         k: default_iterations for k, v in renaissance_suite.renaissanceIterations().items() if v > 0
     }
@@ -643,9 +662,6 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # run benchmark with non default setup #
     ########################################
-    # ensure -Xbatch still works
-    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
     # Ensure benchmark counters still work but omit this test on
     # fastdebug as benchmark counter threads may not produce
@@ -673,10 +689,6 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
                     raise
                 finally:
                     os.remove(logFile)
-
-    # ensure -Xcomp still works
-    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     # ensure -XX:+PreserveFramePointer  still works
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
@@ -828,12 +840,12 @@ mx_unittest.register_unittest_config(GraalUnittestConfig())
 
 _use_graalvm = False
 
-class SwitchToGraalVMJDK(mx_unittest.Action):
+class SwitchToGraalVMJDK(argparse.Action):
     def __init__(self, **kwargs):
         global _use_graalvm
         kwargs['required'] = False
         kwargs['nargs'] = 0
-        mx_unittest.Action.__init__(self, **kwargs)
+        argparse.Action.__init__(self, **kwargs)
         _use_graalvm = False
     def __call__(self, parser, namespace, values, option_string=None):
         global _use_graalvm
@@ -1121,14 +1133,13 @@ def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks
                     if metrics_file:
                         collate_metrics([metrics_file])
 
-_JVMCI_JDK_TAG = 'jvmci'
 
 class GraalJVMCIJDKConfig(mx.JDKConfig):
     """
     A JDKConfig that configures Graal as the JVMCI compiler.
     """
     def __init__(self):
-        mx.JDKConfig.__init__(self, jdk.home, tag=_JVMCI_JDK_TAG)
+        mx.JDKConfig.__init__(self, jdk.home, tag=JVMCI_JDK_TAG)
 
     def run_java(self, args, **kwArgs):
         return run_java(args, **kwArgs)
@@ -1165,7 +1176,7 @@ def _check_latest_jvmci_version():
     ``common.json`` file and issues a warning if not.
     """
     jvmci_re = re.compile(r'(?:ce|ee)-(?P<jdk_version>.+)-jvmci(?:-(?P<jvmci_major>\d+)\.(?P<jvmci_minor>\d+))?-b(?P<jvmci_build>\d+)')
-    common_path = join(_suite.dir, '..', 'common.json')
+    common_path = os.path.normpath(join(_suite.dir, '..', 'common.json'))
 
     if _jdk_jvmci_version is None:
         # Not using a JVMCI JDK
@@ -1183,8 +1194,13 @@ def _check_latest_jvmci_version():
                 if not match:
                     mx.abort(f'Cannot parse version {version}')
                 (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = match.groups(default=0)
-                current = (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
-                if current[0].feature() == _jdk_jvmci_version[0].feature():
+                if _jdk_jvmci_version.jvmci_build == 0:
+                    # jvmci_build == 0 indicates an OpenJDK version has been specified in JVMCIVersionCheck.java.
+                    # The JDK does not know the jvmci_build number that might have been specified in common.json,
+                    # as it is only a repackaged JDK. Thus, we reset the jvmci_build because we cannot validate it.
+                    jvmci_build = 0
+                current = JVMCIVersionCheckVersion(JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
+                if current.jdk_version.feature() == _jdk_jvmci_version.jdk_version.feature():
                     # only compare the same major versions
                     if latest == 'not found':
                         latest = current
@@ -1196,20 +1212,13 @@ def _check_latest_jvmci_version():
                         return False, distribution
         return not isinstance(latest, str), latest
 
-    def jvmci_version_str(version):
-        jdk_version, jvmci_major, jvmci_minor, jvmci_build = version
-        if jvmci_major == 0:
-            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-b{jvmci_build:02d}'
-        else:
-            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-{jvmci_major}.{jvmci_minor}-b{jvmci_build:02d}'
-
     version_check_setting = os.environ.get('JVMCI_VERSION_CHECK', None)
 
     success, latest = get_latest_jvmci_version()
 
     if version_check_setting == 'strict' and _jdk_jvmci_version != _jdk_min_jvmci_version:
         msg = f'JVMCI_MIN_VERSION specified in JVMCIVersionCheck.java is older than in {common_path}:'
-        msg += os.linesep + f'{jvmci_version_str(_jdk_min_jvmci_version)} < {jvmci_version_str(_jdk_jvmci_version)} '
+        msg += os.linesep + f'{_jdk_min_jvmci_version} < {_jdk_jvmci_version} '
         msg += os.linesep + f'Did you forget to update JVMCI_MIN_VERSION after updating {common_path}?'
         msg += os.linesep + 'Set the JVMCI_VERSION_CHECK environment variable to something else then "strict" to'
         msg += ' suppress this error.'
@@ -1217,7 +1226,7 @@ def _check_latest_jvmci_version():
 
     if version_check_setting == 'strict' and not success:
         if latest == 'not found':
-            msg = f'No JVMCI JDK found in {common_path} that matches {jvmci_version_str(_jdk_jvmci_version)}.'
+            msg = f'No JVMCI JDK found in {common_path} that matches {_jdk_jvmci_version}.'
             msg += os.linesep + f'Check that {latest} matches the versions of the other JVMCI JDKs.'
         else:
             msg = f'Version mismatch in {common_path}:'
@@ -1227,10 +1236,9 @@ def _check_latest_jvmci_version():
         mx.abort(msg)
 
     if success and _jdk_jvmci_version < latest:
-        common_path = os.path.normpath(common_path)
-        msg = f'JVMCI version of JAVA_HOME is older than in {common_path}: {jvmci_version_str(_jdk_jvmci_version)} < {jvmci_version_str(latest)} '
+        msg = f'JVMCI version of JAVA_HOME is older than in {common_path}: {_jdk_jvmci_version} < {latest} '
         msg += os.linesep + 'This poses the risk of hitting JVMCI bugs that have already been fixed.'
-        msg += os.linesep + f'Consider using {jvmci_version_str(latest)}, which you can get via:'
+        msg += os.linesep + f'Consider using {latest}, which you can get via:'
         msg += os.linesep + f'mx fetch-jdk --configuration {common_path}'
         mx.abort_or_warn(msg, version_check_setting == 'strict')
 
@@ -1542,7 +1550,7 @@ mx.update_commands(_suite, {
 mx.add_argument('--no-jacoco-exclude-truffle', action='store_false', dest='jacoco_exclude_truffle', help="Don't exclude Truffle classes from jacoco annotations.")
 
 def mx_post_parse_cmd_line(opts):
-    mx.addJDKFactory(_JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
+    mx.addJDKFactory(JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
         if hasattr(dist, 'set_archiveparticipant'):

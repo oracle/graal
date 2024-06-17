@@ -44,11 +44,12 @@ import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class Heap {
+    protected long startOffset;
+
     @Fold
     public static Heap getHeap() {
         return ImageSingletons.lookup(Heap.class);
@@ -137,11 +138,7 @@ public abstract class Heap {
     /** Reset the heap to the normal execution state. */
     public abstract void endSafepoint();
 
-    /**
-     * Returns a multiple to which the heap address space should be aligned to at runtime.
-     *
-     * @see CommittedMemoryProvider#guaranteesHeapPreferredAddressSpaceAlignment()
-     */
+    /** Returns a multiple to which the heap address space should be aligned to at runtime. */
     @Fold
     public abstract int getPreferredAddressSpaceAlignment();
 
@@ -233,6 +230,9 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract long getThreadAllocatedMemory(IsolateThread thread);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract UnsignedWord getUsedMemoryAfterLastGC();
+
     /** Consider all references in the given object as needing remembered set entries. */
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public abstract void dirtyAllReferencesOf(Object obj);
@@ -252,4 +252,11 @@ public abstract class Heap {
      */
     @Uninterruptible(reason = "Ensure that no GC can occur between this call and usage of the salt.", callerMustBe = true)
     public abstract long getIdentityHashSalt(Object obj);
+
+    /**
+     * Sets the start offset of the heap.
+     */
+    public void setStartOffset(long startOffset) {
+        this.startOffset = startOffset;
+    }
 }

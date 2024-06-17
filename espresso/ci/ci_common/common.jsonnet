@@ -1,5 +1,6 @@
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local base = import '../ci.jsonnet';
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
 local devkits = graal_common.devkits;
 
@@ -33,8 +34,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   linux_amd64: self.common + self.linux + graal_common.linux_amd64,
   linux_aarch64: self.common + self.linux + graal_common.linux_aarch64,
 
-  x52: {
-    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
+  e3: {
+    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'e3'],
   },
 
   darwin_amd64: self.common + graal_common.darwin_amd64 + {
@@ -62,12 +63,11 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
         "<graal>/truffle/**",
         "<graal>/espresso/**",
         "<graal>/tools/**",
+        "<graal>/regex/**",
         "<graal>/sulong/**",
-        "<graal>/java-benchmarks/**",
       ] + base.basic_guard_includes + (if with_compiler then [
         "<graal>/common.json",
         "<graal>/compiler/**",
-        "<graal>/regex/**",
       ] + base.compiler_guard_includes else []) + (if with_native_image then [
         "<graal>/substratevm/**",
       ] + base.nativeimage_guard_includes else []) + (if with_vm then [
@@ -88,7 +88,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   dailyBench:      {targets+: ['bench', 'daily'],      notify_groups:: ['espresso']},
   daily:           {targets+: ['daily'],               notify_groups:: ['espresso']},
   weekly:          {targets+: ['weekly'],              notify_groups:: ['espresso']},
-  monthly:         {targets+: ['monthly'],              notify_groups:: ['espresso']},
+  monthly:         {targets+: ['monthly'],             notify_groups:: ['espresso']},
   weeklyBench:     {targets+: ['bench', 'weekly'],     notify_groups:: ['espresso']},
   onDemand:        {targets+: ['on-demand']},
   onDemandBench:   {targets+: ['bench', 'on-demand']},
@@ -105,7 +105,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_gate_darwin_amd64       : self.gate          + self.darwin_amd64_21,
   jdk21_gate_darwin_aarch64     : self.gate          + self.darwin_aarch64_21,
   jdk21_gate_windows_amd64      : self.gate          + self.windows_21,
-  jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.x52,
+  jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.e3,
   jdk21_bench_darwin            : self.bench         + self.darwin_amd64_21,
   jdk21_bench_windows           : self.bench         + self.windows_21,
   jdk21_daily_linux_amd64       : self.daily         + self.linux_amd64_21,
@@ -113,7 +113,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_daily_darwin_amd64      : self.daily         + self.darwin_amd64_21,
   jdk21_daily_darwin_aarch64    : self.daily         + self.darwin_aarch64_21,
   jdk21_daily_windows_amd64     : self.daily         + self.windows_21,
-  jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.x52,
+  jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.e3,
   jdk21_daily_bench_darwin      : self.dailyBench    + self.darwin_amd64_21,
   jdk21_daily_bench_windows     : self.dailyBench    + self.windows_21,
   jdk21_weekly_linux_amd64      : self.weekly        + self.linux_amd64_21,
@@ -126,13 +126,13 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_monthly_darwin_amd64    : self.monthly        + self.darwin_amd64_21,
   jdk21_monthly_darwin_aarch64  : self.monthly        + self.darwin_aarch64_21,
   jdk21_monthly_windows_amd64   : self.monthly        + self.windows_21,
-  jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.x52,
+  jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.e3,
   jdk21_weekly_bench_darwin     : self.weeklyBench   + self.darwin_amd64_21,
   jdk21_weekly_bench_windows    : self.weeklyBench   + self.windows_21,
   jdk21_on_demand_linux         : self.onDemand      + self.linux_amd64_21,
   jdk21_on_demand_darwin        : self.onDemand      + self.darwin_amd64_21,
   jdk21_on_demand_windows       : self.onDemand      + self.windows_21,
-  jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.x52,
+  jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.e3,
   jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
 
@@ -258,18 +258,20 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   dacapo_stable(env): if std.startsWith(env, 'jvm')
     # exclude pmd and lusearch
-    then 'dacapo:*[avrora,h2,fop,jython,luindex,sunflow,xalan]'
+    then 'dacapo:*[h2,fop,jython,luindex,sunflow,xalan]'
     # exclude fop on native
     else if env == 'native-ce'
       # additionally exclude luindex on native-ce: it gets stuck on the first interation
-      then 'dacapo:*[avrora,h2,jython,lusearch,pmd,sunflow,xalan]'
-      else 'dacapo:*[avrora,h2,jython,luindex,lusearch,pmd,sunflow,xalan]',
+      then 'dacapo:*[h2,jython,lusearch,pmd,sunflow,xalan]'
+      else 'dacapo:*[h2,jython,luindex,lusearch,pmd,sunflow,xalan]',
 
   # exclude scalatest, which goes into deopt loop and becomes slower on every subsequent operation
   scala_dacapo_fast: 'scala-dacapo:*[apparat,factorie,kiama,scalac,scaladoc,scalap,scalariform,scalaxb,tmt]',
 
-  builds: [
+  local _builds = [
     // Gates
     that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
   ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

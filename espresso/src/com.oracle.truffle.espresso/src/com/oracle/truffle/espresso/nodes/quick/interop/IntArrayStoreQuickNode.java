@@ -46,7 +46,7 @@ public final class IntArrayStoreQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         int value = EspressoFrame.popInt(frame, top - 1);
         int index = EspressoFrame.popInt(frame, top - 2);
         StaticObject array = nullCheck(EspressoFrame.popObject(frame, top - 3));

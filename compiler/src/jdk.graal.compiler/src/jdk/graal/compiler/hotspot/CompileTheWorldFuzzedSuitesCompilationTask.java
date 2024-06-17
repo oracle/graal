@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import jdk.graal.compiler.core.phases.fuzzing.FuzzedSuites;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.meta.HotSpotFuzzedSuitesProvider;
-
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -50,12 +49,6 @@ public class CompileTheWorldFuzzedSuitesCompilationTask extends CompilationTask 
     public CompileTheWorldFuzzedSuitesCompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo,
                     boolean installAsDefault) {
         super(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
-    }
-
-    public CompileTheWorldFuzzedSuitesCompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo,
-                    boolean shouldRetainLocalVariables,
-                    boolean installAsDefault) {
-        super(jvmciRuntime, compiler, request, useProfilingInfo, shouldRetainLocalVariables, installAsDefault);
     }
 
     private final class HotSpotFuzzedCompilationWrapper extends HotSpotCompilationWrapper {

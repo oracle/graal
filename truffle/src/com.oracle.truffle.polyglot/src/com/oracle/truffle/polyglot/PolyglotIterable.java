@@ -88,7 +88,7 @@ class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
     @SuppressWarnings("unchecked")
     @Override
     public Iterator<T> iterator() {
-        return (Iterator<T>) cache.getIterator.call(languageContext, guestObject);
+        return (Iterator<T>) cache.getIterator.call(null, languageContext, guestObject);
     }
 
     @Override

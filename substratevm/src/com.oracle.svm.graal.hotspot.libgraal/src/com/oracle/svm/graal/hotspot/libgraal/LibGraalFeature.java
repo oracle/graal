@@ -50,7 +50,6 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
@@ -71,9 +70,11 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -163,10 +164,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
 class LibGraalOptions {
-    @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
+    @Option(help = "If non-zero, converts an exception triggered by the CrashAt option into a fatal error " +
                     "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
+                    "The value of this option is the number of milliseconds to sleep before calling _fatal. " +
                     "This option exists for the purpose of testing fatal error handling in libgraal.") //
-    static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new LibGraalRuntimeOptionKey<>(false);
+    static final RuntimeOptionKey<Integer> CrashAtIsFatal = new LibGraalRuntimeOptionKey<>(0);
     @Option(help = "The fully qualified name of a no-arg, void, static method to be invoked " +
                     "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
                     "This option exists for the purpose of testing callbacks in this context.") //
@@ -221,19 +223,19 @@ public class LibGraalFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        access.registerObjectReachableCallback(OptionKey.class, optionCollector::accept);
+        access.registerObjectReachableCallback(OptionKey.class, optionCollector::doCallback);
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         registerJNIConfiguration(imageClassLoader);
     }
 
     /** Collects all {@link OptionKey}s that are reachable at run time. */
-    private static class OptionCollector implements BiConsumer<DuringAnalysisAccess, OptionKey<?>> {
+    private static class OptionCollector implements ObjectReachableCallback<OptionKey<?>> {
         final ConcurrentHashMap<OptionKey<?>, OptionKey<?>> options = new ConcurrentHashMap<>();
         private boolean sealed;
 
         @Override
-        public void accept(DuringAnalysisAccess access, OptionKey<?> option) {
+        public void doCallback(DuringAnalysisAccess access, OptionKey<?> option, ObjectScanner.ScanReason reason) {
             if (sealed) {
                 assert options.contains(option) : "All options must have been discovered during static analysis";
             } else {
@@ -508,7 +510,7 @@ public class LibGraalFeature implements InternalFeature {
         // Mark all the Node classes as allocated so they are available during graph decoding.
         EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
         for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
-            bb.registerTypeAsInHeap(impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()), "All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
+            impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsInstantiated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
     }
 
@@ -575,7 +577,7 @@ public class LibGraalFeature implements InternalFeature {
         AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
         Map<AnalysisMethod, Object> seen = new LinkedHashMap<>();
         for (AnalysisMethod analysisMethod : universe.getMethods()) {
-            if (analysisMethod.isDirectRootMethod() && analysisMethod.isImplementationInvoked()) {
+            if (analysisMethod.isDirectRootMethod() && analysisMethod.isSimplyImplementationInvoked()) {
                 seen.put(analysisMethod, "direct root");
             }
             if (analysisMethod.isVirtualRootMethod()) {
@@ -888,8 +890,8 @@ final class HotSpotGraalOptionValuesUtil {
             options.update(values);
         }
 
-        if (LibGraalOptions.CrashAtThrowsOOME.getValue() && LibGraalOptions.CrashAtIsFatal.getValue()) {
-            throw new IllegalArgumentException("CrashAtThrowsOOME and CrashAtIsFatal cannot both be true");
+        if (LibGraalOptions.CrashAtThrowsOOME.getValue() && LibGraalOptions.CrashAtIsFatal.getValue() != 0) {
+            throw new IllegalArgumentException("CrashAtThrowsOOME and CrashAtIsFatal cannot both be enabled");
         }
 
         return options;
@@ -938,9 +940,14 @@ final class Target_jdk_graal_compiler_core_GraalCompiler {
                 // Remaining compilations should proceed so that test finishes quickly.
                 return false;
             }
-        } else if (LibGraalOptions.CrashAtIsFatal.getValue()) {
+        } else if (LibGraalOptions.CrashAtIsFatal.getValue() != 0) {
             LogHandler handler = ImageSingletons.lookup(LogHandler.class);
             if (handler instanceof FunctionPointerLogHandler) {
+                try {
+                    Thread.sleep(LibGraalOptions.CrashAtIsFatal.getValue());
+                } catch (InterruptedException e) {
+                    // ignore
+                }
                 VMError.shouldNotReachHere(crashMessage);
             }
             // If changing this message, update the test for it in mx_vm_gate.py

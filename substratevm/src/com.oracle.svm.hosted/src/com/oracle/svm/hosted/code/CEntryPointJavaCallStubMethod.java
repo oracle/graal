@@ -74,7 +74,6 @@ public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
 
     @Override
     protected ValueNode createTargetAddressNode(HostedGraphKit kit, List<ValueNode> arguments) {
-
         /*
          * We currently cannot handle {@link MethodPointer} as a constant in the code, so we use an
          * indirection with a non-final field load from an object of BoxedRelocatedPointer.

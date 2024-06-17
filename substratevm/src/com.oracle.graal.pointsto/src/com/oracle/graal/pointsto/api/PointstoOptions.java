@@ -27,6 +27,8 @@ package com.oracle.graal.pointsto.api;
 import static jdk.graal.compiler.options.OptionType.Expert;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
+import java.util.Locale;
+
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.options.Option;
@@ -88,9 +90,6 @@ public class PointstoOptions {
 
     @Option(help = "Analysis: Detect methods that return one of their parameters and hardwire the parameter straight to the return.")//
     public static final OptionKey<Boolean> OptimizeReturnedParameter = new OptionKey<>(true);
-
-    @Option(help = "Enable extended asserts which slow down analysis.")//
-    public static final OptionKey<Boolean> ExtendedAsserts = new OptionKey<>(false);
 
     @Option(help = "Track the callers for methods and accessing methods for fields.")//
     public static final OptionKey<Boolean> TrackAccessChain = new OptionKey<>(false);
@@ -168,7 +167,7 @@ public class PointstoOptions {
     public static final OptionKey<String> AnalysisContextSensitivity = new OptionKey<>("insens") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            switch (newValue.toLowerCase()) {
+            switch (newValue.toLowerCase(Locale.ROOT)) {
                 case "insens":
                     AllocationSiteSensitiveHeap.update(values, false);
                     MinHeapContextDepth.update(values, 0);

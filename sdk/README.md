@@ -2,34 +2,66 @@
 
 The GraalVM SDK is a collection of APIs for the components of GraalVM.
 
-* The [`org.graalvm.polyglot`](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html) module contains APIs to embed Graal languages in Java host applications.
-* The [`org.graalvm.collections`](http://www.graalvm.org/sdk/javadoc/org/graalvm/collections/package-summary.html) module contains memory efficient common collection data structures used across Graal projects.
-* The [`org.graalvm.options`](http://www.graalvm.org/sdk/javadoc/org/graalvm/options/package-summary.html) module contains reusable classes for options.
+* [`org.graalvm.nativeimage`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/package-summary.html): The Native Image public API for advanced use cases.
+* [`org.graalvm.polyglot`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html): A library that allows embedding of polyglot language implementations in Java. 
+* [`org.graalvm.word`](https://www.graalvm.org/sdk/javadoc/org/graalvm/word/package-summary.html): A low-level library for machine-word-sized values in Java.
+* [`org.graalvm.collections`](https://www.graalvm.org/sdk/javadoc/org/graalvm/collections/package-summary.htmlyes): A collections library for GraalVM components.
 
 ## Getting Started
 
-1. Download GraalVM from [Oracle Technology Network](https://www.oracle.com/downloads/graalvm-downloads.html).
-2. Use any of the Java executables in `./bin` or import GraalVM as JDK in your favorite IDE.
-3. Use GraalVM SDK, the jar is put on the class path for you automatically.
+To get started, download and install GraalVM for your operating system as described in the [installation guide](https://www.graalvm.org/latest/docs/getting-started/).
+The `org.graalvm.nativeimage`, `org.graalvm.word`, and  `org.graalvm.collection` modules from the GraalVM SDK are included in a GraalVM JDK and can be used like any other module.
 
-The GraalVM SDK bits are also uploaded to Maven central.
-You can use it from your `pom.xml` file as:
+The GraalVM SDK bits are also available on Maven central.
+Add these module dependencies to your Maven project configuration file:
 
 ```xml
-  <dependencies>
-    <dependency>
-      <groupId>org.graalvm</groupId>
-      <artifactId>graal-sdk</artifactId>
-      <version>0.30</version>
-    </dependency>
-  </dependencies>
+<dependency>
+  <groupId>org.graalvm.sdk</groupId>
+  <artifactId>nativeimage</artifactId>
+  <version>${graalvm.version}</version>
+</dependency>
+<dependency>
+  <groupId>org.graalvm.sdk</groupId>
+  <artifactId>word</artifactId>
+  <version>${graalvm.version}</version>
+</dependency>
+<dependency>
+  <groupId>org.graalvm.sdk</groupId>
+  <artifactId>collections</artifactId>
+  <version>${graalvm.version}</version>
+</dependency>
 ```
 
-Please note that GraalVM SDK requires GraalVM to run.
+The `org.graalvm.polyglot` module is not contained by default in the GraalVM JDK. 
+To enable a language embedding in Java, specify the language as a dependency. 
+If you need the Truffle tools for your polyglot application, enable them through a dependency too. 
+Below is an example of the Maven configuration:
 
-## Tutorials
+```xml
+<dependency>
+  <groupId>org.graalvm.polyglot</groupId>
+  <artifactId>polyglot</artifactId>
+  <version>${graalvm.polyglot.version}</version>
+</dependency>
+<dependency>
+  <groupId>org.graalvm.polyglot</groupId>
+  <artifactId>js|python|ruby|wasm|llvm|java</artifactId> 
+  <version>${graalvm.polyglot.version}</version>
+  <type>pom</type>
+</dependency>
+<dependency>
+  <groupId>org.graalvm.polyglot</groupId>
+  <artifactId>tools</artifactId>
+  <version>${graalvm.polyglot.version}</version>
+  <type>pom</type>
+</dependency>
+```
 
-* [Tutorial](https://www.graalvm.org/docs/reference-manual/embed/) on using the polyglot API to embed Graal languages in Java host applications.
+## Learn More
+
+* [Embedding Languages documentation](https://www.graalvm.org/latest/reference-manual/embed-languages/) to learn how to use the Polyglot API to embed GraalVM languages in Java host applications.
+* [Polyglot Embedding Demonstration on GitHub](https://github.com/graalvm/polyglot-embedding-demo) to find a complete runnable Maven and Gradle examples.
 
 ## Changes
 

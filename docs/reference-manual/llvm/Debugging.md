@@ -6,7 +6,7 @@ permalink: /reference-manual/llvm/Debugging/
 ---
 # Debugging on the GraalVM LLVM Runtime
 
-The GraalVM LLVM runtime supports source-level (e.g., the C language) debugging with the [Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/) using GraalVM's Chrome Inspector implementation.
+The GraalVM LLVM runtime supports source-level (for example, the C language) debugging with the [Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/) using GraalVM's Chrome Inspector implementation.
 This includes support for single-stepping, breakpoints, and inspection of local and global variables.
 
 To use this feature, make sure to compile your program with debug information enabled by specifying the `-g` argument when compiling with `clang` (the LLVM toolchain shipped with GraalVM will automatically enable debug information).

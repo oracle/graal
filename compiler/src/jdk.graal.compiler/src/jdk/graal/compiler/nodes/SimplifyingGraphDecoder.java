@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -357,17 +357,24 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                     for (Node successor : successorSnapshot) {
                         successor.safeDelete();
                     }
+                } else if (canonical instanceof WithExceptionNode) {
+                    // will be handled below
+                    assert node instanceof WithExceptionNode : Assertions.errorMessage("Only WithExceptionNodes can canonicalize to WithException nodes", node, canonical);
                 } else {
                     assert !(canonical instanceof FixedNode) : Assertions.errorMessageContext("canonical", canonical);
                 }
             }
             if (!node.isDeleted()) {
-                if (node instanceof WithExceptionNode) {
-                    GraphUtil.unlinkAndKillExceptionEdge((WithExceptionNode) node);
+                if (node instanceof WithExceptionNode we && canonical instanceof WithExceptionNode weCanon) {
+                    graph.replaceWithExceptionSplit(we, weCanon);
                 } else {
-                    GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                    if (node instanceof WithExceptionNode) {
+                        GraphUtil.unlinkAndKillExceptionEdge((WithExceptionNode) node);
+                    } else {
+                        GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                    }
+                    node.replaceAtUsagesAndDelete(canonical);
                 }
-                node.replaceAtUsagesAndDelete(canonical);
             }
             assert lookupNode(loopScope, nodeOrderId) == node : Assertions.errorMessage(node, loopScope, nodeOrderId);
             registerNode(loopScope, nodeOrderId, canonical, true, false);

@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -124,8 +125,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             Env dependent = Dependent.getContext(DEPENDENT);
             assertPublicEvalDenied(language1, INTERNAL);
-            assertPublicEvalAllowed(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
+            assertPublicEvalAllowed(language1, DEPENDENT, true);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
             assertPublicEvalDenied(language1, LANGUAGE2);
 
             assertInternalEvalAllowed(language1, INTERNAL);
@@ -134,14 +135,17 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertInternalEvalDenied(language1, LANGUAGE2);
 
             assertPublicEvalDenied(dependent, INTERNAL);
-            assertPublicEvalAllowed(dependent, DEPENDENT);
-            assertPublicEvalAllowed(dependent, LANGUAGE1);
+            assertPublicEvalAllowed(dependent, DEPENDENT, true);
+            assertPublicEvalAllowed(dependent, LANGUAGE1, true);
             assertPublicEvalDenied(dependent, LANGUAGE2);
 
             assertInternalEvalAllowed(dependent, INTERNAL);
             assertInternalEvalAllowed(dependent, DEPENDENT);
             assertInternalEvalAllowed(dependent, LANGUAGE1);
             assertInternalEvalDenied(dependent, LANGUAGE2);
+
+            assertTrue(language1.isPolyglotEvalAllowed(null));
+            assertTrue(dependent.isPolyglotEvalAllowed(null));
 
             return null;
         }
@@ -165,6 +169,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             Env env1 = Language1.getContext(LANGUAGE1);
             assertTrue(env1.getInternalLanguages().containsKey(LANGUAGE1));
             assertFalse(env1.getInternalLanguages().containsKey(NOT_EXISTING_LANGUAGE));
+            assertFalse(env1.getPublicLanguages().containsKey(LANGUAGE2));
+            assertFalse(env1.getPublicLanguages().containsKey(DEPENDENT));
 
             return null;
         }
@@ -196,8 +202,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
-            assertPublicEvalAllowed(language1, LANGUAGE2);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
+            assertPublicEvalAllowed(language1, LANGUAGE2, true);
 
             assertInternalEvalAllowed(language1, INTERNAL);
             assertInternalEvalAllowed(language1, DEPENDENT);
@@ -206,8 +212,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language2, INTERNAL);
             assertPublicEvalDenied(language2, DEPENDENT);
-            assertPublicEvalAllowed(language2, LANGUAGE1);
-            assertPublicEvalAllowed(language2, LANGUAGE2);
+            assertPublicEvalAllowed(language2, LANGUAGE1, true);
+            assertPublicEvalAllowed(language2, LANGUAGE2, true);
 
             assertInternalEvalAllowed(language2, INTERNAL);
             assertInternalEvalDenied(language2, DEPENDENT);
@@ -215,6 +221,9 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertInternalEvalAllowed(language2, LANGUAGE2);
 
             testPolyglotAccess(language1, language2);
+
+            assertTrue(language1.isPolyglotEvalAllowed(null));
+            assertTrue(language2.isPolyglotEvalAllowed(null));
 
             return null;
         }
@@ -326,7 +335,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
         assertPublicEvalDenied(language1, INTERNAL);
         assertPublicEvalDenied(language1, DEPENDENT);
-        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalAllowed(language1, LANGUAGE1, false);
         assertPublicEvalDenied(language1, LANGUAGE2);
 
         assertInternalEvalAllowed(language1, INTERNAL);
@@ -337,7 +346,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         assertPublicEvalDenied(language2, INTERNAL);
         assertPublicEvalDenied(language2, DEPENDENT);
         assertPublicEvalDenied(language2, LANGUAGE1);
-        assertPublicEvalAllowed(language2, LANGUAGE2);
+        assertPublicEvalAllowed(language2, LANGUAGE2, false);
 
         assertInternalEvalAllowed(language2, INTERNAL);
         assertInternalEvalDenied(language2, DEPENDENT);
@@ -346,8 +355,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
         assertBindingsDenied(language1);
         assertBindingsDenied(language2);
-        assertNoEvalAccess(language1);
-        assertNoEvalAccess(language2);
+        assertFalse(language1.isPolyglotEvalAllowed(null));
+        assertFalse(language2.isPolyglotEvalAllowed(null));
     }
 
     private static void assertImportNotAcccessible(Env env1) {
@@ -469,8 +478,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
-            assertPublicEvalAllowed(language1, LANGUAGE2);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
+            assertPublicEvalAllowed(language1, LANGUAGE2, true);
 
             assertInternalEvalAllowed(language1, INTERNAL);
             assertInternalEvalAllowed(language1, DEPENDENT);
@@ -480,14 +489,15 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertPublicEvalDenied(language2, INTERNAL);
             assertPublicEvalDenied(language2, DEPENDENT);
             assertPublicEvalDenied(language2, LANGUAGE1);
-            assertPublicEvalAllowed(language2, LANGUAGE2);
+            assertPublicEvalAllowed(language2, LANGUAGE2, false);
 
             assertInternalEvalAllowed(language2, INTERNAL);
             assertInternalEvalDenied(language2, DEPENDENT);
             assertInternalEvalDenied(language2, LANGUAGE1);
             assertInternalEvalAllowed(language2, LANGUAGE2);
 
-            assertNoEvalAccess(language2);
+            assertTrue(language1.isPolyglotEvalAllowed(null));
+            assertFalse(language2.isPolyglotEvalAllowed(null));
 
             return null;
         }
@@ -515,7 +525,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
             assertPublicEvalDenied(language1, LANGUAGE2);
 
             assertInternalEvalAllowed(language1, INTERNAL);
@@ -526,15 +536,15 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertPublicEvalDenied(language2, INTERNAL);
             assertPublicEvalDenied(language2, DEPENDENT);
             assertPublicEvalDenied(language2, LANGUAGE1);
-            assertPublicEvalAllowed(language2, LANGUAGE2);
+            assertPublicEvalAllowed(language2, LANGUAGE2, false);
 
             assertInternalEvalAllowed(language2, INTERNAL);
             assertInternalEvalDenied(language2, DEPENDENT);
             assertInternalEvalDenied(language2, LANGUAGE1);
             assertInternalEvalAllowed(language2, LANGUAGE2);
 
-            assertNoEvalAccess(language1);
-            assertNoEvalAccess(language2);
+            assertTrue(language1.isPolyglotEvalAllowed(null));
+            assertFalse(language2.isPolyglotEvalAllowed(null));
 
             return null;
         }
@@ -562,8 +572,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
-            assertPublicEvalAllowed(language1, LANGUAGE2);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
+            assertPublicEvalAllowed(language1, LANGUAGE2, true);
 
             assertInternalEvalAllowed(language1, INTERNAL);
             assertInternalEvalAllowed(language1, DEPENDENT);
@@ -572,13 +582,16 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language2, INTERNAL);
             assertPublicEvalDenied(language2, DEPENDENT);
-            assertPublicEvalAllowed(language2, LANGUAGE1);
-            assertPublicEvalAllowed(language2, LANGUAGE2);
+            assertPublicEvalAllowed(language2, LANGUAGE1, true);
+            assertPublicEvalAllowed(language2, LANGUAGE2, true);
 
             assertInternalEvalAllowed(language2, INTERNAL);
             assertInternalEvalDenied(language2, DEPENDENT);
             assertInternalEvalAllowed(language2, LANGUAGE1);
             assertInternalEvalAllowed(language2, LANGUAGE2);
+
+            assertTrue(language1.isPolyglotEvalAllowed(null));
+            assertTrue(language2.isPolyglotEvalAllowed(null));
 
             return null;
         }
@@ -606,7 +619,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
             assertPublicEvalDenied(language1, LANGUAGE2);
 
             assertInternalEvalAllowed(language1, INTERNAL);
@@ -617,15 +630,15 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertPublicEvalDenied(language2, INTERNAL);
             assertPublicEvalDenied(language2, DEPENDENT);
             assertPublicEvalDenied(language2, LANGUAGE1);
-            assertPublicEvalAllowed(language2, LANGUAGE2);
+            assertPublicEvalAllowed(language2, LANGUAGE2, false);
 
             assertInternalEvalAllowed(language2, INTERNAL);
             assertInternalEvalDenied(language2, DEPENDENT);
             assertInternalEvalDenied(language2, LANGUAGE1);
             assertInternalEvalAllowed(language2, LANGUAGE2);
 
-            assertNoEvalAccess(language1);
-            assertNoEvalAccess(language2);
+            assertTrue(language1.isPolyglotEvalAllowed(null));
+            assertFalse(language2.isPolyglotEvalAllowed(null));
 
             return null;
         }
@@ -654,9 +667,9 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
-            assertPublicEvalAllowed(language1, LANGUAGE2);
-            assertPublicEvalAllowed(language1, LANGUAGE3);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
+            assertPublicEvalAllowed(language1, LANGUAGE2, true);
+            assertPublicEvalAllowed(language1, LANGUAGE3, true);
 
             assertInternalEvalAllowed(language1, INTERNAL);
             assertInternalEvalAllowed(language1, DEPENDENT);
@@ -666,9 +679,9 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language2, INTERNAL);
             assertPublicEvalDenied(language2, DEPENDENT);
-            assertPublicEvalAllowed(language2, LANGUAGE1);
-            assertPublicEvalAllowed(language2, LANGUAGE2);
-            assertPublicEvalAllowed(language2, LANGUAGE3);
+            assertPublicEvalAllowed(language2, LANGUAGE1, true);
+            assertPublicEvalAllowed(language2, LANGUAGE2, true);
+            assertPublicEvalAllowed(language2, LANGUAGE3, true);
 
             assertInternalEvalAllowed(language2, INTERNAL);
             assertInternalEvalDenied(language2, DEPENDENT);
@@ -678,15 +691,19 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language3, INTERNAL);
             assertPublicEvalDenied(language3, DEPENDENT);
-            assertPublicEvalAllowed(language3, LANGUAGE1);
-            assertPublicEvalAllowed(language3, LANGUAGE2);
-            assertPublicEvalAllowed(language3, LANGUAGE3);
+            assertPublicEvalAllowed(language3, LANGUAGE1, true);
+            assertPublicEvalAllowed(language3, LANGUAGE2, true);
+            assertPublicEvalAllowed(language3, LANGUAGE3, true);
 
             assertInternalEvalAllowed(language3, INTERNAL);
             assertInternalEvalDenied(language3, DEPENDENT);
             assertInternalEvalAllowed(language3, LANGUAGE1);
             assertInternalEvalAllowed(language3, LANGUAGE2);
             assertInternalEvalAllowed(language3, LANGUAGE3);
+
+            assertTrue(language1.isPolyglotEvalAllowed(null));
+            assertTrue(language2.isPolyglotEvalAllowed(null));
+            assertTrue(language3.isPolyglotEvalAllowed(null));
 
             return null;
         }
@@ -716,9 +733,9 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
             assertPublicEvalDenied(language1, LANGUAGE2);
-            assertPublicEvalAllowed(language1, LANGUAGE3);
+            assertPublicEvalAllowed(language1, LANGUAGE3, true);
 
             assertInternalEvalAllowed(language1, INTERNAL);
             assertInternalEvalAllowed(language1, DEPENDENT);
@@ -729,8 +746,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertPublicEvalDenied(language2, INTERNAL);
             assertPublicEvalDenied(language2, DEPENDENT);
             assertPublicEvalDenied(language2, LANGUAGE1);
-            assertPublicEvalAllowed(language2, LANGUAGE2);
-            assertPublicEvalAllowed(language2, LANGUAGE3);
+            assertPublicEvalAllowed(language2, LANGUAGE2, true);
+            assertPublicEvalAllowed(language2, LANGUAGE3, true);
 
             assertInternalEvalAllowed(language2, INTERNAL);
             assertInternalEvalDenied(language2, DEPENDENT);
@@ -740,15 +757,19 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language3, INTERNAL);
             assertPublicEvalDenied(language3, DEPENDENT);
-            assertPublicEvalAllowed(language3, LANGUAGE1);
-            assertPublicEvalAllowed(language3, LANGUAGE2);
-            assertPublicEvalAllowed(language3, LANGUAGE3);
+            assertPublicEvalAllowed(language3, LANGUAGE1, true);
+            assertPublicEvalAllowed(language3, LANGUAGE2, true);
+            assertPublicEvalAllowed(language3, LANGUAGE3, true);
 
             assertInternalEvalAllowed(language3, INTERNAL);
             assertInternalEvalDenied(language3, DEPENDENT);
             assertInternalEvalAllowed(language3, LANGUAGE1);
             assertInternalEvalAllowed(language3, LANGUAGE2);
             assertInternalEvalAllowed(language3, LANGUAGE3);
+
+            assertTrue(language1.isPolyglotEvalAllowed(null));
+            assertTrue(language2.isPolyglotEvalAllowed(null));
+            assertTrue(language3.isPolyglotEvalAllowed(null));
 
             return null;
         }
@@ -780,7 +801,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
+            assertPublicEvalAllowed(language1, LANGUAGE1, false);
             assertPublicEvalDenied(language1, LANGUAGE2);
 
             assertInternalEvalAllowed(language1, INTERNAL);
@@ -790,15 +811,16 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language2, INTERNAL);
             assertPublicEvalDenied(language2, DEPENDENT);
-            assertPublicEvalAllowed(language2, LANGUAGE1);
-            assertPublicEvalAllowed(language2, LANGUAGE2);
+            assertPublicEvalAllowed(language2, LANGUAGE1, true);
+            assertPublicEvalAllowed(language2, LANGUAGE2, true);
 
             assertInternalEvalAllowed(language2, INTERNAL);
             assertInternalEvalDenied(language2, DEPENDENT);
             assertInternalEvalAllowed(language2, LANGUAGE1);
             assertInternalEvalAllowed(language2, LANGUAGE2);
 
-            assertNoEvalAccess(language1);
+            assertFalse(language1.isPolyglotEvalAllowed(null));
+            assertTrue(language2.isPolyglotEvalAllowed(null));
 
             return null;
         }
@@ -945,9 +967,9 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             Env language1 = Language1.getContext(LANGUAGE1);
 
             assertPublicEvalDenied(language1, INTERNAL);
-            assertPublicEvalAllowed(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
-            assertPublicEvalAllowed(language1, LANGUAGE2);
+            assertPublicEvalAllowed(language1, DEPENDENT, true);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
+            assertPublicEvalAllowed(language1, LANGUAGE2, true);
 
             assertInternalEvalAllowed(language1, INTERNAL);
             assertInternalEvalAllowed(language1, DEPENDENT);
@@ -976,7 +998,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
+            assertPublicEvalAllowed(language1, LANGUAGE1, false);
             assertPublicEvalDenied(language1, LANGUAGE2);
 
             assertInternalEvalAllowed(language1, INTERNAL);
@@ -1007,8 +1029,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
             assertPublicEvalDenied(language1, INTERNAL);
             assertPublicEvalDenied(language1, DEPENDENT);
-            assertPublicEvalAllowed(language1, LANGUAGE1);
-            assertPublicEvalAllowed(language1, LANGUAGE2);
+            assertPublicEvalAllowed(language1, LANGUAGE1, true);
+            assertPublicEvalAllowed(language1, LANGUAGE2, true);
 
             assertInternalEvalAllowed(language1, INTERNAL);
             assertInternalEvalAllowed(language1, DEPENDENT);
@@ -1018,7 +1040,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertPublicEvalDenied(language2, INTERNAL);
             assertPublicEvalDenied(language2, DEPENDENT);
             assertPublicEvalDenied(language2, LANGUAGE1);
-            assertPublicEvalAllowed(language2, LANGUAGE2);
+            assertPublicEvalAllowed(language2, LANGUAGE2, false);
 
             assertInternalEvalAllowed(language2, INTERNAL);
             assertInternalEvalDenied(language2, DEPENDENT);
@@ -1036,10 +1058,6 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         context.initialize(LANGUAGE2);
 
         evalTestLanguage(context, ParsePublic3TestLanguage.class, "");
-    }
-
-    private static void assertNoEvalAccess(Env env) {
-        assertFalse(env.isPolyglotEvalAllowed());
     }
 
     private static void assertBindingsDenied(Env env) {
@@ -1068,10 +1086,16 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     private static void assertInternalEvalAllowed(Env env, String targetId) {
         assertTrue(env.getInternalLanguages().containsKey(targetId));
         assertNotNull(env.parseInternal(Source.newBuilder(targetId, "", "").build()));
+        assertNotNull(env.getScopeInternal(env.getInternalLanguages().get(targetId)));
     }
 
     private static void assertPublicEvalDenied(Env env, String targetId) {
-        assertFalse(env.getPublicLanguages().containsKey(targetId));
+        LanguageInfo info = env.getPublicLanguages().get(targetId);
+        assertNull(info);
+        LanguageInfo internalLanguage = env.getInternalLanguages().get(targetId);
+        if (internalLanguage != null) {
+            assertFails(() -> env.getScopePublic(internalLanguage), SecurityException.class);
+        }
         try {
             env.parsePublic(Source.newBuilder(targetId, "", "").build());
             fail();
@@ -1081,12 +1105,12 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         }
     }
 
-    private static void assertPublicEvalAllowed(Env env, String targetId) {
-        assertTrue(env.getPublicLanguages().containsKey(targetId));
+    private static void assertPublicEvalAllowed(Env env, String targetId, boolean polyglotAccess) {
+        LanguageInfo info = env.getPublicLanguages().get(targetId);
+        assertNotNull(info);
         assertNotNull(env.parsePublic(Source.newBuilder(targetId, "", "").build()));
-        if (env.getPublicLanguages().size() > 1) {
-            assertTrue(env.isPolyglotEvalAllowed());
-        }
+        assertEquals(polyglotAccess, env.isPolyglotEvalAllowed(info));
+        assertNotNull(env.getScopePublic(info));
     }
 
     @Registration(id = LANGUAGE1, name = LANGUAGE1, dependentLanguages = DEPENDENT)
@@ -1100,6 +1124,11 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return RootNode.createConstantNode(true).getCallTarget();
+        }
+
+        @Override
+        protected Object getScope(Env context) {
+            return new RetainedSizeContextBoundaryTest.ScopeObject();
         }
 
         public static Env getContext(String language) {

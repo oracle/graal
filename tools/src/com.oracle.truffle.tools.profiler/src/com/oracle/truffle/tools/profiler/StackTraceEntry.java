@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -166,10 +166,8 @@ public final class StackTraceEntry {
      * in a parent stack entry at the time when the stack trace was captured, else
      * <code>false</code>.
      *
-     * @deprecated Use {@link #getTier()}
      * @since 19.0
      */
-    @Deprecated
     public boolean isInlined() {
         return !compilationRoot;
     }

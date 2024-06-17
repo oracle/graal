@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.compiler;
 
+import java.util.function.Supplier;
+
 /**
  * A listener for events related to the compilation of a {@link TruffleCompilable}. The events are
  * described only in terms of types that can be easily serialized or proxied across a heap boundary.
@@ -150,6 +152,9 @@ public interface TruffleCompilerListener {
 
     /**
      * Notifies this object when compilation of {@code compilable} fails.
+     * <p>
+     * GR-54187: Remove in graalvm-25.1
+     * </p>
      *
      * @param compilable the Truffle AST whose compilation failed
      * @param reason the reason compilation failed
@@ -161,9 +166,34 @@ public interface TruffleCompilerListener {
      *            change if the {@code target} is compiled again. This value is meaningless if
      *            {@code bailout == false}.
      * @param tier Which compilation tier was the compilation
+     * @deprecated use
+     *             {@link #onFailure(TruffleCompilable, String, boolean, boolean, int, Supplier)}
      */
+    @Deprecated(since = "24.1")
     default void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+        onFailure(compilable, reason, bailout, permanentBailout, tier, null);
+    }
 
+    /**
+     * Notifies this object when compilation of {@code compilable} fails.
+     *
+     * @param compilable the Truffle AST whose compilation failed
+     * @param reason the reason compilation failed
+     * @param bailout specifies whether the failure was a bailout or an error in the compiler. A
+     *            bailout means the compiler aborted the compilation based on some of property of
+     *            {@code target} (e.g., too big). A non-bailout means an unexpected error in the
+     *            compiler itself.
+     * @param permanentBailout specifies if a bailout is due to a condition that probably won't
+     *            change if the {@code target} is compiled again. This value is meaningless if
+     *            {@code bailout == false}.
+     * @param tier Which compilation tier was the compilation
+     * @param lazyStackTrace a serialized representation of the exception indicating the reason and
+     *            stack trace for a compilation failure, or {@code null} in the case of a bailout or
+     *            when the compiler does not provide a stack trace. See
+     *            {@link TruffleCompilable#serializeException(Throwable)}.
+     *
+     */
+    default void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
     }
 
     /**

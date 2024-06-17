@@ -634,6 +634,20 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity SECONDARY_SUPERS_LOCATION = NamedLocationIdentity.immutable("SecondarySupers");
 
+    public static final LocationIdentity KLASS_HASH_SLOT_LOCATION = NamedLocationIdentity.immutable("Klass::_hash_slot");
+
+    public static final LocationIdentity KLASS_BITMAP_LOCATION = NamedLocationIdentity.immutable("Klass::_bitmap");
+
+    @Fold
+    public static int klassHashSlotOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.klassHashSlotOffset;
+    }
+
+    @Fold
+    public static int klassBitmapOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.klassBitmapOffset;
+    }
+
     @Fold
     public static int secondarySupersOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.secondarySupersOffset;

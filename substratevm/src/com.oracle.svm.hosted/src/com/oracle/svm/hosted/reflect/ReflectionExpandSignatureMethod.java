@@ -77,7 +77,7 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeMethod {
      */
     @Override
     public StructuredGraph buildGraph(DebugContext ctx, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        ReflectionGraphKit kit = new ReflectionGraphKit(ctx, providers, method, purpose);
+        ReflectionGraphKit kit = new ReflectionGraphKit(ctx, providers, method);
 
         ValueNode receiver = kit.loadLocal(0, JavaKind.Object);
         ValueNode argumentArray = kit.loadLocal(1, JavaKind.Object);

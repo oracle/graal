@@ -51,6 +51,7 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
@@ -81,9 +82,9 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final RegexLanguage language;
     private final RegexSource source;
     private RegexFlags flags;
+    private AbstractRegexObject flavorSpecificFlags;
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexParserTreeMaxSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
-    private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
     private final TBitSet referencedGroups = new TBitSet(Long.SIZE);
     private final TBitSet recursivelyReferencedGroups = new TBitSet(Long.SIZE);
@@ -97,9 +98,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * Possibly wrapped root for NFA generation (see {@link #createPrefix()}).
      */
     private Group wrappedRoot;
-    private List<Group> captureGroups = new ArrayList<>();
+    private final List<Group> captureGroups = new ArrayList<>();
+    private final List<Token.Quantifier> quantifiers = new ArrayList<>();
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
     private final GlobalSubTreeIndex subtrees = new GlobalSubTreeIndex();
+    private final GroupsWithGuardsIndex groupsWithGuards = new GroupsWithGuardsIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private StateSet<RegexAST, PositionAssertion> nfaAnchoredInitialStates;
@@ -129,6 +132,14 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public void setFlags(RegexFlags flags) {
         this.flags = flags;
+    }
+
+    public AbstractRegexObject getFlavorSpecificFlags() {
+        return flavorSpecificFlags;
+    }
+
+    public void setFlavorSpecificFlags(AbstractRegexObject flavorSpecificFlags) {
+        this.flavorSpecificFlags = flavorSpecificFlags;
     }
 
     public RegexOptions getOptions() {
@@ -174,8 +185,17 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return groupCount.getCount();
     }
 
-    public Counter getQuantifierCount() {
-        return quantifierCount;
+    public int getQuantifierCount() {
+        return quantifiers.size();
+    }
+
+    public void registerQuantifier(QuantifiableTerm quantifiable) {
+        quantifiable.getQuantifier().setIndex(quantifiers.size());
+        quantifiers.add(quantifiable.getQuantifier());
+    }
+
+    public Token.Quantifier[] getQuantifierArray() {
+        return quantifiers.toArray(Token.Quantifier[]::new);
     }
 
     public void registerZeroWidthQuantifiable(QuantifiableTerm zeroWidthQuantifiable) {
@@ -253,6 +273,16 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return subtrees;
     }
 
+    public void registerGroupWithGuards(Group group) {
+        if (group.getGroupsWithGuardsIndex() < 0) {
+            groupsWithGuards.add(group);
+        }
+    }
+
+    public GroupsWithGuardsIndex getGroupsWithGuards() {
+        return groupsWithGuards;
+    }
+
     public List<PositionAssertion> getReachableCarets() {
         return reachableCarets;
     }
@@ -280,6 +310,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             referencedGroups.set(groupNumber);
         }
         return register(new BackReference(groupNumbers));
+    }
+
+    public TBitSet getReferencedGroups() {
+        return referencedGroups;
     }
 
     public boolean isGroupReferenced(int groupNumber) {
@@ -583,17 +617,17 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * counterparts.</li>
      * <li>Nodes inserted as substitutions for e.g. {@code \b} will simply point to the source
      * section they are substituting.</li>
-     * <li>Source sections of {@link Token#createQuantifier(int, int, boolean)} quantifiers} are
-     * mapped to their respective {@link Term}.</li>
+     * <li>Source sections of {@link Token#createQuantifier(int, int, boolean, boolean, boolean)}
+     * quantifiers} are mapped to their respective {@link Term}.</li>
      * </ul>
      */
     public List<SourceSection> getSourceSections(RegexASTNode node) {
         return getOptions().isDumpAutomataWithSourceSections() ? sourceSections.get(node) : null;
     }
 
-    public void addSourceSection(RegexASTNode node, Token token) {
-        if (getOptions().isDumpAutomataWithSourceSections() && token != null && token.getSourceSection() != null) {
-            getOrCreateSourceSections(node).add(token.getSourceSection());
+    public void addSourceSection(RegexASTNode node, SourceSection sourceSection) {
+        if (getOptions().isDumpAutomataWithSourceSections() && sourceSection != null) {
+            getOrCreateSourceSections(node).add(sourceSection);
         }
     }
 

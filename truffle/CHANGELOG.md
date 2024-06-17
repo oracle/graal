@@ -5,9 +5,24 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 24.1.0
 * GR-51253 Extend allowed DynamicObject shape flags from 8 to 16 bits.
 * GR-42882 Changed behavior: Java host interop no longer exposes bridge methods.
-
 * GR-51385 Added an instrumentation filter to include available source sections only: `SourceSectionFilter.Builder#sourceSectionAvailableOnly(boolean)`
 * GR-51385 Added a debugger filter to suspend in available source sections only: `SuspensionFilter.Builder#sourceSectionAvailableOnly(boolean)`.
+* GR-52443 Removed many deprecated `DynamicObject` APIs, deprecated since 22.2 or earlier (`Shape` methods: `addProperty`, `defineProperty`, `removeProperty`, `replaceProperty`, `newInstance`, `createFactory`, `getObjectType`, `changeType`, `getLayout`, `getMutex`, `getParent`, `allocator`, and related interfaces; `Property.set*`, `*Location` methods: `getInternal`, `setInternal`, `set*`, `getType`, and `ObjectLocation`).
+* GR-51136 Uninitialized static slots of a `Frame` can now be read, and returns the default value for the access kind. 
+* GR-38322 Added `--engine.TraceMissingSafepointPollInterval=N` to show Java stacktraces when there are [missing `TruffleSafepoint.poll()` calls](https://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md#find-missing-safepoint-polls).
+* GR-52644 Deprecated `TruffleLanguage.Registration.needsAllEncodings`, no longer needs to be declared. It is sufficient for a language module to require `org.graalvm.shadowed.jcodings` to enable all string encodings.
+* GR-51172 Add `CompilerDirectives.ensureAllocatedHere` to mark an allocation as non-movable. This allows language developers to mark special allocations as non-optimizable to allow better control for allocations potentially throwing OutOfMemoryErrors.
+* GR-28103 Deprecated `com.oracle.truffle.api.utilities.JSONHelper` as it is untested, and in its current state does not contain any special logic for dumping AST. JSON printing of AST nodes should be delegated to an external library if necessary. This class will be removed in a future version.
+* GR-54085 Added [`MathUtils`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/utilities/MathUtils.html) API providing additional mathematical functions useful for language implementations, namely: `asinh`, `acosh`, and `atanh`.
+* GR-49484 Added `TruffleStackFrameElement.getBytecodeIndex()` to access bytecode indices of a stack frame. Bytecode based languages should consider implementing `RootNode#findBytecodeIndex(Node, Frame)` to resolve the bytecode index.
+* GR-49484 Deprecated `RootNode.isCaptureFramesForTrace()`. Implementers should use `RootNode.isCaptureFramesForTrace(Node)` instead.
+* GR-28866 Added `TruffleLanguage.Env.getScopePublic(LanguageInfo)` and `TruffleLanguage.Env.getScopeInternal(LanguageInfo)` to allow languages direct access to other language scopes to implement new polyglot builtins.
+* GR-28866 Deprecated `TruffleLanguage.Env.isPolyglotEvalAllowed()`. Replace usages with `TruffleLanguage.Env.isPolyglotEvalAllowed(LanguageInfo)`. Please see javadoc for the updated usage.
+* GR-52843 Deprecated `Node.getCost()` and the associated `NodeCost` class without replacement. Truffle DSL no longer generates implementations of this method automatically and will therefore always return `NodeCost.MONOMORPHIC` by default. This is intended to reduce the binary footprint.
+* GR-52843 Added the `UnadoptableNode` interface. This is interface should be preferred to overriding `Node.isAdoptable()` if the result is statically known.
+* GR-40931 Virtual threads with a polyglot context are now experimentally supported on HotSpot. Experimental because access to caller frames in write or materialize mode is not yet supported and maximum 65535 virtual threads concurrently accessing the context.
+* GR-40931 Using virtual threads in a native-image will now emulate virtual threads using platform threads until Loom support for Truffle languages in native-image is implemented.
+* GR-40931 Added [`TruffleThreadBuilder#virtual()`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleThreadBuilder.html#virtual(boolean)) for languages to create virtual threads.
 
 ## Version 24.0.0
 
@@ -23,8 +38,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-48816 Added new interpreted performance warning to Truffle DSL.
 * GR-44706 Relaxed `InteropLibrary` invariant assertions for side-effecting members (i.e. `hasMemberReadSideEffects` or `hasMemberWriteSideEffects`) for `readMember`, `invokeMember`, `writeMember`, and `removeMember`, allowing them to succeed even if `isMemberReadable`, `isMemberInvocable`, `isMemberWritable`, and `isMemberRemovable`, respectively, returned `false` for that member. This avoids spurious assertion failures for accessor and proxy members.
 * GR-49386 Added `InteropLibrary#readBuffer(long, byte[], int, int)` to enable bulk reads of buffers into byte arrays.
-
 * [GR-50262] Added the system property `-Dtruffle.UseFallbackRuntime=true`. This property is preferred over the usage of `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime`.
+
 
 ## Version 23.1.0
 

@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import jdk.graal.compiler.nodes.UnreachableNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platforms;
@@ -42,9 +41,10 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.nodes.UnreachableNode;
 
 @TargetClass(com.oracle.svm.core.util.VMError.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -133,8 +133,6 @@ public class VMErrorSubstitutions {
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     static RuntimeException shouldNotReachHere(CodePointer callerIP, String msg, Throwable ex) {
-        ThreadStackPrinter.printBacktrace();
-
         SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 

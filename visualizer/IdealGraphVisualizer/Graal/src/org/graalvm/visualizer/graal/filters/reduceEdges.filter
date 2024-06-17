@@ -1,2 +1,2 @@
-split("class", "org\\.graalvm\\.compiler\\.nodes\\..*ParameterNode$");
-split("class", "org\\.graalvm\\.compiler\\.nodes\\..*ConstantNode$");
+split("class", ".*\\.nodes\\..*ParameterNode$");
+split("class", ".*\\.nodes\\..*ConstantNode$");

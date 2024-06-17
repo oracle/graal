@@ -34,7 +34,7 @@ import com.oracle.svm.core.log.Log;
 class HeapChunkLogging {
     private static final int MAX_CHUNKS_TO_PRINT = 64 * 1024;
 
-    public static void logChunks(Log log, AlignedHeapChunk.AlignedHeader firstChunk, String shortSpaceName, boolean isFromSpace) {
+    public static void logChunks(Log log, AlignedHeapChunk.AlignedHeader firstChunk, String shortSpaceName, boolean isToSpace) {
         if (firstChunk.isNonNull()) {
             int i = 0;
             AlignedHeapChunk.AlignedHeader chunk = firstChunk;
@@ -43,7 +43,7 @@ class HeapChunkLogging {
                 Pointer top = HeapChunk.getTopPointer(chunk);
                 Pointer end = AlignedHeapChunk.getObjectsEnd(chunk);
 
-                logChunk(log, chunk, bottom, top, end, true, shortSpaceName, isFromSpace);
+                logChunk(log, chunk, bottom, top, end, true, shortSpaceName, isToSpace);
 
                 chunk = HeapChunk.getNext(chunk);
                 i++;
@@ -55,7 +55,7 @@ class HeapChunkLogging {
         }
     }
 
-    public static void logChunks(Log log, UnalignedHeapChunk.UnalignedHeader firstChunk, String shortSpaceName, boolean isFromSpace) {
+    public static void logChunks(Log log, UnalignedHeapChunk.UnalignedHeader firstChunk, String shortSpaceName, boolean isToSpace) {
         if (firstChunk.isNonNull()) {
             int i = 0;
             UnalignedHeapChunk.UnalignedHeader chunk = firstChunk;
@@ -64,7 +64,7 @@ class HeapChunkLogging {
                 Pointer top = HeapChunk.getTopPointer(chunk);
                 Pointer end = UnalignedHeapChunk.getObjectEnd(chunk);
 
-                logChunk(log, chunk, bottom, top, end, false, shortSpaceName, isFromSpace);
+                logChunk(log, chunk, bottom, top, end, false, shortSpaceName, isToSpace);
 
                 chunk = HeapChunk.getNext(chunk);
                 i++;
@@ -76,7 +76,7 @@ class HeapChunkLogging {
         }
     }
 
-    private static void logChunk(Log log, HeapChunk.Header<?> chunk, Pointer bottom, Pointer top, Pointer end, boolean isAligned, String shortSpaceName, boolean isFromSpace) {
+    private static void logChunk(Log log, HeapChunk.Header<?> chunk, Pointer bottom, Pointer top, Pointer end, boolean isAligned, String shortSpaceName, boolean isToSpace) {
         UnsignedWord used = top.subtract(bottom);
         UnsignedWord capacity = end.subtract(bottom);
         UnsignedWord usedPercent = used.multiply(100).unsignedDivide(capacity);
@@ -85,7 +85,7 @@ class HeapChunkLogging {
         log.string("|").unsigned(usedPercent, 3, RIGHT_ALIGN).string("%");
         log.string("|").string(shortSpaceName, 3, RIGHT_ALIGN);
         log.string("|").string(isAligned ? "A" : "U");
-        log.string("|").string(isFromSpace ? "" : "T");
+        log.string("|").string(isToSpace ? "T" : "");
         log.newline();
     }
 }

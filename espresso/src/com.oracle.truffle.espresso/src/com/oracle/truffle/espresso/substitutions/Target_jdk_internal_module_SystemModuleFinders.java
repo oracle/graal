@@ -86,7 +86,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     @TruffleBoundary
     private static StaticObject getEspressoExtensionPaths(EspressoContext context) {
         ArrayList<StaticObject> extensionPaths = new ArrayList<>(2);
-        for (ModuleExtension me : ModuleExtension.get(context)) {
+        for (ModuleExtension me : ModuleExtension.getAllExtensions(context)) {
             extensionPaths.add(getEspressoModulePath(context, me.jarName()));
         }
         if (extensionPaths.isEmpty()) {

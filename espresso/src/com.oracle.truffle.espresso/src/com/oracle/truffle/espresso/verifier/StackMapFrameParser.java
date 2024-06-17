@@ -38,30 +38,109 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormatNoFa
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 
-final class StackMapFrameParser {
-    private final MethodVerifier verifier;
+public final class StackMapFrameParser<T extends StackMapFrameParser.FrameState> {
+
+    public interface FrameState {
+        /**
+         * @return A copy of this FrameState, from which all Stack elements have been stripped.
+         */
+        FrameState sameNoStack();
+
+        /**
+         * @return A copy of this FrameState, with a single stack element: {@code vfi}
+         */
+        FrameState sameLocalsWith1Stack(VerificationTypeInfo vfi, FrameBuilder<?> builder);
+
+        /**
+         * Computes a new {@link FrameState} starting from the receiver, from which all stack
+         * elements have been stripped, and {@code chop} locals have been cleared out, starting from
+         * {@code lastLocal}.
+         *
+         * @param chop The number of locals to remove
+         * @param lastLocal the position of the last local in the current FrameState.
+         * @return A {@link FrameAndLocalEffect}, which contains the
+         *         {@link FrameAndLocalEffect#state frame state} and the
+         *         {@link FrameAndLocalEffect#effect effect on the number of local variables} (which
+         *         can be different from {@code chop} if there are {@link JavaKind#needsTwoSlots()
+         *         type 2} locals to chop). This effect should be computed such that the last local
+         *         of the resulting state is given by {@code lastLocal + effect}.
+         */
+        FrameAndLocalEffect chop(int chop, int lastLocal);
+
+        /**
+         * Computes a new {@link FrameState} starting from the receiver, from which all stack
+         * elements have been stripped, and {@code vfi} locals have been appended in, starting from
+         * {@code lastLocal}.
+         *
+         * @param vfis The locals to append.
+         * @param builder The corresponding {@link FrameBuilder}.
+         * @param lastLocal the position of the last local in the current FrameState.
+         * @return A {@link FrameAndLocalEffect}, which contains the
+         *         {@link FrameAndLocalEffect#state frame state} and the
+         *         {@link FrameAndLocalEffect#effect effect on the number of local variables} (which
+         *         can be different from {@code vfis.length} if there are
+         *         {@link JavaKind#needsTwoSlots() type 2} locals to append). This effect should be
+         *         computed such that the last local of the resulting state is given by
+         *         {@code lastLocal + effect}.
+         */
+        FrameAndLocalEffect append(VerificationTypeInfo[] vfis, FrameBuilder<?> builder, int lastLocal);
+    }
+
+    public record FrameAndLocalEffect(FrameState state, int effect) {
+    }
+
+    public interface FrameBuilder<S extends FrameState> {
+        void registerStackMapFrame(int bci, S frame);
+
+        /**
+         * Returns a completely new {@link FrameState}, built from the given {@code stack} and
+         * {@code locals}.
+         *
+         * @param stack The stack elements.
+         * @param locals The local elements.
+         * @param lastLocal the position of the last local in the current FrameState.
+         * @return A {@link FrameAndLocalEffect}, which contains the
+         *         {@link FrameAndLocalEffect#state frame state} and the
+         *         {@link FrameAndLocalEffect#effect effect on the number of local variables}. This
+         *         effect should be computed such that the last local of the resulting state is
+         *         given by * {@code lastLocal + effect}.
+         */
+        FrameAndLocalEffect newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal);
+
+        String toExternalString();
+    }
+
+    private final FrameBuilder<T> frameBuilder;
     private final ClassfileStream stream;
 
-    private StackMapFrameParser(MethodVerifier verifier, StackMapTableAttribute stackMapTable) {
-        this.verifier = verifier;
+    private StackMapFrameParser(FrameBuilder<T> frameBuilder, StackMapTableAttribute stackMapTable) {
+        this.frameBuilder = frameBuilder;
         this.stream = new ClassfileStream(stackMapTable.getData(), null);
     }
 
-    public static void parse(MethodVerifier verifier, StackMapTableAttribute stackMapTable, StackFrame firstFrame) {
-        new StackMapFrameParser(verifier, stackMapTable).parseStackMapTableAttribute(firstFrame);
+    public static <State extends FrameState> void parse(FrameBuilder<State> builder, StackMapTableAttribute stackMapTable, State firstFrame, int initialLastLocal) {
+        new StackMapFrameParser<>(builder, stackMapTable).parseStackMapTableAttribute(firstFrame, initialLastLocal);
     }
 
-    private void parseStackMapTableAttribute(StackFrame firstFrame) {
-        StackFrame previous = firstFrame;
+    @SuppressWarnings("unchecked")
+    private void parseStackMapTableAttribute(T firstFrame, int initialLastLocal) {
+        T previous = firstFrame;
         int bci = 0;
         boolean first = true;
+        int lastLocal = initialLastLocal;
         int entryCount = stream.readU2();
         for (int i = 0; i < entryCount; i++) {
             StackMapFrame entry = parseStackMapFrame();
-            StackFrame frame = verifier.getStackFrame(entry, previous);
+            FrameAndLocalEffect res = nextFrame(entry, previous, lastLocal);
+
+            lastLocal = lastLocal + res.effect();
+            T frame = (T) res.state();
+
             bci = bci + entry.getOffset() + (first ? 0 : 1);
-            verifier.registerStackMapFrame(bci, frame);
+            frameBuilder.registerStackMapFrame(bci, frame);
             first = false;
             previous = frame;
         }
@@ -69,8 +148,29 @@ final class StackMapFrameParser {
         // either VerifyError or ClassFormatError only if verified. Here the
         // attribute is marked for the verifier.
         if (!stream.isAtEndOfFile()) {
-            throw failFormatNoFallback("Truncated StackMap attribute in " + verifier.getThisKlass().getExternalName() + "." + verifier.getMethodName());
+            throw failFormatNoFallback("Truncated StackMap attribute in " + frameBuilder.toExternalString());
         }
+    }
+
+    private FrameAndLocalEffect nextFrame(StackMapFrame entry, T previous, int lastLocal) {
+        int frameType = entry.getFrameType();
+        if (frameType < SAME_FRAME_BOUND || frameType == SAME_FRAME_EXTENDED) {
+            return new FrameAndLocalEffect(previous.sameNoStack(), 0);
+        }
+        if (frameType < SAME_LOCALS_1_STACK_ITEM_BOUND || frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
+            return new FrameAndLocalEffect(previous.sameLocalsWith1Stack(entry.getStackItem(), frameBuilder), 0);
+        }
+        MethodVerifier.formatGuarantee(frameType >= SAME_LOCALS_1_STACK_ITEM_EXTENDED, "Encountered reserved StackMapFrame tag: " + frameType);
+        if (frameType < CHOP_BOUND) {
+            return previous.chop(entry.getChopped(), lastLocal);
+        }
+        if (frameType < APPEND_FRAME_BOUND) {
+            return previous.append(entry.getLocals(), frameBuilder, lastLocal);
+        }
+        if (frameType == FULL_FRAME) {
+            return frameBuilder.newFullFrame(entry.getStack(), entry.getLocals(), lastLocal);
+        }
+        throw EspressoError.shouldNotReachHere();
     }
 
     private StackMapFrame parseStackMapFrame() {

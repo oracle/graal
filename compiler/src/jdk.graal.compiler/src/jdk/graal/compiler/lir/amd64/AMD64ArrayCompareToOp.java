@@ -494,4 +494,9 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             masm.movzwl(elem2, new AMD64Address(str2, index, stride2, 0));
         }
     }
+
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
+    }
 }

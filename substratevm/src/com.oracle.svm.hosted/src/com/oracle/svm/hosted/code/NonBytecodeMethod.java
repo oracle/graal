@@ -30,6 +30,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 
@@ -48,7 +49,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Abstract base class for methods with generated Graal IR, i.e., methods that do not originate from
  * bytecode.
  */
-public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMethod, AnnotationWrapper {
+public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMethod, AnnotationWrapper, OriginalMethodProvider {
 
     /**
      * Line numbers are bogus because this is generated code, but we need to include them in our
@@ -71,6 +72,11 @@ public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMe
         this.declaringClass = declaringClass;
         this.signature = signature;
         this.constantPool = constantPool;
+    }
+
+    @Override
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return null;
     }
 
     @Override

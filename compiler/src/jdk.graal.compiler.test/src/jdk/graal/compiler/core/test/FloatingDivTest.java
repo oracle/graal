@@ -26,6 +26,10 @@ package jdk.graal.compiler.core.test;
 
 import java.util.ListIterator;
 
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -39,9 +43,6 @@ import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.LoweringPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
 
 public class FloatingDivTest extends GraalCompilerTest {
 
@@ -238,6 +239,7 @@ public class FloatingDivTest extends GraalCompilerTest {
             int res2 = len % divisor;
             int res3 = len / divisor;
             result += res1 + res2 + res3;
+            GraalDirectives.controlFlowAnchor();
         }
         return result;
     }

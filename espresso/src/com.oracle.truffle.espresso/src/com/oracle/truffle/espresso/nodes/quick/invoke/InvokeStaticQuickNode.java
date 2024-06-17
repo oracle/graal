@@ -44,7 +44,7 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         // Support for AccessController.doPrivileged.
         if (isDoPrivilegedCall) {
             EspressoRootNode rootNode = (EspressoRootNode) getRootNode();
@@ -55,5 +55,9 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
         }
         Object[] args = getArguments(frame);
         return pushResult(frame, invokeStatic.execute(args));
+    }
+
+    public void initializeResolvedKlass() {
+        invokeStatic.getStaticMethod().getDeclaringKlass().safeInitialize();
     }
 }

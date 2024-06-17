@@ -49,6 +49,7 @@ import mx
 import mx_benchmark
 import mx_sdk_vm
 import mx_unittest
+import mx_util
 # noinspection PyUnresolvedReferences
 import mx_wasm_benchmark  # pylint: disable=unused-import
 from mx_gate import Task, add_gate_runner
@@ -109,14 +110,20 @@ def graal_wasm_gate_runner(args, tasks):
         if t:
             mx.build(["--all"])
 
-    with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest, GraalWasmDefaultTags.coverage], report=True) as t:
+    with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest], report=True) as t:
         if t:
             unittest([*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
             unittest([*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
 
-    with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest, GraalWasmDefaultTags.coverage], report=True) as t:
+    with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest], report=True) as t:
         if t:
             unittest(["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+
+    with Task("CoverageTests", tasks, tags=[GraalWasmDefaultTags.coverage], report=True) as t:
+        if t:
+            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(["-Dwasmtest.coverageMode=true", "--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
 
     # This is a gate used to test that all the benchmarks return the correct results. It does not upload anything,
     # and does not run on a dedicated machine.
@@ -147,9 +154,9 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
         # Assert for enter/return parity of ProbeNode
         vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
-        # limit heap memory to 2G, unless otherwise specified
+        # limit heap memory to 4G, unless otherwise specified
         if not any(a.startswith('-Xm') for a in vmArgs):
-            vmArgs += ['-Xmx2g']
+            vmArgs += ['-Xmx4g']
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -281,7 +288,7 @@ class WatBuildTask(GraalWasmBuildTask):
         mx.log("Building files from the source dir: " + source_dir)
         for root, filename in self.subject.getProgramSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())
-            mx.ensure_dir_exists(os.path.join(output_dir, subdir))
+            mx_util.ensure_dir_exists(os.path.join(output_dir, subdir))
 
             basename = remove_extension(filename)
             source_path = os.path.join(root, filename)
@@ -415,7 +422,7 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
                 continue
 
             subdir = os.path.relpath(root, self.subject.getSourceDir())
-            mx.ensure_dir_exists(os.path.join(output_dir, subdir))
+            mx_util.ensure_dir_exists(os.path.join(output_dir, subdir))
 
             basename = remove_extension(filename)
             source_path = os.path.join(root, filename)
@@ -472,7 +479,7 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             # Step 5: if this is a benchmark project, create native binaries too.
             if mustRebuild:
                 if filename.endswith(".c"):
-                    mx.ensure_dir_exists(os.path.join(output_dir, subdir, NATIVE_BENCH_DIR))
+                    mx_util.ensure_dir_exists(os.path.join(output_dir, subdir, NATIVE_BENCH_DIR))
                     output_path = os.path.join(output_dir, subdir, NATIVE_BENCH_DIR, mx.exe_suffix(basename))
                     link_flags = ["-lm"]
                     gcc_cmd_line = [gcc_cmd] + cc_flags + [source_path, "-o", output_path] + include_flags + link_flags

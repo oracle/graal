@@ -45,35 +45,35 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 
 @GenerateUncached
 @GenerateInline(false)
-public abstract class WasmIndirectCallNode extends Node {
+@NodeField(name = "bytecodeOffset", type = int.class)
+public abstract class WasmIndirectCallNode extends WasmCallNode {
 
     static final int INLINE_CACHE_LIMIT = 5;
 
     public abstract Object execute(CallTarget target, Object[] args);
 
-    @Specialization(guards = "target == callNode.getCallTarget()", limit = "INLINE_CACHE_LIMIT")
-    @SuppressWarnings("unused")
-    static Object doCached(CallTarget target, Object[] args,
-                    @Cached("create(target)") DirectCallNode callNode) {
-        return callNode.call(args);
+    @Override
+    public abstract int getBytecodeOffset();
+
+    @Specialization(guards = "target == cachedTarget", limit = "INLINE_CACHE_LIMIT")
+    final Object doCached(@SuppressWarnings("unused") CallTarget target, Object[] args,
+                    @Cached("target") CallTarget cachedTarget) {
+        return cachedTarget.call(this, args);
     }
 
     @Specialization(replaces = "doCached")
-    static Object doIndirect(CallTarget target, Object[] args,
-                    @Cached IndirectCallNode indirectCall) {
-        return indirectCall.call(target, args);
+    final Object doIndirect(CallTarget target, Object[] args) {
+        return target.call(this, args);
     }
 
     @NeverDefault
-    public static WasmIndirectCallNode create() {
-        return WasmIndirectCallNodeGen.create();
+    public static WasmIndirectCallNode create(int bytecodeOffset) {
+        return WasmIndirectCallNodeGen.create(bytecodeOffset);
     }
 
 }

@@ -84,7 +84,6 @@ public abstract class NativeEnv extends ContextAccessImpl {
 
     private static final int LOOKUP_CALLBACK_ARGS_COUNT = 1;
 
-    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, this.getClass());
     private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
 
     private final Set<@Pointer TruffleObject> nativeClosures = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -112,10 +111,6 @@ public abstract class NativeEnv extends ContextAccessImpl {
 
     protected final InteropLibrary getUncached() {
         return uncached;
-    }
-
-    public final TruffleLogger getLogger() {
-        return logger;
     }
 
     protected JniEnv jni() {
@@ -211,6 +206,8 @@ public abstract class NativeEnv extends ContextAccessImpl {
         CompilerAsserts.neverPartOfCompilation();
         return methods.get(methodName);
     }
+
+    protected abstract TruffleLogger getLogger();
 
     @TruffleBoundary
     private TruffleObject createNativeClosureForFactory(CallableFromNative.Factory factory, String methodName) {

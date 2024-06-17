@@ -1,5 +1,5 @@
 DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/tools,/truffle
-COMPONENTS=cmp,cov,dap,gu,gvm,icu4j,ins,insight,insightheap,js,jsl,jss,lg,lsp,nfi,nfi-libffi,ni,nic,nil,poly,polynative,pro,rgx,sdk,sdkl,svm,svmt,svmnfi,svmsl,tfl,tfla,tflc,tflm,truffle-json
+COMPONENTS=cmp,cov,dap,gvm,icu4j,ins,insight,insightheap,js,jsl,jss,lg,lsp,nfi,nfi-libffi,ni,nic,nil,poly,polynative,pro,rgx,sdk,sdkl,svm,svmt,svmnfi,svmsl,tfl,tfla,tflc,tflm,truffle-json
 NATIVE_IMAGES=lib:jsvm,lib:jvmcicompiler
 NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
 DISABLE_INSTALLABLES=False

@@ -113,6 +113,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     public final ResolvedJavaMethod wrapped;
 
     private final int id;
+    /** Marks a method loaded from a base layer. */
+    private final boolean isInBaseLayer;
     private final boolean hasNeverInlineDirective;
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
@@ -180,7 +182,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
-        id = universe.nextMethodId.getAndIncrement();
 
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
         signature = getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
@@ -188,6 +189,24 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
         name = createName(wrapped, multiMethodKey);
         qualifiedName = format("%H.%n(%P)");
+
+        if (universe.hostVM().useBaseLayer()) {
+            int mid = universe.getImageLayerLoader().lookupHostedMethodInBaseLayer(this);
+            if (mid != -1) {
+                /*
+                 * This id is the actual link between the corresponding method from the base layer
+                 * and this new method.
+                 */
+                id = mid;
+                isInBaseLayer = true;
+            } else {
+                id = universe.computeNextMethodId();
+                isInBaseLayer = false;
+            }
+        } else {
+            id = universe.computeNextMethodId();
+            isInBaseLayer = false;
+        }
 
         ExceptionHandler[] original = wrapped.getExceptionHandlers();
         exceptionHandlers = new ExceptionHandler[original.length];
@@ -229,6 +248,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
         wrapped = original.wrapped;
         id = original.id;
+        isInBaseLayer = original.isInBaseLayer;
         declaringClass = original.declaringClass;
         signature = original.signature;
         hasNeverInlineDirective = original.hasNeverInlineDirective;
@@ -281,7 +301,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    protected AnalysisUniverse getUniverse() {
+    public AnalysisUniverse getUniverse() {
         /* Access the universe via the declaring class to avoid storing it here. */
         return declaringClass.getUniverse();
     }
@@ -332,6 +352,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public int getId() {
         return id;
+    }
+
+    public boolean isInBaseLayer() {
+        return isInBaseLayer;
     }
 
     /**
@@ -493,7 +517,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod() || AtomicUtils.isSet(this, isImplementationInvokedUpdater));
     }
 
-    protected Object getImplementationInvokedReason() {
+    public Object getImplementationInvokedReason() {
         return isImplementationInvoked;
     }
 
@@ -817,8 +841,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return wrapped;
+    }
+
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(wrapped);
+        return OriginalMethodProvider.getJavaMethod(this);
     }
 
     /**
@@ -925,23 +953,25 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return null;
         }
 
-        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition(), GraphDecoder::new);
+        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition(), analyzedGraph.isRecordingInlinedMethods(), GraphDecoder::new);
     }
 
     /**
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
      */
-    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition,
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition, boolean recordInlinedMethods,
                     BiFunction<Architecture, StructuredGraph, GraphDecoder> decoderProvider) {
         if (analyzedGraph == null) {
             return null;
         }
 
         var allowAssumptions = getUniverse().hostVM().allowAssumptions(this);
-        // Note we never record inlined methods. This is correct even for runtime compiled methods
-        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
-                        trackNodeSourcePosition).build();
+        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions)
+                        .method(this)
+                        .trackNodeSourcePosition(trackNodeSourcePosition)
+                        .recordInlinedMethods(recordInlinedMethods)
+                        .build();
         GraphDecoder decoder = decoderProvider.apply(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
         /*

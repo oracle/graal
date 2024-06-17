@@ -66,7 +66,7 @@ public final class AnnotationPrimitiveValue extends AnnotationMemberValue {
                 value = cp.getIntAt(constIndex) != 0;
                 break;
             default:
-                throw new AnnotationMetadata.AnnotationExtractionError("Invalid annotation encoding. Unknown tag " + tag);
+                throw new AnnotationMetadata.AnnotationExtractionError(tag, "Invalid annotation encoding. Unknown tag");
         }
         assert Wrapper.forWrapperType(value.getClass()).basicTypeChar() == tag;
         return new AnnotationPrimitiveValue(tag, value);

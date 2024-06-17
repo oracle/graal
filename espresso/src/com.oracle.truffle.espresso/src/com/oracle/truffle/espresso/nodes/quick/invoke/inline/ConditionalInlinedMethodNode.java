@@ -58,7 +58,7 @@ public class ConditionalInlinedMethodNode extends InlinedMethodNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame) {
+    public final int execute(VirtualFrame frame, boolean isContinuationResume) {
         preludeChecks(frame);
         if (condition.isValid(getContext(), method, frame, this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -66,7 +66,7 @@ public class ConditionalInlinedMethodNode extends InlinedMethodNode {
             return getBytecodeNode().replaceQuickAt(frame, opcode, getCallerBCI(), this,
                             replacement);
         } else {
-            return fallbackNode.execute(frame);
+            return fallbackNode.execute(frame, false);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -239,6 +239,28 @@ public class NumUtil {
 
     public static boolean sameSign(long a, long b) {
         return a < 0 == b < 0;
+    }
+
+    /**
+     * Determines if the input, when interpreted as an unsigned integer, is a power of 2. Compare
+     * {@link CodeUtil#isPowerOf2(long)} which does the same check but interprets the input as
+     * signed and requires it to be positive.
+     */
+    public static boolean isUnsignedPowerOf2(long n) {
+        return n != 0 && (n & n - 1) == 0;
+    }
+
+    /**
+     * Computes the log (base 2) of the input interpreted as an unsigned integer, rounding down
+     * (e.g., {@code log2(8) = 3}, {@code log2(21) = 4}). Compare {@link CodeUtil#log2(long)} which
+     * does the same computation but interprets the input as signed and requires it to be positive.
+     *
+     * @param val the value
+     * @return the log base 2 of the value
+     */
+    public static int unsignedLog2(long val) {
+        assert val != 0;
+        return (Long.SIZE - 1) - Long.numberOfLeadingZeros(val);
     }
 
     /**

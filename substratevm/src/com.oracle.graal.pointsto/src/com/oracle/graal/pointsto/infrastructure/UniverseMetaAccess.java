@@ -33,11 +33,9 @@ import java.util.function.Function;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -68,17 +66,6 @@ public abstract class UniverseMetaAccess implements WrappedMetaAccess {
 
     public Universe getUniverse() {
         return universe;
-    }
-
-    @Override
-    public ResolvedJavaType lookupJavaType(JavaConstant constant) {
-        if (constant.getJavaKind() != JavaKind.Object || constant.isNull()) {
-            return null;
-        }
-        if (constant instanceof TypedConstant) {
-            return ((TypedConstant) constant).getType(this);
-        }
-        return universe.lookup(wrapped.lookupJavaType(constant));
     }
 
     private final ConcurrentHashMap<Class<?>, ResolvedJavaType> typeCache = new ConcurrentHashMap<>(AnalysisUniverse.ESTIMATED_NUMBER_OF_TYPES);

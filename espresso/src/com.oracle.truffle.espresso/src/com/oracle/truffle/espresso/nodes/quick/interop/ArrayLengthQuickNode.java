@@ -46,7 +46,7 @@ public final class ArrayLengthQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         StaticObject array = nullCheck(EspressoFrame.popObject(frame, top - 1));
         EspressoFrame.putInt(frame, top - 1, arrayLength.execute(array));
         return stackEffectOf_ARRAYLENGTH;

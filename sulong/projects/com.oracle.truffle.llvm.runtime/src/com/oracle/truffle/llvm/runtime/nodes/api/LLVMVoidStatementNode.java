@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,14 +31,11 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 
 /**
  * This node is used to execute an expression as a statement, discarding the result.
  */
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
-@NodeInfo(cost = NodeCost.NONE)
 public abstract class LLVMVoidStatementNode extends LLVMStatementNode {
 
     @Specialization

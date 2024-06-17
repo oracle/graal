@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ final class TStringConstants {
     static final int MAX_ARRAY_SIZE_S1 = MAX_ARRAY_SIZE >> 1;
     static final int MAX_ARRAY_SIZE_S2 = MAX_ARRAY_SIZE >> 2;
 
-    @CompilationFinal(dimensions = 1) static final byte[] EMPTY_BYTES = new byte[0];
     @CompilationFinal(dimensions = 2) private static final byte[][] SINGLE_BYTE_ARRAYS = new byte[256][1];
     @CompilationFinal(dimensions = 1) private static final byte[] INFINITY_BYTES = {'I', 'n', 'f', 'i', 'n', 'i', 't', 'y'};
     @CompilationFinal(dimensions = 1) private static final byte[] NaN_BYTES = {'N', 'a', 'N'};

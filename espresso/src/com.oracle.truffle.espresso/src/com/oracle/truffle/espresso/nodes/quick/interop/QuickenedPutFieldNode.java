@@ -45,7 +45,7 @@ public final class QuickenedPutFieldNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         BytecodeNode root = getBytecodeNode();
         StaticObject receiver = nullCheck(EspressoFrame.popObject(frame, top - 1 - slotCount));
         setFieldNode.setField(frame, root, receiver, top, statementIndex);

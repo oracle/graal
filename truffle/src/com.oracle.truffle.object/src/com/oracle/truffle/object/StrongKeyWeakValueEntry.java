@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.object;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * An unmodifiable {@link Map.Entry} with a strongly referenced key and a weakly referenced value.
@@ -53,12 +54,12 @@ final class StrongKeyWeakValueEntry<K, V> extends WeakReference<V> implements Ma
 
     StrongKeyWeakValueEntry(K key, V value) {
         super(value);
-        this.key = key;
+        this.key = Objects.requireNonNull(key);
     }
 
     StrongKeyWeakValueEntry(K key, V value, ReferenceQueue<? super V> queue) {
         super(value, queue);
-        this.key = key;
+        this.key = Objects.requireNonNull(key);
     }
 
     @Override
@@ -73,6 +74,27 @@ final class StrongKeyWeakValueEntry<K, V> extends WeakReference<V> implements Ma
 
     @Override
     public V setValue(V value) {
-        throw new UnsupportedOperationException();
+        throw ImmutableMap.unmodifiableException();
+    }
+
+    @Override
+    public int hashCode() {
+        return key.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof StrongKeyWeakValueEntry<?, ?> other)) {
+            return false;
+        }
+        return this.key.equals(other.getKey()) && Objects.equals(this.getValue(), other.getValue());
+    }
+
+    @Override
+    public String toString() {
+        return getKey() + "=" + getValue();
     }
 }

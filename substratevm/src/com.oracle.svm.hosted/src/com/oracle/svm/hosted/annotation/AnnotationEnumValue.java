@@ -74,11 +74,6 @@ public final class AnnotationEnumValue extends AnnotationMemberValue {
     }
 
     @Override
-    public List<String> getStrings() {
-        return Collections.singletonList(name);
-    }
-
-    @Override
     public char getTag() {
         return 'e';
     }

@@ -1,0 +1,6 @@
+# puts redefined with different type
+gcc-5.2.0/gcc/testsuite/g++.dg/tree-ssa/inline-1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/tree-ssa/inline-2.C
+
+# unsupported __null
+gcc-5.2.0/gcc/testsuite/g++.dg/tree-ssa/dom-invalid.C

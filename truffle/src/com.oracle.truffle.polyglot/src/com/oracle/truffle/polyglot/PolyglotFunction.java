@@ -63,7 +63,7 @@ final class PolyglotFunction<T, R> implements Function<T, R>, PolyglotWrapper {
 
     @SuppressWarnings("unchecked")
     public R apply(T t) {
-        return (R) apply.call(languageContext, guestObject, t);
+        return (R) apply.call(null, languageContext, guestObject, t);
     }
 
     @Override

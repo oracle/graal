@@ -27,6 +27,7 @@ package com.oracle.svm.core.heap;
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -62,6 +63,7 @@ public final class ReferenceHandler {
         }
     }
 
+    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
     static void processCleaners() {
         // Note: (sun.misc|jdk.internal).Cleaner objects are invoked in pending reference processing
 

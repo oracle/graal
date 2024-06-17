@@ -27,6 +27,8 @@ package jdk.graal.compiler.nodes.extended;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -34,15 +36,14 @@ import jdk.graal.compiler.nodes.AbstractStateSplit;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Store of a value at a location specified as an absolute address.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class UnsafeMemoryStoreNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill {
+public class UnsafeMemoryStoreNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, TrackedUnsafeAccess {
 
     public static final NodeClass<UnsafeMemoryStoreNode> TYPE = NodeClass.create(UnsafeMemoryStoreNode.class);
     @Input protected ValueNode value;

@@ -54,6 +54,8 @@ final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
     static final MethodHandle FALLBACK_SET = HotSpotTruffleRuntime.getRuntime().getSetThreadLocalObject();
     static final MethodHandle FALLBACK_GET = HotSpotTruffleRuntime.getRuntime().getGetThreadLocalObject();
 
+    private static final ThreadLocal<Object[]> VIRTUAL_THREADS_THREAD_LOCAL = new ThreadLocal<>();
+
     /*
      * This threshold determines how many recursive invocations of a no fallback method need to
      * occur until we detect that Java debug stepping is active.
@@ -187,6 +189,23 @@ final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
         } finally {
             invocations.value--;
         }
+    }
+
+    // We do not want any synchronization or park during JVMTI hooks
+    private static final HotSpotJVMCIRuntime RUNTIME = HotSpotJVMCIRuntime.runtime();
+
+    // We do not use getJVMCIReservedReference() here, we want to avoid any potential park() and
+    // control what Java code is run
+    static void unmount() {
+        Object[] threadLocals = (Object[]) RUNTIME.getThreadLocalObject(0);
+        VIRTUAL_THREADS_THREAD_LOCAL.set(threadLocals);
+    }
+
+    // We do not use setJVMCIReservedReference() here, we want to avoid any potential park() and
+    // control what Java code is run
+    static void mount() {
+        Object[] threadLocals = VIRTUAL_THREADS_THREAD_LOCAL.get();
+        RUNTIME.setThreadLocalObject(0, threadLocals);
     }
 
     static final class MutableInt {

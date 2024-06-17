@@ -1459,7 +1459,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @return the byte at the given index
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= </code>{@link #getBufferSize(Object)}
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1482,7 +1482,7 @@ public abstract class InteropLibrary extends Library {
      * @param destinationOffset offset in the destination array to start writing from.
      * @param length number of bytes to read.
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || length < 0 || byteOffset + length > </code>{@link #getBufferSize(Object)}
+     *             <code>byteOffset &lt; 0 || length &lt; 0 || byteOffset + length &gt; </code>{@link #getBufferSize(Object)}
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 24.0
@@ -1506,7 +1506,7 @@ public abstract class InteropLibrary extends Library {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= </code>{@link #getBufferSize(Object)}
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1529,7 +1529,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @return the short at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 1</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1549,7 +1549,7 @@ public abstract class InteropLibrary extends Library {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 1</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1572,7 +1572,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @return the int at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 3</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1592,7 +1592,7 @@ public abstract class InteropLibrary extends Library {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 3</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1615,7 +1615,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @return the int at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 7</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1635,7 +1635,7 @@ public abstract class InteropLibrary extends Library {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 7</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1658,7 +1658,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @return the float at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 3</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1678,7 +1678,7 @@ public abstract class InteropLibrary extends Library {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 3</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1701,7 +1701,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @return the double at the given byte offset from the start of the buffer
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 7</code>
      * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
      *             {@code false}
      * @since 21.1
@@ -1721,7 +1721,7 @@ public abstract class InteropLibrary extends Library {
      * thread-safe.
      *
      * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize(Object)} - 7</code>
      * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
      *             or {@link #isBufferWritable} returns {@code false}
      * @since 21.1
@@ -1826,7 +1826,7 @@ public abstract class InteropLibrary extends Library {
      * This method is short-hand for:
      *
      * <pre>
-     * {@linkplain #isDate(Object) isDate}(v) && {@link #isTime(Object) isTime}(v) && {@link #isTimeZone(Object) isTimeZone}(v)
+     * {@linkplain #isDate(Object) isDate}(v) &amp;&amp; {@link #isTime(Object) isTime}(v) &amp;&amp; {@link #isTimeZone(Object) isTimeZone}(v)
      * </pre>
      *
      * @see #isDate(Object)
@@ -1971,7 +1971,8 @@ public abstract class InteropLibrary extends Library {
      * The following simplified {@code TryCatchNode} shows how the exceptions should be handled by
      * languages.
      *
-     * {@link InteropLibrarySnippets.TryCatchNode}
+     * {@snippet file="com/oracle/truffle/api/interop/InteropLibrary.java"
+     * region="InteropLibrarySnippets.TryCatchNode"}
      *
      * @see #throwException(Object)
      * @see com.oracle.truffle.api.exception.AbstractTruffleException
@@ -5429,7 +5430,7 @@ class InteropLibrarySnippets {
     private abstract static class AbstractTruffleException extends RuntimeException {
     }
 
-    // BEGIN: InteropLibrarySnippets.TryCatchNode
+    // @start region = "InteropLibrarySnippets.TryCatchNode"
     static final class TryCatchNode extends StatementNode {
 
         @Node.Child private BlockNode block;
@@ -5480,5 +5481,5 @@ class InteropLibrarySnippets {
             }
         }
     }
-    // END: InteropLibrarySnippets.TryCatchNode
+    // @end region = "InteropLibrarySnippets.TryCatchNode"
 }

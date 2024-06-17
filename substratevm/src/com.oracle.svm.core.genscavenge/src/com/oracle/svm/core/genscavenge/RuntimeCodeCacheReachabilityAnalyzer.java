@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -35,6 +34,8 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
+
+import jdk.graal.compiler.word.Word;
 
 @DuplicatedInNativeCode
 final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
@@ -74,12 +75,16 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             return true;
         }
-
-        Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(ptrToObj, header));
-        if (!space.isFromSpace()) {
+        if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
             return true;
         }
-
+        Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(ptrToObj, header));
+        if (space.isToSpace()) {
+            return true;
+        }
+        if (space.isCompactingOldSpace() && !GCImpl.getGCImpl().isCompleteCollection()) {
+            return true;
+        }
         Class<?> clazz = DynamicHub.toClass(ohi.dynamicHubFromObjectHeader(header));
         return isAssumedReachable(clazz);
     }

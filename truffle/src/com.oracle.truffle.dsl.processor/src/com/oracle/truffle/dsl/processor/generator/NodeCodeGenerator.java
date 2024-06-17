@@ -171,7 +171,9 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
     }
 
     private static String getAccessorClassName(NodeData node) {
-        return node.isGenerateFactory() ? NodeFactoryFactory.factoryClassName(node.getTemplateType()) : createNodeTypeName(node.getTemplateType());
+        return node.isGenerateFactory() || node.getSpecializations().isEmpty() ? //
+                        NodeFactoryFactory.factoryClassName(node.getTemplateType()) : //
+                        createNodeTypeName(node.getTemplateType());
     }
 
     private static Element buildClassName(Element nodeElement, boolean first, boolean generateFactory) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.java.BytecodeParserOptions;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionGroup;
@@ -355,6 +356,13 @@ public class TruffleCompilerOptions {
         if (ExpansionStatistics.isEnabled(options)) {
             options = enableNodeSourcePositions(options);
         }
+        /*
+         * Truffle runtime compiles never want explicit exception edges for out of memory errors
+         * except requested. The reason for this is that we cannot foresee what happens to partial
+         * evaluation results and performance if interpreter basic blocks are suddenly disabled for
+         * PEA.
+         */
+        options = new OptionValues(options, BytecodeParserOptions.DoNotMoveAllocationsWithOOMEHandlers, false);
         return options;
     }
 

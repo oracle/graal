@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.nativeimage.hosted;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 
 /**
@@ -61,7 +62,7 @@ public final class RuntimeProxyCreation {
      * @since 22.3
      */
     public static void register(Class<?>... interfaces) {
-        ImageSingletons.lookup(RuntimeProxyCreationSupport.class).addProxyClass(interfaces);
+        ImageSingletons.lookup(RuntimeProxyCreationSupport.class).addProxyClass(ConfigurationCondition.alwaysTrue(), interfaces);
     }
 
     private RuntimeProxyCreation() {

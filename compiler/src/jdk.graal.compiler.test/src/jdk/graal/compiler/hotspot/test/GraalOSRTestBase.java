@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,18 @@
 
 package jdk.graal.compiler.hotspot.test;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.Assert;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeDisassembler;
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
-import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.core.GraalCompilerOptions;
 import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.CompilationTask;
@@ -42,17 +47,12 @@ import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Assert;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public abstract class GraalOSRTestBase extends GraalCompilerTest {
 
@@ -78,7 +78,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
         long jvmciEnv = 0L;
         HotSpotCompilationRequest request = new HotSpotCompilationRequest((HotSpotResolvedJavaMethod) method, bci, jvmciEnv);
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
-        CompilationTask task = new CompilationTask(runtime, compiler, request, true, true, true);
+        CompilationTask task = new CompilationTask(runtime, compiler, request, true, false, true, true);
         if (method instanceof HotSpotResolvedJavaMethod) {
             HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
             GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
@@ -95,7 +95,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
     /**
      * Returns the target BCIs of all bytecode backedges.
      */
-    public int[] getBackedgeBCIs(DebugContext debug, ResolvedJavaMethod method) {
+    public static int[] getBackedgeBCIs(DebugContext debug, ResolvedJavaMethod method) {
         Bytecode code = new ResolvedJavaMethodBytecode(method);
         BytecodeStream stream = new BytecodeStream(code.getCode());
         OptionValues options = debug.getOptions();
@@ -103,7 +103,8 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
 
         List<Integer> backedgeBcis = new ArrayList<>();
         for (BciBlockMapping.BciBlock block : bciBlockMapping.getBlocks()) {
-            if (block.getStartBci() != -1) {
+            // ignore exception entries, as they may never be reached
+            if (block.getStartBci() != -1 && !block.isExceptionEntry()) {
                 int bci = block.getEndBci();
                 for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
                     if (succ.getStartBci() != -1) {
@@ -132,7 +133,15 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
         compileOSR(options, method, true);
     }
 
+    public interface Parser {
+        StructuredGraph parse(ResolvedJavaMethod m, AllowAssumptions a, OptionValues o);
+    }
+
     protected void compileOSR(OptionValues options, ResolvedJavaMethod method, boolean expectBackedge) {
+        compileOSR(options, method, expectBackedge, (x, y, z) -> parseEager(x, y, z));
+    }
+
+    public static void compileOSR(OptionValues options, ResolvedJavaMethod method, boolean expectBackedge, Parser p) {
         OptionValues goptions = options;
         // Silence diagnostics for permanent bailout errors as they
         // are expected for some OSR tests.
@@ -140,7 +149,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
             goptions = new OptionValues(options, GraalCompilerOptions.CompilationBailoutAsFailure, false);
         }
         // ensure eager resolving
-        StructuredGraph graph = parseEager(method, AllowAssumptions.YES, goptions);
+        StructuredGraph graph = p.parse(method, AllowAssumptions.YES, goptions);
         DebugContext debug = graph.getDebug();
         int[] backedgeBCIs = getBackedgeBCIs(debug, method);
         if (expectBackedge && backedgeBCIs.length == 0) {

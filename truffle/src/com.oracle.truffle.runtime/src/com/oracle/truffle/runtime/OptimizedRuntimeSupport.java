@@ -46,6 +46,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -62,7 +63,9 @@ import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntime.CompilerOptionsDescriptors;
@@ -84,6 +87,19 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     @Override
     public boolean isLoaded(CallTarget callTarget) {
         return ((OptimizedCallTarget) callTarget).isLoaded();
+    }
+
+    @Override
+    public IndirectCallNode createIndirectCallNode() {
+        return new OptimizedIndirectCallNode();
+    }
+
+    @Override
+    public DirectCallNode createDirectCallNode(CallTarget target) {
+        OptimizedCallTarget optimizedTarget = (OptimizedCallTarget) target;
+        final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(optimizedTarget);
+        optimizedTarget.addDirectCallNode(directCallNode);
+        return directCallNode;
     }
 
     @Override
@@ -300,8 +316,8 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
-        return new EngineData(engine, engineOptions, loggerFactory);
+    public Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy) {
+        return new EngineData(engine, engineOptions, loggerFactory, sandboxPolicy);
     }
 
     @Override
@@ -310,8 +326,8 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
-        ((EngineData) runtimeData).onEnginePatch(runtimeOptions, loggerFactory);
+    public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy) {
+        ((EngineData) runtimeData).onEnginePatch(runtimeOptions, loggerFactory, sandboxPolicy);
     }
 
     @Override

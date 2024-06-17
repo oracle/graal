@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
@@ -115,9 +116,11 @@ import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -211,6 +214,10 @@ public abstract class Accessor {
         public abstract EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread);
 
         public abstract boolean isSameFrame(RootNode root, Frame frame1, Frame frame2);
+
+        public abstract int findBytecodeIndex(RootNode rootNode, Node callNode, Frame frame);
+
+        public abstract boolean isCaptureFramesForTrace(RootNode rootNode, Node callNode);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -315,6 +322,10 @@ public abstract class Accessor {
         public abstract boolean bigIntegerFitsInFloat(BigInteger b);
 
         public abstract boolean bigIntegerFitsInDouble(BigInteger b);
+
+        public abstract Class<?> getRawTypeFromGenericType(Type genericType, Class<?> defaultRawType);
+
+        public abstract Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType);
     }
 
     public abstract static class EngineSupport extends Support {
@@ -363,6 +374,8 @@ public abstract class Accessor {
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
+        public abstract Object getScope(Object polyglotLanguageContext, LanguageInfo languageInfo, boolean internal);
+
         public abstract boolean hasCurrentContext();
 
         public abstract boolean isDisposed(Object polyglotLanguageContext);
@@ -372,6 +385,8 @@ public abstract class Accessor {
         public abstract Map<String, LanguageInfo> getPublicLanguages(Object polyglotObject);
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object polyglotObject);
+
+        public abstract boolean isInstrumentReadyForContextEvents(Object polyglotInstrument);
 
         public abstract Object createPolyglotSourceSection(Object polyglotObject, Object source, SourceSection sectionImpl);
 
@@ -460,7 +475,8 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object polyglotLanguageContext);
 
-        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave);
+        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave,
+                        boolean virtual);
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 
@@ -536,7 +552,7 @@ public abstract class Accessor {
 
         public abstract FileSystem getFileSystem(Object polyglotContext);
 
-        public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext);
+        public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext, LanguageInfo language);
 
         public abstract boolean isPolyglotBindingsAccessAllowed(Object polyglotLanguageContext);
 
@@ -724,7 +740,7 @@ public abstract class Accessor {
 
         public abstract String getFormatKind(LogRecord logRecord);
 
-        public abstract boolean isPolyglotThread(Thread thread);
+        public abstract boolean isCurrentThreadPolyglotThread();
 
         public abstract Object getHostNull();
 
@@ -765,6 +781,8 @@ public abstract class Accessor {
         public abstract Collection<String> getResourceIds(String componentId);
 
         public abstract void setIsolatePolyglot(AbstractPolyglotImpl instance);
+
+        public abstract Object getEngineData(Object polyglotEngine);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1025,10 +1043,6 @@ public abstract class Accessor {
         public abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
         public abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
-
-        public abstract boolean usesAllStaticMode(FrameDescriptor descriptor);
-
-        public abstract boolean usesMixedStaticMode(FrameDescriptor descriptor);
     }
 
     public abstract static class ExceptionSupport extends Support {
@@ -1119,6 +1133,10 @@ public abstract class Accessor {
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;
         }
+
+        public abstract IndirectCallNode createIndirectCallNode();
+
+        public abstract DirectCallNode createDirectCallNode(CallTarget target);
 
         /**
          * Reports the execution count of a loop.
@@ -1211,7 +1229,7 @@ public abstract class Accessor {
 
         public abstract void flushCompileQueue(Object runtimeData);
 
-        public abstract Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory);
+        public abstract Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy);
 
         public abstract Object tryLoadCachedEngine(OptionValues runtimeData, Function<String, TruffleLogger> logger);
 
@@ -1219,7 +1237,7 @@ public abstract class Accessor {
 
         public abstract boolean isStoreEnabled(OptionValues options);
 
-        public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier);
+        public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier, SandboxPolicy sandboxPolicy);
 
         public abstract boolean onEngineClosing(Object runtimeData);
 

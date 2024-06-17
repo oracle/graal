@@ -35,13 +35,12 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 
 public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
 
@@ -183,10 +182,6 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
     static class DummyRootNode extends RootNode {
 
         @Child private Node polymorphic = new Node() {
-            @Override
-            public NodeCost getCost() {
-                return NodeCost.POLYMORPHIC;
-            }
         };
 
         protected DummyRootNode() {

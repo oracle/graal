@@ -102,7 +102,7 @@ public class NewGroupAction extends AbstractAction {
             try {
                 repository.createGroup(input.getInputText());
             } catch (IOException ex) {
-                NotifyDescriptor.Message msg = new NotifyDescriptor.Message(Bundle.ERR_CreateGroup(ex.getLocalizedMessage()), 
+                NotifyDescriptor.Message msg = new NotifyDescriptor.Message(Bundle.ERR_CreateGroup(ex.toString()), 
                     NotifyDescriptor.ERROR_MESSAGE);
                 DialogDisplayer.getDefault().notifyLater(msg);
             }

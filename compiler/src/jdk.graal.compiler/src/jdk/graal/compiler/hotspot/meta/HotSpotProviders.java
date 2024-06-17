@@ -30,6 +30,7 @@ import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -37,7 +38,6 @@ import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.phases.tiers.SuitesProvider;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -67,9 +67,10 @@ public class HotSpotProviders extends Providers {
                     PlatformConfigurationProvider platformConfigurationProvider,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
                     LoopsDataProvider loopsDataProvider,
-                    GraalHotSpotVMConfig config) {
+                    GraalHotSpotVMConfig config,
+                    IdentityHashCodeProvider identityHashCodeProvider) {
         super(metaAccess, codeCache, constantReflection, constantField, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
-                        snippetReflection, wordTypes, loopsDataProvider);
+                        snippetReflection, wordTypes, loopsDataProvider, identityHashCodeProvider);
         this.suites = suites;
         this.registers = registers;
         this.config = config;
@@ -116,7 +117,7 @@ public class HotSpotProviders extends Providers {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), substitution, getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getSuites(),
                         getRegisters(), getSnippetReflection(), getWordTypes(), getStampProvider(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(),
                         getLoopsDataProvider(),
-                        config);
+                        config, getIdentityHashCodeProvider());
     }
 
     @Override
@@ -125,7 +126,7 @@ public class HotSpotProviders extends Providers {
                         getSuites(),
                         getRegisters(), getSnippetReflection(), getWordTypes(), getStampProvider(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(),
                         getLoopsDataProvider(),
-                        config);
+                        config, getIdentityHashCodeProvider());
     }
 
     @Override
@@ -133,14 +134,14 @@ public class HotSpotProviders extends Providers {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), substitution,
                         getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), getStampProvider(), getPlatformConfigurationProvider(),
                         getMetaAccessExtensionProvider(),
-                        getLoopsDataProvider(), config);
+                        getLoopsDataProvider(), config, getIdentityHashCodeProvider());
     }
 
     public HotSpotProviders copyWith() {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(),
                         getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), getStampProvider(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(),
                         getLoopsDataProvider(),
-                        config);
+                        config, getIdentityHashCodeProvider());
     }
 
     public void setSuites(HotSpotSuitesProvider suites) {

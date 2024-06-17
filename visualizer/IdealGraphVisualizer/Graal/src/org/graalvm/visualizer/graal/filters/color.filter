@@ -18,10 +18,10 @@ colorize("category", "state", lightGreen);
 colorize("category", "phi", middleBlue);
 colorize("category", "proxy", middleBlue);
 colorize("category", "floating", lightBlue);
-colorize("class", "org\\.graalvm\\.compiler\\.nodes\\..*ParameterNode$", gray);
-colorize("class", "org\\.graalvm\\.compiler\\.nodes\\..*ConstantNode$", gray);
-colorize("class", "org\\.graalvm\\.compiler\\.nodes\\..*GuardNode$", violet);
-colorize("class", "org\\.graalvm\\.compiler\\.nodes\\.debug\\.BlackholeNode$", black);
+colorize("class", ".*\\.nodes\\..*ParameterNode$", gray);
+colorize("class", ".*\\.nodes\\..*ConstantNode$", gray);
+colorize("class", ".*\\.nodes\\..*GuardNode$", violet);
+colorize("class", ".*\\.nodes\\.debug\\.BlackholeNode$", black);
 
 var f = new GraalEdgeColorFilter();
 f.setUsageColor("Successor", red);

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
@@ -54,10 +55,7 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTime(hThread, includeSystemTime);
     }
 
-    /**
-     * Based on jdk-20-ga, see <a href=
-     * "https://github.com/openjdk/jdk20/blob/82749901b1497f524e53e47c45708c8e4a63c8b9/src/hotspot/os/windows/os_windows.cpp#L4609">os::thread_cpu_time</a>.
-     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/windows/os_windows.cpp#L4722-L4738")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTime(HANDLE hThread, boolean includeSystemTime) {
         FILETIME create = StackValue.get(FILETIME.class);

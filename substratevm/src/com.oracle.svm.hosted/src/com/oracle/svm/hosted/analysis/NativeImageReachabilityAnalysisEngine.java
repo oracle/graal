@@ -58,11 +58,11 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
         this.dynamicHubInitializer = new DynamicHubInitializer(this);
         this.unknownFieldHandler = new CustomTypeFieldHandler(this, metaAccess) {
             @Override
-            protected void injectFieldTypes(AnalysisField aField, AnalysisType... declaredTypes) {
+            public void injectFieldTypes(AnalysisField aField, AnalysisType... declaredTypes) {
                 assert aField.getJavaKind().isObject();
-                markFieldAccessed(aField, "@UnknownObjectField annotated field.");
+                aField.registerAsAccessed("@UnknownObjectField annotated field.");
                 for (AnalysisType declaredType : declaredTypes) {
-                    registerTypeAsReachable(declaredType, "injected field types for unknown annotated field " + aField.format("%H.%n"));
+                    declaredType.registerAsReachable("injected field types for unknown annotated field " + aField.format("%H.%n"));
                 }
             }
         };

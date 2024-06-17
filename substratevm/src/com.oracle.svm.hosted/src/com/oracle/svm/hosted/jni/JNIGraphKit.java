@@ -26,10 +26,11 @@ package com.oracle.svm.hosted.jni;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveEpilogue;
 import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIEnvEnterFatalOnFailurePrologue;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -40,7 +41,6 @@ import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -53,8 +53,8 @@ import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
-import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -80,7 +80,7 @@ public class JNIGraphKit extends HostedGraphKit {
             }
         }
         sb.append('_').append(signature.getReturnType().getJavaKind().getTypeChar());
-        return digest ? SubstrateUtil.digest(sb.toString()) : sb.toString();
+        return digest ? Digest.digest(sb.toString()) : sb.toString();
     }
 
     public ValueNode checkObjectType(ValueNode uncheckedValue, ResolvedJavaType type, boolean checkNonNull) {
@@ -130,65 +130,50 @@ public class JNIGraphKit extends HostedGraphKit {
         return createInvokeWithExceptionAndUnwind(findMethod(JNIGeneratedMethodSupport.class, name, true), InvokeKind.Static, getFrameState(), bci(), args);
     }
 
-    private FixedWithNextNode createStaticInvokeRetainException(String name, ValueNode... args) {
-        ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, name, true);
-        int invokeBci = bci();
-        startInvokeWithException(method, InvokeKind.Static, getFrameState(), invokeBci, args);
-        exceptionPart();
-        ExceptionObjectNode exception = exceptionObject();
-        setPendingException(exception);
-        endInvokeWithException();
-        return lastFixedNode;
-    }
-
-    public InvokeWithExceptionNode nativeCallAddress(ValueNode linkage) {
+    public InvokeWithExceptionNode invokeNativeCallAddress(ValueNode linkage) {
         return createStaticInvoke("nativeCallAddress", linkage);
     }
 
-    public InvokeWithExceptionNode nativeCallPrologue() {
+    public InvokeWithExceptionNode invokeNativeCallPrologue() {
         return createStaticInvoke("nativeCallPrologue");
     }
 
-    public InvokeWithExceptionNode nativeCallEpilogue(ValueNode handleFrame) {
-        return createStaticInvoke("nativeCallEpilogue", handleFrame);
+    public void invokeNativeCallEpilogue(ValueNode handleFrame) {
+        createStaticInvoke("nativeCallEpilogue", handleFrame);
     }
 
-    public InvokeWithExceptionNode environment() {
+    public InvokeWithExceptionNode invokeEnvironment() {
         return createStaticInvoke("environment");
     }
 
-    public InvokeWithExceptionNode boxObjectInLocalHandle(ValueNode obj) {
+    public InvokeWithExceptionNode invokeBoxObjectInLocalHandle(ValueNode obj) {
         return createStaticInvoke("boxObjectInLocalHandle", obj);
     }
 
-    public InvokeWithExceptionNode unboxHandle(ValueNode handle) {
+    public InvokeWithExceptionNode invokeUnboxHandle(ValueNode handle) {
         return createStaticInvoke("unboxHandle", handle);
     }
 
-    public InvokeWithExceptionNode getFieldOffsetFromId(ValueNode fieldId) {
-        return createStaticInvoke("getFieldOffsetFromId", fieldId);
-    }
-
-    public InvokeWithExceptionNode getNewObjectAddress(ValueNode methodId) {
+    public InvokeWithExceptionNode invokeGetNewObjectAddress(ValueNode methodId) {
         return invokeJNIMethodObjectMethod("getNewObjectAddress", methodId);
     }
 
     /** We trust our stored class object to be non-null. */
-    public ValueNode getDeclaringClassForMethod(ValueNode methodId) {
+    public ValueNode invokeGetDeclaringClassForMethod(ValueNode methodId) {
         InvokeWithExceptionNode declaringClass = invokeJNIMethodObjectMethod("getDeclaringClassObject", methodId);
         return createPiNode(declaringClass, ObjectStamp.pointerNonNull(declaringClass.stamp(NodeView.DEFAULT)));
     }
 
-    public InvokeWithExceptionNode getJavaCallAddress(ValueNode methodId, ValueNode instance, ValueNode nonVirtual) {
+    public InvokeWithExceptionNode invokeGetJavaCallAddress(ValueNode methodId, ValueNode instance, ValueNode nonVirtual) {
         return createInvokeWithExceptionAndUnwind(findMethod(JNIAccessibleMethod.class, "getJavaCallAddress", Object.class, boolean.class),
-                        InvokeKind.Special, getFrameState(), bci(), getUncheckedMethodObject(methodId), instance, nonVirtual);
+                        InvokeKind.Special, getFrameState(), bci(), invokeGetUncheckedMethodObject(methodId), instance, nonVirtual);
     }
 
-    public InvokeWithExceptionNode getJavaCallWrapperAddressFromMethodId(ValueNode methodId) {
+    public InvokeWithExceptionNode invokeGetJavaCallWrapperAddressFromMethodId(ValueNode methodId) {
         return invokeJNIMethodObjectMethod("getCallWrapperAddress", methodId);
     }
 
-    public InvokeWithExceptionNode isStaticMethod(ValueNode methodId) {
+    public InvokeWithExceptionNode invokeIsStaticMethod(ValueNode methodId) {
         return invokeJNIMethodObjectMethod("isStatic", methodId);
     }
 
@@ -196,51 +181,33 @@ public class JNIGraphKit extends HostedGraphKit {
      * Used in native-to-Java call wrappers where the method ID has already been used to dispatch,
      * and we would have crashed if something is wrong, so we can avoid null and type checks.
      */
-    private InvokeWithExceptionNode getUncheckedMethodObject(ValueNode methodId) {
+    private InvokeWithExceptionNode invokeGetUncheckedMethodObject(ValueNode methodId) {
         return createInvokeWithExceptionAndUnwind(findMethod(JNIReflectionDictionary.class, "getMethodByID", JNIMethodId.class),
                         InvokeKind.Static, getFrameState(), bci(), methodId);
     }
 
     private InvokeWithExceptionNode invokeJNIMethodObjectMethod(String name, ValueNode methodId) {
-        return createInvokeWithExceptionAndUnwind(findMethod(JNIAccessibleMethod.class, name), InvokeKind.Special, getFrameState(), bci(), getUncheckedMethodObject(methodId));
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIAccessibleMethod.class, name), InvokeKind.Special, getFrameState(), bci(), invokeGetUncheckedMethodObject(methodId));
     }
 
-    public InvokeWithExceptionNode getStaticPrimitiveFieldsArray() {
-        return createStaticInvoke("getStaticPrimitiveFieldsArray");
+    public void invokeSetPendingException(ValueNode obj) {
+        createStaticInvoke("setPendingException", obj);
     }
 
-    public InvokeWithExceptionNode getStaticObjectFieldsArray() {
-        return createStaticInvoke("getStaticObjectFieldsArray");
-    }
-
-    public InvokeWithExceptionNode setPendingException(ValueNode obj) {
-        return createStaticInvoke("setPendingException", obj);
-    }
-
-    public InvokeWithExceptionNode getAndClearPendingException() {
+    public InvokeWithExceptionNode invokeGetAndClearPendingException() {
         return createStaticInvoke("getAndClearPendingException");
     }
 
-    public InvokeWithExceptionNode rethrowPendingException() {
-        return createStaticInvoke("rethrowPendingException");
+    public void invokeRethrowPendingException() {
+        createStaticInvoke("rethrowPendingException");
     }
 
-    public InvokeWithExceptionNode createArrayViewAndGetAddress(ValueNode array, ValueNode isCopy) {
-        return createStaticInvoke("createArrayViewAndGetAddress", array, isCopy);
+    public void invokeJNIEnterIsolate(ValueNode env) {
+        createInvokeWithExceptionAndUnwind(findMethod(JNIEnvEnterFatalOnFailurePrologue.class, "enter", true), InvokeKind.Static, getFrameState(), bci(), env);
     }
 
-    public InvokeWithExceptionNode destroyNewestArrayViewByAddress(ValueNode address, ValueNode mode) {
-        return createStaticInvoke("destroyNewestArrayViewByAddress", address, mode);
-    }
-
-    public FixedWithNextNode getPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {
-        assert elementKind.isPrimitive();
-        return createStaticInvokeRetainException("getPrimitiveArrayRegion", createObject(elementKind), array, start, count, buffer);
-    }
-
-    public FixedWithNextNode setPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {
-        assert elementKind.isPrimitive();
-        return createStaticInvokeRetainException("setPrimitiveArrayRegion", createObject(elementKind), array, start, count, buffer);
+    public void invokeJNILeaveIsolate() {
+        createInvokeWithExceptionAndUnwind(findMethod(LeaveEpilogue.class, "leave", true), InvokeKind.Static, getFrameState(), bci());
     }
 
     public ConstantNode createWord(long value) {

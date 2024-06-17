@@ -156,7 +156,7 @@ public class GraalSDKEngine implements UserScriptEngine {
                     props.load(is);
                 } catch (IOException ex) {
                     ScriptException scriptEx = new ScriptException(
-                            Bundle.ERR_LoadingGlobalTypes(sf.getNameExt(), ex.getLocalizedMessage()));
+                            Bundle.ERR_LoadingGlobalTypes(sf.getNameExt(), ex.toString()));
                     scriptEx.initCause(ex);
                     printException(def, scriptEx);
                 }
@@ -176,7 +176,7 @@ public class GraalSDKEngine implements UserScriptEngine {
                         bindings.put(global, clazz);
                     } catch (ClassNotFoundException ex) {
                         ScriptException scriptEx = new ScriptException(
-                                Bundle.ERR_CreatingGlobaType(sf.getNameExt(), ex.getLocalizedMessage(), className));
+                                Bundle.ERR_CreatingGlobaType(sf.getNameExt(), ex.toString(), className));
                         scriptEx.initCause(ex);
                         printException(def, scriptEx);
                     }
@@ -191,7 +191,7 @@ public class GraalSDKEngine implements UserScriptEngine {
             Exceptions.printStackTrace(Exceptions.attachSeverity(ex, Level.INFO));
         } else {
             PrintWriter pw = def.getOutput();
-            pw.println(ex.getLocalizedMessage());
+            pw.println(ex.toString());
             ex.printStackTrace(pw);
         }
     }

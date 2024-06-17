@@ -36,7 +36,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -51,14 +50,12 @@ final class HotSpotTruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("get", InvocationPlugin.Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (!canDelayIntrinsification && receiver.isConstant()) {
-                    JavaConstant constant = (JavaConstant) receiver.get().asConstant();
-                    if (constant.isNonNull()) {
-                        if (types.WeakReference.isInstance(constant) || types.SoftReference.isInstance(constant)) {
-                            JavaConstant referent = b.getConstantReflection().readFieldValue(types.Reference_referent, constant);
-                            b.addPush(JavaKind.Object, ConstantNode.forConstant(referent, b.getMetaAccess()));
-                            return true;
-                        }
+                if (!canDelayIntrinsification && receiver.get(false).asConstant() instanceof JavaConstant constant && constant.isNonNull()) {
+                    if (types.WeakReference.isInstance(constant) || types.SoftReference.isInstance(constant)) {
+                        /* No receiver null-check necessary, we know it is a non-null constant. */
+                        JavaConstant referent = b.getConstantReflection().readFieldValue(types.Reference_referent, constant);
+                        b.addPush(JavaKind.Object, ConstantNode.forConstant(referent, b.getMetaAccess()));
+                        return true;
                     }
                 }
                 return false;

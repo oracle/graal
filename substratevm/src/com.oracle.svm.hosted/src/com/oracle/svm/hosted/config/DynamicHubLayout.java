@@ -24,8 +24,11 @@
  */
 package com.oracle.svm.hosted.config;
 
+import java.util.Set;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
@@ -52,20 +55,20 @@ import jdk.vm.ci.meta.JavaKind;
  * {@link MultiThreadedMonitorSupport} for more information.
  *
  * <pre>
- *    +--------------------------------------------------+
- *    | object header (same header as for arrays)        |
- *    +--------------------------------------------------+
- *    | vtable length                                    |
- *    +--------------------------------------------------+
- *    | type id slots (i.e., primitive data)             |
- *    |     ...                                          |
- *    +--------------------------------------------------+
- *    | instance fields (i.e., primitive or object data) |
- *    |     ...                                          |
- *    +--------------------------------------------------+
- *    | vtable dispatch addresses (i.e., primitive data) |
- *    |     ...                                          |
- *    +--------------------------------------------------+
+ *    +--------------------------------------------------           +
+ *    | object header (same header as for arrays)                   |
+ *    +-------------------------------------------------------------+
+ *    | vtable length                                               |
+ *    +-------------------------------------------------------------+
+ *    | type id slots (i.e., primitive data - only in closed-world) |
+ *    |     ...                                                     |
+ *    +-------------------------------------------------------------+
+ *    | instance fields (i.e., primitive or object data)            |
+ *    |     ...                                                     |
+ *    +-------------------------------------------------------------+
+ *    | vtable dispatch addresses (i.e., primitive data)            |
+ *    |     ...                                                     |
+ *    +-------------------------------------------------------------+
  * </pre>
  *
  * <p>
@@ -77,12 +80,13 @@ public class DynamicHubLayout {
 
     private final ObjectLayout layout;
     private final HostedInstanceClass dynamicHubType;
-    public final HostedField typeIDSlotsField;
-    public final int typeIDSlotsOffset;
-    public final int typeIDSlotsSize;
+    public final HostedField closedTypeWorldTypeCheckSlotsField;
+    private final int closedTypeWorldTypeCheckSlotsOffset;
+    private final int closedTypeWorldTypeCheckSlotSize;
     public final HostedField vTableField;
     public final int vTableSlotSize;
     public final JavaKind vTableSlotStorageKind;
+    private final Set<HostedField> ignoredFields;
 
     /*
      * This is calculated lazily, as it requires the dynamicHub's instance fields to be finalized
@@ -90,16 +94,23 @@ public class DynamicHubLayout {
      */
     private int vTableOffset;
 
-    public DynamicHubLayout(ObjectLayout layout, HostedType dynamicHubType, HostedField typeIDSlotsField, int typeIDSlotsOffset, int typeIDSlotsSize, HostedField vTableField,
-                    JavaKind vTableSlotStorageKind, int vTableSlotSize) {
+    /**
+     * See {@code HostedConfiguration#DynamicHubLayout} for the exact initialization values.
+     */
+    public DynamicHubLayout(ObjectLayout layout, HostedType dynamicHubType, HostedField closedTypeWorldTypeCheckSlotsField, int closedTypeWorldTypeCheckSlotsOffset,
+                    int closedTypeWorldTypeCheckSlotSize,
+                    HostedField vTableField,
+                    JavaKind vTableSlotStorageKind, int vTableSlotSize,
+                    Set<HostedField> ignoredFields) {
         this.layout = layout;
         this.dynamicHubType = (HostedInstanceClass) dynamicHubType;
-        this.typeIDSlotsField = typeIDSlotsField;
-        this.typeIDSlotsOffset = typeIDSlotsOffset;
-        this.typeIDSlotsSize = typeIDSlotsSize;
+        this.closedTypeWorldTypeCheckSlotsField = closedTypeWorldTypeCheckSlotsField;
+        this.closedTypeWorldTypeCheckSlotsOffset = closedTypeWorldTypeCheckSlotsOffset;
+        this.closedTypeWorldTypeCheckSlotSize = closedTypeWorldTypeCheckSlotSize;
         this.vTableField = vTableField;
         this.vTableSlotStorageKind = vTableSlotStorageKind;
         this.vTableSlotSize = vTableSlotSize;
+        this.ignoredFields = ignoredFields;
     }
 
     public static DynamicHubLayout singleton() {
@@ -110,20 +121,34 @@ public class DynamicHubLayout {
         return vTableSlotStorageKind;
     }
 
+    public boolean isIgnoredField(HostedField field) {
+        return ignoredFields.contains(field);
+    }
+
+    public Set<HostedField> getIgnoredFields() {
+        return ignoredFields;
+    }
+
     public boolean isDynamicHub(HostedType type) {
         return type.equals(dynamicHubType);
     }
 
     public boolean isInlinedField(HostedField field) {
-        return field.equals(typeIDSlotsField) || field.equals(vTableField);
+        return field.equals(closedTypeWorldTypeCheckSlotsField) || field.equals(vTableField);
     }
 
     public int getVTableSlotOffset(int index) {
         return vTableOffset() + index * vTableSlotSize;
     }
 
-    public int getTypeIDSlotsOffset(int index) {
-        return typeIDSlotsOffset + index * typeIDSlotsSize;
+    public int getClosedTypeWorldTypeCheckSlotsOffset() {
+        assert SubstrateOptions.closedTypeWorld();
+        return closedTypeWorldTypeCheckSlotsOffset;
+    }
+
+    public int getClosedTypeWorldTypeCheckSlotsOffset(int index) {
+        assert SubstrateOptions.closedTypeWorld();
+        return closedTypeWorldTypeCheckSlotsOffset + index * closedTypeWorldTypeCheckSlotSize;
     }
 
     public int getVTableLengthOffset() {

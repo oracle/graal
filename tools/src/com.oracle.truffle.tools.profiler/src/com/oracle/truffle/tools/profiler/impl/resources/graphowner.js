@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -157,7 +157,7 @@ function depth_for_sample(sample) {
             } else {
                 depth += 1;
             }
-            parent = profileData[sample.p];
+            parent = profileData[parent.p];
         }
         sample.depth = depth;
     }
@@ -175,7 +175,7 @@ function collapsed_depth_for_sample(sample) {
             } else {
                 depth += 1;
             }
-            parent = profileData[sample.rp];
+            parent = profileData[parent.rp];
         }
         sample.rdepth = depth;
     }

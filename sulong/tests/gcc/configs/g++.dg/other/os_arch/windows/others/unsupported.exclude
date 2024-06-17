@@ -1,0 +1,2 @@
+# bitfield size exceeds data type size
+gcc-5.2.0/gcc/testsuite/g++.dg/other/bitfield1.C

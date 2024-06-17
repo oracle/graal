@@ -335,13 +335,10 @@ public abstract class NativeImageDebugInfoProviderBase {
     }
 
     protected static int elementSize(ElementInfo elementInfo) {
-        if (elementInfo == null || !(elementInfo instanceof SizableInfo)) {
+        if (!(elementInfo instanceof SizableInfo) || elementInfo instanceof StructInfo structInfo && structInfo.isIncomplete()) {
             return 0;
         }
-        if (elementInfo instanceof StructInfo && ((StructInfo) elementInfo).isIncomplete()) {
-            return 0;
-        }
-        Integer size = ((SizableInfo) elementInfo).getSizeInfo().getProperty();
+        Integer size = ((SizableInfo) elementInfo).getSizeInBytes();
         assert size != null;
         return size;
     }
@@ -449,7 +446,12 @@ public abstract class NativeImageDebugInfoProviderBase {
         HostedType declaringClass = method.getDeclaringClass();
         HostedType receiverType = method.isStatic() ? null : declaringClass;
         var signature = method.getSignature();
-        SubstrateCallingConventionType type = callingConventionKind.toType(false);
+        final SubstrateCallingConventionType type;
+        if (callingConventionKind.isCustom()) {
+            type = method.getCustomCallingConventionType();
+        } else {
+            type = callingConventionKind.toType(false);
+        }
         Backend backend = runtimeConfiguration.lookupBackend(method);
         RegisterConfig registerConfig = backend.getCodeCache().getRegisterConfig();
         assert registerConfig instanceof SubstrateRegisterConfig;

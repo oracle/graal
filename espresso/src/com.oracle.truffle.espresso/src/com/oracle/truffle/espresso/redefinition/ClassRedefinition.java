@@ -33,7 +33,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
@@ -67,6 +66,7 @@ import com.oracle.truffle.espresso.impl.RedefineAddedField;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefineListener;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -805,14 +805,14 @@ public final class ClassRedefinition {
     }
 
     /**
-     * @param accessingKlass the receiver's klass when the method is not static, resolutionSeed's
+     * @param receiverKlass the receiver's klass when the method is not static, resolutionSeed's
      *            declaring klass otherwise
      */
     @TruffleBoundary
-    public Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass) {
+    public Method handleRemovedMethod(Method resolutionSeed, Klass receiverKlass) {
         // wait for potential ongoing redefinition to complete
         check();
-        Method replacementMethod = accessingKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
+        Method replacementMethod = receiverKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
         Meta meta = resolutionSeed.getMeta();
         if (replacementMethod == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,

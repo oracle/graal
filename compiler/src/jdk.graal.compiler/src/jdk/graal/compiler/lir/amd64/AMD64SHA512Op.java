@@ -24,6 +24,11 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.AboveEqual;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
+import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.r12;
@@ -52,11 +57,6 @@ import static jdk.vm.ci.amd64.AMD64.xmm7;
 import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.AboveEqual;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
-import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
@@ -67,13 +67,12 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/ce8399fd6071766114f5f201b6e44a7abdba9f5a/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1475-L1508",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/be2b92bd8b43841cc2b9c22ed4fde29be30d47bb/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1561-L1594",
           sha1 = "0bdbfb85ba18320b87b5dd9ae87e1fd9d55b5882")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/8cd43bff3cd18d6e83cbf07b78a809ad002993c5/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L1037-L1520",
           sha1 = "0c248f818f86a13bd0fa92be499928737723f395")
@@ -703,4 +702,8 @@ public final class AMD64SHA512Op extends AMD64LIRInstruction {
         masm.addq(h, y3);
     }
 
+    @Override
+    public boolean modifiesStackPointer() {
+        return true;
+    }
 }

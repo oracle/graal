@@ -57,14 +57,6 @@ public interface ImageHeapProvider {
     }
 
     /**
-     * Returns whether this provider, when not already supplied a reserved address space by
-     * {@link CommittedMemoryProvider}, will always ensure a heap address space alignment of
-     * {@link Heap#getPreferredAddressSpaceAlignment()} at image runtime.
-     */
-    @Fold
-    boolean guaranteesHeapPreferredAddressSpaceAlignment();
-
-    /**
      * Creates a new instance of the image heap.
      *
      * @param reservedAddressSpace If non-null, this specifies the address of a contiguous block of

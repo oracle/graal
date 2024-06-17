@@ -42,12 +42,12 @@ import org.graalvm.visualizer.data.serialization.BinaryReader.Method;
 import org.graalvm.visualizer.data.serialization.BinaryReader.Signature;
 import org.graalvm.visualizer.data.serialization.Builder.Port;
 import java.util.stream.Collectors;
-import org.graalvm.graphio.GraphBlocks;
-import org.graalvm.graphio.GraphElements;
-import org.graalvm.graphio.GraphLocations;
-import org.graalvm.graphio.GraphOutput;
-import org.graalvm.graphio.GraphStructure;
-import org.graalvm.graphio.GraphTypes;
+import jdk.graal.compiler.graphio.GraphBlocks;
+import jdk.graal.compiler.graphio.GraphElements;
+import jdk.graal.compiler.graphio.GraphLocations;
+import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.graphio.GraphStructure;
+import jdk.graal.compiler.graphio.GraphTypes;
 import java.net.URI;
 import java.net.URISyntaxException;
 

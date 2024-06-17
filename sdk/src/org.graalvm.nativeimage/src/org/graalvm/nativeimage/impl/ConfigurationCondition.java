@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,32 +42,50 @@ package org.graalvm.nativeimage.impl;
 
 import java.util.Objects;
 
-public final class ConfigurationCondition implements Comparable<ConfigurationCondition> {
-    private final String typeName;
-    private static final ConfigurationCondition OBJECT_REACHABLE = new ConfigurationCondition(Object.class.getTypeName());
+/**
+ * A condition that describes if a reflectively-accessed element in Native Image is visible by the
+ * user.
+ * <p>
+ * Currently, there is only one type of condition (<code>typeReached</code>) so this is a final
+ * class instead of the class hierarchy. The {@link ConfigurationCondition#type} represents the
+ * {@link Class<>} that needs to be reached by analysis in order for an element to be visible.
+ */
+public final class ConfigurationCondition {
+
+    /* Cached to save space: it is used as a marker for all non-conditional elements */
+    private static final ConfigurationCondition JAVA_LANG_OBJECT_REACHED = new ConfigurationCondition(Object.class, true);
 
     public static ConfigurationCondition alwaysTrue() {
-        return OBJECT_REACHABLE;
+        return JAVA_LANG_OBJECT_REACHED;
     }
 
-    public static boolean isAlwaysTrue(ConfigurationCondition condition) {
-        return ConfigurationCondition.alwaysTrue().equals(condition);
-    }
+    private final Class<?> type;
 
-    public static ConfigurationCondition create(String typeReachability) {
-        Objects.requireNonNull(typeReachability);
-        if (OBJECT_REACHABLE.typeName.equals(typeReachability)) {
-            return OBJECT_REACHABLE;
+    private final boolean runtimeChecked;
+
+    public static ConfigurationCondition create(Class<?> type, boolean runtimeChecked) {
+        Objects.requireNonNull(type);
+        if (JAVA_LANG_OBJECT_REACHED.getType().equals(type)) {
+            return JAVA_LANG_OBJECT_REACHED;
         }
-        return new ConfigurationCondition(typeReachability);
+        return new ConfigurationCondition(type, runtimeChecked);
     }
 
-    private ConfigurationCondition(String typeName) {
-        this.typeName = typeName;
+    public boolean isAlwaysTrue() {
+        return ConfigurationCondition.alwaysTrue().equals(this);
     }
 
-    public String getTypeName() {
-        return typeName;
+    private ConfigurationCondition(Class<?> type, boolean runtimeChecked) {
+        this.runtimeChecked = runtimeChecked;
+        this.type = type;
+    }
+
+    public Class<?> getType() {
+        return type;
+    }
+
+    public boolean isRuntimeChecked() {
+        return runtimeChecked;
     }
 
     @Override
@@ -78,22 +96,20 @@ public final class ConfigurationCondition implements Comparable<ConfigurationCon
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ConfigurationCondition condition = (ConfigurationCondition) o;
-        return Objects.equals(typeName, condition.typeName);
+        ConfigurationCondition that = (ConfigurationCondition) o;
+        return runtimeChecked == that.runtimeChecked && Objects.equals(type, that.type);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(typeName);
-    }
-
-    @Override
-    public int compareTo(ConfigurationCondition o) {
-        return this.typeName.compareTo(o.typeName);
+        return Objects.hash(type, runtimeChecked);
     }
 
     @Override
     public String toString() {
-        return "[typeReachable: \"" + typeName + "\"" + "]";
+        return "ConfigurationCondition(" +
+                        "type=" + type +
+                        ", runtimeChecked=" + runtimeChecked +
+                        ')';
     }
 }

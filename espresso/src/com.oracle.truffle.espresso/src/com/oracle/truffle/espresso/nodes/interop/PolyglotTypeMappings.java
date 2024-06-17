@@ -33,11 +33,13 @@ import org.graalvm.options.OptionMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -50,6 +52,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
 public class PolyglotTypeMappings {
+    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, PolyglotTypeMappings.class);
 
     private static final String GUEST_TYPE_CONVERSION_INTERFACE = "com.oracle.truffle.espresso.polyglot.GuestTypeConversion";
     private final boolean hasInterfaceMappings;
@@ -136,13 +139,13 @@ public class PolyglotTypeMappings {
         if (!isCustomMapped(current)) {
             converters.put(current, new OptionalTypeConverter());
         } else {
-            warn(current, meta.getContext());
+            warn(current);
         }
         current = "java.math.BigDecimal";
         if (!isCustomMapped(current)) {
             converters.put(current, new BigDecimalTypeConverter());
         } else {
-            warn(current, meta.getContext());
+            warn(current);
         }
 
         // primitive array types
@@ -200,42 +203,42 @@ public class PolyglotTypeMappings {
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignIterable);
         } else {
-            warn(current, meta.getContext());
+            warn(current);
         }
         current = "java.util.List";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignList);
         } else {
-            warn(current, meta.getContext());
+            warn(current);
         }
         current = "java.util.Collection";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignCollection);
         } else {
-            warn(current, meta.getContext());
+            warn(current);
         }
         current = "java.util.Iterator";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignIterator);
         } else {
-            warn(current, meta.getContext());
+            warn(current);
         }
         current = "java.util.Map";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignMap);
         } else {
-            warn(current, meta.getContext());
+            warn(current);
         }
         current = "java.util.Set";
         if (!isCustomMapped(current)) {
             map.put(current, meta.polyglot.EspressoForeignSet);
         } else {
-            warn(current, meta.getContext());
+            warn(current);
         }
     }
 
-    private static void warn(String mapping, EspressoContext context) {
-        context.getVM().getLogger().warning("Custom type mapping is used where there's a builtin type conversion available. Remove the [" + mapping + "] to enable the builtin converter.");
+    private static void warn(String mapping) {
+        LOGGER.warning("Custom type mapping is used where there's a builtin type conversion available. Remove the [" + mapping + "] to enable the builtin converter.");
     }
 
     private boolean isCustomMapped(String mapping) {

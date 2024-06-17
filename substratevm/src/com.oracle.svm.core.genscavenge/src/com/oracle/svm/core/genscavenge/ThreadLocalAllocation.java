@@ -27,9 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_END_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -46,7 +43,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -61,8 +57,10 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.events.ObjectAllocationInNewTLABEvent;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -75,6 +73,10 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
@@ -218,8 +220,12 @@ public final class ThreadLocalAllocation {
         try {
             DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
-            Object result = slowPathNewInstanceWithoutAllocating(hub);
+            UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
+            Object result = slowPathNewInstanceWithoutAllocating(hub, size);
+
             runSlowPathHooks();
+            sampleSlowPathAllocation(result, size, Integer.MIN_VALUE);
+
             return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -227,10 +233,9 @@ public final class ThreadLocalAllocation {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub) {
+    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub, UnsignedWord size) {
         DeoptTester.disableDeoptTesting();
         long startTicks = JfrTicks.elapsedTicks();
-        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation(size);
@@ -238,7 +243,7 @@ public final class ThreadLocalAllocation {
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
             return allocateInstanceInNewTlab(hub, size, newTlab);
         } finally {
-            ObjectAllocationInNewTLABEvent.emit(startTicks, hub, size, HeapParameters.getAlignedHeapChunkSize());
+            JfrAllocationEvents.emit(startTicks, hub, size, HeapParameters.getAlignedHeapChunkSize());
             DeoptTester.enableDeoptTesting();
         }
     }
@@ -283,7 +288,10 @@ public final class ThreadLocalAllocation {
             }
 
             Object result = slowPathNewArrayLikeObject0(hub, length, size, podReferenceMap);
+
             runSlowPathHooks();
+            sampleSlowPathAllocation(result, size, length);
+
             return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -319,7 +327,7 @@ public final class ThreadLocalAllocation {
             }
             return array;
         } finally {
-            ObjectAllocationInNewTLABEvent.emit(startTicks, hub, size, tlabSize);
+            JfrAllocationEvents.emit(startTicks, hub, size, tlabSize);
             DeoptTester.enableDeoptTesting();
         }
     }
@@ -428,12 +436,8 @@ public final class ThreadLocalAllocation {
     static void disableAndFlushForAllThreads() {
         VMOperation.guaranteeInProgress("ThreadLocalAllocation.disableAndFlushForAllThreads");
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                disableAndFlushForThread(vmThread);
-            }
-        } else {
-            disableAndFlushForThread(WordFactory.nullPointer());
+        for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+            disableAndFlushForThread(vmThread);
         }
     }
 
@@ -444,12 +448,9 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void tearDown() {
-        IsolateThread thread = WordFactory.nullPointer();
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            // no other thread is alive, so it is always safe to access the first thread
-            thread = VMThreads.firstThreadUnsafe();
-            VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
-        }
+        // no other thread is alive, so it is always safe to access the first thread
+        IsolateThread thread = VMThreads.firstThreadUnsafe();
+        VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
         freeHeapChunks(getTlab(thread));
     }
 
@@ -527,5 +528,11 @@ public final class ThreadLocalAllocation {
             allocatedBytes.set(thread, allocatedBytes.get(thread).add(usedTlabSize));
         }
         return tlab;
+    }
+
+    private static void sampleSlowPathAllocation(Object obj, UnsignedWord allocatedSize, int arrayLength) {
+        if (HasJfrSupport.get()) {
+            SubstrateJVM.getOldObjectProfiler().sample(obj, allocatedSize, arrayLength);
+        }
     }
 }

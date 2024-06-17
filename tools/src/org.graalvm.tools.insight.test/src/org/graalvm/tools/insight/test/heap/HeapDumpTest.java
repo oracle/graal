@@ -24,15 +24,17 @@
  */
 package org.graalvm.tools.insight.test.heap;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+
 import org.graalvm.tools.insight.heap.HeapDump;
 import org.graalvm.tools.insight.heap.HeapDump.Builder;
 import org.graalvm.tools.insight.heap.HeapDump.ClassInstance;
 import org.graalvm.tools.insight.heap.HeapDump.ObjectInstance;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -43,8 +45,8 @@ public class HeapDumpTest {
     @Test
     public void generateSampleHeapDump() throws Exception {
         File hprof = tmp.newFile();
-        // @formatter:off
-        // BEGIN: org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump
+        // @formatter:off // @replace regex='.*' replacement=''
+        // @start region="org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump"
         Builder builder = HeapDump.newHeapBuilder(new FileOutputStream(hprof));
         builder.dumpHeap((heap) -> {
             final ClassInstance classActor = heap.newClass("cartoons.Actor").
@@ -68,7 +70,7 @@ public class HeapDumpTest {
                 field("thread", java.lang.Thread.class).
                 dumpClass();
 
-            // BEGIN: org.graalvm.tools.insight.test.heap.HeapDumpTest#cyclic
+            // @start region="org.graalvm.tools.insight.test.heap.HeapDumpTest#cyclic"
             HeapDump.InstanceBuilder mainBuilder = heap.newInstance(classMain);
             final ObjectInstance main = mainBuilder.id();
             mainBuilder.put("tom", tom).put("jerry", jerry);
@@ -79,10 +81,10 @@ public class HeapDumpTest {
                 dumpThread();
 
             mainBuilder.put("thread", cathingThread).dumpInstance();
-            // END: org.graalvm.tools.insight.test.heap.HeapDumpTest#cyclic
+            // @end region="org.graalvm.tools.insight.test.heap.HeapDumpTest#cyclic"
         });
-        // END: org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump
-        // @formatter:on
+        // @end region="org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump"
+        // @formatter:on // @replace regex='.*' replacement=''
     }
 
     @Test

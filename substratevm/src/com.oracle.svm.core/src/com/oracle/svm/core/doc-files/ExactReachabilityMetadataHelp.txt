@@ -1,0 +1,25 @@
+Enables exact and user-friendly handling of reflection, resources, JNI, and serialization.
+When reachability metadata for an element is specified, the native executable will have expected and predictable behavior.
+When reachability metadata for an element is not specified, the binary will fail fast with a subtype of `java.lang.Error`
+ that explains exactly which element was missing. The errors can happen on reflection, resource, JNI, and serialization accesses.
+
+Note: '--exact-reachability-metadata' will become the default in future versions of Native Image. It is recommended to adopt the mode early
+ to avoid breakage during migration to newer GraalVM versions.
+
+If errors occur in third-party code, exact reachability metadata can be applied only to a single package with
+ '--exact-reachability-metadata=pkg'. To apply to whole jars, modules, and class-path entries please use
+ '--exact-reachability-metadata-path'. Using '--exact-reachability-metadata=<pkg>' with arguments is allowed in every scope:
+
+  1. On command line
+  2. Embedded in a 'native-image.properties' file of some zip/jar file on module-path
+  3. Embedded in a 'native-image.properties' file of some zip/jar file on class-path
+
+If used without arguments (only '--exact-reachability-metadata'), the errors will be thrown when calling the corresponding query from any
+ class in scope of the option. Using '--exact-reachability-metadata' without arguments is only allowed on command line or when
+ embedded in a 'native-image.properties' file of some zip/jar file on the module-path (but not on class-path).
+ In the module path case, the option will cause all classes of the module to trigger missing registration errors.
+ If used without arguments on command line all classes will trigger missing registration errors.
+
+If the option is embedded in 'native-image.properties' file in some zip/jar file all class-names
+and package-names passed to the option have to be found in the zip/jar files the option is embedded
+in. Using '--exact-reachability-metadata' with arguments on command line does not have that restriction.

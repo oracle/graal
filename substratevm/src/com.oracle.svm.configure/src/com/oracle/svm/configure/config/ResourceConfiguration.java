@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,13 @@
  */
 package com.oracle.svm.configure.config;
 
+import static com.oracle.svm.core.configure.ConfigurationParser.BUNDLES_KEY;
+import static com.oracle.svm.core.configure.ConfigurationParser.GLOBS_KEY;
+import static com.oracle.svm.core.configure.ConfigurationParser.RESOURCES_KEY;
+
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.Map;
@@ -35,19 +40,22 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonPrinter;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonPrinter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class ResourceConfiguration extends ConfigurationBase<ResourceConfiguration, ResourceConfiguration.Predicate> {
 
-    public static class ParserAdapter implements ResourcesRegistry {
+    public static class ParserAdapter implements ResourcesRegistry<UnresolvedConfigurationCondition> {
 
         private final ResourceConfiguration configuration;
 
@@ -56,12 +64,22 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void addResources(ConfigurationCondition condition, String pattern) {
-            configuration.addResourcePattern(condition, pattern);
+        public void addResources(UnresolvedConfigurationCondition condition, String pattern) {
+            configuration.classifyAndAddPattern(new ConditionalElement<>(condition, pattern));
         }
 
         @Override
-        public void addResource(Module module, String resourcePath) {
+        public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob) {
+            configuration.addedGlobs.add(new ConditionalElement<>(condition, new ResourceEntry(glob, module)));
+        }
+
+        @Override
+        public void addResourceEntry(Module module, String resourcePath) {
+            throw VMError.shouldNotReachHere("Unused function.");
+        }
+
+        @Override
+        public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
             throw VMError.shouldNotReachHere("Unused function.");
         }
 
@@ -71,33 +89,33 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void ignoreResources(ConfigurationCondition condition, String pattern) {
+        public void ignoreResources(UnresolvedConfigurationCondition condition, String pattern) {
             configuration.ignoreResourcePattern(condition, pattern);
         }
 
         @Override
-        public void addResourceBundles(ConfigurationCondition condition, String baseName) {
+        public void addResourceBundles(UnresolvedConfigurationCondition condition, String baseName) {
             configuration.addBundle(condition, baseName);
         }
 
         @Override
-        public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+        public void addResourceBundles(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales) {
             configuration.addBundle(condition, basename, locales);
         }
 
         @Override
-        public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
+        public void addClassBasedResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className) {
             configuration.addClassResourceBundle(condition, basename, className);
         }
     }
 
     public static final class BundleConfiguration {
-        public final ConfigurationCondition condition;
+        public final UnresolvedConfigurationCondition condition;
         public final String baseName;
         public final Set<String> locales = ConcurrentHashMap.newKeySet();
         public final Set<String> classNames = ConcurrentHashMap.newKeySet();
 
-        private BundleConfiguration(ConfigurationCondition condition, String baseName) {
+        private BundleConfiguration(UnresolvedConfigurationCondition condition, String baseName) {
             this.condition = condition;
             this.baseName = baseName;
         }
@@ -109,7 +127,16 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
     }
 
-    private final ConcurrentMap<ConditionalElement<String>, Pattern> addedResources = new ConcurrentHashMap<>();
+    public record ResourceEntry(String pattern, String module) {
+        public static Comparator<ResourceEntry> comparator() {
+            Comparator<ResourceEntry> moduleComparator = Comparator.comparing(ResourceEntry::module, Comparator.nullsFirst(Comparator.naturalOrder()));
+            Comparator<ResourceEntry> patternComparator = Comparator.comparing(ResourceEntry::pattern, Comparator.nullsFirst(Comparator.naturalOrder()));
+            return moduleComparator.thenComparing(patternComparator);
+        }
+    }
+
+    private final Set<ConditionalElement<String>> addedResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<ConditionalElement<ResourceEntry>> addedGlobs = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ConcurrentMap<ConditionalElement<String>, Pattern> ignoredResources = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConditionalElement<String>, BundleConfiguration> bundles = new ConcurrentHashMap<>();
 
@@ -117,7 +144,8 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     public ResourceConfiguration(ResourceConfiguration other) {
-        addedResources.putAll(other.addedResources);
+        addedGlobs.addAll(other.addedGlobs);
+        other.addedResources.forEach(this::classifyAndAddPattern);
         ignoredResources.putAll(other.ignoredResources);
         for (Map.Entry<ConditionalElement<String>, BundleConfiguration> entry : other.bundles.entrySet()) {
             bundles.put(entry.getKey(), new BundleConfiguration(entry.getValue()));
@@ -131,73 +159,142 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
 
     @Override
     public void subtract(ResourceConfiguration other) {
-        addedResources.keySet().removeAll(other.addedResources.keySet());
+        addedGlobs.removeAll(other.addedGlobs);
+        addedResources.removeAll(other.addedResources);
         ignoredResources.keySet().removeAll(other.ignoredResources.keySet());
         bundles.keySet().removeAll(other.bundles.keySet());
     }
 
     @Override
     protected void merge(ResourceConfiguration other) {
-        addedResources.putAll(other.addedResources);
+        addedGlobs.addAll(other.addedGlobs);
+        addedResources.addAll(other.addedResources);
         ignoredResources.putAll(other.ignoredResources);
         bundles.putAll(other.bundles);
     }
 
     @Override
     protected void intersect(ResourceConfiguration other) {
-        addedResources.keySet().retainAll(other.addedResources.keySet());
+        addedGlobs.retainAll(other.addedGlobs);
+        addedResources.retainAll(other.addedResources);
         ignoredResources.keySet().retainAll(other.ignoredResources.keySet());
         bundles.keySet().retainAll(other.bundles.keySet());
     }
 
     @Override
     protected void removeIf(Predicate predicate) {
-        addedResources.entrySet().removeIf(entry -> predicate.testIncludedResource(entry.getKey(), entry.getValue()));
+        addedGlobs.removeIf(predicate::testIncludedGlob);
+        addedResources.removeIf(predicate::testIncludedResource);
         bundles.entrySet().removeIf(entry -> predicate.testIncludedBundle(entry.getKey(), entry.getValue()));
     }
 
     @Override
-    public void mergeConditional(ConfigurationCondition condition, ResourceConfiguration other) {
-        for (Map.Entry<ConditionalElement<String>, Pattern> entry : other.addedResources.entrySet()) {
-            addedResources.put(new ConditionalElement<>(condition, entry.getKey().getElement()), entry.getValue());
+    public void mergeConditional(UnresolvedConfigurationCondition condition, ResourceConfiguration other) {
+        for (ConditionalElement<ResourceEntry> entry : other.addedGlobs) {
+            addedGlobs.add(new ConditionalElement<>(condition, entry.element()));
+        }
+        for (ConditionalElement<String> entry : other.addedResources) {
+            addedResources.add(new ConditionalElement<>(condition, entry.element()));
         }
         for (Map.Entry<ConditionalElement<String>, Pattern> entry : other.ignoredResources.entrySet()) {
-            ignoredResources.put(new ConditionalElement<>(condition, entry.getKey().getElement()), entry.getValue());
+            ignoredResources.put(new ConditionalElement<>(condition, entry.getKey().element()), entry.getValue());
         }
         for (Map.Entry<ConditionalElement<String>, BundleConfiguration> entry : other.bundles.entrySet()) {
-            bundles.put(new ConditionalElement<>(condition, entry.getKey().getElement()), new BundleConfiguration(entry.getValue()));
+            bundles.put(new ConditionalElement<>(condition, entry.getKey().element()), new BundleConfiguration(entry.getValue()));
         }
     }
 
-    public void addResourcePattern(ConfigurationCondition condition, String pattern) {
-        addedResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.getElement()));
+    public void addResourcePattern(UnresolvedConfigurationCondition condition, String pattern) {
+        addedResources.add(new ConditionalElement<>(condition, pattern));
     }
 
-    public void ignoreResourcePattern(ConfigurationCondition condition, String pattern) {
-        ignoredResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.getElement()));
+    public void addGlobPattern(UnresolvedConfigurationCondition condition, String pattern, String module) {
+        ResourceEntry element = new ResourceEntry(pattern, module);
+        addedGlobs.add(new ConditionalElement<>(condition, element));
     }
 
-    public void addBundle(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+    private static String unquotePattern(String pattern) {
+        return pattern.replace("\\Q", "").replace("\\E", "");
+    }
+
+    private static boolean isModuleIdentifierChar(int c) {
+        return Character.isLetterOrDigit(c) || c == '.' || c == '+' || c == '-';
+    }
+
+    /*
+     * pattern starts with <module>\\Q and ends with \\E. Also pattern can't contain more than one
+     * quote or anything outside \\Q and \\E. Invalid pattern example "\\Qfoo\\E.*\\Qbar\\E"
+     */
+    private static boolean isSimpleQuotedPattern(String pattern) {
+        String quoteStart = "\\Q";
+        String quoteEnd = "\\E";
+
+        /* pattern must have \\Q to be simple */
+        int quoteBeginning = pattern.indexOf(quoteStart);
+        if (quoteBeginning == -1) {
+            return false;
+        }
+
+        /* module prefix must be simple without any special meanings */
+        if (pattern.chars().limit(quoteBeginning).allMatch(ResourceConfiguration::isModuleIdentifierChar)) {
+            return false;
+        }
+
+        /* there must be only one quotation, otherwise wildcards can be used in unquoted area */
+        if (pattern.lastIndexOf(quoteStart) != quoteBeginning) {
+            return false;
+        }
+
+        /* nothing can be found after the end of quotation otherwise, we could find wildcard */
+        int firstQuoteEnd = pattern.indexOf(quoteEnd);
+        int lastQuoteEnd = pattern.lastIndexOf(quoteEnd);
+        int expectedQuoteEndPosition = pattern.length() - 1;
+        return firstQuoteEnd == lastQuoteEnd && firstQuoteEnd == expectedQuoteEndPosition;
+    }
+
+    private void classifyAndAddPattern(ConditionalElement<String> entry) {
+        String pattern = entry.element();
+        if (isSimpleQuotedPattern(pattern)) {
+            String unquotedPattern = unquotePattern(pattern);
+            String module = null;
+            int moduleSplitter = pattern.indexOf(':');
+            if (moduleSplitter != -1) {
+                String[] parts = unquotedPattern.split(":");
+                module = parts[0];
+                unquotedPattern = parts[1];
+            }
+
+            addedGlobs.add(new ConditionalElement<>(entry.condition(), new ResourceEntry(unquotedPattern, module)));
+        } else {
+            addedResources.add(new ConditionalElement<>(entry.condition(), pattern));
+        }
+    }
+
+    public void ignoreResourcePattern(UnresolvedConfigurationCondition condition, String pattern) {
+        ignoredResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.element()));
+    }
+
+    public void addBundle(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales) {
         BundleConfiguration config = getOrCreateBundleConfig(condition, basename);
         for (Locale locale : locales) {
             config.locales.add(locale.toLanguageTag());
         }
     }
 
-    private void addBundle(ConfigurationCondition condition, String baseName) {
+    private void addBundle(UnresolvedConfigurationCondition condition, String baseName) {
         getOrCreateBundleConfig(condition, baseName);
     }
 
-    private void addClassResourceBundle(ConfigurationCondition condition, String basename, String className) {
+    private void addClassResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className) {
         getOrCreateBundleConfig(condition, basename).classNames.add(className);
     }
 
-    public void addBundle(ConfigurationCondition condition, String baseName, String queriedLocale) {
+    public void addBundle(UnresolvedConfigurationCondition condition, String baseName, String queriedLocale) {
         BundleConfiguration config = getOrCreateBundleConfig(condition, baseName);
         config.locales.add(queriedLocale);
     }
 
-    private BundleConfiguration getOrCreateBundleConfig(ConfigurationCondition condition, String baseName) {
+    private BundleConfiguration getOrCreateBundleConfig(UnresolvedConfigurationCondition condition, String baseName) {
         ConditionalElement<String> key = new ConditionalElement<>(condition, baseName);
         return bundles.computeIfAbsent(key, cond -> new BundleConfiguration(condition, baseName));
     }
@@ -212,38 +309,63 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
                 return false;
             }
         }
-        for (Pattern pattern : addedResources.values()) {
-            if (pattern.matcher(s).matches()) {
+
+        for (ConditionalElement<String> pattern : addedResources) {
+            if (Pattern.compile(pattern.element()).matcher(s).matches()) {
                 return true;
             }
         }
+
         return false;
     }
 
-    public boolean anyBundleMatches(ConfigurationCondition condition, String bundleName) {
+    public boolean anyBundleMatches(UnresolvedConfigurationCondition condition, String bundleName) {
         return bundles.containsKey(new ConditionalElement<>(condition, bundleName));
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append('{').indent().newline();
-        writer.quote("resources").append(':').append('{').newline();
-        writer.quote("includes").append(':');
-        JsonPrinter.printCollection(writer, addedResources.keySet(), ConditionalElement.comparator(), (p, w) -> conditionalElementJson(p, w, "pattern"));
-        if (!ignoredResources.isEmpty()) {
-            writer.append(',').newline();
-            writer.quote("excludes").append(':');
-            JsonPrinter.printCollection(writer, ignoredResources.keySet(), ConditionalElement.comparator(), (p, w) -> conditionalElementJson(p, w, "pattern"));
-        }
-        writer.append('}').append(',').newline();
-        writer.quote("bundles").append(':');
-        JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(), (p, w) -> printResourceBundle(bundles.get(p), w));
-        writer.unindent().newline().append('}');
+        printGlobsJson(writer, true);
+        writer.appendSeparator().newline();
+        printBundlesJson(writer);
     }
 
     @Override
-    public ConfigurationParser createParser() {
-        return new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(this), true);
+    public void printLegacyJson(JsonWriter writer) throws IOException {
+        writer.appendObjectStart().indent().newline();
+        printResourcesJson(writer);
+        writer.appendSeparator().newline();
+        printBundlesJson(writer);
+        writer.appendSeparator().newline();
+        printGlobsJson(writer, false);
+        writer.unindent().newline().appendObjectEnd();
+    }
+
+    void printResourcesJson(JsonWriter writer) throws IOException {
+        writer.quote(RESOURCES_KEY).append(':').append('{').indent().newline();
+        writer.quote("includes").append(':');
+        JsonPrinter.printCollection(writer, addedResources, ConditionalElement.comparator(), ResourceConfiguration::conditionalRegexElementJson);
+        if (!ignoredResources.isEmpty()) {
+            writer.append(',').newline();
+            writer.quote("excludes").append(':');
+            JsonPrinter.printCollection(writer, ignoredResources.keySet(), ConditionalElement.comparator(), ResourceConfiguration::conditionalRegexElementJson);
+        }
+        writer.unindent().newline().append('}');
+    }
+
+    void printBundlesJson(JsonWriter writer) throws IOException {
+        writer.quote(BUNDLES_KEY).append(':');
+        JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(), (p, w) -> printResourceBundle(bundles.get(p), w));
+    }
+
+    void printGlobsJson(JsonWriter writer, boolean useResourcesFieldName) throws IOException {
+        writer.quote(useResourcesFieldName ? RESOURCES_KEY : GLOBS_KEY).appendFieldSeparator();
+        JsonPrinter.printCollection(writer, addedGlobs, ConditionalElement.comparator(ResourceEntry.comparator()), ResourceConfiguration::conditionalGlobElementJson);
+    }
+
+    @Override
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        return ResourceConfigurationParser.create(strictMetadata, ConfigurationConditionResolver.identityResolver(), new ResourceConfiguration.ParserAdapter(this), true);
     }
 
     private static void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {
@@ -266,16 +388,43 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         return addedResources.isEmpty() && bundles.isEmpty();
     }
 
-    private static void conditionalElementJson(ConditionalElement<String> p, JsonWriter w, String elementName) throws IOException {
+    @Override
+    public boolean supportsCombinedFile() {
+        if (!addedResources.isEmpty() || !ignoredResources.isEmpty()) {
+            return false;
+        }
+        for (ResourceConfiguration.BundleConfiguration bundleConfiguration : bundles.values()) {
+            if (!bundleConfiguration.classNames.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void conditionalGlobElementJson(ConditionalElement<ResourceEntry> p, JsonWriter w) throws IOException {
+        String pattern = p.element().pattern();
+        String module = p.element().module();
         w.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(p.getCondition(), w);
-        w.quote(elementName).append(':').quote(p.getElement());
+        ConfigurationConditionPrintable.printConditionAttribute(p.condition(), w);
+        if (module != null) {
+            w.quote("module").append(':').quote(module).append(',').newline();
+        }
+        w.quote("glob").append(':').quote(pattern);
+        w.unindent().newline().append('}');
+    }
+
+    private static void conditionalRegexElementJson(ConditionalElement<String> p, JsonWriter w) throws IOException {
+        w.append('{').indent().newline();
+        ConfigurationConditionPrintable.printConditionAttribute(p.condition(), w);
+        w.quote("pattern").append(':').quote(p.element());
         w.unindent().newline().append('}');
     }
 
     public interface Predicate {
-        boolean testIncludedResource(ConditionalElement<String> condition, Pattern pattern);
+        boolean testIncludedResource(ConditionalElement<String> condition);
 
         boolean testIncludedBundle(ConditionalElement<String> condition, BundleConfiguration bundleConfiguration);
+
+        boolean testIncludedGlob(ConditionalElement<ResourceEntry> entry);
     }
 }

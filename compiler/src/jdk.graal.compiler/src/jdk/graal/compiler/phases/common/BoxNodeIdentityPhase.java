@@ -48,7 +48,7 @@ import jdk.graal.compiler.phases.BasePhase;
  *
  * <pre>
  * long maxCachedLong = -1;
- * while (maxCachedLong < Long.MAX_VALUE && Long.valueOf(maxCachedLong + 1) == Long.valueOf(maxCachedLong + 1)) {
+ * while (maxCachedLong &lt; Long.MAX_VALUE &amp;&amp; Long.valueOf(maxCachedLong + 1) == Long.valueOf(maxCachedLong + 1)) {
  *     maxCachedLong += 1;
  * }
  * </pre>

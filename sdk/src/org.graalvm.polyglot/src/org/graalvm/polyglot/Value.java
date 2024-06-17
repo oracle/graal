@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -453,7 +453,7 @@ public final class Value extends AbstractValue {
      *            be read.
      * @return the byte at the given byte offset from the start of the buffer.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize()}.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= </code>{@link #getBufferSize()}.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements}.
      * @throws IllegalStateException if the context is already closed.
@@ -480,7 +480,7 @@ public final class Value extends AbstractValue {
      * try (OutputStream out = ...) {
      *     byte[] aux = new byte[4096];
      *     long bufferSize = val.getBufferSize();
-     *     for (long offset = 0; offset < bufferSize; offset += aux.length) {
+     *     for (long offset = 0; offset &lt; bufferSize; offset += aux.length) {
      *         int bytesToRead = (int) Math.min(bufferSize - offset, aux.length);
      *         val.readBuffer(offset, aux, 0, bytesToRead);
      *         out.write(aux, 0, bytesToRead);
@@ -500,7 +500,7 @@ public final class Value extends AbstractValue {
      * @param destinationOffset offset in the destination array to start writing from.
      * @param length number of bytes to read.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || length < 0 || byteOffset + length > </code>{@link #getBufferSize()}<code> || destinationOffset < 0 || destinationOffset + length > destination.length</code>
+     *             <code>byteOffset &lt; 0 || length &lt; 0 || byteOffset + length &gt; </code>{@link #getBufferSize()}<code> || destinationOffset &lt; 0 || destinationOffset + length &gt; destination.length</code>
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements}.
      * @throws IllegalStateException if the context is already closed.
@@ -523,7 +523,7 @@ public final class Value extends AbstractValue {
      *            be written.
      * @param value the byte value to be written.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize()}.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= </code>{@link #getBufferSize()}.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
      * @throws IllegalStateException if the context is already closed.
@@ -550,7 +550,7 @@ public final class Value extends AbstractValue {
      *            will be read.
      * @return the short at the given byte offset from the start of the buffer.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 1</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 1</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements}.
      * @throws IllegalStateException if the context is already closed.
@@ -575,7 +575,7 @@ public final class Value extends AbstractValue {
      *            will be written.
      * @param value the short value to be written.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 1</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 1</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
      * @throws IllegalStateException if the context is already closed.
@@ -601,7 +601,7 @@ public final class Value extends AbstractValue {
      *            be read.
      * @return the int at the given byte offset from the start of the buffer.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 3</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements}.
      * @throws IllegalStateException if the context is already closed.
@@ -626,7 +626,7 @@ public final class Value extends AbstractValue {
      *            be written.
      * @param value the int value to be written.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 3</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
      * @throws IllegalStateException if the context is already closed.
@@ -652,7 +652,7 @@ public final class Value extends AbstractValue {
      *            be read.
      * @return the int at the given byte offset from the start of the buffer.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 7</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements}.
      * @throws IllegalStateException if the context is already closed.
@@ -677,7 +677,7 @@ public final class Value extends AbstractValue {
      *            be written.
      * @param value the int value to be written.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 7</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
      * @throws IllegalStateException if the context is already closed.
@@ -704,7 +704,7 @@ public final class Value extends AbstractValue {
      *            will be read.
      * @return the float at the given byte offset from the start of the buffer.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 3</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements}.
      * @throws IllegalStateException if the context is already closed.
@@ -729,7 +729,7 @@ public final class Value extends AbstractValue {
      *            will be written.
      * @param value the float value to be written.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 3</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
      * @throws IllegalStateException if the context is already closed.
@@ -756,7 +756,7 @@ public final class Value extends AbstractValue {
      *            will be read.
      * @return the double at the given byte offset from the start of the buffer.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 7</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements}.
      * @throws IllegalStateException if the context is already closed.
@@ -781,7 +781,7 @@ public final class Value extends AbstractValue {
      *            will be written.
      * @param value the double value to be written.
      * @throws IndexOutOfBoundsException if and only if
-     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     *             <code>byteOffset &lt; 0 || byteOffset &gt;= {@link #getBufferSize()} - 7</code>.
      * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
      *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
      * @throws IllegalStateException if the context is already closed.
@@ -1420,13 +1420,13 @@ public final class Value extends AbstractValue {
      * {@link HostAccess.Builder#allowMutableTargetMappings(HostAccess.MutableTargetMapping...)
      * allowed} and the value has {@link #hasHashEntries()} hash entries}, {@link #hasMembers()
      * members} or {@link #hasArrayElements() array elements}. The returned map can be safely cast
-     * to Map<Object, Object>. For value with {@link #hasMembers() members} the key type is
+     * to Map&lt;Object, Object&gt;. For value with {@link #hasMembers() members} the key type is
      * {@link String}. For value with {@link #hasArrayElements() array elements} the key type is
      * {@link Long}. It is recommended to use {@link #as(TypeLiteral) type literals} to specify the
      * expected collection component types. With type literals the value type can be restricted, for
-     * example to <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an
-     * Object component type is used, then the return types of the the list are subject to Object
-     * target type mapping rules recursively.
+     * example to <code>Map&lt;String, String&gt;</code>. If the raw <code>{@link Map}.class</code>
+     * or an Object component type is used, then the return types of the the list are subject to
+     * Object target type mapping rules recursively.
      * <li><code>{@link List}.class</code> is supported if
      * {@link HostAccess.MutableTargetMapping#ARRAY_TO_JAVA_LIST} is
      * {@link HostAccess.Builder#allowMutableTargetMappings(HostAccess.MutableTargetMapping...)
@@ -1757,7 +1757,7 @@ public final class Value extends AbstractValue {
      * This method is short-hand for:
      *
      * <pre>
-     * v.{@linkplain #isDate() isDate}() && v.{@link #isTime() isTime}() && v.{@link #isTimeZone() isTimeZone}()
+     * v.{@linkplain #isDate() isDate}() &amp;&amp; v.{@link #isTime() isTime}() &amp;&amp; v.{@link #isTimeZone() isTimeZone}()
      * </pre>
      *
      * @throws IllegalStateException if the underlying context is already closed.

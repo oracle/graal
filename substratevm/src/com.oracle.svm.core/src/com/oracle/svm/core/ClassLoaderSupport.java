@@ -55,7 +55,7 @@ public abstract class ClassLoaderSupport {
     public interface ResourceCollector {
         List<ConfigurationCondition> isIncluded(Module module, String resourceName, URI resourceURI);
 
-        void addResource(Module module, String resourceName);
+        void addResourceEntry(Module module, String resourceName);
 
         void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition);
 

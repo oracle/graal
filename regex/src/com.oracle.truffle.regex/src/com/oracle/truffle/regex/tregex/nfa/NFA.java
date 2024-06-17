@@ -157,7 +157,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
     private static int transitionListIndexOfTarget(NFAStateTransition[] transitions, NFAState target) {
         for (int i = 0; i < transitions.length; i++) {
-            if (transitions[i].getTarget() == target) {
+            if (transitions[i] != null && transitions[i].getTarget() == target) {
                 return i;
             }
         }
@@ -166,7 +166,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
     private static boolean transitionListContainsTarget(NFAStateTransition[] transitions, NFAState target) {
         for (NFAStateTransition t : transitions) {
-            if (t.getTarget() == target) {
+            if (t != null && t.getTarget() == target) {
                 return true;
             }
         }
@@ -373,7 +373,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
     @TruffleBoundary
     private static JsonArray fwdEntryToJson(NFAStateTransition[] entryArray) {
-        return Json.array(Arrays.stream(entryArray).map(x -> Json.val(x.getTarget().getId())));
+        return Json.array(Arrays.stream(entryArray).map(x -> x == null ? Json.nullValue() : Json.val(x.getTarget().getId())));
     }
 
     @TruffleBoundary

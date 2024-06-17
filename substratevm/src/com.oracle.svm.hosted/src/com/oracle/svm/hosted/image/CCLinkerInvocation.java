@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -258,21 +260,19 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
 
-            /*
-             * This is needed if the default linker is ld.lld from LLVM. On the GNU linker this
-             * option is the default, so we can just set it unconditionally.
-             */
+            // The linker should fail if DT_TEXTREL is needed, otherwise the image won't work on
+            // SELinux. If SpawnIsolates are disabled, this won't work as dynamic relocations
+            // are needed for heap access.
             additionalPreOptions.add("-z");
-            additionalPreOptions.add("notext");
-
-            if (SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
-                additionalPreOptions.add("-fuse-ld=gold");
-                additionalPreOptions.add("-Wl,--rosegment");
-            }
+            additionalPreOptions.add(SpawnIsolates.getValue() ? "text" : "notext");
 
             if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
                 /* Perform garbage collection of unused input sections. */
                 additionalPreOptions.add("-Wl,--gc-sections");
+            }
+            if (SubstrateOptions.IgnoreUndefinedReferences.getValue()) {
+                /* Ignore references to undefined symbols from the object files. */
+                additionalPreOptions.add("-Wl,--unresolved-symbols=ignore-in-object-files");
             }
 
             /* Use --version-script to control the visibility of image symbols. */
@@ -320,13 +320,9 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                         cmd.add("-static");
                     }
                     break;
+                case IMAGE_LAYER:
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
-                    /*
-                     * Ensure shared library name in image does not use fully qualified build-path
-                     * (GR-46837)
-                     */
-                    cmd.add("-Wl,-soname=" + outputFile.getFileName());
                     break;
                 default:
                     VMError.shouldNotReachHereUnexpectedInput(imageKind); // ExcludeFromJacocoGeneratedReport
@@ -484,6 +480,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     // Must use /MD in order to link with JDK native libraries built that way
                     cmd.add("/MD");
                     break;
+                case IMAGE_LAYER:
                 case SHARED_LIBRARY:
                     cmd.add("/MD");
                     cmd.add("/LD");

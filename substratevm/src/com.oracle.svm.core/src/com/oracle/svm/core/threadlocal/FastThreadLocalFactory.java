@@ -56,6 +56,8 @@ import org.graalvm.word.WordBase;
  * <li>Thread locals of other threads may only be accessed at a safepoint. This restriction is
  * necessary as the other thread could otherwise exit at any time, which frees the memory of the
  * thread locals.</li>
+ * <li>Thread locals only exist for platform threads. Virtual threads will therefore see the thread
+ * locals of their current carrier thread.</li>
  * </ul>
  * <p>
  * The implementation of fast thread local variables and the way the data is stored is

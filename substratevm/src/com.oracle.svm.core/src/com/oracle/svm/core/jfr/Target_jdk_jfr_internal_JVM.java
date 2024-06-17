@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -38,7 +39,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -437,18 +440,18 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().setCutoff(eventTypeId, cutoffTicks);
     }
 
+    /** See {@link JVM#setThrottle}. */
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
-        // Not supported but this method is called during JFR startup, so we can't throw an error.
-        return true;
+        return SubstrateJVM.get().setThrottle(eventTypeId, eventSampleSize, periodMs);
     }
 
     /** See {@link JVM#emitOldObjectSamples}. */
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static void emitOldObjectSamples(long cutoff, boolean emitAll, boolean skipBFS) {
-        // Not supported but this method is called during JFR shutdown, so we can't throw an error.
+        SubstrateJVM.get().emitOldObjectSamples(cutoff, emitAll, skipBFS);
     }
 
     /** See {@link JVM#shouldRotateDisk}. */
@@ -526,8 +529,16 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class) //
     public static long hostTotalMemory() {
+        // This is intentionally using PhysicalMemorySupport since we are
+        // interested in the host values (and not the containerized values).
+        return ImageSingletons.lookup(PhysicalMemorySupport.class).size().rawValue();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK23OrLater.class) //
+    public static long hostTotalSwapMemory() {
         /* Not implemented at the moment. */
-        return 0;
+        return -1;
     }
 }
 

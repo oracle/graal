@@ -8,8 +8,8 @@ permalink: /reference-manual/java-on-truffle/
 # Java on Truffle
 
 Using GraalVM, you can run Java applications normally [on the JVM](../java/README.md), in [Native Image](../native-image/README.md), and now on Truffle.
-Java on Truffle is an implementation of the Java Virtual Machine Specification, [Java SE 8](https://docs.oracle.com/javase/specs/jvms/se8/html/index.html) and [Java SE 11](https://docs.oracle.com/javase/specs/jvms/se11/html/index.html), built upon GraalVM as a Truffle interpreter.
-It is a minified Java VM that includes all core components of a VM, implements the same API as the Java Runtime Environment library (`libjvm.so`), and reuses all JARs and native libraries from GraalVM.
+Java on Truffle is an implementation of the Java Virtual Machine Specification, [Java SE 8](https://docs.oracle.com/javase/specs/jvms/se8/html/index.html), [Java SE 11](https://docs.oracle.com/javase/specs/jvms/se11/html/index.html), [Java SE 17](https://docs.oracle.com/javase/specs/jvms/se17/html/index.html), and [Java SE 21](https://docs.oracle.com/javase/specs/jvms/se21/html/index.html) built upon GraalVM as a Truffle interpreter.
+It is a minified Java VM that includes all core components of a VM, implements the same API as the Java Runtime Environment library (`libjvm.so`), and reuses the existing standard library.
 See the [Implementation Details](ImplementationDetails.md) for more information.
 The project name behind this implementation is "Espresso".
 Its open source version is available on [GitHub](https://github.com/oracle/graal/tree/master/espresso).
@@ -19,7 +19,7 @@ Now Java can be executed by the same principle as other languages in the GraalVM
 Besides complete language interoperability, with Java on Truffle you can:
 
 - run Java bytecode in a separate context from the host Java VM.
-- run either a Java 8, Java 11, Java 17, or Java 21 guest JVM, allowing to embed e.g. a Java 17 context in a Java 21 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html)
+- run either a Java 8, Java 11, Java 17, or Java 21 guest JVM, allowing to embed e.g. a Java 17 context in a Java 22 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
 - leverage the whole stack of tools provided by the Truffle framework, not previously available for Java.
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
 - run in the context of a native executable while still allowing dynamically-loaded bytecodes.
@@ -28,16 +28,16 @@ Java on Truffle passes the Java Compatibility Kit (JCK or TCK for Java SE).
 
 ## Getting Started
 
-As of GraalVM for JDK 21, Java on Truffle (known as Espresso) is available as a standalone distribution. 
+Java on Truffle (known as Espresso) is available as a standalone distribution that provides a Java 21 environment.
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-1. Download the Java on Truffle (Espresso) 23.1 standalone for your operating system:
+1. Download the Java on Truffle (Espresso) 24.0 standalone for your operating system:
 
-   * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/069B12298B3349EDE0631718000A11BC/content)
-   * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01B97519AE0631718000AA34D/content)
-   * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBBAF81ADE0631718000AA7AB/content)
-   * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/069B12298B4949EDE0631718000A11BC/content)
-   * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBBBD81ADE0631718000AA7AB/content)
+   * [Linux x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-linux-amd64.tar.gz)
+   * [Linux AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-linux-aarch64.tar.gz)
+   * [macOS x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-macos-amd64.tar.gz)
+   * [macOS AArch64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-macos-aarch64.tar.gz)
+   * [Windows x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.0.1-windows-amd64.zip)
 
 2. Unzip the archive:
 
@@ -77,7 +77,7 @@ java -truffle [options] -m module[/<mainclass>]
 java -truffle [options] sourcefile
 ```
 
-By default, Java on Truffle runs within GraalVM by reusing all GraalVM's JARs and native libraries, but it is possible to "cross-version" and specify a different Java installation directory (`java.home`).
+By default, Java on Truffle runs within GraalVM by reusing all GraalVM's JAR files and native libraries, but it is possible to "cross-version" and specify a different Java installation directory (`java.home`).
 It will automatically switch versions regardless of the host JVM.
 ```shell
 java -truffle --java.JavaHome=/path/to/java/home -version
@@ -90,7 +90,7 @@ You can still influence the performance by passing the following options to `jav
 * `--engine.MultiTier=true` to enable multi-tier compilation;
 * `--engine.Inlining=false` in combination with `--java.InlineFieldAccessors=true` to make the compilation faster, in exchange for slower performance.
 
-The `--vm.XX:` syntax ensures the option is passed to the underlying [Native Image VM](../native-image/HostedvsRuntimeOptions.md).
+The `--vm.XX:` syntax ensures the option is passed to the underlying [Native Image VM](../native-image/BuildOptions.md).
 When using the `-XX:` syntax, the VM first checks if there is such an option in the Java on Truffle runtime.
 If there is none, it will try to apply this option to the underlying Native Image VM.
 This might be important for options such as `MaxDirectMemorySize` which can be set independently at both levels: `-XX:MaxDirectMemorySize=256M` controls how much native memory can be reserved by the Java program running on Truffle (the guest VM), while `--vm.XX:MaxDirectMemorySize=256M` controls how much native memory can be reserved by Native Image (the host VM).
@@ -145,11 +145,11 @@ java -truffle -jar target/spring-petclinic-<version>-SNAPSHOT.jar
 To run a Java project on Truffle from an IDE requires setting the Java on Truffle enabled GraalVM as a project's default JDK.
 For exampe, to run the Spring PetClinic project using Intellij IDEA, you need to:
 
-1&#46; Navigate to **File**, then to **Project Structure**. Click **Project**, and then click **Project SDK**. Expand the drop down, press Add **JDK** and open the folder where you installed GraalVM. For macOS users, JDK home path will be `/Library/Java/JavaVirtualMachines/{graalvm}/Contents/Home`. Give it a name, and press Apply.
+1&#46; Navigate to **File**, then to **Project Structure**. Click **Project**, and then click **Project SDK**. Expand the drop down, press Add **JDK** and open the directory where you installed GraalVM. For macOS users, JDK home path will be `/Library/Java/JavaVirtualMachines/{graalvm}/Contents/Home`. Give it a name, and press Apply.
 
 ![Intellij IDEA: Add Project Name](images/add-project-default-sdk.png)
 
-2&#46; Generate sources and update folders for the project. In the Maven sidebar, click on the folder with the spinner icon:
+2&#46; Generate sources and update folders for the project. In the Maven sidebar, click on the directory with the spinner icon:
 
 ![Intellij IDEA: Generate Project Sources](images/generate-project-sources.png)
 
@@ -177,7 +177,7 @@ Check the [Interoperability with Truffle Languages guide](Interoperability.md) t
 
 To learn about the implementation approach, project's current status, and known limitations proceed to [Implementation Details](ImplementationDetails.md).
 
-You can already run some large applications like the Eclipse IDE, Scala or other languages REPLs, etc. in the Java on Truffle execution mode.
+You can already run some large applications such as the Eclipse IDE, Scala or other languages REPLs, etc. in the Java on Truffle execution mode.
 We recommend having a look at the collection of [Demo Applications](Demos.md).
 
 If you have a question, check the available [FAQs](FAQ.md), or reach us directly over the **#espresso** channel in [GraalVM Slack](https://www.graalvm.org/slack-invitation/).

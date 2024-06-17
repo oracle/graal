@@ -52,6 +52,7 @@ import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -118,8 +119,14 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
         LoopsDataProvider loopsDataProvider = originalLoopsDataProvider;
 
+        /*
+         * To simplify future merging of IdentityHashCodeProvider into ConstantReflectionProvider,
+         * all of our implementation classes are already merged.
+         */
+        IdentityHashCodeProvider identityHashCodeProvider = (IdentityHashCodeProvider) constantReflection;
+
         Providers p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider,
-                        wordTypes, loopsDataProvider);
+                        wordTypes, loopsDataProvider, identityHashCodeProvider);
 
         /*
          * Use the snippet reflection provider during image building replacement. It will be
@@ -133,7 +140,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
             CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfigs.get(config));
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,
-                            snippetReflection, platformConfig, metaAccessExtensionProvider, wordTypes, loopsDataProvider);
+                            snippetReflection, platformConfig, metaAccessExtensionProvider, wordTypes, loopsDataProvider, identityHashCodeProvider);
             backends.put(config, GraalConfiguration.runtimeInstance().createBackend(newProviders));
         }
 
@@ -152,7 +159,8 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected abstract Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     ForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider reflectionProvider,
-                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, WordTypes wordTypes, LoopsDataProvider loopsDataProvider);
+                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, WordTypes wordTypes, LoopsDataProvider loopsDataProvider,
+                    IdentityHashCodeProvider identityHashCodeProvider);
 
     protected abstract ConstantReflectionProvider createConstantReflectionProvider();
 

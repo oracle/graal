@@ -60,7 +60,8 @@ public class UseTrappingNullChecksPhase extends UseTrappingOperationPhase {
     public static class Options {
 
         // @formatter:off
-        @Option(help = "Use traps for null checks instead of explicit null-checks", type = OptionType.Expert)
+        @Option(help = "Uses traps for null checks instead of explicit null-checks. " +
+                       "This can improve performance because fewer explicit null checks have to be performed.", type = OptionType.Expert)
         public static final OptionKey<Boolean> UseTrappingNullChecks = new OptionKey<>(true);
         // @formatter:on
     }

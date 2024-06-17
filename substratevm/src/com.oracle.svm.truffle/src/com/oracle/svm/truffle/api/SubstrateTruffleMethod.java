@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
@@ -42,8 +43,8 @@ public class SubstrateTruffleMethod extends SubstrateMethod implements TruffleMe
     private final PartialEvaluationMethodInfo truffleMethodInfo;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateTruffleMethod(AnalysisMethod aMethod, HostedStringDeduplication stringTable, PartialEvaluationMethodInfo truffleMethodInfo) {
-        super(aMethod, stringTable);
+    public SubstrateTruffleMethod(AnalysisMethod aMethod, ImageCodeInfo imageCodeInfo, HostedStringDeduplication stringTable, PartialEvaluationMethodInfo truffleMethodInfo) {
+        super(aMethod, imageCodeInfo, stringTable);
         this.truffleMethodInfo = truffleMethodInfo;
     }
 

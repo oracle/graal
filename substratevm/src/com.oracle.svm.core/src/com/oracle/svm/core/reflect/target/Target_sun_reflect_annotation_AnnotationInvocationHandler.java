@@ -33,7 +33,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "sun.reflect.annotation.AnnotationInvocationHandler")
-public final class Target_sun_reflect_annotation_AnnotationInvocationHandler {
+final class Target_sun_reflect_annotation_AnnotationInvocationHandler {
 
     @Alias
     static native String toSourceString(Class<?> clazz);

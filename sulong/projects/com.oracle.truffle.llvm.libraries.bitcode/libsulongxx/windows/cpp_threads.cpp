@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,13 @@ typedef unsigned long long __libcpp_thread_id;
 typedef void *__libcpp_thread_t;
 
 #define LIBCPP_EXPORT __declspec(dllexport)
+
+#ifdef USE_THREAD_WAIT_V2
+extern "C" void __cdecl _Init_thread_wait_v2();
+extern "C" void __cdecl _Init_thread_wait() {
+    _Init_thread_wait_v2();
+}
+#endif
 
 namespace std::__1 {
 

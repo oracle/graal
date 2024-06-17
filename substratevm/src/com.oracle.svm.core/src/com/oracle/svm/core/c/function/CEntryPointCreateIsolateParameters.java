@@ -103,4 +103,11 @@ public interface CEntryPointCreateIsolateParameters extends PointerBase {
 
     @CField("_reserved_4")
     void setExitWhenArgumentParsingFails(boolean value);
+
+    /* fields below: version 5 */
+    @CField("_reserved_5")
+    boolean getIsCompilationIsolate();
+
+    @CField("_reserved_5")
+    void setIsCompilationIsolate(boolean value);
 }

@@ -27,10 +27,10 @@ package com.oracle.graal.pointsto.meta;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -48,17 +48,15 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
+import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
-import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -126,6 +124,7 @@ public class AnalysisUniverse implements Universe {
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
     private ImageHeapScanner heapScanner;
+    private ImageLayerLoader imageLayerLoader;
     private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
     private DuringAnalysisAccess concurrentAnalysisAccess;
@@ -166,6 +165,10 @@ public class AnalysisUniverse implements Universe {
 
     public int getNextMethodId() {
         return nextMethodId.get();
+    }
+
+    public int getNextFieldId() {
+        return nextFieldId.get();
     }
 
     public void seal() {
@@ -277,7 +280,7 @@ public class AnalysisUniverse implements Universe {
         }
 
         try {
-            JavaKind storageKind = originalMetaAccess.lookupJavaType(WordBase.class).isAssignableFrom(substitutions.resolve(type)) ? wordKind : type.getJavaKind();
+            JavaKind storageKind = originalMetaAccess.lookupJavaType(WordBase.class).isAssignableFrom(OriginalClassProvider.getOriginalType(type)) ? wordKind : type.getJavaKind();
             AnalysisType newValue = analysisFactory.createType(this, type, storageKind, objectClass, cloneableClass);
 
             synchronized (this) {
@@ -307,7 +310,11 @@ public class AnalysisUniverse implements Universe {
              * ensures that typesById doesn't contain any null values. This could happen since the
              * AnalysisType constructor increments the nextTypeId counter.
              */
-            hostVM.registerType(newValue);
+            if (hostVM.useBaseLayer() && imageLayerLoader.hasDynamicHubIdentityHashCode(newValue.getId())) {
+                hostVM.registerType(newValue, imageLayerLoader.getDynamicHubIdentityHashCode(newValue.getId()));
+            } else {
+                hostVM.registerType(newValue);
+            }
 
             /* Register the type as assignable with all its super types before it is published. */
             if (bb != null) {
@@ -372,6 +379,9 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisField newValue = analysisFactory.createField(this, field);
         AnalysisField oldValue = fields.putIfAbsent(field, newValue);
+        if (oldValue == null && newValue.isInBaseLayer()) {
+            getImageLayerLoader().loadFieldFlags(newValue);
+        }
         return oldValue != null ? oldValue : newValue;
     }
 
@@ -415,6 +425,9 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
+        if (oldValue == null && newValue.isInBaseLayer()) {
+            getImageLayerLoader().patchBaseLayerMethod(newValue);
+        }
         return oldValue != null ? oldValue : newValue;
     }
 
@@ -471,7 +484,7 @@ public class AnalysisUniverse implements Universe {
         assert !(defaultAccessingClass instanceof WrappedJavaType) : defaultAccessingClass;
         WrappedConstantPool result = constantPools.get(constantPool);
         if (result == null) {
-            WrappedConstantPool newValue = new AnalysisConstantPool(this, constantPool, defaultAccessingClass);
+            WrappedConstantPool newValue = new WrappedConstantPool(this, constantPool, defaultAccessingClass);
             WrappedConstantPool oldValue = constantPools.putIfAbsent(constantPool, newValue);
             result = oldValue != null ? oldValue : newValue;
         }
@@ -483,48 +496,19 @@ public class AnalysisUniverse implements Universe {
         if (constant == null || constant.isNull() || constant.getJavaKind().isPrimitive()) {
             return constant;
         }
-        return heapScanner.createImageHeapConstant(fromHosted(constant), ObjectScanner.OtherReason.UNKNOWN);
+        return heapScanner.createImageHeapConstant(getHostedValuesProvider().interceptHosted(constant), ObjectScanner.OtherReason.UNKNOWN);
     }
 
-    /**
-     * Convert a hosted HotSpotObjectConstant into a SubstrateObjectConstant.
-     */
-    public JavaConstant fromHosted(JavaConstant constant) {
-        if (constant == null) {
-            return null;
-        } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            Object original = GraalAccess.getOriginalSnippetReflection().asObject(Object.class, constant);
-            if (original instanceof ImageHeapConstant) {
-                /*
-                 * The value is an ImageHeapObject, i.e., it already has a build time
-                 * representation, so there is no need to re-wrap it. The value likely comes from
-                 * reading a field of a normal object that is referencing a simulated object. The
-                 * originalConstantReflection provider is not aware of simulated constants, and it
-                 * always wraps them into a HotSpotObjectConstant when reading fields.
-                 */
-                return (JavaConstant) original;
-            }
-            return getHostedValuesProvider().forObject(original);
-        } else {
-            return constant;
-        }
-    }
-
-    /**
-     * Convert a hosted SubstrateObjectConstant into a HotSpotObjectConstant.
-     */
-    public JavaConstant toHosted(JavaConstant constant) {
-        if (constant == null) {
-            return null;
-        } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return GraalAccess.getOriginalSnippetReflection().forObject(getHostedValuesProvider().asObject(Object.class, constant));
-        } else {
-            return constant;
-        }
+    public boolean isTypeCreated(int typeId) {
+        return typesById.length > typeId && typesById[typeId] != null;
     }
 
     public List<AnalysisType> getTypes() {
-        return Collections.unmodifiableList(Arrays.asList(typesById).subList(0, getNextTypeId()));
+        /*
+         * The typesById array can contain null values because the ids from the base layers are
+         * reserved when they are loaded in a new layer.
+         */
+        return Arrays.asList(typesById).subList(0, getNextTypeId()).stream().filter(Objects::nonNull).toList();
     }
 
     public AnalysisType getType(int typeId) {
@@ -675,11 +659,6 @@ public class AnalysisUniverse implements Universe {
     }
 
     @Override
-    public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
-        return substitutions.resolve(method);
-    }
-
-    @Override
     public AnalysisType objectType() {
         return objectClass;
     }
@@ -688,8 +667,9 @@ public class AnalysisUniverse implements Universe {
         bb.onFieldAccessed(field);
     }
 
-    public void onTypeInstantiated(AnalysisType type, UsageKind usage) {
-        bb.onTypeInstantiated(type, usage);
+    public void onTypeInstantiated(AnalysisType type) {
+        hostVM.onTypeInstantiated(bb, type);
+        bb.onTypeInstantiated(type);
     }
 
     public void onTypeReachable(AnalysisType type) {
@@ -739,6 +719,14 @@ public class AnalysisUniverse implements Universe {
         return heapScanner;
     }
 
+    public void setImageLayerLoader(ImageLayerLoader imageLayerLoader) {
+        this.imageLayerLoader = imageLayerLoader;
+    }
+
+    public ImageLayerLoader getImageLayerLoader() {
+        return imageLayerLoader;
+    }
+
     public HostedValuesProvider getHostedValuesProvider() {
         return heapScanner.getHostedValuesProvider();
     }
@@ -757,5 +745,38 @@ public class AnalysisUniverse implements Universe {
 
     public int getReachableTypes() {
         return numReachableTypes.get();
+    }
+
+    public void setStartTypeId(int startTid) {
+        /* No type was created yet, so the array can be overwritten without any concurrency issue */
+        typesById = new AnalysisType[startTid];
+
+        setStartId(nextTypeId, startTid, 0);
+    }
+
+    public void setStartMethodId(int startMid) {
+        setStartId(nextMethodId, startMid, 1);
+    }
+
+    public void setStartFieldId(int startFid) {
+        setStartId(nextFieldId, startFid, 1);
+    }
+
+    private static void setStartId(AtomicInteger nextId, int startFid, int expectedStartValue) {
+        if (nextId.compareAndExchange(expectedStartValue, startFid) != expectedStartValue) {
+            throw AnalysisError.shouldNotReachHere("An id was assigned before the start id was set.");
+        }
+    }
+
+    public int computeNextTypeId() {
+        return nextTypeId.getAndIncrement();
+    }
+
+    public int computeNextMethodId() {
+        return nextMethodId.getAndIncrement();
+    }
+
+    public int computeNextFieldId() {
+        return nextFieldId.getAndIncrement();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package org.graalvm.nativeimage.hosted;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -73,7 +72,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void registerIncludingAssociatedClasses(Class<?> clazz) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerIncludingAssociatedClasses(ConfigurationCondition.alwaysTrue(), clazz);
+        RuntimeSerializationSupport.singleton().registerIncludingAssociatedClasses(ConfigurationCondition.alwaysTrue(), clazz);
     }
 
     /**
@@ -82,7 +81,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void register(Class<?>... classes) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).register(ConfigurationCondition.alwaysTrue(), classes);
+        RuntimeSerializationSupport.singleton().register(ConfigurationCondition.alwaysTrue(), classes);
     }
 
     /**
@@ -97,7 +96,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), clazz, customTargetConstructorClazz);
+        RuntimeSerializationSupport.singleton().registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), clazz, customTargetConstructorClazz);
     }
 
     /**
@@ -108,7 +107,7 @@ public final class RuntimeSerialization {
      * @since 22.3
      */
     public static void registerLambdaCapturingClass(Class<?> lambdaCapturingClass) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerLambdaCapturingClass(ConfigurationCondition.alwaysTrue(), lambdaCapturingClass);
+        RuntimeSerializationSupport.singleton().registerLambdaCapturingClass(ConfigurationCondition.alwaysTrue(), lambdaCapturingClass);
     }
 
     /**
@@ -119,7 +118,7 @@ public final class RuntimeSerialization {
      * @since 22.3
      */
     public static void registerProxyClass(Class<?>... implementedInterfaces) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerProxyClass(ConfigurationCondition.alwaysTrue(), implementedInterfaces);
+        RuntimeSerializationSupport.singleton().registerProxyClass(ConfigurationCondition.alwaysTrue(), implementedInterfaces);
     }
 
     private RuntimeSerialization() {

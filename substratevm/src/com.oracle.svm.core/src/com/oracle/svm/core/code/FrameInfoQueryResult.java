@@ -24,19 +24,25 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.module.ModuleDescriptor;
 import java.util.Optional;
 
-import jdk.graal.compiler.nodes.FrameState;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
@@ -44,7 +50,12 @@ import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * During a stack walk, this class holds information about a virtual Java frame. It is usually
+ * referenced by a physical Java frame, see {@link CodeInfoQueryResult}.
+ */
 public class FrameInfoQueryResult {
 
     public enum ValueType {
@@ -156,6 +167,7 @@ public class FrameInfoQueryResult {
 
     protected FrameInfoQueryResult caller;
     protected SharedMethod deoptMethod;
+    protected CodeInfo deoptMethodImageCodeInfo;
     protected int deoptMethodOffset;
     protected long encodedBci;
     protected boolean isDeoptEntry;
@@ -164,16 +176,15 @@ public class FrameInfoQueryResult {
     protected int numLocks;
     protected ValueInfo[] valueInfos;
     protected ValueInfo[][] virtualObjects;
-    protected Class<?> sourceClass;
-    protected String sourceMethodName;
+    protected int sourceMethodId;
     protected int sourceLineNumber;
-    protected int methodId;
 
-    // Index of sourceClass in CodeInfoDecoder.frameInfoSourceClasses
-    protected int sourceClassIndex;
-
-    // Index of sourceMethodName in CodeInfoDecoder.frameInfoSourceMethodNames
-    protected int sourceMethodNameIndex;
+    /* These are used only for constructing/encoding the code and frame info, or as cache. */
+    private ResolvedJavaMethod sourceMethod;
+    private Class<?> sourceClass;
+    private String sourceMethodName;
+    private int sourceMethodModifiers;
+    private String sourceMethodSignature;
 
     @SuppressWarnings("this-escape")
     public FrameInfoQueryResult() {
@@ -185,6 +196,7 @@ public class FrameInfoQueryResult {
         caller = null;
         deoptMethod = null;
         deoptMethodOffset = 0;
+        deoptMethodImageCodeInfo = SubstrateUtil.HOSTED ? null : WordFactory.nullPointer();
         encodedBci = -1;
         isDeoptEntry = false;
         numLocals = 0;
@@ -192,12 +204,14 @@ public class FrameInfoQueryResult {
         numLocks = 0;
         valueInfos = null;
         virtualObjects = null;
-        sourceClass = null;
-        sourceMethodName = "";
+        sourceMethodId = 0;
         sourceLineNumber = -1;
-        methodId = -1;
-        sourceClassIndex = -1;
-        sourceMethodNameIndex = -1;
+
+        sourceMethod = null;
+        sourceClass = Encoders.INVALID_CLASS;
+        sourceMethodName = Encoders.INVALID_METHOD_NAME;
+        sourceMethodSignature = Encoders.INVALID_METHOD_SIGNATURE;
+        sourceMethodModifiers = Encoders.INVALID_METHOD_MODIFIERS;
     }
 
     /**
@@ -217,7 +231,7 @@ public class FrameInfoQueryResult {
 
     /**
      * Returns the offset of the deoptimization target method. The offset is relative to the
-     * {@link CodeInfoAccess#getCodeStart code start} of the {@link ImageCodeInfo image}. Together
+     * {@link CodeInfoAccess#getCodeStart code start} of {@link #deoptMethodImageCodeInfo}. Together
      * with the BCI it is used to find the corresponding bytecode frame in the target method. Note
      * that there is no inlining in target methods, so the method + BCI is unique.
      */
@@ -225,11 +239,30 @@ public class FrameInfoQueryResult {
         return deoptMethodOffset;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean isDeoptMethodImageCodeInfoNull() {
+        if (SubstrateUtil.HOSTED) {
+            return deoptMethodImageCodeInfo == null;
+        }
+        return deoptMethodImageCodeInfo.isNull();
+    }
+
+    public CodeInfo getDeoptMethodImageCodeInfo() {
+        if (isDeoptMethodImageCodeInfoNull() && deoptMethod != null) {
+            deoptMethodImageCodeInfo = CodeInfoTable.getImageCodeInfo(deoptMethod);
+            assert !isDeoptMethodImageCodeInfoNull();
+        }
+        return deoptMethodImageCodeInfo;
+    }
+
     /**
      * Returns the entry point address of the deoptimization target method.
      */
     public CodePointer getDeoptMethodAddress() {
-        return CodeInfoAccess.absoluteIP(CodeInfoTable.getImageCodeInfo(), deoptMethodOffset);
+        if (deoptMethodOffset == 0) {
+            return WordFactory.nullPointer();
+        }
+        return CodeInfoAccess.absoluteIP(getDeoptMethodImageCodeInfo(), deoptMethodOffset);
     }
 
     /**
@@ -313,29 +346,76 @@ public class FrameInfoQueryResult {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Class<?> getSourceClass() {
+        fillSourceFieldsIfMissing();
         return sourceClass;
     }
 
     public String getSourceClassName() {
-        return sourceClass != null ? sourceClass.getName() : "";
+        Class<?> clazz = getSourceClass();
+        return (clazz != null) ? clazz.getName() : "";
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceMethodName() {
+        fillSourceFieldsIfMissing();
         return sourceMethodName;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void fillSourceFieldsIfMissing() {
+        if (sourceMethodId != 0 && sourceClass == Encoders.INVALID_CLASS) {
+            CodeInfoDecoder.fillSourceFields(this);
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "Identity comparison against sentinel string value")
+    void setSourceFields(Class<?> clazz, String methodName, String signature, int modifiers) {
+        assert sourceClass == Encoders.INVALID_CLASS && sourceMethodName == Encoders.INVALID_METHOD_NAME && sourceMethodSignature == Encoders.INVALID_METHOD_SIGNATURE &&
+                        sourceMethodModifiers == Encoders.INVALID_METHOD_MODIFIERS;
+        this.sourceClass = clazz;
+        this.sourceMethodName = methodName;
+        this.sourceMethodSignature = signature;
+        this.sourceMethodModifiers = modifiers;
+    }
+
+    ResolvedJavaMethod getSourceMethod() {
+        return sourceMethod;
+    }
+
+    void setSourceMethod(ResolvedJavaMethod method) {
+        assert method != null;
+        assert sourceMethod == null : sourceMethod;
+        sourceMethod = method;
+    }
+
     /**
-     * Returns the unique identification number for the method.
+     * Returns a unique identifier for the method which can be used to look it up in
+     * {@linkplain CodeInfoImpl#getMethodTable() method tables} of image code, taking into account a
+     * table's {@linkplain CodeInfoImpl#getMethodTableFirstId() starting id}. The identifier
+     * returned here is <em>different</em> from others, such as from {@code AnalysisMethod.getId()}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getMethodId() {
-        return methodId;
+    public int getSourceMethodId() {
+        return sourceMethodId;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int getSourceMethodModifiers() {
+        fillSourceFieldsIfMissing();
+        return sourceMethodModifiers;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public String getSourceMethodSignature() {
+        fillSourceFieldsIfMissing();
+        return sourceMethodSignature;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceFileName() {
-        return sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
+        Class<?> clazz = getSourceClass();
+        return (clazz != null) ? DynamicHub.fromClass(clazz).getSourceFileName() : null;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -343,10 +423,9 @@ public class FrameInfoQueryResult {
         return sourceLineNumber;
     }
 
-    /**
-     * Returns the name and source code location of the method.
-     */
+    /** Returns the name and source code location of the method. */
     public StackTraceElement getSourceReference() {
+        fillSourceFieldsIfMissing();
         return getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
     }
 
@@ -376,8 +455,9 @@ public class FrameInfoQueryResult {
     }
 
     public Log log(Log log) {
-        String className = sourceClass != null ? sourceClass.getName() : "";
-        String methodName = sourceMethodName != null ? sourceMethodName : "";
+        fillSourceFieldsIfMissing();
+        String className = (sourceClass != null) ? sourceClass.getName() : "";
+        String methodName = (sourceMethodName != null) ? sourceMethodName : "";
         log.string(className);
         if (!(className.isEmpty() || methodName.isEmpty())) {
             log.string(".");

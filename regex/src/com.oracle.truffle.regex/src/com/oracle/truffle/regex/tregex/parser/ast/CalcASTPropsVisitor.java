@@ -268,27 +268,14 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                     maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
                 }
             }
-            // The optimization below breaks dialects like Python or Ruby, where zero-width guards
-            // on expressions like lookarounds cannot be eliminated statically.
-            if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ||
-                            ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0)) {
-                /*
-                 * If a quantifier can produce a zero-width match, we have to check this in
-                 * back-tracking mode.
-                 */
-                if (group.getFirstAlternative().isExpandedQuantifier()) {
-                    assert group.size() == 2;
-                    if (group.getLastAlternative().getMinPath() - group.getMinPath() == 0) {
-                        setZeroWidthQuantifierIndex(group);
-                    }
-                } else if (group.getLastAlternative().isExpandedQuantifier()) {
-                    assert group.size() == 2;
-                    if (group.getFirstAlternative().getMinPath() - group.getMinPath() == 0) {
-                        setZeroWidthQuantifierIndex(group);
-                    }
-                } else if (minPath - group.getMinPath() == 0) {
-                    setZeroWidthQuantifierIndex(group);
-                }
+            /*
+             * If a quantifier can produce a zero-width match, we have to check this in
+             * back-tracking mode. In flavors more complex than JS (where empty loop iterations can
+             * be admitted), we have to check this at all times. In JS, we can afford to only do
+             * this check when the expression contains back-references or lookarounds.
+             */
+            if (minPath - group.getMinPath() == 0) {
+                setZeroWidthQuantifierIndex(group);
             }
         }
         if (group.isCapturing()) {
@@ -316,6 +303,9 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 group.getParent().setPrefixLengthMin(prefixLengthMin);
                 group.getParent().setPrefixLengthMax(prefixLengthMax);
             }
+        }
+        if (isForward() && (group.hasEmptyGuard() || group.isLoop())) {
+            ast.registerGroupWithGuards(group);
         }
     }
 
@@ -515,7 +505,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     private void setQuantifierIndex(QuantifiableTerm term) {
         assert term.hasQuantifier();
         if (isForward() && term.getQuantifier().getIndex() < 0) {
-            term.getQuantifier().setIndex(ast.getQuantifierCount().inc());
+            ast.registerQuantifier(term);
         }
     }
 

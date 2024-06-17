@@ -136,7 +136,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
      * @param logConsumer the function that reports a transformation
      */
     public void addLog(OptimizationLog optimizationLog, Consumer<OptimizationLog> logConsumer) {
-        if (!optimizationLog.isOptimizationLogEnabled()) {
+        if (!optimizationLog.isAnyLoggingEnabled()) {
             return;
         }
         add(new SimpleEffect("optimization log") {

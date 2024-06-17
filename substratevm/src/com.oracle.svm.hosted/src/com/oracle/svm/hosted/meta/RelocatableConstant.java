@@ -26,19 +26,22 @@ package com.oracle.svm.hosted.meta;
 
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
-import jdk.graal.compiler.core.common.type.TypedConstant;
+import com.oracle.graal.pointsto.heap.TypedConstant;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.meta.MethodPointer;
+
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /** Wraps pointers that are subject to relocation, so their value is not known during analysis. */
 public class RelocatableConstant implements JavaConstant, TypedConstant {
 
     private final RelocatedPointer pointer;
+    private final AnalysisType type;
 
-    public RelocatableConstant(RelocatedPointer pointer) {
+    public RelocatableConstant(RelocatedPointer pointer, AnalysisType type) {
         this.pointer = pointer;
+        this.type = type;
     }
 
     public RelocatedPointer getPointer() {
@@ -91,13 +94,8 @@ public class RelocatableConstant implements JavaConstant, TypedConstant {
     }
 
     @Override
-    public ResolvedJavaType getType(MetaAccessProvider provider) {
-        return provider.lookupJavaType(pointer.getClass());
-    }
-
-    @Override
-    public int getIdentityHashCode() {
-        return 0;
+    public AnalysisType getType() {
+        return type;
     }
 
     @Override
@@ -111,5 +109,13 @@ public class RelocatableConstant implements JavaConstant, TypedConstant {
             return pointer == rc.pointer;
         }
         return false;
+    }
+
+    @Override
+    public String toValueString() {
+        if (pointer instanceof MethodPointer mp) {
+            return "relocatable method pointer: " + mp.getMethod().format("%H.%n(%p)") + ", isAbsolute: " + mp.isAbsolute();
+        }
+        return "relocatable constant";
     }
 }

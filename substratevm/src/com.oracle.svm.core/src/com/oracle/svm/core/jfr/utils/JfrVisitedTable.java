@@ -25,13 +25,20 @@
 
 package com.oracle.svm.core.jfr.utils;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.collections.UninterruptibleEntry;
+import com.oracle.svm.core.nmt.NmtCategory;
 
 public final class JfrVisitedTable extends AbstractUninterruptibleHashtable {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrVisitedTable() {
+        super(NmtCategory.JFR);
+    }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

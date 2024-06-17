@@ -178,10 +178,9 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements LIRGe
 
     @Override
     public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterAllocationConfig registerAllocationConfig, StructuredGraph graph, Object stub) {
-        return new HotSpotLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), registerAllocationConfig, makeCallingConvention(graph, (Stub) stub),
-                        stub,
-                        config.requiresReservedStackCheck(graph.getMethods()));
+        return new HotSpotLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig(), (Stub) stub), registerAllocationConfig,
+                        makeCallingConvention(graph, (Stub) stub), (Stub) stub, config.requiresReservedStackCheck(graph.getMethods()));
     }
 
-    protected abstract FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig);
+    protected abstract FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig, Stub stub);
 }

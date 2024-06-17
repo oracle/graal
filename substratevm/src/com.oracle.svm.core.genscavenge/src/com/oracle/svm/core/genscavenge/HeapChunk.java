@@ -170,8 +170,8 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord chunkSize) {
-        HeapChunk.setEndOffset(chunk, chunkSize);
+    public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord endOffset) {
+        HeapChunk.setEndOffset(chunk, endOffset);
         HeapChunk.setTopPointer(chunk, objectsStart);
         HeapChunk.setSpace(chunk, null);
         HeapChunk.setNext(chunk, WordFactory.nullPointer());
@@ -203,7 +203,7 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void setTopPointerCarefully(Header<?> that, Pointer newTop) {
+    public static void setTopPointerCarefully(Header<?> that, Pointer newTop) {
         assert getTopPointer(that).isNonNull() : "Not safe: top currently points to NULL.";
         assert getTopPointer(that).belowOrEqual(newTop) : "newTop too low.";
         assert newTop.belowOrEqual(getEndPointer(that)) : "newTop too high.";
@@ -294,12 +294,13 @@ public final class HeapChunk {
     }
 
     @NeverInline("Not performance critical")
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     public static boolean walkObjectsFrom(Header<?> that, Pointer start, ObjectVisitor visitor) {
         return walkObjectsFromInline(that, start, visitor);
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
     public static boolean walkObjectsFromInline(Header<?> that, Pointer start, ObjectVisitor visitor) {
         Pointer p = start;
         while (p.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
@@ -312,6 +313,7 @@ public final class HeapChunk {
         return true;
     }
 
+    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static boolean callVisitor(ObjectVisitor visitor, Object obj) {
         return visitor.visitObjectInline(obj);

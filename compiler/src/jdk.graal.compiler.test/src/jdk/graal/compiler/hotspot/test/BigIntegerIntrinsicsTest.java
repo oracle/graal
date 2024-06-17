@@ -29,16 +29,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
 import java.util.Random;
 
-import jdk.graal.compiler.api.test.Graal;
-import jdk.graal.compiler.core.test.GraalCompilerTest;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import jdk.graal.compiler.runtime.RuntimeProvider;
 import org.junit.Assume;
 import org.junit.Test;
 
+import jdk.graal.compiler.api.test.Graal;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -94,7 +94,9 @@ public final class BigIntegerIntrinsicsTest extends HotSpotGraalCompilerTest {
             BigInteger big2 = randomBig(i);
 
             // mulAdd is exercised via the call path modPow -> oddModPow -> montReduce
-            expectedResults.put(Pair.create(big1, big2), big1.modPow(bigTwo, big2));
+            if (big2.signum() > 0) {
+                expectedResults.put(Pair.create(big1, big2), big1.modPow(bigTwo, big2));
+            }
         }
 
         InstalledCode intrinsic = getCode(getResolvedJavaMethod(BigInteger.class, "mulAdd"), null, true, true, GraalCompilerTest.getInitialOptions());

@@ -72,9 +72,9 @@ import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
-import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
@@ -246,22 +246,32 @@ public class JavaMainWrapper {
 
     @Uninterruptible(reason = "The caller initialized the thread state, so the callees do not need to be uninterruptible.", calleeMustBe = false)
     private static void runShutdown() {
+        ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks can't be executed during shutdown.");
         runShutdown0();
     }
 
     private static void runShutdown0() {
-        PlatformThreads.ensureCurrentAssigned("DestroyJavaVM", null, false);
+        try {
+            PlatformThreads.ensureCurrentAssigned("DestroyJavaVM", null, false);
+        } catch (Throwable e) {
+            Log.log().string("PlatformThreads.ensureCurrentAssigned() failed during shutdown: ").exception(e).newline();
+            return;
+        }
 
-        // Shutdown sequence: First wait for all non-daemon threads to exit.
+        /* Wait for all non-daemon threads to exit. */
         PlatformThreads.singleton().joinAllNonDaemons();
 
-        /*
-         * Run shutdown hooks (both our own hooks and application-registered hooks. Note that this
-         * can start new non-daemon threads. We are not responsible to wait until they have exited.
-         */
-        RuntimeSupport.getRuntimeSupport().shutdown();
-
-        CounterSupport.singleton().logValues(Log.log());
+        try {
+            /*
+             * Run shutdown hooks (both our own hooks and application-registered hooks) and teardown
+             * hooks. Note that this can start new non-daemon threads. We are not responsible to
+             * wait until they have exited.
+             */
+            RuntimeSupport.getRuntimeSupport().shutdown();
+            RuntimeSupport.executeTearDownHooks();
+        } catch (Throwable e) {
+            Log.log().string("Exception occurred while executing shutdown hooks: ").exception(e).newline();
+        }
     }
 
     @Uninterruptible(reason = "Thread state not set up yet.")
@@ -280,6 +290,7 @@ public class JavaMainWrapper {
         try {
             CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
             cpuFeatureAccess.verifyHostSupportsArchitectureEarlyOrExit();
+
             // Create the isolate and attach the current C thread as the main Java thread.
             EnterCreateIsolateWithCArgumentsPrologue.enter(argc, argv);
             assert !VMThreads.wasStartedByCurrentIsolate(CurrentIsolate.getCurrentThread()) : "re-attach would cause issues otherwise";

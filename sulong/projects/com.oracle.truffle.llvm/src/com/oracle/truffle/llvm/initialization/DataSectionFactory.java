@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -75,6 +75,7 @@ public class DataSectionFactory {
         for (int i = 0; i < globalsCount; i++) {
             GlobalVariable global = definedGlobals.get(i);
             Type type = global.getType().getPointeeType();
+            globalIsReadOnly[i] = global.isReadOnly();
             if (boxGlobals && LLVMParser.isSpecialGlobalSlot(type)) {
                 globalOffsets[i] = -1; // pointer type
             } else {
@@ -82,7 +83,6 @@ public class DataSectionFactory {
                 if (type.getSize(dataLayout) == 0) {
                     type = PrimitiveType.getIntegerType(8);
                 }
-                globalIsReadOnly[i] = global.isReadOnly();
                 DataSection dataSection = globalIsReadOnly[i] ? roSection : rwSection;
                 long offset = dataSection.add(global, type);
                 assert offset >= 0;

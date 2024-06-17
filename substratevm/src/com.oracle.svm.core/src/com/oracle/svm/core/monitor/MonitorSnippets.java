@@ -24,11 +24,19 @@
  */
 package com.oracle.svm.core.monitor;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
 import java.util.Map;
+
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -53,15 +61,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
@@ -89,9 +88,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
         /* Kill all memory locations, like {@link MonitorEnterNode#getLocationIdentity()}. */
         MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            callSlowPath(SLOW_PATH_MONITOR_ENTER, obj);
-        }
+        callSlowPath(SLOW_PATH_MONITOR_ENTER, obj);
     }
 
     @Snippet
@@ -99,9 +96,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
         /* Kill all memory locations, like {@link MonitorEnterNode#getLocationIdentity()}. */
         MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            callSlowPath(SLOW_PATH_MONITOR_EXIT, obj);
-        }
+        callSlowPath(SLOW_PATH_MONITOR_EXIT, obj);
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)

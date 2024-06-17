@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -234,11 +234,11 @@ public final class LLVM80BitFloat extends LLVMLongDoubleFloatingPoint {
         return isPositiveZero() || isNegativeZero();
     }
 
-    private boolean isPositiveZero() {
+    public boolean isPositiveZero() {
         return equals(POSITIVE_ZERO);
     }
 
-    private boolean isNegativeZero() {
+    public boolean isNegativeZero() {
         return equals(NEGATIVE_ZERO);
     }
 

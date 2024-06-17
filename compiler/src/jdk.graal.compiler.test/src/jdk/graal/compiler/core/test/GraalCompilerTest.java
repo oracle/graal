@@ -1580,6 +1580,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    /**
+     * Gets {@link ConstantNode}s to bind to {@link ParameterNode}s when
+     * {@linkplain #parse(Builder, PhaseSuite) parsing} a graph. That is, parameter at index
+     * {@code i} is replaced with element {@code i} in the returned array unless the element is
+     * {@link #NO_BIND}.
+     */
     protected Object[] getArgumentToBind() {
         return null;
     }

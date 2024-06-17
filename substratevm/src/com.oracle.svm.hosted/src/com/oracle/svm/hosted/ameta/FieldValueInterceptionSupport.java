@@ -125,7 +125,7 @@ public final class FieldValueInterceptionSupport {
             throw UserError.abort("Cannot register a field value transformer for field %s: %s", oField.format("%H.%n"), "The field value is already transformed via an @Alias annotation.");
         }
 
-        var transformation = new FieldValueTransformation(OriginalClassProvider.getJavaClass(oField.getType()), Objects.requireNonNull(transformer), false);
+        var transformation = new FieldValueTransformation(OriginalClassProvider.getJavaClass(oField.getType()), Objects.requireNonNull(transformer));
         var existingInterceptor = fieldValueInterceptors.putIfAbsent(oField, transformation);
 
         if (existingInterceptor == INTERCEPTOR_ACCESSED_MARKER) {

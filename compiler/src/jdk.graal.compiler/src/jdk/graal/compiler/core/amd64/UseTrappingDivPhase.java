@@ -63,10 +63,10 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * @see UseTrappingNullChecksPhase for details
- *
- *      This phase tries to find {@code =0} checks that can be folded together with a
- *      {@link IntegerDivRemNode} to save the explicit check.
+ * See {@link UseTrappingNullChecksPhase} for details
+ * <p>
+ * This phase tries to find {@code =0} checks that can be folded together with a
+ * {@link IntegerDivRemNode} to save the explicit check.
  */
 public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 

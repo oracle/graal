@@ -42,7 +42,7 @@ public final class InstanceOfQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         StaticObject receiver = EspressoFrame.popObject(frame, top - 1);
         boolean result = StaticObject.notNull(receiver) && instanceOf.execute(receiver.getKlass());
         EspressoFrame.putInt(frame, top - 1, result ? 1 : 0);

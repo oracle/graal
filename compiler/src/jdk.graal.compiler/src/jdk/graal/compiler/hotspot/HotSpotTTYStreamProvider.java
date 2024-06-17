@@ -60,7 +60,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                        "If the current runtime is in an isolate, then %i will be replaced by '<isolate id>' " +
                        "otherwise %i is removed. An %I is the same as %i except that the replacement is " +
                        "'<isolate id>@<isolate address>'. " +
-                       "Using %o as filename sends logging to System.out whereas %e sends logging to System.err.", type = OptionType.Expert)
+                       "Using %o as filename sends logging to System.out whereas %e sends logging to System.err.", type = OptionType.Debug)
         public static final LogStreamOptionKey LogFile = new LogStreamOptionKey();
         // @formatter:on
     }

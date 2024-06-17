@@ -36,13 +36,14 @@ import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Allow iterative peeling of loops up to this many times (each time the peeling phase runs).")
+        @Option(help = "Allow iterative peeling of loops up to this many times (each time the peeling phase runs).", type = OptionType.Debug)
         public static final OptionKey<Integer> IterativePeelingLimit = new OptionKey<>(2);
         // @formatter:on
     }

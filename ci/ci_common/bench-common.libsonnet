@@ -31,6 +31,17 @@
       else true
   },
 
+  # max number of threads to use for benchmarking in general
+  # the goal being to limit parallelism on very large servers which may not be respresentative of real-world scenarios
+  bench_max_threads:: {
+   restrict_threads:: 36
+  },
+
+  bench_no_thread_cap:: {
+    restrict_threads:: null,
+    should_use_hwloc:: false
+  },
+
   bench_hw:: {
     _bench_machine:: {
       targets+: ["bench"],
@@ -40,15 +51,16 @@
       numa_nodes:: [],
       is_numa:: std.length(self.numa_nodes) > 0,
       num_threads:: error "num_threads must bet set!",
+      hyperthreading:: true,
       threads_per_node:: if self.is_numa then self.num_threads / std.length(self.numa_nodes) else self.num_threads,
     },
 
-    x52:: common.linux_amd64 + self._bench_machine + {
-      machine_name:: "x52",
-      capabilities+: ["tmpfs25g"],
+    e3:: common.linux_amd64 + self._bench_machine + {
+      machine_name:: "e3",
+      capabilities: ["e3", "tmpfs25g", "linux", "amd64"],
       numa_nodes:: [0, 1],
-      default_numa_node:: 0,
-      num_threads:: 72
+      default_numa_node:: 1,
+      num_threads:: 256
     },
     e4_8_64:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "e4_8_64",
@@ -67,31 +79,29 @@
     xgene3:: common.linux_aarch64 + self._bench_machine + {
       machine_name:: "xgene3",
       capabilities+: [],
-      num_threads:: 32
+      num_threads:: 32,
+      hyperthreading:: false
     },
     a12c:: common.linux_aarch64 + self._bench_machine + {
       machine_name:: "a12c",
       capabilities+: ["tmpfs25g"],
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
-      num_threads:: 160
+      num_threads:: 160,
+      hyperthreading:: false
     }
   },
 
-  hwlocIfNuma(numa, cmd, node=0)::
-    if numa then
+  hwloc_cmd(cmd, num_threads, node, hyperthreading, max_threads_per_node)::
+    if num_threads == null then
       ["hwloc-bind", "--cpubind", "node:"+node, "--membind", "node:"+node, "--"] + cmd
     else
-      cmd,
-
-  parallelHwloc(cmd_node0, cmd_node1)::
-    // Returns a list of commands that will run cmd_nod0 on NUMA node 0
-    // concurrently with cmd_node1 on NUMA node 1 and then wait for both to complete.
-    [
-      $.hwlocIfNuma(true, cmd_node0, node=0) + ["&"],
-      $.hwlocIfNuma(true, cmd_node1, node=1) + ["&"],
-      ["wait"]
-    ],
+      local threads = if num_threads != null then num_threads else max_threads_per_node;
+      assert if hyperthreading then threads % 2 == 0 else true: "It is required to bind to an even number of threads on hyperthreaded machines. Got requested "+threads+" threads";
+      assert threads <= max_threads_per_node: "Benchmarking must run on a single NUMA node for stability reasons. Got requested "+threads+" threads but the machine has only "+max_threads_per_node+" threads per node";      local cores = if hyperthreading then "0-"+((threads/2)-1)+".pu:0-1" else "0-"+(threads-1)+".pu:0";
+      local cpu_bind = if hyperthreading then "node:"+node+".core:"+cores else "node:"+node+".core:"+cores+".pu:0";
+      ["hwloc-bind", "--cpubind", cpu_bind, "--membind", "node:"+node, "--"] + cmd
+  ,
 
   // building block used to generate fork builds
   many_forks_benchmarking:: common.build_base + {
@@ -110,6 +120,12 @@
     ]
   },
 
+  generate_fork_tags(suite_obj):: if std.objectHasAll(suite_obj, "tags") && std.objectHasAll(suite_obj.tags, "opt_post_merge") then {
+    tags: {opt_post_merge: [tag +"-many-forks" for tag in suite_obj.tags.opt_post_merge]},
+  } else {
+    tags: {}
+  },
+
   generate_fork_builds(suite_obj, subdir='compiler', forks_file_base_name=null)::
     /* based on a benchmark suite definition, generates the many forks version based on the hidden fields
      * 'forks_batches' that specifies the number of batches this job should be split into and the corresponding
@@ -124,13 +140,12 @@
         local batch_str = if suite_obj.forks_batches > 1 then "batch"+i else null,
         "job_prefix":: "bench-forks-" + subdir,
         "job_suffix":: batch_str,
-        tags: if std.objectHasAll(suite_obj, "tags") then [tag +"-many-forks" for tag in suite_obj.tags] else [],
         "timelimit": suite_obj.forks_timelimit,
         local base_name = if forks_file_base_name != null then forks_file_base_name else suite_obj.suite,
         "environment" +: {
           FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/" + subdir + "/" + base_name + "_forks" + (if batch_str != null then "_"+batch_str else "") + ".json"
         }
-      }
+      } + $.generate_fork_tags(suite_obj)
       for i in std.range(0, suite_obj.forks_batches - 1)]
     else
       [],

@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
-import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -64,6 +63,7 @@ import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
@@ -75,7 +75,6 @@ import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -84,6 +83,7 @@ import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.java.BciBlockMapping;
+import jdk.graal.compiler.java.BciBlockMapping.BciBlock;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.java.GraphBuilderPhase;
@@ -100,17 +100,22 @@ import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.UnreachableControlSinkNode;
+import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
@@ -119,6 +124,7 @@ import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
@@ -127,6 +133,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -330,12 +337,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
+        protected void handleUnresolvedNewObjectArray(JavaType type) {
             handleUnresolvedType(type);
         }
 
         @Override
-        protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
+        protected void handleUnresolvedNewMultiArray(JavaType type) {
             handleUnresolvedType(type.getElementalType());
         }
 
@@ -390,12 +397,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
+        protected void handleUnresolvedStoreField(JavaField field) {
             handleUnresolvedField(field);
         }
 
         @Override
-        protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
+        protected void handleUnresolvedLoadField(JavaField field) {
             handleUnresolvedField(field);
         }
 
@@ -642,6 +649,142 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             checkWordType(returnVal, method.getSignature().getReturnType(null), "return value");
 
             super.genReturn(returnVal, returnKind);
+        }
+
+        @Override
+        protected void handleUnstructuredLocking(String msg, boolean isDeadEnd) {
+            ValueNode methodSynchronizedObjectSnapshot = methodSynchronizedObject;
+            if (getDispatchBlock(bci()) == blockMap.getUnwindBlock()) {
+                // methodSynchronizeObject is unlocked in synchronizedEpilogue
+                genReleaseMonitors(false);
+
+                if (method.isSynchronized() && frameState.lockDepth(false) == 0) {
+                    /*
+                     * methodSynchronizedObject has been released unexpectedly but the parser is
+                     * already creating an IllegalMonitorStateException. Thus, set the
+                     * methodSynchronizedObject to null, to signal that the synchronizedEpilogue
+                     * need not be executed, as this would cause an exception loop due to the empty
+                     * lock stack
+                     */
+                    methodSynchronizedObject = null;
+                }
+            }
+
+            FrameStateBuilder stateBeforeExc = frameState.copy();
+            lastInstr = emitBytecodeExceptionCheck(graph.unique(LogicConstantNode.contradiction()), true, BytecodeExceptionKind.UNSTRUCTURED_LOCKING);
+            // lastInstr is the start of the never entered no-exception branch
+            if (isDeadEnd) {
+                append(new UnreachableControlSinkNode());
+                lastInstr = null;
+            } else {
+                append(new UnreachableNode());
+                frameState = stateBeforeExc;
+            }
+            methodSynchronizedObject = methodSynchronizedObjectSnapshot;
+        }
+
+        @Override
+        protected void handleMismatchAtMonitorexit() {
+            genReleaseMonitors(true);
+            genThrowUnsupportedFeatureError("Unexpected lock object at monitorexit. Native Image enforces structured locking (JVMS 2.11.10)");
+        }
+
+        @Override
+        protected FixedNode handleUnstructuredLockingForUnwindTarget(String msg, FrameStateBuilder state) {
+            FrameStateBuilder oldFs = frameState;
+            FixedWithNextNode oldLastInstr = lastInstr;
+            frameState = state;
+
+            BeginNode holder = graph.add(new BeginNode());
+            lastInstr = holder;
+            handleUnstructuredLocking(msg, true);
+
+            frameState = oldFs;
+            lastInstr = oldLastInstr;
+
+            FixedNode result = holder.next();
+            holder.setNext(null);
+            holder.safeDelete();
+
+            return result;
+        }
+
+        @Override
+        protected Target checkUnstructuredLocking(Target target, BciBlock targetBlock, FrameStateBuilder mergeState) {
+            if (mergeState.areLocksMergeableWith(target.getState())) {
+                return target;
+            }
+
+            /*
+             * If the current locks are not compatible with the target merge,
+             * the following code is created
+             *
+             * @formatter:off
+             *
+             * if(false)                // UnreachableBeginNode
+             *   goto originalTarget    // using adapted locks
+             * else
+             *   releaseMonitors()      // also methodSynchronizedObject
+             *   throw new UnsupportedFeatureError()
+             *
+             * @formatter:on
+             *
+             * Returns the newly created IfNode as updated target.
+             */
+            FixedWithNextNode originalLast = lastInstr;
+            FrameStateBuilder originalState = frameState;
+
+            IfNode ifNode = graph.add(new IfNode(LogicConstantNode.contradiction(graph), graph.add(new UnreachableBeginNode()), graph.add(new BeginNode()), BranchProbabilityNode.NEVER_TAKEN_PROFILE));
+
+            /*
+             * Create an UnsupportedFeatureException in the always entered (false) branch and
+             * unwind.
+             */
+            lastInstr = ifNode.falseSuccessor();
+            frameState = target.getState().copy();
+            genReleaseMonitors(true);
+            genThrowUnsupportedFeatureError("Incompatible lock states at merge. Native Image enforces structured locking (JVMS 2.11.10)");
+
+            /*
+             * Update the never entered (true) branch to have a matching lock stack with the
+             * subsequent merge. This branch will fold away during canonicalization. Add an
+             * UnreachableNode as assurance.
+             */
+            Target newTarget;
+            FrameStateBuilder newState = target.getState().copy();
+            newState.setLocks(mergeState);
+            if (target.getOriginalEntry() == null) {
+                newTarget = new Target(ifNode, newState, target.getEntry());
+            } else {
+                target.getOriginalEntry().replaceAtPredecessor(ifNode);
+                newTarget = new Target(target.getEntry(), newState, target.getOriginalEntry());
+            }
+            ifNode.trueSuccessor().setNext(newTarget.getOriginalEntry());
+
+            lastInstr = originalLast;
+            frameState = originalState;
+
+            return newTarget;
+        }
+
+        private void genReleaseMonitors(boolean includeMethodSynchronizeObject) {
+            final int monitorsToRelease = (method.isSynchronized() && !includeMethodSynchronizeObject) ? frameState.lockDepth(false) - 1 : frameState.lockDepth(false);
+            for (int i = 0; i < monitorsToRelease; i++) {
+                MonitorIdNode id = frameState.peekMonitorId();
+                ValueNode lock = frameState.popLock();
+                frameState.pushLock(lock, id);
+                genMonitorExit(lock, null, bci(), false);
+            }
+        }
+
+        private void genThrowUnsupportedFeatureError(String msg) {
+            FixedNode unreachableNode = graph.add(new LoweredDeadEndNode());
+
+            ConstantNode messageNode = ConstantNode.forConstant(getConstantReflection().forString(msg), getMetaAccess(), getGraph());
+            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(SnippetRuntime.UNSUPPORTED_FEATURE, messageNode));
+            foreignCallNode.setNext(unreachableNode);
+            unreachableNode = foreignCallNode;
+            lastInstr.setNext(unreachableNode);
         }
 
         private void checkWordType(ValueNode value, JavaType expectedType, String reason) {
@@ -897,9 +1040,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         public class BootstrapMethodHandler {
 
             private Object loadConstantDynamic(int cpi, int opcode) {
-                BootstrapMethodIntrospection bootstrap;
+                BootstrapMethodInvocation bootstrap;
                 try {
-                    bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, -1);
+                    bootstrap = constantPool.lookupBootstrapMethodInvocation(cpi, -1);
                 } catch (Throwable ex) {
                     handleBootstrapException(ex, "constant");
                     return ex;
@@ -967,7 +1110,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * return result;
              * </pre>
              */
-            protected Object resolveLinkedObject(int bci, int cpi, int opcode, BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList,
+            protected Object resolveLinkedObject(int bci, int cpi, int opcode, BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList,
                             boolean isVarargs, boolean isPrimitiveConstant) {
                 ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
 
@@ -1010,12 +1153,26 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         int argCpi = primitiveConstant.asInt();
                         Object argConstant = loadConstantDynamic(argCpi, opcode == Opcodes.INVOKEDYNAMIC ? Opcodes.LDC : opcode);
                         if (argConstant instanceof ValueNode valueNode) {
-                            currentNode = valueNode;
+                            ResolvedJavaMethod.Parameter[] parameters = bootstrapMethod.getParameters();
+                            if (valueNode.getStackKind().isPrimitive() && i + 3 <= parameters.length && !parameters[i + 3].getKind().isPrimitive()) {
+                                currentNode = append(BoxNode.create(valueNode, getMetaAccess().lookupJavaType(valueNode.getStackKind().toBoxedJavaClass()), valueNode.getStackKind()));
+                            } else {
+                                currentNode = valueNode;
+                            }
                         } else if (argConstant instanceof Throwable || argConstant instanceof UnresolvedJavaType) {
                             /* A nested constant dynamic threw. */
                             return argConstant;
+                        } else if (argConstant instanceof JavaConstant javaConstant) {
+                            currentNode = ConstantNode.forConstant(javaConstant, getMetaAccess(), getGraph());
                         } else {
-                            currentNode = ConstantNode.forConstant(getSnippetReflection().forObject(argConstant), getMetaAccess(), getGraph());
+                            throw VMError.shouldNotReachHere("Unexpected constant value: " + argConstant);
+                        }
+                        if (isVarargs && i + 4 >= parameterLength) {
+                            /* Primitive arguments in the vararg area have to be boxed. */
+                            JavaKind stackKind = currentNode.getStackKind();
+                            if (stackKind.isPrimitive()) {
+                                currentNode = append(BoxNode.create(currentNode, getMetaAccess().lookupJavaType(stackKind.toBoxedJavaClass()), stackKind));
+                            }
                         }
                     } else {
                         /*
@@ -1159,6 +1316,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
             private void addArgument(boolean isVarargs, ValueNode[] arguments, int i, ValueNode currentNode) {
                 if (isVarargs && i >= arguments.length - 1) {
+                    VMError.guarantee(currentNode.getStackKind() == JavaKind.Object, "Must have an Object value to store into an Objet[] array: %s at index %s", currentNode, i);
                     StoreIndexedNode storeIndexedNode = append(new StoreIndexedNode(arguments[arguments.length - 1], ConstantNode.forInt(i + 1 - arguments.length, getGraph()), null, null,
                                     JavaKind.Object, currentNode));
                     storeIndexedNode.setStateAfter(createFrameState(stream.nextBCI(), storeIndexedNode));
@@ -1194,11 +1352,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * types in the bootstrap method declaration are detected in
              * {@link java.lang.invoke.MethodHandle#invoke(Object...)}.
              */
-            private boolean isBootstrapInvocationInvalid(BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
-                ResolvedJavaMethod resolvedMethod = bootstrap.getMethod();
+            private boolean isBootstrapInvocationInvalid(BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
+                ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
                 return (isVarargs && parameterLength > (3 + staticArgumentsList.size())) || (!isVarargs && parameterLength != (3 + staticArgumentsList.size())) ||
-                                !(OriginalClassProvider.getJavaClass(resolvedMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || resolvedMethod.isConstructor()) ||
-                                !checkBootstrapParameters(resolvedMethod, bootstrap.getStaticArguments(), true);
+                                !(OriginalClassProvider.getJavaClass(bootstrapMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || bootstrapMethod.isConstructor()) ||
+                                !checkBootstrapParameters(bootstrapMethod, bootstrap.getStaticArguments(), true);
             }
 
             protected boolean checkBootstrapParameters(ResolvedJavaMethod bootstrapMethod, List<JavaConstant> staticArguments, boolean condy) {

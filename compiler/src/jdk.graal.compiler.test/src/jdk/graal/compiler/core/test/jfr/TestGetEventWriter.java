@@ -29,7 +29,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -38,9 +37,7 @@ import org.objectweb.asm.Opcodes;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.test.SubprocessTest;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.test.AddExports;
-import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.jfr.Event;
 import jdk.jfr.Recording;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -59,8 +56,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AddExports("jdk.jfr/jdk.jfr.internal.event")
 public class TestGetEventWriter extends SubprocessTest {
 
+    private static boolean isJFRAvailable() {
+        return ModuleLayer.boot().findModule("jdk.jfr").isPresent();
+    }
+
     private static void initializeJFR() {
-        Assume.assumeTrue("Requires JDK-8290075", GraalServices.hasLookupMethodWithCaller());
         try (Recording r = new Recording()) {
             r.start();
             // Unlocks access to jdk.jfr.internal.event
@@ -80,6 +80,12 @@ public class TestGetEventWriter extends SubprocessTest {
 
     @Test
     public void test() throws IOException, InterruptedException {
+        String[] args;
+        if (isJFRAvailable()) {
+            args = new String[0];
+        } else {
+            args = new String[]{"--add-modules", "jdk.jfr"};
+        }
         launchSubprocess(() -> {
             try {
                 initializeJFR();
@@ -93,7 +99,7 @@ public class TestGetEventWriter extends SubprocessTest {
             } catch (Throwable t) {
                 throw rethrowSilently(RuntimeException.class, t);
             }
-        }, SubprocessUtil.PACKAGE_OPENING_OPTIONS);
+        }, args);
     }
 
     @SuppressWarnings({"unused", "unchecked"})

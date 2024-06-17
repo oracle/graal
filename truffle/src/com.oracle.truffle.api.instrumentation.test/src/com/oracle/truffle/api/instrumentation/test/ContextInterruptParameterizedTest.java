@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -257,7 +257,7 @@ public class ContextInterruptParameterizedTest {
     }
 
     private static Object getThreadLocalStackTraceIfAvailable() {
-        if (TruffleTestAssumptions.isFallbackRuntime() && !TruffleTestAssumptions.isClassLoaderEncapsulation()) {
+        if (TruffleTestAssumptions.isFallbackRuntime()) {
             DefaultTruffleRuntime runtime = (DefaultTruffleRuntime) (Truffle.getRuntime());
             try {
                 Method method = runtime.getClass().getDeclaredMethod("getThreadLocalStackTrace");

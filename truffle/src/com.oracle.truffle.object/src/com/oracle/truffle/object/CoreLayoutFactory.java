@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,10 +51,6 @@ import com.oracle.truffle.api.object.Shape;
 
 @SuppressWarnings("deprecation")
 public class CoreLayoutFactory implements com.oracle.truffle.api.object.LayoutFactory {
-
-    public final Property createProperty(Object id, Location location) {
-        return createProperty(id, location, 0);
-    }
 
     public final Property createProperty(Object id, Location location, int flags) {
         return new PropertyImpl(id, location, flags);

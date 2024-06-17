@@ -203,7 +203,7 @@ public final class Types {
         // Prepend #dimensions '[' to type descriptor.
         byte[] bytes = new byte[type.length() + dimensions];
         Arrays.fill(bytes, 0, dimensions, (byte) '[');
-        Symbol.copyBytes(type, 0, bytes, dimensions, type.length());
+        type.writeTo(bytes, dimensions);
         return symbols.symbolify(ByteSequence.wrap(bytes));
     }
 
@@ -362,13 +362,17 @@ public final class Types {
             // TODO(peterssen): Verify . or / separators.
             return fromSymbol(name);
         }
+        return symbols.symbolify(nameToType(name));
+    }
+
+    public static ByteSequence nameToType(ByteSequence name) {
         byte[] bytes = new byte[name.length() + 2]; // + L;
-        Symbol.copyBytes(name, 0, bytes, 1, name.length());
+        name.writeTo(bytes, 1);
         bytes[0] = 'L';
         bytes[bytes.length - 1] = ';';
         ByteSequence wrap = ByteSequence.wrap(bytes);
         assert checkType(wrap) != null : "Type validity should have been checked beforehand";
-        return symbols.symbolify(wrap);
+        return wrap;
     }
 
     public Symbol<Type> lookup(String type) {

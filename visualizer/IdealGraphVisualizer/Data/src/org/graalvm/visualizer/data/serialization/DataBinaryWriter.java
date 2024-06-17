@@ -50,7 +50,7 @@ import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_DUPLICATE;
 import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_NAME;
 import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_SHORT_NAME;
 import static org.graalvm.visualizer.data.KnownPropertyNames.PROPNAME_TYPE;
-import org.graalvm.graphio.GraphOutput;
+import jdk.graal.compiler.graphio.GraphOutput;
 import org.graalvm.visualizer.data.serialization.BinaryReader.Method;
 import java.io.InterruptedIOException;
 import java.util.concurrent.CancellationException;

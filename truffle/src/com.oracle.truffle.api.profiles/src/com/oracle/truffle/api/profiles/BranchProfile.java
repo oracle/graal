@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,9 +56,9 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * <p>
  * <b> Usage example: </b>
- * {@link com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile}
- *
- * {@inheritDoc}
+ * 
+ * {@snippet file="com/oracle/truffle/api/profiles/BranchProfile.java"
+ * region="com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile"}
  *
  * @see BranchProfile#enter()
  * @since 0.10
@@ -163,8 +163,9 @@ public final class BranchProfile extends Profile {
 
 }
 
+// @formatter:off // @replace regex='.*' replacement=''
 class BranchProfileSnippets {
-    // BEGIN: com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile
+    // @start region="com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile"
     class BranchingNode extends Node {
         final BranchProfile errorProfile = BranchProfile.create();
 
@@ -176,5 +177,5 @@ class BranchProfileSnippets {
             return value;
         }
     }
-    // END: com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile
+    // @end region="com.oracle.truffle.api.profiles.BranchProfileSnippets.BranchingNode#errorProfile"
 }

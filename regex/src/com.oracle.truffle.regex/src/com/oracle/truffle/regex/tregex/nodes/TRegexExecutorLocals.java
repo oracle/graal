@@ -53,14 +53,18 @@ public abstract class TRegexExecutorLocals {
     private final TruffleString input;
     private final int fromIndex;
     private final int maxIndex;
+    private final int regionFrom;
+    private final int regionTo;
     private int index;
     private int nextIndex;
     private int loopCount;
 
-    public TRegexExecutorLocals(TruffleString input, int fromIndex, int maxIndex, int index) {
+    public TRegexExecutorLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index) {
         this.input = input;
         this.fromIndex = fromIndex;
         this.maxIndex = maxIndex;
+        this.regionFrom = regionFrom;
+        this.regionTo = regionTo;
         this.index = index;
     }
 
@@ -93,6 +97,14 @@ public abstract class TRegexExecutorLocals {
      */
     public final int getMaxIndex() {
         return maxIndex;
+    }
+
+    public int getRegionFrom() {
+        return regionFrom;
+    }
+
+    public int getRegionTo() {
+        return regionTo;
     }
 
     /**

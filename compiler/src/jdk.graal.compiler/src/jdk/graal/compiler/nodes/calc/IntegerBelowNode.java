@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,10 +86,10 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
 
     public static class BelowOp extends LowerOp {
         @Override
-        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
+        protected LogicNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
             assert newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp : Assertions.errorMessageContext("newX", newX);
             assert newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp : Assertions.errorMessageContext("newY", newY);
-            return new IntegerBelowNode(newX, newY);
+            return IntegerBelowNode.create(newX, newY, view);
         }
 
         @Override

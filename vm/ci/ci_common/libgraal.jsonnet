@@ -5,6 +5,7 @@ local devkits = graal_common.devkits;
 local c = import 'common.jsonnet';
 local g = vm.compiler_gate;
 local utils = import '../../../ci/ci_common/common-utils.libsonnet';
+local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
 {
   local underscore(s) = std.strReplace(s, "-", "_"),
@@ -38,9 +39,14 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     # Tests that dropping libgraal into OracleJDK works (see mx_vm_gate.py)
     downloads +: if utils.contains(self.name, 'labsjdk-21') then {"ORACLEJDK_JAVA_HOME" : graal_common.jdks_data["oraclejdk21"]} else {}
   },
-  libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
   # enable economy mode building with the -Ob flag
-  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']),
+  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']) + {
+    environment+: {
+      # Exercise support for preventing build paths being embedded in libgraal.
+      ALLOW_ABSOLUTE_PATHS_IN_OUTPUT: 'false'
+    }
+  },
 
   libgraal_truffle_base(quickbuild_args=[], extra_vm_args=[], coverage=false): self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
     environment+: {
@@ -64,7 +70,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # -ea assertions are enough to keep execution time reasonable
   libgraal_truffle: self.libgraal_truffle_base(),
-  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
   # enable economy mode building with the -Ob flag
   libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
 
@@ -72,15 +78,16 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
-  local gates = {
+  local gate_jobs = {
     "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
 
-    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {} + graal_common.mach5_target,
+    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
   },
+  local gates = g.as_gates(gate_jobs),
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
@@ -90,7 +97,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "daily-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
-  },
+  } + g.as_dailies(gate_jobs),
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
   local weeklies = {
@@ -101,8 +108,10 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local monthlies = {},
 
   local svm_common(os_arch, jdk) =
-    local obj = c["svm_common_" + underscore(os_arch)];
-    if std.type(obj) == "function" then obj(jdk) else obj,
+    if (os_arch == 'windows-amd64') then
+      c.svm_common_windows_amd64(jdk)
+    else
+      c.svm_common,
 
   local all_os_arches = [
     "linux-amd64",
@@ -116,7 +125,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local all_platforms_builds = [
     c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
+    vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  jdk_name = "labsjdk",
@@ -147,7 +156,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local all_platforms_zgc_builds = [
     adjust_windows_version(c.vm_base(os(os_arch), arch(os_arch), 'gate')) +
     svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
+    vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,
@@ -169,7 +178,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local coverage_jdk21_builds = [
     c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
+    vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,

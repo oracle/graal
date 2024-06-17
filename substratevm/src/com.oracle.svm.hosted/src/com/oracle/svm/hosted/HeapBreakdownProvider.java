@@ -38,9 +38,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.LinkStrategy;
@@ -96,6 +97,9 @@ public class HeapBreakdownProvider {
         Set<byte[]> seenStringByteArrays = Collections.newSetFromMap(new IdentityHashMap<>());
         final boolean reportStringBytesConstant = reportStringBytes;
         for (ObjectInfo o : access.getImage().getHeap().getObjects()) {
+            if (o.getConstant().isInBaseLayer()) {
+                continue;
+            }
             long objectSize = o.getSize();
             totalObjectSize += objectSize;
             classToDataMap.computeIfAbsent(o.getClazz(), c -> new HeapBreakdownEntry(c)).add(objectSize);
@@ -138,7 +142,7 @@ public class HeapBreakdownProvider {
         long codeInfoSize = codeInfoByteArrayLengths.stream().map(l -> objectLayout.getArraySize(JavaKind.Byte, l, true)).reduce(0L, Long::sum);
         addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "code metadata", "#glossary-code-metadata"), codeInfoSize, codeInfoByteArrayLengths.size());
         /* Extract byte[] for metadata. */
-        int metadataByteLength = ImageSingletons.lookup(ReflectionMetadataDecoder.class).getMetadataByteLength();
+        int metadataByteLength = ImageSingletons.lookup(RuntimeMetadataDecoder.class).getMetadataByteLength();
         if (metadataByteLength > 0) {
             long metadataSize = objectLayout.getArraySize(JavaKind.Byte, metadataByteLength, true);
             addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataSize, 1);
@@ -146,9 +150,9 @@ public class HeapBreakdownProvider {
         /* Extract byte[] for resources. */
         long resourcesByteArraySize = 0;
         int resourcesByteArrayCount = 0;
-        for (ResourceStorageEntryBase resourceList : Resources.singleton().resources()) {
-            if (resourceList.hasData()) {
-                for (byte[] resource : resourceList.getData()) {
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.singleton().resources()) {
+            if (resourceList.getValueUnconditionally().hasData()) {
+                for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
                     resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
                     resourcesByteArrayCount++;
                 }
@@ -176,6 +180,7 @@ public class HeapBreakdownProvider {
         newData.add(byteSize, count);
         entries.add(newData);
         byteArrayEntry.remove(byteSize, count);
+        assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
     }
 
     private static byte[] getInternalByteArray(String string) {

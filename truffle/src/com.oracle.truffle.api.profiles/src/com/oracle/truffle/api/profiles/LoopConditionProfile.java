@@ -93,10 +93,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
  * it incurs less overhead in the interpreter. Using {@link LoopConditionProfile#inject(boolean)} is
  * a no-op in the interpreter while {@link #profile(boolean)} needs to use a counter for each
  * iteration.
- * </p>
- *
- *
- * {@inheritDoc}
  *
  * @see #create()
  * @see LoopConditionProfile

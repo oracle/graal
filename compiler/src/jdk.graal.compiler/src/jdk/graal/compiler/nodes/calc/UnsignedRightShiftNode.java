@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp.UShr;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
@@ -97,7 +98,7 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
 
                 if (xLowerBound >>> amount == xUpperBound >>> amount) {
                     // The result of the shift is constant.
-                    return ConstantNode.forIntegerKind(stamp.getStackKind(), xLowerBound >>> amount);
+                    return ConstantNode.forIntegerBits(PrimitiveStamp.getBits(stamp), xLowerBound >>> amount);
                 }
 
                 if (amount == xStamp.getBits() - 1 && xStamp.lowerBound() == -1 && xStamp.upperBound() == 0) {
@@ -113,7 +114,7 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
                     if (other instanceof UnsignedRightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            return ConstantNode.forIntegerKind(stamp.getStackKind(), 0);
+                            return ConstantNode.forIntegerBits(PrimitiveStamp.getBits(stamp), 0);
                         }
                         return new UnsignedRightShiftNode(other.getX(), ConstantNode.forInt(total));
                     } else if (other instanceof LeftShiftNode && otherAmount == amount) {

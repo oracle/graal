@@ -37,7 +37,6 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy.AbstractPolicyScope;
-import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.debug.GraalError;
@@ -163,7 +162,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         super.cleanupGraph(ms);
 
         // at the very end we record all inlining
-        var methodScope = cast(ms);
+        InlineBeforeAnalysisMethodScope methodScope = cast(ms);
         methodScope.encodedGraphs.add(methodScope.encodedGraph);
         for (var encodedGraph : methodScope.encodedGraphs) {
             super.recordGraphElements(encodedGraph);
@@ -318,7 +317,6 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             if (graph.getDebug().isLogEnabled()) {
                 graph.getDebug().logv("  ".repeat(callerScope.inliningDepth) + "  aborted " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
             }
-            AnalysisError.guarantee(inlineScope.policyScope.allowAbort(), "Unexpected abort: %s", inlineScope);
             if (callerScope.policyScope != null) {
                 callerScope.policyScope.abortCalleeScope(inlineScope.policyScope);
             }

@@ -37,7 +37,7 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
  * additional variables during code gen.
  */
 public class PhiResolveLowerer {
-    private final AbstractEndNode end;
+    protected final AbstractEndNode end;
 
     public PhiResolveLowerer(AbstractEndNode end) {
         this.end = end;

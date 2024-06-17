@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -523,6 +523,31 @@ public class ParserState {
      */
     public void addExtendedMemoryInstruction(int instruction, int memoryIndex, long value, boolean indexType64) {
         bytecode.addExtendedMemoryInstruction(instruction, memoryIndex, value, indexType64);
+    }
+
+    /**
+     * Adds a lane-indexed vector memory instruction based on the given values and index type.
+     *
+     * @param instruction The vector memory instruction
+     * @param memoryIndex The index of the memory being accessed
+     * @param value The immediate value
+     * @param indexType64 If the index type is 64 bit.
+     * @param laneIndex The lane index
+     */
+    public void addVectorMemoryLaneInstruction(int instruction, int memoryIndex, long value, boolean indexType64, byte laneIndex) {
+        bytecode.addExtendedMemoryInstruction(instruction, memoryIndex, value, indexType64);
+        bytecode.add(laneIndex);
+    }
+
+    /**
+     * Adds a lane-indexed vector instruction (extract_lane or replace_lane).
+     * 
+     * @param instruction The vector instruction
+     * @param laneIndex The lane index
+     */
+    public void addVectorLaneInstruction(int instruction, byte laneIndex) {
+        bytecode.add(instruction);
+        bytecode.add(laneIndex);
     }
 
     /**

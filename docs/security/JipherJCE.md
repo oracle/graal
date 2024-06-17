@@ -7,7 +7,7 @@ permalink: /security-guide/native-image/Jipher/
 
 # Jipher JCE with Native Image
 
-Jipher JCE is an Oracle-developed [Java Cryptography Architecture (JCA)](../reference-manual/native-image/JCASecurityServices.md) provider that packages a pre-configured and FIPS validated version of OpenSSL 3.0. 
+Jipher JCE is an Oracle-developed [Java Cryptography Architecture (JCA)](../reference-manual/native-image/JCASecurityServices.md) provider that packages a preconfigured and FIPS validated version of OpenSSL 3.0. 
 The Jipher provider supports algorithms which are allowed by [FIPS](https://en.wikipedia.org/wiki/FIPS_140), including the OpenSSL 3.0's FIPS provider. 
 Jipher provides competitive performance compared to Bouncy Castle or the default JDK providers.
 It is recommended to enable Jipher with Native Image in contexts where only FIPS-allowed algorithms should be used. 
@@ -15,8 +15,8 @@ Note that some algorithms are allowed by FIPS for specific use cases only. As a 
 
 > Note: Jipher is not available in GraalVM Community Edition. It is supported on Linux and macOS (macOS 10.15 and higher) on both AMD64 and AArch64 architectures.
 
-Jipher JARs are included in the Oracle GraalVM core package at: _lib/jipher/jipher-jce.jar_ and _lib/jipher/jipher-pki.jar_.
-To enable Jipher, pass these JARs on the application class path.
+Jipher JAR files are included in the Oracle GraalVM core package at: _lib/jipher/jipher-jce.jar_ and _lib/jipher/jipher-pki.jar_.
+To enable Jipher, pass these JAR files on the application class path.
 
 This page describes how to use Jipher with GraalVM Native Image.
 
@@ -62,7 +62,7 @@ The steps below show how to embedded Jipher in a native executable, using a simp
     }
     ```
 
-2. Compile the application with Jipher JARs on the classpath:
+2. Compile the application with Jipher JAR files on the classpath:
 
     ```shell
     javac -cp $GRAALVM_HOME/lib/jipher/jipher-jce.jar:$GRAALVM_HOME/lib/jipher/jipher-pki.jar JipherExample.java
@@ -70,7 +70,7 @@ The steps below show how to embedded Jipher in a native executable, using a simp
 3. Run the application on the JVM with the agent enabled. The tracing agent captures and writes down all the dynamic features encountered during a test run into multiple _*-config.json_ files.
 
     ```shell
-    java java -cp $GRAALVM_HOME/lib/jipher/jipher-jce.jar:$GRAALVM_HOME/lib/jipher/jipher-pki.jar:. -agentlib:native-image-agent=config-output-dir=<path> JipherExample
+    java -cp $GRAALVM_HOME/lib/jipher/jipher-jce.jar:$GRAALVM_HOME/lib/jipher/jipher-pki.jar:. -agentlib:native-image-agent=config-output-dir=<path> JipherExample
     ```
     Where `<path>` should point to the directory in which to store the configuration files.
     It is recommended that the output directory is `/META-INF/native-image/` (if you build with Maven or Gradle, then `/resources/META-INF/native-image/`). 
@@ -137,7 +137,7 @@ The steps below show how to embedded Jipher in a native executable, using a simp
         ,
         ...]
         ```
-4. For the agent to discover all possible calls to Jipher, re-run the application with the agent on the JVM (you can re-run the agent as many times as needed). This will rgenerate the entire configuration suite including any negative test cases (to allow for exception classes to be captured). For the subsequent runs, use this command:
+4. For the agent to discover all possible calls to Jipher, re-run the application with the agent on the JVM (you can re-run the agent as many times as needed). This will regenerate the entire configuration suite including any negative test cases (to allow for exception classes to be captured). For the subsequent runs, use this command:
 
     ```shell
     java -agentlib:native-image-agent=config-merge-dir=<path> JipherExample

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import java.util.Locale;
+
 /**
  * Enumerated type for operating systems.
  */
@@ -48,7 +50,7 @@ public enum OS {
      * Returns a string that can be used in a package name.
      */
     public String asPackageName() {
-        return name().toLowerCase();
+        return name().toLowerCase(Locale.ROOT);
     }
 
     public boolean isCurrent() {

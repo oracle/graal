@@ -1,0 +1,6 @@
+# undefined copy constructor
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/elision.C
+
+# incorrectly redefines size_t
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/variadic134.C
+gcc-5.2.0/gcc/testsuite/g++.dg/debug/dwarf2/integer-typedef.C

@@ -107,7 +107,7 @@ public class NewProfileAction extends AbstractAction {
             p = profileService.createProfile(name, profileService.getSelectedProfile());
         } catch (IOException ex) {
             NotifyDescriptor.Message err = new NotifyDescriptor.Message(
-                            Bundle.ERR_CannotCreateProfile(ex.getLocalizedMessage()),
+                            Bundle.ERR_CannotCreateProfile(ex.toString()),
                             NotifyDescriptor.WARNING_MESSAGE);
             DialogDisplayer.getDefault().notifyLater(err);
             return;

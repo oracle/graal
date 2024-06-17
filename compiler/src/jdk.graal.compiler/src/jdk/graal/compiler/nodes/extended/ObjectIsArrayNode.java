@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -83,8 +84,8 @@ public final class ObjectIsArrayNode extends UnaryOpLogicNode implements Lowerab
             return null;
         } else {
             // Ignore any more precise input stamp since canonicalization will skip through PiNodes
-            AbstractObjectStamp pointerStamp = (AbstractObjectStamp) getValue().stamp(NodeView.DEFAULT).unrestricted();
-            return pointerStamp.asAlwaysArray();
+            // and also this node does not express non-nullness, the input has to provide that.
+            return ((AbstractObjectStamp) StampFactory.object()).asAlwaysArray();
         }
     }
 

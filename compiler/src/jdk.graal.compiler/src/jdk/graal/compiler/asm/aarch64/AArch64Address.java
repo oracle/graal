@@ -60,7 +60,7 @@ public final class AArch64Address extends AbstractAddress {
 
     public enum AddressingMode {
         /**
-         * base + uimm12 << log2(byte_memory_transfer_size).
+         * base + uimm12 &lt;&lt; log2(byte_memory_transfer_size).
          */
         IMMEDIATE_UNSIGNED_SCALED,
         /**
@@ -72,11 +72,11 @@ public final class AArch64Address extends AbstractAddress {
          */
         BASE_REGISTER_ONLY,
         /**
-         * base + offset [<< log2(byte_memory_transfer_size)].
+         * base + offset [&lt;&lt; log2(byte_memory_transfer_size)].
          */
         REGISTER_OFFSET,
         /**
-         * base + extend(offset) [<< log2(byte_memory_transfer_size)].
+         * base + extend(offset) [&lt;&lt; log2(byte_memory_transfer_size)].
          */
         EXTENDED_REGISTER_OFFSET,
         /**
@@ -92,16 +92,16 @@ public final class AArch64Address extends AbstractAddress {
          */
         IMMEDIATE_PRE_INDEXED,
         /**
-         * base + imm7 << log2(byte_memory_transfer_size).
+         * base + imm7 &lt;&lt; log2(byte_memory_transfer_size).
          */
         IMMEDIATE_PAIR_SIGNED_SCALED,
         /**
-         * address = base. base is updated to base + imm7 << log2(byte_memory_transfer_size)
+         * address = base. base is updated to base + imm7 &lt;&lt; log2(byte_memory_transfer_size)
          */
         IMMEDIATE_PAIR_POST_INDEXED,
         /**
-         * address = base + imm7 << log2(byte_memory_transfer_size). base is updated to base + imm7
-         * << log2(byte_memory_transfer_size)
+         * address = base + imm7 &lt;&lt; log2(byte_memory_transfer_size). base is updated to base +
+         * imm7 &lt;&lt; log2(byte_memory_transfer_size)
          */
         IMMEDIATE_PAIR_PRE_INDEXED,
         /**
@@ -280,8 +280,8 @@ public final class AArch64Address extends AbstractAddress {
      * @param offset Register specifying some offset, optionally scaled by the
      *            byte_memory_transfer_size. May not be null or the stackpointer.
      * @param scaled Specifies whether offset should be scaled by byte_memory_transfer_size or not.
-     * @return an address specifying a register offset address of the form base + offset [<< log2
-     *         (byte_memory_transfer_size)]
+     * @return an address specifying a register offset address of the form base + offset [&lt;&lt;
+     *         log2 (byte_memory_transfer_size)]
      */
     public static AArch64Address createRegisterOffsetAddress(int bitMemoryTransferSize, Register base, Register offset, boolean scaled) {
         return new AArch64Address(bitMemoryTransferSize, base, offset, 0, scaled, null, AddressingMode.REGISTER_OFFSET);
@@ -295,7 +295,7 @@ public final class AArch64Address extends AbstractAddress {
      * @param scaled Specifies whether offset should be scaled by byte_memory_transfer_size or not.
      * @param extendType Describes whether register is zero- or sign-extended. May not be null.
      * @return an address specifying an extended register offset of the form base +
-     *         extendType(offset) [<< log2(byte_memory_transfer_size)]
+     *         extendType(offset) [&lt;&lt; log2(byte_memory_transfer_size)]
      */
     public static AArch64Address createExtendedRegisterOffsetAddress(int bitMemoryTransferSize, Register base, Register offset, boolean scaled, AArch64Assembler.ExtendType extendType) {
         return new AArch64Address(bitMemoryTransferSize, base, offset, 0, scaled, extendType, AddressingMode.EXTENDED_REGISTER_OFFSET);

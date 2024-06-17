@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -3471,7 +3471,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (specialization.isFallback()) {
             for (int i = 0; i < libraries.size(); i++) {
                 CacheExpression cachedLibrary = libraries.get(i);
-                if (cachedLibrary.getCachedLibraryExpression() != null) {
+                if (cachedLibrary.getCachedLibraryExpression() != null && specialization.hasMultipleInstances()) {
                     cachedLibrary.addError("@%s annotations with specialized receivers are not supported in combination with @%s annotations. " +
                                     "Specify the @%s(limit=\"...\") attribute and remove the receiver expression to use an dispatched library instead.",
                                     getSimpleName(types.CachedLibrary), getSimpleName(types.Fallback), getSimpleName(types.CachedLibrary));

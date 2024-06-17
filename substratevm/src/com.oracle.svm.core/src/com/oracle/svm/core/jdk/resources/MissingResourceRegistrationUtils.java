@@ -40,19 +40,28 @@ import jdk.internal.loader.Loader;
 public final class MissingResourceRegistrationUtils {
 
     public static void missingResource(String resourcePath) {
-        MissingResourceRegistrationError exception = new MissingResourceRegistrationError(errorMessage(resourcePath), resourcePath);
+        MissingResourceRegistrationError exception = new MissingResourceRegistrationError(
+                        errorMessage("resource at path", resourcePath),
+                        resourcePath);
         report(exception);
     }
 
-    private static String errorMessage(String resourcePath) {
+    public static void missingResourceBundle(String baseName) {
+        MissingResourceRegistrationError exception = new MissingResourceRegistrationError(
+                        errorMessage("resource bundle with name", baseName),
+                        baseName);
+        report(exception);
+    }
+
+    private static String errorMessage(String type, String resourcePath) {
         /* Can't use multi-line strings as they pull in format and bloat "Hello, World!" */
-        return "The program tried to access the resource at path " +
+        return "The program tried to access the " + type +
                         System.lineSeparator() +
                         System.lineSeparator() +
                         ERROR_EMPHASIS_INDENT + resourcePath +
                         System.lineSeparator() +
                         System.lineSeparator() +
-                        " without it being registered as reachable. Add it to the resource metadata to solve this problem. " +
+                        "without it being registered as reachable. Add it to the resource metadata to solve this problem. " +
                         "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#resources-and-resource-bundles for help";
     }
 

@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "7.5.0",
+    "mxversion": "7.13.2",
     "name": "substratevm",
     "version" : "24.1.0",
     "release" : False,
@@ -175,13 +175,13 @@ suite = {
         },
         "LLVM_LLD_STANDALONE": {
             "license" : "Apache-2.0-LLVM",
-            "version" : "16.0.1-4-gad8c248269-bg7bf7e45f73",
+            "version" : "18.1.3-4-gd3f23e9e73-bg3b8289d0a4",
             "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
             "os_arch": {
                 "darwin": {
                     "aarch64": {
-                        "urls": ["{host}/llvm-lldonly-llvmorg-{version}-darwin-aarch64.tar.gz"],
-                        "digest": "sha512:2a8d1853deb238fa4ee14df0ebb8224b7191eb5f955e9c0f51ff2c6993a9de243eb4721e8af3f785a1ce2ba7e908ec7100e4ba70df7cf61688d6d433892b60f8",
+                        "urls" : ["{host}/llvm-lldonly-llvmorg-{version}-darwin-aarch64.tar.gz"],
+                        "digest" : "sha512:63afa451eab51699bd0ba0643645ca0170f4ee1c901fa2fcc1144566a2354c6c79ae95c218f1326fabc0f666a8949ced4af6172b89950d8f3a0c5a30b2246bbc",
                     },
                     "<others>": {
                         "optional": True,
@@ -251,7 +251,8 @@ suite = {
                 "compiler:GRAAL_PROCESSOR"
             ],
             "requires" : [
-                "java.compiler" # javax.annotation.processing.*
+                "java.compiler", # javax.annotation.processing.*
+                "jdk.compiler", # com.sun.source.util.*
             ],
             "javaCompliance" : "21+",
             "checkstyle" : "com.oracle.svm.core",
@@ -305,6 +306,7 @@ suite = {
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
                     "jdk.internal.util",
+                    "jdk.internal.org.objectweb.asm",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
@@ -690,6 +692,7 @@ suite = {
                 ],
             },
             "javaCompliance" : "22+",
+            # GR-51699
             "forceJavac": True,
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -719,6 +722,7 @@ suite = {
                 ],
             },
             "javaCompliance" : "22+",
+            # GR-51699
             "forceJavac": True,
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1471,6 +1475,12 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
+                    "transitive org.graalvm.nativeimage",
+                    "transitive org.graalvm.nativeimage.base",
+                    "transitive org.graalvm.nativeimage.objectfile",
+                    "transitive org.graalvm.nativeimage.pointsto",
+                    "org.graalvm.collections",
+                    "org.graalvm.truffle.compiler",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
@@ -1538,6 +1548,9 @@ suite = {
                     "com.oracle.svm.jvmtiagentbase",
                     "com.oracle.svm.jvmtiagentbase.jvmti",
                 ],
+                "requires": [
+                  "org.graalvm.nativeimage.builder",
+                ],
             },
             "maven": False,
         },
@@ -1557,6 +1570,9 @@ suite = {
                 "name" : "org.graalvm.nativeimage.librarysupport",
                 "exports" : [
                     "* to org.graalvm.nativeimage.builder",
+                ],
+                "requires": [
+                  "jdk.graal.compiler",
                 ],
             },
             "noMavenJavadoc": True,
@@ -1618,7 +1634,10 @@ suite = {
                   "sun.nio.ch",
                   "jdk.internal.ref",
                 ],
-              }
+              },
+              "requires": [
+                "org.graalvm.collections",
+              ],
             },
             "noMavenJavadoc": True,
             "maven": {
@@ -1673,6 +1692,10 @@ suite = {
                     # the module can still be used with the TruffleBaseFeature
                     "static org.graalvm.truffle.runtime",
                     "static org.graalvm.jniutils",
+                    "jdk.graal.compiler",
+                    "org.graalvm.collections",
+                    "org.graalvm.polyglot",
+                    "org.graalvm.truffle.compiler",
                 ],
                 "uses" : [
                     "com.oracle.truffle.api.TruffleLanguage.Provider",
@@ -1812,6 +1835,8 @@ suite = {
                 "org.graalvm.nativeimage.builder",
                 "java.management",
                 "jdk.management",
+                "jdk.graal.compiler",
+                "org.graalvm.collections",
               ],
             },
             "maven": False,
@@ -1839,7 +1864,12 @@ suite = {
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
                     ],
-                }
+                },
+                "requires": [
+                  "jdk.graal.compiler",
+                  "org.graalvm.collections",
+                  "org.graalvm.nativeimage.builder",
+                ],
             },
             # vm: included as binary, tool descriptor intentionally not copied
             "maven": False,
@@ -1859,6 +1889,9 @@ suite = {
                 "name" : "org.graalvm.nativeimage.agent.diagnostics",
                 "exports" : [
                     "com.oracle.svm.diagnosticsagent",
+                ],
+                "requires": [
+                  "org.graalvm.nativeimage.builder",
                 ],
             },
             "maven": False,
@@ -1881,6 +1914,11 @@ suite = {
                     "com.oracle.svm.configure",
                     "com.oracle.svm.configure.command",
                 ],
+                "requires": [
+                  "jdk.graal.compiler",
+                  "org.graalvm.collections",
+                  "org.graalvm.nativeimage.builder",
+                ],
             },
             "maven": False,
         },
@@ -1900,7 +1938,12 @@ suite = {
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.base",
-                "requires" : ["java.sql", "java.xml"],# workaround for GR-47773 on the module-path which requires java.sql (like truffle) or java.xml
+                "requires" : [
+                    # workaround for GR-47773 on the module-path which requires java.sql (like truffle) or java.xml
+                    "java.sql",
+                    "java.xml",
+                    "org.graalvm.collections",
+                ],
                 "exports" : [
                     "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
@@ -1950,6 +1993,8 @@ suite = {
               "requires": [
                 "java.management",
                 "jdk.management",
+                "org.graalvm.collections",
+                "org.graalvm.nativeimage",
               ],
               "requiresConcealed" : {
                 "java.management": [
@@ -1990,6 +2035,7 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
+                    "org.graalvm.nativeimage",
                 ],
                 "requiresConcealed" : {
                     "java.management": [

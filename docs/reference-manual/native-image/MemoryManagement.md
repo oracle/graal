@@ -18,7 +18,7 @@ When the heap becomes full, a garbage collection is triggered to reclaim memory 
 For managing the Java heap, Native Image provides different garbage collector (GC) implementations:
 * The **Serial GC** is the default GC in GraalVM Native Image.
 It is optimized for low memory footprint and small Java heap sizes.
-* The **G1 GC** is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
+* The **G1 GC** is a multithreaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
 To enable it, pass the option `--gc=G1` to the `native-image` builder.
 Currently, G1 Garbage Collector can be used with Native Image on the Linux AMD64 and AArch64 architectures. (Not available in GraalVM Community Edition.)
 * The **Epsilon GC** (available with GraalVM 21.2 or later) is a no-op garbage collector that does not do any garbage collection and therefore never frees any allocated memory.
@@ -164,7 +164,7 @@ Here is a small subset of the options that can be specified when doing performan
 
 ```shell
 # Build and execute a native image that uses the G1 GC with a region size of 2MB and a maximum pause time goal of 100ms
-native-image --gc=G1 -H:G1RegionSize=2m -R:MaxGCPauseMillis=100 HelloWorld
+native-image --gc=G1 -H:G1HeapRegionSize=2m -R:MaxGCPauseMillis=100 HelloWorld
 ./helloworld
 
 # Execute the native image from above and override the maximum pause time goal
@@ -219,7 +219,7 @@ One common use-case is a `java.nio.DirectByteBuffer` that directly references na
 
 ## Printing Garbage Collections
 
-When executing a native image, the following options can be be used to print some information on garbage collection.
+When executing a native image, the following options can be used to print some information on garbage collection.
 Which data is printed in detail depends on the used GC.
 * `-XX:+PrintGC` - print basic information for every garbage collection
 * `-XX:+VerboseGC` - can be added to print further garbage collection details

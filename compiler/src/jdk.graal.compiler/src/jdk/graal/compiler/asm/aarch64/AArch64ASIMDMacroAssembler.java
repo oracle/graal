@@ -29,7 +29,6 @@ import static jdk.vm.ci.aarch64.AArch64.SIMD;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.code.Register;
 
 public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
@@ -201,7 +200,7 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
     /**
      * Performs a bitwise bit clear with the provided immediate on each element.
      *
-     * <code>for i in 0..n-1 do dst[i] &^= imm</code>
+     * <code>for i in 0..n-1 do dst[i] &amp;^= imm</code>
      */
     public void bicVI(ASIMDSize size, ElementSize eSize, Register dst, long imm) {
         long imm64 = replicateValueToImm64(eSize, imm);

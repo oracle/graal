@@ -27,9 +27,6 @@
 
 package com.oracle.svm.core;
 
-import com.oracle.svm.core.heap.ReferenceInternals;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.AbstractCollection;
@@ -50,8 +47,12 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.heap.ReferenceInternals;
 
-/**
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+
+
+/*
  * Hash table based implementation of the <tt>Map</tt> interface, with
  * <em>weak keys</em>.
  * An entry in a <tt>WeakHashMap</tt> will automatically be removed when

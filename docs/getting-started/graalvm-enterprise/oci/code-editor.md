@@ -34,9 +34,10 @@ Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to 
     ```shell
     csruntimectl java set graalvmjdk-17
     ```
-    You will see the confirmation message printed `The current managed java version is set to graalvmjdk-17`.
+    You will see the confirmation message printed: "The current managed java version is set to graalvmjdk-17".
 
-3. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`, the `native-image` generator:
+3. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the versions of `java` and the `native-image` tool:
+
     ```shell
     echo $JAVA_HOME
     ```
@@ -78,12 +79,12 @@ Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to 
     
     You can now view/edit the sample code in Code Editor.
 
-2. Package the sample application into a runnable JAR:
+2. Package the sample application into a runnable JAR file:
 
     ```shell
     mvn clean package
     ```
-3. Run the JAR:
+3. Run the JAR file:
 
     ```shell
     java -jar target/my-app-1.0-SNAPSHOT.jar

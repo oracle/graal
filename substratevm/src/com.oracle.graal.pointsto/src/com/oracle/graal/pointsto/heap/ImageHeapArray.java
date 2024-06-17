@@ -35,9 +35,8 @@ public abstract class ImageHeapArray extends ImageHeapConstant {
         return type.getComponentType().getStorageKind().isPrimitive() ? new ImageHeapPrimitiveArray(type, length) : new ImageHeapObjectArray(type, length);
     }
 
-    protected ImageHeapArray(ConstantData constantData, boolean compressed) {
+    ImageHeapArray(ConstantData constantData, boolean compressed) {
         super(constantData, compressed);
-        assert constantData.type.isArray() : constantData.type;
     }
 
     public abstract Object getElement(int idx);

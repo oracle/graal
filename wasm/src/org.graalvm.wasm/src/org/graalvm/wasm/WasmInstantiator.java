@@ -103,7 +103,7 @@ public class WasmInstantiator {
         instance.createLinkActions();
         int binarySize = instance.module().bytecodeLength();
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
-        if (binarySize < asyncParsingBinarySize) {
+        if (binarySize < asyncParsingBinarySize || !context.environment().isCreateThreadAllowed()) {
             instantiateCodeEntries(context, instance);
         } else {
             final Runnable parsing = () -> instantiateCodeEntries(context, instance);
@@ -111,7 +111,8 @@ public class WasmInstantiator {
             final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
             final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
             final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
-            final Thread parsingThread = new Thread(null, parsing, name, stackSize);
+            final Thread parsingThread = context.environment().newTruffleThreadBuilder(parsing).stackSize(stackSize).build();
+            parsingThread.setName(name);
             final ParsingExceptionHandler handler = new ParsingExceptionHandler();
             parsingThread.setUncaughtExceptionHandler(handler);
             parsingThread.start();
@@ -493,8 +494,9 @@ public class WasmInstantiator {
         int childIndex = 0;
         for (CallNode callNode : childNodeList) {
             Node child;
+            final int bytecodeIndex = callNode.getBytecodeOffset();
             if (callNode.isIndirectCall()) {
-                child = WasmIndirectCallNode.create();
+                child = WasmIndirectCallNode.create(bytecodeIndex);
             } else {
                 // We deliberately do not create the call node during instantiation.
                 //
@@ -505,12 +507,12 @@ public class WasmInstantiator {
 
                 final WasmFunction resolvedFunction = module.function(callNode.getFunctionIndex());
                 if (resolvedFunction.isImported()) {
-                    child = WasmIndirectCallNode.create();
+                    child = WasmIndirectCallNode.create(bytecodeIndex);
                 } else {
                     child = new WasmCallStubNode(resolvedFunction);
                 }
                 final int stubIndex = childIndex;
-                instance.addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, resolvedFunction));
+                instance.addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, bytecodeIndex, resolvedFunction));
             }
             callNodes[childIndex++] = child;
         }

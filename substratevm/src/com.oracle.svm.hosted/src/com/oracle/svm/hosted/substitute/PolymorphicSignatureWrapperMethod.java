@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
@@ -67,7 +68,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * assembles the arguments into an array, performing necessary boxing operations. The wrapper then
  * transfers execution to the underlying varargs method.
  */
-public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, GraphProvider, AnnotationWrapper {
+public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, GraphProvider, AnnotationWrapper, OriginalMethodProvider {
 
     private final SubstitutionMethod substitutionBaseMethod;
     private final ResolvedJavaMethod originalMethod;
@@ -80,6 +81,11 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
         this.substitutionBaseMethod = substitutionBaseMethod;
         this.originalMethod = originalMethod;
         this.constantPool = substitutionBaseMethod.getDeclaringClass().getDeclaredConstructors(false)[0].getConstantPool();
+    }
+
+    @Override
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return originalMethod;
     }
 
     @Override

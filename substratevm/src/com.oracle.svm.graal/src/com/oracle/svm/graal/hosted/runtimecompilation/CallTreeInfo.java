@@ -103,7 +103,7 @@ public final class CallTreeInfo {
                      * the deopt method variant as a callee.
                      */
                     if (deoptInvokeTypeFlow || SubstrateCompilationDirectives.isRuntimeCompiledMethod(callee)) {
-                        MethodNode calleeMethodNode = analysisMethodMap.computeIfAbsent(callee, MethodNode::new);
+                        MethodNode calleeMethodNode = analysisMethodMap.computeIfAbsent(callee.getMultiMethod(RUNTIME_COMPILED_METHOD), MethodNode::new);
                         InvokeNode invoke = new InvokeNode(callerMethodNode, invokeInfo.getPosition());
                         calleeMethodNode.addCaller(invoke);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.nodes;
 
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
@@ -132,4 +133,10 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
         return callTarget().invokeKind();
     }
 
+    /**
+     * See {@link GraphBuilderContext#currentBlockCatchesOOM()}.
+     */
+    boolean isInOOMETry();
+
+    void setInOOMETry(boolean isInOOMETry);
 }

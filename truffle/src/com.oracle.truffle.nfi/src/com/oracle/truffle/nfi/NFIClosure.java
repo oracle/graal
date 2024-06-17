@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,11 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -87,41 +86,66 @@ final class NFIClosure implements TruffleObject {
 
         @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"}, limit = "3")
         static Object doOptimizedDirect(NFIClosure receiver, Object[] args,
+                        @Bind("$node") Node node,
+                        @Shared @Cached InlinedBranchProfile exception,
                         @Cached("receiver.signature.cachedState") SignatureCachedState cachedState,
-                        @Cached("cachedState.createOptimizedClosureCall()") CallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
-            assert receiver.signature.cachedState == cachedState;
-            return call.execute(receiver.signature, receiver.executable, args);
+                        @Cached("cachedState.createOptimizedClosureCall()") CallSignatureNode call) {
+            try {
+                assert receiver.signature.cachedState == cachedState;
+                return call.execute(receiver.signature, receiver.executable, args);
+            } catch (Throwable t) {
+                // closures must never actually throw, the native code wouldn't know how to unwind
+                exception.enter(node);
+                NFILanguage.get(node).setPendingException(t);
+                return cachedState.retType.defaultValue;
+            }
         }
 
         @Specialization(replaces = "doOptimizedDirect", guards = "receiver.signature.cachedState != null")
         static Object doOptimizedIndirect(NFIClosure receiver, Object[] args,
+                        @Bind("$node") Node node,
+                        @Shared @Cached InlinedBranchProfile exception,
                         @Cached IndirectCallNode call) {
-            return call.call(receiver.signature.cachedState.getPolymorphicClosureCall(), receiver.signature, receiver.executable, args);
+            try {
+                return call.call(receiver.signature.cachedState.getPolymorphicClosureCall(), receiver.signature, receiver.executable, args);
+            } catch (Throwable t) {
+                // closures must never actually throw, the native code wouldn't know how to unwind
+                exception.enter(node);
+                NFILanguage.get(node).setPendingException(t);
+                return receiver.signature.retType.cachedState.defaultValue;
+            }
         }
 
         @Specialization(guards = "receiver.signature.cachedState == null")
         static Object doSlowPath(NFIClosure receiver, Object[] args,
                         @Bind("$node") Node node,
-                        @Cached InlinedBranchProfile exception,
+                        @Shared @Cached InlinedBranchProfile exception,
                         @Cached ConvertFromNativeNode convertArg,
                         @Cached ConvertToNativeNode convertRet,
-                        @CachedLibrary("receiver.executable") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+                        @CachedLibrary("receiver.executable") InteropLibrary interop) {
             NFISignature signature = receiver.signature;
-            if (args.length != signature.nativeArgCount) {
-                exception.enter(node);
-                throw ArityException.create(signature.nativeArgCount, signature.nativeArgCount, args.length);
-            }
-
-            Object[] preparedArgs = new Object[signature.managedArgCount];
-            int argIdx = 0;
-            for (int i = 0; i < signature.nativeArgCount; i++) {
-                if (signature.argTypes[i].cachedState.managedArgCount == 1) {
-                    preparedArgs[argIdx++] = convertArg.executeInlined(node, signature.argTypes[i], args[i]);
+            try {
+                if (args.length != signature.nativeArgCount) {
+                    exception.enter(node);
+                    throw ArityException.create(signature.nativeArgCount, signature.nativeArgCount, args.length);
                 }
-            }
 
-            Object ret = interop.execute(receiver.executable, preparedArgs);
-            return convertRet.executeInlined(node, signature.retType, ret);
+                Object[] preparedArgs = new Object[signature.managedArgCount];
+                int argIdx = 0;
+                for (int i = 0; i < signature.nativeArgCount; i++) {
+                    if (signature.argTypes[i].cachedState.managedArgCount == 1) {
+                        preparedArgs[argIdx++] = convertArg.executeInlined(node, signature.argTypes[i], args[i]);
+                    }
+                }
+
+                Object ret = interop.execute(receiver.executable, preparedArgs);
+                return convertRet.executeInlined(node, signature.retType, ret);
+            } catch (Throwable t) {
+                // closures must never actually throw, the native code wouldn't know how to unwind
+                exception.enter(node);
+                NFILanguage.get(node).setPendingException(t);
+                return signature.retType.cachedState.defaultValue;
+            }
         }
     }
 }

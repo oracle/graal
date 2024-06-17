@@ -47,11 +47,14 @@ public final class CallInstruction extends ValueInstruction implements Call {
 
     private final OperandBundle operandBundle;
 
+    private boolean mustTail;
+
     private final FunctionType functionType;
 
-    private CallInstruction(Type type, AttributesCodeEntry paramAttr, int argCount, OperandBundle operandBundle, FunctionType functionType) {
+    private CallInstruction(Type type, AttributesCodeEntry paramAttr, int argCount, OperandBundle operandBundle, FunctionType functionType, boolean mustTail) {
         super(type);
         this.paramAttr = paramAttr;
+        this.mustTail = mustTail;
         this.arguments = argCount == 0 ? NO_ARGS : new SymbolImpl[argCount];
         this.operandBundle = operandBundle;
         this.functionType = functionType;
@@ -109,8 +112,13 @@ public final class CallInstruction extends ValueInstruction implements Call {
         }
     }
 
-    public static CallInstruction fromSymbols(IRScope scope, Type type, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr, OperandBundle operandBundle, FunctionType functionType) {
-        final CallInstruction inst = new CallInstruction(type, paramAttr, arguments.length, operandBundle, functionType);
+    public boolean getMustTail() {
+        return mustTail;
+    }
+
+    public static CallInstruction fromSymbols(IRScope scope, Type type, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr, OperandBundle operandBundle, FunctionType functionType,
+                    boolean mustTail) {
+        final CallInstruction inst = new CallInstruction(type, paramAttr, arguments.length, operandBundle, functionType, mustTail);
         inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
         Call.parseArguments(scope, inst, inst.arguments, arguments, functionType);
         return inst;

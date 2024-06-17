@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,17 +36,14 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
-import jdk.graal.compiler.lir.SyncPort;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
-// @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/34f85ee94e8b45bcebbf8ba52a38c92a7185b54a/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304",
-          sha1 = "5cc04c08555379223cc02a15774159076d3cdf1d")
 /*
  * To be kept in sync with:
  *  - substratevm/src/com.oracle.svm.native.libchelper/include/amd64hotspotcpuinfo.h
  *  - substratevm/src/com.oracle.svm.native.libchelper/src/cpuid.c
  */
-// @formatter:on
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+14/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L313")
 @CLibrary(value = "libchelper", requireStatic = true)
 public class AMD64LibCHelper {
     @Platforms(Platform.AMD64.class)
@@ -301,6 +298,10 @@ public class AMD64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fAVX512_IFMA();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX_IFMA();
     }
     // Checkstyle: resume
 }

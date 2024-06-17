@@ -60,4 +60,6 @@ public interface CoreProviders {
     CodeCacheProvider getCodeCache();
 
     SnippetReflectionProvider getSnippetReflection();
+
+    IdentityHashCodeProvider getIdentityHashCodeProvider();
 }

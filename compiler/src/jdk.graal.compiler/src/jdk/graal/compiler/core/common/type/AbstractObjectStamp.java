@@ -150,6 +150,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
+        assert isCompatible(otherStamp) : "Cannot union incompatible stamps: " + this + " | " + otherStamp;
         if (this == otherStamp) {
             return this;
         }
@@ -224,6 +225,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
     }
 
     private Stamp join0(Stamp otherStamp, boolean improve) {
+        assert isCompatible(otherStamp) : "Cannot join incompatible stamps: " + this + " | " + otherStamp;
         if (this == otherStamp) {
             return this;
         }

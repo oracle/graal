@@ -30,6 +30,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * This is an interruptible wrapper around some of the {@link String} methods that we usually use to
+ * avoid pulling regular expression support into small Native Images (such as HelloWorld).
+ */
 public class StringUtil {
 
     /**
@@ -104,5 +108,16 @@ public class StringUtil {
 
     public static String toDotSeparated(String string) {
         return string.replace('/', '.');
+    }
+
+    public static int numberOfCharsInString(char c, String s) {
+        int count = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == c) {
+                count++;
+            }
+        }
+
+        return count;
     }
 }

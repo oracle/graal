@@ -121,13 +121,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new InvocationPlugin("bitCount", type) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Int, b.append(new AArch64BitCountNode(value).canonical(null)));
-                return true;
-            }
-        });
     }
 
     private static void registerFloatPlugins(InvocationPlugins plugins, Replacements replacements) {
@@ -458,7 +451,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return templates.indexOfUnsafe;
             }
         });
-        r.register(new InvocationPlugin("indexOfCharUnsafe", byte[].class, int.class, int.class, int.class) {
+        int jdk = Runtime.version().feature();
+        r.register(new InvocationPlugin(jdk == 21 ? "indexOfCharUnsafe" : "indexOfChar", byte[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
                 ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
@@ -488,7 +482,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     ResolvedJavaField stateField = helper.getField(receiverType, "state");
                     ResolvedJavaField blockSizeField = helper.getField(receiverType, "blockSize");
 
-                    ValueNode nonNullReceiver = receiver.get();
+                    ValueNode nonNullReceiver = receiver.get(true);
                     ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
                     ValueNode state = helper.loadField(nonNullReceiver, stateField);
                     ValueNode stateStart = helper.arrayStart(state, JavaKind.Byte);

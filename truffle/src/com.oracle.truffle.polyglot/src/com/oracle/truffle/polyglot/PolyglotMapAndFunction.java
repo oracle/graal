@@ -51,6 +51,6 @@ class PolyglotMapAndFunction<K, V> extends PolyglotMap<K, V> implements Function
 
     @Override
     public final Object apply(Object[] arguments) {
-        return cache.apply.call(languageContext, guestObject, arguments);
+        return cache.apply.call(null, languageContext, guestObject, arguments);
     }
 }

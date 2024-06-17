@@ -30,7 +30,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 
 /**
@@ -39,14 +38,6 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 public class AddressLoweringByNodePhase extends AddressLoweringPhase {
 
     public abstract static class AddressLowering {
-
-        @SuppressWarnings("unused")
-        public void preProcess(StructuredGraph graph, LoopsDataProvider loopsDataProvider) {
-        }
-
-        @SuppressWarnings("unused")
-        public void postProcess(AddressNode lowered) {
-        }
 
         public abstract AddressNode lower(ValueNode base, ValueNode offset);
     }
@@ -59,13 +50,11 @@ public class AddressLoweringByNodePhase extends AddressLoweringPhase {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders providers) {
-        lowering.preProcess(graph, providers.getLoopsDataProvider());
         for (Node node : graph.getNodes()) {
             AddressNode lowered;
             if (node instanceof OffsetAddressNode) {
                 OffsetAddressNode address = (OffsetAddressNode) node;
                 lowered = lowering.lower(address.getBase(), address.getOffset());
-                lowering.postProcess(lowered);
             } else {
                 continue;
             }

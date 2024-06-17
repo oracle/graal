@@ -109,4 +109,12 @@ public class KnownIntrinsics {
      * @see Class#cast(Object)
      */
     public static native <T> T castExact(Object object, Class<T> clazz);
+
+    /**
+     * Like {@link jdk.internal.misc.Unsafe#allocateInstance} but without the checks that the class
+     * is an instance class, without the checks that the class was registered for unsafe allocation
+     * using the reflection configuration, without checks that the class was seen as instantiated by
+     * the static analysis, and without the check that the class is already initialized.
+     */
+    public static native Object unvalidatedAllocateInstance(Class<?> hub);
 }

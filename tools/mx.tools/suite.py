@@ -364,6 +364,10 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.chromeinspector",
+                "requires": [
+                  "org.graalvm.collections",
+                  "org.graalvm.polyglot",
+                ],
             },
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
@@ -421,6 +425,10 @@ suite = {
                 "exports" : [
                   "org.graalvm.tools.insight"
                 ],
+                "requires": [
+                  "org.graalvm.polyglot",
+                  "org.graalvm.collections",
+                ],
             },
             "dependencies": [
                 "org.graalvm.tools.insight",
@@ -453,6 +461,10 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.insight.heap",
+                "requires": [
+                  "org.graalvm.collections",
+                  "org.graalvm.polyglot",
+                ],
             },
             "dependencies": [
                 "org.graalvm.tools.insight.heap"
@@ -521,6 +533,9 @@ suite = {
                     # chromeinspector and smoke tests use CPUSampler
                     "com.oracle.truffle.tools.profiler",
                 ],
+                "requires": [
+                  "org.graalvm.polyglot",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.tools.profiler",
@@ -577,6 +592,9 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.coverage",
+                "requires": [
+                  "org.graalvm.polyglot",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.tools.coverage",
@@ -634,6 +652,10 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.dap",
+                "requires": [
+                  "org.graalvm.collections",
+                  "org.graalvm.polyglot",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.tools.dap",
@@ -717,6 +739,11 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.lsp",
+                "requires": [
+                  "org.graalvm.collections",
+                  "org.graalvm.polyglot",
+                  "org.graalvm.truffle",
+                ],
             },
             "dependencies": [
                 "org.graalvm.tools.api.lsp",

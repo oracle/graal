@@ -29,15 +29,15 @@ import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.phases.common.LazyValue;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
-import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.TypeConfiguration;
+import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.vm.ci.meta.MetaUtil;
 
 class JniProcessor extends AbstractProcessor {
@@ -50,7 +50,7 @@ class JniProcessor extends AbstractProcessor {
     @Override
     @SuppressWarnings("fallthrough")
     void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
-        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
             return;
@@ -82,6 +82,14 @@ class JniProcessor extends AbstractProcessor {
         ConfigurationMemberDeclaration declaration = (declaringClass != null) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
         TypeConfiguration config = configurationSet.getJniConfiguration();
         switch (function) {
+            case "AllocObject":
+                expectSize(args, 0);
+                /*
+                 * AllocObject is implemented via Unsafe.allocateInstance, so we need to set the
+                 * "unsafe allocated" flag in the reflection configuration file.
+                 */
+                configurationSet.getReflectionConfiguration().getOrCreateType(condition, clazz).setUnsafeAllocated();
+                break;
             case "GetStaticMethodID":
             case "GetMethodID": {
                 expectSize(args, 2);

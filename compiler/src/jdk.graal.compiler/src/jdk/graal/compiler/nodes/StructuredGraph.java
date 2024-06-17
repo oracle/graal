@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,14 +57,18 @@ import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.loop.LoopSafepointVerification;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.ResolvedJavaMethodProfileProvider;
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
@@ -99,11 +103,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private final ControlFlowGraph cfg;
         private final NodeMap<HIRBlock> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
+        public final SchedulingStrategy strategy;
 
-        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
+        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, SchedulingStrategy strategy) {
             this.cfg = cfg;
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
+            this.strategy = strategy;
         }
 
         public ControlFlowGraph getCFG() {
@@ -299,7 +305,67 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     private final Assumptions assumptions;
 
+    /**
+     * The last schedule which was computed for this graph. Only re-use if
+     * {@link #isLastScheduleValid()} is {@code true}.
+     */
     private ScheduleResult lastSchedule;
+
+    /**
+     * The last control flow graph which was computed for this graph. Only re-use if
+     * {@link #isLastCFGValid()} is {@code true}.
+     */
+    private ControlFlowGraph lastCFG;
+
+    private final CacheInvalidationListener cacheInvalidationListener;
+    private NodeEventScope cacheInvalidationNES;
+
+    /**
+     * Invalidates cached values (e.g., schedule or CFG) if the graph changes. Afterwards, removes
+     * itself from the graph's list of listeners. Needs to be added to the graph again after one of
+     * the caches is set to ensure proper invalidation.
+     */
+    private final class CacheInvalidationListener extends NodeEventListener {
+
+        private boolean lastCFGValid;
+        private boolean lastScheduleValid;
+
+        @Override
+        public void changed(NodeEvent e, Node node) {
+            lastCFGValid = false;
+            lastScheduleValid = false;
+            disableCacheInvalidationListener();
+        }
+    }
+
+    /**
+     * Returns {@code true} if the graph has not changed since calculating the last schedule. Use
+     * {@link #getLastSchedule()} for obtaining the cached schedule.
+     */
+    public boolean isLastScheduleValid() {
+        return cacheInvalidationListener.lastScheduleValid;
+    }
+
+    /**
+     * Returns {@code true} if the graph has not changed since calculating the last control flow
+     * graph. Use {@link #getLastCFG()} for obtaining the cached cfg.
+     */
+    public boolean isLastCFGValid() {
+        return cacheInvalidationListener.lastCFGValid;
+    }
+
+    private void enableCacheInvalidationListener() {
+        if (cacheInvalidationNES == null) {
+            cacheInvalidationNES = this.trackNodeEvents(cacheInvalidationListener);
+        }
+    }
+
+    private void disableCacheInvalidationListener() {
+        if (cacheInvalidationNES != null) {
+            cacheInvalidationNES.close();
+            cacheInvalidationNES = null;
+        }
+    }
 
     private InliningLog inliningLog;
 
@@ -315,9 +381,23 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     private final List<ResolvedJavaMethod> methods;
 
+    /**
+     * See {@link #markUnsafeAccess(Class)} for explanation.
+     */
     private enum UnsafeAccessState {
+        /**
+         * A {@link TrackedUnsafeAccess} node has never been added to this graph.
+         */
         NO_ACCESS,
+
+        /**
+         * A {@link TrackedUnsafeAccess} node was added to this graph at a prior point.
+         */
         HAS_ACCESS,
+
+        /**
+         * In synthetic methods we disable unsafe access tracking.
+         */
         DISABLED
     }
 
@@ -356,22 +436,55 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.profileProvider = profileProvider;
         this.isSubstitution = isSubstitution;
         this.cancellable = cancellable;
-        this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
+        this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isStructuredOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
+        this.cacheInvalidationListener = new CacheInvalidationListener();
     }
 
     public void setLastSchedule(ScheduleResult result) {
         GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
+        cacheInvalidationListener.lastScheduleValid = result != null;
+        if (result != null) {
+            enableCacheInvalidationListener();
+        }
     }
 
+    /**
+     * Returns the last schedule which has been computed for this graph. Use
+     * {@link #isLastScheduleValid()} to verify that the graph has not changed since the last
+     * schedule has been computed.
+     */
     public ScheduleResult getLastSchedule() {
         return lastSchedule;
     }
 
     public void clearLastSchedule() {
         setLastSchedule(null);
+        clearLastCFG();
+    }
+
+    /**
+     * Returns the last control flow graph which has been computed for this graph. Use
+     * {@link #isLastCFGValid()} to verify that the graph has not changed since the last cfg has
+     * been computed. Creating a {@link ControlFlowGraph} via
+     * {@link ControlFlowGraphBuilder#build()} will implicitly return and/or update the cached cfg.
+     */
+    public ControlFlowGraph getLastCFG() {
+        return lastCFG;
+    }
+
+    public void setLastCFG(ControlFlowGraph cfg) {
+        lastCFG = cfg;
+        cacheInvalidationListener.lastCFGValid = cfg != null;
+        if (cfg != null) {
+            enableCacheInvalidationListener();
+        }
+    }
+
+    public void clearLastCFG() {
+        setLastCFG(null);
     }
 
     @Override
@@ -548,7 +661,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         if (inliningLog != null) {
             inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, inlineeMethod, reason, args);
         }
-        if (positive && calleeOptimizationLog != null && optimizationLog.isOptimizationLogEnabled()) {
+        if (positive && calleeOptimizationLog != null && optimizationLog.isStructuredOptimizationLogEnabled()) {
             FixedNode invokeNode = invoke.asFixedNodeOrNull();
             optimizationLog.inline(calleeOptimizationLog, true, invokeNode == null ? null : invokeNode.getNodeSourcePosition());
         }
@@ -1104,7 +1217,31 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return hasUnsafeAccess == UnsafeAccessState.HAS_ACCESS;
     }
 
-    public void markUnsafeAccess() {
+    /**
+     * Records that this graph encodes a memory access via the {@code Unsafe} class.
+     *
+     * HotSpot requires this information to modify the behavior of its signal handling for compiled
+     * code that contains an unsafe memory access.
+     *
+     * @param nodeClass the type of the node encoding the unsafe access
+     */
+    public void markUnsafeAccess(Class<? extends TrackedUnsafeAccess> nodeClass) {
+        markUnsafeAccess();
+    }
+
+    public void maybeMarkUnsafeAccess(EncodedGraph graph) {
+        if (graph.hasUnsafeAccess()) {
+            markUnsafeAccess();
+        }
+    }
+
+    public void maybeMarkUnsafeAccess(StructuredGraph graph) {
+        if (graph.hasUnsafeAccess()) {
+            markUnsafeAccess();
+        }
+    }
+
+    private void markUnsafeAccess() {
         if (hasUnsafeAccess == UnsafeAccessState.DISABLED) {
             return;
         }
@@ -1265,4 +1402,18 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert (inliningLog == null) == (newInliningLog == null) : "the new inlining log must be null iff the previous is null";
         inliningLog = newInliningLog;
     }
+
+    private LoopSafepointVerification safepointVerification;
+
+    @Override
+    public boolean verify(boolean verifyInputs) {
+        if (verifyGraphEdges) {
+            if (safepointVerification == null) {
+                safepointVerification = new LoopSafepointVerification();
+            }
+            assert safepointVerification.verifyLoopSafepoints(this);
+        }
+        return super.verify(verifyInputs);
+    }
+
 }
