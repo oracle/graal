@@ -106,7 +106,7 @@ suite = {
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.arm64"
                     },
                     "riscv64": {
-                        "sha1": "51762767783b9997474397cfac1e5d1a0ad59e2f",
+                        "digest": "sha512:e5bd006664ffadc7ef4c90fbc783a649e3a973ae2a10e76f0b8c2dd5363822ac0b120fd8639b22adf0dd9a3fc190cefa319854bdb2175cb30d6ac76aac358d8e",
                         "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7-linux-riscv64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.riscv64"
                     },
@@ -147,7 +147,7 @@ suite = {
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.linux.arm64"
                     },
                     "riscv64": {
-                        "sha1": "b00dee62b202898ec899cb7bc03604247d648ceb",
+                        "digest": "sha512:95b1a2648ae2325fb581dfcc0d8ca86b0de5ef7471d733c6da84c739df4ce32555591b529192639086130a93bab32b771df4ee9317357101bf0b123b67af2764",
                         "urls": ["{urlbase}/javacpp-shadowed-1.5.7-linux-riscv64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.linux.riscv64"
                     },
