@@ -25,7 +25,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
         + ['--include=' + e for e in  self.guard.includes]
     ],
     guard+: {
-      includes: [
+      includes+: [
         # sulong and its dependencies
         "<graal>/.git/**",
         "<graal>/sdk/**",
@@ -43,6 +43,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
         "<graal>/vm/**",
       ] else []) + (if style then [
         "<graal>/.clang-format",
+        "<graal>/pyproject.toml",
       ] else []),
     },
   },
