@@ -21,7 +21,7 @@
 # questions.
 
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "7.27.0",
   "name" : "visualizer",
 
 
