@@ -333,6 +333,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
@@ -1313,7 +1314,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
 
                     case ATHROW      :
-                        throw getMeta().throwException(nullCheck(popObject(frame, top - 1)));
+                        throw getMethod().getMeta().throwException(nullCheck(popObject(frame, top - 1)));
 
                     case CHECKCAST   : {
                         StaticObject receiver = peekObject(frame, top - 1);
@@ -1549,9 +1550,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             throw e;
                         }
                         assert getContext().getEspressoEnv().Polyglot;
-                        getMeta().polyglot.ForeignException.safeInitialize(); // should fold
+                        Meta meta = getMethod().getMeta();
+                        meta.polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
-                                        getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), getMeta());
+                                        getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), meta);
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
@@ -1641,23 +1643,24 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private StaticObject newReferenceObject(Klass klass) {
         assert !klass.isPrimitive() : "Verifier guarantee";
-        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMeta(), klass, true, this);
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMethod().getMeta(), klass, true, this);
         return getAllocator().createNew((ObjectKlass) klass);
     }
 
     private StaticObject newPrimitiveArray(byte jvmPrimitiveType, int length) {
-        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
-        return getAllocator().createNewPrimitiveArray(getMeta(), jvmPrimitiveType, length);
+        Meta meta = getMethod().getMeta();
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(meta, length, this);
+        return getAllocator().createNewPrimitiveArray(meta, jvmPrimitiveType, length);
     }
 
     private StaticObject newReferenceArray(Klass componentType, int length) {
-        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMethod().getMeta(), length, this);
         return getAllocator().createNewReferenceArray(componentType, length);
     }
 
     private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
         // block while class redefinition is ongoing
-        quickNode.getContext().getClassRedefinition().check();
+        getMethod().getContext().getClassRedefinition().check();
         BaseQuickNode result = quickNode;
         result = atomic(() -> {
             // re-check if node was already replaced by another thread
@@ -1671,7 +1674,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 char cpi = original.readCPI(curBCI);
                 int nodeOpcode = original.currentBC(curBCI);
                 Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                BaseQuickNode toInsert = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining));
+                BaseQuickNode toInsert = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining));
                 nodes[readCPI(curBCI)] = toInsert;
                 return toInsert;
             }
@@ -1918,7 +1921,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 }
             });
         }
-        refArrayStoreNode.arrayStore(getLanguage(), getContext().getMeta(), popObject(frame, top - 1), index, array);
+        refArrayStoreNode.arrayStore(getLanguage(), getMethod().getMeta(), popObject(frame, top - 1), index, array);
     }
 
     private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int top, int statementIndex, InstrumentationSupport instrument, Counter loopCount, boolean skipLivenessActions) {
@@ -2149,7 +2152,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
             char cpi = readCPI(curBCI);
             Method resolutionSeed = resolveMethod(opcode, cpi);
-            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
+            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining);
         });
         return quick;
     }
@@ -2322,16 +2325,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (!resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKEINTERFACE:
                 // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() ||
-                                (getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
+                                (getMethod().getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 if (resolved.getITableIndex() < 0) {
                     if (resolved.isPrivate()) {
@@ -2349,7 +2352,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 if (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate()) {
                     resolvedOpCode = INVOKESPECIAL;
@@ -2362,7 +2365,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (resolved.isConstructor()) {
                     if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(cpi).getHolderKlassName(getConstantPool())) {
                         enterLinkageExceptionProfile();
-                        throw throwBoundary(getMeta().java_lang_NoSuchMethodError,
+                        throw throwBoundary(getMethod().getMeta().java_lang_NoSuchMethodError,
                                         "%s.%s%s",
                                         resolved.getDeclaringKlass().getNameAsString(),
                                         resolved.getNameAsString(),
@@ -2373,7 +2376,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 // If all of the following are true, let C be the direct superclass of the current
                 // class:
@@ -2481,7 +2484,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // someone beat us to it, just trust him.
                 return nodes[readCPI(curBCI)];
             } else {
-                return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMeta(), top, curBCI), QUICK);
+                return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMethod().getMeta(), top, curBCI), QUICK);
             }
         });
         return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
@@ -2533,7 +2536,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             dimensions[i] = popInt(frame, top - allocatedDimensions + i);
         }
         Klass component = ((ArrayKlass) klass).getComponentType();
-        GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(getMeta(), component, dimensions, this);
+        GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(getMethod().getMeta(), component, dimensions, this);
         StaticObject value = getAllocator().createNewMultiArray(component, dimensions);
         putObject(frame, top - allocatedDimensions, value);
         return -allocatedDimensions; // Does not include the created (pushed) array.
@@ -2653,7 +2656,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return value;
         }
         enterImplicitExceptionProfile();
-        throw getMeta().throwNullPointerException();
+        throw getMethod().getMeta().throwNullPointerException();
     }
 
     private int checkNonZero(int value) {
@@ -2661,7 +2664,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return value;
         }
         enterImplicitExceptionProfile();
-        throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
+        throw throwBoundary(getMethod().getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     private long checkNonZero(long value) {
@@ -2669,7 +2672,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return value;
         }
         enterImplicitExceptionProfile();
-        throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
+        throw throwBoundary(getMethod().getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     // endregion Misc. checks
@@ -2700,7 +2703,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          */
         if (field.isStatic() != (opcode == PUTSTATIC)) {
             enterLinkageExceptionProfile();
-            throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError,
+            throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (opcode == PUTSTATIC) ? "static" : "non-static",
                             field.getDeclaringKlass().getNameAsString(),
@@ -2719,7 +2722,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (field.isFinalFlagSet()) {
             if (field.getDeclaringKlass() != getDeclaringKlass()) {
                 enterLinkageExceptionProfile();
-                throw throwBoundary(getMeta().java_lang_IllegalAccessError,
+                throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
                                 field.getDeclaringKlass().getNameAsString(),
@@ -2735,7 +2738,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             ((opcode == PUTFIELD && !getMethod().isConstructor()) ||
                                             (opcode == PUTSTATIC && !getMethod().isClassInitializer()))) {
                 enterLinkageExceptionProfile();
-                throw throwBoundary(getMeta().java_lang_IllegalAccessError,
+                throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
                                 field.getDeclaringKlass().getNameAsString(),
@@ -2866,7 +2869,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          */
         if (field.isStatic() != (opcode == GETSTATIC)) {
             enterLinkageExceptionProfile();
-            throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError,
+            throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (opcode == GETSTATIC) ? "static" : "non-static",
                             field.getDeclaringKlass().getNameAsString(),
