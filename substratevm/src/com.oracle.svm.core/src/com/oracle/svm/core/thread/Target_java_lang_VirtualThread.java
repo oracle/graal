@@ -42,7 +42,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK20OrLater;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
@@ -57,8 +56,6 @@ public final class Target_java_lang_VirtualThread {
     // Checkstyle: stop
     @Alias static int NEW;
     @Alias static int STARTED;
-    @Alias //
-    @TargetElement(onlyWith = JDK21OrEarlier.class) static int RUNNABLE;
     @Alias static int RUNNING;
     @Alias static int PARKING;
     @Alias static int PARKED;
