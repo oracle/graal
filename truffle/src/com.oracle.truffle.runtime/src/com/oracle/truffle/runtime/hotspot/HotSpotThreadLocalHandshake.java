@@ -148,11 +148,44 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     static void setPendingFlagForVirtualThread() {
         TruffleSafepointImpl safepoint = STATE.get();
         if (safepoint != null) {
-            boolean pending = safepoint.isFastPendingSet();
-
             Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
             long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
-            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, pending ? 1 : 0);
+
+            /*
+             * When this method and setFastPending() are run concurrently, there is a possibility
+             * that we set the carrier pending flag to 0 here based on pendingBefore==false, after
+             * setFastPending() sets the flag to 1 (which would lose the flag):
+             *
+             * @formatter:off
+             * with VT=VirtualThread MT=the thread that submits the ThreadLocalAction:
+             * VT: boolean pending = this.fastPendingSet; // false
+             * MT: fastPendingSet = true;
+             * MT: carrierThread.pending = true;
+             * VT: carrierThread.pending = pending; // false
+             * @formatter:on
+             *
+             * So we check for that case with pendingAfter and fix it. This is correct because
+             * either we wrote the 0 before setFastPending() wrote the 1 (harmless), or we wrote it
+             * after and then we must see pendingAfter==true, because (the caller of)
+             * setFastPending() sets fastPendingSet before writing to the carrier pending flag.
+             *
+             * If this method and setFastPending() are not run concurrently, then it is as if both
+             * methods were executed one after another (since all accesses are volatile and so
+             * sequentially consistent) and it works trivially.
+             *
+             * This solution is better than `if (isFastPendingSet()) { carrierThread.pending = 1; }`
+             * because that can leave the carrier flag as true after an unmount of a virtual thread
+             * which did not process safepoints yet and the newly-mounted virtual thread would not
+             * clear it, causing extra stub calls (clearing is only done if fastPendingSet is true,
+             * necessary for DefaultThreadLocalHandshake where clearFastPending() is not
+             * idempotent).
+             */
+            boolean pendingBefore = safepoint.isFastPendingSet();
+            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, pendingBefore ? 1 : 0);
+            boolean pendingAfter = safepoint.isFastPendingSet();
+            if (!pendingBefore && pendingAfter) {
+                UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, 1);
+            }
         }
     }
 
