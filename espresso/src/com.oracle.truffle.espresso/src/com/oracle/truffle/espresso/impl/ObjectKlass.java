@@ -1063,7 +1063,7 @@ public final class ObjectKlass extends Klass {
         assert methodIndex >= 0 : "Undeclared interface method";
         int itableIndex = fastLookup(interfKlass, getiKlassTable());
         if (itableIndex < 0) {
-            Meta meta = getMeta();
+            Meta meta = interfKlass.getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", getName(), interfKlass.getName());
         }
         return getItable()[itableIndex][methodIndex].getMethod();
