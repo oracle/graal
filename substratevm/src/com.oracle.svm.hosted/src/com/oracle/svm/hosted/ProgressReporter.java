@@ -75,7 +75,7 @@ import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
@@ -355,7 +355,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             String migrationMessage = OptionUtils.getAnnotationsByType(descriptor, OptionMigrationMessage.class).stream().map(a -> a.value()).collect(Collectors.joining(". "));
             String alternatives = "";
 
-            if (optionValue instanceof LocatableMultiOptionValue<?> lmov) {
+            if (optionValue instanceof AccumulatingLocatableMultiOptionValue<?> lmov) {
                 if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
                     continue;
                 } else {

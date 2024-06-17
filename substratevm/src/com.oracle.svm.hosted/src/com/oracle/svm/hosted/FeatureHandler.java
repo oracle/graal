@@ -49,7 +49,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistra
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -73,7 +73,7 @@ public class FeatureHandler {
     public static class Options {
         @APIOption(name = "features") //
         @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         private static List<String> userEnabledFeatures() {
             return Options.Features.getValue().values();

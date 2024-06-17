@@ -50,7 +50,7 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
@@ -77,7 +77,8 @@ public final class ConfigurationParserUtils {
      * @return the total number of successfully parsed configuration files and resources.
      */
     public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
-                    HostedOptionKey<LocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<LocatableMultiOptionValue.Strings> configResourcesOption, String directoryFileName) {
+                    HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> configResourcesOption,
+                    String directoryFileName) {
 
         List<Path> paths = configFilesOption.getValue().values();
         List<String> resourceValues = configResourcesOption.getValue().values();

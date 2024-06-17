@@ -35,6 +35,6 @@ import com.oracle.svm.core.SubstrateOptions;
 public class UseSerialOrEpsilonGC implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return SubstrateOptions.UseSerialGC.getValue() || SubstrateOptions.UseEpsilonGC.getValue();
+        return SubstrateOptions.useSerialGC() || SubstrateOptions.useEpsilonGC();
     }
 }

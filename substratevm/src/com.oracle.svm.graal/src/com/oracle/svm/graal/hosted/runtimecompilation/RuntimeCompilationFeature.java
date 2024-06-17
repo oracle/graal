@@ -80,7 +80,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -172,7 +172,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         public static final HostedOptionKey<Boolean> PrintRuntimeCompilationCallTree = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum number of methods allowed for runtime compilation.", stability = OptionStability.STABLE)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
         public static final HostedOptionKey<Boolean> EnforceMaxRuntimeCompileMethods = new HostedOptionKey<>(false);
