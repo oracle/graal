@@ -30,8 +30,6 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -173,9 +171,7 @@ public final class Target_java_lang_VirtualThread {
             } else {
                 return Thread.State.RUNNABLE;
             }
-        } else if (JavaVersionUtil.JAVA_SPEC < 22 && state == RUNNABLE) {
-            return Thread.State.RUNNABLE;
-        } else if (JavaVersionUtil.JAVA_SPEC >= 22 && (state == UNPARKED || state == YIELDED)) {
+        } else if (state == UNPARKED || state == YIELDED) {
             return Thread.State.RUNNABLE;
         } else if (state == RUNNING) {
             Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
@@ -203,12 +199,10 @@ public final class Target_java_lang_VirtualThread {
             }
         } else if (state == TERMINATED) {
             return Thread.State.TERMINATED;
-        } else if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            if (state == TIMED_PARKING) {
-                return Thread.State.RUNNABLE;
-            } else if (state == TIMED_PARKED || state == TIMED_PINNED) {
-                return Thread.State.TIMED_WAITING;
-            }
+        } else if (state == TIMED_PARKING) {
+            return Thread.State.RUNNABLE;
+        } else if (state == TIMED_PARKED || state == TIMED_PINNED) {
+            return Thread.State.TIMED_WAITING;
         }
         throw new InternalError();
     }
