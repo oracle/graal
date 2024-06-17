@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,9 +73,9 @@ import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder;
+import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
@@ -187,11 +187,11 @@ public abstract class NativeImageCodeCache {
     }
 
     public Pair<HostedMethod, CompilationResult> getFirstCompilation() {
-        return orderedCompilations.get(0);
+        return orderedCompilations.getFirst();
     }
 
     public Pair<HostedMethod, CompilationResult> getLastCompilation() {
-        return orderedCompilations.get(orderedCompilations.size() - 1);
+        return orderedCompilations.getLast();
     }
 
     protected List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap) {
@@ -268,9 +268,7 @@ public abstract class NativeImageCodeCache {
 
     public void addConstantsToHeap() {
         VMError.guarantee(!embeddedConstants.isEmpty(), "Embedded constants should already be computed.");
-        embeddedConstants.forEach((constant, reason) -> {
-            addConstantToHeap(constant, reason instanceof BytecodePosition position ? position.getMethod().getName() : reason);
-        });
+        embeddedConstants.forEach((constant, reason) -> addConstantToHeap(constant, reason instanceof BytecodePosition position ? position.getMethod().getName() : reason));
     }
 
     private void addConstantToHeap(Constant constant, Object reason) {
@@ -425,7 +423,7 @@ public abstract class NativeImageCodeCache {
                 HostedType declaringType = hUniverse.lookup(analysisMethod.getDeclaringClass());
                 String name = analysisMethod.getName();
                 HostedType[] parameterTypes = analysisMethod.getSignature().toParameterList(null).stream() //
-                                .map(aType -> hUniverse.lookup(aType)) //
+                                .map(hUniverse::lookup) //
                                 .toArray(HostedType[]::new);
                 int modifiers = analysisMethod.getModifiers();
                 HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType());
@@ -487,7 +485,7 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        HostedImageCodeInfo imageCodeInfo = installCodeInfo(snippetReflection, firstMethod, codeSize, codeInfoEncoder, runtimeMetadataEncoder);
+        HostedImageCodeInfo imageCodeInfo = installCodeInfo(snippetReflection, firstMethod, codeSize, codeInfoEncoder, runtimeMetadataEncoder, watchdog);
 
         if (ImageSingletons.contains(CallStackFrameMethodInfo.class)) {
             ImageSingletons.lookup(CallStackFrameMethodInfo.class).initialize(encoders, hMetaAccess);
@@ -513,9 +511,9 @@ public abstract class NativeImageCodeCache {
     }
 
     protected HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,
-                    RuntimeMetadataEncoder runtimeMetadataEncoder) {
+                    RuntimeMetadataEncoder runtimeMetadataEncoder, DeadlockWatchdog watchdog) {
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
-        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new HostedInstantReferenceAdjuster(snippetReflection));
+        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new HostedInstantReferenceAdjuster(snippetReflection), watchdog::recordActivity);
         runtimeMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
@@ -685,9 +683,7 @@ public abstract class NativeImageCodeCache {
 
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getByteBuffer();
-        dataSection.buildDataSection(bb, (position, constant) -> {
-            writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant);
-        });
+        dataSection.buildDataSection(bb, (position, constant) -> writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant));
     }
 
     public abstract NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache);
@@ -700,8 +696,7 @@ public abstract class NativeImageCodeCache {
 
     public void printCompilationResults() {
         String reportsPath = SubstrateOptions.reportsPath();
-        ReportUtils.report("compilation results", reportsPath, "universe_compilation", "txt",
-                        writer -> printCompilationResults(writer));
+        ReportUtils.report("compilation results", reportsPath, "universe_compilation", "txt", this::printCompilationResults);
     }
 
     private void printCompilationResults(PrintWriter writer) {

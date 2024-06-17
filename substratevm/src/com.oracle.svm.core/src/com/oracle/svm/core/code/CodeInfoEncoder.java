@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -416,10 +416,10 @@ public class CodeInfoEncoder {
         return result;
     }
 
-    public void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
+    public void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster, Runnable recordActivity) {
         encoders.encodeAllAndInstall(target, adjuster);
         encodeReferenceMaps();
-        frameInfoEncoder.encodeAllAndInstall(target);
+        frameInfoEncoder.encodeAllAndInstall(target, recordActivity);
         encodeIPData();
 
         install(target);
@@ -712,8 +712,7 @@ class CodeInfoVerifier {
     private void verifyValue(CompilationResult compilation, JavaValue e, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         JavaValue expectedValue = e;
 
-        if (expectedValue instanceof StackLockValue) {
-            StackLockValue lock = (StackLockValue) expectedValue;
+        if (expectedValue instanceof StackLockValue lock) {
             assert ValueUtil.isIllegal(lock.getSlot()) : actualValue;
             assert lock.isEliminated() == actualValue.isEliminatedMonitor() : actualValue;
             expectedValue = lock.getOwner();
