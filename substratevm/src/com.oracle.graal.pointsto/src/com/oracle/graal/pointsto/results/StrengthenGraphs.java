@@ -172,10 +172,28 @@ public abstract class StrengthenGraphs {
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(bb.getOptions())) {
             beforeCounters = new StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation.BEFORE_STRENGTHEN_GRAPHS);
             afterCounters = new StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation.AFTER_STRENGTHEN_GRAPHS);
+            reportNeverNullInstanceFields(bb);
         } else {
             beforeCounters = null;
             afterCounters = null;
         }
+    }
+
+    private static void reportNeverNullInstanceFields(BigBang bb) {
+        int neverNull = 0;
+        int canBeNull = 0;
+        for (var field : bb.getUniverse().getFields()) {
+            if (!field.isStatic() && field.isReachable() && field.getType().getStorageKind() == JavaKind.Object) {
+                if (field.getSinkFlow().getState().canBeNull()) {
+                    canBeNull++;
+                } else {
+                    neverNull++;
+                }
+            }
+        }
+        ImageBuildStatistics imageBuildStats = ImageBuildStatistics.counters();
+        imageBuildStats.insert("instancefield_neverNull").addAndGet(neverNull);
+        imageBuildStats.insert("instancefield_canBeNull").addAndGet(canBeNull);
     }
 
     @SuppressWarnings("try")
@@ -369,9 +387,7 @@ public abstract class StrengthenGraphs {
                  * update the stamp directly to the stamp that is correct for the whole method and
                  * all inlined methods.
                  */
-                var field = (AnalysisField) node.field();
-                var fieldTypeFlow = field.isStatic() ? field.getStaticFieldFlow() : field.getInstanceFieldFlow();
-                Object fieldNewStampOrConstant = strengthenStampFromTypeFlow(node, fieldTypeFlow, node, tool);
+                Object fieldNewStampOrConstant = strengthenStampFromTypeFlow(node, ((AnalysisField) node.field()).getSinkFlow(), node, tool);
                 if (fieldNewStampOrConstant instanceof JavaConstant) {
                     ConstantNode replacement = ConstantNode.forConstant((JavaConstant) fieldNewStampOrConstant, bb.getMetaAccess(), graph);
                     graph.replaceFixedWithFloating(node, replacement);

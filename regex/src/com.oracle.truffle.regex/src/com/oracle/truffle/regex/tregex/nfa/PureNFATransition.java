@@ -62,15 +62,27 @@ public final class PureNFATransition implements AbstractTransition<PureNFAState,
     private final GroupBoundaries groupBoundaries;
     private final boolean caretGuard;
     private final boolean dollarGuard;
+    private final boolean matchBeginGuard;
+    private final boolean matchEndGuard;
     @CompilationFinal(dimensions = 1) private final long[] guards;
 
-    public PureNFATransition(int id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, boolean caretGuard, boolean dollarGuard, long[] guards) {
+    public PureNFATransition(int id,
+                    PureNFAState source,
+                    PureNFAState target,
+                    GroupBoundaries groupBoundaries,
+                    boolean caretGuard,
+                    boolean dollarGuard,
+                    boolean matchBeginGuard,
+                    boolean matchEndGuard,
+                    long[] guards) {
         this.id = id;
         this.source = source;
         this.target = target;
         this.caretGuard = caretGuard;
         this.groupBoundaries = groupBoundaries;
         this.dollarGuard = dollarGuard;
+        this.matchBeginGuard = matchBeginGuard;
+        this.matchEndGuard = matchEndGuard;
         this.guards = guards;
     }
 
@@ -108,6 +120,20 @@ public final class PureNFATransition implements AbstractTransition<PureNFAState,
      */
     public boolean hasDollarGuard() {
         return dollarGuard;
+    }
+
+    /**
+     * Transition is guarded by the "MATCH_BEGIN" - {@link PositionAssertion}.
+     */
+    public boolean hasMatchBeginGuard() {
+        return matchBeginGuard;
+    }
+
+    /**
+     * Transition is guarded by the "MATCH_END" - {@link PositionAssertion}.
+     */
+    public boolean hasMatchEndGuard() {
+        return matchEndGuard;
     }
 
     public long[] getGuards() {

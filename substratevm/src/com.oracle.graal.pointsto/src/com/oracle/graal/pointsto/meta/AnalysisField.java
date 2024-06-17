@@ -31,14 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
@@ -73,17 +71,17 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public final ResolvedJavaField wrapped;
 
-    /** Field type flow for the static fields. */
-    protected FieldTypeFlow staticFieldFlow;
-
-    /** Initial field type flow, i.e., as specified by the analysis client. */
-    protected FieldTypeFlow initialInstanceFieldFlow;
-
+    /**
+     * Initial field type flow, i.e., as specified by the analysis client. It can be used to inject
+     * specific types into a field that the analysis would not see on its own, and to inject the
+     * null value into a field.
+     */
+    protected FieldTypeFlow initialFlow;
     /**
      * Field type flow that reflects all the types flowing in this field on its declaring type and
-     * all the sub-types. It doesn't track any context-sensitive information.
+     * all the sub-types. It does not track any context-sensitive information.
      */
-    protected ContextInsensitiveFieldTypeFlow instanceFieldFlow;
+    protected FieldTypeFlow sinkFlow;
 
     /** The reason flags contain a {@link BytecodePosition} or a reason object. */
     @SuppressWarnings("unused") private volatile Object isRead;
@@ -91,12 +89,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @SuppressWarnings("unused") private volatile Object isWritten;
     @SuppressWarnings("unused") private volatile Object isFolded;
     @SuppressWarnings("unused") private volatile Object isUnsafeAccessed;
-
-    /**
-     * By default all instance fields are null before are initialized. It can be specified by
-     * {@link HostVM} that certain fields will not be null.
-     */
-    private boolean canBeNull;
 
     private ConcurrentMap<Object, Boolean> readBy;
     private ConcurrentMap<Object, Boolean> writtenBy;
@@ -129,14 +121,16 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         declaringClass = universe.lookup(wrappedField.getDeclaringClass());
         fieldType = getDeclaredType(universe, wrappedField);
 
+        initialFlow = new FieldTypeFlow(this, getType());
         if (this.isStatic()) {
-            this.canBeNull = false;
-            this.staticFieldFlow = new FieldTypeFlow(this, getType());
-            this.initialInstanceFieldFlow = null;
+            /* There is never any context-sensitivity for static fields. */
+            sinkFlow = initialFlow;
         } else {
-            this.canBeNull = !getStorageKind().isPrimitive();
-            this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
-            this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
+            /*
+             * Regardless of the context-sensitivity policy, there is always this single type flow
+             * that accumulates all types.
+             */
+            sinkFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
         }
 
         if (universe.hostVM().useBaseLayer()) {
@@ -202,45 +196,22 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     }
 
-    /**
-     * Returns all possible types that this field can have. The result is not context sensitive,
-     * i.e., it is a union of all types found in all contexts.
-     */
-    public TypeState getTypeState() {
-        if (getType().getStorageKind() != JavaKind.Object) {
-            return null;
-        } else if (isStatic()) {
-            return staticFieldFlow.getState();
-        } else {
-            return getInstanceFieldTypeState();
-        }
+    public FieldTypeFlow getInitialFlow() {
+        return initialFlow;
     }
 
-    public TypeState getInstanceFieldTypeState() {
-        return instanceFieldFlow.getState();
-    }
-
-    public FieldTypeFlow getInitialInstanceFieldFlow() {
-        return initialInstanceFieldFlow;
+    public FieldTypeFlow getSinkFlow() {
+        return sinkFlow;
     }
 
     public FieldTypeFlow getStaticFieldFlow() {
         assert Modifier.isStatic(this.getModifiers()) : this;
-
-        return staticFieldFlow;
-    }
-
-    /** Get the field type flow, stripped of any context. */
-    public ContextInsensitiveFieldTypeFlow getInstanceFieldFlow() {
-        assert !Modifier.isStatic(this.getModifiers()) : this;
-
-        return instanceFieldFlow;
+        return sinkFlow;
     }
 
     public void cleanupAfterAnalysis() {
-        staticFieldFlow = null;
-        instanceFieldFlow = null;
-        initialInstanceFieldFlow = null;
+        initialFlow = null;
+        sinkFlow = null;
         readBy = null;
         writtenBy = null;
     }
@@ -418,14 +389,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public void setFieldValueInterceptor(Object fieldValueInterceptor) {
         this.fieldValueInterceptor = fieldValueInterceptor;
-    }
-
-    public void setCanBeNull(boolean canBeNull) {
-        this.canBeNull = canBeNull;
-    }
-
-    public boolean canBeNull() {
-        return canBeNull;
     }
 
     @Override

@@ -39,21 +39,6 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     private static final AtomicReferenceFieldUpdater<FieldTypeFlow, FieldFilterTypeFlow> FILTER_FLOW_UPDATER = AtomicReferenceFieldUpdater.newUpdater(FieldTypeFlow.class, FieldFilterTypeFlow.class,
                     "filterFlow");
 
-    private static TypeState initialFieldState(AnalysisField field) {
-        if (field.getStorageKind().isPrimitive()) {
-            return TypeState.forPrimitiveConstant(0);
-        } else if (field.canBeNull()) {
-            /*
-             * All object type instance fields of a new object can be null. Instance fields are null
-             * in the time between the new-instance and the first write to a field. This is even
-             * true for non-null final fields because even final fields are null until they are
-             * initialized in a constructor.
-             */
-            return TypeState.forNull();
-        }
-        return TypeState.forEmpty();
-    }
-
     /** The holder of the field flow (null for static fields). */
     private final AnalysisObject object;
 
@@ -65,7 +50,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     public FieldTypeFlow(AnalysisField field, AnalysisType type, AnalysisObject object) {
-        super(field, filterUncheckedInterface(type), initialFieldState(field));
+        super(field, filterUncheckedInterface(type), TypeState.forEmpty());
         this.object = object;
     }
 

@@ -55,6 +55,19 @@ public class PointsToAnalysisType extends AnalysisType {
         super(universe, javaType, storageKind, objectType, cloneableType);
     }
 
+    @Override
+    public boolean registerAsUnsafeAllocated(Object reason) {
+        boolean result = super.registerAsUnsafeAllocated(reason);
+        if (result) {
+            var bb = (PointsToAnalysis) universe.getBigbang();
+            for (var f : getInstanceFields(true)) {
+                var field = (AnalysisField) f;
+                field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+            }
+        }
+        return result;
+    }
+
     /**
      * @see AnalysisType#registerAsAssignable(BigBang)
      */

@@ -261,7 +261,17 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
          */
         static HotSpotGC forName(int name, GraalHotSpotVMConfig config) {
             for (HotSpotGC gc : HotSpotGC.values()) {
-                if (config.getConstant("CollectedHeap::" + gc.name(), Integer.class, -1, gc.expectNamePresent) == name) {
+                if (gc == X || gc == Z) {
+                    // CollectedHeap::X is not defined in HotSpot. Query CollectedHeap::Z instead
+                    // and the ZGenerational flag.
+                    if (config.getConstant("CollectedHeap::Z", Integer.class, -1, gc.expectNamePresent) == name) {
+                        if (config.getFlag("ZGenerational", Boolean.class, false, true)) {
+                            return Z;
+                        } else {
+                            return X;
+                        }
+                    }
+                } else if (config.getConstant("CollectedHeap::" + gc.name(), Integer.class, -1, gc.expectNamePresent) == name) {
                     return gc;
                 }
             }
