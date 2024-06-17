@@ -832,7 +832,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                     throw PolyglotEngineException.illegalState("Context cannot be entered in polyglot thread's beforeEnter or afterLeave notifications.");
                 }
                 PolyglotThreadAccessException threadAccessException = null;
-                LOOP: for (;;) {
+                loop: for (;;) {
                     if (threadAccessException != null) {
                         threadAccessException.rethrow(this);
                     }
@@ -868,7 +868,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                                 threadInfo = createThreadInfo(current, polyglotThreadFirstEnter);
                             } catch (PolyglotThreadAccessException ex) {
                                 threadAccessException = ex;
-                                continue LOOP;
+                                continue loop;
                             }
                             needsInitialization = true;
                         }
@@ -889,7 +889,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                                 checkAllThreadAccesses(Thread.currentThread(), false);
                             } catch (PolyglotThreadAccessException ex) {
                                 threadAccessException = ex;
-                                continue LOOP;
+                                continue loop;
                             }
                         }
 

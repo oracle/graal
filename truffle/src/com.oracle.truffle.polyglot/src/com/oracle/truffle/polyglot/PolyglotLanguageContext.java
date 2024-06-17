@@ -621,7 +621,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             boolean wasCreated = false;
             try {
                 PolyglotThreadAccessException threadAccessException = null;
-                LOOP: for (;;) {
+                loop: for (;;) {
                     if (threadAccessException != null) {
                         threadAccessException.rethrow(context);
                     }
@@ -648,7 +648,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                 checkThreadAccess(localEnv);
                             } catch (PolyglotThreadAccessException ex) {
                                 threadAccessException = ex;
-                                continue LOOP;
+                                continue loop;
                             }
 
                             // no more errors after this line
@@ -688,7 +688,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             created = true;
                         }
                     }
-                    break LOOP;
+                    break loop;
                 }
             } finally {
                 if (!wasCreated && eventsEnabled) {
