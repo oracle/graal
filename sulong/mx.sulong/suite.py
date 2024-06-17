@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.43.0",
+  "mxversion": "7.27.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
   "groupId": "org.graalvm.llvm",
