@@ -312,7 +312,7 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
     private static final class ParameterizedRunner extends BlockJUnit4ClassRunnerWithParameters {
 
         ParameterizedRunner(TestWithParameters test) throws InitializationError {
-            super(test);
+            super(new TestWithParameters(test.getName(), new TruffleTestClass(test.getTestClass().getJavaClass()), test.getParameters()));
         }
 
         @Override
