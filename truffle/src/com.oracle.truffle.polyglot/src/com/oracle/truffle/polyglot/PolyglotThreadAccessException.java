@@ -47,6 +47,11 @@ final class PolyglotThreadAccessException extends Exception {
         super(message);
     }
 
+    @Override
+    public Throwable fillInStackTrace() {
+        return this;
+    }
+
     void rethrow(PolyglotContextImpl context) {
         assert !Thread.holdsLock(context) : "Only rethrow without holding internal lock";
         PolyglotEngineException ex = PolyglotEngineException.illegalState(getMessage());
