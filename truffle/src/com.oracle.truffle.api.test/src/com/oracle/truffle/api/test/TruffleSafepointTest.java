@@ -1250,6 +1250,11 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                     contextSafepoint();
                     reschedule();
                 }
+                /*
+                 * There is a poll() after this while loop, on the return from the CallTarget. That
+                 * ensures all ThreadLocalActions are processed without needing to wait for their
+                 * futures. This also helped to find some bugs.
+                 */
                 return true;
             })) {
                 AtomicInteger eventCounter = new AtomicInteger();
