@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.heap;
 
 import java.lang.reflect.Field;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -143,7 +144,7 @@ public abstract class ImageHeapScanner {
                     if (fieldType.isArray() || (fieldType.isInstanceClass() && !fieldType.isAbstract())) {
                         fieldType.registerAsInstantiated(field);
                     }
-                    bb.injectFieldTypes(field, fieldType);
+                    bb.injectFieldTypes(field, List.of(fieldType), true);
                 }
                 return;
             }
@@ -151,8 +152,6 @@ public abstract class ImageHeapScanner {
                 JavaConstant fieldValue = readStaticFieldValue(field);
                 markReachable(fieldValue, reason);
                 notifyAnalysis(field, null, fieldValue, reason);
-            } else if (field.canBeNull()) {
-                notifyAnalysis(field, null, JavaConstant.NULL_POINTER, reason);
             }
         } else {
             /* Trigger field scanning for the already processed objects. */
@@ -616,8 +615,6 @@ public abstract class ImageHeapScanner {
             JavaConstant fieldValue = imageHeapInstance.readFieldValue(field);
             markReachable(fieldValue, reason, onAnalysisModified);
             notifyAnalysis(field, imageHeapInstance, fieldValue, reason, onAnalysisModified);
-        } else if (field.canBeNull()) {
-            notifyAnalysis(field, imageHeapInstance, JavaConstant.NULL_POINTER, reason, onAnalysisModified);
         }
     }
 

@@ -262,9 +262,9 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     @SuppressWarnings("unused")
     protected void linkFieldFlows(PointsToAnalysis bb, AnalysisField field, FieldTypeStore fieldStore) {
         // link the initial instance field flow to the field write flow
-        field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
-        // link the field read flow to the context insensitive instance field flow
-        fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
+        field.getInitialFlow().addUse(bb, fieldStore.writeFlow());
+        // link the field read flow to the sink flow that accumulates all field types
+        fieldStore.readFlow().addUse(bb, field.getSinkFlow());
     }
 
     /**

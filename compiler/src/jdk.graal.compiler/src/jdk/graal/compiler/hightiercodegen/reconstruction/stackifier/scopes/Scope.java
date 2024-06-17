@@ -27,9 +27,10 @@ package jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.CFStackifierSortPhase;
 import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
+
+import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
+import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.CFStackifierSortPhase;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
@@ -79,27 +80,23 @@ public class Scope {
     }
 
     /**
-     * Gives all blocks that are contained in this set sorted by their id. Care needs to be taken
-     * when this function is called. E.g. calling this function before and after
-     * {@link CFStackifierSortPhase} might give different results because the id of the
-     * {@link HIRBlock} might be changed and therefore the order.
-     *
-     * @return blocks sorted by their id
+     * @param stackifierData used to determine the sort order of blocks.
+     * @return the blocks contained in this scope, sorted in the order computed by
+     *         {@link CFStackifierSortPhase}.
      */
-    public HIRBlock[] getSortedBlocks() {
+    public HIRBlock[] getSortedBlocks(StackifierData stackifierData) {
         HIRBlock[] blockArray = blocks.toArray(new HIRBlock[blocks.size()]);
-        Arrays.sort(blockArray, Comparator.comparingInt(BasicBlock<HIRBlock>::getId));
+        Arrays.sort(blockArray, Comparator.comparingInt(stackifierData::blockOrder));
         return blockArray;
     }
 
     /**
-     *
      * @return the {@link HIRBlock} with the highest id.
      */
-    public HIRBlock getLastBlock() {
+    public HIRBlock getLastBlock(StackifierData stackifierData) {
         HIRBlock last = blocks.iterator().next();
         for (HIRBlock b : blocks) {
-            if (b.getId() > last.getId()) {
+            if (stackifierData.isOrderedBefore(last, b)) {
                 last = b;
             }
         }

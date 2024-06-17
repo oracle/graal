@@ -910,13 +910,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod caller, AnalysisMethod method) {
             if (outer instanceof InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accOuter) {
                 /*
                  * Once the accumulative policy is activated, we cannot return to the trivial
                  * policy.
                  */
-                return inliningUtils.createAccumulativeInlineScope(accOuter, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
+                return inliningUtils.createAccumulativeInlineScope(accOuter, caller, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
 
             assert outer == null || outer instanceof RuntimeCompilationAlwaysInlineScope : "unexpected outer scope: " + outer;
@@ -936,7 +936,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 return new RuntimeCompilationAlwaysInlineScope(inliningDepth);
             } else {
                 // start with a new accumulative inline scope
-                return inliningUtils.createAccumulativeInlineScope(null, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
+                return inliningUtils.createAccumulativeInlineScope(null, caller, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
         }
     }

@@ -58,6 +58,7 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -88,7 +89,7 @@ public class LocalizationSupport {
 
     public final Charset defaultCharset;
 
-    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = EconomicMap.create();
+    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create();
 
     public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
         this.defaultLocale = defaultLocale;

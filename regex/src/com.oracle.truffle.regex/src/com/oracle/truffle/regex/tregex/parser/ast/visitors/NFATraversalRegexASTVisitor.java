@@ -141,6 +141,7 @@ public abstract class NFATraversalRegexASTVisitor {
     private RegexASTNode cur;
     private Set<LookBehindAssertion> traversableLookBehindAssertions;
     private boolean canTraverseCaret = false;
+    private boolean ignoreMatchBoundaryAssertions = false;
     private TBitSet matchedConditionGroups;
     private boolean forward = true;
     private boolean done = false;
@@ -178,6 +179,8 @@ public abstract class NFATraversalRegexASTVisitor {
     private final TBitSet lookAroundsOnPath;
     private int dollarsOnPath = 0;
     private int caretsOnPath = 0;
+    private int matchBeginAssertionsOnPath = 0;
+    private int matchEndAssertionsOnPath = 0;
     private final int[] lookAroundVisitiedCount;
     private final TBitSet captureGroupUpdates;
     private final TBitSet captureGroupClears;
@@ -224,6 +227,10 @@ public abstract class NFATraversalRegexASTVisitor {
 
     public void setCanTraverseCaret(boolean canTraverseCaret) {
         this.canTraverseCaret = canTraverseCaret;
+    }
+
+    public void setIgnoreMatchBoundaryAssertions(boolean ignoreMatchBoundaryAssertions) {
+        this.ignoreMatchBoundaryAssertions = ignoreMatchBoundaryAssertions;
     }
 
     public void setMatchedConditionGroups(TBitSet matchedConditionGroups) {
@@ -276,6 +283,8 @@ public abstract class NFATraversalRegexASTVisitor {
         assert curPath.isEmpty();
         assert dollarsOnPath == 0;
         assert caretsOnPath == 0;
+        assert matchBeginAssertionsOnPath == 0;
+        assert matchEndAssertionsOnPath == 0;
         assert lookAroundsOnPath.isEmpty();
         assert nodeVisitsEmpty() : Arrays.toString(lookAroundVisitiedCount);
         assert !shouldRetreat;
@@ -320,6 +329,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 clearCaptureGroupData();
                 clearTransitionGuards();
                 transitionGuardsResult = null;
+                matchBeginAssertionsOnPath = 0;
+                matchEndAssertionsOnPath = 0;
                 /*
                  * no need to clear nodeVisitedCount here, because !dollarsOnPath() &&
                  * lookAroundsOnPath.isEmpty() implies nodeVisitsEmpty()
@@ -357,6 +368,14 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected boolean dollarsOnPath() {
         return dollarsOnPath > 0;
+    }
+
+    protected boolean matchBeginAssertionsOnPath() {
+        return matchBeginAssertionsOnPath > 0;
+    }
+
+    protected boolean matchEndAssertionsOnPath() {
+        return matchEndAssertionsOnPath > 0;
     }
 
     protected boolean hasTransitionGuards() {
@@ -451,25 +470,51 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                     case DOLLAR:
                         dollarsOnPath++;
-                        return advanceTerm((Term) cur);
+                        return advanceTerm(assertion);
+                    case MATCH_BEGIN:
+                        if (!ignoreMatchBoundaryAssertions) {
+                            matchBeginAssertionsOnPath++;
+                            if (forward && isBuildingDFA() && !isRootEnterOnPath()) {
+                                return retreat();
+                            }
+                        }
+                        return advanceTerm(assertion);
+                    case MATCH_END:
+                        if (!ignoreMatchBoundaryAssertions) {
+                            matchEndAssertionsOnPath++;
+                            if (!forward && isBuildingDFA() && !isRootEnterOnPath()) {
+                                return retreat();
+                            }
+                        }
+                        return advanceTerm(assertion);
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-            } else if (canTraverseLookArounds() && cur.isLookAheadAssertion()) {
-                enterLookAhead((LookAheadAssertion) cur);
-                addLookAroundToVisitedSet();
-                return advanceTerm((Term) cur);
-            } else if (canTraverseLookArounds() && cur.isLookBehindAssertion()) {
-                addLookAroundToVisitedSet();
-                if (traversableLookBehindAssertions == null || traversableLookBehindAssertions.contains(cur)) {
-                    return advanceTerm((LookBehindAssertion) cur);
-                } else {
-                    return retreat();
+            } else if (cur.isLookAroundAssertion()) {
+                LookAroundAssertion lookAround = cur.asLookAroundAssertion();
+                if (canTraverseLookArounds()) {
+                    if (lookAround.isLookAheadAssertion()) {
+                        enterLookAhead(lookAround.asLookAheadAssertion());
+                        addLookAroundToVisitedSet();
+                        return advanceTerm(lookAround);
+                    } else {
+                        assert lookAround.isLookBehindAssertion();
+                        addLookAroundToVisitedSet();
+                        if (traversableLookBehindAssertions == null || traversableLookBehindAssertions.contains(lookAround.asLookBehindAssertion())) {
+                            return advanceTerm(lookAround);
+                        } else {
+                            return retreat();
+                        }
+                    }
                 }
+                return true;
             } else {
-                assert cur.isCharacterClass() || cur.isBackReference() || cur.isMatchFound() || cur.isAtomicGroup() || (!canTraverseLookArounds() && cur.isLookAroundAssertion());
+                assert cur.isCharacterClass() || cur.isBackReference() || cur.isMatchFound() || cur.isAtomicGroup();
                 if ((forward && dollarsOnPath() || !forward && caretsOnPath()) && cur.isCharacterClass()) {
                     // don't visit CharacterClass nodes if we traversed PositionAssertions already
+                    return retreat();
+                }
+                if (!ignoreMatchBoundaryAssertions && matchEndAssertionsOnPath() && (cur.isCharacterClass() || cur.isBackReference())) {
                     return retreat();
                 }
                 return true;
@@ -639,10 +684,25 @@ public abstract class NFATraversalRegexASTVisitor {
                         leaveLookAhead(node.asLookAheadAssertion());
                     }
                     removeLookAroundFromVisitedSet(lastVisited);
-                } else if (node.isDollar()) {
-                    dollarsOnPath--;
-                } else if (node.isCaret()) {
-                    caretsOnPath--;
+                } else if (node.isPositionAssertion()) {
+                    switch (node.asPositionAssertion().type) {
+                        case CARET -> {
+                            caretsOnPath--;
+                        }
+                        case DOLLAR -> {
+                            dollarsOnPath--;
+                        }
+                        case MATCH_BEGIN -> {
+                            if (!ignoreMatchBoundaryAssertions) {
+                                matchBeginAssertionsOnPath--;
+                            }
+                        }
+                        case MATCH_END -> {
+                            if (!ignoreMatchBoundaryAssertions) {
+                                matchEndAssertionsOnPath--;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -681,6 +741,12 @@ public abstract class NFATraversalRegexASTVisitor {
         }
         if (dollarsOnPath()) {
             id |= 1L << 33;
+        }
+        if (matchBeginAssertionsOnPath()) {
+            id |= 1L << 34;
+        }
+        if (matchEndAssertionsOnPath()) {
+            id |= 1L << 35;
         }
         dedupKey.clear();
         dedupKey.add(id);
@@ -814,6 +880,19 @@ public abstract class NFATraversalRegexASTVisitor {
      */
     private Sequence pathGroupGetNext(long pathElement) {
         return ((Group) pathGetNode(pathElement)).getAlternatives().get(pathGetGroupAltIndex(pathElement));
+    }
+
+    protected boolean isRootEnterOnPath() {
+        return isGroupEnterOnPath(ast.getRoot().getId());
+    }
+
+    private boolean isGroupEnterOnPath(int groupNodeId) {
+        for (long element : curPath) {
+            if (pathGetNodeId(element) == groupNodeId && pathIsGroupEnter(element)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// Pushing and popping group elements to and from the path

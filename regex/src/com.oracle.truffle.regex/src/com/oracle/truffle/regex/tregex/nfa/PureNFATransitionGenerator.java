@@ -78,14 +78,22 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
         if (pruneLookarounds(target)) {
             return;
         }
-
         PureNFAState targetState;
         if (target instanceof MatchFound) {
             targetState = (isReverse() && caretsOnPath() || !isReverse() && dollarsOnPath()) ? nfaGen.getAnchoredFinalState() : nfaGen.getUnAnchoredFinalState();
         } else {
             targetState = nfaGen.getOrCreateState((Term) target);
         }
-        transitionBuffer.add(new PureNFATransition(nfaGen.getTransitionIdCounter().inc(), curState, targetState, getGroupBoundaries(), caretsOnPath(), dollarsOnPath(), getTransitionGuardsOnPath()));
+        // if there's an enter of group 0 on the path, the matchBegin assertion will always match,
+        // so we omit the guard
+        boolean matchBeginGuard = matchBeginAssertionsOnPath() && !isRootEnterOnPath();
+        transitionBuffer.add(new PureNFATransition(nfaGen.getTransitionIdCounter().inc(), curState, targetState,
+                        getGroupBoundaries(),
+                        caretsOnPath(),
+                        dollarsOnPath(),
+                        matchBeginGuard,
+                        matchEndAssertionsOnPath(),
+                        getTransitionGuardsOnPath()));
     }
 
     @Override
