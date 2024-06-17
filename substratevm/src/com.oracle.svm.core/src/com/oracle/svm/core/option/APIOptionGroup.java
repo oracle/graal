@@ -35,4 +35,8 @@ public interface APIOptionGroup {
     default char valueSeparator() {
         return '=';
     }
+
+    default HostedOptionKey<ReplacingLocatableMultiOptionValue.DelimitedString> multiValueOption() {
+        return null;
+    }
 }

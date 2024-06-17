@@ -101,7 +101,7 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
 
         List<GarbageCollectorMXBean> garbageCollectors;
-        if (SubstrateOptions.UseEpsilonGC.getValue()) {
+        if (SubstrateOptions.useEpsilonGC()) {
             garbageCollectors = Arrays.asList(new EpsilonGarbageCollectorMXBean());
         } else {
             garbageCollectors = Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean());
@@ -171,10 +171,10 @@ class GenScavengeGCFeature implements InternalFeature {
     }
 
     private static PerfDataHolder createPerfData() {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.useSerialGC()) {
             return new SerialGCPerfData();
         } else {
-            assert SubstrateOptions.UseEpsilonGC.getValue();
+            assert SubstrateOptions.useEpsilonGC();
             return new EpsilonGCPerfData();
         }
     }

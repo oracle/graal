@@ -41,7 +41,7 @@ import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
@@ -53,16 +53,16 @@ public class OptionClassFilterBuilder {
     private final Pattern validOptionValue = Pattern.compile(javaIdentifier + "(\\." + javaIdentifier + ")*");
 
     private final ImageClassLoader imageClassLoader;
-    private final HostedOptionKey<LocatableMultiOptionValue.Strings> baseOption;
-    private final HostedOptionKey<LocatableMultiOptionValue.Strings> pathsOption;
+    private final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> baseOption;
+    private final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> pathsOption;
     private final Map<URI, Module> uriModuleMap;
 
     protected final Map<String, Set<OptionOrigin>> requireCompletePackageOrClass = new HashMap<>();
     private final Set<Module> requireCompleteModules = new HashSet<>();
     private boolean requireCompleteAll;
 
-    public static OptionClassFilter createFilter(ImageClassLoader imageClassLoader, HostedOptionKey<LocatableMultiOptionValue.Strings> baseOption,
-                    HostedOptionKey<LocatableMultiOptionValue.Strings> pathsOption) {
+    public static OptionClassFilter createFilter(ImageClassLoader imageClassLoader, HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> baseOption,
+                    HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> pathsOption) {
         OptionClassFilterBuilder builder = new OptionClassFilterBuilder(imageClassLoader, baseOption, pathsOption);
 
         baseOption.getValue().getValuesWithOrigins().forEach(builder::extractBaseOptionValue);
@@ -71,8 +71,8 @@ public class OptionClassFilterBuilder {
         return builder.build();
     }
 
-    public OptionClassFilterBuilder(ImageClassLoader imageClassLoader, HostedOptionKey<LocatableMultiOptionValue.Strings> baseOption,
-                    HostedOptionKey<LocatableMultiOptionValue.Strings> pathsOption) {
+    public OptionClassFilterBuilder(ImageClassLoader imageClassLoader, HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> baseOption,
+                    HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> pathsOption) {
         this.imageClassLoader = imageClassLoader;
         this.baseOption = baseOption;
         this.pathsOption = pathsOption;

@@ -338,6 +338,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 String optionName;
                 if (optionInfo.group == null) {
                     optionName = APIOption.Utils.optionName(variant);
+                } else if (optionInfo.group.multiValueOption() != null) {
+                    String headArg = argQueue.peek();
+                    if (!headArg.startsWith(APIOption.Utils.groupName(optionInfo.group))) {
+                        continue;
+                    }
+
+                    return headArg.replace(APIOption.Utils.optionName(optionInfo.group.name()), "-H:" + optionInfo.group.multiValueOption().getName());
                 } else {
                     optionName = APIOption.Utils.groupName(optionInfo.group) + variant;
                 }

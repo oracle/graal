@@ -52,7 +52,7 @@ import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -273,7 +273,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         }
     }
 
-    static boolean isClassListedInStringOption(LocatableMultiOptionValue.Strings option, Class<?> clazz) {
+    static boolean isClassListedInStringOption(AccumulatingLocatableMultiOptionValue.Strings option, Class<?> clazz) {
         return option.values().contains(clazz.getName());
     }
 

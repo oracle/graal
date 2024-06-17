@@ -133,7 +133,7 @@ public final class GCImpl implements GC {
 
     @Override
     public String getName() {
-        if (SubstrateOptions.UseEpsilonGC.getValue()) {
+        if (SubstrateOptions.useEpsilonGC()) {
             return "Epsilon GC";
         } else {
             return "Serial GC";
