@@ -93,11 +93,6 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Override
-    protected void setFastPending(Thread t) {
-        setVolatile(t, 1);
-    }
-
-    @Override
     @TruffleBoundary
     public TruffleSafepointImpl getCurrent() {
         TruffleSafepointImpl state = STATE.get();
@@ -110,21 +105,24 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Override
     protected void clearFastPending() {
-        setVolatile(Thread.currentThread(), 0);
+        Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+        long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
+        UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, 0);
     }
 
-    private static void setVolatile(Thread thread, int value) {
+    @Override
+    protected void setFastPending(Thread thread) {
         /*
          * The thread will not go away here because the Truffle implementation ensures that this
          * method is no longer used if the thread is no longer active. It only sets this state for
          * contexts that are currently entered on a thread. Being entered implies that the thread is
          * active.
          */
-        assert thread.isAlive() : "thread must remain alive while setting fast pending";
+        assert thread.isAlive() : "thread must remain alive while setting the pending flag";
 
         long eetop = UNSAFE.getLongVolatile(thread, THREAD_EETOP_OFFSET);
         if (eetop != 0) {
-            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, value);
+            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, 1);
         } else { // only the case for VirtualThreads
             Object carrierThread = UNSAFE.getObjectVolatile(thread, THREAD_CARRIER_THREAD_OFFSET);
             if (carrierThread == null) {
@@ -137,7 +135,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
                 return;
             }
             eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
-            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, value);
+            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, 1);
             /*
              * If the VirtualThread moves to another carrier thread after this method returns, the
              * pending flag will still be set correctly thanks to setPendingFlagForVirtualThread()
@@ -150,15 +148,44 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     static void setPendingFlagForVirtualThread() {
         TruffleSafepointImpl safepoint = STATE.get();
         if (safepoint != null) {
-            boolean pending = safepoint.isFastPendingSet();
-
-            // VirtualThread#carrierThread is not set yet, it set after this hook is called.
-            // However, Thread.currentCarrierThread() is already set so we can use that.
-            // We could also get the carrier thread from the hook arguments but that seems more
-            // expensive.
             Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
             long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
-            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, pending ? 1 : 0);
+
+            /*
+             * When this method and setFastPending() are run concurrently, there is a possibility
+             * that we set the carrier pending flag to 0 here based on pendingBefore==false, after
+             * setFastPending() sets the flag to 1 (which would lose the flag):
+             *
+             * @formatter:off
+             * with VT=VirtualThread MT=the thread that submits the ThreadLocalAction:
+             * VT: boolean pending = this.fastPendingSet; // false
+             * MT: fastPendingSet = true;
+             * MT: carrierThread.pending = true;
+             * VT: carrierThread.pending = pending; // false
+             * @formatter:on
+             *
+             * So we check for that case with pendingAfter and fix it. This is correct because
+             * either we wrote the 0 before setFastPending() wrote the 1 (harmless), or we wrote it
+             * after and then we must see pendingAfter==true, because (the caller of)
+             * setFastPending() sets fastPendingSet before writing to the carrier pending flag.
+             *
+             * If this method and setFastPending() are not run concurrently, then it is as if both
+             * methods were executed one after another (since all accesses are volatile and so
+             * sequentially consistent) and it works trivially.
+             *
+             * This solution is better than `if (isFastPendingSet()) { carrierThread.pending = 1; }`
+             * because that can leave the carrier flag as true after an unmount of a virtual thread
+             * which did not process safepoints yet and the newly-mounted virtual thread would not
+             * clear it, causing extra stub calls (clearing is only done if fastPendingSet is true,
+             * necessary for DefaultThreadLocalHandshake where clearFastPending() is not
+             * idempotent).
+             */
+            boolean pendingBefore = safepoint.isFastPendingSet();
+            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, pendingBefore ? 1 : 0);
+            boolean pendingAfter = safepoint.isFastPendingSet();
+            if (!pendingBefore && pendingAfter) {
+                UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, 1);
+            }
         }
     }
 
