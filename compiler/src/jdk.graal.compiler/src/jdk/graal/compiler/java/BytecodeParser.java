@@ -3080,10 +3080,12 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         JsrScope scope = currentBlock.getJsrScope();
         int nextBci = getStream().nextBCI();
         if (!successor.getJsrScope().pop().equals(scope)) {
-            throw new JsrNotSupportedBailout("unstructured control flow (internal limitation)");
+            handleUnsupportedJsr("unstructured control flow (internal limitation)");
+            return;
         }
         if (successor.getJsrScope().nextReturnAddress() != nextBci) {
-            throw new JsrNotSupportedBailout("unstructured control flow (internal limitation)");
+            handleUnsupportedJsr("unstructured control flow (internal limitation)");
+            return;
         }
         ConstantNode nextBciNode = getJsrConstant(nextBci);
         frameState.push(JavaKind.Object, nextBciNode);
@@ -3098,12 +3100,18 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         ConstantNode returnBciNode = getJsrConstant(retAddress);
         LogicNode guard = IntegerEqualsNode.create(getConstantReflection(), getMetaAccess(), options, null, local, returnBciNode, NodeView.DEFAULT);
         if (!guard.isTautology()) {
-            throw new JsrNotSupportedBailout("cannot statically decide jsr return address " + local);
+            handleUnsupportedJsr("cannot statically decide jsr return address " + local);
+            return;
         }
         if (!successor.getJsrScope().equals(scope.pop())) {
-            throw new JsrNotSupportedBailout("unstructured control flow (ret leaves more than one scope)");
+            handleUnsupportedJsr("unstructured control flow (ret leaves more than one scope)");
+            return;
         }
         appendGoto(successor);
+    }
+
+    protected void handleUnsupportedJsr(String msg) {
+        throw new JsrNotSupportedBailout(msg);
     }
 
     private ConstantNode getJsrConstant(long bci) {
