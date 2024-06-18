@@ -327,7 +327,7 @@ public final class TruffleStackTrace extends Exception {
             return;
         }
         MaterializedFrame frame = null;
-        if (currentFrame != null && LanguageAccessor.NODES.isCaptureFramesForTrace(target.getRootNode(), callNode)) {
+        if (currentFrame != null && LanguageAccessor.NODES.isCaptureFramesForTrace(target.getRootNode(), CompilerDirectives.inCompiledCode())) {
             frame = currentFrame.materialize();
         }
         callInnerAddStackFrameInfo(callNode, target, t, frame);
@@ -445,7 +445,7 @@ public final class TruffleStackTrace extends Exception {
 
                 RootCallTarget target = ((RootCallTarget) frameInstance.getCallTarget());
                 RootNode root = target.getRootNode();
-                Frame frame = captureFrame(frameInstance, root, callNode);
+                Frame frame = captureFrame(frameInstance, root);
                 int bytecodeIndex = LanguageAccessor.NODES.findBytecodeIndex(root, callNode, frame);
                 frames.add(new TruffleStackTraceElement(callNode, target, frame, bytecodeIndex));
                 if (target != null && LanguageAccessor.ACCESSOR.nodeSupport().countsTowardsStackTraceLimit(target.getRootNode())) {
@@ -456,8 +456,8 @@ public final class TruffleStackTrace extends Exception {
         });
     }
 
-    private static Frame captureFrame(FrameInstance frame, RootNode rootNode, Node callNode) {
-        return LanguageAccessor.NODES.isCaptureFramesForTrace(rootNode, callNode) ? frame.getFrame(FrameAccess.READ_ONLY) : null;
+    private static Frame captureFrame(FrameInstance frame, RootNode rootNode) {
+        return LanguageAccessor.NODES.isCaptureFramesForTrace(rootNode, frame.getCompilationTier() > 0) ? frame.getFrame(FrameAccess.READ_ONLY) : null;
     }
 
 }
