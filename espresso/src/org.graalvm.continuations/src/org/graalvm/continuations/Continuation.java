@@ -1,9 +1,16 @@
 package org.graalvm.continuations;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.function.Consumer;
 
 /**
+ * <h1>Continuation</h1>
+ *
+ * <p>
  * A delimited one-shot continuation, which encapsulates a part of the program's execution such that
  * it can be resumed from the point at which it was suspended.
  *
@@ -19,9 +26,9 @@ import java.io.Serializable;
  *
  * <p>
  * Exceptions thrown from the entry point propagate out of {@link #resume()} and then mark the
- * continuation as failed. Resuming the exception after that point will fail with
+ * continuation as failed. Resuming the continuation after that point will fail with
  * {@link IllegalContinuationStateException}. If you want to retry a failed continuation you must
- * have a clone from before the failure (see below).
+ * have a clone from before the failure (see note below).
  *
  * <h1>Serialization</h1>
  *
@@ -30,13 +37,33 @@ import java.io.Serializable;
  * they can be discarded and left for the GC to clean up.
  *
  * <p>
- * For a continuation to be serialized, the given {@link EntryPoint} itself must be serializable.
- *
- * <p>
  * Continuation deserialization is <b>not secure</b>. You should only deserialize continuations you
  * yourself suspended, as resuming a malicious continuation can cause arbitrary undefined behaviour,
  * i.e. is equivalent to handing control of the JVM to the attacker.
  *
+ * <h2>Java serialization</h2>
+ *
+ * <p>
+ * By default, {@link Continuation} supports standard java serialization (i.e. implements
+ * {@link Serializable}. This works well only if all that is reachable from the continuation is
+ * serializable.
+ *
+ * <p>
+ * For a continuation to be serialized, the given {@link EntryPoint} itself must be serializable.
+ *
+ * <h2>External serialization</h2>
+ *
+ * <p>
+ * Given that requiring all reachable objects from the continuation is very restrictive, some users
+ * may want to use other serialization frameworks. For that purpose, the {@link Continuation} class
+ * (and the {@link SuspendCapability} class) provides two additional methods:
+ *
+ * <ul>
+ * <li>{@link #writeObjectExternal(ObjectOutput)}</li>
+ * <li>{@link #readObjectExternal(ObjectInput, ClassLoader, Consumer)}</li>
+ * </ul>
+ *
+ * <h3>Note:</h3>
  * <p>
  * This class implements <i>one shot</i> continuations, meaning you cannot restart a continuation
  * from the same suspend point more than once. For that reason this class is mutable, and the act of
@@ -117,9 +144,38 @@ public abstract class Continuation implements Serializable {
      * @throws IllegalMaterializedRecordException if the VM rejects the continuation. This can
      *             happen, for example, if a continuation was obtained by deserializing a malformed
      *             stream.
-     *
      */
     public abstract boolean resume();
+
+    /**
+     * Serialize this continuation to the provided {@link ObjectOutput}.
+     *
+     * <p>
+     * This method may be used to better cooperate with non-jdk serialization frameworks.
+     */
+    public abstract void writeObjectExternal(ObjectOutput out) throws IOException;
+
+    /**
+     * Deserialize a continuation from the provided {@link ObjectInput}.
+     * 
+     * <p>
+     * This method is provided to cooperate with non-jdk serialization frameworks.
+     *
+     * <p>
+     * {@code registerFreshObject} will be called once a fresh continuation has been created, but
+     * before it has been fully deserialized. It is intended to be a callback to the serialization
+     * framework, so it can register the in-construction continuation so the framework may handle
+     * object graph cycles.
+     */
+    public static Continuation readObjectExternal(ObjectInput in, ClassLoader loader, Consumer<Object> registerFreshObject) throws IOException, ClassNotFoundException {
+        if (!isSupported()) {
+            throw new UnsupportedOperationException("This VM does not support continuations.");
+        }
+        ContinuationImpl continuation = new ContinuationImpl();
+        registerFreshObject.accept(continuation);
+        continuation.readObjectExternalImpl(in, loader);
+        return continuation;
+    }
 
     // region internals
 

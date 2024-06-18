@@ -42,8 +42,8 @@
 package org.graalvm.continuations;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,31 +52,39 @@ import java.util.List;
 import java.util.Map;
 
 abstract class FrameRecordSerializer {
-    final ObjectOutputStream out;
-    final ObjectInputStream in;
+    protected static final int THIS_POS = 1;
 
-    protected FrameRecordSerializer(ObjectOutputStream out) {
+    final ObjectOutput out;
+    final ObjectInput in;
+    ClassLoader loader;
+
+    protected FrameRecordSerializer(ObjectOutput out) {
         this.out = out;
         this.in = null;
     }
 
-    protected FrameRecordSerializer(ObjectInputStream in) {
+    protected FrameRecordSerializer(ObjectInput in) {
         this.out = null;
         this.in = in;
     }
 
-    public static FrameRecordSerializer forOut(int version, ObjectOutputStream out) throws FormatVersionException {
+    public static FrameRecordSerializer forOut(int version, ObjectOutput out) throws FormatVersionException {
         if (version == FrameRecordSerializerV2.FORMAT_VERSION) {
             return new FrameRecordSerializerV2(out);
         }
         throw new FormatVersionException(version, ContinuationImpl.FORMAT_VERSION);
     }
 
-    public static FrameRecordSerializer forIn(int version, ObjectInputStream in) throws FormatVersionException {
+    public static FrameRecordSerializer forIn(int version, ObjectInput in) throws FormatVersionException {
         if (version == FrameRecordSerializerV2.FORMAT_VERSION) {
             return new FrameRecordSerializerV2(in);
         }
         throw new FormatVersionException(version, ContinuationImpl.FORMAT_VERSION);
+    }
+
+    public final FrameRecordSerializer withLoader(ClassLoader classLoader) {
+        this.loader = classLoader;
+        return this;
     }
 
     public abstract void writeRecord(ContinuationImpl.FrameRecord frameRecord) throws IOException;
@@ -87,6 +95,8 @@ abstract class FrameRecordSerializer {
 final class FrameRecordSerializerV2 extends FrameRecordSerializer {
     static final int FORMAT_VERSION = 2;
 
+    private static final int THIS_POS = 1;
+
     private static final int POOL_IDX_BITS = 16;
     private static final int NEW_POOL_MASK = 1 << (POOL_IDX_BITS - 1);
     private static final int POOL_IDX_MASK = NEW_POOL_MASK - 1;
@@ -96,11 +106,11 @@ final class FrameRecordSerializerV2 extends FrameRecordSerializer {
 
     final List<String> stringPoolRead = new ArrayList<>();
 
-    FrameRecordSerializerV2(ObjectOutputStream out) {
+    FrameRecordSerializerV2(ObjectOutput out) {
         super(out);
     }
 
-    FrameRecordSerializerV2(ObjectInputStream in) {
+    FrameRecordSerializerV2(ObjectInput in) {
         super(in);
     }
 
@@ -125,21 +135,12 @@ final class FrameRecordSerializerV2 extends FrameRecordSerializer {
     @Override
     public ContinuationImpl.FrameRecord readRecord() throws IOException, ClassNotFoundException {
         assert in != null;
+        assert loader != null;
         try {
             ContinuationImpl.FrameRecord result = null;
             ContinuationImpl.FrameRecord last = null;
             do {
-                /*
-                 * We read the context classloader here because we need the classloader that holds
-                 * the user's app. If we use Class.forName() in this code we get the platform
-                 * classloader because this class is provided by the VM, and thus can't look up
-                 * methods of user classes. If we use the classloader of the entrypoint it breaks
-                 * for Generator and any other classes we might want to ship with the VM that use
-                 * this API. So we need the user's app class loader. We could walk the stack to find
-                 * it just like ObjectInputStream does, but we go with the context classloader here
-                 * to make it easier for the user to control.
-                 */
-                ContinuationImpl.FrameRecord frame = readFrame(Thread.currentThread().getContextClassLoader());
+                ContinuationImpl.FrameRecord frame = readFrame();
                 if (last == null) {
                     result = frame;
                 } else {
@@ -158,7 +159,7 @@ final class FrameRecordSerializerV2 extends FrameRecordSerializer {
         Method method = cursor.method;
         out.writeObject(cursor.pointers);
         out.writeObject(cursor.primitives);
-        writeMethodNameAndTypes(method, cursor.pointers.length > 1 ? cursor.pointers[1] : null);
+        writeMethodNameAndTypes(method, cursor.pointers.length > THIS_POS ? cursor.pointers[THIS_POS] : null);
         out.writeInt(cursor.bci);
     }
 
@@ -239,13 +240,13 @@ final class FrameRecordSerializerV2 extends FrameRecordSerializer {
         }
     }
 
-    private ContinuationImpl.FrameRecord readFrame(ClassLoader classLoader)
+    private ContinuationImpl.FrameRecord readFrame()
                     throws IOException, ClassNotFoundException, NoSuchMethodException {
         assert in != null;
         Object[] pointers = (Object[]) in.readObject();
         long[] primitives = (long[]) in.readObject();
         // Slot zero is always primitive (bci), so this is in slot 1.
-        Method method = readMethodNameAndTypes(classLoader, pointers.length > 1 ? pointers[1] : null);
+        Method method = readMethodNameAndTypes(loader, pointers.length > THIS_POS ? pointers[THIS_POS] : null);
         int bci = in.readInt();
         return new ContinuationImpl.FrameRecord(pointers, primitives, method, bci);
     }
