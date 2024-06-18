@@ -55,6 +55,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTrace;
@@ -229,7 +230,7 @@ public class RootNodeTest {
         }
 
         @Override
-        public boolean isCaptureFramesForTrace(Node node) {
+        public boolean isCaptureFramesForTrace(boolean compiled) {
             return this.shouldCaptureFrames;
         }
 
@@ -511,7 +512,7 @@ public class RootNodeTest {
         }
 
         @Override
-        public boolean isCaptureFramesForTrace(Node node) {
+        public boolean isCaptureFramesForTrace(boolean compiled) {
             return true;
         }
 
@@ -556,7 +557,6 @@ public class RootNodeTest {
     @SuppressWarnings("unchecked")
     public void testHybridBytecodeIndex() {
         var result = (List<TruffleStackTraceElement>) new FrameHybridBytecodeIndexRootNode().getCallTarget().call();
-
         assertEquals(1, result.size());
         assertEquals(42, result.get(0).getBytecodeIndex());
         assertTrue(result.get(0).hasBytecodeIndex());
@@ -576,33 +576,30 @@ public class RootNodeTest {
         }
 
         @Override
-        public boolean isCaptureFramesForTrace(Node node) {
-            return !(node instanceof NodeWithBytecode);
-        }
-
-        @Override
         public Object execute(VirtualFrame frame) {
-            return boundary(frame.materialize());
+            return boundary(frame.materialize(), CompilerDirectives.inCompiledCode());
         }
 
         @TruffleBoundary
-        private static List<TruffleStackTraceElement> boundary(MaterializedFrame frame) {
-            frame.setInt(0, 42);
-            var stackTrace = TruffleStackTrace.getStackTrace(new TestException(frame, null));
+        private static List<TruffleStackTraceElement> boundary(MaterializedFrame frame, boolean compiled) {
+            Node node;
+            if (compiled) {
+                frame.setInt(0, 43);
+                node = new NodeWithBytecode(42);
+            } else {
+                frame.setInt(0, 42);
+                node = null;
+            }
+
+            var stackTrace = TruffleStackTrace.getStackTrace(new TestException(frame, node));
             assertTrue(Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Boolean>() {
                 @Override
                 public Boolean visitFrame(FrameInstance frameInstance) {
-                    assertEquals(42, frameInstance.getBytecodeIndex());
-                    return true;
-                }
-            }));
-
-            frame.setInt(0, 43);
-
-            assertTrue(Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Boolean>() {
-                @Override
-                public Boolean visitFrame(FrameInstance frameInstance) {
-                    assertEquals(43, frameInstance.getBytecodeIndex());
+                    if (frameInstance.getCompilationTier() == 0) {
+                        assertEquals(42, frameInstance.getBytecodeIndex());
+                    } else {
+                        assertEquals(-1, frameInstance.getBytecodeIndex());
+                    }
                     return true;
                 }
             }));
@@ -610,8 +607,13 @@ public class RootNodeTest {
         }
 
         @Override
+        public boolean isCaptureFramesForTrace(boolean compiled) {
+            return !compiled;
+        }
+
+        @Override
         protected int findBytecodeIndex(Node node, Frame frame) {
-            if (node == null) {
+            if (frame != null) {
                 return frame.getInt(0);
             } else if (node instanceof NodeWithBytecode n) {
                 assertNull(frame);

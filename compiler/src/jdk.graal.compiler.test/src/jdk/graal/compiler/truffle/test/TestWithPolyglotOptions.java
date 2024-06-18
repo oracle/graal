@@ -24,6 +24,12 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.junit.After;
@@ -70,4 +76,58 @@ public abstract class TestWithPolyglotOptions {
         activeContext = newContext;
         return newContext;
     }
+
+    // also known as assertThrows
+    public static void assertFails(Runnable callable, Class<?> exceptionType) {
+        assertFails((Callable<?>) () -> {
+            callable.run();
+            return null;
+        }, exceptionType);
+    }
+
+    public static void assertFails(Callable<?> callable, Class<?> exceptionType) {
+        try {
+            callable.call();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.toString(), t);
+            }
+            return;
+        }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
+    public static <T extends Throwable> void assertFails(Runnable callable, Class<T> exceptionType, String message) {
+        assertFails((Callable<?>) () -> {
+            callable.run();
+            return null;
+        }, exceptionType, e -> assertEquals(message, e.getMessage()));
+    }
+
+    public static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
+        try {
+            run.run();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.toString(), t);
+            }
+            verifier.accept(exceptionType.cast(t));
+            return;
+        }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
+    public static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
+        try {
+            callable.call();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+            }
+            verifier.accept(exceptionType.cast(t));
+            return;
+        }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
 }
