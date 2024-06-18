@@ -2698,21 +2698,21 @@ public final class JniEnv extends NativeEnv {
 
         StaticObject caller = getVM().JVM_GetCallerClass(0, profiler); // security stack walk
         if (StaticObject.notNull(caller)) {
-            Klass callerKlass = caller.getMirrorKlass(getMeta());
+            Klass callerKlass = caller.getMirrorKlass(meta);
             loader = callerKlass.getDefiningClassLoader();
-            if (StaticObject.isNull(loader) && Type.java_lang_ClassLoader$NativeLibrary.equals(callerKlass.getType())) {
-                StaticObject result = (StaticObject) getMeta().java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirect(null);
-                loader = result.getMirrorKlass(getMeta()).getDefiningClassLoader();
+            if (StaticObject.isNull(loader) && meta.java_lang_ClassLoader$NativeLibrary.equals(callerKlass)) {
+                StaticObject result = (StaticObject) meta.java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirect(null);
+                loader = result.getMirrorKlass(meta).getDefiningClassLoader();
                 protectionDomain = getVM().JVM_GetProtectionDomain(result);
             }
         } else {
-            loader = (StaticObject) getMeta().java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            loader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
         }
 
         StaticObject guestClass = StaticObject.NULL;
         try {
             String dotName = name.replace('/', '.');
-            guestClass = (StaticObject) getMeta().java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
+            guestClass = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
             EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null", dotName);
         } catch (EspressoException e) {
             profiler.profile(5);
@@ -2725,7 +2725,7 @@ public final class JniEnv extends NativeEnv {
 
         meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(guestClass, protectionDomain);
         // FindClass should initialize the class.
-        guestClass.getMirrorKlass(getMeta()).safeInitialize();
+        guestClass.getMirrorKlass(meta).safeInitialize();
 
         return guestClass;
     }
