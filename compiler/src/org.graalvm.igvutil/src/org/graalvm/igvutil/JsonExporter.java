@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -106,11 +108,11 @@ public class JsonExporter {
     }
 
     /**
-     * Writes node properties, with special handling for specific properties which are
-     * known to have a wrong type, e.g. the ID property is serialized as a string but should be
-     * written as a number.
+     * Writes node properties, with special handling for specific properties which are known to have
+     * a wrong type, e.g. the ID property is serialized as a string but should be written as a
+     * number.
      */
-    private void writeNodeProperty(InputNode node, String name, Object value, JsonBuilder.ObjectBuilder builder) throws IOException {
+    private static void writeNodeProperty(InputNode node, String name, Object value, JsonBuilder.ObjectBuilder builder) throws IOException {
         if (value == null) {
             return;
         }
@@ -136,12 +138,8 @@ public class JsonExporter {
     }
 
     protected static void writeEdge(InputEdge edge, JsonBuilder.ObjectBuilder builder) throws IOException {
-        builder.append("from", edge.getFrom())
-                .append("to", edge.getTo())
-                .append("label", edge.getLabel())
-                .append("type", edge.getType());
+        builder.append("from", edge.getFrom()).append("to", edge.getTo()).append("label", edge.getLabel()).append("type", edge.getType());
     }
-
 
     protected static void writeBlock(InputBlock b, JsonBuilder.ObjectBuilder builder) throws IOException {
         try (JsonBuilder.ArrayBuilder nodesBuilder = builder.append("nodes").array()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,12 +56,12 @@ public class CommandTest {
     }
 
     @Test
-    public void testInvalidCommand() throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
+    public void testInvalidCommand() {
         Command c = new Command("test", "");
-        OptionValue<String> arg1 = c.addPositional(new StringValue("ARG1", ""));
-        OptionValue<String> arg2 = c.addPositional(new StringValue("ARG2", ""));
-        OptionValue<String> arg3 = c.addNamed("--arg3", new StringValue("ARG3", ""));
-        OptionValue<String> arg4 = c.addNamed("--unset", new StringValue("ARG4", "default", ""));
+        c.addPositional(new StringValue("ARG1", ""));
+        c.addPositional(new StringValue("ARG2", ""));
+        c.addNamed("--arg3", new StringValue("ARG3", ""));
+        c.addNamed("--unset", new StringValue("ARG4", "default", ""));
         String[] args;
         // No arguments
         try {
@@ -185,8 +185,8 @@ public class CommandTest {
     @Test
     public void testHelpOption() {
         Command c = new Command("test", "");
-        OptionValue<String> arg1 = c.addPositional(new StringValue("ARG1", ""));
-        OptionValue<List<String>> arg2 = c.addPositional(new StringValue("ARG2", "").repeated());
+        c.addPositional(new StringValue("ARG1", ""));
+        c.addPositional(new StringValue("ARG2", "").repeated());
         String[] args;
         try {
             args = new String[]{"--help"};

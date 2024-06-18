@@ -49,33 +49,34 @@ import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 /**
- * Various utility programs to inspect and manipulate igv dumps.
- * Specifically, this program offers three subcommands:
+ * Various utility programs to inspect and manipulate igv dumps. Specifically, this program offers
+ * three subcommands:
  * <ul>
- *     <li>{@code list}: show the contents of a .bgv file in a tree-like format</li>
- *     <li>{@code flatten}: group graphs across multiple files/dumps by name or other properties.</li>
- *     <li>{@code filter}: export graph data to JSON, optionally selecting a subset of graph/node properties.</li>
+ * <li>{@code list}: show the contents of a .bgv file in a tree-like format</li>
+ * <li>{@code flatten}: group graphs across multiple files/dumps by name or other properties.</li>
+ * <li>{@code filter}: export graph data to JSON, optionally selecting a subset of graph/node
+ * properties.</li>
  * </ul>
  */
 public class IgvUtility {
     abstract static class GraphCommand extends Command {
         protected final OptionValue<List<String>> inputFiles;
 
-        public GraphCommand(String name, String description) {
+        GraphCommand(String name, String description) {
             super(name, description);
             inputFiles = addPositional(new StringValue("FILES", "List of input BGV files").repeated());
         }
 
-        public abstract void apply() throws IOException;
+        abstract void apply() throws IOException;
     }
 
     static final class ListCommand extends GraphCommand {
-        public ListCommand() {
+        ListCommand() {
             super("list", "print IGV file contents in a tree-like format");
         }
 
         @Override
-        public void apply() throws IOException {
+        void apply() throws IOException {
             try (PrintWriter writer = new PrintWriter(System.out)) {
                 Printer printer = new Printer(writer);
                 for (String path : inputFiles.getValue()) {
@@ -94,16 +95,16 @@ public class IgvUtility {
         private final OptionValue<String> outputFile;
         private final OptionValue<String> flattenKey;
 
-        public FlattenCommand() {
+        FlattenCommand() {
             super("flatten", "Group graphs across multiple files/dumps by name or other properties.");
             outputFile = addNamed("--output-file", new StringValue("PATH",
-                    "Path that the flattened BGV file will be saved under"));
+                            "Path that the flattened BGV file will be saved under"));
             flattenKey = addNamed("--by", new StringValue("PROPERTY",
-                    "graph", "Graph property that graphs will be grouped by"));
+                            "graph", "Graph property that graphs will be grouped by"));
         }
 
         @Override
-        public void apply() throws IOException {
+        void apply() throws IOException {
             Flattener flattener = new Flattener(flattenKey.getValue());
             for (String file : inputFiles.getValue()) {
                 flattener.visitDump(openBGVStream(file));
@@ -119,7 +120,7 @@ public class IgvUtility {
         private JsonExporter exporter = null;
         private final JsonWriter writer;
 
-        public FilterCommand() {
+        FilterCommand() {
             super("filter", "export graph data to JSON, optionally selecting a subset of graph/node properties");
             nodePropertyFilter = addNamed("--node-properties", new StringValue("PROPERTIES", "", "comma-separated list of node properties"));
             graphPropertyFilter = addNamed("--graph-properties", new StringValue("PROPERTIES", "", "comma-separated list of graph properties"));
@@ -127,7 +128,7 @@ public class IgvUtility {
         }
 
         @Override
-        public void apply() throws IOException {
+        void apply() throws IOException {
             Set<String> nodeProperties = nodePropertyFilter.isSet() ? Set.of(nodePropertyFilter.getValue().split(",")) : null;
             Set<String> graphProperties = graphPropertyFilter.isSet() ? Set.of(graphPropertyFilter.getValue().split(",")) : null;
 
@@ -145,7 +146,6 @@ public class IgvUtility {
             System.out.println();
         }
     }
-
 
     private static InputStream openBGVStream(String filename) {
         try {

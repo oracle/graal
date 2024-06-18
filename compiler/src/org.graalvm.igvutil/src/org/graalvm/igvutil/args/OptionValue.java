@@ -27,8 +27,8 @@ package org.graalvm.igvutil.args;
 import java.util.List;
 
 /**
- * Holds the value of a program option, parsed from command line arguments.
- * Value parsing should be implemented by subclasses by overriding the {@link #parseValue(String[], int)} method.
+ * Holds the value of a program option, parsed from command line arguments. Value parsing should be
+ * implemented by subclasses by overriding the {@link #parseValue(String)} method.
  *
  * @param <T> the type of the parsed value.
  */
@@ -49,7 +49,8 @@ public abstract class OptionValue<T> {
     private final String name;
 
     /**
-     * If true, parsing will throw an exception if this option is missing from the command-line arguments.
+     * If true, parsing will throw an exception if this option is missing from the command-line
+     * arguments.
      */
     private final boolean required;
 
@@ -74,9 +75,9 @@ public abstract class OptionValue<T> {
     /**
      * Constructs a not required option with a default value.
      *
-     * @param name         the name of the argument.
+     * @param name the name of the argument.
      * @param defaultValue the option's default value. Can be null.
-     * @param help         the help message.
+     * @param help the help message.
      */
     public OptionValue(String name, T defaultValue, String help) {
         this.name = name;
@@ -102,7 +103,8 @@ public abstract class OptionValue<T> {
     }
 
     /**
-     * If true, parsing will throw an exception if this option is missing from the command-line arguments.
+     * If true, parsing will throw an exception if this option is missing from the command-line
+     * arguments.
      *
      * @return true iff the option was constructed with no default value.
      */
@@ -123,14 +125,23 @@ public abstract class OptionValue<T> {
     }
 
     /**
-     * TODO
+     * Parses the option value from the given argument, updating {@link #value accordingly}. For
+     * options which accept more than one argument, this function will be called multiple times,
+     * once for each argument.
+     *
+     * @param arg single argument from which the option is to be parsed. May be null in case a named
+     *            option was provided as the last argument without a following value. This may be
+     *            valid behavior for e.g. flag options.
+     * @return true if the argument was consumed by the option, or false if the argument is to be
+     *         parsed by a separate option.
+     * @throws InvalidArgumentException if parsing of the argument failed.
      */
     public abstract boolean parseValue(String arg) throws InvalidArgumentException;
 
     /**
-     * Converts an option that will parse a single argument into
-     * one that will parse successive occurrences of the same option into a list.
-     * The underlying option should not be used alongside the returned one.
+     * Converts an option that will parse a single argument into one that will parse successive
+     * occurrences of the same option into a list. The underlying option should not be used
+     * alongside the returned one.
      *
      * @see ListValue
      */

@@ -27,9 +27,9 @@ package org.graalvm.igvutil.args;
 import java.io.PrintWriter;
 
 /**
- * Main entry-point of command-line parsing.
- * The method {@link #parseAndValidate(String[], boolean)} will parse the full array of command-line arguments
- * and handle any errors that might have been thrown during parsing.
+ * Main entry-point of command-line parsing. The method {@link #parseAndValidate(String[], boolean)}
+ * will parse the full array of command-line arguments and handle any errors that might have been
+ * thrown during parsing.
  */
 public class Program extends Command {
     public Program(String name, String description) {
