@@ -1170,7 +1170,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                 List<Future<?>> threadLocals = new ArrayList<>();
 
                 Semaphore awaitClosing = new Semaphore(0);
-                Future<?> closing = service.submit(() -> {
+                Future<?> closing = cachedThreadPool.submit(() -> {
                     awaitClosing.release();
                     setup.context.close(true);
                     closed.set(true);
