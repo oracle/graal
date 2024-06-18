@@ -130,7 +130,6 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     private static final int MAX_THREAD_ITERATIONS_PRODUCT = 16 * 32; // = 512
     private static ExecutorService cachedThreadPool;
     private static final Set<Thread> runningThreads = ConcurrentHashMap.newKeySet();
-    private ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
 
     private static final int TIMEOUT_SECONDS = 300;
@@ -170,15 +169,6 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     @Before
     public void before() throws ExecutionException, InterruptedException {
         Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
-        if (vthreads) {
-            ThreadFactory factory = Thread.ofVirtual().uncaughtExceptionHandler((thread, exception) -> {
-                System.err.println("Uncaught exception in " + thread);
-                exception.printStackTrace(System.err);
-            }).factory();
-            this.service = Executors.newThreadPerTaskExecutor(factory);
-        } else {
-            this.service = cachedThreadPool;
-        }
 
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
@@ -1814,6 +1804,18 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     private TestSetup setupSafepointLoop(int threads, NodeCallable callable, Consumer<Throwable> exHandler, boolean ignoreCancelOnClose) {
         Context c = createTestContext();
         TestSetup setup = null;
+
+        final ExecutorService service;
+        if (vthreads) {
+            ThreadFactory factory = Thread.ofVirtual().uncaughtExceptionHandler((thread, exception) -> {
+                System.err.println("Uncaught exception in " + thread);
+                exception.printStackTrace(System.err);
+            }).factory();
+            service = Executors.newThreadPerTaskExecutor(factory);
+        } else {
+            service = cachedThreadPool;
+        }
+
         try {
             c.enter();
             c.initialize(ProxyLanguage.ID);
