@@ -2021,17 +2021,6 @@ class JDKLayoutTARDistribution(mx.LayoutTARDistribution):
         return True
 
 
-class GDBDebugHelpers(mx.ArchivableProject):
-    def output_dir(self):
-        return os.path.join(self.dir, 'src', self.name, 'gdbpy')
-
-    def archive_prefix(self):
-        return ''
-
-    def getResults(self):
-        return [os.path.join(self.output_dir(), 'gdb-debughelpers.py')]
-
-
 class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
     flags_build_dependencies = [

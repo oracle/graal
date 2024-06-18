@@ -735,10 +735,6 @@ suite = {
             "spotbugs" : "false",
         },
 
-        "com.oracle.svm.hosted.image.debug": {
-            "class": "GDBDebugHelpers",
-        },
-
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
         # functions that can cause a stack overflow like snprintf. If set to 1 or 2, it causes glibc to use internal
         # functions with extra checking that are not available in all libc implementations. Different distros use
@@ -2167,17 +2163,12 @@ suite = {
             },
         },
 
-        "SVM_DEBUG_HELPER": {
-            "dependencies": ["com.oracle.svm.hosted.image.debug"],
-            "javaCompliance" : "21+",
-        },
-
         "SVM_GRAALVM_SUPPORT" : {
             "native" : True,
             "platformDependent" : True,
             "description" : "SubstrateVM support distribution for the GraalVM",
             "layout" : {
-                "debug/": ["extracted-dependency:substratevm:SVM_DEBUG_HELPER"],
+                "debug/": ["file:debug/gdbpy/gdb-debughelpers.py"],
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/lib/" : ["dependency:com.oracle.svm.native.reporterchelper"],
