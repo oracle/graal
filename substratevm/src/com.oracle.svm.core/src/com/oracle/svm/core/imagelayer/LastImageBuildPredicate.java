@@ -22,21 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.core.imagelayer;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import java.util.function.BooleanSupplier;
 
-import java.util.Collection;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-public interface LayeredImageSingletonSupport {
-
-    static LayeredImageSingletonSupport singleton() {
-        return ImageSingletons.lookup(LayeredImageSingletonSupport.class);
+@Platforms(Platform.HOSTED_ONLY.class)
+public class LastImageBuildPredicate implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return ImageLayerBuildingSupport.lastImageBuild();
     }
-
-    <T> T runtimeLookup(Class<T> key);
-
-    Collection<Class<?>> getMultiLayeredImageSingletonKeys();
-
-    void freezeMultiLayeredImageSingletons();
 }

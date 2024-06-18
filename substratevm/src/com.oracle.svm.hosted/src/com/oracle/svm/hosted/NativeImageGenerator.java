@@ -536,7 +536,6 @@ public class NativeImageGenerator {
                         imageLayerSupport);
 
         ImageSingletons.add(LayeredImageSingletonSupport.class, (LayeredImageSingletonSupport) ImageSingletonsSupportImpl.get());
-        ImageSingletons.add(ImageLayerBuildingSupport.class, imageLayerSupport);
         ImageSingletons.add(ProgressReporter.class, reporter);
         ImageSingletons.add(DeadlockWatchdog.class, loader.watchdog);
         ImageSingletons.add(TimerCollection.class, timerCollection);
