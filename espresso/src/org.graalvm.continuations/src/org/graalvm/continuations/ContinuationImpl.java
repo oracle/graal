@@ -41,15 +41,180 @@
 package org.graalvm.continuations;
 
 import java.io.IOException;
+import java.io.ObjectInput;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serial;
-import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Method;
 
-final class ContinuationImpl extends Continuation implements Serializable {
+/**
+ * Implementation of the {@link Continuation} class.
+ *
+ * <h1>Suspend</h1>
+ *
+ * <p>
+ * The stack of a resume/suspend cycle has this form:
+ *
+ * <h2>Suspend</h2>
+ *
+ * <pre>
+ *     .                                .
+ *     .                                .
+ *     +--------------------------------+
+ *     |                                |
+ *     |    ContinuationImpl.resume()   |
+ *     |                                |
+ *     +--------------------------------+
+ *     |                                |
+ *     |    ContinuationImpl.start0()   | <-- For the first resume
+ *     |            OR                  |
+ *     |    ContinuationImpl.resume0()  | <-- For continuations that have been suspended at least once before.
+ *     |                                |
+ *     |================================|
+ *     |                                |
+ *     |    VM code                     |
+ *     |                                |
+ *     |================================| <--+
+ *     |                                |    |
+ *     |    ContinuationImpl.run()      |    |
+ *     |                                |    |
+ *     |--------------------------------|    |
+ *     |    EntryPoint.start()          |    |
+ *     |--------------------------------|    |
+ *     |    Java Frame                  |    |
+ *     |--------------------------------|    |
+ *     |    Java Frame                  |    |
+ *     +--------------------------------+    |
+ *     .                                .    |
+ *     .        ...                     .     \__ Continuation frames to be recorded
+ *     .                                .     /
+ *     +--------------------------------+    |
+ *     |    Java Frame                  |    |
+ *     |--------------------------------|    |
+ *     |                                |    |
+ *     |    ContinuationImpl.suspend()  |    |
+ *     |                                |    |
+ *     |--------------------------------| <--+
+ *     |                                |
+ *     |    ContinuationImpl.suspend0() |
+ *     |                                |
+ *     |================================|
+ *     |                                |
+ *     |    VM Code                     |
+ *     |                                |
+ *     +--------------------------------+
+ * </pre>
+ *
+ * <p>
+ * Recorded frame may not:
+ * <ul>
+ * <li>Be Non-Java frames (in particular, no native method), except for
+ * {@link ContinuationImpl#resume0()} / {@link ContinuationImpl#start0()} and
+ * {@link ContinuationImpl#suspend0()}.</li>
+ * <li>Hold any lock (neither a monitor, nor any kind of standard lock from
+ * {@link java.util.concurrent}).</li>
+ * </ul>
+ *
+ * After suspension, the stack will be the following, and so without any java-side observable frame
+ * popping or bytecode execution:
+ * 
+ * <pre>
+ *     .                               .
+ *     .                               .
+ *     +-------------------------------+
+ *     |                               |
+ *     |    ContinuationImpl.resume()  |
+ *     |                               |
+ *     +-------------------------------+
+ * </pre>
+ *
+ * Control is then returned to the caller.
+ *
+ * <h2>Resume</h2>
+ *
+ * Resuming takes a stack of the form
+ *
+ * <pre>
+ *     .                                .
+ *     .                                .
+ *     +--------------------------------+
+ *     |                                |
+ *     |    ContinuationImpl.resume()   |
+ *     |                                |
+ *     +--------------------------------+
+ *     |                                |
+ *     |    ContinuationImpl.resume0()  |
+ *     |                                |
+ *     |================================|
+ *     |                                |
+ *     |    VM code                     |
+ *     |                                |
+ *     +================================+
+ * </pre>
+ *
+ * Back to
+ *
+ * <pre>
+ *     .                                .
+ *     .                                .
+ *     +--------------------------------+
+ *     |                                |
+ *     |    ContinuationImpl.resume()   |
+ *     |                                |
+ *     +--------------------------------+
+ *     |                                |
+ *     |    ContinuationImpl.resume0()  |
+ *     |                                |
+ *     |================================|
+ *     |                                |
+ *     |    VM code                     |
+ *     |                                |
+ *     |================================| <--+
+ *     |                                |    |
+ *     |    ContinuationImpl.run()      |    |
+ *     |                                |    |
+ *     |--------------------------------|    |
+ *     |    EntryPoint.start()          |    |
+ *     |--------------------------------|    |
+ *     |    Java Frame                  |    |
+ *     |--------------------------------|    |
+ *     |    Java Frame                  |    |
+ *     +--------------------------------+    |
+ *     .                                .    |
+ *     .        ...                     .     \__ Recorded frames
+ *     .                                .     /
+ *     +--------------------------------+    |
+ *     |    Java Frame                  |    |
+ *     |--------------------------------|    |
+ *     |                                |    |
+ *     |    ContinuationImpl.suspend()  |    |
+ *     |                                |    |
+ *     +--------------------------------+ <--+
+ * </pre>
+ *
+ * Then, control is handed back to {@link #suspend()}, which can then continue and complete
+ * normally, effectively allowing to resume execution in the caller of {@link #suspend()}
+ *
+ * <h1>Record</h1>
+ *
+ * <p>
+ * The recorded Java Frames are handled internally by the VM, and only exposed to the Java world
+ * when {@link #ensureMaterialized()} is called, at which point a {@link FrameRecord Java
+ * representation} of the stack record is stored in {@link #stackFrameHead}, and the VM may discard
+ * its own internal record.
+ * 
+ * <p>
+ * This Java record can then be used to serialize the continuation. Note that the contents of the
+ * Java record is VM-dependent, and no assumptions should be made of its contents.
+ *
+ * <p>
+ * The Java record can be brought back to the VM internals through {@link #ensureDematerialized()}.
+ * Sanity checks may be performed to ensure the VM can recover from these frames.
+ */
+final class ContinuationImpl extends Continuation {
     @Serial private static final long serialVersionUID = -5833405097154096157L;
 
     private static final VarHandle STATE_HANDLE;
@@ -248,7 +413,7 @@ final class ContinuationImpl extends Continuation implements Serializable {
 
     // region Serialization
 
-    public ContinuationImpl() {
+    ContinuationImpl() {
         state = State.INCOMPLETE;
     }
 
@@ -369,6 +534,7 @@ final class ContinuationImpl extends Continuation implements Serializable {
          * loader. We could walk the stack to find it just like ObjectInputStream does, but we go
          * with the context classloader here to make it easier for the user to control.
          */
+        state = State.INCOMPLETE;
         readObjectExternalImpl(in, Thread.currentThread().getContextClassLoader());
     }
 
@@ -398,6 +564,7 @@ final class ContinuationImpl extends Continuation implements Serializable {
             }
             unlock(currentState);
         } catch (Throwable e) {
+            // If any error occurs, leave the continuation as incomplete.
             unlock(State.INCOMPLETE);
             throw e;
         }
@@ -407,7 +574,7 @@ final class ContinuationImpl extends Continuation implements Serializable {
 
     // region Implementation
 
-    public ContinuationImpl(EntryPoint entryPoint) {
+    ContinuationImpl(EntryPoint entryPoint) {
         this.state = State.NEW;
         this.entryPoint = entryPoint;
     }
