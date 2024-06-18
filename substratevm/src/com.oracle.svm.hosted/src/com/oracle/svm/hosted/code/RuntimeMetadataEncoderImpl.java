@@ -448,7 +448,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         AnnotationValue[][] parameterAnnotations = registerParameterAnnotationValues(analysisMethod);
         AnnotationMemberValue annotationDefault = isMethod ? registerAnnotationDefaultValues(analysisMethod) : null;
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisMethod);
-        ReflectParameterMetadata[] reflectParameters = registerReflectParameters(reflectMethod);
+        Object reflectParameters = registerReflectParameters(reflectMethod);
         JavaConstant accessorConstant = null;
         if (accessor != null) {
             accessorConstant = snippetReflection.forObject(accessor);
@@ -487,7 +487,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         AnnotationValue[][] parameterAnnotations = isExecutable ? registerParameterAnnotationValues((AnalysisMethod) analysisObject) : null;
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisObject);
         AnnotationMemberValue annotationDefault = isMethod ? registerAnnotationDefaultValues((AnalysisMethod) analysisObject) : null;
-        ReflectParameterMetadata[] reflectParameters = isExecutable ? registerReflectParameters((Executable) object) : null;
+        Object reflectParameters = isExecutable ? registerReflectParameters((Executable) object) : null;
         AccessibleObject holder = RuntimeMetadataEncoder.getHolder(object);
         JavaConstant heapObjectConstant = snippetReflection.forObject(holder);
         addConstantObject(heapObjectConstant);
@@ -563,11 +563,15 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         AnnotationMetadataEncoder.registerAnnotationMember(annotationValue, encoders, snippetReflection);
     }
 
-    private ReflectParameterMetadata[] registerReflectParameters(Executable executable) {
-        ReflectParameterMetadata[] reflectParameters = getReflectParameters(executable);
+    private Object registerReflectParameters(Executable executable) {
+        Object reflectParameters = getReflectParameters(executable);
         if (reflectParameters != null) {
-            for (ReflectParameterMetadata parameter : reflectParameters) {
-                encoders.otherStrings.addObject(parameter.name);
+            if (reflectParameters instanceof Throwable paramError) {
+                registerError(paramError);
+            } else {
+                for (ReflectParameterMetadata parameter : (ReflectParameterMetadata[]) reflectParameters) {
+                    encoders.otherStrings.addObject(parameter.name);
+                }
             }
         }
         return reflectParameters;
@@ -705,8 +709,18 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return exceptionTypes;
     }
 
-    private static ReflectParameterMetadata[] getReflectParameters(Executable reflectMethod) {
-        Parameter[] rawParameters = getRawParameters(reflectMethod);
+    private static Object getReflectParameters(Executable reflectMethod) {
+        Parameter[] rawParameters;
+        try {
+            rawParameters = ReflectionUtil.invokeMethod(getExecutableParameters, reflectMethod);
+        } catch (IllegalArgumentException ex) {
+            /*
+             * Executable.parameterData catches this exception and then reports it as a class format
+             * error. We need to do preserve the exception and re-throw it at image run time.
+             */
+            return ex;
+        }
+
         if (rawParameters == null) {
             return null;
         }
@@ -955,6 +969,16 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         }
     }
 
+    private <T> void encodeArrayOrError(UnsafeArrayTypeWriter buf, Object arrayOrError, Consumer<T> elementEncoder) {
+        if (arrayOrError instanceof Throwable error) {
+            buf.putSV(encodeErrorIndex(error));
+        } else {
+            @SuppressWarnings("unchecked")
+            T[] array = (T[]) arrayOrError;
+            encodeArray(buf, array, elementEncoder);
+        }
+    }
+
     private static <T> void encodeArray(UnsafeArrayTypeWriter buf, T[] array, Consumer<T> elementEncoder) {
         buf.putSV(array.length);
         for (T elem : array) {
@@ -993,14 +1017,6 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private static String getSignature(Executable executable) {
         try {
             return (String) (executable instanceof Method ? getMethodSignature.invoke(executable) : getConstructorSignature.invoke(executable));
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    private static Parameter[] getRawParameters(Executable executable) {
-        try {
-            return (Parameter[]) getExecutableParameters.invoke(executable);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -1062,12 +1078,12 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return buf.toArray();
     }
 
-    private byte[] encodeReflectParameters(ReflectParameterMetadata[] reflectParameters) {
+    private byte[] encodeReflectParameters(Object reflectParameters) {
         if (reflectParameters == null) {
             return null;
         }
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        encodeArray(buf, reflectParameters, reflectParameter -> encodeReflectParameter(buf, reflectParameter));
+        encodeArrayOrError(buf, reflectParameters, (ReflectParameterMetadata reflectParameter) -> encodeReflectParameter(buf, reflectParameter));
         return buf.toArray();
     }
 

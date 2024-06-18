@@ -137,12 +137,12 @@ final class ReflectionRuntimeMetadata {
         final Object[] parameterTypes;
         final HostedType[] exceptionTypes;
         final AnnotationValue[][] parameterAnnotations;
-        final ReflectParameterMetadata[] reflectParameters;
+        final Object reflectParameters;
         final JavaConstant accessor;
 
         ExecutableMetadata(RuntimeConditionSet conditions, boolean complete, boolean negative, JavaConstant heapObject, HostedType declaringType, Object[] parameterTypes, int modifiers,
                         HostedType[] exceptionTypes, String signature,
-                        AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters,
+                        AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, Object reflectParameters,
                         JavaConstant accessor) {
             super(conditions, complete, negative, heapObject, declaringType, modifiers, signature, annotations, typeAnnotations);
 
@@ -163,7 +163,7 @@ final class ReflectionRuntimeMetadata {
         private MethodMetadata(RuntimeConditionSet conditions, boolean complete, boolean negative, boolean hiding, JavaConstant heapObject, HostedType declaringClass, String name,
                         Object[] parameterTypes, int modifiers,
                         HostedType returnType, HostedType[] exceptionTypes, String signature, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations,
-                        AnnotationMemberValue annotationDefault, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters, JavaConstant accessor) {
+                        AnnotationMemberValue annotationDefault, TypeAnnotationValue[] typeAnnotations, Object reflectParameters, JavaConstant accessor) {
             super(conditions, complete, negative, heapObject, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations,
                             reflectParameters,
                             accessor);
@@ -177,7 +177,7 @@ final class ReflectionRuntimeMetadata {
         MethodMetadata(RuntimeConditionSet conditions, HostedType declaringClass, String name, HostedType[] parameterTypes, int modifiers, HostedType returnType, HostedType[] exceptionTypes,
                         String signature,
                         AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, AnnotationMemberValue annotationDefault, TypeAnnotationValue[] typeAnnotations,
-                        ReflectParameterMetadata[] reflectParameters, JavaConstant accessor) {
+                        Object reflectParameters, JavaConstant accessor) {
             this(conditions, true, false, false, null, declaringClass, name, parameterTypes, modifiers, returnType, exceptionTypes, signature, annotations, parameterAnnotations, annotationDefault,
                             typeAnnotations, reflectParameters, accessor);
         }
@@ -185,7 +185,7 @@ final class ReflectionRuntimeMetadata {
         /* Method in heap */
         MethodMetadata(RuntimeConditionSet conditions, boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations,
                         AnnotationMemberValue annotationDefault,
-                        TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters) {
+                        TypeAnnotationValue[] typeAnnotations, Object reflectParameters) {
             this(conditions, registered, false, false, heapObject, null, null, null, 0, null, null, null, annotations, parameterAnnotations, annotationDefault,
                             typeAnnotations,
                             reflectParameters, null);
@@ -211,7 +211,7 @@ final class ReflectionRuntimeMetadata {
 
         private ConstructorMetadata(RuntimeConditionSet conditions, boolean complete, boolean negative, JavaConstant heapObject, HostedType declaringClass, Object[] parameterTypes, int modifiers,
                         HostedType[] exceptionTypes,
-                        String signature, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters,
+                        String signature, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, Object reflectParameters,
                         JavaConstant accessor) {
             super(conditions, complete, negative, heapObject, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations,
                             reflectParameters,
@@ -221,14 +221,14 @@ final class ReflectionRuntimeMetadata {
         /* Constructor registered for reflection */
         ConstructorMetadata(RuntimeConditionSet conditions, HostedType declaringClass, HostedType[] parameterTypes, int modifiers, HostedType[] exceptionTypes, String signature,
                         AnnotationValue[] annotations,
-                        AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters, JavaConstant accessor) {
+                        AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, Object reflectParameters, JavaConstant accessor) {
             this(conditions, true, false, null, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations, reflectParameters, accessor);
         }
 
         /* Constructor in heap */
         ConstructorMetadata(RuntimeConditionSet conditions, boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations,
                         TypeAnnotationValue[] typeAnnotations,
-                        ReflectParameterMetadata[] reflectParameters) {
+                        Object reflectParameters) {
             this(conditions, registered, false, heapObject, null, null, 0, null, null, annotations, parameterAnnotations, typeAnnotations, reflectParameters, null);
         }
 
