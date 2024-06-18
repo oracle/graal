@@ -36,12 +36,16 @@ The following prerequisites should be met:
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Next, you should install the `musl` toolchain, compile and install `zlib` into the toolchain. 
-Download the `musl` toolchain from [musl.cc](https://musl.cc/). 
-(We recommend [this one](https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz)). 
-Extract the toolchain to a directory of your choice. This directory will be referred as `$TOOLCHAIN_DIR`.
+    Next, you should install the `musl` toolchain, compile, and install `zlib` into the toolchain.
+2. Download the `musl` toolchain from [musl.libc.org](https://musl.libc.org/)
+We recommend [musl-1.2.4](ttps://musl.libc.org/releases/musl-1.2.4.tar.gz). 
+Extract the toolchain to a directory of your choice.
+Create a new environment variable, named `$TOOLCHAIN_DIR`, and set it to this directory.
+    ```bash
+    export TOOLCHAIN_DIR=/path/to/musl-1.2.4
+    ```
 
-3. Download the latest `zlib` library sources from [zlib.net](https://zlib.net/) and extract them. (This documentation uses `zlib-1.2.11`.)
+3. Download the latest `zlib` library sources from [zlib.net](https://zlib.net/) and extract them. (This example application was tested with [zlib-1.2.13](https://zlib.net/fossils/zlib-1.2.13.tar.gz).)
 
 4. Create a new environment variable, named `CC`:
     ```bash
@@ -50,6 +54,7 @@ Extract the toolchain to a directory of your choice. This directory will be refe
 
 5. Change into the `zlib` directory, and then run the following commands to compile and install `zlib` into the toolchain:
     ```bash
+    cd zlib-1.2.13
     ./configure --prefix=$TOOLCHAIN_DIR --static
     make
     make install
@@ -115,8 +120,9 @@ native-image --static-nolibc EnvMap
 ```
 
 This produces a native executable that statically links all involved libraries (including JDK shared libraries) except for `libc`. 
-This includes `zlib`. Also, depending on the user's code, it may link `libstdc+` and `libgcc`. 
-One way to check what dynamic libraries your application depends on is to run `ldd` with the native executable, for example, `ldd helloworld`.
+This includes `zlib`. 
+Also, depending on the user's code, it may link `libstdc+` and `libgcc`. 
+One way to check what dynamic libraries your application depends on is to run `ldd` with the native executable, for example, `ldd envmap`.
 
 ### Frequently Asked Questions
 
