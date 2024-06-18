@@ -497,9 +497,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return getAnnotation(AlwaysInline.class) != null || getAnnotation(ForceInline.class) != null;
     }
 
+    private LineNumberTable lineNumberTable;
+
     @Override
     public LineNumberTable getLineNumberTable() {
-        return wrapped.getLineNumberTable();
+        if (lineNumberTable == null) {
+            lineNumberTable = wrapped.getLineNumberTable();
+        }
+        return lineNumberTable;
     }
 
     @Override

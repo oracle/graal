@@ -591,7 +591,7 @@ public class LibGraalFeature implements InternalFeature {
                 seen.put(analysisMethod, "direct root");
             }
             if (analysisMethod.isVirtualRootMethod()) {
-                for (AnalysisMethod impl : analysisMethod.getImplementations()) {
+                for (AnalysisMethod impl : analysisMethod.collectMethodImplementations(false)) {
                     VMError.guarantee(impl.isImplementationInvoked());
                     seen.put(impl, "virtual root");
                 }

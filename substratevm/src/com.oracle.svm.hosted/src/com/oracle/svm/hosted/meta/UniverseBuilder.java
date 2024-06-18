@@ -840,7 +840,7 @@ public class UniverseBuilder {
         for (HostedMethod method : hUniverse.methods.values()) {
 
             // Reuse the implementations from the analysis method.
-            method.implementations = hUniverse.lookup(method.wrapped.getImplementations());
+            method.implementations = hUniverse.lookup(method.wrapped.collectMethodImplementations(false).toArray(new AnalysisMethod[0]));
             Arrays.sort(method.implementations, HostedUniverse.METHOD_COMPARATOR);
         }
     }

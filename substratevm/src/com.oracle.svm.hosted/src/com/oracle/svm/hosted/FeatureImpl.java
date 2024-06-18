@@ -249,7 +249,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return AnalysisUniverse.reachableMethodOverrides(baseMethod);
+            return baseMethod.collectMethodImplementations(true);
         }
 
         public void rescanObject(Object obj) {

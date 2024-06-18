@@ -24,13 +24,12 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -58,7 +57,6 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
-import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.LogUtils;
 
@@ -88,9 +86,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> subtypeReachableNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "subtypeReachableNotifications");
 
-    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideReachableNotificationsUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisType.class, Object.class, "overrideReachableNotifications");
-
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> instantiatedNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "typeInstantiatedNotifications");
 
@@ -108,6 +103,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private static final AtomicIntegerFieldUpdater<AnalysisType> isAnySubtypeInstantiatedUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisType.class, "isAnySubtypeInstantiated");
+
+    static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideableMethodsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "overrideableMethods");
 
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
@@ -164,6 +162,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final AnalysisType elementalType;
 
     private final AnalysisType[] interfaces;
+    private AnalysisMethod[] declaredMethods;
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
@@ -189,13 +188,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @SuppressWarnings("unused") private volatile Object subtypeReachableNotifications;
 
     /**
-     * Contains reachability handlers that are notified when any of the method override becomes
-     * reachable *and* the declaring class of the override (or any subtype) is instantiated. Each
-     * handler is notified only once per method override.
-     */
-    @SuppressWarnings("unused") private volatile Object overrideReachableNotifications;
-
-    /**
      * The reachability handler that were registered at the time the type was marked as reachable.
      * Reachability handler that are added by the user later on are not included in this list, i.e.,
      * there is no guarantee that such handlers have finished execution before, e.g., reading values
@@ -213,6 +205,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * Contains callbacks that are executed when an object of this type is marked as reachable.
      */
     @SuppressWarnings("unused") private volatile Object objectReachableCallbacks;
+
+    /**
+     * All methods of this type that can be overridden, i.e., that are not statically bound. Note
+     * that this set can contain methods that are not returned by {@link #getDeclaredMethods}: For
+     * classes that contain interfaces, the VM creates synthetic bridge methods that are not in the
+     * class file and therefore not in the list of declared methods.
+     */
+    @SuppressWarnings("unused") private volatile Object overrideableMethods;
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
@@ -526,45 +526,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     protected void onInstantiated() {
+        forAllSuperTypes(superType -> AtomicUtils.atomicMark(superType, isAnySubtypeInstantiatedUpdater));
+
         universe.onTypeInstantiated(this);
         notifyInstantiatedCallbacks();
-        processMethodOverrides();
     }
 
     public boolean registerAsUnsafeAllocated(Object reason) {
         registerAsInstantiated(reason);
         return AtomicUtils.atomicSet(this, reason, isUnsafeAllocatedUpdater);
-    }
-
-    private void processMethodOverrides() {
-        /*
-         * Walk up the type hierarchy from this type keeping track of all processed types. For each
-         * superType iterate all the override notifications and resolve the methods in all the seen
-         * types, which are subtypes from the point of view of the superType itself. Thus, although
-         * only *this* type may be marked as instantiated, any *intermediate* types between this
-         * type and a super type that declares override notifications will be processed and any
-         * overrides, if reachable, will be passed to the callback. These intermediate types, i.e.,
-         * the seenSubtypes set, may not be instantiated but the overrides that they declare, if
-         * reachable, could be specially invoked, e.g., via super calls. Note that the baseMethod is
-         * not actually an override of itself, but the `registerMethodOverrideReachabilityHandler`
-         * API explicitly includes the base method too.
-         */
-        Set<AnalysisType> seenSubtypes = new HashSet<>();
-        forAllSuperTypes(superType -> {
-            AtomicUtils.atomicMark(superType, isAnySubtypeInstantiatedUpdater);
-            seenSubtypes.add(superType);
-            Map<AnalysisMethod, Set<MethodOverrideReachableNotification>> overrides = ConcurrentLightHashMap.getEntries(superType, overrideReachableNotificationsUpdater);
-            for (var entry : overrides.entrySet()) {
-                AnalysisMethod baseMethod = entry.getKey();
-                Set<MethodOverrideReachableNotification> overrideNotifications = entry.getValue();
-                for (AnalysisType subType : seenSubtypes) {
-                    AnalysisMethod override = baseMethod.resolveInType(subType);
-                    if (override != null && override.isReachable()) {
-                        overrideNotifications.forEach(n -> n.notifyCallback(universe, override));
-                    }
-                }
-            }
-        });
     }
 
     /**
@@ -626,22 +596,26 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              */
             registerAsInstantiated("All array types are marked as instantiated eagerly.");
         }
+
+        universe.getBigbang().postTask(unused -> forAllSuperTypes(this::prepareMethodImplementations, false));
+
         ensureOnTypeReachableTaskDone();
+    }
+
+    /** Prepare information that {@link AnalysisMethod#collectMethodImplementations} needs. */
+    private void prepareMethodImplementations(AnalysisType superType) {
+        ConcurrentLightHashSet.forEach(superType, overrideableMethodsUpdater, (AnalysisMethod method) -> {
+            assert !method.canBeStaticallyBound() && !method.isConstructor() : method;
+
+            AnalysisMethod override = resolveConcreteMethod(method, null);
+            if (override != null && !override.equals(method)) {
+                ConcurrentLightHashSet.addElement(method, AnalysisMethod.allImplementationsUpdater, override);
+            }
+        });
     }
 
     public void registerSubtypeReachabilityNotification(SubtypeReachableNotification notification) {
         ConcurrentLightHashSet.addElement(this, subtypeReachableNotificationsUpdater, notification);
-    }
-
-    public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
-        assert declaredMethod.getDeclaringClass() == this : declaredMethod;
-        Set<MethodOverrideReachableNotification> overrideNotifications = ConcurrentLightHashMap.computeIfAbsent(this,
-                        overrideReachableNotificationsUpdater, declaredMethod, m -> ConcurrentHashMap.newKeySet());
-        overrideNotifications.add(notification);
-    }
-
-    public Set<MethodOverrideReachableNotification> getOverrideReachabilityNotifications(AnalysisMethod method) {
-        return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
     }
 
     public <T> void registerObjectReachableCallback(ObjectReachableCallback<T> callback) {
@@ -1096,9 +1070,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                  */
                 ResolvedJavaType originalCallerType = originalMethod.getDeclaringClass();
 
-                newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(originalMethod, originalCallerType));
-                if (newResolvedMethod == null) {
-                    newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                try {
+                    newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(originalMethod, originalCallerType));
+                    if (newResolvedMethod == null) {
+                        newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                    }
+
+                } catch (UnsupportedFeatureException e) {
+                    /* An unsupported overriding method is not reachable. */
+                    newResolvedMethod = null;
                 }
             }
 
@@ -1256,7 +1236,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public AnalysisMethod[] getDeclaredMethods(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
-        return universe.lookup(wrapped.getDeclaredMethods(forceLink));
+        AnalysisMethod[] result = declaredMethods;
+        if (result == null) {
+            result = universe.lookup(wrapped.getDeclaredMethods(forceLink));
+            /* Ensure array element initializations are published before publishing the array. */
+            VarHandle.storeStoreFence();
+            declaredMethods = result;
+        }
+        return result;
     }
 
     @Override
