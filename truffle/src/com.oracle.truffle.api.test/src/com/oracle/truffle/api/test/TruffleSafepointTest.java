@@ -49,7 +49,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
-import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -1589,10 +1588,6 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         });
 
         forEachConfig((threads, events) -> {
-            if (threads > 16) {
-                return; // runs too slow with 256 vthreads (~20s locally, much more in CI)
-            }
-
             CountDownLatch awaitThreadStart = new CountDownLatch(1);
             AtomicBoolean threadsStopped = new AtomicBoolean();
             try (TestSetup setup = setupSafepointLoop(threads, new NodeCallable() {
@@ -1600,48 +1595,41 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                 @TruffleBoundary
                 public boolean call(@SuppressWarnings("hiding") TestSetup setup, TestRootNode node) {
                     try {
-                        List<Throwable> errors = Collections.synchronizedList(new ArrayList<>());
-                        List<Thread> polyglotThreads = new ArrayList<>();
+                        AtomicReference<Throwable> error = new AtomicReference<>();
+                        Thread polyglotThread;
                         try {
-                            for (int i = 0; i < threads; i++) {
-                                Thread t = node.setup.env.newTruffleThreadBuilder(() -> {
-                                    do {
-                                        TruffleContext context = node.setup.env.getContext();
-                                        TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-                                        boolean prevSideEffects = safepoint.setAllowSideEffects(false);
-                                        try {
-                                            context.leaveAndEnter(null, TruffleSafepoint.Interrupter.THREAD_INTERRUPT, (x) -> {
-                                                /*
-                                                 * nothing to do. the important bit is that enter
-                                                 * sets the cached thread local.
-                                                 */
-                                                return null;
-                                            }, null);
-                                        } finally {
-                                            safepoint.setAllowSideEffects(prevSideEffects);
-                                        }
-                                        reschedule();
-                                    } while (!threadsStopped.get());
-                                }).virtual(vthreads).build();
-                                t.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
-                                    public void uncaughtException(@SuppressWarnings("hiding") Thread t, Throwable e) {
-                                        threadsStopped.set(true);
-                                        e.printStackTrace();
-                                        errors.add(e);
+                            polyglotThread = node.setup.env.newTruffleThreadBuilder(() -> {
+                                do {
+                                    TruffleContext context = node.setup.env.getContext();
+                                    TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
+                                    boolean prevSideEffects = safepoint.setAllowSideEffects(false);
+                                    try {
+                                        context.leaveAndEnter(null, TruffleSafepoint.Interrupter.THREAD_INTERRUPT, (x) -> {
+                                            /*
+                                             * nothing to do. the important bit is that enter sets
+                                             * the cached thread local.
+                                             */
+                                            return null;
+                                        }, null);
+                                    } finally {
+                                        safepoint.setAllowSideEffects(prevSideEffects);
                                     }
-                                });
-                                t.start();
-                                polyglotThreads.add(t);
-                            }
+                                    reschedule();
+                                } while (!threadsStopped.get());
+                            }).virtual(vthreads).build();
+                            polyglotThread.setUncaughtExceptionHandler((t, e) -> {
+                                threadsStopped.set(true);
+                                e.printStackTrace();
+                                error.set(e);
+                            });
+                            polyglotThread.start();
                         } finally {
                             awaitThreadStart.countDown();
                         }
 
-                        for (Thread thread : polyglotThreads) {
-                            thread.join();
-                        }
-                        for (Throwable t : errors) {
-                            throw new AssertionError("thread threw error ", t);
+                        polyglotThread.join();
+                        if (error.get() != null) {
+                            throw new AssertionError("thread threw error ", error.get());
                         }
 
                         return true;
