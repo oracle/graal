@@ -160,7 +160,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
                        "A method not matching the filter is redirected to a lower tier compiler. " +
                        "The filter format is the same as for the MethodFilter option.", type = OptionType.Debug)
         public static final OptionKey<String> GraalCompileOnly = new OptionKey<>(null);
-        @Option(help = "Make JVMCIPrintProperties show all Graal options, including debug and VM options.", type = OptionType.Debug)
+        @Option(help = "Make JVMCIPrintProperties show all Graal options, including debug and internal options.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintPropertiesAll = new OptionKey<>(false);
         // @formatter:on
 
