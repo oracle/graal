@@ -67,6 +67,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -170,7 +171,15 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     @Before
     public void before() throws ExecutionException, InterruptedException {
         Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
-        this.service = vthreads ? Executors.newVirtualThreadPerTaskExecutor() : cachedThreadPool;
+        if (vthreads) {
+            ThreadFactory factory = Thread.ofVirtual().uncaughtExceptionHandler((thread, exception) -> {
+                System.err.println("Uncaught exception in " + thread);
+                exception.printStackTrace(System.err);
+            }).factory();
+            this.service = Executors.newThreadPerTaskExecutor(factory);
+        } else {
+            this.service = cachedThreadPool;
+        }
 
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
@@ -679,9 +688,20 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
 
     @TruffleBoundary
     private static void sleepNanosBoundary(int nanos) {
-        try {
-            Thread.sleep(0, nanos);
-        } catch (InterruptedException ie) {
+        long deadline = System.nanoTime() + nanos;
+        long now;
+        boolean interrupted = false;
+        while ((now = System.nanoTime()) < deadline) {
+            try {
+                Thread.sleep(0, (int) (deadline - now));
+                break;
+            } catch (InterruptedException e) {
+                // cancellation uses Thread#interrupt()
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -1230,6 +1250,11 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                     contextSafepoint();
                     reschedule();
                 }
+                /*
+                 * There is a poll() after this while loop, on the return from the CallTarget. That
+                 * ensures all ThreadLocalActions are processed without needing to wait for their
+                 * futures. This also helped to find some bugs.
+                 */
                 return true;
             })) {
                 AtomicInteger eventCounter = new AtomicInteger();
@@ -1697,12 +1722,16 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         }
 
         // asynchronous execution of all configs
-        if (RERUN_THREAD_CONFIG_ASYNC) {
+        /*
+         * this is not done for virtual threads because it would cause to run more virtual threads
+         * concurrently than the number of processors (see above).
+         */
+        if (RERUN_THREAD_CONFIG_ASYNC && !vthreads) {
             List<Future<?>> futures = new ArrayList<>();
             for (int threads : threadConfigs) {
                 for (int events : ITERATION_CONFIGS) {
-                    if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT && !(vthreads && threads > processors)) {
-                        futures.add(service.submit(() -> run.run(threads, events)));
+                    if (threads * events <= MAX_THREAD_ITERATIONS_PRODUCT) {
+                        futures.add(cachedThreadPool.submit(() -> run.run(threads, events)));
                     }
                 }
             }
@@ -1931,13 +1960,20 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     @TruffleBoundary
     private static void waitForLatch(CountDownLatch latch) throws AssertionError {
         latch.countDown();
-        try {
-            latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+        boolean interrupted = false;
+        while (true) {
+            try {
+                if (!latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    throw failTimeout("waitForLatch()", null);
+                }
+                break;
+            } catch (InterruptedException e) {
+                // cancellation uses Thread#interrupt()
+                interrupted = true;
+            }
         }
-        try {
-            latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 
