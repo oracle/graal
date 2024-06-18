@@ -85,7 +85,10 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
@@ -1130,18 +1133,28 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
-                Object result = LayeredImageSingletonSupport.singleton().runtimeLookup(key);
-                if (result instanceof LayeredImageSingleton layeredSingleton && !layeredSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS)) {
+
+                if (ApplicationLayerOnlyImageSingleton.class.isAssignableFrom(key) && ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    /*
+                     * This singleton is only installed in the application layer heap. All other
+                     * layers looks refer to this singleton.
+                     */
+                    b.addPush(JavaKind.Object, LoadImageSingletonFactory.loadApplicationOnlyImageSingleton(key, b.getMetaAccess()));
+                    return true;
+                }
+
+                Object singleton = LayeredImageSingletonSupport.singleton().runtimeLookup(key);
+                if (singleton instanceof LayeredImageSingleton layeredSingleton && !layeredSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS)) {
                     /*
                      * Runtime compilation installs many singletons into the image which are
                      * otherwise hosted only. Note the platform checks still apply and can be used
                      * to ensure certain singleton are not installed into the image.
                      */
                     if (!RuntimeCompilation.isEnabled()) {
-                        throw b.bailout("Layered image singleton without runtime access is in runtime graph: " + result);
+                        throw b.bailout("Layered image singleton without runtime access is in runtime graph: " + singleton);
                     }
                 }
-                b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(result), b.getMetaAccess()));
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(singleton), b.getMetaAccess()));
                 return true;
             }
         });

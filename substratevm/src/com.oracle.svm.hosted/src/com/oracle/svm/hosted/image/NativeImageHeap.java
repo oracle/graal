@@ -76,6 +76,7 @@ import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -216,6 +217,10 @@ public final class NativeImageHeap implements ImageHeap {
     public void addInitialObjects() {
         addObjectsPhase.allow();
         internStringsPhase.allow();
+
+        if (ImageSingletons.contains(LoadImageSingletonFeature.class)) {
+            ImageSingletons.lookup(LoadImageSingletonFeature.class).addInitialObjects(this, hUniverse);
+        }
 
         addStaticFields();
     }

@@ -299,10 +299,27 @@ class ImageSingletonLoaderImpl implements ImageSingletonLoader {
     }
 
     @Override
+    public long readLong(String keyName) {
+        List<Object> value = cast(keyStore.get(keyName));
+        String type = cast(value.get(0));
+        assert type.equals("L") : type;
+        Number number = cast(value.get(1));
+        return number.longValue();
+    }
+
+    @Override
     public String readString(String keyName) {
         List<Object> value = cast(keyStore.get(keyName));
         String type = cast(value.get(0));
         assert type.equals("S") : type;
+        return cast(value.get(1));
+    }
+
+    @Override
+    public List<String> readStringList(String keyName) {
+        List<Object> value = cast(keyStore.get(keyName));
+        String type = cast(value.get(0));
+        assert type.equals("S(") : type;
         return cast(value.get(1));
     }
 }
