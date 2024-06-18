@@ -149,23 +149,6 @@ final class ContinuationImpl extends Continuation implements Serializable {
 
     // region API Implementation
 
-    /**
-     * Creates a new suspended continuation, taking in an {@link EntryPoint}.
-     *
-     * <p>
-     * The new continuation starts in the {@link State#NEW} state. To begin execution call the
-     * {@link Continuation#resume()} method. The entry point will be passed a capability object
-     * allowing it to suspend itself.
-     *
-     * <p>
-     * The continuation will be serializable so long as the given {@link EntryPoint} is
-     * serializable.
-     */
-    public ContinuationImpl(EntryPoint entryPoint) {
-        this.state = State.NEW;
-        this.entryPoint = entryPoint;
-    }
-
     @Override
     public boolean isResumable() {
         State s = getState();
@@ -233,7 +216,8 @@ final class ContinuationImpl extends Continuation implements Serializable {
     }
 
     /**
-     * Called from {@link SuspendCapability#suspend()}.
+     * Called from {@link SuspendCapability#suspend()}. Suspends this continuation. If successful,
+     * execution resumes back at {@link #resume()}.
      */
     void trySuspend() {
         if (exclusiveOwner != Thread.currentThread()) {
@@ -260,9 +244,13 @@ final class ContinuationImpl extends Continuation implements Serializable {
         assert state == ContinuationImpl.State.RUNNING : state;
     }
 
-    // endregion
+    // endregion API Implementation
 
     // region Serialization
+
+    public ContinuationImpl() {
+        state = State.INCOMPLETE;
+    }
 
     /**
      * <p>
@@ -330,6 +318,11 @@ final class ContinuationImpl extends Continuation implements Serializable {
      */
     @Serial
     private void writeObject(ObjectOutputStream out) throws IOException {
+        writeObjectExternal(out);
+    }
+
+    @Override
+    public void writeObjectExternal(ObjectOutput out) throws IOException {
         State currentState = lock();
         if (currentState == State.RUNNING) {
             throw new IllegalContinuationStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
@@ -367,7 +360,19 @@ final class ContinuationImpl extends Continuation implements Serializable {
      */
     @Serial
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        state = State.INCOMPLETE;
+        /*
+         * We read the context classloader here because we need the classloader that holds the
+         * user's app. If we use Class.forName() in this code we get the platform classloader
+         * because this class is provided by the VM, and thus can't look up methods of user classes.
+         * If we use the classloader of the entrypoint it breaks for Generator and any other classes
+         * we might want to ship with the VM that use this API. So we need the user's app class
+         * loader. We could walk the stack to find it just like ObjectInputStream does, but we go
+         * with the context classloader here to make it easier for the user to control.
+         */
+        readObjectExternalImpl(in, Thread.currentThread().getContextClassLoader());
+    }
+
+    void readObjectExternalImpl(ObjectInput in, ClassLoader loader) throws IOException, ClassNotFoundException {
         State currentState = lock();
         if (currentState == State.RUNNING) {
             throw new IllegalContinuationStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
@@ -387,7 +392,9 @@ final class ContinuationImpl extends Continuation implements Serializable {
             entryPoint = (EntryPoint) in.readObject();
 
             if (currentState == State.SUSPENDED) {
-                stackFrameHead = FrameRecordSerializer.forIn(version, in).readRecord();
+                stackFrameHead = FrameRecordSerializer.forIn(version, in) //
+                                .withLoader(loader == null ? Thread.currentThread().getContextClassLoader() : loader) //
+                                .readRecord();
             }
             unlock(currentState);
         } catch (Throwable e) {
@@ -396,9 +403,14 @@ final class ContinuationImpl extends Continuation implements Serializable {
         }
     }
 
-    // endregion
+    // endregion Serialization
 
     // region Implementation
+
+    public ContinuationImpl(EntryPoint entryPoint) {
+        this.state = State.NEW;
+        this.entryPoint = entryPoint;
+    }
 
     /**
      * Invoked by the VM. This is the first frame in the continuation.
@@ -406,7 +418,7 @@ final class ContinuationImpl extends Continuation implements Serializable {
     @SuppressWarnings("unused")
     private void run() {
         assert state == State.RUNNING : state; // set in #resume()
-        SuspendCapability cap = new SuspendCapability(this);
+        SuspendCapability cap = SuspendCapability.create(this);
         try {
             try {
                 entryPoint.start(cap);
@@ -439,6 +451,10 @@ final class ContinuationImpl extends Continuation implements Serializable {
      * {@link #resume()} the state will become {@link State#RUNNING} until either the entry point
      * returns, at which point the state becomes {@link State#COMPLETED}, or until the continuation
      * suspends, at which point it will be {@link State#SUSPENDED}.
+     * <p>
+     * If an exception escapes from {@link #resume()}, the state becomes {@link State#FAILED}. A
+     * continuation being {@link #ensureMaterialized() materialized}, {@link #ensureDematerialized()
+     * dematerialized} or in a serialization/deserialization process will be {@link State#LOCKED}.
      */
     private State getState() {
         return state;
