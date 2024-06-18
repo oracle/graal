@@ -653,6 +653,23 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected int minLockDepthAtMonitorExit(boolean inEpilogue) {
+            /**
+             * The
+             * {@code javasoft.sqe.tests.vm.instr.monitorexit.monitorexit009.monitorexit00901m1.monitorexit00901m1}
+             * test implies that unlocking the method synchronized object can be structured locking:
+             *
+             * <pre>
+             * synchronized void foo() {
+             *   monitorexit this // valid unlock of method synchronize object
+             *   // do something
+             *   monitorenter this
+             *   return
+             * }
+             * </pre>
+             *
+             * To be JCK compliant, it is only required to always have at least one locked object
+             * before performing a monitorexit.
+             */
             return 1;
         }
 
