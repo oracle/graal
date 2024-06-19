@@ -3037,8 +3037,12 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      */
     protected int minLockDepthAtMonitorExit(boolean inEpilogue) {
         /**
-         * Synchronized methods: Enforce that the method synchronized object is not unlocked outside
-         * the synchronized epilogue. Such a pattern could still be structured locking:
+         * Synchronized methods: Enforce that the method synchronized object is not unlocked before
+         * the synchronized epilogue.
+         *
+         * The
+         * {@code javasoft.sqe.tests.vm.instr.monitorexit.monitorexit009.monitorexit00901m1.monitorexit00901m1}
+         * test implies that unlocking the method synchronized object can be structured locking:
          *
          * <pre>
          * synchronized void foo() {
