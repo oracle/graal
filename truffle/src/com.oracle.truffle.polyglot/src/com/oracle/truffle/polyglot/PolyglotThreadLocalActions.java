@@ -265,6 +265,9 @@ final class PolyglotThreadLocalActions {
                 Objects.requireNonNull(threads[i]);
             }
         }
+        // We must do this now as it takes the engine lock, and the nesting order must always be
+        // engine lock first, then context lock
+        TruffleLogger engineLogger = context.engine.getEngineLogger();
         // lock to stop new threads
         synchronized (context) {
             // send enter/leave to slow-path
@@ -332,8 +335,10 @@ final class PolyglotThreadLocalActions {
             }
             Future<Void> future;
             if (activeThreads.length > 0) {
-                future = TL_HANDSHAKE.runThreadLocal(activeThreads, handshake,
-                                AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action), config.syncStartOfEvent, config.syncEndOfEvent);
+                int syncActionMaxWait = context.engine.getEngineOptionValues().get(PolyglotEngineOptions.SynchronousThreadLocalActionMaxWait);
+                boolean syncActionPrintStackTraces = context.engine.getEngineOptionValues().get(PolyglotEngineOptions.SynchronousThreadLocalActionPrintStackTraces);
+                future = TL_HANDSHAKE.runThreadLocal(activeThreads, handshake, AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action), config.syncStartOfEvent,
+                                config.syncEndOfEvent, syncActionMaxWait, syncActionPrintStackTraces, engineLogger);
                 this.activeEvents.put(handshake, null);
 
             } else {
@@ -670,6 +675,11 @@ final class PolyglotThreadLocalActions {
         }
 
         protected abstract void acceptImpl(PolyglotTLAccess access);
+
+        @Override
+        public String toString() {
+            return action.toString();
+        }
     }
 
     private static final class AsyncEvent extends AbstractTLHandshake {

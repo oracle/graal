@@ -40,17 +40,22 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -58,6 +63,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -112,11 +118,12 @@ public abstract class ThreadLocalHandshake {
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
      */
     @TruffleBoundary
-    public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread,
-                    Consumer<T> onDone, boolean sideEffecting, boolean syncStartOfEvent, boolean syncEndOfEvent) {
+    public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread, Consumer<T> onDone, boolean sideEffecting, boolean syncStartOfEvent, boolean syncEndOfEvent,
+                    int syncActionMaxWait, boolean syncActionPrintStackTraces, TruffleLogger engineLogger) {
         testSupport();
         assert threads.length > 0;
-        Handshake<T> handshake = new Handshake<>(threads, onThread, onDone, sideEffecting, threads.length, syncStartOfEvent, syncEndOfEvent);
+        Handshake<T> handshake = new Handshake<>(threads, onThread, onDone, sideEffecting, threads.length, syncStartOfEvent, syncEndOfEvent, syncActionMaxWait, syncActionPrintStackTraces,
+                        engineLogger);
         if (syncStartOfEvent || syncEndOfEvent) {
             synchronized (ThreadLocalHandshake.class) {
                 addHandshakes(threads, handshake);
@@ -178,6 +185,24 @@ public abstract class ThreadLocalHandshake {
     @SuppressWarnings("unchecked")
     private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
         throw (T) ex;
+    }
+
+    private static final class StackTrace {
+        final StackTraceElement[] elements;
+
+        private StackTrace(StackTraceElement[] elements) {
+            this.elements = elements;
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(elements);
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other == this || (other instanceof StackTrace stacktrace && Arrays.equals(elements, stacktrace.elements));
+        }
     }
 
     /**
@@ -244,8 +269,18 @@ public abstract class ThreadLocalHandshake {
             return tryAcquireSharedNanos(1, unit.toNanos(timeout));
         }
 
+        public int getCount() {
+            return getState();
+        }
+
         public boolean isTerminated() {
             return getState() == 0;
+        }
+
+        public void releaseAll() {
+            while (!isTerminated()) {
+                arrive();
+            }
         }
     }
 
@@ -258,11 +293,16 @@ public abstract class ThreadLocalHandshake {
         private final Barrier startBarrier;
         private final boolean syncEndOfEvent;
         private final Barrier endBarrier;
+        private final int syncActionMaxWait;
+        private final boolean syncActionPrintStackTraces;
+        private final TruffleLogger engineLogger;
+        private final AtomicBoolean warned = new AtomicBoolean(false);
         // avoid rescheduling processed events on the same thread
         private final Map<Thread, Boolean> threads;
         private final Consumer<T> onDone;
 
-        Handshake(Thread[] initialThreads, T action, Consumer<T> onDone, boolean sideEffecting, int numberOfThreads, boolean syncStartOfEvent, boolean syncEndOfEvent) {
+        Handshake(Thread[] initialThreads, T action, Consumer<T> onDone, boolean sideEffecting, int numberOfThreads, boolean syncStartOfEvent, boolean syncEndOfEvent, int syncActionMaxWait,
+                        boolean syncActionPrintStackTraces, TruffleLogger engineLogger) {
             this.action = action;
             this.onDone = onDone;
             this.sideEffecting = sideEffecting;
@@ -270,6 +310,9 @@ public abstract class ThreadLocalHandshake {
             this.startBarrier = syncStartOfEvent ? new Barrier(numberOfThreads) : null;
             this.syncEndOfEvent = syncEndOfEvent;
             this.endBarrier = new Barrier(numberOfThreads);
+            this.syncActionMaxWait = syncActionMaxWait;
+            this.syncActionPrintStackTraces = syncActionPrintStackTraces;
+            this.engineLogger = engineLogger;
             /*
              * Mark the handshake for all initial threads as active (not deactivated).
              */
@@ -308,19 +351,97 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
-        private static void await(Barrier latch) {
+        private void await(Barrier barrier) {
             boolean interrupted = false;
-            while (true) {
-                try {
-                    latch.await();
-                    break;
-                } catch (InterruptedException e) {
-                    interrupted = true;
+
+            if (syncActionMaxWait == 0) {
+                while (true) {
+                    try {
+                        barrier.await();
+                        break;
+                    } catch (InterruptedException e) {
+                        interrupted = true;
+                    }
+                }
+            } else {
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(syncActionMaxWait);
+                long remaining;
+                boolean success = false;
+                while ((remaining = deadline - System.nanoTime()) > 0) {
+                    try {
+                        success = barrier.await(remaining, TimeUnit.NANOSECONDS);
+                        break;
+                    } catch (InterruptedException e) {
+                        interrupted = true;
+                    }
+                }
+                if (!success) {
+                    if (awaitTimeout(barrier)) {
+                        // This thread will do the cancellation if awaitTimeout() returned true.
+                        cancel(true);
+                    } else {
+                        /*
+                         * Other threads should wait until cancelled is set to true, to ensure they
+                         * don't run the action. This also ensures other threads continue to await()
+                         * to have stacktraces representative of what they were doing before the
+                         * timeout. That way when we print stacktraces it is much easier to
+                         * understand the situation, as it represents the situation before the
+                         * cancellation happened for any thread.
+                         */
+                        while (true) {
+                            try {
+                                barrier.await();
+                                break;
+                            } catch (InterruptedException e) {
+                                interrupted = true;
+                            }
+                        }
+                    }
                 }
             }
+
             if (interrupted) {
                 Thread.currentThread().interrupt();
             }
+        }
+
+        private boolean awaitTimeout(Barrier barrier) {
+            if (warned.get() || !warned.compareAndSet(false, true)) {
+                return false;
+            }
+
+            engineLogger.warning(barrier.getCount() + " threads did not reach the synchronous ThreadLocalAction " + action + " in " + syncActionMaxWait + " seconds. " +
+                            "When using virtual threads this may be due to the issue that once more than Runtime.availableProcessors() virtual threads are pinned and waiting for each other, no virtual threads can progress (JDK-8334304). " +
+                            "Cancelling this ThreadLocalAction to unblock. Use --engine.SynchronousThreadLocalActionPrintStackTraces=true to print thread stacktraces.");
+            if (syncActionPrintStackTraces) {
+                Map<StackTrace, List<Thread>> grouped = new LinkedHashMap<>();
+                for (var entry : threads.entrySet()) {
+                    if (!entry.getValue()) {
+                        Thread thread = entry.getKey();
+                        var stackTrace = new StackTrace(thread.getStackTrace());
+                        grouped.computeIfAbsent(stackTrace, t -> new ArrayList<>()).add(thread);
+                    }
+                }
+
+                for (var entry : grouped.entrySet()) {
+                    var out = new StringBuilder("Stacktrace for:").append(System.lineSeparator());
+                    for (Thread thread : entry.getValue()) {
+                        out.append(thread).append(System.lineSeparator());
+                    }
+
+                    final Exception exception = new Exception();
+                    exception.setStackTrace(entry.getKey().elements);
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    exception.printStackTrace(new PrintStream(stream));
+                    String stackTraceString = stream.toString();
+                    // Remove the java.lang.Exception line
+                    stackTraceString = stackTraceString.substring(stackTraceString.indexOf("\t"));
+
+                    engineLogger.warning(out + stackTraceString);
+                }
+            }
+
+            return true;
         }
 
         boolean activateThread() {
@@ -358,12 +479,18 @@ public abstract class ThreadLocalHandshake {
         @Override
         public Void get() throws InterruptedException {
             endBarrier.await();
+            if (cancelled) {
+                throw new CancellationException();
+            }
             return null;
         }
 
         public Void get(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException {
             if (!endBarrier.await(timeout, unit)) {
                 throw new TimeoutException();
+            }
+            if (cancelled) {
+                throw new CancellationException();
             }
             return null;
         }
@@ -375,6 +502,11 @@ public abstract class ThreadLocalHandshake {
         public boolean cancel(boolean mayInterruptIfRunning) {
             if (!isTerminated()) {
                 cancelled = true;
+                // Release all waiters on the barriers
+                if (syncStartOfEvent) {
+                    startBarrier.releaseAll();
+                }
+                endBarrier.releaseAll();
                 return true;
             } else {
                 return false;

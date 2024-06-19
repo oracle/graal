@@ -68,6 +68,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -1538,6 +1539,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     }
                 } catch (ExecutionException | InterruptedException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
+                } catch (CancellationException e) {
+                    // Expected
                 }
                 if (timedOut) {
                     return false;

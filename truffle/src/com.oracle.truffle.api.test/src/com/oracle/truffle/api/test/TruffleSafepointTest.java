@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -290,7 +291,11 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                     }
                 }, false);
                 c.close(true);
-                future.get();
+                try {
+                    future.get();
+                } catch (CancellationException e) {
+                    // Expected but does not always happen
+                }
                 testFuture.get();
                 assertFalse("Action was performed when inactive in iteration " + itNo, threadLocalActionPerformedWhenContextWasInactive.get());
             }
@@ -1215,8 +1220,10 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
                     if (f.cancel(false)) {
                         assertTrue(f.isDone());
                         assertTrue(f.isCancelled());
+                        assertFails(() -> waitOrFail(f), CancellationException.class);
+                    } else {
+                        futures.add(f);
                     }
-                    futures.add(f);
                 }
                 for (Future<Void> future : futures) {
                     waitOrFail(future);
@@ -1694,6 +1701,48 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         }
     }
 
+    @Test
+    public void testDeadlockDueToTooFewCarrierThreads() {
+        Assume.assumeTrue(vthreads);
+        Assume.assumeFalse("SVM does not pin for synchronized and safepoints", TruffleOptions.AOT);
+
+        // See https://bugs.openjdk.org/browse/JDK-8334304
+        int processors = Runtime.getRuntime().availableProcessors();
+        int threads = processors * 2;
+        Object[] escape = new Object[1];
+
+        shortSyncActionMaxWait = true;
+        try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+            // poll() from PE code would pin, but it's hard to ensure this runs in PE code, so pin
+            // using a monitor instead
+            Object pin = new Object();
+            escape[0] = pin;
+            synchronized (pin) {
+                while (!isStopped(s.stopped)) {
+                    TruffleSafepoint.poll(node); // only do the poll in PE'd code
+                    reschedule();
+                }
+            }
+            return true;
+        })) {
+            ThreadLocalAction action = new ThreadLocalAction(true, true) {
+                @Override
+                protected void perform(Access access) {
+                }
+            };
+            var future = setup.env.submitThreadLocal(null, action);
+            assertFails(() -> waitOrFail(future), CancellationException.class);
+            setup.stopAndAwait();
+
+            String output = outputStream.toString();
+            assertTrue(output, output.contains("threads did not reach the synchronous ThreadLocalAction"));
+            assertTrue(output, output.contains("parkOnCarrierThread"));
+        } finally {
+            shortSyncActionMaxWait = false;
+        }
+        assertNotNull(escape[0]);
+    }
+
     @FunctionalInterface
     interface TestRunner {
 
@@ -1974,10 +2023,20 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             b.option("engine.SafepointALot", "true");
             b.logHandler(new ByteArrayOutputStream()); // discard output of safepoint a lot
         }
+        if (shortSyncActionMaxWait) {
+            b.option("engine.SynchronousThreadLocalActionMaxWait", "1");
+            b.option("engine.SynchronousThreadLocalActionPrintStackTraces", "true");
+            outputStream = new ByteArrayOutputStream();
+            b.logHandler(outputStream);
+        } else {
+            outputStream = null;
+        }
         return b.build();
     }
 
     private boolean safepointALot = false;
+    private boolean shortSyncActionMaxWait = false;
+    private ByteArrayOutputStream outputStream;
 
     @TruffleBoundary
     private static void waitForLatch(CountDownLatch latch) throws AssertionError {
