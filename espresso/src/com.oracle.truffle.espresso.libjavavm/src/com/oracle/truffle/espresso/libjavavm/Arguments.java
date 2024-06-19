@@ -71,7 +71,9 @@ public final class Arguments {
     private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
                     // `TieredStopAtLevel=0` is handled separately, other values are ignored
-                    "TieredStopAtLevel");
+                    "TieredStopAtLevel",
+                    "MaxMetaspaceSize",
+                    "HeapDumpOnOutOfMemoryError");
 
     private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
                     "TieredCompilation", "engine.MultiTier");
