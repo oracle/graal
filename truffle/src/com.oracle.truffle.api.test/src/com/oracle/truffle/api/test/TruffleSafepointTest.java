@@ -51,6 +51,7 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -682,7 +683,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         boolean interrupted = false;
         while ((now = System.nanoTime()) < deadline) {
             try {
-                Thread.sleep(0, (int) (deadline - now));
+                Thread.sleep(Duration.ofNanos(deadline - now));
                 break;
             } catch (InterruptedException e) {
                 // cancellation uses Thread#interrupt()
