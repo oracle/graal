@@ -119,7 +119,8 @@
                   "-Dtck.inlineVerifierInstrument=false",
     extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
-      logs+: ["*/*_compilation.log"]
+      logs+: ["*/*_compilation.log"],
+      components+: ["truffle"],
     },
 
   truffle_xcomp_zgc:: s.base("build,unittest",
@@ -130,7 +131,8 @@
                   "-XX:+UseZGC -XX:-ZGenerational",
     extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
-      logs+: ["*/*_compilation.log"]
+      logs+: ["*/*_compilation.log"],
+      components+: ["truffle"],
     },
 
   truffle_xcomp_serialgc:: s.base("build,unittest",
@@ -141,7 +143,8 @@
                   "-XX:+UseSerialGC",
     extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
-      logs+: ["*/*_compilation.log"]
+      logs+: ["*/*_compilation.log"],
+      components+: ["truffle"],
     },
 
   ctw:: s.base("build,ctw", no_warning_as_error=true),

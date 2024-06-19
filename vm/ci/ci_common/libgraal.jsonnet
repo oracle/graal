@@ -62,6 +62,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       '*/graal-compiler-ctw.log',
       '*/gcutils_heapdump_*.hprof.gz'
     ],
+    components+: ["truffle"],
     timelimit: '1:00:00',
     teardown+: if coverage then [
       g.upload_coverage
