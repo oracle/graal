@@ -897,12 +897,7 @@ def _check_using_latest_jars(dists):
 
 def _parseVmArgs(args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
-
-    # add default graal.options.file
     argsPrefix = []
-    options_file = join(mx.primary_suite().dir, 'graal.options')
-    if exists(options_file):
-        argsPrefix.append('-Djdk.graal.options.file=' + options_file)
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
