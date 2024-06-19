@@ -58,6 +58,10 @@ env:
 permissions:
   contents: read # to fetch code (actions/checkout)
 
+concurrency:
+  group: "workflow = ${{ github.workflow }}, ref = ${{ github.event.ref }}, pr = ${{ github.event.pull_request.id }}"
+  cancel-in-progress: true
+
 jobs:
   build-graalvm-and-populate-matrix:
     name: Build GraalVM and populate matrix
