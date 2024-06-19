@@ -27,6 +27,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-40931 Using virtual threads in a native-image will now emulate virtual threads using platform threads until Loom support for Truffle languages in native-image is implemented.
 * GR-40931 Added [`TruffleThreadBuilder#virtual()`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleThreadBuilder.html#virtual(boolean)) for languages to create virtual threads.
 * GR-53454 Added warning in the annotation processor when `@ReportPolymorphism` is used incorrectly.
+* GR-54516 The `Future` returned by submitting `ThreadLocalAction` now throws `CancellationException` on `Future#get()` when the future is cancelled, as it should per `Future` interface semantics.
+* GR-54516 Synchronous `ThreadLocalAction`s which wait longer than `--engine.SynchronousThreadLocalActionMaxWait` (default 60) seconds for all threads to start executing that action now show a warning and are automatically cancelled to prevent applications to hang.
 
 ## Version 24.0.0
 

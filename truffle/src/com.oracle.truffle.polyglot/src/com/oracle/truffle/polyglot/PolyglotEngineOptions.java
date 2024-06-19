@@ -87,9 +87,17 @@ final class PolyglotEngineOptions {
                     "Do not use in production environments.")//
     static final OptionKey<Boolean> SpecializationStatistics = new OptionKey<>(false);
 
-    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Traces thread local events and when they are processed on the individual threads." +
-                    "Prints messages with the [engine] [tl] prefix. ")//
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Traces thread local events and when they are processed on the individual threads. " +
+                    "Prints messages with the [engine] [tl] prefix.")//
     static final OptionKey<Boolean> TraceThreadLocalActions = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "How long to wait for other threads to reach a synchronous ThreadLocalAction before cancelling it, in seconds. 0 means no limit.", usageSyntax = "[0, inf)")//
+    static final OptionKey<Integer> SynchronousThreadLocalActionMaxWait = new OptionKey<>(60);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Print thread stacktraces when a synchronous ThreadLocalAction is waiting for more than SynchronousThreadLocalActionMaxWait seconds.")//
+    static final OptionKey<Boolean> SynchronousThreadLocalActionPrintStackTraces = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Repeadly submits thread local actions and collects statistics about safepoint intervals in the process. " +
