@@ -27,6 +27,7 @@ package com.oracle.svm.core.option;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
@@ -72,6 +73,11 @@ public final class RuntimeOptionParser {
      * The legacy prefix for Graal style options available in an application based on Substrate VM.
      */
     private static final String LEGACY_GRAAL_OPTION_PREFIX = "-Dgraal.";
+
+    /**
+     * Guard for issuing warning about deprecated Graal option prefix at most once.
+     */
+    private static final AtomicBoolean LEGACY_OPTION_DEPRECATION_WARNED = new AtomicBoolean();
 
     /**
      * The prefix for XOptions available in an application based on Substrate VM.
@@ -143,6 +149,15 @@ public final class RuntimeOptionParser {
             } else if (graalOptionPrefix != null && arg.startsWith(graalOptionPrefix)) {
                 parseOptionAtRuntime(arg, graalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
             } else if (legacyGraalOptionPrefix != null && arg.startsWith(legacyGraalOptionPrefix)) {
+                String baseName = arg.substring(legacyGraalOptionPrefix.length());
+                if (LEGACY_OPTION_DEPRECATION_WARNED.compareAndExchange(false, true)) {
+                    Log log = Log.log();
+                    // Checkstyle: Allow raw info or warning printing - begin
+                    log.string("WARNING: The 'graal.' property prefix for the Graal option ").string(baseName).newline();
+                    log.string("WARNING: (and all other Graal options) is deprecated and will be ignored").newline();
+                    log.string("WARNING: in a future release. Please use 'jdk.graal.").string(baseName).string("' instead.").newline();
+                    // Checkstyle: Allow raw info or warning printing - end
+                }
                 parseOptionAtRuntime(arg, legacyGraalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
             } else if (xOptionPrefix != null && arg.startsWith(xOptionPrefix) && XOptions.parse(arg.substring(xOptionPrefix.length()), values)) {
                 // option value was already parsed and added to the map

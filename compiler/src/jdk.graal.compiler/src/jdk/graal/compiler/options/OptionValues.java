@@ -209,9 +209,8 @@ public class OptionValues {
             size = sortedOptions.entrySet().size();
         } else {
             for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
-                String key = e.getKey();
                 OptionDescriptor desc = e.getValue();
-                if (all || !excludeOptionFromHelp(key, desc)) {
+                if (all || !excludeOptionFromHelp(desc)) {
                     size++;
                 }
             }
@@ -220,7 +219,7 @@ public class OptionValues {
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             String key = e.getKey();
             OptionDescriptor desc = e.getValue();
-            if (all || !excludeOptionFromHelp(key, desc)) {
+            if (all || !excludeOptionFromHelp(desc)) {
                 printHelp(out, namePrefix, key, desc);
                 if (i++ != size - 1) {
                     // print new line between options
@@ -268,10 +267,8 @@ public class OptionValues {
         }
     }
 
-    private static boolean excludeOptionFromHelp(String optionKey, OptionDescriptor desc) {
-        /* Filter out debug, Truffle, and Native Image options. */
-        return desc.getOptionType() == OptionType.Debug ||
-                        optionKey.startsWith("compiler.") ||
-                        optionKey.startsWith("internal.");
+    private static boolean excludeOptionFromHelp(OptionDescriptor desc) {
+        /* Filter out debug options. */
+        return desc.getOptionType() == OptionType.Debug;
     }
 }

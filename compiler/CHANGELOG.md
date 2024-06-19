@@ -2,6 +2,10 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
+## GraalVM for JDK 24 (Internal Version 24.2.0)
+* (GR-54476): Issue a deprecation warning on first use of a legacy `graal.` prefix (see GR-49960 below).
+  The warning is planned to be replaced by an error in GraalVM for JDK 25.
+
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-50352): Added `-Djdk.graal.PrintPropertiesAll` to make `-XX:+JVMCIPrintProperties` show all Graal options.
 * (GR-25968): New optimization for reducing code size on AMD64, by emitting smaller jump instructions if the displacement fits in one byte.

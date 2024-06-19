@@ -185,8 +185,8 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         '-XX:JVMCIThreadsPerNativeLibraryRuntime=1',
         '-XX:JVMCICompilerIdleDelay=0',
         '-XX:JVMCIThreads=1',
-        '-Djdk.libgraal.PrintCompilation=true',
-        '-Djdk.libgraal.LogFile=' + compiler_log_file,
+        '-Djdk.graal.PrintCompilation=true',
+        '-Djdk.graal.LogFile=' + compiler_log_file,
     ]
 
     def extra_check(compiler_log):
@@ -238,8 +238,8 @@ def _test_libgraal_fatal_error_handling():
     """
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     vmargs = ['-XX:+PrintFlagsFinal',
-              '-Djdk.libgraal.CrashAt=*',
-              '-Djdk.libgraal.CrashAtIsFatal=1']
+              '-Djdk.graal.CrashAt=*',
+              '-Djdk.graal.CrashAtIsFatal=1']
     cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
     out = mx.OutputCapture()
     scratch_dir = mkdtemp(dir='.')
@@ -296,17 +296,17 @@ def _test_libgraal_oome_dumping():
     }
     if mx.is_windows():
         # GR-39501
-        mx.log('-Djdk.libgraal.internal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
+        mx.log('-Djdk.graal.internal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
         return
 
     for n, v in inputs.items():
-        vmargs = ['-Djdk.libgraal.CrashAt=*',
-                  '-Djdk.libgraal.Xmx128M',
-                  '-Djdk.libgraal.internal.PrintGC=true',
-                  '-Djdk.libgraal.internal.HeapDumpOnOutOfMemoryError=true',
-                  f'-Djdk.libgraal.internal.HeapDumpPath={n}',
-                  '-Djdk.libgraal.SystemicCompilationFailureRate=0',
-                  '-Djdk.libgraal.CrashAtThrowsOOME=true']
+        vmargs = ['-Djdk.graal.CrashAt=*',
+                  '-Djdk.graal.internal.Xmx128M',
+                  '-Djdk.graal.internal.PrintGC=true',
+                  '-Djdk.graal.internal.HeapDumpOnOutOfMemoryError=true',
+                  f'-Djdk.graal.internal.HeapDumpPath={n}',
+                  '-Djdk.graal.SystemicCompilationFailureRate=0',
+                  '-Djdk.graal.CrashAtThrowsOOME=true']
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
         mx.run(cmd, cwd=scratch_dir)
         heap_dumps = glob.glob(v)

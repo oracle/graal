@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.graal.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
@@ -38,7 +37,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -149,8 +147,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
             System.err.printf("Error parsing Graal options: %s%n", optionsFailure.getMessage());
             return;
         }
-        boolean all = Options.PrintPropertiesAll.getValue(options);
-        options.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX, all);
+        HotSpotGraalOptionValues.printProperties(options, out);
     }
 
     static class Options {
