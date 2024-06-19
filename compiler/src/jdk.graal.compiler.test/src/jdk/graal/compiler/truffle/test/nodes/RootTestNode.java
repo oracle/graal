@@ -24,13 +24,12 @@
  */
 package jdk.graal.compiler.truffle.test.nodes;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
 
 @NodeInfo
 public class RootTestNode extends RootNode {
@@ -87,7 +86,7 @@ public class RootTestNode extends RootNode {
     }
 
     @Override
-    public boolean isCaptureFramesForTrace(@SuppressWarnings("hiding") Node node) {
+    public boolean isCaptureFramesForTrace(boolean compiled) {
         return captureFramesForTrace;
     }
 }

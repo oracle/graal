@@ -269,10 +269,11 @@ public abstract class RootNode extends ExecutableNode {
      * {@link TruffleStackTraceElement} objects. There are two common strategies to implement this
      * method:
      * <ul>
-     * <li>If the bytecode index is stored in the frame, then {@link #isCaptureFramesForTrace(Node)}
-     * should be overridden and return <code>true</code>. Next use the frame argument and read the
-     * bytecode index from the frame. Note that the provided frame may be <code>null</code> even if
-     * {@link #isCaptureFramesForTrace(Node)} returns <code>true</code>.
+     * <li>If the bytecode index is stored in the frame, then
+     * {@link #isCaptureFramesForTrace(boolean)} should be overridden and return <code>true</code>.
+     * Next use the frame argument and read the bytecode index from the frame. Note that the
+     * provided frame may be <code>null</code> even if {@link #isCaptureFramesForTrace(boolean)}
+     * returns <code>true</code>.
      * <li>If the bytecode index is stored in the call node, then {@link Node#getParent() parent}
      * nodes should be walked to find the node containing the bytecode index.
      * </ul>
@@ -296,15 +297,11 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * Returns <code>true</code> if an AbstractTruffleException leaving this node should capture
-     * {@link Frame} objects in its stack trace in addition to the default information. This is
-     * <code>false</code> by default to avoid the attached overhead. The captured frames are then
-     * accessible through {@link TruffleStackTraceElement#getFrame()}
-     *
-     * @param currentNode
      * @since 24.1
+     * @deprecated in 24.1, implement and use {@link #isCaptureFramesForTrace(boolean)} instead
      */
-    protected boolean isCaptureFramesForTrace(Node currentNode) {
+    @Deprecated
+    protected boolean isCaptureFramesForTrace(@SuppressWarnings("unused") Node compiledFrame) {
         return isCaptureFramesForTrace();
     }
 
@@ -312,10 +309,24 @@ public abstract class RootNode extends ExecutableNode {
      * Returns <code>true</code> if an AbstractTruffleException leaving this node should capture
      * {@link Frame} objects in its stack trace in addition to the default information. This is
      * <code>false</code> by default to avoid the attached overhead. The captured frames are then
-     * accessible through {@link TruffleStackTraceElement#getFrame()}
+     * accessible through {@link TruffleStackTraceElement#getFrame()}.
+     * <p>
+     * Using the compiledFrame argument can be useful to capture the frame only for interpreted
+     * frames. This way it is possible to store the {@link #findBytecodeIndex(Node, Frame) bytecode
+     * index} in the frame only in the interpreter, but never in compiled code. This is more
+     * efficient, because capturing the frame is a fast operation in the interpreter, but a slow
+     * operation for compiled frames.
      *
+     * @param compiledFrame whether the frame would be from a compiled execution.
+     * @since 24.1
+     */
+    protected boolean isCaptureFramesForTrace(boolean compiledFrame) {
+        return isCaptureFramesForTrace(null);
+    }
+
+    /**
      * @since 0.31
-     * @deprecated in 24.1, implement and use {@link #isCaptureFramesForTrace(Node)} instead
+     * @deprecated in 24.1, implement and use {@link #isCaptureFramesForTrace(boolean)} instead
      */
     @Deprecated
     public boolean isCaptureFramesForTrace() {
