@@ -79,9 +79,9 @@ public class SyncPortProcessor extends AbstractProcessor {
     // END+HOTSPOT_PORT_SYNC_SEARCH_RANGE].
     static final String SYNC_SEARCH_RANGE_VAR = "HOTSPOT_PORT_SYNC_SEARCH_RANGE";
 
-    static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/master/";
-    static final String JDK_LATEST_HUMAN = "https://github.com/openjdk/jdk/blob/master/";
-    static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/jdk/git/matching-refs/heads/master";
+    static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/jdk23/";
+    static final String JDK_LATEST_HUMAN = "https://github.com/openjdk/jdk/blob/jdk23/";
+    static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/jdk/git/matching-refs/heads/jdk23";
 
     static final String SYNC_PORT_CLASS_NAME = "jdk.graal.compiler.lir.SyncPort";
     static final String SYNC_PORTS_CLASS_NAME = "jdk.graal.compiler.lir.SyncPorts";
