@@ -1857,9 +1857,16 @@ public abstract class ToReference extends ToEspressoNode {
                         "interop.isException(value)",
                         "!isEspressoException(value)"
         })
-        StaticObject doforeign(Object value,
+        StaticObject doForeign(Object value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Bind("getContext()") EspressoContext context) {
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached ToReference.DynamicToReference converterToEspresso,
+                        @Bind("getContext()") EspressoContext context) throws UnsupportedTypeException {
+            StaticObject result = ToReference.tryConverterForUnknownTarget(value, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, context.getMeta());
+            if (result != null) {
+                return result;
+            }
             return StaticObject.createForeignException(context, value, interop);
         }
 
@@ -1908,9 +1915,16 @@ public abstract class ToReference extends ToEspressoNode {
                         "interop.isException(value)",
                         "!isEspressoException(value)"
         })
-        StaticObject doforeign(Object value,
+        StaticObject doForeign(Object value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Bind("getContext()") EspressoContext context) {
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached ToReference.DynamicToReference converterToEspresso,
+                        @Bind("getContext()") EspressoContext context) throws UnsupportedTypeException {
+            StaticObject result = ToReference.tryConverterForUnknownTarget(value, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, context.getMeta());
+            if (result != null) {
+                return result;
+            }
             return StaticObject.createForeignException(context, value, interop);
         }
 
@@ -1959,9 +1973,16 @@ public abstract class ToReference extends ToEspressoNode {
                         "interop.isException(value)",
                         "!isEspressoException(value)"
         })
-        StaticObject doforeign(Object value,
+        StaticObject doForeign(Object value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Bind("getContext()") EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached ToReference.DynamicToReference converterToEspresso) throws UnsupportedTypeException {
+            StaticObject result = ToReference.tryConverterForUnknownTarget(value, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, context.getMeta());
+            if (result != null) {
+                return result;
+            }
             return StaticObject.createForeignException(context, value, interop);
         }
 
