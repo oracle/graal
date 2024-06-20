@@ -34,9 +34,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.util.UserError;
 
@@ -75,7 +75,9 @@ public final class ConfigurationFiles {
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> DynamicProxyConfigurationFiles = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User, deprecated = true)//
+        @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User, deprecated = true, //
+                        deprecationMessage = "This can be caused by a proxy-config.json file in your META-INF directory. " +
+                                        "Consider including proxy configuration in the reflection section of reachability-metadata.md instead.")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> DynamicProxyConfigurationResources = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
