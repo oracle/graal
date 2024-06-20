@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,12 @@ package com.oracle.svm.core.nmt;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.core.Sigusr1Handler;
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -44,6 +47,11 @@ import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * This class implements native memory tracking (NMT). There are two components to NMT: tracking
@@ -197,28 +205,66 @@ public class NativeMemoryTracking {
         return categories[category];
     }
 
+    public static RuntimeSupport.Hook startupHook() {
+        return isFirstIsolate -> {
+            if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
+                Sigusr1Handler.install();
+            }
+        };
+    }
+
     public static RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> NativeMemoryTracking.singleton().printStatistics();
     }
 
-    private void printStatistics() {
+    public void printStatistics() {
         if (VMInspectionOptions.PrintNMTStatistics.getValue()) {
-            System.out.println();
-            System.out.println("Native memory tracking");
-            System.out.println("  Peak total used memory: " + getPeakTotalUsedMemory() + " bytes");
-            System.out.println("  Total alive allocations at peak usage: " + getCountAtTotalPeakUsage());
-            System.out.println("  Total used memory: " + getTotalUsedMemory() + " bytes");
-            System.out.println("  Total alive allocations: " + getTotalCount());
-
-            for (int i = 0; i < NmtCategory.values().length; i++) {
-                String name = NmtCategory.values()[i].getName();
-                NmtMallocMemoryInfo info = getInfo(i);
-
-                System.out.println("  " + name + " peak used memory: " + info.getPeakUsed() + " bytes");
-                System.out.println("  " + name + " alive allocations at peak: " + info.getCountAtPeakUsage());
-                System.out.println("  " + name + " currently used memory: " + info.getUsed() + " bytes");
-                System.out.println("  " + name + " currently alive allocations: " + info.getCount());
-            }
+            System.out.println(generateReportString());
         }
+    }
+
+    public void dumpReport() throws IOException {
+        String path = reportPath();
+        FileWriter writer = new FileWriter(path);
+        writer.write(generateReportString());
+        writer.close();
+
+    }
+
+    private static String reportPath() {
+        String time = Long.toString(System.currentTimeMillis());
+        String pid = Long.toString(ProcessProperties.getProcessID());
+        String defaultFilename = "nmt_report_" + pid + "_" + time + ".txt";
+
+        String filenameOrDirectory = VMInspectionOptions.NmtDumpPath.getValue();
+        if (filenameOrDirectory.isEmpty()) {
+            return defaultFilename;
+        }
+        var targetPath = Paths.get(filenameOrDirectory);
+        if (Files.isDirectory(targetPath)) {
+            targetPath = targetPath.resolve(defaultFilename);
+        }
+        return targetPath.toFile().getAbsolutePath();
+    }
+
+    private String generateReportString() {
+        StringBuilder stringBuilder = new StringBuilder(2500);
+        stringBuilder.append("\n");
+        stringBuilder.append("Native memory tracking\n");
+        stringBuilder.append("  Peak total used memory: " + getPeakTotalUsedMemory() + " bytes\n");
+        stringBuilder.append("  Total alive allocations at peak usage: " + getCountAtTotalPeakUsage() + "\n");
+        stringBuilder.append("  Total used memory: " + getTotalUsedMemory() + " bytes\n");
+        stringBuilder.append("  Total alive allocations: " + getTotalCount() + "\n");
+
+        for (int i = 0; i < NmtCategory.values().length; i++) {
+            String name = NmtCategory.values()[i].getName();
+            NmtMallocMemoryInfo info = getInfo(i);
+
+            stringBuilder.append("  " + name + " peak used memory: " + info.getPeakUsed() + " bytes\n");
+            stringBuilder.append("  " + name + " alive allocations at peak: " + info.getCountAtPeakUsage() + "\n");
+            stringBuilder.append("  " + name + " currently used memory: " + info.getUsed() + " bytes\n");
+            stringBuilder.append("  " + name + " currently alive allocations: " + info.getCount() + "\n");
+        }
+        return stringBuilder.toString();
     }
 }
