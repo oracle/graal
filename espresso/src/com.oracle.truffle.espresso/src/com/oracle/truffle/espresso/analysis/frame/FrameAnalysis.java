@@ -282,7 +282,11 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
 
     @TruffleBoundary
     public static EspressoFrameDescriptor apply(Method.MethodVersion m, int bci) {
-        return new FrameAnalysis(bci, m).apply();
+        try {
+            return new FrameAnalysis(bci, m).apply();
+        } catch (Exception e) {
+            throw EspressoError.shouldNotReachHere(String.format("Failed suspension during frame analysis of method '%s'", m), e);
+        }
     }
 
     public ConstantPool pool() {
@@ -355,7 +359,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                 branchTargets.set(bs.readBranchDest(bci));
             } else if (opcode == TABLESWITCH || opcode == LOOKUPSWITCH) {
                 BytecodeSwitch helper = BytecodeSwitch.get(opcode);
-                for (int i = 0; i < helper.numberOfCases(bs, opcode); i++) {
+                for (int i = 0; i < helper.numberOfCases(bs, bci); i++) {
                     branchTargets.set(helper.targetAt(bs, bci, i));
                 }
                 branchTargets.set(helper.defaultTarget(bs, bci));
@@ -698,9 +702,9 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                     throw EspressoError.shouldNotReachHere("Should have prevented jsr/ret");
                 case TABLESWITCH, LOOKUPSWITCH: {
                     frame.pop();
-                    BytecodeSwitch bytecodeSwitch = BytecodeSwitch.get(bci);
-                    for (int i = 0; i <= bytecodeSwitch.numberOfCases(bs, bci); i++) {
-                        branch(bci, i, frame);
+                    BytecodeSwitch bytecodeSwitch = BytecodeSwitch.get(opcode);
+                    for (int i = 0; i < bytecodeSwitch.numberOfCases(bs, bci); i++) {
+                        branch(bci, bytecodeSwitch.targetAt(bs, bci, i), frame);
                     }
                     branch(bci, bytecodeSwitch.defaultTarget(bs, bci), frame);
                     return;
