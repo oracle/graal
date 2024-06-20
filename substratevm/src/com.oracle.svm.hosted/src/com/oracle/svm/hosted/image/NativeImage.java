@@ -603,6 +603,14 @@ public abstract class NativeImage extends AbstractImage {
         }
     }
 
+    private static boolean checkMethodPointerRelocationKind(Info info) {
+        int wordSize = ConfigurationValues.getTarget().arch.getWordSize();
+        int relocationSize = info.getRelocationSize();
+        RelocationKind relocationKind = info.getRelocationKind();
+
+        return (relocationSize == wordSize && RelocationKind.isDirect(relocationKind)) || (relocationSize == 4 && RelocationKind.isPCRelative(relocationKind));
+    }
+
     private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
 
@@ -617,10 +625,10 @@ public abstract class NativeImage extends AbstractImage {
         if (!target.isCompiled() && !target.wrapped.isInBaseLayer()) {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
+
+        assert checkMethodPointerRelocationKind(info);
         // A reference to a method. Mark the relocation site using the symbol name.
-        Architecture arch = ConfigurationValues.getTarget().arch;
-        assert (arch instanceof AArch64) || RelocationKind.getDirect(arch.getWordSize()) == info.getRelocationKind();
-        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, methodPointer.isAbsolute());
+        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer.isAbsolute());
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
