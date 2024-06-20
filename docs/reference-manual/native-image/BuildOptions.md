@@ -44,6 +44,7 @@ Run `native-image --help` for help on build options.
 * `--auto-fallback`: build a standalone executable if possible
 * `--color`: color build output (`always`, `never`, or `auto`)
 * `--configure-reflection-metadata`: enable runtime instantiation of reflection objects for non-invoked methods
+* `--emit`: emit additional data as a result of the build. Use `build-report` to emit a detailed Build Report, for example: `--emit build-report` or `--emit build-report=report.html`
 * `--enable-all-security-services`: add all security service classes to the generated native executable
 * `--enable-http`: enable HTTP support in a native executable
 * `--enable-https`: enable HTTPS support in a native executable
@@ -117,9 +118,9 @@ There are some expert level options that a user may find useful or needed. For e
 Native Image provides an informative [build output](BuildOutput.md) including various statistics during the build process.
 The build output in a JSON-based, machine-readable format can be requested using the `-H:BuildOutputJSONFile` option, and later processed by a monitoring tool.
 The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.3.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json).
-A comprehensive report with additional information can be requested using the `-H:+BuildReport` option.
+A comprehensive report with additional information can be requested using the `--emit build-report` option.
 
-> Note: The `-H:+BuildReport` option is not available in GraalVM Community Edition.
+> Note: The `--emit build-report` option is not available in GraalVM Community Edition.
 
 ### Graph Dumping
 
