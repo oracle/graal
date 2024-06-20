@@ -67,7 +67,7 @@ public abstract class ContinuationSerializable implements Serializable {
     }
 
     /**
-     * Serialize the given continuation-related object to the provided {@link ObjectOutput}.
+     * Serialize the given continuation-related to the provided {@link ObjectOutput}.
      *
      * <p>
      * This method may be used to better cooperate with non-jdk serialization frameworks.
