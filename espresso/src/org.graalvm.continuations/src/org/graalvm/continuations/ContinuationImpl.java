@@ -334,8 +334,9 @@ final class ContinuationImpl extends Continuation {
      * {@link State#FAILED}, nor if it is already {@link State#RUNNING}.
      *
      * <p>
-     * If an exception is thrown by the continuation and escapes the entry point, it will be
-     * rethrown here. The continuation is then no longer usable and must be discarded.
+     * If an exception is thrown by the continuation and escapes the entry point, it will be wrapped
+     * in {@link ContinuationExecutionException}, then rethrown here. The continuation is then no
+     * longer usable and must be discarded.
      *
      * @throws IllegalContinuationStateException if the {@link #getState()} is not
      *             {@link State#SUSPENDED}.
@@ -622,7 +623,7 @@ final class ContinuationImpl extends Continuation {
                         throw assertionError;
                     }
                 }
-                throw e;
+                throw new ContinuationExecutionException(e);
             }
             if (!updateState(State.RUNNING, State.COMPLETED)) {
                 // force completed state and maybe assert
