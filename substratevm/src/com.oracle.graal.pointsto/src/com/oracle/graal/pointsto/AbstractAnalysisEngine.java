@@ -25,6 +25,9 @@
 package com.oracle.graal.pointsto;
 
 import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -350,14 +353,22 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     @Override
     public void registerTypeForBaseImage(Class<?> cls) {
-        if (classInclusionPolicy.isClassIncluded(cls)) {
+        if (getOrDefault(cls, classInclusionPolicy::isClassIncluded, false)) {
             classInclusionPolicy.includeClass(cls);
-            Stream.concat(Arrays.stream(cls.getDeclaredConstructors()), Arrays.stream(cls.getDeclaredMethods()))
+            Stream.concat(Arrays.stream(getOrDefault(cls, Class::getDeclaredConstructors, new Constructor<?>[0])), Arrays.stream(getOrDefault(cls, Class::getDeclaredMethods, new Method[0])))
                             .filter(classInclusionPolicy::isMethodIncluded)
                             .forEach(classInclusionPolicy::includeMethod);
-            Arrays.stream(cls.getDeclaredFields())
+            Arrays.stream(getOrDefault(cls, Class::getDeclaredFields, new Field[0]))
                             .filter(classInclusionPolicy::isFieldIncluded)
                             .forEach(classInclusionPolicy::includeField);
+        }
+    }
+
+    public static <T, U> U getOrDefault(T cls, Function<T, U> getMembers, U backup) {
+        try {
+            return getMembers.apply(cls);
+        } catch (NoClassDefFoundError | IncompatibleClassChangeError e) {
+            return backup;
         }
     }
 

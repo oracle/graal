@@ -1231,8 +1231,11 @@ public class SubstrateOptions {
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
+    @Option(help = "Include all classes, methods, fields, and resources from the class path", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> IncludeAllFromClassPath = new HostedOptionKey<>(false);
+
     public static boolean includeAll() {
-        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
+        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet() || IncludeAllFromClassPath.hasBeenSet();
     }
 
     @Option(help = "Run layered image base layer open-world analysis. Includes all public types and methods that can be reached using normal Java access rules.")//

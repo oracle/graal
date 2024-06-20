@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromClassPath;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
 import static com.oracle.svm.core.util.VMError.guarantee;
@@ -77,8 +78,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
@@ -98,6 +97,8 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.module.Modules;
 
 public class NativeImageClassLoaderSupport {
@@ -124,6 +125,7 @@ public class NativeImageClassLoaderSupport {
 
     private Set<String> javaModuleNamesToInclude;
     private Set<Path> javaPathsToInclude;
+    private boolean includeAllFromClassPath;
 
     private final Set<Class<?>> classesToIncludeUnconditionally = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -238,6 +240,8 @@ public class NativeImageClassLoaderSupport {
         javaPathsToInclude.stream()
                         .filter(p -> !classpath().contains(p))
                         .findAny().ifPresent(p -> missingFromSetOfEntriesError(p, classpath(), "classpath", IncludeAllFromPath));
+
+        includeAllFromClassPath = IncludeAllFromClassPath.getValue(parsedHostedOptions);
 
         new LoadClassHandler(executor, imageClassLoader).run();
     }
@@ -705,7 +709,7 @@ public class NativeImageClassLoaderSupport {
         }
 
         private void loadClassesFromPath(Path path) {
-            final boolean includeUnconditionally = javaPathsToInclude.contains(path);
+            final boolean includeUnconditionally = javaPathsToInclude.contains(path) || includeAllFromClassPath;
             if (ClasspathUtils.isJar(path)) {
                 try {
                     URI container = path.toAbsolutePath().toUri();
@@ -922,6 +926,10 @@ public class NativeImageClassLoaderSupport {
 
     public Set<Path> getJavaPathsToInclude() {
         return javaPathsToInclude;
+    }
+
+    public boolean includeAllFromClassPath() {
+        return includeAllFromClassPath;
     }
 
     public List<Class<?>> getClassesToIncludeUnconditionally() {
