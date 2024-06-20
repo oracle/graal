@@ -41,12 +41,8 @@
 
 package org.graalvm.continuations;
 
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.function.Consumer;
 
 /**
  * <h1>Continuation</h1>
@@ -97,13 +93,9 @@ import java.util.function.Consumer;
  *
  * <p>
  * Given that requiring all reachable objects from the continuation is very restrictive, some users
- * may want to use other serialization frameworks. For that purpose, the {@link Continuation} class
- * (and the {@link SuspendCapability} class) provides two additional methods:
- *
- * <ul>
- * <li>{@link #writeObjectExternal(ObjectOutput)}</li>
- * <li>{@link #readObjectExternal(ObjectInput, ClassLoader, Consumer)}</li>
- * </ul>
+ * may want to use other serialization frameworks. For that purpose, the class
+ * {@link ExternalContinuationSerializer} is provided. See its documentation and its methods'
+ * documentation for more details.
  *
  * <h3>Note:</h3>
  * <p>
@@ -115,7 +107,7 @@ import java.util.function.Consumer;
  * have mutated the heap in arbitrary ways, and so resuming a continuation more than once could
  * cause extremely confusing and apparently 'impossible' states to occur.
  */
-public abstract class Continuation implements Serializable {
+public abstract class Continuation extends ContinuationExternalSerializable implements Serializable {
     @Serial private static final long serialVersionUID = 4269758961568150833L;
     private static final boolean IS_SUPPORTED = supported();
 
@@ -188,36 +180,6 @@ public abstract class Continuation implements Serializable {
      *             stream.
      */
     public abstract boolean resume();
-
-    /**
-     * Serialize this continuation to the provided {@link ObjectOutput}.
-     *
-     * <p>
-     * This method may be used to better cooperate with non-jdk serialization frameworks.
-     */
-    public abstract void writeObjectExternal(ObjectOutput out) throws IOException;
-
-    /**
-     * Deserialize a continuation from the provided {@link ObjectInput}.
-     * 
-     * <p>
-     * This method is provided to cooperate with non-jdk serialization frameworks.
-     *
-     * <p>
-     * {@code registerFreshObject} will be called once a fresh continuation has been created, but
-     * before it has been fully deserialized. It is intended to be a callback to the serialization
-     * framework, so it can register the in-construction continuation so the framework may handle
-     * object graph cycles.
-     */
-    public static Continuation readObjectExternal(ObjectInput in, ClassLoader loader, Consumer<Object> registerFreshObject) throws IOException, ClassNotFoundException {
-        if (!isSupported()) {
-            throw new UnsupportedOperationException("This VM does not support continuations.");
-        }
-        ContinuationImpl continuation = new ContinuationImpl();
-        registerFreshObject.accept(continuation);
-        continuation.readObjectExternalImpl(in, loader);
-        return continuation;
-    }
 
     // region internals
 

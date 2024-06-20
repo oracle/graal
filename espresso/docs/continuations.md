@@ -35,8 +35,9 @@ suspended), and `isCompleted()` can be called to determine if the continuation h
 normally, or if an exception escaped).
 
 `Continuation` implements `Serializable` and can serialize to a backwards compatible format. Because frames can point to
-anything in their parameters and local variables, `Continuation` and `SuspendCapability` provides `readObjectExternal`
-and `writeObjectExternal` which may be used to coordinate with a non-jdk serialization engine.
+anything in their parameters and local variables, the class `ExternalContinuationSerializer`
+provides `readObjectExternal` and `writeObjectExternal` which may be used to coordinate serialization of
+continuation-related objects with a non-jdk serialization engine.
 
 ## Security
 

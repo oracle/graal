@@ -49,6 +49,7 @@ import java.io.Serial;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Method;
+import java.util.function.Consumer;
 
 /**
  * Implementation of the {@link Continuation} class.
@@ -486,8 +487,33 @@ final class ContinuationImpl extends Continuation {
         writeObjectExternal(out);
     }
 
+    /**
+     * Initializes the continuation from the given {@link ObjectInputStream}.
+     *
+     * @throws IllegalContinuationStateException if the continuation is in state
+     *             {@link State#RUNNING}.
+     * @throws FormatVersionException if the header read from the stream doesn't match the expected
+     *             version number.
+     * @throws IOException if there is a problem reading the stream, or if the stream appears to be
+     *             corrupted.
+     */
+    @Serial
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        /*
+         * We read the context classloader here because we need the classloader that holds the
+         * user's app. If we use Class.forName() in this code we get the platform classloader
+         * because this class is provided by the VM, and thus can't look up methods of user classes.
+         * If we use the classloader of the entrypoint it breaks for Generator and any other classes
+         * we might want to ship with the VM that use this API. So we need the user's app class
+         * loader. We could walk the stack to find it just like ObjectInputStream does, but we go
+         * with the context classloader here to make it easier for the user to control.
+         */
+        state = State.INCOMPLETE;
+        readObjectExternalImpl(in, Thread.currentThread().getContextClassLoader());
+    }
+
     @Override
-    public void writeObjectExternal(ObjectOutput out) throws IOException {
+    void writeObjectExternal(ObjectOutput out) throws IOException {
         State currentState = lock();
         if (currentState == State.RUNNING) {
             throw new IllegalContinuationStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
@@ -514,28 +540,25 @@ final class ContinuationImpl extends Continuation {
     }
 
     /**
-     * Initializes the continuation from the given {@link ObjectInputStream}.
+     * Deserialize a continuation from the provided {@link ObjectInput}.
      *
-     * @throws IllegalContinuationStateException if the continuation is in state
-     *             {@link State#RUNNING}.
-     * @throws FormatVersionException if the header read from the stream doesn't match the expected
-     *             version number.
-     * @throws IOException if there is a problem reading the stream, or if the stream appears to be
-     *             corrupted.
+     * <p>
+     * This method is provided to cooperate with non-jdk serialization frameworks.
+     *
+     * <p>
+     * {@code registerFreshObject} will be called once a fresh continuation has been created, but
+     * before it has been fully deserialized. It is intended to be a callback to the serialization
+     * framework, so it can register the in-construction continuation so the framework may handle
+     * object graph cycles.
      */
-    @Serial
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        /*
-         * We read the context classloader here because we need the classloader that holds the
-         * user's app. If we use Class.forName() in this code we get the platform classloader
-         * because this class is provided by the VM, and thus can't look up methods of user classes.
-         * If we use the classloader of the entrypoint it breaks for Generator and any other classes
-         * we might want to ship with the VM that use this API. So we need the user's app class
-         * loader. We could walk the stack to find it just like ObjectInputStream does, but we go
-         * with the context classloader here to make it easier for the user to control.
-         */
-        state = State.INCOMPLETE;
-        readObjectExternalImpl(in, Thread.currentThread().getContextClassLoader());
+    static Continuation readObjectExternal(ObjectInput in, ClassLoader loader, Consumer<Continuation> registerFreshObject) throws IOException, ClassNotFoundException {
+        if (!isSupported()) {
+            throw new UnsupportedOperationException("This VM does not support continuations.");
+        }
+        ContinuationImpl continuation = new ContinuationImpl();
+        registerFreshObject.accept(continuation);
+        continuation.readObjectExternalImpl(in, loader);
+        return continuation;
     }
 
     void readObjectExternalImpl(ObjectInput in, ClassLoader loader) throws IOException, ClassNotFoundException {
