@@ -62,10 +62,11 @@ import java.io.Serializable;
  * hosting thread would see. Continuations are also not thread safe.
  *
  * <p>
- * Exceptions thrown from the entry point propagate out of {@link #resume()} and then mark the
- * continuation as failed. Resuming the continuation after that point will fail with
- * {@link IllegalContinuationStateException}. If you want to retry a failed continuation you must
- * have a clone from before the failure (see note below).
+ * Exceptions thrown from the entry point propagate out of {@link #resume()} as
+ * {@link ContinuationExecutionException} and then mark the continuation as failed. Resuming the
+ * continuation after that point will fail with {@link IllegalContinuationStateException}. If you
+ * want to retry a failed continuation you must have a clone from before the failure (see note
+ * below).
  *
  * <h1>Serialization</h1>
  *
@@ -172,7 +173,9 @@ public abstract class Continuation extends ContinuationExternalSerializable impl
      * 
      * @return {@code true} if the continuation was {@link SuspendCapability#suspend() suspended},
      *         or {@code false} if execution of the continuation has completed normally.
-     * 
+     *
+     * @throws ContinuationExecutionException if execution of the entry point has thrown an
+     *             exception that escapes the continuation scope.
      * @throws IllegalContinuationStateException if the continuation is not {@link #isResumable()
      *             resumable}.
      * @throws IllegalMaterializedRecordException if the VM rejects the continuation. This can
