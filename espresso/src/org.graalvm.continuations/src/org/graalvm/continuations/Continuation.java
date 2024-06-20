@@ -95,7 +95,7 @@ import java.io.Serializable;
  * <p>
  * Given that requiring all reachable objects from the continuation is very restrictive, some users
  * may want to use other serialization frameworks. For that purpose, the class
- * {@link ExternalContinuationSerializer} is provided. See its documentation and its methods'
+ * {@link ContinuationSerializable} is provided. See its documentation and its methods'
  * documentation for more details.
  *
  * <h3>Note:</h3>
@@ -108,7 +108,7 @@ import java.io.Serializable;
  * have mutated the heap in arbitrary ways, and so resuming a continuation more than once could
  * cause extremely confusing and apparently 'impossible' states to occur.
  */
-public abstract class Continuation extends ContinuationExternalSerializable implements Serializable {
+public abstract class Continuation extends ContinuationSerializable {
     @Serial private static final long serialVersionUID = 4269758961568150833L;
     private static final boolean IS_SUPPORTED = supported();
 

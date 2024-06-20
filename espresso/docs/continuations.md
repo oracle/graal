@@ -10,7 +10,7 @@ can be serialized to resume execution in a different JVM running the same code (
 See the JavaDoc of the `org.graalvm.continuations` package, and make sure to add the `continuations.jar` in the Espresso
 distribution to your classpath when compiling (but not at runtime).
 
-Currently, only the Espresso VM supports the continuations feature. Since it is still experimental, the options needs to
+Currently, only the Espresso VM supports the continuations feature. Since it is still experimental, the option needs to
 be enabled by using the flags `--experimental-options --java.Continuum=true`.
 
 ### High level
@@ -35,8 +35,8 @@ suspended), and `isCompleted()` can be called to determine if the continuation h
 normally, or if an exception escaped).
 
 `Continuation` implements `Serializable` and can serialize to a backwards compatible format. Because frames can point to
-anything in their parameters and local variables, the class `ExternalContinuationSerializer`
-provides `readObjectExternal` and `writeObjectExternal` which may be used to coordinate serialization of
+anything in their parameters and local variables, the class `ContinuationSerializable` provides static
+methods `readObjectExternal` and `writeObjectExternal` which may be used to coordinate serialization of
 continuation-related objects with a non-jdk serialization engine.
 
 ## Security

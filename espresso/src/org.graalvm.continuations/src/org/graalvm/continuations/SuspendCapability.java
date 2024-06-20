@@ -44,23 +44,18 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serial;
-import java.io.Serializable;
 import java.util.function.Consumer;
 
 /**
  * An object provided by the system that lets you yield control and return from
  * {@link Continuation#resume()}.
  */
-public final class SuspendCapability extends ContinuationExternalSerializable implements Serializable {
+public final class SuspendCapability extends ContinuationSerializable {
     @Serial private static final long serialVersionUID = 4790341975992263909L;
 
     private ContinuationImpl continuation;
 
     // region API
-
-    static SuspendCapability create(ContinuationImpl continuation) {
-        return new SuspendCapability(continuation);
-    }
 
     /**
      * Suspends the continuation, unwinding the stack to the point at which it was previously
@@ -80,6 +75,10 @@ public final class SuspendCapability extends ContinuationExternalSerializable im
     // endregion API
 
     // region internals
+
+    static SuspendCapability create(ContinuationImpl continuation) {
+        return new SuspendCapability(continuation);
+    }
 
     private SuspendCapability(ContinuationImpl continuation) {
         this.continuation = continuation;
