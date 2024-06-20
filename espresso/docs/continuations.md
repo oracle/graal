@@ -10,7 +10,8 @@ can be serialized to resume execution in a different JVM running the same code (
 See the JavaDoc of the `org.graalvm.continuations` package, and make sure to add the `continuations.jar` in the Espresso
 distribution to your classpath when compiling (but not at runtime).
 
-Currently, only the Espresso VM supports the continuations feature.
+Currently, only the Espresso VM supports the continuations feature. Since it is still experimental, the options needs to
+be enabled by using the flags `--experimental-options --java.Continuum=true`.
 
 ### High level
 
@@ -21,7 +22,7 @@ implement `generate` and call `emit` from inside it.
 ### Low level
 
 You create a new `Continuation` by passing the constructor an object that implements the functional
-interface `EntryPoint` (which can be a lambda). That object's `start` method receives
+interface `ContinuationEntryPoint` (which can be a lambda). That object's `start` method receives
 a `SuspendCapability` that lets you trigger suspension. You can do that from _any_ depth in the stack as
 long as the code was invoked via the entry point, and all the frames between the call to `suspend` and `resume` will be
 unwound and stored inside the `Continuation` object. You can then call `resume()` on it to kick it off for the first
@@ -150,5 +151,5 @@ The separation of the call targets has two advantages:
 - It does not interfere with regular calls.
 - Resuming and suspending can be partial-evaluated, leading to fast suspend/resume cycles.
 
-Serialization is done entirely in guest-side code, by having the `Continuation` class implement `Externalizable`. The
+Serialization is done entirely in guest-side code, by having the `Continuation` class implement `Serializable`. The
 format is designed to enable backwards-compatible evolution of the format.
