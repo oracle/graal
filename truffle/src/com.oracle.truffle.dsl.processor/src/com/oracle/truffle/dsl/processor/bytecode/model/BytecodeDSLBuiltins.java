@@ -63,9 +63,6 @@ public class BytecodeDSLBuiltins {
         m.returnInstruction = m.instruction(InstructionKind.RETURN, "return", m.signature(void.class, Object.class));
         m.branchInstruction = m.instruction(InstructionKind.BRANCH, "branch", m.signature(void.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
-        m.branchUnalignedInstruction = m.instruction(InstructionKind.BRANCH_UNALIGNED, "branch.unaligned", m.signature(void.class)) //
-                        .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target") //
-                        .addImmediate(ImmediateKind.STACK_POINTER, "target_sp");
         m.branchBackwardInstruction = m.instruction(InstructionKind.BRANCH_BACKWARD, "branch.backward", m.signature(void.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         m.branchFalseInstruction = m.instruction(InstructionKind.BRANCH_FALSE, "branch.false", m.signature(void.class, Object.class)) //
@@ -198,7 +195,7 @@ public class BytecodeDSLBuiltins {
                         """) //
                         .setVoid(true) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLabel, Encoding.LABEL, "label", "the label to branch to")) //
-                        .setInstruction(m.branchUnalignedInstruction);
+                        .setInstruction(m.branchInstruction);
         m.loadConstantOperation = m.operation(OperationKind.LOAD_CONSTANT, "LoadConstant", """
                         LoadConstant produces {@code constant}. The constant should be immutable, since it may be shared across multiple LoadConstant operations.
                         """) //

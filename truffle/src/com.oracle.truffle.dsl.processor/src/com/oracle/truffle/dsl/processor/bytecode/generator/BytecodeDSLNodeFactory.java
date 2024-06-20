@@ -5170,15 +5170,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("targetStackHeight").string("0").end();
             b.end();
 
-            /**
-             * We may emit a branch or branch.unaligned. Ensure both instructions expect their
-             * branch target at the same offset.
-             */
-            InstructionModel branchAligned = model.branchInstruction;
-            InstructionModel branchUnaligned = model.branchUnalignedInstruction;
-            int branchTargetOffset = branchAligned.getImmediate(ImmediateKind.BYTECODE_INDEX).offset();
-            assert branchUnaligned.getImmediate(ImmediateKind.BYTECODE_INDEX).offset() == branchTargetOffset : "branch and branch.unaligned should store their branch target at the same offset";
-
             b.statement("beforeEmitBranch(declaringOperationSp)");
 
             /**
@@ -5199,12 +5190,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              */
             b.startStatement().startCall("registerUnresolvedLabel");
             b.string("labelImpl");
-            b.string("bci + " + branchTargetOffset);
+            b.string("bci + " + model.branchInstruction.getImmediate(ImmediateKind.BYTECODE_INDEX).offset());
             b.end(2);
             b.end(); // if reachable
 
             b.startStatement().startCall("doEmitInstruction");
-            b.tree(createInstructionConstant(branchAligned));
+            b.tree(createInstructionConstant(model.branchInstruction));
             b.string("0"); // stack effect
             b.string(UNINIT); // branch target
             b.end(2);
@@ -6149,7 +6140,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             int stackEffect = 0;
             switch (instr.kind) {
                 case BRANCH:
-                case BRANCH_UNALIGNED:
                 case BRANCH_BACKWARD:
                 case TAG_ENTER:
                 case TAG_LEAVE:
@@ -10832,16 +10822,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 switch (instr.kind) {
                     case BRANCH:
-                        b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
-                        b.statement("continue loop");
-                        break;
-                    case BRANCH_UNALIGNED:
-                        b.declaration(type(int.class), "targetSp", "$root.numLocals + " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.STACK_POINTER)));
-                        b.startAssert().string("targetSp <= sp").end();
-                        b.startWhile().string("targetSp < sp").end().startBlock();
-                        b.statement(clearFrame("frame", "sp - 1"));
-                        b.statement("sp -= 1");
-                        b.end();
                         b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                         b.statement("continue loop");
                         break;

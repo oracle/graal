@@ -262,7 +262,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         });
         assertEquals(42L, root.getCallTarget().call(true));
         assertEquals(null, root.getCallTarget().call(false));
-        assertHandlers(root, handler(0));
+        assertHandlers(root, handler(0, "ex1"), handler(1, "ex1"));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
         assertHandlers(root, tag(2, handler(0, "ex1"), handler(1, "ex1")));
