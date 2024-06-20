@@ -89,11 +89,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class PrologEpilogTest extends AbstractInstructionTest {
     @Parameters(name = "{0}")
     public static List<Object[]> getParameters() {
-        List<Object[]> result = new ArrayList<>();
-        result.add(new Object[]{false});
-        return result;
-        // TODO re-enable serialization
-// return List.of(new Object[]{false}, new Object[]{true});
+        return List.of(new Object[]{false}, new Object[]{true});
     }
 
     @Parameter public Boolean testSerialize;

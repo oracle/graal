@@ -60,11 +60,14 @@ import static javax.lang.model.element.Modifier.SEALED;
 import static javax.lang.model.element.Modifier.STATIC;
 import static javax.lang.model.element.Modifier.VOLATILE;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOError;
 import java.io.IOException;
 import java.lang.invoke.VarHandle;
+import java.nio.ByteBuffer;
 import java.util.AbstractList;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -1127,7 +1130,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         b.startTryBlock();
 
-        b.statement("return create(config, (b) -> b.deserialize(language, input, callback))");
+        b.statement("return create(config, (b) -> b.deserialize(language, input, callback, null))");
         b.end().startCatchBlock(type(IOError.class), "e");
         b.startThrow().cast(type(IOException.class), "e.getCause()").end();
         b.end();
@@ -1626,20 +1629,27 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         final CodeVariableElement codeCreateLabel = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_LABEL", "-2");
         final CodeVariableElement codeCreateLocal = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_LOCAL", "-3");
         final CodeVariableElement codeCreateObject = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_OBJECT", "-4");
-        final CodeVariableElement codeEndSerialize = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-5");
+        final CodeVariableElement codeCreateFinallyParser = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_FINALLY_PARSER", "-5");
+        final CodeVariableElement codeEndFinallyParser = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END_FINALLY_PARSER", "-6");
+        final CodeVariableElement codeEndSerialize = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-7");
 
         final CodeVariableElement buffer = addField(serializationState, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
         final CodeVariableElement callback = addField(serializationState, Set.of(PRIVATE, FINAL), types.BytecodeSerializer, "callback");
-        final CodeExecutableElement constructor = serializationState.add(createConstructorUsingFields(Set.of(), serializationState, null));
-        final CodeVariableElement language = addField(serializationState, Set.of(PRIVATE), types.TruffleLanguage, "language");
+        final CodeVariableElement outer = addField(serializationState, Set.of(PRIVATE, FINAL), serializationState.asType(), "outer");
+        final CodeVariableElement depth = addField(serializationState, Set.of(PRIVATE, FINAL), type(int.class), "depth");
+        final CodeVariableElement objects = addField(serializationState, Set.of(PRIVATE, FINAL),
+                        generic(HashMap.class, Object.class, Short.class), "objects");
+        final CodeVariableElement builtNodes = addField(serializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, model.getTemplateType().asType()), "builtNodes");
+        final CodeVariableElement rootStack = addField(serializationState, Set.of(PRIVATE, FINAL), generic(ArrayDeque.class, bytecodeNodeGen.asType()), "rootStack");
 
+        final CodeExecutableElement constructor = serializationState.add(new CodeExecutableElement(Set.of(PRIVATE), null, serializationState.getSimpleName().toString()));
+        final CodeExecutableElement pushConstructor = serializationState.add(new CodeExecutableElement(Set.of(PRIVATE), null, serializationState.getSimpleName().toString()));
+
+        final CodeVariableElement language = addField(serializationState, Set.of(PRIVATE), types.TruffleLanguage, "language");
         final CodeVariableElement labelCount = addField(serializationState, Set.of(PRIVATE), int.class, "labelCount");
         final CodeVariableElement localCount = addField(serializationState, Set.of(PRIVATE), int.class, "localCount");
         final CodeVariableElement rootCount = addField(serializationState, Set.of(PRIVATE), int.class, "rootCount");
-        final CodeVariableElement builtNodes = addField(serializationState, Set.of(PRIVATE), generic(ArrayList.class, model.getTemplateType().asType()), "builtNodes");
-        final CodeVariableElement rootStack = addField(serializationState, Set.of(PRIVATE), generic(ArrayDeque.class, bytecodeNodeGen.asType()), "rootStack");
-        final CodeVariableElement objects = addField(serializationState, Set.of(PRIVATE, FINAL),
-                        generic(HashMap.class, Object.class, Short.class), "objects");
+        final CodeVariableElement finallyParserCount = addField(serializationState, Set.of(PRIVATE), int.class, "finallyParserCount");
 
         final CodeVariableElement[] codeBegin;
         final CodeVariableElement[] codeEnd;
@@ -1647,10 +1657,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         SerializationStateElements() {
             serializationState.getImplements().add(types.BytecodeSerializer_SerializerContext);
 
+            objects.createInitBuilder().startNew("HashMap<>").end();
             builtNodes.createInitBuilder().startNew("ArrayList<>").end();
             rootStack.createInitBuilder().startNew("ArrayDeque<>").end();
-
-            objects.createInitBuilder().startNew("HashMap<>").end();
 
             codeBegin = new CodeVariableElement[model.getOperations().size() + 1];
             codeEnd = new CodeVariableElement[model.getOperations().size() + 1];
@@ -1668,9 +1677,39 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
             }
 
+            createConstructor();
+            createPushConstructor();
+
             serializationState.add(createSerializeObject());
             serializationState.add(createWriteBytecodeNode());
+        }
 
+        private CodeExecutableElement createConstructor() {
+            constructor.addParameter(new CodeVariableElement(buffer.getType(), buffer.getName()));
+            constructor.addParameter(new CodeVariableElement(callback.getType(), callback.getName()));
+
+            CodeTreeBuilder b = constructor.createBuilder();
+
+            b.startAssign("this", buffer).variable(buffer).end();
+            b.startAssign("this", callback).variable(callback).end();
+            b.startAssign("this", outer).string("null").end();
+            b.startAssign("this", depth).string("0").end();
+
+            return constructor;
+        }
+
+        private CodeExecutableElement createPushConstructor() {
+            pushConstructor.addParameter(new CodeVariableElement(buffer.getType(), buffer.getName()));
+            pushConstructor.addParameter(new CodeVariableElement(serializationState.asType(), outer.getName()));
+
+            CodeTreeBuilder b = pushConstructor.createBuilder();
+
+            b.startAssign("this", buffer).variable(buffer).end();
+            b.startAssign("this", callback).field(outer.getName(), callback).end();
+            b.startAssign("this", outer).variable(outer).end();
+            b.startAssign("this", depth).startGroup().field(outer.getName(), depth).string(" + 1").end(2);
+
+            return pushConstructor;
         }
 
         private CodeExecutableElement createWriteBytecodeNode() {
@@ -1736,14 +1775,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
         }
 
+        public void writeBytes(CodeTreeBuilder b, String value) {
+            writeBytes(b, CodeTreeBuilder.singleString(value));
+        }
+
+        public void writeBytes(CodeTreeBuilder b, CodeTree value) {
+            b.startStatement();
+            b.string("serialization.", buffer.getName(), ".").startCall("write");
+            b.tree(value).end();
+            b.end();
+        }
+
     }
 
     class BuilderFactory {
         public static final String UNINIT = "UNINITIALIZED";
         CodeVariableElement uninitialized = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(short.class), UNINIT);
-
-        private CodeTypeElement deserializerContextImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "DeserializerContextImpl");
-
         CodeTypeElement savedState = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SavedState");
         CodeTypeElement operationStackEntry = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "OperationStackEntry");
         CodeTypeElement constantPool = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "ConstantPool");
@@ -2385,17 +2432,42 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
 
-        class DeserializerContextImplFactory {
-            private CodeTypeElement create() {
-                deserializerContextImpl.setEnclosingElement(bytecodeNodeGen);
-                deserializerContextImpl.getImplements().add(types.BytecodeDeserializer_DeserializerContext);
+        final class DeserializationStateElements implements ElementHelpers {
+            final CodeTypeElement deserializationState = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "DeserializationState");
 
-                deserializerContextImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, bytecodeNodeGen.asType()), "builtNodes"));
-                deserializerContextImpl.add(createConstructorUsingFields(Set.of(PRIVATE), deserializerContextImpl));
+            final CodeVariableElement outer = addField(deserializationState, Set.of(PRIVATE, FINAL), deserializationState.asType(), "outer");
+            final CodeVariableElement depth = addField(deserializationState, Set.of(PRIVATE, FINAL), type(int.class), "depth");
+            final CodeVariableElement consts = addField(deserializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, Object.class), "consts");
+            final CodeVariableElement builtNodes = addField(deserializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, bytecodeNodeGen.asType()), "builtNodes");
+            final CodeVariableElement labels = addField(deserializationState, Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.BytecodeLabel), "labels");
+            final CodeVariableElement locals = addField(deserializationState, Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.BytecodeLocal), "locals");
+            final CodeVariableElement finallyParsers = addField(deserializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, Runnable.class), "finallyParsers");
 
-                deserializerContextImpl.add(createReadBytecodeNode());
+            final CodeExecutableElement constructor = new CodeExecutableElement(Set.of(PRIVATE), null, deserializationState.getSimpleName().toString());
 
-                return deserializerContextImpl;
+            private DeserializationStateElements() {
+                deserializationState.setEnclosingElement(bytecodeNodeGen);
+                deserializationState.getImplements().add(types.BytecodeDeserializer_DeserializerContext);
+
+                consts.createInitBuilder().startNew("ArrayList<>").end();
+                builtNodes.createInitBuilder().startNew("ArrayList<>").end();
+                labels.createInitBuilder().startNew("ArrayList<>").end();
+                locals.createInitBuilder().startNew("ArrayList<>").end();
+                finallyParsers.createInitBuilder().startNew("ArrayList<>").end();
+
+                deserializationState.add(createConstructor());
+                deserializationState.add(createReadBytecodeNode());
+                deserializationState.add(createGetContext());
+            }
+
+            private CodeExecutableElement createConstructor() {
+                constructor.addParameter(new CodeVariableElement(deserializationState.asType(), "outer"));
+
+                CodeTreeBuilder b = constructor.createBuilder();
+                b.statement("this.outer = outer");
+                b.statement("this.depth = (outer == null) ? 0 : outer.depth + 1");
+
+                return constructor;
             }
 
             private CodeExecutableElement createReadBytecodeNode() {
@@ -2405,6 +2477,25 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("return this.builtNodes.get(buffer.readChar())");
                 return ex;
             }
+
+            private CodeExecutableElement createGetContext() {
+                CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), deserializationState.asType(), "getContext");
+                method.addParameter(new CodeVariableElement(type(int.class), "depth"));
+
+                CodeTreeBuilder b = method.createBuilder();
+
+                b.startAssert().string("depth >= 0").end();
+
+                b.declaration(deserializationState.asType(), "ctx", "this");
+                b.startWhile().string("ctx.depth != depth").end().startBlock();
+                b.statement("ctx = ctx.outer");
+                b.end();
+
+                b.statement("return ctx");
+
+                return method;
+            }
+
         }
 
         class BytecodeLocalImplFactory {
@@ -2444,6 +2535,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private SerializationStateElements serializationElements;
+        private DeserializationStateElements deserializationElements;
         private CodeVariableElement serialization;
 
         private CodeTypeElement create() {
@@ -2482,7 +2574,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 builder.add(serializationElements.serializationState);
                 serialization = builder.add(new CodeVariableElement(Set.of(PRIVATE),
                                 serializationElements.serializationState.asType(), "serialization"));
-                builder.add(new DeserializerContextImplFactory().create());
+
+                deserializationElements = new DeserializationStateElements();
+                builder.add(deserializationElements.deserializationState);
             }
 
             builder.add(createReparseConstructor());
@@ -2545,6 +2639,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (model.enableSerialization) {
                 builder.add(createSerialize());
+                builder.add(createSerializeFinallyParser());
                 builder.add(createDeserialize());
             }
 
@@ -2876,6 +2971,40 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         }
 
+        private CodeExecutableElement createSerializeFinallyParser() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(short.class), "serializeFinallyParser");
+            method.addParameter(new CodeVariableElement(declaredType(Runnable.class), "finallyParser"));
+            method.addThrownType(declaredType(IOException.class));
+
+            CodeTreeBuilder b = method.getBuilder();
+
+            b.startDeclaration(declaredType(ByteArrayOutputStream.class), "baos");
+            b.startNew(declaredType(ByteArrayOutputStream.class)).end();
+            b.end();
+            b.declaration(serializationElements.serializationState.asType(), "outerSerialization", "serialization");
+
+            b.startTryBlock();
+            b.startAssign("serialization").startNew(serializationElements.serializationState.asType());
+            b.startNew(declaredType(DataOutputStream.class)).string("baos").end();
+            b.string("serialization");
+            b.end(2);
+            b.statement("finallyParser.run()");
+            serializationElements.writeShort(b, serializationElements.codeEndFinallyParser);
+            b.end(); // try
+
+            b.startFinallyBlock();
+            b.statement("serialization = outerSerialization");
+            b.end(); // finally
+
+            b.declaration(arrayOf(type(byte.class)), "bytes", "baos.toByteArray()");
+            serializationElements.writeShort(b, serializationElements.codeCreateFinallyParser);
+            serializationElements.writeInt(b, "bytes.length");
+            serializationElements.writeBytes(b, "bytes");
+            b.statement("return (short) serialization.finallyParserCount++");
+
+            return method;
+        }
+
         private CodeExecutableElement createDeserialize() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE),
                             context.getType(void.class), "deserialize");
@@ -2884,21 +3013,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
             method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "bufferSupplier"));
             method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
+            method.addParameter(new CodeVariableElement(deserializationElements.deserializationState.asType(), "outerContext"));
 
             CodeTreeBuilder b = method.createBuilder();
 
             b.startTryBlock();
 
-            b.statement("ArrayList<Object> consts = new ArrayList<>()");
-            b.statement("ArrayList<BytecodeLocal> locals = new ArrayList<>()");
-            b.statement("ArrayList<BytecodeLabel> labels = new ArrayList<>()");
-            b.declaration(type(DataInput.class), "buffer", "bufferSupplier.get()");
-            b.declaration(generic(context.getDeclaredType(ArrayList.class), bytecodeNodeGen.asType()), "builtNodes", "new ArrayList<>()");
-
-            b.startStatement();
-            b.type(types.BytecodeDeserializer_DeserializerContext);
-            b.string(" context = ").startNew(deserializerContextImpl.getSimpleName().toString()).string("builtNodes").end();
+            b.startDeclaration(deserializationElements.deserializationState.asType(), "context");
+            b.startNew(deserializationElements.deserializationState.asType()).string("outerContext").end();
             b.end();
+
+            b.declaration(type(DataInput.class), "buffer", "bufferSupplier.get()");
 
             b.startWhile().string("true").end().startBlock();
 
@@ -2907,36 +3032,56 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startSwitch().string("code").end().startBlock();
 
             b.startCase().staticReference(serializationElements.codeCreateLabel).end().startBlock();
-            b.statement("labels.add(createLabel())");
+            b.statement("context.labels.add(createLabel())");
             b.statement("break");
-            b.end();
+            b.end(); // create label
 
             b.startCase().staticReference(serializationElements.codeCreateLocal).end().startBlock();
             b.statement("int nameId = buffer.readShort()");
             b.statement("Object name = null");
             b.startIf().string("nameId != -1").end().startBlock();
-            b.statement("name = consts.get(nameId)");
+            b.statement("name = context.consts.get(nameId)");
             b.end();
             b.statement("int infoId = buffer.readShort()");
             b.statement("Object info = null");
             b.startIf().string("infoId != -1").end().startBlock();
-            b.statement("info = consts.get(infoId)");
+            b.statement("info = context.consts.get(infoId)");
             b.end();
-            b.statement("locals.add(createLocal(name, info))");
-
+            b.statement("context.locals.add(createLocal(name, info))");
             b.statement("break");
-            b.end();
+            b.end(); // create local
 
             b.startCase().staticReference(serializationElements.codeCreateObject).end().startBlock();
-            b.statement("consts.add(callback.deserialize(context, buffer))");
+            b.statement("context.consts.add(callback.deserialize(context, buffer))");
             b.statement("break");
-            b.end();
+            b.end(); // create object
+
+            b.startCase().staticReference(serializationElements.codeCreateFinallyParser).end().startBlock();
+            b.statement("byte[] finallyParserBytes = new byte[buffer.readInt()]");
+            b.statement("buffer.readFully(finallyParserBytes)");
+
+            b.startStatement().startCall("context.finallyParsers.add");
+            b.startGroup().string("() -> ").startCall("deserialize");
+            b.string("language");
+            b.startGroup().string("() -> ").startStaticCall(types.SerializationUtils, "createDataInput");
+            b.startStaticCall(declaredType(ByteBuffer.class), "wrap").string("finallyParserBytes").end();
+            b.end(2);
+            b.string("callback");
+            b.string("context");
+            b.end(2); // lambda
+            b.end(2);
+            b.statement("break");
+            b.end(); // create finally parser
+
+            b.startCase().staticReference(serializationElements.codeEndFinallyParser).end().startBlock();
+            b.statement("return");
+            b.end(); // end finally parser
 
             b.startCase().staticReference(serializationElements.codeEndSerialize).end().startBlock();
 
             if (model.serializedFields.size() != 0) {
-                b.startFor().string("int i = 0; i < builtNodes.size(); i++").end().startBlock();
-                b.declaration(bytecodeNodeGen.asType(), "node", "builtNodes.get(i)");
+                b.startFor().string("int i = 0; i < context.builtNodes.size(); i++").end().startBlock();
+                b.declaration(bytecodeNodeGen.asType(), "node", "context.builtNodes.get(i)");
                 for (int i = 0; i < model.serializedFields.size(); i++) {
                     VariableElement var = model.serializedFields.get(i);
                     b.startStatement();
@@ -2945,7 +3090,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (ElementUtils.needsCastTo(type(Object.class), var.asType())) {
                         b.cast(var.asType());
                     }
-                    b.string("consts.get(buffer.readShort())");
+                    b.string("context.consts.get(buffer.readShort())");
                     b.end();
                 }
                 b.end();
@@ -2969,7 +3114,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
 
                 if (operation.kind == OperationKind.ROOT) {
-                    b.statement("builtNodes.add(null)");
+                    b.statement("context.builtNodes.add(null)");
                 }
 
                 for (OperationArgument beginArgument : operation.operationBeginArguments) {
@@ -3004,7 +3149,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startStatement();
                         b.type(bytecodeNodeGen.asType()).string(" node = ").cast(bytecodeNodeGen.asType()).string("end" + operation.name + "()");
                         b.end();
-                        b.startStatement().startCall("builtNodes.set").string("node.buildIndex").startGroup().string("node").end().end().end();
+                        b.startStatement().startCall("context.builtNodes.set").string("node.buildIndex").startGroup().string("node").end().end().end();
                     } else {
                         b.startStatement().startCall("end" + operation.name);
                         for (int i = 0; i < operation.operationEndArguments.length; i++) {
@@ -3046,16 +3191,35 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     before.statement("serialization.language = language");
                     break;
                 case LOCAL:
-                    serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + ").localIndex");
+                    serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + ").frameIndex /* context depth */");
+                    serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + ").localIndex /* local index */");
                     break;
                 case LOCAL_ARRAY:
                     serializationElements.writeShort(after, "(short) " + argumentName + ".length");
-                    after.startFor().string("int i = 0; i < " + argumentName + ".length; i++").end().startBlock();
-                    serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + "[i]).localIndex");
+                    String depth = argumentName + "Depth";
+                    after.startIf().string("setterValue.length > 0").end().startBlock();
+                    after.startDeclaration(type(short.class), depth);
+                    after.cast(type(short.class));
+                    after.startParantheses().cast(bytecodeLocalImpl.asType()).string(argumentName, "[0]").end();
+                    after.string(".frameIndex /* context depth */");
                     after.end();
+
+                    serializationElements.writeShort(after, depth);
+
+                    after.startFor().string("int i = 0; i < " + argumentName + ".length; i++").end().startBlock();
+                    after.startDeclaration(bytecodeLocalImpl.asType(), "localImpl");
+                    after.cast(bytecodeLocalImpl.asType()).string(argumentName, "[i]");
+                    after.end();
+
+                    after.startAssert().string(depth, " == (short) localImpl.frameIndex /* context depth */").end();
+                    serializationElements.writeShort(after, "(short) localImpl.localIndex /* local index */");
+
+                    after.end(); // for
+                    after.end(); // if
                     break;
                 case LABEL:
-                    serializationElements.writeShort(after, "(short) ((BytecodeLabelImpl) " + argumentName + ").declaringOp");
+                    serializationElements.writeShort(after, "(short) ((BytecodeLabelImpl) " + argumentName + ").bci /* context depth */");
+                    serializationElements.writeShort(after, "(short) ((BytecodeLabelImpl) " + argumentName + ").declaringOp /* label index */");
                     break;
                 case TAGS:
                     serializationElements.writeInt(after, "encodedTags");
@@ -3063,14 +3227,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case INTEGER:
                     serializationElements.writeInt(after, argumentName);
                     break;
-                case OBJECT:
+                case OBJECT: {
                     String index = argumentName + "_index";
                     before.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
                     serializationElements.writeShort(after, index);
                     break;
-                case FINALLY_PARSER:
-                    after.lineComment("TODO: serialize finally parsers");
+                }
+                case FINALLY_PARSER: {
+                    String index = "finallyParserIndex";
+                    before.startDeclaration(type(short.class), index);
+                    before.startCall("serializeFinallyParser");
+                    before.string(argumentName);
+                    before.end(2);
+                    serializationElements.writeShort(after, "serialization.depth");
+                    serializationElements.writeShort(after, index);
                     break;
+                }
                 default:
                     throw new AssertionError("unexpected argument kind " + argument.kind());
             }
@@ -3083,10 +3255,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case LANGUAGE:
                     break;
                 case LOCAL:
-                    b.declaration(argType, argumentName, "locals.get(buffer.readShort())");
+                    b.declaration(argType, argumentName, "context.getContext(buffer.readShort()).locals.get(buffer.readShort())");
                     break;
                 case LABEL:
-                    b.declaration(argType, argumentName, "labels.get(buffer.readShort())");
+                    b.declaration(argType, argumentName, "context.getContext(buffer.readShort()).labels.get(buffer.readShort())");
                     break;
                 case TAGS:
                     b.declaration(argType, argumentName, "TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))");
@@ -3096,9 +3268,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case LOCAL_ARRAY:
                     b.startDeclaration(argType, argumentName).startNewArray(arrayOf(types.BytecodeLocal), CodeTreeBuilder.singleString("buffer.readShort()")).end().end();
+                    b.declaration(deserializationElements.deserializationState.asType(), "setterContext", "context.getContext(buffer.readShort())");
                     b.startFor().string("int i = 0; i < ", argumentName, ".length; i++").end().startBlock();
-                    // this can be optimized since they are consecutive
-                    b.statement(argumentName, "[i] = locals.get(buffer.readShort())");
+                    b.statement(argumentName, "[i] = setterContext.locals.get(buffer.readShort())");
                     b.end();
                     break;
                 case OBJECT:
@@ -3106,11 +3278,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (!ElementUtils.isObject(argType)) {
                         b.cast(argType);
                     }
-                    b.string("consts.get(buffer.readShort())");
+                    b.string("context.consts.get(buffer.readShort())");
                     b.end(); // declaration
                     break;
                 case FINALLY_PARSER:
-                    b.declaration(argType, argumentName, "null /* TODO: finally parser deserialization */");
+                    b.startDeclaration(argType, argumentName);
+                    b.string("context.getContext(buffer.readShort()).finallyParsers.get(buffer.readShort())");
+                    b.end();
                     break;
                 default:
                     throw new AssertionError("unexpected argument kind " + argument.kind());
@@ -3182,7 +3356,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 });
                 b.startReturn();
 
-                b.startNew(bytecodeLocalImpl.asType()).string("-1").string("serialization.localCount++");
+                b.startNew(bytecodeLocalImpl.asType());
+                // Stuff the data needed for serialization into the locals' fields
+                b.string("serialization.depth");
+                b.string("serialization.localCount++");
                 if (model.usesBoxingElimination()) {
                     b.string("-1");
                 }
@@ -3272,7 +3449,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.startReturn().startNew(bytecodeLabelImpl.asType());
                 b.string("numLabels++");
-                b.string(UNINIT);
+                b.string(serialization.getName(), ".", serializationElements.depth.getName());
                 b.string(serialization.getName(), ".", serializationElements.labelCount.getName(), "++");
                 b.end(2);
                 b.end();

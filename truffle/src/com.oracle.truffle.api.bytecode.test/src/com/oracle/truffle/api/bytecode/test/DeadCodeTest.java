@@ -731,7 +731,14 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.endRoot();
         }).getRootNode();
 
-        // TODO override label reachability behaviour when enclosing operation is not reachable.
+        /**
+         * Note: there is some room to optimize the reachability algorithm here. When a label is
+         * emitted, we conservatively make the current location reachable because a branch could
+         * target that label. But if the label is emitted in an operation that is not reachable
+         * (e.g., the dead finally-try here), it's impossible for there to be a live branch
+         * instruction targeting the label (no code within the operation is reachable, and any code
+         * outside of the operation cannot branch into it).
+         */
         assertInstructions(node,
                         "load.constant",
                         "return",

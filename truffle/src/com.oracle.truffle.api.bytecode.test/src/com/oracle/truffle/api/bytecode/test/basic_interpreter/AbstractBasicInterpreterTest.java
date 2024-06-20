@@ -194,8 +194,7 @@ public abstract class AbstractBasicInterpreterTest {
         List<TestRun> result = new ArrayList<>();
         for (Class<? extends BasicInterpreter> interpreterClass : allInterpreters()) {
             result.add(new TestRun(interpreterClass, false));
-            // TODO re-enable serialization tests
-// result.add(new TestRun(interpreterClass, true));
+            result.add(new TestRun(interpreterClass, true));
         }
         return result;
     }

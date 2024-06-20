@@ -730,23 +730,14 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         RootCallTarget root = parse("nestedFunctions", b -> {
             b.beginRoot(LANGUAGE);
-
             b.beginReturn();
-
             b.beginInvoke();
-
                 b.beginRoot(LANGUAGE);
-
                 emitReturn(b, 1);
-
                 BasicInterpreter innerRoot = b.endRoot();
-
                 b.emitLoadConstant(innerRoot);
-
             b.endInvoke();
-
             b.endReturn();
-
             b.endRoot();
         });
 
@@ -800,7 +791,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     @Ignore
     public void testLocalsNonlocalRead() {
-        // todo this test fails when boxing elimination is enabled
+        // TODO this test fails when boxing elimination is enabled
         // locals accessed non-locally must have boxing elimination disabled
         // since non-local reads do not do boxing elimination
 

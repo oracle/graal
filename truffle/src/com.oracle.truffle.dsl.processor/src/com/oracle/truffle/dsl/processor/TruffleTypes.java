@@ -402,6 +402,7 @@ public class TruffleTypes {
     public static final String BytecodeSerializer_SerializerContext_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext";
     public static final String BytecodeDeserializer_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer";
     public static final String BytecodeDeserializer_DeserializerContext_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer.DeserializerContext";
+    public static final String SerializationUtils_Name = "com.oracle.truffle.api.bytecode.serialization.SerializationUtils";
 
     public static final String ExecutionTracer_Name = "com.oracle.truffle.api.bytecode.tracing.ExecutionTracer";
     public static final String BytecodeTracingMetadata_Name = "com.oracle.truffle.api.bytecode.tracing.TracingMetadata";
@@ -459,6 +460,7 @@ public class TruffleTypes {
     public final DeclaredType BytecodeSerializer_SerializerContext = c.getDeclaredTypeOptional(BytecodeSerializer_SerializerContext_Name);
     public final DeclaredType BytecodeDeserializer = c.getDeclaredTypeOptional(BytecodeDeserializer_Name);
     public final DeclaredType BytecodeDeserializer_DeserializerContext = c.getDeclaredTypeOptional(BytecodeDeserializer_DeserializerContext_Name);
+    public final DeclaredType SerializationUtils = c.getDeclaredTypeOptional(SerializationUtils_Name);
 
     public final DeclaredType ExecutionTracer = c.getDeclaredTypeOptional(ExecutionTracer_Name);
     public final DeclaredType BytecodeTracingMetadata = c.getDeclaredTypeOptional(BytecodeTracingMetadata_Name);
