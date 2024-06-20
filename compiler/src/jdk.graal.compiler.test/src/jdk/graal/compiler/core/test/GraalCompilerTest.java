@@ -379,8 +379,16 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     private static final ThreadLocal<HashMap<ResolvedJavaMethod, InstalledCode>> cache = ThreadLocal.withInitial(HashMap::new);
 
+    /**
+     * Reset the entire {@linkplain #cache} of {@linkplain InstalledCode}. Additionally, invalidate
+     * all code that was installed before. Some tests install default methods for example and one
+     * test should never influence another one.
+     */
     @BeforeClass
     public static void resetCodeCache() {
+        for (InstalledCode code : cache.get().values()) {
+            code.invalidate();
+        }
         cache.get().clear();
     }
 
