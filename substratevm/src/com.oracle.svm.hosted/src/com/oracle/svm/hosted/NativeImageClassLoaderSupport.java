@@ -142,7 +142,7 @@ public class NativeImageClassLoaderSupport {
         imagecp = Arrays.stream(classpath)
                         .map(Path::of)
                         .flatMap(NativeImageClassLoaderSupport::toRealPath)
-                        .collect(Collectors.toUnmodifiableList());
+                        .toList();
 
         String builderClassPathString = System.getProperty("java.class.path");
         String[] builderClassPathEntries = builderClassPathString.isEmpty() ? new String[0] : builderClassPathString.split(File.pathSeparator);
@@ -154,19 +154,19 @@ public class NativeImageClassLoaderSupport {
         buildcp = Arrays.stream(builderClassPathEntries)
                         .map(Path::of)
                         .flatMap(NativeImageClassLoaderSupport::toRealPath)
-                        .collect(Collectors.toUnmodifiableList());
+                        .toList();
         buildcp.stream().map(Path::toUri).forEach(builderURILocations::add);
 
         imagemp = Arrays.stream(modulePath)
                         .map(Path::of)
                         .flatMap(NativeImageClassLoaderSupport::toRealPath)
-                        .collect(Collectors.toUnmodifiableList());
+                        .toList();
 
         buildmp = Optional.ofNullable(System.getProperty("jdk.module.path")).stream()
                         .flatMap(s -> Arrays.stream(s.split(File.pathSeparator)))
                         .map(Path::of)
                         .flatMap(NativeImageClassLoaderSupport::toRealPath)
-                        .collect(Collectors.toUnmodifiableList());
+                        .toList();
 
         upgradeAndSystemModuleFinder = createUpgradeAndSystemModuleFinder();
 

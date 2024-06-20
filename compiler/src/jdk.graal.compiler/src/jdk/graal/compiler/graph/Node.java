@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.core.common.Fields;
@@ -62,7 +63,6 @@ import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.misc.Unsafe;
-import jdk.vm.ci.services.Services;
 
 /**
  * This class is the base class for all nodes. It represents a node that can be inserted in a
@@ -97,7 +97,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     public static final NodeClass<?> TYPE = null;
 
-    public static final boolean TRACK_CREATION_POSITION = Boolean.parseBoolean(Services.getSavedProperty("debug.graal.TrackNodeCreationPosition"));
+    public static final boolean TRACK_CREATION_POSITION = Boolean.parseBoolean(GraalServices.getSavedProperty("debug.graal.TrackNodeCreationPosition"));
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;

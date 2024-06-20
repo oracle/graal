@@ -80,7 +80,7 @@ import jdk.internal.module.Resources;
  * in {@code jdk.internal.loader.Loader} and {@code URLClassLoader}. More documentation is available
  * in the original classes.
  */
-final class NativeImageClassLoader extends SecureClassLoader {
+public final class NativeImageClassLoader extends SecureClassLoader {
 
     static {
         ClassLoader.registerAsParallelCapable();
@@ -172,14 +172,18 @@ final class NativeImageClassLoader extends SecureClassLoader {
         moduleToReader = new ConcurrentHashMap<>();
 
         /* Initialize URLClassPath that is used to lookup classes from class-path. */
-        ucp = new URLClassPath(classpath.stream().map(NativeImageClassLoader::pathToURL).toArray(URL[]::new), null);
+        ucp = new URLClassPath(classpath.stream().map(NativeImageClassLoader::toURL).toArray(URL[]::new), null);
     }
 
-    private static URL pathToURL(Path p) {
+    public static URL toURL(Path p) {
+        return toURL(p.toUri());
+    }
+
+    public static URL toURL(URI uri) {
         try {
-            return p.toUri().toURL();
+            return uri.toURL();
         } catch (MalformedURLException e) {
-            throw UserError.abort(e, "Given path element '%s' cannot be expressed as URL.", p);
+            throw UserError.abort(e, "Given URI '%s' cannot be expressed as URL.", uri);
         }
     }
 

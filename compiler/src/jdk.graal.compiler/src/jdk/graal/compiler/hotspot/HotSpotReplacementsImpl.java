@@ -84,9 +84,9 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return (HotSpotProviders) super.getProviders();
     }
 
-    public void maybeInitializeEncoder() {
+    public SymbolicSnippetEncoder maybeInitializeEncoder() {
         if (IS_IN_NATIVE_IMAGE) {
-            return;
+            return null;
         }
         if (IS_BUILDING_NATIVE_IMAGE) {
             synchronized (HotSpotReplacementsImpl.class) {
@@ -95,6 +95,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 }
             }
         }
+        return snippetEncoder;
     }
 
     @Override
@@ -228,7 +229,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         snippetEncoder.clearSnippetParameterNames();
     }
 
-    static void setEncodedSnippets(EncodedSnippets encodedSnippets) {
+    public static void setEncodedSnippets(EncodedSnippets encodedSnippets) {
         HotSpotReplacementsImpl.encodedSnippets = encodedSnippets;
     }
 

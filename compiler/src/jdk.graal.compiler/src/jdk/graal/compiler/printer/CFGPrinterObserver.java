@@ -59,7 +59,6 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -235,7 +234,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     private static DisassemblerProvider selectDisassemblerProvider(OptionValues options) {
         DisassemblerProvider selected = null;
-        String arch = Services.getSavedProperty("os.arch");
+        String arch = GraalServices.getSavedProperty("os.arch");
         final boolean isAArch64 = arch.equals("aarch64");
         Iterator<DisassemblerProvider> load = GraalServices.load(DisassemblerProvider.class).iterator();
         while (load.hasNext()) {

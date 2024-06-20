@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot.libgraal;
 
-import com.oracle.svm.core.option.RuntimeOptionKey;
+package jdk.graal.compiler.core;
 
-/**
- * Libgraal-specific subclass so that we can distinguish between Native Image and libgraal runtime
- * options.
- */
-public class LibGraalRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
-    LibGraalRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, flags);
-    }
+import jdk.vm.ci.code.Architecture;
+
+public interface ArchitectureSpecific {
+    /**
+     * Gets the {@linkplain Architecture#getName() name} of the architecture this Graal component is
+     * associated with.
+     */
+    String getArchitecture();
 }

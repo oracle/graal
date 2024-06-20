@@ -22,15 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot.libgraal;
+package com.oracle.svm.graal.hotspot;
 
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import static org.graalvm.jniutils.JNIUtil.PopLocalFrame;
 import static org.graalvm.jniutils.JNIUtil.PushLocalFrame;
@@ -43,9 +38,7 @@ import static org.graalvm.jniutils.JNIUtil.PushLocalFrame;
  * not use such a stub so without explicitly allocating a new JNI locals frame, the JNI references
  * created by libgraal will never be freed (i.e., a memory leak).
  */
-final class LibGraalJNIMethodScope extends JNIMethodScope {
-
-    private static volatile int lastJavaPCOffset = -1;
+public final class LibGraalJNIMethodScope extends JNIMethodScope {
 
     private LibGraalJNIMethodScope(String scopeName, JNIEnv env) {
         super(scopeName, env);
@@ -64,24 +57,7 @@ final class LibGraalJNIMethodScope extends JNIMethodScope {
      *
      * @see LibGraalJNIMethodScope
      */
-    static JNIMethodScope open(String scopeName, JNIEnv env) {
-        return scopeOrNull() == null && getJavaFrameAnchor().isNull() ? new LibGraalJNIMethodScope(scopeName, env) : new JNIMethodScope(scopeName, env);
-    }
-
-    private static PointerBase getJavaFrameAnchor() {
-        CLongPointer currentThreadLastJavaPCOffset = (CLongPointer) WordFactory.unsigned(HotSpotJVMCIRuntime.runtime().getCurrentJavaThread()).add(getLastJavaPCOffset());
-        return WordFactory.pointer(currentThreadLastJavaPCOffset.read());
-    }
-
-    private static int getLastJavaPCOffset() {
-        int res = lastJavaPCOffset;
-        if (res == -1) {
-            HotSpotVMConfigAccess configAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
-            int anchor = configAccess.getFieldOffset("JavaThread::_anchor", Integer.class, "JavaFrameAnchor");
-            int lastJavaPc = configAccess.getFieldOffset("JavaFrameAnchor::_last_Java_pc", Integer.class, "address");
-            res = anchor + lastJavaPc;
-            lastJavaPCOffset = res;
-        }
-        return res;
+    public static JNIMethodScope open(String scopeName, JNIEnv env, boolean javaFrameAnchorExists) {
+        return scopeOrNull() == null && !javaFrameAnchorExists ? new LibGraalJNIMethodScope(scopeName, env) : new JNIMethodScope(scopeName, env);
     }
 }

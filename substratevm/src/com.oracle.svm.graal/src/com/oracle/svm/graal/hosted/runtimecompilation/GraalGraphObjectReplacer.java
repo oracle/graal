@@ -167,7 +167,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else if (source instanceof HotSpotBackendFactory) {
             HotSpotBackendFactory factory = (HotSpotBackendFactory) source;
             Architecture hostArch = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch;
-            if (!factory.getArchitecture().equals(hostArch.getClass())) {
+            if (!factory.getArchitecture().equals(hostArch.getName())) {
                 throw new UnsupportedFeatureException("Non-host architecture HotSpotBackendFactory should not appear in the image: " + source);
             }
         } else if (source instanceof GraalRuntime) {

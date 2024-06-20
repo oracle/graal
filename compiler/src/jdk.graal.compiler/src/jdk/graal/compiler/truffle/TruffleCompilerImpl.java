@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import jdk.vm.ci.meta.ProfilingInfo;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
@@ -606,8 +607,19 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             LIRSuites selectedLirSuites = tier.lirSuites();
             Providers selectedProviders = tier.providers();
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId(), compilable);
-            result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, tier.backend(), graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites,
-                            selectedLirSuites, compilationResult, CompilationResultBuilderFactory.Default, false);
+            ProfilingInfo profilingInfo = graph.getProfilingInfo();
+            result = GraalCompiler.compile(new GraalCompiler.Request<>(graph,
+                            graph.method(),
+                            selectedProviders,
+                            tier.backend(),
+                            graphBuilderSuite,
+                            Optimizations,
+                            profilingInfo,
+                            selectedSuites,
+                            selectedLirSuites,
+                            compilationResult,
+                            CompilationResultBuilderFactory.Default,
+                            false));
         } catch (Throwable e) {
             throw debug.handle(e);
         }

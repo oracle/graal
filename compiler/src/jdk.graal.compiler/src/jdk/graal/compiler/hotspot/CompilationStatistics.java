@@ -48,7 +48,6 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
 
 @SuppressWarnings("unused")
 public final class CompilationStatistics {
@@ -190,7 +189,7 @@ public final class CompilationStatistics {
                         timeLeft = RESOLUTION;
                     }
                 }
-                String timelineName = Services.getSavedProperty("stats.timeline.name");
+                String timelineName = GraalServices.getSavedProperty("stats.timeline.name");
                 if (timelineName != null && !timelineName.isEmpty()) {
                     out.printf("%s%c", CSVUtil.Escape.escape(timelineName), CSVUtil.SEPARATOR);
                 }

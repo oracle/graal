@@ -42,6 +42,7 @@ import java.util.function.Supplier;
 import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
 import jdk.graal.compiler.options.OptionValues;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.services.Services;
 
@@ -57,7 +58,7 @@ final class IgvDumpChannel implements WritableByteChannel {
      * To enable IGV dumping to the network during libgraal based development, set the
      * {@value #ENABLE_NETWORK_DUMPING_PROP} system property to true when building libgraal.
      */
-    private static final boolean ENABLE_NETWORK_DUMPING = Boolean.parseBoolean(Services.getSavedProperty(ENABLE_NETWORK_DUMPING_PROP));
+    private static final boolean ENABLE_NETWORK_DUMPING = Boolean.parseBoolean(GraalServices.getSavedProperty(ENABLE_NETWORK_DUMPING_PROP));
 
     private final Supplier<String> pathProvider;
     private final OptionValues options;

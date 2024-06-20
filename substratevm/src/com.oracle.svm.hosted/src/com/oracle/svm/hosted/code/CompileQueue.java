@@ -1285,8 +1285,20 @@ public class CompileQueue {
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
                 try (Indent indent = debug.logAndIndent("compile %s", method)) {
-                    GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), null, suites, lirSuites, result,
-                                    new HostedCompilationResultBuilderFactory(), false);
+                    Providers providers = backend.getProviders();
+                    OptimisticOptimizations optimisticOpts = getOptimisticOpts();
+                    GraalCompiler.compile(new GraalCompiler.Request<>(graph,
+                                    method,
+                                    providers,
+                                    backend,
+                                    null,
+                                    optimisticOpts,
+                                    null,
+                                    suites,
+                                    lirSuites,
+                                    result,
+                                    new HostedCompilationResultBuilderFactory(),
+                                    false));
                 }
                 graph.getOptimizationLog().emit((m) -> m.format(StableMethodNameFormatter.METHOD_FORMAT));
                 method.compilationInfo.numNodesAfterCompilation = graph.getNodeCount();

@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
-import static jdk.graal.compiler.core.GraalCompiler.compileGraph;
+import static jdk.graal.compiler.core.GraalCompiler.compile;
 import static jdk.graal.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static jdk.graal.compiler.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
 
@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
+import jdk.graal.compiler.core.GraalCompiler;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -382,8 +383,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         new HotSpotGraphBuilderInstance(lastTierProviders, newBuilderConfig, OptimisticOptimizations.ALL, null).apply(graph);
 
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, backend.getSuites());
-        return compileGraph(graph, javaMethod, lastTierProviders, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), newSuites, tier.lirSuites(),
-                        new CompilationResult(compilationId), CompilationResultBuilderFactory.Default, resultFactory, false);
+        return compile(new GraalCompiler.Request<>(graph, javaMethod, lastTierProviders, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), newSuites, tier.lirSuites(),
+                        new CompilationResult(compilationId), CompilationResultBuilderFactory.Default, resultFactory, null, false));
     }
 
     @Override

@@ -37,7 +37,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.concurrent.atomic.AtomicReference;
 
+import jdk.graal.compiler.core.ArchitectureSpecific;
+import jdk.internal.misc.VM;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
@@ -54,7 +58,7 @@ public final class GraalServices {
     }
 
     /**
-     * Gets an {@link Iterable} of the providers available for a given service.
+     * Gets an {@link Iterable} of the providers available for {@code service}.
      */
     @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
@@ -74,8 +78,7 @@ public final class GraalServices {
             synchronized (servicesCache) {
                 ArrayList<S> providersList = new ArrayList<>();
                 for (S provider : providers) {
-                    Module module = provider.getClass().getModule();
-                    if (isHotSpotGraalModule(module.getName())) {
+                    if (isLibgraalProvider(provider)) {
                         providersList.add(provider);
                     }
                 }
@@ -89,16 +92,106 @@ public final class GraalServices {
     }
 
     /**
-     * Determines if the module named by {@code name} is part of Graal when it is configured as a
-     * HotSpot JIT compiler.
+     * Determines if {@code provider} is a service provider used in libgraal.
      */
-    private static boolean isHotSpotGraalModule(String name) {
+    private static boolean isLibgraalProvider(Object provider) {
+        LibgraalConfig config = libgraalConfig();
+        if (config != null) {
+            return config.isLibgraalProvider(provider);
+        }
+        Class<?> c = provider.getClass();
+        Module module = c.getModule();
+        String name = module.getName();
         if (name != null) {
             return name.equals("jdk.graal.compiler") ||
                             name.equals("jdk.graal.compiler.management") ||
                             name.equals("com.oracle.graal.graal_enterprise");
         }
         return false;
+    }
+
+    /**
+     * Gets an unmodifiable copy of the system properties in their state at system initialization
+     * time. This method must be used instead of calling {@link Services#getSavedProperties()}
+     * directly for any caller that will end up in libgraal.
+     *
+     * @see VM#getSavedProperties
+     */
+    public static Map<String, String> getSavedProperties() {
+        if (IS_BUILDING_NATIVE_IMAGE && !IS_IN_NATIVE_IMAGE) {
+            return jdk.internal.misc.VM.getSavedProperties();
+        }
+        return Services.getSavedProperties();
+    }
+
+    /**
+     * Helper method equivalent to {@link #getSavedProperties()}{@code .getOrDefault(name, def)}.
+     */
+    public static String getSavedProperty(String name, String def) {
+        if (IS_BUILDING_NATIVE_IMAGE && !IS_IN_NATIVE_IMAGE) {
+            return jdk.internal.misc.VM.getSavedProperties().getOrDefault(name, def);
+        }
+        return Services.getSavedProperties().getOrDefault(name, def);
+    }
+
+    /**
+     * Helper method equivalent to {@link #getSavedProperties()}{@code .get(name)}.
+     */
+    public static String getSavedProperty(String name) {
+        if (IS_BUILDING_NATIVE_IMAGE && !IS_IN_NATIVE_IMAGE) {
+            return jdk.internal.misc.VM.getSavedProperty(name);
+        }
+        return Services.getSavedProperty(name);
+    }
+
+    /**
+     * Configuration relevant for building libgraal.
+     *
+     * @param classLoader the class loader used to load libgraal destined classes
+     * @param arch the {@linkplain Architecture#getName() name} of the architecture on which
+     *            libgraal will be deployed
+     */
+    public record LibgraalConfig(ClassLoader classLoader, String arch) {
+
+        /**
+         * Determines if {@code provider} will be used in libgraal.
+         */
+        boolean isLibgraalProvider(Object provider) {
+            if (provider.getClass().getClassLoader() != classLoader) {
+                return false;
+            }
+            if (provider instanceof ArchitectureSpecific as) {
+                return as.getArchitecture().equals(arch);
+            }
+            return true;
+        }
+    }
+
+    /**
+     * Sentinel value for representing "default" initialization of {@link #libgraalConfig}.
+     */
+    private static final LibgraalConfig LIBGRAAL_CONFIG_DEFAULT = new LibgraalConfig(null, null);
+
+    private static final AtomicReference<LibgraalConfig> libgraalConfig = new AtomicReference<>();
+
+    /**
+     * Sets the config for building libgraal. Can only be called at most once. If called, it must be
+     * before any call to {@link #load(Class)}.
+     */
+    public static void setLibgraalConfig(LibgraalConfig config) {
+        if (!IS_BUILDING_NATIVE_IMAGE) {
+            throw new InternalError("Can only set libgraal config when building libgraal");
+        }
+        LibgraalConfig expectedValue = libgraalConfig.compareAndExchange(null, config);
+        if (expectedValue != null) {
+            throw new InternalError("Libgraal config already initialized: " + expectedValue);
+        }
+    }
+
+    private static LibgraalConfig libgraalConfig() {
+        libgraalConfig.compareAndSet(null, LIBGRAAL_CONFIG_DEFAULT);
+        LibgraalConfig config = libgraalConfig.get();
+        return config == LIBGRAAL_CONFIG_DEFAULT ? null : config;
     }
 
     private static <S> Iterable<S> load0(Class<S> service) {
@@ -109,8 +202,13 @@ public final class GraalServices {
             module.addUses(service);
         }
 
-        ModuleLayer layer = module.getLayer();
-        Iterable<S> iterable = ServiceLoader.load(layer, service);
+        LibgraalConfig config = libgraalConfig();
+        Iterable<S> iterable;
+        if (config != null && config.classLoader != null) {
+            iterable = ServiceLoader.load(service, config.classLoader);
+        } else {
+            iterable = ServiceLoader.load(module.getLayer(), service);
+        }
         return new Iterable<>() {
             @Override
             public Iterator<S> iterator() {
@@ -446,7 +544,6 @@ public final class GraalServices {
      * @param forceFullGC controls whether to explicitly perform a full GC
      */
     private static void notifyLowMemoryPoint(boolean hintFullGC, boolean forceFullGC) {
-        // Substituted by
-        // com.oracle.svm.hotspot.libgraal.Target_jdk_graal_compiler_serviceprovider_GraalServices
+        VMSupport.notifyLowMemoryPoint(hintFullGC, forceFullGC);
     }
 }

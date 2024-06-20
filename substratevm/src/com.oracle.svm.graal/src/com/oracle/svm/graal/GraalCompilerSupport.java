@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.graal;
 
-import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
-
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,11 +34,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
@@ -53,7 +47,6 @@ import jdk.graal.compiler.lir.CompositeValueClass;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 
 /**
  * Holds data that is pre-computed during native image generation and accessed at run time during a
@@ -71,41 +64,9 @@ public class GraalCompilerSupport {
 
     protected final List<DebugHandlersFactory> debugHandlersFactories = new ArrayList<>();
 
-    private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(1L));
-
-    private volatile long isolateId = 0;
-
-    /**
-     * Gets an identifier for the current isolate that is guaranteed to be unique for the first
-     * {@code 2^64 - 1} isolates in the process.
-     *
-     * @return a non-zero value
-     */
-    public long getIsolateId() {
-        if (isolateId == 0) {
-            synchronized (this) {
-                if (isolateId == 0) {
-                    Pointer p = nextIsolateId.get();
-                    long value;
-                    long nextValue;
-                    do {
-                        value = p.readLong(0);
-                        nextValue = value + 1;
-                        if (nextValue == 0) {
-                            // Avoid setting id to reserved 0 value after long integer overflow
-                            nextValue = 1;
-                        }
-                    } while (p.compareAndSwapLong(0, value, nextValue, ANY_LOCATION) != value);
-                    isolateId = value;
-                }
-            }
-        }
-        return isolateId;
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public GraalCompilerSupport() {
-        for (DebugHandlersFactory c : GraalServices.load(DebugHandlersFactory.class)) {
+        for (DebugHandlersFactory c : DebugHandlersFactory.LOADER) {
             debugHandlersFactories.add(c);
         }
     }
