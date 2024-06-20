@@ -46,7 +46,7 @@ package org.graalvm.continuations;
  * be suspended if {@link #start(SuspendCapability)} is on the calling stack.
  */
 @FunctionalInterface
-public interface EntryPoint {
+public interface ContinuationEntryPoint {
     /**
      * The starting point of a continuation. The {@code suspendCapability} should only be invoked on
      * this thread.

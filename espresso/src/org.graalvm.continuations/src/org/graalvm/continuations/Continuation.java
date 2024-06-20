@@ -90,7 +90,8 @@ import java.util.function.Consumer;
  * serializable.
  *
  * <p>
- * For a continuation to be serialized, the given {@link EntryPoint} itself must be serializable.
+ * For a continuation to be serialized, the given {@link ContinuationEntryPoint} itself must be
+ * serializable.
  *
  * <h2>External serialization</h2>
  *
@@ -126,23 +127,23 @@ public abstract class Continuation implements Serializable {
     }
 
     /**
-     * Creates a new suspended continuation, taking in an {@link EntryPoint}.
+     * Creates a new suspended continuation, taking in an {@link ContinuationEntryPoint}.
      *
      * <p>
      * To begin execution call the {@link Continuation#resume()} method. The entry point will be
      * passed a {@link SuspendCapability capability object} allowing it to suspend itself.
      *
      * <p>
-     * The continuation will be serializable so long as the given {@link EntryPoint} is
+     * The continuation will be serializable so long as the given {@link ContinuationEntryPoint} is
      * serializable.
      *
      * @throws UnsupportedOperationException If this VM does not support continuation.
      */
-    public static Continuation create(EntryPoint entryPoint) {
+    public static Continuation create(ContinuationEntryPoint continuationEntryPoint) {
         if (!isSupported()) {
             throw new UnsupportedOperationException("This VM does not support continuations.");
         }
-        return new ContinuationImpl(entryPoint);
+        return new ContinuationImpl(continuationEntryPoint);
     }
 
     /**
@@ -160,8 +161,8 @@ public abstract class Continuation implements Serializable {
 
     /**
      * Returns {@code true} if execution of this continuation has completed, whether because the
-     * {@link EntryPoint} has returned normally, or if an uncaught exception has propagated out of
-     * the {@link EntryPoint}.
+     * {@link ContinuationEntryPoint} has returned normally, or if an uncaught exception has
+     * propagated out of the {@link ContinuationEntryPoint}.
      * <p>
      * A continuation that is being serialized will return {@code false}, until serialization
      * completes.

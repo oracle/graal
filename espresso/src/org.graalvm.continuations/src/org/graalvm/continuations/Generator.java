@@ -64,7 +64,7 @@ public abstract class Generator<E> implements Enumeration<E>, Serializable {
      */
     @SuppressWarnings("this-escape")
     protected Generator() {
-        continuation = Continuation.create((EntryPoint & Serializable) cap -> {
+        continuation = Continuation.create((ContinuationEntryPoint & Serializable) cap -> {
             this.suspendCapability = cap;
             generate();
         });

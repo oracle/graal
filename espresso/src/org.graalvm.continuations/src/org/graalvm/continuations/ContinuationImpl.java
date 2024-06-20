@@ -236,7 +236,7 @@ final class ContinuationImpl extends Continuation {
 
     // The entry point as provided in the constructor.
     @SuppressWarnings("serial") // handled by read/writeExternal
-    private EntryPoint entryPoint;
+    private ContinuationEntryPoint entryPoint;
 
     // This field is initialized after calling ensureMaterialized().
     @SuppressWarnings("serial") // handled by read/writeExternal
@@ -555,7 +555,7 @@ final class ContinuationImpl extends Continuation {
             if (currentState == State.RUNNING) {
                 throw new IllegalContinuationStateException("Illegal serialized continuation is in running state.");
             }
-            entryPoint = (EntryPoint) in.readObject();
+            entryPoint = (ContinuationEntryPoint) in.readObject();
 
             if (currentState == State.SUSPENDED) {
                 stackFrameHead = FrameRecordSerializer.forIn(version, in) //
@@ -574,7 +574,7 @@ final class ContinuationImpl extends Continuation {
 
     // region Implementation
 
-    ContinuationImpl(EntryPoint entryPoint) {
+    ContinuationImpl(ContinuationEntryPoint entryPoint) {
         this.state = State.NEW;
         this.entryPoint = entryPoint;
     }
