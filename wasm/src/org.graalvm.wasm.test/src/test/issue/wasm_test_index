@@ -3,3 +3,4 @@ issue-35969
 issue-36944-blocks
 issue-36944-loops
 GR-54851-typeindex-oob
+GR-54851-control-stack-empty
