@@ -1663,6 +1663,37 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         ProxyLanguage.setDelegate(new ProxyLanguage());
     }
 
+    @Test
+    public void testPassDisposedThread() {
+        AtomicReference<Thread> thread = new AtomicReference<>();
+        try (TestSetup setup = setupSafepointLoop(1, new NodeCallable() {
+            @TruffleBoundary
+            @Override
+            public boolean call(TestSetup s, TestRootNode node) {
+                Thread polyglotThread = node.setup.env.newTruffleThreadBuilder(() -> {
+                    thread.set(Thread.currentThread());
+                }).virtual(vthreads).build();
+                polyglotThread.start();
+                try {
+                    polyglotThread.join();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                return true;
+            }
+        })) {
+            setup.stopAndAwait();
+            var action = new ActionCollector(setup, false);
+            assertNotNull(thread.get());
+            // This must be allowed because the language cannot know e.g. if the thread was disposed
+            // concurrently to submitting
+            var future = setup.env.submitThreadLocal(new Thread[]{thread.get()}, action);
+            assertTrue(future.isDone());
+            assertFalse(future.isCancelled());
+            assertEquals(0, action.actions.size());
+        }
+    }
+
     @FunctionalInterface
     interface TestRunner {
 
