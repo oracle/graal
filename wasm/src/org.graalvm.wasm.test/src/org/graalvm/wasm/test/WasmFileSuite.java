@@ -417,7 +417,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     private static void validateThrown(WasmCaseData data, WasmCaseData.ErrorType phase, PolyglotException e) throws PolyglotException {
         if (data.expectedErrorMessage() == null || !data.expectedErrorMessage().equals(e.getMessage())) {
-            throw e;
+            throw new AssertionError("Expected error message [%s] but was: [%s]".formatted(data.expectedErrorMessage(), e.getMessage()), e);
         }
         Assert.assertEquals("Unexpected error phase.", data.expectedErrorTime(), phase);
     }

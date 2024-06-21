@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.function.BiConsumer;
 
@@ -158,7 +159,8 @@ public abstract class WasmCase {
 
         // Open the wasm_test_index file of the bundle. The wasm_test_index file contains the
         // available cases for that bundle.
-        InputStream index = WasmCase.class.getResourceAsStream(String.format("/%s/%s/wasm_test_index", type, resource));
+        String indexResourcePath = String.format("/%s/%s/wasm_test_index", type, resource);
+        InputStream index = Objects.requireNonNull(WasmCase.class.getResourceAsStream(indexResourcePath), indexResourcePath);
         BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
 
         // Iterate through the available test of the bundle.
