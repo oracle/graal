@@ -141,6 +141,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilationFinal private int livenessAnalysisMinimumLocals;
     @CompilationFinal private boolean previewEnabled;
     @CompilationFinal private boolean whiteBoxEnabled;
+    @CompilationFinal private boolean eagerFrameAnalysis;
     // endregion Options
 
     // region Allocation
@@ -214,6 +215,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 if (!fullyInitialized) {
                     // Initialize required options.
                     initializeOptions(env);
+                    initializeGuestAllocator(env);
                     // Create known shapes.
                     arrayShape = createArrayShape();
                     foreignShape = createForeignShape();
@@ -228,7 +230,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     private void initializeOptions(final TruffleLanguage.Env env) {
         assert Thread.holdsLock(this);
-        verifyMode = env.getOptions().get(EspressoOptions.Verify);
+        eagerFrameAnalysis = env.getOptions().get(EspressoOptions.EagerFrameAnalysis);
+        verifyMode = eagerFrameAnalysis ? EspressoOptions.VerifyMode.ALL : env.getOptions().get(EspressoOptions.Verify);
         specComplianceMode = env.getOptions().get(EspressoOptions.SpecCompliance);
         livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
@@ -323,6 +326,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return isOptionCompatible(newOptions, oldOptions, EspressoOptions.JavaHome) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.BootClasspath) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.Verify) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.EagerFrameAnalysis) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.SpecCompliance) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysis) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals) &&
@@ -532,6 +536,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public boolean isWhiteBoxEnabled() {
         return whiteBoxEnabled;
+    }
+
+    public boolean isEagerFrameAnalysisEnabled() {
+        return eagerFrameAnalysis;
     }
 
     public EspressoLanguageCache getLanguageCache() {

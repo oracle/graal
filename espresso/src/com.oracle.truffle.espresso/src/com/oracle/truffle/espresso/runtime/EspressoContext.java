@@ -419,8 +419,6 @@ public final class EspressoContext {
                 registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
             }
 
-            // TODO: link libjimage
-
             initializeAgents();
 
             try (DebugCloseable metaInit = META_INIT.scope(espressoEnv.getTimers())) {
