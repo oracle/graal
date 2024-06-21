@@ -35,6 +35,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.nativeimage.c.type.CCharPointer;
+
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
@@ -163,7 +166,12 @@ public final class QueryResultParser extends NativeInfoTreeVisitor {
         parseIntegerProperty(pointerToInfo.getSizeInfo());
 
         if (pointerToInfo.getKind() == ElementKind.INTEGER) {
-            parseSignedness(pointerToInfo.getSignednessInfo());
+            if (((AnalysisType) pointerToInfo.getAnnotatedElement()).getJavaClass() == CCharPointer.class) {
+                /* Always treat CCharPointer as signed internally (Java byte read/writes). */
+                pointerToInfo.getSignednessInfo().setProperty(SignednessValue.SIGNED);
+            } else {
+                parseSignedness(pointerToInfo.getSignednessInfo());
+            }
         }
     }
 
