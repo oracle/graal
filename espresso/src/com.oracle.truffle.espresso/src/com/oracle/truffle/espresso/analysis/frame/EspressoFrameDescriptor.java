@@ -297,7 +297,7 @@ public class EspressoFrameDescriptor {
 
         public void push(FrameType ft, boolean handle2Slots) {
             JavaKind k = ft.kind();
-            assert k != JavaKind.Illegal;
+            assert k != JavaKind.Illegal || !handle2Slots;
             if (k == JavaKind.Void) {
                 return;
             }
@@ -440,6 +440,7 @@ public class EspressoFrameDescriptor {
         }
 
         private int stackIdx(int slot) {
+            assert slot >= 0;
             return 1 + maxLocals + slot;
         }
 
