@@ -609,7 +609,8 @@ public final class ModuleLayerFeature implements InternalFeature {
         private final Set<Module> allUnnamedModuleSet;
         private final Module everyoneModule;
         private final Set<Module> everyoneSet;
-        private final Constructor<Module> moduleConstructor;
+        private final Constructor<Module> namedModuleConstructor;
+        private final Constructor<Module> unnamedModuleConstructor;
         private final Field moduleDescriptorField;
         private final Field moduleLayerField;
         private final Field moduleLoaderField;
@@ -670,7 +671,8 @@ public final class ModuleLayerFeature implements InternalFeature {
                 everyoneSet = new HashSet<>(1);
                 everyoneSet.add(everyoneModule);
 
-                moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
+                namedModuleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
+                unnamedModuleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class);
                 moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
 
                 systemModuleFindersAllSystemModulesMethod = ReflectionUtil.lookupMethod(SystemModuleFinders.class, "allSystemModules");
@@ -770,11 +772,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
 
         public Module getRuntimeModuleForHostedModule(Module hostedModule, boolean optional) {
-            if (hostedModule.isNamed()) {
-                return getRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), optional);
-            } else {
-                return hostedModule;
-            }
+            return getRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), optional);
         }
 
         public Module getRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, boolean optional) {
@@ -800,10 +798,15 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
 
         public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule) {
-            if (hostedModule.isNamed()) {
-                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), hostedModule.getDescriptor());
-            } else {
+            /*
+             * Special module instances such as ALL_UNNAMED and EVERYONE_MODULE are not replicated
+             * as they only serve as marker modules (all their fields are null, including the loader
+             * field).
+             */
+            if (hostedModule == allUnnamedModule || hostedModule == everyoneModule) {
                 return hostedModule;
+            } else {
+                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), hostedModule.getDescriptor());
             }
         }
 
@@ -815,7 +818,11 @@ public final class ModuleLayerFeature implements InternalFeature {
                 }
 
                 try {
-                    runtimeModule = moduleConstructor.newInstance(loader, runtimeModuleDescriptor);
+                    if (hostedModuleName == null) {
+                        runtimeModule = unnamedModuleConstructor.newInstance(loader);
+                    } else {
+                        runtimeModule = namedModuleConstructor.newInstance(loader, runtimeModuleDescriptor);
+                    }
                 } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
                     throw VMError.shouldNotReachHere("Failed to reflectively construct a runtime Module object.", ex);
                 }
