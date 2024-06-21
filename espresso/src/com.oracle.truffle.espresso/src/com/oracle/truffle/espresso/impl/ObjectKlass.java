@@ -52,11 +52,14 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -737,6 +740,9 @@ public final class ObjectKlass extends Klass {
             for (Method m : getDeclaredMethods()) {
                 try {
                     MethodVerifier.verify(m);
+                    if (m.getCodeAttribute() != null && getLanguage().isEagerFrameAnalysisEnabled()) {
+                        eagerFrameAnalysis(m);
+                    }
                 } catch (MethodVerifier.VerifierError e) {
                     String message = String.format("Verification for class `%s` failed for method `%s` with message `%s`", getExternalName(), m.getNameAsString(), e.getMessage());
                     switch (e.kind()) {
@@ -750,7 +756,17 @@ public final class ObjectKlass extends Klass {
                 }
             }
         }
+    }
 
+    private static void eagerFrameAnalysis(Method m) {
+        BytecodeStream bs = new BytecodeStream(m.getOriginalCode());
+        int nextBci = 0;
+        while (nextBci < bs.endBCI()) {
+            if (Bytecodes.isInvoke(bs.opcode(nextBci))) {
+                FrameAnalysis.apply(m.getMethodVersion(), nextBci);
+            }
+            nextBci = bs.nextBCI(nextBci);
+        }
     }
 
     // endregion Verification
