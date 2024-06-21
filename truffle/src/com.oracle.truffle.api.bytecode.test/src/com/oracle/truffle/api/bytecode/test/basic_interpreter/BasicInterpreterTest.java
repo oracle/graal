@@ -745,6 +745,40 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testMultipleNestedFunctions() {
+        // return ({
+        //   x = () -> return 1
+        //   y = () -> return 2
+        //   arg0 ? x : y
+        // })();
+
+        RootCallTarget root = parse("multipleNestedFunctions", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginInvoke();
+                b.beginRoot(LANGUAGE);
+                emitReturn(b, 1);
+                BasicInterpreter x = b.endRoot();
+
+                b.beginRoot(LANGUAGE);
+                emitReturn(b, 2);
+                BasicInterpreter y = b.endRoot();
+
+                b.beginConditional();
+                b.emitLoadArgument(0);
+                b.emitLoadConstant(x);
+                b.emitLoadConstant(y);
+                b.endConditional();
+            b.endInvoke();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(1L, root.call(true));
+        assertEquals(2L, root.call(false));
+    }
+
+    @Test
     public void testMaterializedFrameAccesses() {
         // x = 41
         // f = materialize()

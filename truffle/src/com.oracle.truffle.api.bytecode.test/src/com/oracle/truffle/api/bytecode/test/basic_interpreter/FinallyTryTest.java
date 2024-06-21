@@ -2021,4 +2021,220 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
          testOrdering(true, root, 1L, 3L);
      }
+
+     @Test
+     public void testFinallyTryNestedFunction() {
+         // try {
+         //   arg0.append(1);
+         //   if (arg1) return 0
+         //   arg0.append(2);
+         //   if (arg2) goto lbl
+         //   arg0.append(3);
+         //   if (arg3) throw 123
+         //   arg0.append(4);
+         // } finally {
+         //   def f() { arg0.append(5) }
+         //   def g() { arg0.append(6) }
+         //   if (arg4) f() else g()
+         // }
+         // arg0.append(7)
+         // lbl:
+         // arg0.append(8);
+         RootCallTarget root = parse("finallyTryNestedFunction", b -> {
+             b.beginRoot(LANGUAGE);
+             b.beginBlock();
+             BytecodeLabel lbl = b.createLabel();
+             b.beginFinallyTry(b.createLocal(), () -> {
+                 b.beginBlock();
+
+                     for (int i = 0; i < 10; i++) {
+                         // Create extra root nodes to detect any serialization mismatches
+                         b.beginRoot(LANGUAGE);
+                             emitThrow(b, -123);
+                         b.endRoot();
+                     }
+
+                     b.beginRoot(LANGUAGE);
+                         emitAppend(b, 5);
+                     BasicInterpreter f = b.endRoot();
+
+                     b.beginRoot(LANGUAGE);
+                         emitAppend(b, 6);
+                     BasicInterpreter g = b.endRoot();
+
+                     b.beginInvoke();
+                         b.beginConditional();
+                             b.emitLoadArgument(4);
+                             b.emitLoadConstant(f);
+                             b.emitLoadConstant(g);
+                         b.endConditional();
+
+                         b.emitLoadArgument(0);
+                     b.endInvoke();
+                 b.endBlock();
+             });
+                 b.beginBlock();
+                     emitAppend(b, 1);
+                     emitReturnIf(b, 1, 0);
+                     emitAppend(b, 2);
+                     emitBranchIf(b, 2, lbl);
+                     emitAppend(b, 3);
+                     emitThrowIf(b, 3, 123);
+                     emitAppend(b, 4);
+                 b.endBlock();
+             b.endFinallyTry();
+             emitAppend(b, 7);
+             b.emitLabel(lbl);
+             emitAppend(b, 8);
+             b.endBlock();
+             b.endRoot();
+
+             for (int i = 0; i < 20; i++) {
+                 // Create extra root nodes to detect any serialization mismatches
+                 b.beginRoot(LANGUAGE);
+                     emitThrow(b, -456);
+                 b.endRoot();
+             }
+         });
+
+         testOrderingWithArguments(false, root, new Object[] {false, false, false, false}, 1L, 2L, 3L, 4L, 6L, 7L, 8L);
+         testOrderingWithArguments(false, root, new Object[] {false, false, false, true}, 1L, 2L, 3L, 4L, 5L, 7L, 8L);
+         testOrderingWithArguments(false, root, new Object[] {true, false, false, false}, 1L, 6L);
+         testOrderingWithArguments(false, root, new Object[] {true, false, false, true}, 1L, 5L);
+         testOrderingWithArguments(false, root, new Object[] {false, true, false, false}, 1L, 2L, 6L,  8L);
+         testOrderingWithArguments(false, root, new Object[] {false, true, false, true}, 1L, 2L, 5L, 8L);
+         testOrderingWithArguments(true, root, new Object[] {false, false, true, false}, 1L, 2L, 3L, 6L);
+         testOrderingWithArguments(true, root, new Object[] {false, false, true, true}, 1L, 2L, 3L, 5L);
+     }
+
+     @Test
+     public void testFinallyTryNestedFunctionEscapes() {
+         // try {
+         //   arg0.append(1);
+         //   if (arg1) goto lbl
+         //   arg0.append(2);
+         // } finally {
+         //   def f() { arg0.append(4) }
+         //   def g() { arg0.append(5) }
+         //   x = if (arg2) f() else g()
+         // }
+         // arg0.append(3)
+         // lbl:
+         // x()
+         RootCallTarget root = parse("finallyTryNestedFunction", b -> {
+             b.beginRoot(LANGUAGE);
+             b.beginBlock();
+             BytecodeLabel lbl = b.createLabel();
+             BytecodeLocal x = b.createLocal();
+             b.beginFinallyTry(b.createLocal(), () -> {
+                 b.beginBlock();
+                     for (int i = 0; i < 10; i++) {
+                         // Create extra root nodes to detect any serialization mismatches
+                         b.beginRoot(LANGUAGE);
+                             emitThrow(b, -123);
+                         b.endRoot();
+                     }
+
+                     b.beginRoot(LANGUAGE);
+                         emitAppend(b, 4);
+                     BasicInterpreter f = b.endRoot();
+
+                     b.beginRoot(LANGUAGE);
+                         emitAppend(b, 5);
+                     BasicInterpreter g = b.endRoot();
+
+                     b.beginStoreLocal(x);
+                         b.beginConditional();
+                             b.emitLoadArgument(2);
+                             b.emitLoadConstant(f);
+                             b.emitLoadConstant(g);
+                         b.endConditional();
+                     b.endStoreLocal();
+                 b.endBlock();
+             });
+                 b.beginBlock();
+                     emitAppend(b, 1);
+                     emitBranchIf(b, 1, lbl);
+                     emitAppend(b, 2);
+                 b.endBlock();
+             b.endFinallyTry();
+             emitAppend(b, 3);
+             b.emitLabel(lbl);
+             b.beginInvoke();
+             b.emitLoadLocal(x);
+             b.emitLoadArgument(0);
+             b.endInvoke();
+             b.endBlock();
+             b.endRoot();
+
+             for (int i = 0; i < 20; i++) {
+                 // Create extra root nodes to detect any serialization mismatches
+                 b.beginRoot(LANGUAGE);
+                     emitThrow(b, -456);
+                 b.endRoot();
+             }
+         });
+
+         testOrderingWithArguments(false, root, new Object[] {false, false}, 1L, 2L, 3L, 5L);
+         testOrderingWithArguments(false, root, new Object[] {false, true}, 1L, 2L, 3L, 4L);
+         testOrderingWithArguments(false, root, new Object[] {true, false}, 1L, 5L);
+         testOrderingWithArguments(false, root, new Object[] {true, true}, 1L, 4L);
+     }
+
+     @Test
+     public void testFinallyTryCallOuterFunction() {
+         // def f() { arg0.append(2); }
+         // def g() { arg0.append(3); }
+         // try {
+         //   arg0.append(1);
+         // } finally {
+         //   if (arg1) f() else g()
+         // }
+         RootCallTarget root = parse("finallyTryCallOuterFunction", b -> {
+             b.beginRoot(LANGUAGE);
+
+             b.beginRoot(LANGUAGE);
+             emitAppend(b, 2);
+             BasicInterpreter f = b.endRoot();
+
+             b.beginRoot(LANGUAGE);
+             emitAppend(b, 3);
+             BasicInterpreter g = b.endRoot();
+
+             b.beginFinallyTry(b.createLocal(), () -> {
+                 b.beginBlock();
+                     for (int i = 0; i < 10; i++) {
+                         // Create extra root nodes to detect any serialization mismatches
+                         b.beginRoot(LANGUAGE);
+                             emitThrow(b, -123);
+                         b.endRoot();
+                     }
+
+                     b.beginInvoke();
+                         b.beginConditional();
+                             b.emitLoadArgument(1);
+                             b.emitLoadConstant(f);
+                             b.emitLoadConstant(g);
+                         b.endConditional();
+
+                         b.emitLoadArgument(0);
+                     b.endInvoke();
+                 b.endBlock();
+             });
+                 emitAppend(b, 1);
+             b.endFinallyTry();
+
+             b.endRoot();
+
+             for (int i = 0; i < 20; i++) {
+                 // Create extra root nodes to detect any serialization mismatches
+                 b.beginRoot(LANGUAGE);
+                     emitThrow(b, -456);
+                 b.endRoot();
+             }
+         });
+
+         testOrderingWithArguments(false, root, new Object[] {false}, 1L, 3L);
+         testOrderingWithArguments(false, root, new Object[] {true}, 1L, 2L);
+     }
 }

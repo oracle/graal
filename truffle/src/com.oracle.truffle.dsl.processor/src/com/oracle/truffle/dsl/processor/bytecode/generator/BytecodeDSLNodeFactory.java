@@ -1648,7 +1648,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         final CodeVariableElement language = addField(serializationState, Set.of(PRIVATE), types.TruffleLanguage, "language");
         final CodeVariableElement labelCount = addField(serializationState, Set.of(PRIVATE), int.class, "labelCount");
         final CodeVariableElement localCount = addField(serializationState, Set.of(PRIVATE), int.class, "localCount");
-        final CodeVariableElement rootCount = addField(serializationState, Set.of(PRIVATE), int.class, "rootCount");
+        final CodeVariableElement rootCount = addField(serializationState, Set.of(PRIVATE), short.class, "rootCount");
         final CodeVariableElement finallyParserCount = addField(serializationState, Set.of(PRIVATE), int.class, "finallyParserCount");
 
         final CodeVariableElement[] codeBegin;
@@ -1682,6 +1682,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             serializationState.add(createSerializeObject());
             serializationState.add(createWriteBytecodeNode());
+            serializationState.add(createNextBuildIndex());
         }
 
         private CodeExecutableElement createConstructor() {
@@ -1718,7 +1719,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.renameArguments("buffer", "node");
             CodeTreeBuilder b = ex.createBuilder();
             b.startStatement();
-            b.string("buffer.writeChar((");
+            b.string("buffer.writeInt((");
             b.cast(bytecodeNodeGen.asType()).string("node).buildIndex)");
             b.end();
 
@@ -1746,7 +1747,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
             b.statement("return ", index);
             return method;
+        }
 
+        private CodeExecutableElement createNextBuildIndex() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "nextBuildIndex");
+            CodeTreeBuilder b = method.createBuilder();
+
+            b.startIf().variable(rootCount).string(" == ").staticReference(declaredType(Short.class), "MAX_VALUE").end().startBlock();
+            emitThrowAssertionError(b, "\"Serialization root count exceeds the maximum short value.\"");
+            b.end().startElseIf().variable(depth).string(" > ").staticReference(declaredType(Short.class), "MAX_VALUE").end().startBlock();
+            emitThrowAssertionError(b, "\"Serialization depth exceeds the maximum short value.\"");
+            b.end();
+            b.startReturn().string("(").variable(depth).string(" << 16) | ").variable(rootCount).string("++").end();
+
+            return method;
         }
 
         public void writeShort(CodeTreeBuilder b, CodeVariableElement label) {
@@ -2474,20 +2488,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeDeserializer_DeserializerContext, "readBytecodeNode");
                 ex.renameArguments("buffer");
                 CodeTreeBuilder b = ex.createBuilder();
-                b.statement("return this.builtNodes.get(buffer.readChar())");
+                b.statement("return getContext(buffer.readShort()).builtNodes.get(buffer.readShort())");
                 return ex;
             }
 
             private CodeExecutableElement createGetContext() {
                 CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), deserializationState.asType(), "getContext");
-                method.addParameter(new CodeVariableElement(type(int.class), "depth"));
+                method.addParameter(new CodeVariableElement(type(int.class), "targetDepth"));
 
                 CodeTreeBuilder b = method.createBuilder();
 
-                b.startAssert().string("depth >= 0").end();
+                b.startAssert().string("targetDepth >= 0").end();
 
                 b.declaration(deserializationState.asType(), "ctx", "this");
-                b.startWhile().string("ctx.depth != depth").end().startBlock();
+                b.startWhile().string("ctx.depth != targetDepth").end().startBlock();
                 b.statement("ctx = ctx.outer");
                 b.end();
 
@@ -3149,7 +3163,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startStatement();
                         b.type(bytecodeNodeGen.asType()).string(" node = ").cast(bytecodeNodeGen.asType()).string("end" + operation.name + "()");
                         b.end();
-                        b.startStatement().startCall("context.builtNodes.set").string("node.buildIndex").startGroup().string("node").end().end().end();
+                        b.startAssert().string("context.").variable(deserializationElements.depth).string(" == buffer.readShort()").end();
+                        b.startStatement().startCall("context.builtNodes.set").string("buffer.readShort()").string("node").end().end();
                     } else {
                         b.startStatement().startCall("end" + operation.name);
                         for (int i = 0; i < operation.operationEndArguments.length; i++) {
@@ -3197,7 +3212,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case LOCAL_ARRAY:
                     serializationElements.writeShort(after, "(short) " + argumentName + ".length");
                     String depth = argumentName + "Depth";
-                    after.startIf().string("setterValue.length > 0").end().startBlock();
+                    after.startIf().string(argumentName, ".length > 0").end().startBlock();
                     after.startDeclaration(type(short.class), depth);
                     after.cast(type(short.class));
                     after.startParantheses().cast(bytecodeLocalImpl.asType()).string(argumentName, "[0]").end();
@@ -4069,7 +4084,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startStaticCall(types.FrameDescriptor, "newBuilder").end();
                     b.string("null"); // BytecodeRootNodesImpl
                     b.string("0"); // numLocals
-                    b.string("serialization.rootCount++");
+                    b.string("serialization.nextBuildIndex()"); // buildIndex
                     for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
                         b.defaultValue(var.asType());
                     }
@@ -4632,7 +4647,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("serialization != null").end().startBlock();
                 serializationWrapException(b, () -> {
                     serializationElements.writeShort(b, serializationElements.codeEnd[rootOperation.id]);
-                    b.statement("return serialization.rootStack.pop()");
+                    b.startDeclaration(bytecodeNodeGen.asType(), "result");
+                    b.string("serialization.", serializationElements.rootStack.getSimpleName().toString(), ".pop()");
+                    b.end();
+                    serializationElements.writeInt(b, CodeTreeBuilder.singleString("result.buildIndex"));
+                    b.statement("return result");
                 });
                 b.end();
             }
@@ -6639,15 +6658,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY))).end();
                 b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY_CATCH))).end();
+                b.startCaseBlock();
                 b.startIf().string("operationStack[i].childCount == 0 /* still in try */").end().startBlock();
                 emitCastOperationData(b, model.finallyTryOperation, "i");
                 b.statement("operationData.tryStartBci = bci");
+                b.end(); // if
                 b.statement("break");
                 b.end(); // case finally
 
                 b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_CATCH))).end();
-                b.startIf().string("operationStack[i].childCount == 0 /* still in try */");
-                b.end().startBlock();
+                b.startCaseBlock();
+                b.startIf().string("operationStack[i].childCount == 0 /* still in try */").end().startBlock();
                 emitCastOperationData(b, model.tryCatchOperation, "i");
                 b.statement("operationData.tryStartBci = bci");
                 b.end(); // if
