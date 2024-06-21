@@ -580,7 +580,7 @@ public class BinaryParser extends BinaryStreamParser {
         state.enterFunction(resultTypes);
 
         int opcode;
-        while (offset < sourceCodeEndOffset) {
+        end: while (offset < sourceCodeEndOffset) {
             // Insert a debug instruction if a line mapping exists.
             if (sourceLocationToLineMap != null) {
                 if (sourceLocationToLineMap.containsKey(offset)) {
@@ -661,6 +661,18 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.END: {
                     state.exit(multiValue);
+                    if (state.controlStackSize() == 0) {
+                        /*
+                         * If control stack is empty, we should have reached the end of the function
+                         * at this point. In an invalid wasm binary however, there can be extra
+                         * instructions after the END, which we may not be able to parse due to the
+                         * control stack being empty. To handle this case, and avoid having to
+                         * validate the control stack in every instruction that needs to access the
+                         * stack, we prematurely exit the loop and let the following code size check
+                         * (in readCodeSection) throw an exception.
+                         */
+                        break end;
+                    }
                     break;
                 }
                 case Instructions.ELSE: {
