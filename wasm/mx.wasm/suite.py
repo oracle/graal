@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.41.0",
+  "mxversion": "7.27.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "24.2.0",
@@ -68,7 +68,7 @@ suite = {
   },
   "libraries": {
     "JOL": {
-      "sha1" : "553a2ba27f58b71e7efb545d7d3c657761f5b596",
+      "digest" : "sha512:8adfb561c82f9b198d1d8b7bea605fc8f4418d3e199d0d6262014dc75cee5b1a2ff59ec838b6322f5ee981e7094dbc3c9fa61ee5e8bfe7793aa927e2a900c6ec",
       "maven" : {
         "groupId" : "org.openjdk.jol",
         "artifactId" : "jol-core",

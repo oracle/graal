@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.19.3",
+  "mxversion": "7.27.0",
   "name" : "truffle",
   "version" : "24.2.0",
   "release" : False,
@@ -196,8 +196,8 @@ suite = {
     },
 
     "JIMFS" : {
-      "sha1": "48462eb319817c90c27d377341684b6b81372e08",
-      "sourceSha1": "bc1cd4901ef5f6ed1f62fe2e876758ce081e2aba",
+      "digest": "sha512:0a9df2cd8e0073545582cec28932ee91c75dcd61b06cd0a3bc9ab46527d149379d929e866a54758e6c110569359bec2b45b50a97b046356014e8302cd84544eb",
+      "sourceDigest": "sha512:407414fac32f435bdb0f3ac8fdd367f87044867d62a17818a4d98070a4d292525470366a68348bf99b596a38460cd1ced6fe38b97b1aae67642e6c231747bb8f",
       "maven": {
         "groupId": "com.google.jimfs",
         "artifactId": "jimfs",
@@ -207,8 +207,8 @@ suite = {
 
     "GUAVA": { # JIMFS dependency
       "moduleName": "com.google.common",
-      "sha1": "119ea2b2bc205b138974d351777b20f02b92704b",
-      "sourceSha1": "d34772c01bd6637982d1aafe895c4fcd8b42e139",
+      "digest": "sha512:c8d8aa38e6fb04c409c37922efcbbe182f65156a853f691d8381d56eea208adf22f7a28873bb7895210e41857dd4411aaf952682a2692051220e281910d0798f",
+      "sourceDigest": "sha512:52ab5b63592f6137f98cf4a1b754f34550cc3636913c07407775b52e7249386c7710ffb9b4f26f173b2f8ad67d6575b3d07327492f7687032261815b0a4f4b7b",
       "maven": {
         "groupId": "com.google.guava",
         "artifactId": "guava",
