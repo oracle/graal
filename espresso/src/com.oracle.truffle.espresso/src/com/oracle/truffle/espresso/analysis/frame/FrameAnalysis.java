@@ -447,8 +447,13 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
             switch (opcode) {
                 case NOP: // fallthrough
                 case IINC: // fallthrough
-                case CHECKCAST:
                     break;
+                case CHECKCAST: {
+                    frame.pop();
+                    Symbol<Type> type = queryPoolType(bs.readCPI(bci), ConstantPool.Tag.CLASS);
+                    frame.push(FrameType.forType(type));
+                    break;
+                }
                 case ACONST_NULL:
                     frame.push(FrameType.NULL);
                     break;
@@ -637,8 +642,13 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                     frame.push(k2, false);
                     break;
                 }
-                case LADD, LSUB, LMUL, LDIV, LREM, LSHL, LSHR, LUSHR, LAND, LOR, LXOR:
+                case LADD, LSUB, LMUL, LDIV, LREM, LAND, LOR, LXOR:
                     frame.pop2();
+                    frame.pop2();
+                    frame.push(FrameType.LONG);
+                    break;
+                case LSHL, LSHR, LUSHR:
+                    frame.pop();
                     frame.pop2();
                     frame.push(FrameType.LONG);
                     break;
