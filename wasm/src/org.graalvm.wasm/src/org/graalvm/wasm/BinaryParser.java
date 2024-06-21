@@ -70,7 +70,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.api.Vector128;
@@ -94,6 +93,7 @@ import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ParserState;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
 
@@ -606,8 +606,10 @@ public class BinaryParser extends BinaryStreamParser {
                         blockParamTypes = WasmType.VOID_TYPE_ARRAY;
                         blockResultTypes = encapsulateResultType(multiResult[0]);
                     } else if (multiValue) {
-                        blockParamTypes = extractBlockParamTypes(multiResult[0]);
-                        blockResultTypes = extractBlockResultTypes(multiResult[0]);
+                        int typeIndex = multiResult[0];
+                        state.checkFunctionTypeExists(typeIndex, module.typeCount());
+                        blockParamTypes = extractBlockParamTypes(typeIndex);
+                        blockResultTypes = extractBlockResultTypes(typeIndex);
                     } else {
                         throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
@@ -625,8 +627,10 @@ public class BinaryParser extends BinaryStreamParser {
                         loopParamTypes = WasmType.VOID_TYPE_ARRAY;
                         loopResultTypes = encapsulateResultType(multiResult[0]);
                     } else if (multiValue) {
-                        loopParamTypes = extractBlockParamTypes(multiResult[0]);
-                        loopResultTypes = extractBlockResultTypes(multiResult[0]);
+                        int typeIndex = multiResult[0];
+                        state.checkFunctionTypeExists(typeIndex, module.typeCount());
+                        loopParamTypes = extractBlockParamTypes(typeIndex);
+                        loopResultTypes = extractBlockResultTypes(typeIndex);
                     } else {
                         throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
@@ -644,8 +648,10 @@ public class BinaryParser extends BinaryStreamParser {
                         ifParamTypes = WasmType.VOID_TYPE_ARRAY;
                         ifResultTypes = encapsulateResultType(multiResult[0]);
                     } else if (multiValue) {
-                        ifParamTypes = extractBlockParamTypes(multiResult[0]);
-                        ifResultTypes = extractBlockResultTypes(multiResult[0]);
+                        int typeIndex = multiResult[0];
+                        state.checkFunctionTypeExists(typeIndex, module.typeCount());
+                        ifParamTypes = extractBlockParamTypes(typeIndex);
+                        ifResultTypes = extractBlockResultTypes(typeIndex);
                     } else {
                         throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
