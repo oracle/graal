@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.c.CInterfaceWrapper;
@@ -64,7 +63,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        boolean deoptimizationTarget = MultiMethod.isDeoptTarget(method);
+        boolean deoptimizationTarget = SubstrateCompilationDirectives.isDeoptTarget(method);
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
         List<ValueNode> arguments = new ArrayList<>(kit.getInitialArguments());

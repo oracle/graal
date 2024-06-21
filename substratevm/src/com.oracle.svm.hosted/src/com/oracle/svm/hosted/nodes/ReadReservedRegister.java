@@ -22,14 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.hosted.nodes;
+
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFloatingNode;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-
-import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.ReservedRegisters;
-
 import jdk.vm.ci.code.Register;
 
 public class ReadReservedRegister {
@@ -54,7 +55,7 @@ public class ReadReservedRegister {
          * proxying at deoptimization entry points for this node, so the value is not restored
          * during deoptimization.
          */
-        if (MultiMethod.isDeoptTarget(graph.method())) {
+        if (SubstrateCompilationDirectives.isDeoptTarget(graph.method())) {
             return new ReadReservedRegisterFixedNode(register);
         } else {
             return new ReadReservedRegisterFloatingNode(register);

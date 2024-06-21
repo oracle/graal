@@ -41,13 +41,6 @@ public interface MultiMethod {
         return false;
     }
 
-    static boolean isDeoptTarget(ResolvedJavaMethod method) {
-        if (method instanceof MultiMethod multiMethod) {
-            return multiMethod.isDeoptTarget();
-        }
-        return false;
-    }
-
     /**
      * Key for accessing a multi-method.
      */
@@ -58,17 +51,6 @@ public interface MultiMethod {
         @Override
         public String toString() {
             return "O";
-        }
-    };
-
-    MultiMethodKey DEOPT_TARGET_METHOD = new MultiMethodKey() {
-        @Override
-        public String toString() {
-            /*
-             * This string shows up in many method and symbol names in the generated image, so it
-             * must be short in order to not increase the image size.
-             */
-            return "D";
         }
     };
 
@@ -94,9 +76,5 @@ public interface MultiMethod {
 
     default boolean isOriginalMethod() {
         return getMultiMethodKey() == ORIGINAL_METHOD;
-    }
-
-    default boolean isDeoptTarget() {
-        return getMultiMethodKey() == DEOPT_TARGET_METHOD;
     }
 }

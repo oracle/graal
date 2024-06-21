@@ -29,11 +29,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.nodes.GraphEncoder;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.StructuredGraph;
-
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -42,6 +37,10 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -160,10 +159,5 @@ public final class ReachabilityAnalysisMethod extends AnalysisMethod {
             position = new BytecodePosition(null, method, node.bci());
         }
         return position;
-    }
-
-    @Override
-    public boolean isImplementationInvokable() {
-        return true;
     }
 }
