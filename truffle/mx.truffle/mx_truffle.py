@@ -1566,7 +1566,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic',
-                              ' CFLAGS="{}"'.format(' '.join(['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
+                              ' CFLAGS="{}"'.format(' '.join(['-g', '-O3', '-fvisibility=hidden'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
                               'CPPFLAGS="-DNO_JAVA_RAW_API"',
                              ]
 
