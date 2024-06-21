@@ -40,9 +40,16 @@ import jdk.graal.compiler.graphio.parsing.model.Group;
 import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames;
 
+/**
+ * Groups {@linkplain InputGraph InputGraphs} passed to {@link #visit} by a property specified by
+ * {@link #flattenKey}, and saves them into a new document.
+ *
+ * @see InputGraph#getProperties()
+ */
 public final class Flattener {
     private final GraphDocument newDoc = new GraphDocument();
     private final Map<String, Group> groups = new HashMap<>();
+
     private final String flattenKey;
 
     public Flattener(String flattenKey) {
@@ -61,6 +68,9 @@ public final class Flattener {
         }
     }
 
+    /**
+     * Adds a single graph to a new or existing group.
+     */
     public void visit(InputGraph graph) {
         Group group = (Group) graph.getParent();
         String id = graph.getProperties().get(flattenKey, String.class);
@@ -79,6 +89,9 @@ public final class Flattener {
         newGroup.addElement(graph);
     }
 
+    /**
+     * Groups all the graphs contained in the .bgv dump read by {@code stream}.
+     */
     public void visitDump(InputStream stream) throws IOException {
         ModelBuilder mb = new ModelBuilder(new GraphDocument(), null) {
             @Override

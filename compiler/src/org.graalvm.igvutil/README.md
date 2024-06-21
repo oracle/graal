@@ -1,7 +1,8 @@
 # IGV Utilities
 
 This package contains some utility programs for inspecting and manipulating
-Graal IR dump files (`.bgv` files) through a command-line interface.
+Graal IR dump files (`.bgv` files) through a command-line interface, which allows interoperability with programs
+other than IGV.
 
 ## Usage
 All utilities are accessible as subcommands of the `IgvUtility` program.
@@ -58,7 +59,8 @@ which prevents things like diffs across phases.
 To fix this, the `flatten` command groups graphs by a specifiable graph property (its name, by default)
 and spits out a new `.bgv` file which can then be loaded by IGV.
 
-This can also be used to combine dumps from multiple files into a single file.
+This is most useful for high dump levels and/or Truffle dumps where the same graph is split across many folders.
+It can also be used to combine dumps from multiple files into a single file.
 
 Example usage:
 ```commandline

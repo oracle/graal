@@ -96,7 +96,7 @@ public class IgvUtility {
         private final OptionValue<String> flattenKey;
 
         FlattenCommand() {
-            super("flatten", "Group graphs across multiple files/dumps by name or other properties.");
+            super("flatten", "Group graphs across multiple files/dumps by name or some other graph property, e.g. date, type or compilationId.");
             outputFile = addNamed("--output-file", new StringValue("PATH",
                             "Path that the flattened BGV file will be saved under"));
             flattenKey = addNamed("--by", new StringValue("PROPERTY",

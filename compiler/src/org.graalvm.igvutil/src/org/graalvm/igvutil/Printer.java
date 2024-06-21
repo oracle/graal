@@ -33,6 +33,9 @@ import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
 import jdk.graal.compiler.graphio.parsing.model.Group;
 import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
+/**
+ * Prints the contents of a {@link GraphDocument} in a tree-like representation.
+ */
 public final class Printer {
     private final PrintWriter writer;
 
@@ -40,6 +43,12 @@ public final class Printer {
         this.writer = writer;
     }
 
+    /**
+     * Prints the contents of {@code document}
+     *
+     * @param name name to print for the outermost element in the document, needed as
+     *            {@code document.getName()} can be {@code null}.
+     */
     public void print(GraphDocument document, String name) {
         writer.println(name);
         List<Integer> indentStack = new ArrayList<>();

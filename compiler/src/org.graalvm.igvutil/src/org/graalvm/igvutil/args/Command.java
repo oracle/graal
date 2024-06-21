@@ -31,7 +31,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 
 /**
- * Contains utilities to parse a set of named from command-line arguments. A command is made up of
+ * Contains utilities to parse a set of options from command-line arguments. A command is made up of
  * positional and named options, as well as a single optional {@link CommandGroup}. Named options
  * can appear at any index in the arguments, and must be prefixed by their name. Positional named
  * must appear in the same order as they were added to the command, and they don't require being
