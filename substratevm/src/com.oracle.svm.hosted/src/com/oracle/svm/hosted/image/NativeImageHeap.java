@@ -245,11 +245,17 @@ public final class NativeImageHeap implements ImageHeap {
              * By now, all interned Strings have been added to our internal interning table.
              * Populate the VM configuration with this table, and ensure it is part of the heap.
              */
-            String[] imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
-            Arrays.sort(imageInternedStrings);
-            ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
-            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                HostedImageLayerBuildingSupport.singleton().getWriter().setImageInternedStrings(imageInternedStrings);
+            String[] imageInternedStrings;
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                var internSupport = ImageSingletons.lookup(StringInternSupport.class);
+                imageInternedStrings = internSupport.layeredSetImageInternedStrings(internedStrings.keySet());
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getWriter().setInternedStringsIdentityMap(internSupport.getInternedStringsIdentityMap());
+                }
+            } else {
+                imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
+                Arrays.sort(imageInternedStrings);
+                ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
             }
             /* Manually snapshot the interned strings array. */
             aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);

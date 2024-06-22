@@ -302,8 +302,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                             /*
                              * Need to install the array which points to all installed singletons.
                              */
-                            heap.hMetaAccess.lookupJavaType(slotInfo.keyClass());
-                            ImageHeapObjectArray imageHeapArray = createMultiLayerArray(slotInfo.keyClass(), heap.hMetaAccess.lookupJavaType(slotInfo.keyClass()).getWrapped(),
+                            ImageHeapObjectArray imageHeapArray = createMultiLayerArray(slotInfo.keyClass(), heap.hMetaAccess.lookupJavaType(slotInfo.keyClass().arrayType()).getWrapped(),
                                             hUniverse.getSnippetReflection());
 
                             heap.addConstant(imageHeapArray, true, addReason);
