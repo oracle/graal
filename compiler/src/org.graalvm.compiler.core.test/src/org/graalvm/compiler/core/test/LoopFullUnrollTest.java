@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
@@ -32,6 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+
 import org.junit.Test;
 
 public class LoopFullUnrollTest extends GraalCompilerTest {
@@ -94,5 +96,39 @@ public class LoopFullUnrollTest extends GraalCompilerTest {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+    }
+
+    public static int snippetFlows() {
+        int init = Integer.MIN_VALUE;
+        int step = -1;
+        int limit = 1;
+        int phi = init;
+        while (Integer.MIN_VALUE - phi < limit) {
+            GraalDirectives.sideEffect();
+            phi = phi + step;
+        }
+        return phi;
+    }
+
+    @Test
+    public void testFlows() {
+        test("snippetFlows");
+    }
+
+    public static int snippetFlows2() {
+        int init = Integer.MAX_VALUE;
+        int step = -8;
+        int limit = 8184;
+        int phi = init;
+        while (Integer.MIN_VALUE - phi < limit) {
+            GraalDirectives.sideEffect();
+            phi = phi + step;
+        }
+        return phi;
+    }
+
+    @Test
+    public void testFlows2() {
+        test("snippetFlows2");
     }
 }
