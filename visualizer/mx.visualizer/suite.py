@@ -21,7 +21,7 @@
 # questions.
 
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "7.27.0",
   "name" : "visualizer",
 
 
@@ -39,10 +39,10 @@ suite = {
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spotbugs-3.1.11.zip",
         "https://repo.maven.apache.org/maven2/com/github/spotbugs/spotbugs/3.1.11/spotbugs-3.1.11.zip",
       ],
-      "sha1" : "8f961e0ddd445cc4e89b18563ac5730766d220f1",
+      "digest" : "sha512:98572754ab2df4ebc604d286fb8d83a7a053827d522df933cda3bc51f55f22a4123dad34a92954fdcaa3a81bd41dd466fa7ac1c7e4de980101fecef9905763a9",
     },
     "APACHE_BATIK_SVGGEN_1.12" : {
-      "sha1" : "53364380c4fb33ba49ddf25a56852bf405f698df",
+      "digest" : "sha512:c2519ddbaab53123a5cbfaa04aa388de71996e1af97d51ccf9bb527ca320d7fe3f0d6d0badff4e8138b3b1b0ec3c150a894c9c06c3845318afbc7466395d5565",
       "maven" : {
         "groupId" : "org.apache.xmlgraphics",
         "artifactId" : "batik-svggen",
@@ -52,7 +52,7 @@ suite = {
     },
     "OPENIDE_UTIL_LOOKUP" : {
       "moduleName" : "org.openide.util.Lookup",
-      "sha1" : "6256fe5f371593f8d1d7cd4e732da5979e9577b5",
+      "digest" : "sha512:21b4f34d2a5ae6259b4f69d18bcdde176f2298eb80ea4c20c5f24072b968857bb3a16c373cccf9cdf57faccfdfd34531a9a181a0bbf84290ad314756efd35cf9",
       "maven" : {
         "groupId" : "org.netbeans.api",
         "artifactId" : "org-openide-util-lookup",
@@ -62,7 +62,7 @@ suite = {
     },
     "OPENIDE_UTIL" : {
       "moduleName" : "org.openide.util",
-      "sha1" : "1a22c1ff81b4c2a6d9bd52a32270d9087c767a04",
+      "digest" : "sha512:a1647e95633573d81b1b4bf648a834475b54cc0d3025294ecbc83685d62b9c8cc71200cd04728afa0af0ab0503bd9029b15dd587a25285643e2aee2f751944be",
       "maven" : {
         "groupId" : "org.netbeans.api",
         "artifactId" : "org-openide-util",
