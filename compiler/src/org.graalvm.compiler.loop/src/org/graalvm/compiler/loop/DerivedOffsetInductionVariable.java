@@ -187,8 +187,8 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             if (base.valueNode() == value.getX()) {
                 return subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             } else {
-                assert base.valueNode() == value.getY() || base instanceof BasicInductionVariable basic && basic.getOp() instanceof IntegerExactArithmeticNode : String.format("[base]=%s;[value]=%s",
-                                base.valueNode(), value.getY());
+                assert base.valueNode() == value.getY() || (base instanceof BasicInductionVariable && ((BasicInductionVariable) base).getOp() instanceof IntegerExactArithmeticNode) : String.format(
+                                "[base]=%s;[value]=%s", base, value);
                 return subtractExact(IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)), b, o);
             }
         }
@@ -203,7 +203,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             if (base.valueNode() == value.getX()) {
                 return sub(graph(), b, o);
             } else {
-                assert base.valueNode() == value.getY() | base instanceof BasicInductionVariable basic && basic.getOp() instanceof IntegerExactArithmeticNode;
+                assert base.valueNode() == value.getY() || (base instanceof BasicInductionVariable && ((BasicInductionVariable) base).getOp() instanceof IntegerExactArithmeticNode);
                 return sub(graph(), o, b);
             }
         }
